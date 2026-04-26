@@ -20,6 +20,11 @@ pub async fn toggle_scheduled_task(
     if let Err(e) = scheduler.reschedule_task(&task, cache.clone()).await {
         error!("⚠️  Failed to reload tasks after toggle: {e}");
     } else {
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
+
         info!(
             "✅ Task {} {}",
             match task.status {
@@ -27,7 +32,7 @@ pub async fn toggle_scheduled_task(
                 TaskStatus::Stopping => "disabling after current run",
                 _ => "disabled and unscheduled",
             },
-            task.name
+            task_name
         );
     }
 

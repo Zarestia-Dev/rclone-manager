@@ -109,8 +109,11 @@ impl ScheduledTasksCache {
                     self.update_task_config(&task_from_config.id, &task_from_config)
                         .await?;
                     info!(
-                        "✏️ Updated task config: {} ({})",
-                        existing_task.name, task_from_config.id
+                        "✏️ Updated task config: {}: {}-{} ({})",
+                        task_from_config.backend_name,
+                        task_from_config.remote_name,
+                        task_from_config.profile_name,
+                        task_from_config.id
                     );
                     if let Some(t) = self.get_task(&task_from_config.id).await {
                         updated.push(t);
@@ -120,8 +123,11 @@ impl ScheduledTasksCache {
                 self.add_task(task_from_config.clone(), None).await?;
                 added.push(task_from_config.clone());
                 info!(
-                    "➕ Added new task: {} ({})",
-                    task_from_config.name, task_from_config.id
+                    "➕ Added new task: {}: {}-{} ({})",
+                    task_from_config.backend_name,
+                    task_from_config.remote_name,
+                    task_from_config.profile_name,
+                    task_from_config.id
                 );
             }
         }
@@ -190,7 +196,6 @@ impl ScheduledTasksCache {
     fn task_config_changed(&self, existing: &ScheduledTask, new: &ScheduledTask) -> bool {
         existing.cron_expression != new.cron_expression
             || existing.args != new.args
-            || existing.name != new.name
             || existing.task_type != new.task_type
     }
 
@@ -202,7 +207,6 @@ impl ScheduledTasksCache {
         self.update_task(
             task_id,
             |t| {
-                t.name = new_config.name.clone();
                 t.cron_expression = new_config.cron_expression.clone();
                 t.args = new_config.args.clone();
                 t.task_type = new_config.task_type.clone();
@@ -273,8 +277,9 @@ impl ScheduledTasksCache {
 
         Some(ScheduledTask {
             id: task_id,
-            name: format!("{backend_name} - {remote_name} - {task_type:?} ({profile_name})"),
             task_type: task_type.clone(),
+            remote_name: remote_name.to_string(),
+            profile_name: profile_name.to_string(),
             cron_expression: cron.clone(),
             status: TaskStatus::Enabled,
             args,
@@ -768,8 +773,9 @@ mod tests {
     fn base_task() -> ScheduledTask {
         ScheduledTask {
             id: "b:r-sync-p".to_string(),
-            name: "name".to_string(),
             task_type: TaskType::Sync,
+            remote_name: "r".to_string(),
+            profile_name: "p".to_string(),
             cron_expression: "* * * * *".to_string(),
             status: TaskStatus::Enabled,
             args: json!({"remote_name": "r"}),

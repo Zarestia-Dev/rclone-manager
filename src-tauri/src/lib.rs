@@ -106,7 +106,11 @@ pub fn run() {
         let si_builder = tauri_plugin_single_instance::Builder::new();
 
         #[cfg(target_os = "linux")]
-        let si_builder = si_builder.dbus_id("io.github.zarestia_dev.rclone-manager");
+        let si_builder = si_builder.dbus_id(if cfg!(debug_assertions) {
+            "io.github.zarestia_dev.rclone-manager-dev"
+        } else {
+            "io.github.zarestia_dev.rclone-manager"
+        });
 
         builder = builder.plugin(
             si_builder

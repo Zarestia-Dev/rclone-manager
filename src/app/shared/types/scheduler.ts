@@ -15,17 +15,23 @@ export interface ScheduledTask {
   /** Unique identifier for the task */
   id: string;
 
-  /** Human-readable name for the task */
-  name: string;
-
   /** Type of rclone operation */
   taskType: TaskType;
+
+  /** Remote name this task is associated with */
+  remoteName: string;
+
+  /** Profile name within the remote */
+  profileName: string;
 
   /** Cron expression (e.g., "0 0 * * *" for daily at midnight) */
   cronExpression: string;
 
   /** Current status */
   status: TaskStatus;
+
+  /** Backend name this task is associated with */
+  backendName: string;
 
   /** Task arguments (source, destination, options, etc.) */
   args: Record<string, unknown>;

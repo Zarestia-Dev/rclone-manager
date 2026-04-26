@@ -525,130 +525,13 @@
                           } @else {
                             <div class="tasks-grid">
                               @for (task of scheduledTasks(); track task.id) {
-                                @let meta = getTaskMeta(task.taskType);
-                                <mat-card
-                                  class="task-card"
-                                  [class.disabled]="task.status === 'disabled'"
-                                  [class.stopping]="task.status === 'stopping'"
+                                <app-scheduled-task-card
+                                  [task]="task"
+                                  variant="compact"
                                   (click)="onTaskClick(task)"
-                                  (keydown)="onTaskKeydown($event, task)"
-                                  role="button"
-                                  tabindex="0"
-                                  [attr.aria-label]="
-                                    'generalOverview.tasks.ariaLabel'
-                                      | translate
-                                        : {
-                                            type: (task.taskType | titlecase),
-                                            remote: task.args['remoteName'],
-                                            status: (task.status | titlecase),
-                                          }
-                                  "
-                                >
-                                  <mat-card-header class="task-header">
-                                    <div class="task-info-section">
-                                      <div class="task-icon-wrapper" [class]="meta.colorClass">
-                                        <mat-icon [svgIcon]="meta.icon"></mat-icon>
-                                      </div>
-                                      <div class="task-title-section">
-                                        <div class="task-name-row">
-                                          <span class="task-name">{{ task.name }}</span>
-                                          <span
-                                            class="app-pill"
-                                            [class.p-primary]="task.status === 'enabled'"
-                                            [class.p-accent]="task.status === 'running'"
-                                            [class.p-dim]="task.status === 'disabled'"
-                                            [class.p-orange]="task.status === 'stopping'"
-                                            [class.p-warn]="task.status === 'failed'"
-                                            [matTooltip]="'task.status.' + task.status | translate"
-                                          >
-                                            {{ 'task.status.' + task.status | translate }}
-                                          </span>
-                                          @if (task.currentJobId) {
-                                            <div class="app-pill running">
-                                              <mat-icon svgIcon="play"></mat-icon>
-                                              <span>{{
-                                                'generalOverview.tasks.running' | translate
-                                              }}</span>
-                                            </div>
-                                          }
-                                        </div>
-                                        <span class="task-remote-name">{{
-                                          task.args['remoteName']
-                                        }}</span>
-                                      </div>
-                                    </div>
-                                    <button
-                                      matIconButton
-                                      (click)="onToggleTaskClick(task.id, $event)"
-                                      [matTooltip]="
-                                        'task.toggle.' + getToggleKey(task.status) | translate
-                                      "
-                                      class="task-toggle-btn"
-                                      [disabled]="task.status === 'stopping'"
-                                    >
-                                      <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
-                                    </button>
-                                  </mat-card-header>
-
-                                  <mat-card-footer class="task-footer">
-                                    <div class="task-stats">
-                                      <div class="stat-item">
-                                        <mat-icon
-                                          svgIcon="circle-check"
-                                          class="stat-icon success"
-                                        ></mat-icon>
-                                        <span class="stat-value">{{ task.successCount }}</span>
-                                      </div>
-                                      <div class="stat-item">
-                                        <mat-icon
-                                          svgIcon="circle-exclamation"
-                                          class="stat-icon error"
-                                        ></mat-icon>
-                                        <span class="stat-value">{{ task.failureCount }}</span>
-                                      </div>
-                                      <div class="stat-item">
-                                        <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
-                                        <span class="stat-value">{{ task.runCount }}</span>
-                                      </div>
-                                    </div>
-
-                                    <div class="task-schedule">
-                                      <div class="schedule-item">
-                                        <span class="schedule-label">{{
-                                          'generalOverview.tasks.nextRun' | translate
-                                        }}</span>
-                                        <span class="schedule-value">{{
-                                          getFormattedNextRun(task)
-                                        }}</span>
-                                      </div>
-                                      @if (task.lastRun) {
-                                        <div class="schedule-item">
-                                          <span class="schedule-label">{{
-                                            'generalOverview.tasks.lastRun' | translate
-                                          }}</span>
-                                          <span class="schedule-value">{{
-                                            getFormattedLastRun(task)
-                                          }}</span>
-                                        </div>
-                                      }
-                                    </div>
-
-                                    <div class="task-cron">
-                                      <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
-                                      <code class="cron-expression">{{ task.cronExpression }}</code>
-                                    </div>
-
-                                    @if (task.lastError) {
-                                      <div class="task-error">
-                                        <mat-icon
-                                          svgIcon="circle-exclamation"
-                                          class="error-icon"
-                                        ></mat-icon>
-                                        <span class="error-text">{{ task.lastError }}</span>
-                                      </div>
-                                    }
-                                  </mat-card-footer>
-                                </mat-card>
+                                  (toggled)="toggleScheduledTask($event)"
+                                  (openInFiles)="onOpenTaskInFiles($event)"
+                                ></app-scheduled-task-card>
                               }
                             </div>
                           }

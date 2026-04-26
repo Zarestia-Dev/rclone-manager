@@ -1,0 +1,209 @@
+@if (variant() === 'compact') {
+  <mat-card
+    class="task-card compact"
+    [class.disabled]="task().status === 'disabled'"
+    [class.stopping]="task().status === 'stopping'"
+    role="button"
+    tabindex="0"
+  >
+    <mat-card-header class="task-header">
+      <div class="task-info-section">
+        <div class="task-icon-wrapper" [class]="taskMeta().colorClass">
+          <mat-icon [svgIcon]="taskMeta().icon"></mat-icon>
+        </div>
+        <div class="task-title-section">
+          <span class="task-name">{{ task().profileName }}</span>
+          <span class="task-subtitle">
+            {{ task().remoteName }} · {{ 'dashboard.appDetail.' + task().taskType | translate }}
+          </span>
+        </div>
+      </div>
+
+      <div class="task-header-end">
+        <span class="status-indicator" [ngClass]="'status-' + task().status">
+          <span class="dot"></span>
+          {{ 'task.status.' + task().status | translate }}
+        </span>
+        <button
+          mat-icon-button
+          class="task-toggle-btn"
+          (click)="onToggle($event)"
+          [matTooltip]="toggleState().tooltip | translate"
+          [disabled]="task().status === 'stopping'"
+        >
+          <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
+        </button>
+      </div>
+    </mat-card-header>
+
+    <mat-card-footer class="task-footer">
+      <div class="task-stats">
+        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.successful' | translate">
+          <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
+          <span class="stat-value">{{ task().successCount }}</span>
+        </div>
+        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.failedCount' | translate">
+          <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
+          <span class="stat-value">{{ task().failureCount }}</span>
+        </div>
+        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.totalRuns' | translate">
+          <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
+          <span class="stat-value">{{ task().runCount }}</span>
+        </div>
+      </div>
+
+      <div class="task-schedule">
+        <span class="schedule-label">{{ 'generalOverview.tasks.nextRun' | translate }}</span>
+        <span class="schedule-value">{{ nextRunFormatted() }}</span>
+      </div>
+    </mat-card-footer>
+  </mat-card>
+} @else {
+  <mat-card
+    class="task-card detailed"
+    [class.disabled]="task().status === 'disabled'"
+    [class.stopping]="task().status === 'stopping'"
+  >
+    <mat-card-header class="task-header">
+      <div class="task-info">
+        <div class="task-title-row">
+          <div class="task-icon-wrapper" [class]="taskMeta().colorClass">
+            <mat-icon [svgIcon]="taskMeta().icon"></mat-icon>
+          </div>
+          <div class="title-text">
+            <h4>{{ task().profileName }} · {{ task().backendName }}</h4>
+            <span class="task-type-label">
+              {{ task().remoteName }} · {{ 'dashboard.appDetail.' + task().taskType | translate }}
+            </span>
+          </div>
+          <span class="status-indicator" [ngClass]="'status-' + task().status">
+            <span class="dot"></span>
+            {{ 'task.status.' + task().status | translate }}
+          </span>
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        (click)="onToggle($event)"
+        [matTooltip]="toggleState().tooltip | translate"
+        [disabled]="task().status === 'stopping'"
+      >
+        <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
+      </button>
+    </mat-card-header>
+
+    <div class="task-body">
+      <div class="detail-section">
+        <h5 class="section-title">
+          <mat-icon svgIcon="clock"></mat-icon>
+          {{ 'dashboard.generalDetail.schedule' | translate }}
+        </h5>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="label">{{ 'dashboard.generalDetail.cronExpression' | translate }}</span>
+            <code class="value cron-expression" [matTooltip]="cronDescription()">
+              {{ task().cronExpression }}
+            </code>
+          </div>
+          <div class="detail-item">
+            <span class="label">{{ 'dashboard.generalDetail.nextRunLabel' | translate }}</span>
+            <span class="value next-run">{{ nextRunFormatted() }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">{{ 'dashboard.generalDetail.lastRunLabel' | translate }}</span>
+            <span class="value">{{ lastRunFormatted() }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">{{ 'dashboard.generalDetail.createdLabel' | translate }}</span>
+            <span class="value">{{ task().createdAt | date: 'medium' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h5 class="section-title">
+          <mat-icon svgIcon="chart"></mat-icon>
+          {{ 'dashboard.generalDetail.statistics' | translate }}
+        </h5>
+        <div class="stats-grid">
+          <div class="stat-card success">
+            <div class="stat-value">{{ task().successCount }}</div>
+            <div class="stat-label">{{ 'dashboard.generalDetail.successful' | translate }}</div>
+          </div>
+          <div class="stat-card failed">
+            <div class="stat-value">{{ task().failureCount }}</div>
+            <div class="stat-label">{{ 'dashboard.generalDetail.failedCount' | translate }}</div>
+          </div>
+          <div class="stat-card total">
+            <div class="stat-value">{{ task().runCount }}</div>
+            <div class="stat-label">{{ 'dashboard.generalDetail.totalRuns' | translate }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h5 class="section-title">
+          <mat-icon svgIcon="folder"></mat-icon>
+          {{ 'dashboard.generalDetail.paths' | translate }}
+        </h5>
+        <div class="path-grid">
+          <div class="path-item">
+            <div class="path-content">
+              <span class="path-label">{{
+                'dashboard.generalDetail.sourceLabel' | translate
+              }}</span>
+              <code class="path-value">{{ taskPaths().source }}</code>
+            </div>
+            <button
+              mat-icon-button
+              [matTooltip]="'actions.open' | translate"
+              (click)="onOpenInFiles(taskPaths().source, $event)"
+            >
+              <mat-icon [svgIcon]="taskPaths().sourceIcon"></mat-icon>
+            </button>
+          </div>
+
+          @if (task().args['dest']) {
+            <div class="path-item">
+              <div class="path-content">
+                <span class="path-label">{{
+                  'dashboard.generalDetail.destinationLabel' | translate
+                }}</span>
+                <code class="path-value">{{ taskPaths().dest }}</code>
+              </div>
+              <button
+                mat-icon-button
+                [matTooltip]="'actions.open' | translate"
+                (click)="onOpenInFiles(taskPaths().dest, $event)"
+              >
+                <mat-icon [svgIcon]="taskPaths().destIcon"></mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (task().lastError) {
+        <div class="detail-section error-section">
+          <h5 class="section-title">
+            <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+            {{ 'dashboard.generalDetail.lastError' | translate }}
+          </h5>
+          <div class="error-message">{{ task().lastError }}</div>
+        </div>
+      }
+
+      @if (task().currentJobId) {
+        <div class="detail-section running-section">
+          <h5 class="section-title">
+            <mat-icon svgIcon="play" class="running-icon"></mat-icon>
+            {{ 'dashboard.generalDetail.currentlyRunning' | translate }}
+          </h5>
+          <div class="running-info">
+            {{ 'dashboard.generalDetail.jobIdLabel' | translate }} {{ task().currentJobId }}
+          </div>
+        </div>
+      }
+    </div>
+  </mat-card>
+}

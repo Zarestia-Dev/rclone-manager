@@ -530,10 +530,16 @@ pub async fn handle_job_completion(
 
     // Update the associated scheduled task when this job was triggered by one.
     if let Some(task) = task {
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
+
         info!(
             "Job {jobid} was associated with scheduled task '{}', updating status.",
-            task.name
+            task_name
         );
+
         if success {
             scheduled_tasks_cache
                 .update_task(
@@ -734,9 +740,13 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
             .get_task_by_job_id(jobid.to_string())
             .await
         {
+            let task_name = format!(
+                "{}: {}-{}.{}",
+                task.backend_name, task.remote_name, task.profile_name, task.id
+            );
             info!(
                 "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
-                jobid, task.name
+                jobid, task_name
             );
             scheduled_tasks_cache
                 .update_task(

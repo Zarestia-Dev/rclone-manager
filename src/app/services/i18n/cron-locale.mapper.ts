@@ -1,26 +1,20 @@
 import 'cronstrue/locales/tr';
 import 'cronstrue/locales/es';
 import 'cronstrue/locales/zh_CN';
+import 'cronstrue/locales/zh_TW';
 
 /**
- * Maps the application locale (e.g., 'en-US', 'tr-TR') to a cronstrue supported locale (e.g., 'en', 'tr').
- * @param appLocale The application locale string.
- * @returns The corresponding cronstrue locale string.
+ * Maps an app locale (e.g. 'en-US', 'tr-TR') to a cronstrue locale (e.g. 'en', 'tr').
+ * cronstrue uses 2-letter codes; Chinese is the only exception requiring a region suffix.
  */
 export function getCronstrueLocale(appLocale: string): string {
-  if (!appLocale) {
-    return 'en';
+  if (!appLocale) return 'en';
+
+  const [lang, region] = appLocale.toLowerCase().split('-');
+
+  if (lang === 'zh') {
+    return region === 'tw' ? 'zh_TW' : 'zh_CN';
   }
 
-  // cronstrue typically uses 2-letter codes (e.g., 'en', 'tr', 'fr')
-  // We'll strip the region variant (e.g., 'tr-TR' -> 'tr')
-  const parts = appLocale.toLowerCase().split('-');
-  const baseLocale = parts[0];
-
-  // Handle specific overrides for cronstrue
-  if (baseLocale === 'zh') {
-    return parts[1] === 'tw' ? 'zh_TW' : 'zh_CN';
-  }
-
-  return baseLocale;
+  return lang;
 }

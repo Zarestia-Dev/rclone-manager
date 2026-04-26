@@ -96,8 +96,8 @@ impl CronScheduler {
             && let Err(e) = self.unschedule_task(old_job_id).await
         {
             warn!(
-                "Failed to remove old scheduler job {} for task '{}': {}",
-                old_job_id, task.name, e
+                "Failed to remove old scheduler job {} for task '{}: {}-{}.{}: {}",
+                old_job_id, task.backend_name, task.remote_name, task.profile_name, task.id, e
             );
         }
 
@@ -116,7 +116,10 @@ impl CronScheduler {
             .clone();
 
         let task_id = task.id.clone();
-        let task_name = task.name.clone();
+        let task_name = format!(
+            "{}: {}-{}",
+            task.backend_name, task.remote_name, task.profile_name
+        );
         let task_type = task.task_type.clone();
         let cron_expr_5_field = task.cron_expression.clone();
         let cron_expr_6_field = format!("0 {cron_expr_5_field}");
@@ -168,9 +171,13 @@ impl CronScheduler {
             .await
             .ok();
 
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
         info!(
             "📅 Scheduled '{}' ({}) — job ID: {}",
-            task.name, cron_expr_6_field, job_id
+            task_name, cron_expr_6_field, job_id
         );
 
         Ok(job_id)
@@ -195,23 +202,27 @@ impl CronScheduler {
         task: &ScheduledTask,
         cache: State<'_, ScheduledTasksCache>,
     ) -> Result<(), String> {
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
         if let Some(job_id_str) = &task.scheduler_job_id
             && let Ok(job_id) = Uuid::parse_str(job_id_str)
         {
             match self.unschedule_task(job_id).await {
-                Ok(()) => info!("Removed old job {} for '{}'", job_id, task.name),
+                Ok(()) => info!("Removed old job {} for '{}'", job_id, task_name),
                 Err(e) => warn!("Failed to remove old job {job_id}: {e}"),
             }
         }
 
         if task.status == TaskStatus::Enabled {
-            info!("Scheduling enabled task '{}'…", task.name);
+            info!("Scheduling enabled task '{}'…", task_name);
             match self.schedule_task(task, cache.clone()).await {
                 Ok(new_job_id) => {
-                    info!("Rescheduled '{}' → job {}", task.name, new_job_id);
+                    info!("Rescheduled '{}' → job {}", task_name, new_job_id);
                 }
                 Err(e) => {
-                    error!("Failed to reschedule '{}': {}", task.name, e);
+                    error!("Failed to reschedule '{}': {}", task_name, e);
                     cache
                         .update_task(&task.id, |t| t.mark_failure(e.clone()), None)
                         .await?;
@@ -219,7 +230,7 @@ impl CronScheduler {
                 }
             }
         } else {
-            info!("Task '{}' is disabled — clearing job ID.", task.name);
+            info!("Task '{}' is disabled — clearing job ID.", task_name);
             cache
                 .update_task(
                     &task.id,
@@ -245,8 +256,12 @@ impl CronScheduler {
 
         let mut errors: Vec<String> = Vec::new();
         for task in tasks {
+            let task_name = format!(
+                "{}: {}-{}.{}",
+                task.backend_name, task.remote_name, task.profile_name, task.id
+            );
             if let Err(e) = self.reschedule_task(&task, cache.clone()).await {
-                error!("Failed to reload '{}' ({}): {}", task.name, task.id, e);
+                error!("Failed to reload '{}' ({}): {}", task_name, task.id, e);
                 errors.push(format!("{}: {}", task.id, e));
             }
         }
@@ -280,8 +295,12 @@ impl CronScheduler {
 
         let mut errors: Vec<String> = Vec::new();
         for task in result.added.iter().chain(result.updated.iter()) {
+            let task_name = format!(
+                "{}: {}-{}.{}",
+                task.backend_name, task.remote_name, task.profile_name, task.id
+            );
             if let Err(e) = self.reschedule_task(task, cache.clone()).await {
-                error!("Failed to reschedule '{}' ({}): {}", task.name, task.id, e);
+                error!("Failed to reschedule '{}' ({}): {}", task_name, task.id, e);
                 errors.push(format!("{}: {}", task.id, e));
             }
         }
@@ -376,9 +395,13 @@ async fn execute_scheduled_task(
         .is_job_running(&remote_name, job_type.clone(), profile)
         .await
     {
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
         warn!(
             "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running.",
-            task.name, job_type, remote_name, profile
+            task_name, job_type, remote_name, profile
         );
         return Ok(());
     }

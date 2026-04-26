@@ -1,4 +1,4 @@
-import { NgClass, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { NgClass, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -47,17 +47,13 @@ import {
   RemoteFacadeService,
   IconService,
   getRemoteNameFromFs,
+  splitFsPath,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 
 const SCROLL_DELAY_MS = 60;
 
-const TASK_META: Record<string, { icon: string; colorClass: string }> = {
-  sync: { icon: 'sync', colorClass: 'sync-color' },
-  copy: { icon: 'copy', colorClass: 'copy-color' },
-  move: { icon: 'move', colorClass: 'move-color' },
-  bisync: { icon: 'right-left', colorClass: 'bisync-color' },
-};
+import { ScheduledTaskCardComponent } from '../../../../shared/detail-shared';
 
 const JOB_ICON_MAP: Record<string, string> = {
   sync: 'refresh',
@@ -70,22 +66,6 @@ const JOB_ICON_MAP: Record<string, string> = {
   cleanup: 'broom',
   rmdirs: 'broom',
   upload: 'file-arrow-up',
-};
-
-const TOGGLE_ICON: Record<string, string> = {
-  enabled: 'pause',
-  running: 'pause',
-  disabled: 'play',
-  failed: 'play',
-  stopping: 'stop',
-};
-
-const TOGGLE_KEY: Record<string, string> = {
-  enabled: 'disable',
-  running: 'disable',
-  disabled: 'enable',
-  failed: 'enable',
-  stopping: 'stopping',
 };
 
 export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
@@ -128,7 +108,6 @@ const ALL_PANELS: PanelConfig[] = [
   imports: [
     NgClass,
     DecimalPipe,
-    TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -149,6 +128,7 @@ const ALL_PANELS: PanelConfig[] = [
     OverviewHeaderComponent,
     TranslateModule,
     CopyToClipboardDirective,
+    ScheduledTaskCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -360,11 +340,6 @@ export class GeneralOverviewComponent {
     }
   }
 
-  onToggleTaskClick(taskId: string, event: Event): void {
-    event.stopPropagation();
-    void this.toggleScheduledTask(taskId);
-  }
-
   onTaskClick(task: ScheduledTask): void {
     const remoteName = task.args['remote_name'];
     if (remoteName) {
@@ -373,39 +348,9 @@ export class GeneralOverviewComponent {
     }
   }
 
-  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.onTaskClick(task);
-    }
-  }
-
-  // --- Task display utilities ---
-
-  getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
-    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
-    return task.nextRun
-      ? new Date(task.nextRun).toLocaleString()
-      : this.translate.instant('task.nextRun.notScheduled');
-  }
-
-  getFormattedLastRun(task: ScheduledTask): string {
-    return task.lastRun
-      ? new Date(task.lastRun).toLocaleString()
-      : this.translate.instant('task.lastRun.never');
-  }
-
-  getTaskMeta(taskType: string): { icon: string; colorClass: string } {
-    return TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
-  }
-
-  getToggleKey(status: string): string {
-    return TOGGLE_KEY[status] ?? 'enable';
-  }
-
-  getToggleIcon(status: string): string {
-    return TOGGLE_ICON[status] ?? 'help';
+  onOpenTaskInFiles(path: string): void {
+    const { remote: remoteName, path: relativePath } = splitFsPath(path);
+    void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 
   getJobTypeIcon(job: JobInfo): string {

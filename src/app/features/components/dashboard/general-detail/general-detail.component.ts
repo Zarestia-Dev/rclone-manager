@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import {
   DiskUsage,
   JobsPanelConfig,
@@ -11,14 +11,14 @@ import {
   Remote,
   RemoteSettings,
   SettingsPanelConfig,
-  ScheduledTask,
 } from '@app/types';
 import {
   DiskUsagePanelComponent,
   JobsPanelComponent,
   SettingsPanelComponent,
+  ScheduledTaskCardComponent,
 } from '../../../../shared/detail-shared';
-import { IconService, SchedulerService, RemoteFacadeService } from '@app/services';
+import { IconService, SchedulerService, RemoteFacadeService, splitFsPath } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {
@@ -94,9 +94,8 @@ const ACTION_CONFIGS: ActionConfig[] = [
   selector: 'app-general-detail',
   standalone: true,
   imports: [
-    NgClass,
+    CommonModule,
     TitleCasePipe,
-    DatePipe,
     MatCardModule,
     MatIconModule,
     MatTooltipModule,
@@ -105,8 +104,8 @@ const ACTION_CONFIGS: ActionConfig[] = [
     DiskUsagePanelComponent,
     JobsPanelComponent,
     TranslateModule,
+    ScheduledTaskCardComponent,
   ],
-  providers: [DatePipe],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
 })
@@ -114,7 +113,6 @@ export class GeneralDetailComponent {
   protected readonly iconService = inject(IconService);
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
-  private readonly datePipe = inject(DatePipe);
   private readonly remoteFacade = inject(RemoteFacadeService);
 
   // State
@@ -151,37 +149,6 @@ export class GeneralDetailComponent {
     'startTime',
     'actions',
   ] as const;
-
-  private static readonly TASK_TYPE_ICONS: Record<string, string> = {
-    sync: 'sync',
-    copy: 'copy',
-    move: 'move',
-    bisync: 'right-left',
-  };
-
-  private static readonly TASK_STATUS_TOOLTIPS: Record<string, string> = {
-    enabled: 'task.status.enabled',
-    disabled: 'task.status.disabled',
-    running: 'task.status.running',
-    failed: 'task.status.failed',
-    stopping: 'task.status.stopping',
-  };
-
-  private static readonly TOGGLE_TOOLTIPS: Record<string, string> = {
-    enabled: 'task.toggle.disable',
-    running: 'task.toggle.disable',
-    disabled: 'task.toggle.enable',
-    failed: 'task.toggle.enable',
-    stopping: 'task.toggle.stopping',
-  };
-
-  private static readonly TOGGLE_ICONS: Record<string, string> = {
-    enabled: 'pause',
-    running: 'pause',
-    disabled: 'play',
-    failed: 'play',
-    stopping: 'stop',
-  };
 
   // Derivations
   readonly jobs = computed(() =>
@@ -275,24 +242,17 @@ export class GeneralDetailComponent {
 
   // --- Scheduled Task Helpers ---
 
-  getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
-    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
-    if (!task.nextRun) return this.translate.instant('task.nextRun.notScheduled');
-    return this.datePipe.transform(task.nextRun, 'medium') ?? '';
-  }
-
-  getFormattedLastRun(task: ScheduledTask): string {
-    if (!task.lastRun) return this.translate.instant('task.lastRun.never');
-    return this.datePipe.transform(task.lastRun, 'medium') ?? '';
-  }
-
   async toggleScheduledTask(taskId: string): Promise<void> {
     try {
       await this.schedulerService.toggleScheduledTask(taskId);
     } catch (error) {
       console.error('Error toggling scheduled task:', error);
     }
+  }
+
+  onOpenTaskInFiles(path: string): void {
+    const { remote: remoteName, path: relativePath } = splitFsPath(path);
+    void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 
   // --- Carousel ---
@@ -307,23 +267,5 @@ export class GeneralDetailComponent {
 
   goToTaskCard(index: number): void {
     this.currentTaskCardIndex.set(index);
-  }
-
-  // --- Static Lookups ---
-
-  getTaskTypeIcon(taskType: string): string {
-    return GeneralDetailComponent.TASK_TYPE_ICONS[taskType] ?? 'circle-info';
-  }
-
-  getTaskStatusTooltip(status: string): string {
-    return GeneralDetailComponent.TASK_STATUS_TOOLTIPS[status] ?? '';
-  }
-
-  getToggleTooltip(status: string): string {
-    return GeneralDetailComponent.TOGGLE_TOOLTIPS[status] ?? '';
-  }
-
-  getToggleIcon(status: string): string {
-    return GeneralDetailComponent.TOGGLE_ICONS[status] ?? 'help';
   }
 }

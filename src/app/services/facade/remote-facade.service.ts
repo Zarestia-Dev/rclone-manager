@@ -22,7 +22,7 @@ import { FileSystemService } from '../operations/file-system.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
-import { isLocalPath, getRemoteNameFromFs } from '../remote/utils/remote-config.utils';
+import { isLocalPath, getRemoteNameFromFs, splitFsPath } from '../remote/utils/remote-config.utils';
 import {
   Remote,
   JobInfo,
@@ -564,14 +564,10 @@ export class RemoteFacadeService extends TauriBaseService {
       await this.executeAction(remoteName, 'open', () => this.fileSystemService.openInFiles(path));
     } else {
       await this.executeAction(remoteName, 'open', async () => {
-        const colonIdx = path.indexOf(':');
-        const targetRemoteName = colonIdx > -1 ? path.substring(0, colonIdx) : remoteName;
-        const relativePath =
-          colonIdx > -1
-            ? path.substring(colonIdx + 1).replace(/^\/+/, '')
-            : path.replace(/^\/+/, '');
+        const { remote: targetRemoteName, path: relativePath } = splitFsPath(path);
+        const finalRemoteName = targetRemoteName || remoteName;
 
-        await this.nautilusService.newNautilusWindow(targetRemoteName, relativePath);
+        await this.nautilusService.newNautilusWindow(finalRemoteName, relativePath);
       });
     }
   }

@@ -21,7 +21,7 @@ export function isInteractiveContinueDisabled(
 ): boolean {
   if (isAuthCancelled || state.isProcessing) return true;
   if (!state.question?.Option?.Required) return false;
-  const answer = state.answer;
+  const { answer } = state;
   return (
     answer === null || answer === undefined || (typeof answer === 'string' && answer.trim() === '')
   );
@@ -36,7 +36,7 @@ export function convertBoolAnswerToString(answer: unknown): string {
 }
 
 /**
- * Updates the interactive flow state with a new answer value.
+ * Returns a new state object with the given answer applied.
  */
 export function updateInteractiveAnswer(
   state: InteractiveFlowState,
@@ -46,19 +46,17 @@ export function updateInteractiveAnswer(
 }
 
 /**
- * Builds a path string (e.g., "myRemote:path") from a form path group object.
- * Handles various path types: local, currentRemote, otherRemote.
+ * Builds an rclone path string (e.g. "myRemote:path/to/dir") from a form path group object.
  */
 export function buildPathString(pathGroup: any, currentRemoteName: string): string {
   if (pathGroup === null || pathGroup === undefined) return '';
 
-  // Handle simple string path (e.g., mount dest which is always local)
+  // Simple string path — e.g. mount dest which is always local
   if (typeof pathGroup === 'string') return pathGroup;
 
   const { pathType, path, otherRemoteName } = pathGroup;
   const p = path || '';
 
-  // Handle "otherRemote:remoteName" format
   if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
     const remote = otherRemoteName || pathType.split(':')[1];
     return `${remote}:${p}`;
@@ -76,7 +74,6 @@ export function buildPathString(pathGroup: any, currentRemoteName: string): stri
 
 /**
  * Extracts the default answer from an interactive config question response.
- * Handles boolean, string, and numeric types.
  */
 export function getDefaultAnswerFromQuestion(
   q: RcConfigQuestionResponse
@@ -97,17 +94,31 @@ export function getDefaultAnswerFromQuestion(
 }
 
 /**
- * Checks if a given path is a local filesystem path.
- * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\', 'C:/' or 'C:').
+ * Returns true for Unix absolute paths (/foo) and Windows drive paths (C:\ or C:/).
  */
 export function isLocalPath(path: string): boolean {
   return path.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(path);
 }
 
 /**
- * Splits an absolute local path into its root (remote) and remainder (path).
- * Example: "/home/hakan" -> { remote: "/", remainder: "home/hakan" }
- * Example: "C:\Users\hakan" -> { remote: "C:\", remainder: "Users\hakan" }
+ * Splits an rclone path into its remote name and relative path components.
+ */
+export function splitFsPath(fullPath: string): { remote: string; path: string } {
+  if (isLocalPath(fullPath)) return { remote: '', path: fullPath };
+
+  const colonIdx = fullPath.indexOf(':');
+  if (colonIdx === -1) return { remote: '', path: fullPath };
+
+  return {
+    remote: fullPath.substring(0, colonIdx),
+    path: fullPath.substring(colonIdx + 1).replace(/^\/+/, ''),
+  };
+}
+
+/**
+ * Splits an absolute local path into its root and remainder.
+ * @example "/home/hakan"  → { remote: "/",   remainder: "home/hakan" }
+ * @example "C:\\Users\\x" → { remote: "C:\\", remainder: "Users\\x"  }
  */
 export function splitLocalPath(path: string): { remote: string; remainder: string } {
   if (path.startsWith('/')) {
@@ -115,16 +126,14 @@ export function splitLocalPath(path: string): { remote: string; remainder: strin
   }
   const windowsMatch = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
   if (windowsMatch) {
-    const drive = windowsMatch[1];
-    const slash = windowsMatch[2] || '\\';
-    return { remote: drive + slash, remainder: windowsMatch[3] };
+    return { remote: windowsMatch[1] + (windowsMatch[2] || '\\'), remainder: windowsMatch[3] };
   }
   return { remote: path, remainder: '' };
 }
 
 /**
  * Normalizes an rclone fs value to a string.
- * Handles both plain strings and object formats (e.g. from backend serve list).
+ * Handles both plain strings and object formats from backend serve list.
  */
 export function normalizeFs(fs: unknown): string {
   if (typeof fs === 'string') return fs;
@@ -140,8 +149,8 @@ export function normalizeFs(fs: unknown): string {
 }
 
 /**
- * Removes runtime backend instance suffixes from remote names.
- * Example: Mega{Gyju7} -> Mega
+ * Strips runtime backend instance suffixes from remote names.
+ * @example "Mega{Gyju7}" → "Mega"
  */
 export function normalizeRemoteName(remote: string): string {
   return remote
@@ -152,7 +161,6 @@ export function normalizeRemoteName(remote: string): string {
 
 /**
  * Safely extracts the remote name from an rclone fs value.
- * Handles local paths, Windows drive letters, and object formats.
  */
 export function getRemoteNameFromFs(fs: unknown): string {
   const normalized = normalizeFs(fs);
@@ -162,8 +170,8 @@ export function getRemoteNameFromFs(fs: unknown): string {
 }
 
 /**
- * Parses an rclone fs string into its components for UI configuration.
- * Identifies if the path is local, on the current remote, or another remote.
+ * Parses an rclone fs string into path components for UI configuration.
+ * Classifies the path as local, currentRemote, or otherRemote.
  */
 export function parseFsString(
   fullPath: string,
@@ -174,9 +182,9 @@ export function parseFsString(
   if (!fullPath) return { pathType: defaultType, path: '' };
 
   const colonIdx = fullPath.indexOf(':');
-  const isLocal = colonIdx === -1 || colonIdx === 1 || fullPath.startsWith('/');
 
-  if (isLocal) return { pathType: 'local', path: fullPath };
+  // No colon → relative path; starts with / or drive letter → local filesystem
+  if (colonIdx === -1 || isLocalPath(fullPath)) return { pathType: 'local', path: fullPath };
 
   const remote = fullPath.substring(0, colonIdx);
   const path = fullPath.substring(colonIdx + 1);
@@ -190,8 +198,8 @@ export function parseFsString(
 }
 
 /**
- * Normalizes an rclone configuration key/flag for flexible searching.
- * Converts to lowercase and replaces hyphens and spaces with underscores.
+ * Normalizes an rclone config key for flexible searching
+ * (lowercase, hyphens/spaces → underscores).
  */
 export function normalizeRcloneKey(val: string | undefined | null): string {
   if (!val) return '';
@@ -199,8 +207,7 @@ export function normalizeRcloneKey(val: string | undefined | null): string {
 }
 
 /**
- * Checks if a configuration field matches a given search query.
- * Performs both raw substring matching and flexible matching (hyphens/spaces as underscores).
+ * Returns true if a config field name or help text matches the given search query.
  */
 export function matchesConfigSearch(field: RcConfigOption, query: string): boolean {
   if (!query) return true;
@@ -208,23 +215,17 @@ export function matchesConfigSearch(field: RcConfigOption, query: string): boole
   const trimmedQuery = query.toLowerCase().trim();
   const flexibleQuery = normalizeRcloneKey(trimmedQuery);
 
-  const name = field.Name?.toLowerCase() ?? '';
-  const fieldName = field.FieldName?.toLowerCase() ?? '';
-  const help = field.Help?.toLowerCase() ?? '';
-
-  const flexibleName = normalizeRcloneKey(field.Name);
-  const flexibleFieldName = normalizeRcloneKey(field.FieldName);
-
   return (
-    name.includes(trimmedQuery) ||
-    fieldName.includes(trimmedQuery) ||
-    help.includes(trimmedQuery) ||
-    flexibleName.includes(flexibleQuery) ||
-    flexibleFieldName.includes(flexibleQuery)
+    (field.Name?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    (field.FieldName?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    (field.Help?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    normalizeRcloneKey(field.Name).includes(flexibleQuery) ||
+    normalizeRcloneKey(field.FieldName).includes(flexibleQuery)
   );
 }
+
 /**
- * Groups an array of items by a key extracted from each item.
+ * Groups an array of items by a derived key.
  */
 export function groupBy<T, K extends PropertyKey>(
   array: T[],

@@ -93,7 +93,7 @@
                   class="indicator"
                   [class.active]="$index === currentTaskCardIndex()"
                   (click)="goToTaskCard($index)"
-                  [matTooltip]="task.name"
+                  [matTooltip]="task.profileName"
                   role="button"
                   tabindex="0"
                   [attr.aria-label]="
@@ -104,160 +104,15 @@
             </div>
           }
 
-          <div class="task-carousel-container">
-            <div class="task-carousel-slide-wrapper">
-              @if (currentTask(); as task) {
-                <mat-card
-                  class="task-detail-card"
-                  [class.disabled]="task.status === 'disabled'"
-                  [class.stopping]="task.status === 'stopping'"
-                >
-                  <mat-card-header class="task-detail-header">
-                    <div class="task-info">
-                      <div class="task-title-row">
-                        <mat-icon
-                          [svgIcon]="getTaskTypeIcon(task.taskType)"
-                          [class.primary]="task.taskType === 'sync'"
-                          [class.yellow]="task.taskType === 'copy'"
-                          [class.orange]="task.taskType === 'move'"
-                          [class.purple]="task.taskType === 'bisync'"
-                        ></mat-icon>
-                        <h4>{{ task.name }}</h4>
-                        <span
-                          class="task-status-badge"
-                          [ngClass]="task.status"
-                          [matTooltip]="getTaskStatusTooltip(task.status) | translate"
-                        >
-                          {{ 'task.status.' + task.status | translate }}
-                        </span>
-                      </div>
-                      <p class="task-type-label">
-                        {{ task.taskType | titlecase }}
-                        {{ 'dashboard.generalDetail.operation' | translate }}
-                      </p>
-                    </div>
-                    <button
-                      mat-icon-button
-                      (click)="toggleScheduledTask(task.id)"
-                      [matTooltip]="getToggleTooltip(task.status) | translate"
-                      [disabled]="task.status === 'stopping'"
-                    >
-                      <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
-                    </button>
-                  </mat-card-header>
-
-                  <mat-card-footer class="task-detail-body">
-                    <div class="detail-section">
-                      <h5 class="section-title">
-                        <mat-icon svgIcon="clock"></mat-icon>
-                        {{ 'dashboard.generalDetail.schedule' | translate }}
-                      </h5>
-                      <div class="detail-grid">
-                        <div class="detail-item">
-                          <span class="label">{{
-                            'dashboard.generalDetail.cronExpression' | translate
-                          }}</span>
-                          <span class="value cron-expression">{{ task.cronExpression }}</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="label">{{
-                            'dashboard.generalDetail.nextRunLabel' | translate
-                          }}</span>
-                          <span class="value highlight">{{ getFormattedNextRun(task) }}</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="label">{{
-                            'dashboard.generalDetail.lastRunLabel' | translate
-                          }}</span>
-                          <span class="value">{{ getFormattedLastRun(task) }}</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="label">{{
-                            'dashboard.generalDetail.createdLabel' | translate
-                          }}</span>
-                          <span class="value">{{ task.createdAt | date: 'medium' }}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="detail-section">
-                      <h5 class="section-title">
-                        <mat-icon svgIcon="chart"></mat-icon>
-                        {{ 'dashboard.generalDetail.statistics' | translate }}
-                      </h5>
-                      <div class="stats-grid">
-                        <div class="stat-card success">
-                          <div class="stat-value">{{ task.successCount }}</div>
-                          <div class="stat-label">
-                            {{ 'dashboard.generalDetail.successful' | translate }}
-                          </div>
-                        </div>
-                        <div class="stat-card failed">
-                          <div class="stat-value">{{ task.failureCount }}</div>
-                          <div class="stat-label">
-                            {{ 'dashboard.generalDetail.failedCount' | translate }}
-                          </div>
-                        </div>
-                        <div class="stat-card total">
-                          <div class="stat-value">{{ task.runCount }}</div>
-                          <div class="stat-label">
-                            {{ 'dashboard.generalDetail.totalRuns' | translate }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="detail-section">
-                      <h5 class="section-title">
-                        <mat-icon svgIcon="folder"></mat-icon>
-                        {{ 'dashboard.generalDetail.paths' | translate }}
-                      </h5>
-                      <div class="path-grid">
-                        <div class="path-item">
-                          <span class="path-label">{{
-                            'dashboard.generalDetail.sourceLabel' | translate
-                          }}</span>
-                          <code class="path-value">{{
-                            task.args['source'] || task.args['remote_name'] + ':'
-                          }}</code>
-                        </div>
-                        <div class="path-item">
-                          <span class="path-label">{{
-                            'dashboard.generalDetail.destinationLabel' | translate
-                          }}</span>
-                          <code class="path-value">{{ task.args['dest'] }}</code>
-                        </div>
-                      </div>
-                    </div>
-
-                    @if (task.lastError) {
-                      <div class="detail-section error-section">
-                        <h5 class="section-title">
-                          <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-                          {{ 'dashboard.generalDetail.lastError' | translate }}
-                        </h5>
-                        <div class="error-message">
-                          {{ task.lastError }}
-                        </div>
-                      </div>
-                    }
-
-                    @if (task.currentJobId) {
-                      <div class="detail-section running-section">
-                        <h5 class="section-title">
-                          <mat-icon svgIcon="play" class="running-icon"></mat-icon>
-                          {{ 'dashboard.generalDetail.currentlyRunning' | translate }}
-                        </h5>
-                        <div class="running-info">
-                          {{ 'dashboard.generalDetail.jobIdLabel' | translate }}
-                          {{ task.currentJobId }}
-                        </div>
-                      </div>
-                    }
-                  </mat-card-footer>
-                </mat-card>
-              }
-            </div>
+          <div class="task-carousel-slide-wrapper">
+            @if (currentTask(); as task) {
+              <app-scheduled-task-card
+                [task]="task"
+                variant="detailed"
+                (toggled)="toggleScheduledTask($event)"
+                (openInFiles)="onOpenTaskInFiles($event)"
+              ></app-scheduled-task-card>
+            }
           </div>
 
           @if (remoteScheduledTasks().length > 1) {

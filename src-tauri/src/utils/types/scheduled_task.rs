@@ -44,11 +44,14 @@ pub struct ScheduledTask {
     /// Unique identifier for the task
     pub id: String,
 
-    /// Human-readable name for the task
-    pub name: String,
-
     /// Type of rclone operation
     pub task_type: TaskType,
+
+    /// Remote name this task is associated with
+    pub remote_name: String,
+
+    /// Profile name within the remote
+    pub profile_name: String,
 
     /// Cron expression (e.g., "0 0 * * *" for daily at midnight)
     pub cron_expression: String,
@@ -228,8 +231,9 @@ mod tests {
     fn create_test_task() -> ScheduledTask {
         ScheduledTask {
             id: "test-id".to_string(),
-            name: "Test Task".to_string(),
             task_type: TaskType::Sync,
+            remote_name: "remote".to_string(),
+            profile_name: "profile".to_string(),
             cron_expression: "0 0 * * *".to_string(),
             status: TaskStatus::Enabled,
             args: json!({}),
