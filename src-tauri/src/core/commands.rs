@@ -308,6 +308,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (clear_alert_history, $crate::core::alerts::commands::clear_alert_history, []);
             (get_alert_stats, $crate::core::alerts::commands::get_alert_stats, []);
             (get_unacknowledged_alert_count, $crate::core::alerts::commands::get_unacknowledged_alert_count, []);
+            (get_alert_template_keys, $crate::core::alerts::commands::get_alert_template_keys, []);
 
             // =================================================================
             // DESKTOP & HEADLESS UTILITIES

@@ -76,13 +76,13 @@ pub mod core {
     /// - returnType - one of ("`COMBINED_OUTPUT`", "STREAM", "`STREAM_ONLY_STDOUT`", "`STREAM_ONLY_STDERR`").
     ///
     /// Example:
-    ///
-    ///     rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
-    ///     rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
-    ///
+    /// ```sh
+    /// rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
+    /// rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
+    /// ```
     /// Returns:
     ///
-    /// ```
+    /// ```json
     /// {
     ///     "error": false,
     ///     "result": "<Raw command line output>"
@@ -93,7 +93,6 @@ pub mod core {
     ///     "error": true,
     ///     "result": "<Raw command line output>"
     /// }
-    ///
     /// ```
     pub const COMMAND: &str = "core/command";
 

@@ -16,7 +16,7 @@ const API_READY_TIMEOUT_SECS: u64 = 10;
 const MONITORING_INTERVAL_SECS: u64 = if cfg!(test) { 1 } else { 5 };
 
 use crate::utils::{
-    app::notification::{NotificationEvent, notify},
+    app::notification::{EngineStage, NotificationEvent, notify},
     types::{
         core::{RcApiEngine, RcloneState},
         events::{
@@ -160,14 +160,12 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
 
     if engine.path_error {
         app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
-        notify(app, NotificationEvent::EngineBinaryNotFound);
+        notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
     } else if engine.password_error {
         app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()).ok();
         notify(
             app,
-            NotificationEvent::EnginePasswordRequired {
-                remote: String::new(),
-            },
+            NotificationEvent::Engine(EngineStage::PasswordRequired),
         );
     } else {
         app.emit(RCLONE_ENGINE_ERROR, ()).ok();
@@ -203,21 +201,16 @@ pub fn restart_for_config_change(
                     }),
                 )
                 .ok();
-                notify(
-                    &app,
-                    NotificationEvent::EngineRestarted {
-                        reason: change_type,
-                    },
-                );
+                notify(&app, NotificationEvent::Engine(EngineStage::Restarted));
             }
             Err(e) => {
                 error!("Failed to restart engine for {change_type} change: {e}");
                 app.emit(RCLONE_ENGINE_ERROR, ()).ok();
                 notify(
                     &app,
-                    NotificationEvent::EngineRestartFailed {
-                        reason: change_type,
-                    },
+                    NotificationEvent::Engine(EngineStage::RestartFailed {
+                        error: e.to_string(),
+                    }),
                 );
             }
         }

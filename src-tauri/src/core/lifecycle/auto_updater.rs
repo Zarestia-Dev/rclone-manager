@@ -25,10 +25,10 @@ pub fn init_auto_updater(app: AppHandle) {
     );
 
     tauri::async_runtime::spawn(async move {
-        // Give the app time to finish startup before the first check.
-        sleep(Duration::from_secs(10)).await;
-
         while IS_RUNNING.load(Ordering::SeqCst) {
+            if !IS_RUNNING.load(Ordering::SeqCst) {
+                break;
+            }
             run_update_checks(&app).await;
             sleep(UPDATE_CHECK_INTERVAL).await;
         }

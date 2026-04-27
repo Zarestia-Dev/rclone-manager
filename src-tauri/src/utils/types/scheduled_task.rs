@@ -14,6 +14,17 @@ pub enum TaskType {
     Bisync,
 }
 
+impl std::fmt::Display for TaskType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TaskType::Copy => write!(f, "Copy"),
+            TaskType::Sync => write!(f, "Sync"),
+            TaskType::Move => write!(f, "Move"),
+            TaskType::Bisync => write!(f, "Bisync"),
+        }
+    }
+}
+
 impl TaskType {
     #[must_use]
     pub fn as_job_type(&self) -> JobType {
@@ -98,6 +109,10 @@ pub struct ScheduledTask {
 
 // In scheduled_task.rs
 impl ScheduledTask {
+    pub fn display_name(&self) -> String {
+        format!("{} ({})", self.profile_name, self.backend_name)
+    }
+
     /// Validate and transition task state
     pub fn transition_to(&mut self, new_status: TaskStatus) -> Result<(), String> {
         let valid_transition = match (&self.status, &new_status) {
@@ -142,12 +157,14 @@ impl ScheduledTask {
         self.current_job_id = None;
         self.success_count += 1;
 
-        // Clear transition: Running -> Enabled or Stopping -> Disabled
-        self.status = if self.status == TaskStatus::Stopping {
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
             TaskStatus::Enabled
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_success: unexpected state transition failure: {e}");
+        }
     }
 
     /// Update the task after a failed run
@@ -157,11 +174,14 @@ impl ScheduledTask {
         self.current_job_id = None;
         self.failure_count += 1;
 
-        self.status = if self.status == TaskStatus::Stopping {
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
             TaskStatus::Enabled
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_failure: unexpected state transition failure: {e}");
+        }
     }
 
     /// Mark task as starting execution
@@ -171,7 +191,6 @@ impl ScheduledTask {
         }
 
         self.transition_to(TaskStatus::Running)?;
-        self.last_run = Some(Utc::now());
         self.current_job_id = None;
         self.run_count += 1;
         Ok(())
@@ -179,19 +198,27 @@ impl ScheduledTask {
 
     /// Mark task as running with job ID or batch ID (after operation starts)
     pub fn mark_running(&mut self, job_id: String) {
+        debug_assert_eq!(
+            self.status,
+            TaskStatus::Running,
+            "mark_running called from unexpected state {:?}",
+            self.status
+        );
         self.current_job_id = Some(job_id);
-        self.status = TaskStatus::Running;
     }
 
-    /// Mark task as stopped/cancelled (job was manually stopped)
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
-        self.status = if self.status == TaskStatus::Stopping {
+
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
             TaskStatus::Enabled
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_stopped: unexpected state transition failure: {e}");
+        }
     }
 
     /// Check if task can transition to running

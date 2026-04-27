@@ -68,45 +68,20 @@ pub enum AlertEventKind {
     /// Matches any event (wildcard).
     #[default]
     Any,
-    // Job lifecycle
-    JobCompleted,
-    JobStarted,
-    JobFailed,
-    JobStopped,
-    // Serve lifecycle
-    ServeStarted,
-    ServeFailed,
-    ServeStopped,
-    AllServesStopped,
-    // Mount lifecycle
-    MountSucceeded,
-    MountFailed,
-    UnmountSucceeded,
-    AllUnmounted,
-    // Engine
-    EnginePasswordRequired,
-    EngineBinaryNotFound,
-    EngineConnectionFailed,
-    EngineRestarted,
-    EngineRestartFailed,
-    // Updates
-    AppUpdateAvailable,
-    AppUpdateStarted,
-    AppUpdateComplete,
-    AppUpdateFailed,
-    AppUpdateInstalled,
-    RcloneUpdateAvailable,
-    RcloneUpdateStarted,
-    RcloneUpdateComplete,
-    RcloneUpdateFailed,
-    RcloneUpdateInstalled,
-    // Scheduled tasks
-    ScheduledTaskStarted,
-    ScheduledTaskCompleted,
-    ScheduledTaskFailed,
-    // Misc
-    AlreadyRunning,
-    AllJobsStopped,
+    /// Manual rclone jobs (Sync, Copy, Move, Delete, etc.)
+    Job,
+    /// Background server processes (DLNA, WebDAV, etc.)
+    Serve,
+    /// FUSE drive mounting operations
+    Mount,
+    /// Core engine status and backend errors
+    Engine,
+    /// Software update lifecycle (App and Rclone)
+    Update,
+    /// Automated tasks triggered by the scheduler
+    ScheduledTask,
+    /// Application-level events (Startup, etc.)
+    System,
 }
 
 impl std::fmt::Display for AlertEventKind {
@@ -119,38 +94,13 @@ impl AlertEventKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Any => "any",
-            Self::JobCompleted => "job_completed",
-            Self::JobStarted => "job_started",
-            Self::JobFailed => "job_failed",
-            Self::JobStopped => "job_stopped",
-            Self::ServeStarted => "serve_started",
-            Self::ServeFailed => "serve_failed",
-            Self::ServeStopped => "serve_stopped",
-            Self::AllServesStopped => "all_serves_stopped",
-            Self::MountSucceeded => "mount_succeeded",
-            Self::MountFailed => "mount_failed",
-            Self::UnmountSucceeded => "unmount_succeeded",
-            Self::AllUnmounted => "all_unmounted",
-            Self::EnginePasswordRequired => "engine_password_required",
-            Self::EngineBinaryNotFound => "engine_binary_not_found",
-            Self::EngineConnectionFailed => "engine_connection_failed",
-            Self::EngineRestarted => "engine_restarted",
-            Self::EngineRestartFailed => "engine_restart_failed",
-            Self::AppUpdateAvailable => "app_update_available",
-            Self::AppUpdateStarted => "app_update_started",
-            Self::AppUpdateComplete => "app_update_complete",
-            Self::AppUpdateFailed => "app_update_failed",
-            Self::AppUpdateInstalled => "app_update_installed",
-            Self::RcloneUpdateAvailable => "rclone_update_available",
-            Self::RcloneUpdateStarted => "rclone_update_started",
-            Self::RcloneUpdateComplete => "rclone_update_complete",
-            Self::RcloneUpdateFailed => "rclone_update_failed",
-            Self::RcloneUpdateInstalled => "rclone_update_installed",
-            Self::ScheduledTaskStarted => "scheduled_task_started",
-            Self::ScheduledTaskCompleted => "scheduled_task_completed",
-            Self::ScheduledTaskFailed => "scheduled_task_failed",
-            Self::AlreadyRunning => "already_running",
-            Self::AllJobsStopped => "all_jobs_stopped",
+            Self::Job => "job",
+            Self::Serve => "serve",
+            Self::Mount => "mount",
+            Self::Engine => "engine",
+            Self::Update => "update",
+            Self::ScheduledTask => "scheduled_task",
+            Self::System => "system",
         }
     }
 }
@@ -185,6 +135,14 @@ pub struct AlertRule {
     /// Which origins to watch (e.g. `[Origin::Scheduler]`). Empty = any origin.
     #[setting(label = "Origin Filter")]
     pub origin_filter: Vec<Origin>,
+
+    /// Which backend names to watch. Empty = all backends.
+    #[setting(label = "Backend Filter")]
+    pub backend_filter: Vec<String>,
+
+    /// Which profile names to watch. Empty = all profiles.
+    #[setting(label = "Profile Filter")]
+    pub profile_filter: Vec<String>,
 
     /// IDs of `AlertAction` entries to execute when this rule fires.
     #[setting(label = "Actions")]
@@ -221,6 +179,8 @@ impl Default for AlertRule {
             severity_min: AlertSeverity::Info,
             remote_filter: vec![],
             origin_filter: vec![],
+            backend_filter: vec![],
+            profile_filter: vec![],
             action_ids: vec![],
             cooldown_secs: 0,
             created_at: Utc::now(),
@@ -332,7 +292,7 @@ impl AlertAction {
 ///
 /// The `body_template` field supports Handlebars variables:
 /// `{{title}}`, `{{body}}`, `{{severity}}`, `{{event_kind}}`,
-/// `{{remote}}`, `{{operation}}`, `{{origin}}`, `{{timestamp}}`,
+/// `{{remote}}`, `{{profile}}`, `{{backend}}`, `{{operation}}`, `{{origin}}`, `{{timestamp}}`,
 /// `{{rule_name}}`, etc.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct WebhookAction {
@@ -377,7 +337,7 @@ impl Default for WebhookAction {
 ///
 /// The script receives alert context via environment variables:
 /// `ALERT_TITLE`, `ALERT_BODY`, `ALERT_SEVERITY`, `ALERT_SEVERITY_CODE`,
-/// `ALERT_EVENT_KIND`, `ALERT_REMOTE`, `ALERT_OPERATION`, `ALERT_ORIGIN`,
+/// `ALERT_EVENT_KIND`, `ALERT_REMOTE`, `ALERT_PROFILE`, `ALERT_BACKEND`, `ALERT_OPERATION`, `ALERT_ORIGIN`,
 /// `ALERT_TIMESTAMP`, `ALERT_RULE_ID`, `ALERT_RULE_NAME`.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct ScriptAction {
@@ -440,6 +400,9 @@ pub struct AlertRecord {
     /// Rendered notification body (i18n)
     pub body: String,
     pub remote: Option<String>,
+    pub profile: Option<String>,
+    pub backend: Option<String>,
+    pub operation: Option<String>,
     pub origin: Option<Origin>,
     pub timestamp: DateTime<Utc>,
     pub action_results: Vec<ActionResult>,
@@ -447,26 +410,35 @@ pub struct AlertRecord {
     pub ack_at: Option<DateTime<Utc>>,
 }
 
+/// Details of an alert firing, grouped to avoid clippy::too_many_arguments.
+#[derive(Debug, Clone)]
+pub struct AlertDetails {
+    pub event_kind: AlertEventKind,
+    pub severity: AlertSeverity,
+    pub title: String,
+    pub body: String,
+    pub remote: Option<String>,
+    pub profile: Option<String>,
+    pub backend: Option<String>,
+    pub operation: Option<String>,
+    pub origin: Option<Origin>,
+}
+
 impl AlertRecord {
-    pub fn new(
-        rule: &AlertRule,
-        event_kind: AlertEventKind,
-        severity: AlertSeverity,
-        title: String,
-        body: String,
-        remote: Option<String>,
-        origin: Option<Origin>,
-    ) -> Self {
+    pub fn new(rule: &AlertRule, details: AlertDetails) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             rule_id: rule.id.clone(),
             rule_name: rule.name.clone(),
-            event_kind,
-            severity,
-            title,
-            body,
-            remote,
-            origin,
+            event_kind: details.event_kind,
+            severity: details.severity,
+            title: details.title,
+            body: details.body,
+            remote: details.remote,
+            profile: details.profile,
+            backend: details.backend,
+            operation: details.operation,
+            origin: details.origin,
             timestamp: Utc::now(),
             action_results: vec![],
             acknowledged: false,
@@ -511,6 +483,8 @@ pub struct AlertHistoryFilter {
     pub severity_min: Option<AlertSeverity>,
     pub event_kind: Option<AlertEventKind>,
     pub remote: Option<String>,
+    pub profile: Option<String>,
+    pub backend: Option<String>,
     pub acknowledged: Option<bool>,
     pub rule_id: Option<String>,
     pub origins: Option<Vec<crate::utils::types::origin::Origin>>,

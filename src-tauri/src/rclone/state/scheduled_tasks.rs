@@ -624,7 +624,7 @@ mod tests {
     fn test_generate_task_id() {
         let id =
             ScheduledTasksCache::generate_task_id("mybackend", "gdrive", &TaskType::Sync, "daily");
-        assert_eq!(id, "mybackend:gdrive-sync-daily");
+        assert_eq!(id, "mybackend:gdrive-Sync-daily");
     }
 
     #[test]

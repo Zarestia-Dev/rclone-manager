@@ -4,7 +4,7 @@ pub mod app_updates {
     use crate::utils::app::platform::relaunch_app;
     use crate::utils::types::updater::AppUpdaterState;
     use crate::utils::{
-        app::notification::{NotificationEvent, notify},
+        app::notification::{NotificationEvent, UpdateStage, notify},
         github_client,
         types::core::RcloneState,
     };
@@ -264,9 +264,9 @@ pub mod app_updates {
 
             notify(
                 &app,
-                NotificationEvent::AppUpdateAvailable {
+                NotificationEvent::AppUpdate(UpdateStage::Available {
                     version: metadata.version.clone(),
-                },
+                }),
             );
         }
 
@@ -367,9 +367,9 @@ pub mod app_updates {
 
         notify(
             &app,
-            NotificationEvent::AppUpdateStarted {
+            NotificationEvent::AppUpdate(UpdateStage::Started {
                 version: update.version.clone(),
-            },
+            }),
         );
 
         // Set update in progress flag
@@ -445,9 +445,9 @@ pub mod app_updates {
 
                 notify(
                     &app,
-                    NotificationEvent::AppUpdateComplete {
+                    NotificationEvent::AppUpdate(UpdateStage::Complete {
                         version: update.version.clone(),
-                    },
+                    }),
                 );
 
                 // Save update back to pending action for installation later
@@ -486,9 +486,9 @@ pub mod app_updates {
 
                 notify(
                     &app,
-                    NotificationEvent::AppUpdateFailed {
+                    NotificationEvent::AppUpdate(UpdateStage::Failed {
                         error: e.to_string(),
-                    },
+                    }),
                 );
 
                 Err(Error::Updater(e))

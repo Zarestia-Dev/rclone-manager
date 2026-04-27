@@ -5,13 +5,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
-import { finalize } from 'rxjs';
 
 import { AlertService, ModalService } from '@app/services';
-import { AlertRule } from '@app/types';
-import { AlertRuleEditorComponent } from './alert-rule-editor.component';
+import { AlertRule, AlertSeverity } from '@app/types';
+import { SearchContainerComponent } from '@app/shared/components';
 
 @Component({
   selector: 'app-alert-rules',
@@ -24,68 +22,153 @@ import { AlertRuleEditorComponent } from './alert-rule-editor.component';
     MatTooltipModule,
     MatSlideToggleModule,
     TranslateModule,
+    SearchContainerComponent,
   ],
   template: `
     <div class="rules-container">
+      <!-- Toolbar -->
       <div class="toolbar">
-        <button mat-flat-button color="primary" (click)="createRule()">
+        <div class="spacer"></div>
+
+        <button
+          mat-icon-button
+          (click)="searchVisible.set(!searchVisible())"
+          [matTooltip]="'shared.search.toggle' | translate"
+        >
+          <mat-icon svgIcon="search"></mat-icon>
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="createRule()"
+          [matTooltip]="'alerts.createRule' | translate"
+        >
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createRule' | translate }}
         </button>
       </div>
 
-      <div class="table-wrapper boxed-list" [class.loading]="loading()">
-        @if (rules().length > 0) {
-          <table mat-table [dataSource]="rules()" class="rules-table">
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>{{ 'alerts.ruleName' | translate }}</th>
+      <app-search-container
+        [visible]="searchVisible()"
+        [searchText]="alerts.rulesSearchTerm()"
+        (searchTextChange)="onSearchChange($event)"
+      ></app-search-container>
+
+      <div class="rules-table-wrap" [class.loading]="alerts.isLoading()">
+        @if (alerts.rules().length === 0 && !alerts.isLoading()) {
+          <div class="empty-state">
+            <mat-icon svgIcon="check-list"></mat-icon>
+            <span>{{ 'alerts.noRules' | translate }}</span>
+          </div>
+        }
+
+        @if (alerts.rules().length > 0) {
+          <table mat-table [dataSource]="alerts.rules()">
+            <!-- Severity Column -->
+            <ng-container matColumnDef="severity">
+              <th mat-header-cell *matHeaderCellDef>{{ 'alerts.severity' | translate }}</th>
               <td mat-cell *matCellDef="let rule">
-                <div class="rule-name">
-                  <strong>{{ rule.name }}</strong>
+                <div class="cell-content">
+                  <span class="severity-badge" [class]="getSeverityClass(rule.severity_min)">
+                    {{ 'alerts.severityLevels.' + rule.severity_min | translate }}
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Name Column -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>{{ 'common.name' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">
+                <div class="cell-content">
+                  <span class="rule-name">{{ rule.name | translate }}</span>
                   @if (rule.last_fired) {
-                    <span class="rule-meta">
-                      {{ 'alerts.lastFired' | translate }}: {{ rule.last_fired | date: 'short' }}
+                    <span class="last-fired">
+                      {{ 'alerts.lastFired' | translate }}:
+                      {{ rule.last_fired | date: 'M/d/yy, h:mm:ss a' }}
                     </span>
                   }
                 </div>
               </td>
             </ng-container>
 
+            <!-- Filters Column -->
             <ng-container matColumnDef="filters">
               <th mat-header-cell *matHeaderCellDef>{{ 'alerts.rule.filters' | translate }}</th>
               <td mat-cell *matCellDef="let rule">
-                <div class="filter-chips">
-                  <span class="severity-badge" [class]="rule.severity_min">
-                    ≥ {{ 'alerts.severityLevels.' + rule.severity_min | translate }}
-                  </span>
+                <div class="cell-content filters-wrap">
+                  <!-- Event Kinds -->
                   @if (rule.event_filter.length > 0) {
-                    <span class="filter-badge event">
-                      {{ rule.event_filter.length }} Event(s)
-                    </span>
+                    <div class="filter-group">
+                      @for (kind of rule.event_filter; track kind) {
+                        <span class="app-pill p-dim">
+                          {{ 'alerts.events.' + kind | translate }}
+                        </span>
+                      }
+                    </div>
+                  } @else {
+                    <span class="app-pill p-dim">{{ 'alerts.events.any' | translate }}</span>
                   }
+
+                  <!-- Remotes -->
                   @if (rule.remote_filter.length > 0) {
-                    <span class="filter-badge remote">
-                      {{ rule.remote_filter.length }} Remote(s)
-                    </span>
+                    <div class="filter-group">
+                      @for (rem of rule.remote_filter; track rem) {
+                        <span class="app-pill p-accent">
+                          <mat-icon svgIcon="server"></mat-icon>
+                          {{ rem }}
+                        </span>
+                      }
+                    </div>
                   }
                 </div>
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>{{ 'common.status' | translate }}</th>
+            <!-- Triggers Column -->
+            <ng-container matColumnDef="triggers">
+              <th mat-header-cell *matHeaderCellDef>{{ 'alerts.rule.actions' | translate }}</th>
               <td mat-cell *matCellDef="let rule">
-                <mat-slide-toggle
-                  [checked]="rule.enabled"
-                  (change)="toggleRule(rule)"
-                ></mat-slide-toggle>
+                <div class="cell-content triggers-cell">
+                  @for (actionId of rule.action_ids; track actionId) {
+                    @if (alerts.actionsMap().get(actionId); as action) {
+                      <mat-icon
+                        [svgIcon]="alerts.getActionIcon(action.kind)"
+                        [matTooltip]="action.name | translate"
+                        class="trigger-icon"
+                      ></mat-icon>
+                    }
+                  }
+                  @if (rule.action_ids.length === 0) {
+                    <span class="no-triggers">—</span>
+                  }
+                </div>
               </td>
             </ng-container>
 
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>{{ 'common.status' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">
+                <div class="cell-content">
+                  <mat-slide-toggle
+                    [checked]="rule.enabled"
+                    (change)="toggleRule(rule)"
+                    color="primary"
+                    [matTooltip]="
+                      (rule.enabled ? 'task.status.enabled' : 'task.status.disabled') | translate
+                    "
+                  ></mat-slide-toggle>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let rule">
-                <div class="cell-actions">
+                <div class="cell-content actions-wrap">
                   <button
                     mat-icon-button
                     (click)="editRule(rule)"
@@ -106,172 +189,244 @@ import { AlertRuleEditorComponent } from './alert-rule-editor.component';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              [class.disabled]="!row.enabled"
+              [class]="getSeverityClass(row.severity_min)"
+            ></tr>
           </table>
-        } @else if (!loading()) {
-          <div class="empty-state">
-            <mat-icon svgIcon="check-list"></mat-icon>
-            <h3>{{ 'alerts.noRules' | translate }}</h3>
-            <p>Create a rule to define when alerts should be triggered.</p>
-          </div>
         }
       </div>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+      }
+
       .rules-container {
         display: flex;
         flex-direction: column;
         height: 100%;
-        gap: var(--space-md);
       }
 
       .toolbar {
         display: flex;
-        justify-content: flex-end;
         align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-md);
+        flex-shrink: 0;
       }
 
-      .boxed-list {
+      .spacer {
+        flex: 1;
+      }
+
+      /* ── Table Layout ────────────────────────────────── */
+      .rules-table-wrap {
         flex: 1;
         overflow: auto;
-        border-radius: var(--card-border-radius);
-        background: var(--card-bg-color);
-        box-shadow: var(--shadow-gnome);
+        position: relative;
+        border-top: 1px solid var(--border-color);
 
         &.loading {
           opacity: 0.6;
           pointer-events: none;
         }
-      }
 
-      .rules-table {
-        width: 100%;
-        background: transparent;
-
-        th.mat-mdc-header-cell {
-          background: var(--card-bg-color);
-          font-weight: 600;
-          color: var(--text-muted);
-          border-bottom: 1px solid var(--border-color);
-          padding: var(--space-sm) var(--space-md);
-        }
-
-        td.mat-mdc-cell {
-          padding: var(--space-sm) var(--space-md);
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        tr.mat-mdc-row {
-          transition: background-color 0.2s ease;
-          &:hover {
-            background: var(--bg-hover);
-          }
-          &:last-child td {
-            border-bottom: none;
-          }
-        }
-
-        .rule-name {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-
-          strong {
-            color: var(--window-fg-color);
-            font-size: var(--font-size-md);
-          }
-
-          .rule-meta {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-          }
-        }
-
-        .filter-chips {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          align-items: center;
-        }
-
-        .cell-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 4px;
+        table {
+          width: 100%;
+          min-width: 800px;
+          border-collapse: separate;
+          border-spacing: 0;
         }
       }
 
-      .severity-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.7rem;
+      .mat-mdc-header-row {
+        height: 48px;
+      }
+
+      /* ── Sticky Header Fix ───────────────────────────── */
+      .mat-mdc-header-cell {
+        background: var(--window-bg-color) !important;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 2px solid var(--border-color) !important;
+        border-right: 1px solid var(--border-color);
         font-weight: 700;
-        text-transform: uppercase;
-
-        &.critical {
-          background: var(--warn-color);
-          color: white;
-        }
-        &.high {
-          background: var(--orange);
-          color: white;
-        }
-        &.average {
-          background: var(--accent-color);
-          color: white;
-        }
-        &.warning {
-          background: var(--yellow);
-          color: rgba(0, 0, 0, 0.8);
-        }
-        &.info {
-          background: var(--primary-color);
-          color: white;
-        }
-      }
-
-      .filter-badge {
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        background: var(--bg-elevated);
+        font-size: var(--font-size-xs);
+        letter-spacing: 0.05em;
         color: var(--text-muted);
+        white-space: nowrap;
+      }
 
-        &.remote {
-          background: rgba(var(--accent-color-rgb), 0.1);
-          color: var(--accent-color);
+      /* ── Cell base ───────────────────────────────────── */
+      .mat-mdc-cell {
+        padding: 0 var(--space-sm) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        border-right: 1px solid var(--border-color);
+        vertical-align: middle;
+
+        &:last-child {
+          border-right: none;
         }
       }
 
+      .cell-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        padding: 12px 0;
+      }
+
+      .mat-mdc-row {
+        transition: background 0.12s ease;
+
+        &:hover {
+          background: var(--bg-elevated);
+        }
+
+        &.disabled {
+          opacity: 0.6;
+        }
+      }
+
+      /* ── Column Widths ────────────────────────────────── */
+      .mat-column-severity {
+        width: 88px;
+      }
+      .mat-column-name {
+        min-width: 200px;
+      }
+      .mat-column-filters {
+        min-width: 250px;
+      }
+      .mat-column-actions {
+        width: 120px;
+      }
+
+      /* ── Severity Badge ──────────────────────────────── */
+      .severity-badge {
+        font-size: var(--font-size-sm);
+        font-weight: 700;
+        align-self: center;
+        padding: 2px 6px;
+        border-radius: var(--radius-xxs);
+        white-space: nowrap;
+
+        &.warn {
+          color: var(--warn-color);
+          background: rgba(var(--warn-color-rgb), var(--active-opacity));
+        }
+        &.orange {
+          color: var(--orange);
+          background: rgba(var(--orange-rgb), var(--active-opacity));
+        }
+        &.accent {
+          color: var(--accent-color);
+          background: rgba(var(--accent-color-rgb), var(--active-opacity));
+        }
+        &.yellow {
+          color: var(--yellow);
+          background: rgba(var(--yellow-rgb), var(--active-opacity));
+        }
+        &.primary {
+          color: var(--primary-color);
+          background: rgba(var(--primary-color-rgb), var(--active-opacity));
+        }
+        &.dim {
+          color: var(--text-muted);
+          background: var(--bg-elevated);
+        }
+      }
+
+      /* ── Rule Info ───────────────────────────────────── */
+      .rule-name {
+        font-weight: 600;
+        font-size: var(--font-size-md);
+        color: var(--window-fg-color);
+      }
+
+      .last-fired {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+      }
+
+      /* ── Filters ─────────────────────────────────────── */
+      .filters-wrap {
+        gap: var(--space-xs);
+      }
+
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .app-pill {
+        font-size: var(--font-size-xs);
+      }
+
+      /* ── Triggers ────────────────────────────────────── */
+      .triggers-cell {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
+      }
+
+      .trigger-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 20px;
+        color: var(--text-muted);
+        opacity: 0.8;
+        transition: opacity 0.1s ease;
+
+        &:hover {
+          opacity: 1;
+          color: var(--primary-color);
+        }
+      }
+
+      .no-triggers {
+        color: var(--text-muted);
+        font-size: var(--font-size-xs);
+        opacity: 0.5;
+      }
+
+      /* ── Actions ─────────────────────────────────────── */
+      .actions-wrap {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-xs);
+      }
+
+      /* ── Empty State ─────────────────────────────────── */
       .empty-state {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: var(--space-2xl);
+        padding: 48px;
+        gap: var(--space-md);
         color: var(--text-muted);
-        text-align: center;
-        height: 100%;
 
         mat-icon {
-          width: 64px;
-          height: 64px;
-          margin-bottom: var(--space-md);
-          opacity: 0.3;
+          width: 48px;
+          height: 48px;
+          font-size: 48px;
+          opacity: 0.2;
         }
 
-        h3 {
-          margin: 0 0 var(--space-xs) 0;
-          color: var(--window-fg-color);
-          font-weight: 600;
-        }
-
-        p {
-          margin: 0;
-          font-size: var(--font-size-sm);
+        span {
+          font-size: var(--font-size-lg);
+          font-weight: 500;
         }
       }
     `,
@@ -279,60 +434,66 @@ import { AlertRuleEditorComponent } from './alert-rule-editor.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertRulesComponent {
-  private alertService = inject(AlertService);
-  private modalService = inject(ModalService);
-  private dialog = inject(MatDialog);
+  public readonly alerts = inject(AlertService);
+  private readonly modalService = inject(ModalService);
 
-  rules = signal<AlertRule[]>([]);
-  loading = signal(false);
+  searchVisible = signal(false);
+  displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
 
-  displayedColumns = ['name', 'filters', 'status', 'actions'];
-
-  constructor() {
-    this.refresh();
+  onSearchChange(term: string): void {
+    this.alerts.rulesSearchTerm.set(term);
   }
 
-  refresh() {
-    this.loading.set(true);
-    this.alertService
-      .getAlertRules()
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe(rules => this.rules.set(rules));
+  getSeverityClass(severity: AlertSeverity): string {
+    switch (severity) {
+      case 'critical':
+        return 'warn';
+      case 'high':
+        return 'orange';
+      case 'average':
+        return 'accent';
+      case 'warning':
+        return 'yellow';
+      case 'info':
+        return 'primary';
+      default:
+        return 'dim';
+    }
   }
 
-  createRule() {
-    this.dialog
-      .open(AlertRuleEditorComponent, { width: '600px', disableClose: true })
+  createRule(): void {
+    this.modalService
+      .openAlertRuleEditor()
       .afterClosed()
       .subscribe(rule => {
-        if (rule) this.alertService.saveAlertRule(rule).subscribe(() => this.refresh());
+        if (rule) this.alerts.saveAlertRule(rule).subscribe();
       });
   }
 
-  editRule(rule: AlertRule) {
-    this.dialog
-      .open(AlertRuleEditorComponent, { width: '600px', disableClose: true, data: rule })
+  editRule(rule: AlertRule): void {
+    this.modalService
+      .openAlertRuleEditor(rule)
       .afterClosed()
       .subscribe(updated => {
-        if (updated) this.alertService.saveAlertRule(updated).subscribe(() => this.refresh());
+        if (updated) this.alerts.saveAlertRule(updated).subscribe();
       });
   }
 
-  deleteRule(rule: AlertRule) {
+  deleteRule(rule: AlertRule): void {
     this.modalService
       .openConfirm({
         title: 'common.delete',
-        message: 'Are you sure you want to delete this alert rule?',
+        message: 'alerts.deleteRuleConfirm',
         confirmText: 'common.delete',
         cancelText: 'common.cancel',
       })
       .afterClosed()
       .subscribe(confirmed => {
-        if (confirmed) this.alertService.deleteAlertRule(rule.id).subscribe(() => this.refresh());
+        if (confirmed) this.alerts.deleteAlertRule(rule.id).subscribe();
       });
   }
 
-  toggleRule(rule: AlertRule) {
-    this.alertService.toggleAlertRule(rule.id, !rule.enabled).subscribe(() => this.refresh());
+  toggleRule(rule: AlertRule): void {
+    this.alerts.toggleAlertRule(rule.id, !rule.enabled).subscribe();
   }
 }

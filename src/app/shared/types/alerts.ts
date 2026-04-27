@@ -4,38 +4,13 @@ export type AlertSeverity = 'critical' | 'high' | 'average' | 'warning' | 'info'
 
 export type AlertEventKind =
   | 'any'
-  | 'job_completed'
-  | 'job_started'
-  | 'job_failed'
-  | 'job_stopped'
-  | 'serve_started'
-  | 'serve_failed'
-  | 'serve_stopped'
-  | 'all_serves_stopped'
-  | 'mount_succeeded'
-  | 'mount_failed'
-  | 'unmount_succeeded'
-  | 'all_unmounted'
-  | 'engine_password_required'
-  | 'engine_binary_not_found'
-  | 'engine_connection_failed'
-  | 'engine_restarted'
-  | 'engine_restart_failed'
-  | 'app_update_available'
-  | 'app_update_started'
-  | 'app_update_complete'
-  | 'app_update_failed'
-  | 'app_update_installed'
-  | 'rclone_update_available'
-  | 'rclone_update_started'
-  | 'rclone_update_complete'
-  | 'rclone_update_failed'
-  | 'rclone_update_installed'
-  | 'scheduled_task_started'
-  | 'scheduled_task_completed'
-  | 'scheduled_task_failed'
-  | 'already_running'
-  | 'all_jobs_stopped';
+  | 'job'
+  | 'serve'
+  | 'mount'
+  | 'engine'
+  | 'update'
+  | 'scheduled_task'
+  | 'system';
 
 export interface AlertRule {
   id: string;
@@ -44,6 +19,8 @@ export interface AlertRule {
   event_filter: AlertEventKind[];
   severity_min: AlertSeverity;
   remote_filter: string[];
+  backend_filter: string[];
+  profile_filter: string[];
   origin_filter: Origin[];
   action_ids: string[];
   cooldown_secs: number;
@@ -103,9 +80,13 @@ export interface AlertRecord {
   rule_name: string;
   event_kind: AlertEventKind;
   severity: AlertSeverity;
+  severity_code?: number;
   title: string;
   body: string;
   remote?: string;
+  profile?: string;
+  backend?: string;
+  operation?: string;
   origin?: Origin;
   timestamp: string;
   action_results: ActionResult[];
@@ -114,6 +95,9 @@ export interface AlertRecord {
 }
 
 export interface AlertStats {
+  total: number;
+  critical: number;
+  high: number;
   total_fired: number;
   unacknowledged: number;
   by_severity: Record<string, number>;
@@ -126,6 +110,8 @@ export interface AlertHistoryFilter {
   severity_min?: AlertSeverity;
   event_kind?: AlertEventKind;
   remote?: string;
+  profile?: string;
+  backend?: string;
   acknowledged?: boolean;
   rule_id?: string;
   origins?: Origin[];

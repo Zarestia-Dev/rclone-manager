@@ -3,11 +3,10 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::origin::Origin;
 use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
-        app::notification::{NotificationEvent, notify},
+        app::notification::{NotificationEvent, ServeStage, notify},
         json_helpers::{
             get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
             unwrap_nested_options,
@@ -159,6 +158,8 @@ pub async fn start_serve(
     let payload = params.to_rclone_body();
     debug!("📦 Serve request payload: {payload:#?}");
 
+    let backend_name_for_err = backend_manager.get_active_name().await;
+
     // Call serve/start directly
     let response_json = backend
         .post_json(&state.client, serve::START, Some(&payload))
@@ -174,12 +175,13 @@ pub async fn start_serve(
             );
             notify(
                 &app,
-                NotificationEvent::ServeFailed {
+                NotificationEvent::Serve(ServeStage::Failed {
+                    backend: backend_name_for_err.clone(),
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
+                    protocol: serve_type.as_str().unwrap_or("unknown").to_string(),
                     error: e.clone(),
-                    origin: Origin::Dashboard,
-                },
+                }),
             );
             error
         })?;
@@ -226,14 +228,15 @@ pub async fn start_serve(
         params.remote_name, serve_response.id, serve_response.addr
     );
 
+    let backend_name = backend_manager.get_active_name().await;
     notify(
         &app,
-        NotificationEvent::ServeStarted {
+        NotificationEvent::Serve(ServeStage::Started {
+            backend: backend_name,
             remote: params.remote_name.clone(),
             profile: params.profile.clone(),
-            addr: serve_response.addr.clone(),
-            origin: Origin::Dashboard,
-        },
+            protocol: addr.clone(), // Or extracted protocol
+        }),
     );
 
     Ok(serve_response)
@@ -262,8 +265,9 @@ pub async fn stop_serve(
     let profile = backend_manager
         .remote_cache
         .get_serve_profile(&server_id)
-        .await
-        .unwrap_or_default();
+        .await;
+
+    let backend_name_for_err = backend_manager.get_active_name().await;
 
     let _ = backend
         .post_json(
@@ -283,12 +287,13 @@ pub async fn stop_serve(
             );
             notify(
                 &app,
-                NotificationEvent::ServeFailed {
+                NotificationEvent::Serve(ServeStage::Failed {
+                    backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
-                    profile: Some(profile.clone()),
+                    profile: profile.clone(),
+                    protocol: "unknown".to_string(),
                     error: e.clone(),
-                    origin: Origin::Dashboard,
-                },
+                }),
             );
             error
         })?;
@@ -306,13 +311,15 @@ pub async fn stop_serve(
     }
     info!("✅ Serve {server_id} stopped successfully");
 
+    let backend_name = backend_manager.get_active_name().await;
     notify(
         &app,
-        NotificationEvent::ServeStopped {
+        NotificationEvent::Serve(ServeStage::Stopped {
+            backend: backend_name,
             remote: remote_name.clone(),
-            profile: Some(profile),
-            origin: Origin::Dashboard,
-        },
+            profile,
+            protocol: "unknown".to_string(),
+        }),
     );
 
     Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
@@ -330,11 +337,10 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
     let serves = backend_manager.remote_cache.get_serves().await;
     if serves.is_empty() || context == "shutdown" {
         debug!("No active serves to stop — skipping STOPALL");
-        if context != "shutdown" {
-            if let Err(e) = force_check_serves(app.clone()).await {
-                warn!("Failed to refresh serves: {e}");
-            }
-            notify(&app, NotificationEvent::NothingToDoServes);
+        if context != "shutdown"
+            && let Err(e) = force_check_serves(app.clone()).await
+        {
+            warn!("Failed to refresh serves: {e}");
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
@@ -355,7 +361,7 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
 
     info!("✅ All serves stopped successfully");
 
-    notify(&app, NotificationEvent::AllServesStopped);
+    notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }

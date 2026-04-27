@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,6 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { ModalService, AlertService } from '@app/services';
 import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/types';
 
 @Component({
@@ -84,7 +85,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
               </mat-form-field>
 
               <mat-form-field class="flex-1">
-                <mat-label>{{ 'alerts.action.timeout' | translate }} (Secs)</mat-label>
+                <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
                 <input matInput type="number" formControlName="timeout_secs" />
               </mat-form-field>
             </div>
@@ -96,12 +97,12 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
 
             <div class="info-box">
               <mat-icon svgIcon="info"></mat-icon>
-              <span ngNonBindable
-                >Supports Handlebars variables: &#123;&#123;title&#125;&#125;,
-                &#123;&#123;body&#125;&#125;, &#123;&#123;severity&#125;&#125;,
-                &#123;&#123;remote&#125;&#125;, &#123;&#123;event_kind&#125;&#125;,
-                &#123;&#123;rule_name&#125;&#125;</span
-              >
+              <span>
+                {{ 'alerts.action.bodyTemplateHint' | translate }}:
+                @for (key of templateKeys(); track key) {
+                  <code>{{ '{{' }}{{ key }}{{ '}}' }}</code>{{ $last ? '' : ', ' }}
+                }
+              </span>
             </div>
 
             <div class="form-row mt-md align-center">
@@ -125,20 +126,27 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
             </mat-form-field>
 
             <mat-form-field>
-              <mat-label>{{ 'alerts.action.args' | translate }} (Space separated)</mat-label>
-              <input matInput formControlName="argsRaw" placeholder="--silent --force" />
+              <mat-label>{{ 'alerts.action.args' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="argsRaw"
+                [placeholder]="'alerts.action.argsHint' | translate"
+              />
             </mat-form-field>
 
             <div class="info-box">
               <mat-icon svgIcon="terminal"></mat-icon>
-              <span
-                >Context is injected as <code>ALERT_*</code> environment variables (e.g.
-                <code>ALERT_TITLE</code>, <code>ALERT_SEVERITY</code>).</span
-              >
+              <span>
+                {{ 'alerts.action.scriptContextHint' | translate }}:
+                @for (key of templateKeys(); track key) {
+                  <code>ALERT_{{ key.toUpperCase() }}</code
+                  >{{ $last ? '' : ', ' }}
+                }
+              </span>
             </div>
 
             <mat-form-field class="flex-1 mt-md">
-              <mat-label>{{ 'alerts.action.timeout' | translate }} (Secs)</mat-label>
+              <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
               <input matInput type="number" formControlName="timeout_secs" />
             </mat-form-field>
           </div>
@@ -149,10 +157,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
           <div class="kind-fields">
             <div class="info-box accent">
               <mat-icon svgIcon="desktop"></mat-icon>
-              <span
-                >No additional configuration required for OS Native Notifications. It will use the
-                standard system notification subsystem.</span
-              >
+              <span>{{ 'alerts.action.os_toast_info' | translate }}</span>
             </div>
           </div>
         }
@@ -257,7 +262,11 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
 export class AlertActionEditorComponent {
   private fb = inject(FormBuilder);
   private dialogRef = inject(MatDialogRef<AlertActionEditorComponent>);
+  private modalService = inject(ModalService);
+  private alertService = inject(AlertService);
   data = inject(MAT_DIALOG_DATA) as AlertAction | undefined;
+
+  templateKeys = signal<string[]>([]);
 
   form = this.fb.nonNullable.group({
     id: [''],
@@ -287,9 +296,11 @@ export class AlertActionEditorComponent {
       this.form.patchValue(patchValue);
     }
     this.onKindChange();
+
+    this.alertService.getTemplateKeys().subscribe(keys => this.templateKeys.set(keys));
   }
 
-  onKindChange() {
+  onKindChange(): void {
     const kind = this.form.controls.kind.value;
     const urlControl = this.form.controls.url;
     const commandControl = this.form.controls.command;
@@ -308,7 +319,7 @@ export class AlertActionEditorComponent {
     commandControl.updateValueAndValidity();
   }
 
-  save() {
+  save(): void {
     if (this.form.invalid) return;
 
     const val = this.form.getRawValue();
@@ -342,10 +353,10 @@ export class AlertActionEditorComponent {
       };
     }
 
-    this.dialogRef.close(action);
+    this.modalService.animatedClose(this.dialogRef, action);
   }
 
-  cancel() {
-    this.dialogRef.close();
+  cancel(): void {
+    this.modalService.animatedClose(this.dialogRef);
   }
 }

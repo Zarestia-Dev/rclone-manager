@@ -2,7 +2,7 @@
 
 use crate::rclone::commands::sync::{TransferType, start_profile_batch};
 use crate::rclone::state::scheduled_tasks::{CacheUpdateResult, ScheduledTasksCache};
-
+use crate::utils::app::notification::{NotificationEvent, TaskStage, notify};
 use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
@@ -443,6 +443,16 @@ async fn execute_scheduled_task(
                 )
                 .await
                 .ok();
+            notify(
+                app_handle,
+                NotificationEvent::ScheduledTask(TaskStage::Started {
+                    backend: task.backend_name.clone(),
+                    remote: task.remote_name.clone(),
+                    profile: task.profile_name.clone(),
+                    task_name: task.display_name(),
+                    task_type: task.task_type.clone(),
+                }),
+            );
             Ok(())
         }
         Err(e) => {

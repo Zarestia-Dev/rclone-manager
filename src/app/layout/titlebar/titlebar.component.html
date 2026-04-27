@@ -56,8 +56,8 @@
     [matBadge]="
       restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
         ? '!'
-        : alertService.unacknowledgedCount() > 0
-          ? alertService.unacknowledgedCount()
+        : alertService.unacknowledged() > 0
+          ? alertService.unacknowledged()
           : null
     "
     [matBadgeColor]="restartRequired() || rcloneRestartRequired() ? 'warn' : 'primary'"
@@ -126,14 +126,16 @@
       [attr.aria-label]="'alerts.title' | translate"
     >
       <span>{{ 'alerts.title' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + Alt + A</span>
-      @if (alertService.unacknowledgedCount() > 0) {
-        <span
-          [matBadge]="alertService.unacknowledgedCount()"
-          matBadgePosition="below before"
-          matBadgeSize="small"
-        ></span>
-      }
+      <span class="shortcut" aria-hidden="true">
+        @if (alertService.unacknowledged() > 0) {
+          <span
+            [matBadge]="alertService.unacknowledged()"
+            matBadgePosition="after"
+            matBadgeSize="small"
+          ></span>
+        }
+        Ctrl + Alt + A</span
+      >
     </button>
     <mat-divider></mat-divider>
 

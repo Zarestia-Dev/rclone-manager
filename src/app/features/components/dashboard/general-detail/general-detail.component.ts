@@ -56,7 +56,7 @@ const ACTION_CONFIGS: ActionConfig[] = [
   {
     key: 'sync',
     label: 'actions.sync',
-    icon: 'sync',
+    icon: 'refresh',
     getTooltip: remote => (remote.status.sync.active ? 'sync.syncing' : 'sync.toggleSync'),
     getActiveState: remote => remote.status.sync.active || false,
   },

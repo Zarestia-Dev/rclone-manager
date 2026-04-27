@@ -289,23 +289,12 @@
 // SCHEDULED TASKS PANEL
 // =============================================
 
+.serves-panel,
 .scheduled-tasks-panel {
-  .tasks-grid {
+  .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-  }
-}
-
-// =============================================
-// RUNNING SERVES PANEL
-// =============================================
-
-.serves-panel {
-  .serves-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-md);
+    grid-template-columns: repeat(auto-fill, minmax(282px, 1fr));
+    gap: var(--space-sm);
   }
 }
 
@@ -548,11 +537,6 @@
   .general-overview {
     padding: var(--panel-padding-mobile, 16px);
     gap: var(--section-gap-mobile, 12px);
-  }
-
-  .scheduled-tasks-panel .tasks-grid,
-  .serves-panel .serves-grid {
-    grid-template-columns: 1fr;
   }
 }
 

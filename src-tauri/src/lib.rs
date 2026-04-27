@@ -131,7 +131,9 @@ pub fn run() {
                             );
                             crate::utils::app::notification::notify(
                                 _app,
-                                crate::utils::app::notification::NotificationEvent::AlreadyRunning,
+                                crate::utils::app::notification::NotificationEvent::System(
+                                    crate::utils::app::notification::SystemStage::AlreadyRunning,
+                                ),
                             );
                         }
                     }

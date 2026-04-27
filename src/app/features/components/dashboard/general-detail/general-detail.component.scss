@@ -195,9 +195,9 @@
   transition: var(--transition-fast);
 
   mat-icon {
-    width: var(--icon-size-xs);
-    height: var(--icon-size-xs);
-    font-size: var(--icon-size-xs);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
     color: var(--dim-color);
   }
 }

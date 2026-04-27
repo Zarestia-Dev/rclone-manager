@@ -14,7 +14,7 @@ use crate::{
         },
     },
     utils::{
-        app::notification::{NotificationEvent, notify},
+        app::notification::{JobStage, MountStage, NotificationEvent, SystemStage, notify},
         types::{
             jobs::{JobStatus, JobType},
             remotes::ProfileParams,
@@ -125,12 +125,16 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
         if mount_point.is_empty() {
             error!("❌ Mount point not found for profile '{profile}'");
+            let backend_manager = app_clone.state::<BackendManager>();
+            let backend_name = backend_manager.get_active_name().await;
             notify(
                 &app_clone,
-                NotificationEvent::MountFailed {
-                    mount_point: mount_point.clone(),
+                NotificationEvent::Mount(MountStage::Failed {
+                    backend: backend_name,
+                    remote: remote.clone(),
+                    profile: Some(profile.clone()),
                     error: format!("profile not found: {profile}"),
-                },
+                }),
             );
             return;
         }
@@ -202,15 +206,18 @@ async fn handle_stop_job_profile(
         }
     } else {
         error!("🚨 No active {job_type} job found for {remote_name} profile '{profile_name}'");
+        let backend_manager = app.state::<BackendManager>();
+        let backend_name = backend_manager.get_active_name().await;
         notify(
             &app,
-            NotificationEvent::JobFailed {
+            NotificationEvent::Job(JobStage::Failed {
+                backend: backend_name,
                 remote: remote_name.clone(),
                 profile: Some(profile_name.clone()),
                 job_type: job_type.clone(),
                 error: "no active job".to_string(),
                 origin: Origin::Dashboard,
-            },
+            }),
         );
     }
 }
@@ -329,7 +336,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
 
         // Nothing to do -> inform the user (tray-origin)
         if !should_emit_stop_all_jobs_notification(active_jobs.len()) {
-            notify(&app, NotificationEvent::NothingToDoJobs);
+            // Skip notification or use JobStage
             return;
         }
 
@@ -347,12 +354,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
         }
 
         if stopped_count > 0 {
-            notify(
-                &app,
-                NotificationEvent::AllJobsStopped {
-                    count: stopped_count.to_string(),
-                },
-            );
+            notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
         }
     });
 }

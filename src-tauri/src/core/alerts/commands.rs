@@ -76,6 +76,8 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         severity_code: 4,
         event_kind: "job_failed".to_string(),
         remote: "test-remote:".to_string(),
+        profile: "test-profile".to_string(),
+        backend: "test-backend".to_string(),
         operation: "Sync".to_string(),
         origin: crate::utils::types::origin::Origin::Internal,
         timestamp: Utc::now().to_rfc3339(),
@@ -140,4 +142,9 @@ pub async fn get_alert_stats(app: AppHandle) -> Result<AlertStats, String> {
 pub async fn get_unacknowledged_alert_count(app: AppHandle) -> Result<usize, String> {
     let cache = app.state::<AlertHistoryCache>();
     Ok(cache.unacknowledged_count().await)
+}
+
+#[tauri::command]
+pub fn get_alert_template_keys() -> Vec<String> {
+    crate::core::alerts::template::TemplateContext::get_available_keys()
 }

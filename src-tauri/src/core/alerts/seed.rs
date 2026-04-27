@@ -16,7 +16,7 @@ pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
         info!("Seeding default OS toast action (enabled={notifications_on})");
         let action = AlertAction::OsToast(OsToastAction {
             id: DEFAULT_ACTION_ID.to_string(),
-            name: "Desktop Notifications".to_string(),
+            name: "alerts.defaultActionName".to_string(),
             enabled: notifications_on,
         });
         if let Err(e) = cache::upsert_action(manager, action) {
@@ -28,12 +28,14 @@ pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
         info!("Seeding default alert rule (enabled={notifications_on})");
         let rule = AlertRule {
             id: DEFAULT_RULE_ID.to_string(),
-            name: "Desktop Notifications".to_string(),
+            name: "alerts.defaultRuleName".to_string(),
             enabled: notifications_on,
             event_filter: vec![AlertEventKind::Any],
             severity_min: AlertSeverity::Info,
             remote_filter: vec![],
             origin_filter: vec![],
+            backend_filter: vec![],
+            profile_filter: vec![],
             action_ids: vec![DEFAULT_ACTION_ID.to_string()],
             cooldown_secs: 0,
             created_at: Utc::now(),

@@ -142,13 +142,13 @@ mod tests {
 
     #[test]
     fn test_graceful_shutdown_constants() {
-        assert_eq!(GRACEFUL_SHUTDOWN_TIMEOUT, Duration::from_secs(2));
-        assert_eq!(MAX_GRACEFUL_SHUTDOWN_ITERATIONS, 20);
-        assert_eq!(GRACEFUL_SHUTDOWN_CHECK_INTERVAL, Duration::from_millis(100));
+        assert_eq!(GRACEFUL_SHUTDOWN_TIMEOUT, Duration::from_secs(5));
+        assert_eq!(MAX_GRACEFUL_SHUTDOWN_ITERATIONS, 10);
+        assert_eq!(GRACEFUL_SHUTDOWN_CHECK_INTERVAL, Duration::from_millis(500));
 
         let total_poll_time = MAX_GRACEFUL_SHUTDOWN_ITERATIONS as u64
             * GRACEFUL_SHUTDOWN_CHECK_INTERVAL.as_millis() as u64;
-        assert_eq!(total_poll_time, 2000);
+        assert_eq!(total_poll_time, 5000);
     }
 
     #[tokio::test]

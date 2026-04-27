@@ -8,7 +8,7 @@ use crate::core::alerts::{
     dispatch,
     event_ext::NotificationEventExt,
     template::TemplateContext,
-    types::{ActionResult, AlertAction, AlertEventKind, AlertRecord},
+    types::{ActionResult, AlertAction, AlertDetails, AlertEventKind, AlertRecord},
 };
 use crate::core::settings::AppSettingsManager;
 use crate::utils::app::notification::NotificationEvent;
@@ -19,6 +19,8 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
     let severity = event.alert_severity();
     let kind = event.alert_kind();
     let remote = event.alert_remote();
+    let profile = event.alert_profile();
+    let backend = event.alert_backend();
     let operation = event.alert_operation();
     let origin = event.alert_origin();
 
@@ -60,10 +62,23 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
             }
         }
 
-        if !rule.origin_filter.is_empty() {
-            let matches = origin
-                .as_ref()
-                .is_some_and(|o| rule.origin_filter.contains(o));
+        if !rule.origin_filter.is_empty() && !rule.origin_filter.contains(&origin) {
+            continue;
+        }
+
+        if !rule.backend_filter.is_empty() {
+            let matches = backend
+                .as_deref()
+                .is_some_and(|b| rule.backend_filter.iter().any(|f| f == b));
+            if !matches {
+                continue;
+            }
+        }
+
+        if !rule.profile_filter.is_empty() {
+            let matches = profile
+                .as_deref()
+                .is_some_and(|p| rule.profile_filter.iter().any(|f| f == p));
             if !matches {
                 continue;
             }
@@ -76,6 +91,8 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
             debug!("Rule '{}' suppressed by cooldown", rule.name);
             continue;
         }
+
+        cache::bump_rule_fired(&manager, &rule.id, Utc::now());
 
         debug!(
             "Rule '{}' matched - dispatching {} action(s)",
@@ -91,8 +108,10 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
             severity_code: severity.as_code(),
             event_kind: kind.as_str().to_string(),
             remote: remote.clone().unwrap_or_default(),
+            profile: profile.clone().unwrap_or_else(|| "Default".to_string()),
+            backend: backend.clone().unwrap_or_default(),
             operation: operation.clone().unwrap_or_default(),
-            origin: origin.clone().unwrap_or_default(),
+            origin: origin.clone(),
             timestamp: Utc::now().to_rfc3339(),
             rule_id: rule.id.clone(),
             rule_name: rule.name.clone(),
@@ -105,6 +124,9 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
         let record_kind = kind.clone();
         let record_sev = severity.clone();
         let record_rem = remote.clone();
+        let record_prof = profile.clone();
+        let record_back = backend.clone();
+        let record_oper = operation.clone();
         let record_orig = origin.clone();
         let record_title = title.clone();
         let record_body = body.clone();
@@ -164,21 +186,24 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
                 .filter_map(std::result::Result::ok)
                 .collect();
 
-            // Record History
             let mut record = AlertRecord::new(
                 &rule_clone,
-                record_kind,
-                record_sev,
-                record_title,
-                record_body,
-                record_rem,
-                record_orig,
+                AlertDetails {
+                    event_kind: record_kind,
+                    severity: record_sev,
+                    title: record_title,
+                    body: record_body,
+                    remote: record_rem,
+                    profile: record_prof,
+                    backend: record_back,
+                    operation: record_oper,
+                    origin: Some(record_orig),
+                },
             );
             record.action_results = action_results;
 
             let history_cache = app_clone.state::<AlertHistoryCache>();
             history_cache.push(record, Some(&app_clone)).await;
-            cache::bump_rule_fired(&manager, &rule_clone.id, Utc::now());
         });
     }
 }

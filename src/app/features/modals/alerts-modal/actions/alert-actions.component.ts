@@ -4,13 +4,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatDialog } from '@angular/material/dialog';
-import { TranslateModule } from '@ngx-translate/core';
-import { finalize } from 'rxjs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService, ModalService, NotificationService } from '@app/services';
 import { AlertAction } from '@app/types';
-import { AlertActionEditorComponent } from './alert-action-editor.component';
+import { SearchContainerComponent } from '@app/shared/components';
 
 @Component({
   selector: 'app-alert-actions',
@@ -21,50 +20,111 @@ import { AlertActionEditorComponent } from './alert-action-editor.component';
     MatIconModule,
     MatTooltipModule,
     MatSlideToggleModule,
+    MatProgressSpinnerModule,
     TranslateModule,
+    SearchContainerComponent,
   ],
   template: `
     <div class="actions-container">
+      <!-- Toolbar -->
       <div class="toolbar">
-        <button mat-flat-button color="primary" (click)="createAction()">
+        <div class="spacer"></div>
+
+        <button
+          mat-icon-button
+          (click)="searchVisible.set(!searchVisible())"
+          [matTooltip]="'shared.search.toggle' | translate"
+        >
+          <mat-icon svgIcon="search"></mat-icon>
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="createAction()"
+          [matTooltip]="'alerts.createAction' | translate"
+        >
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createAction' | translate }}
         </button>
       </div>
 
-      <div class="table-wrapper boxed-list" [class.loading]="loading()">
-        @if (actions().length > 0) {
-          <table mat-table [dataSource]="actions()" class="actions-table">
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>{{ 'common.name' | translate }}</th>
+      <app-search-container
+        [visible]="searchVisible()"
+        [searchText]="alerts.actionsSearchTerm()"
+        (searchTextChange)="onSearchChange($event)"
+      ></app-search-container>
+
+      <div class="actions-table-wrap" [class.loading]="alerts.isLoading()">
+        @if (alerts.actions().length === 0 && !alerts.isLoading()) {
+          <div class="empty-state">
+            <mat-icon svgIcon="bolt"></mat-icon>
+            <span>{{ 'alerts.noActions' | translate }}</span>
+          </div>
+        }
+
+        @if (alerts.actions().length > 0) {
+          <table mat-table [dataSource]="alerts.actions()">
+            <!-- Kind Column -->
+            <ng-container matColumnDef="kind">
+              <th mat-header-cell *matHeaderCellDef>{{ 'alerts.action.kind' | translate }}</th>
               <td mat-cell *matCellDef="let action">
-                <div class="action-name">
-                  <strong>{{ action.name }}</strong>
-                  <span class="kind-tag">{{ 'alerts.action.' + action.kind | translate }}</span>
+                <div class="cell-content">
+                  <span class="app-pill p-dim action-kind-pill">
+                    <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
+                    {{ 'alerts.action.' + action.kind | translate }}
+                  </span>
                 </div>
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>{{ 'common.status' | translate }}</th>
+            <!-- Name Column -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>{{ 'common.name' | translate }}</th>
               <td mat-cell *matCellDef="let action">
-                <mat-slide-toggle
-                  [checked]="action.enabled"
-                  (change)="toggleAction(action)"
-                ></mat-slide-toggle>
+                <div class="cell-content">
+                  <span class="action-name">{{ action.name | translate }}</span>
+                </div>
               </td>
             </ng-container>
 
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>{{ 'common.status' | translate }}</th>
+              <td mat-cell *matCellDef="let action">
+                <div class="cell-content">
+                  <mat-slide-toggle
+                    [checked]="action.enabled"
+                    (change)="toggleAction(action)"
+                    color="primary"
+                    [matTooltip]="
+                      (action.enabled ? 'task.status.enabled' : 'task.status.disabled') | translate
+                    "
+                  ></mat-slide-toggle>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let action">
-                <div class="cell-actions">
+                <div class="cell-content actions-wrap">
                   <button
                     mat-icon-button
                     (click)="testAction(action)"
                     [matTooltip]="'alerts.testAction' | translate"
+                    [disabled]="alerts.testingActionIds().has(action.id)"
                   >
-                    <mat-icon svgIcon="play"></mat-icon>
+                    @if (alerts.testingActionIds().has(action.id)) {
+                      <mat-progress-spinner
+                        mode="indeterminate"
+                        diameter="24"
+                        strokeWidth="2"
+                      ></mat-progress-spinner>
+                    } @else {
+                      <mat-icon svgIcon="play"></mat-icon>
+                    }
                   </button>
                   <button
                     mat-icon-button
@@ -86,124 +146,170 @@ import { AlertActionEditorComponent } from './alert-action-editor.component';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              [class.disabled]="!row.enabled"
+            ></tr>
           </table>
-        } @else if (!loading()) {
-          <div class="empty-state">
-            <mat-icon svgIcon="bolt"></mat-icon>
-            <h3>{{ 'alerts.noActions' | translate }}</h3>
-            <p>Create actions (Webhooks, Scripts, etc.) to trigger when alerts fire.</p>
-          </div>
         }
       </div>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+      }
+
       .actions-container {
         display: flex;
         flex-direction: column;
         height: 100%;
-        gap: var(--space-md);
       }
 
       .toolbar {
         display: flex;
-        justify-content: flex-end;
         align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-md);
+        flex-shrink: 0;
       }
 
-      .boxed-list {
+      .spacer {
+        flex: 1;
+      }
+
+      /* ── Table Layout ────────────────────────────────── */
+      .actions-table-wrap {
         flex: 1;
         overflow: auto;
-        border-radius: var(--card-border-radius);
-        background: var(--card-bg-color);
-        box-shadow: var(--shadow-gnome);
+        position: relative;
+        border-top: 1px solid var(--border-color);
 
         &.loading {
           opacity: 0.6;
           pointer-events: none;
         }
-      }
 
-      .actions-table {
-        width: 100%;
-        background: transparent;
-
-        th.mat-mdc-header-cell {
-          background: var(--card-bg-color);
-          font-weight: 600;
-          color: var(--text-muted);
-          border-bottom: 1px solid var(--border-color);
-          padding: var(--space-sm) var(--space-md);
-        }
-
-        td.mat-mdc-cell {
-          padding: var(--space-sm) var(--space-md);
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        tr.mat-mdc-row {
-          transition: background-color 0.2s ease;
-          &:hover {
-            background: var(--bg-hover);
-          }
-          &:last-child td {
-            border-bottom: none;
-          }
-        }
-
-        .action-name {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-
-          strong {
-            color: var(--window-fg-color);
-            font-size: var(--font-size-md);
-          }
-
-          .kind-tag {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-        }
-
-        .cell-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 4px;
+        table {
+          width: 100%;
+          min-width: 700px;
+          border-collapse: separate;
+          border-spacing: 0;
         }
       }
 
+      .mat-mdc-header-row {
+        height: 48px;
+      }
+
+      /* ── Sticky Header ───────────────────────────────── */
+      .mat-mdc-header-cell {
+        background: var(--window-bg-color) !important;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 2px solid var(--border-color) !important;
+        border-right: 1px solid var(--border-color);
+        font-weight: 700;
+        font-size: var(--font-size-xs);
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .mat-mdc-cell {
+        padding: 0 var(--space-sm) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        border-right: 1px solid var(--border-color);
+        vertical-align: middle;
+
+        &:last-child {
+          border-right: none;
+        }
+      }
+
+      .cell-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 12px 0;
+      }
+
+      .mat-mdc-row {
+        transition: background 0.12s ease;
+        &:hover {
+          background: var(--bg-elevated);
+        }
+        &.disabled {
+          opacity: 0.6;
+        }
+      }
+
+      /* ── Column Widths ────────────────────────────────── */
+      .mat-column-kind {
+        width: 150px;
+      }
+      .mat-column-name {
+        min-width: 200px;
+      }
+      .mat-column-status {
+        width: 100px;
+      }
+      .mat-column-actions {
+        width: 150px;
+      }
+
+      /* ── Kind Pill ───────────────────────────────────── */
+      .action-kind-pill {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: fit-content;
+        font-weight: 600;
+
+        mat-icon {
+          width: 14px;
+          height: 14px;
+          font-size: 14px;
+        }
+      }
+
+      .action-name {
+        font-weight: 600;
+        font-size: var(--font-size-md);
+        color: var(--window-fg-color);
+      }
+
+      /* ── Actions ─────────────────────────────────────── */
+      .actions-wrap {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-xs);
+      }
+
+      /* ── Empty State ─────────────────────────────────── */
       .empty-state {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: var(--space-2xl);
+        padding: 48px;
+        gap: var(--space-md);
         color: var(--text-muted);
-        text-align: center;
-        height: 100%;
 
         mat-icon {
-          width: 64px;
-          height: 64px;
-          margin-bottom: var(--space-md);
-          opacity: 0.3;
+          width: 48px;
+          height: 48px;
+          font-size: 48px;
+          opacity: 0.2;
         }
 
-        h3 {
-          margin: 0 0 var(--space-xs) 0;
-          color: var(--window-fg-color);
-          font-weight: 600;
-        }
-
-        p {
-          margin: 0;
-          font-size: var(--font-size-sm);
+        span {
+          font-size: var(--font-size-lg);
+          font-weight: 500;
         }
       }
     `,
@@ -211,71 +317,72 @@ import { AlertActionEditorComponent } from './alert-action-editor.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionsComponent {
-  private alertService = inject(AlertService);
-  private modalService = inject(ModalService);
-  private dialog = inject(MatDialog);
+  public readonly alerts = inject(AlertService);
+  private readonly modalService = inject(ModalService);
+  private readonly notifications = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
 
-  actions = signal<AlertAction[]>([]);
-  loading = signal(false);
+  searchVisible = signal(false);
+  displayedColumns = ['kind', 'name', 'status', 'actions'];
 
-  displayedColumns = ['name', 'status', 'actions'];
-
-  constructor() {
-    this.refresh();
+  onSearchChange(term: string): void {
+    this.alerts.actionsSearchTerm.set(term);
   }
 
-  refresh() {
-    this.loading.set(true);
-    this.alertService
-      .getAlertActions()
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe(actions => this.actions.set(actions));
-  }
-
-  createAction() {
-    this.dialog
-      .open(AlertActionEditorComponent, { width: '600px', disableClose: true })
+  createAction(): void {
+    this.modalService
+      .openAlertActionEditor()
       .afterClosed()
       .subscribe(action => {
-        if (action) this.alertService.saveAlertAction(action).subscribe(() => this.refresh());
+        if (action) this.alerts.saveAlertAction(action).subscribe();
       });
   }
 
-  editAction(action: AlertAction) {
-    this.dialog
-      .open(AlertActionEditorComponent, { width: '600px', disableClose: true, data: action })
+  editAction(action: AlertAction): void {
+    this.modalService
+      .openAlertActionEditor(action)
       .afterClosed()
       .subscribe(updated => {
-        if (updated) this.alertService.saveAlertAction(updated).subscribe(() => this.refresh());
+        if (updated) this.alerts.saveAlertAction(updated).subscribe();
       });
   }
 
-  deleteAction(action: AlertAction) {
+  deleteAction(action: AlertAction): void {
     this.modalService
       .openConfirm({
         title: 'common.delete',
-        message: 'Are you sure you want to delete this action?',
+        message: 'alerts.deleteActionConfirm',
         confirmText: 'common.delete',
         cancelText: 'common.cancel',
       })
       .afterClosed()
       .subscribe(confirmed => {
-        if (confirmed)
-          this.alertService.deleteAlertAction(action.id).subscribe(() => this.refresh());
+        if (confirmed) this.alerts.deleteAlertAction(action.id).subscribe();
       });
   }
 
-  toggleAction(action: AlertAction) {
+  toggleAction(action: AlertAction): void {
     const updated = { ...action, enabled: !action.enabled };
-    this.alertService.saveAlertAction(updated).subscribe(() => this.refresh());
+    this.alerts.saveAlertAction(updated).subscribe();
   }
 
-  testAction(action: AlertAction) {
-    this.alertService.testAlertAction(action.id).subscribe({
+  testAction(action: AlertAction): void {
+    this.alerts.testAlertAction(action.id).subscribe({
       next: success => {
-        if (success) console.log('Test success');
+        if (success) {
+          this.notifications.showSuccess(this.translate.instant('alerts.testActionSuccess'));
+        } else {
+          this.notifications.showError(
+            this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
+          );
+        }
       },
-      error: err => console.error('Test failed', err),
+      error: err => {
+        this.notifications.showError(
+          this.translate.instant('alerts.testActionError', { error: err })
+        );
+        console.error('Test failed', err);
+      },
     });
   }
 }

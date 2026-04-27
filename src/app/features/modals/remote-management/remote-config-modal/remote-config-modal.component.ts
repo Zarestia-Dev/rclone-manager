@@ -1171,6 +1171,17 @@ export class RemoteConfigModalComponent implements OnInit {
       if (result.success && !this.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
+      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+
+      let errorMessage = this.translate.instant(
+        'modals.remoteConfig.errors.interactiveProcessingFailed'
+      );
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      this.notificationService.showError(errorMessage);
     } finally {
       if (!this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
@@ -1700,25 +1711,31 @@ export class RemoteConfigModalComponent implements OnInit {
       answer: '',
     });
     const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-      name,
-      type ?? '',
-      paramRest,
-      this.remoteManagementService.buildOpt(this.commandOptions())
-    );
 
-    if (!startResp || startResp.State === '') {
-      await this.finalizeRemoteCreation();
-      return { success: true };
+    try {
+      const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
+        name,
+        type ?? '',
+        paramRest,
+        this.remoteManagementService.buildOpt(this.commandOptions())
+      );
+
+      if (!startResp || startResp.State === '') {
+        await this.finalizeRemoteCreation();
+        return { success: true };
+      }
+
+      this.interactiveFlowState.set({
+        isActive: true,
+        question: startResp,
+        answer: getDefaultAnswerFromQuestion(startResp),
+        isProcessing: false,
+      });
+      return { success: false };
+    } catch (error) {
+      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+      throw error;
     }
-
-    this.interactiveFlowState.set({
-      isActive: true,
-      question: startResp,
-      answer: getDefaultAnswerFromQuestion(startResp),
-      isProcessing: false,
-    });
-    return { success: false };
   }
 
   private async processInteractiveResponse(answer: string): Promise<void> {

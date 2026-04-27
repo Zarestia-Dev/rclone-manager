@@ -131,17 +131,15 @@ impl AlertHistoryCache {
     }
 
     pub async fn push(&self, record: AlertRecord, app: Option<&AppHandle>) {
-        let record_id = record.id.clone();
+        if let Some(app) = app {
+            let _ = app.emit(ALERT_FIRED, &record);
+        }
         {
             let mut records = self.records.write().await;
             records.push(record);
             if records.len() > self.max_entries {
                 records.remove(0);
             }
-        }
-
-        if let Some(app) = app {
-            let _ = app.emit(ALERT_FIRED, &record_id);
         }
     }
 

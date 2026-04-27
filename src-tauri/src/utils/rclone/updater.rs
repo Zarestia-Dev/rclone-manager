@@ -14,7 +14,7 @@ use crate::core::check_binaries::read_rclone_binary;
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::queries::get_rclone_info;
-use crate::utils::app::notification::{NotificationEvent, notify};
+use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
 use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::core::EngineState;
@@ -125,9 +125,9 @@ pub async fn check_rclone_update(
 
         notify(
             &app_handle,
-            NotificationEvent::RcloneUpdateAvailable {
+            NotificationEvent::RcloneUpdate(UpdateStage::Available {
                 version: result.latest_version.clone(),
-            },
+            }),
         );
     }
 
@@ -225,9 +225,9 @@ pub async fn update_rclone(
         if !backend.is_local {
             notify(
                 &app_handle,
-                NotificationEvent::RcloneUpdateStarted {
+                NotificationEvent::RcloneUpdate(UpdateStage::Started {
                     version: latest_version.clone(),
-                },
+                }),
             );
 
             // No --output: remote rclone updates its own binary in place.
@@ -238,9 +238,9 @@ pub async fn update_rclone(
                 Ok(_) => {
                     notify(
                         &app_handle,
-                        NotificationEvent::RcloneUpdateComplete {
+                        NotificationEvent::RcloneUpdate(UpdateStage::Complete {
                             version: latest_version.clone(),
-                        },
+                        }),
                     );
 
                     Ok(json!({
@@ -253,7 +253,7 @@ pub async fn update_rclone(
                 Err(e) => {
                     notify(
                         &app_handle,
-                        NotificationEvent::RcloneUpdateFailed { error: e.clone() },
+                        NotificationEvent::RcloneUpdate(UpdateStage::Failed { error: e.clone() }),
                     );
                     Err(e)
                 }
@@ -285,9 +285,9 @@ pub async fn update_rclone(
 
     notify(
         &app_handle,
-        NotificationEvent::RcloneUpdateStarted {
+        NotificationEvent::RcloneUpdate(UpdateStage::Started {
             version: latest_version.clone(),
-        },
+        }),
     );
 
     let update_result = match determine_update_strategy(&current_path, &app_handle) {
@@ -299,9 +299,9 @@ pub async fn update_rclone(
         if res["success"].as_bool().unwrap_or(false) {
             notify(
                 &app_handle,
-                NotificationEvent::RcloneUpdateComplete {
+                NotificationEvent::RcloneUpdate(UpdateStage::Complete {
                     version: latest_version.clone(),
-                },
+                }),
             );
             // The pending_update state is already filled by `check_rclone_update` above;
             // the actual binary swap will occur when the frontend calls `apply_rclone_update`.
@@ -309,9 +309,9 @@ pub async fn update_rclone(
     } else if let Err(error_msg) = &update_result {
         notify(
             &app_handle,
-            NotificationEvent::RcloneUpdateFailed {
+            NotificationEvent::RcloneUpdate(UpdateStage::Failed {
                 error: error_msg.clone(),
-            },
+            }),
         );
     }
 
@@ -339,9 +339,9 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
     // send a notification that the update has actually been installed
     notify(
         &app_handle,
-        NotificationEvent::RcloneUpdateInstalled {
+        NotificationEvent::RcloneUpdate(UpdateStage::Installed {
             version: pending_version.clone(),
-        },
+        }),
     );
 
     crate::rclone::engine::lifecycle::restart_for_config_change(

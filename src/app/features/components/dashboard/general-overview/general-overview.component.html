@@ -516,26 +516,24 @@
                           <span>{{ 'generalOverview.tasks.loading' | translate }}</span>
                         </div>
                       } @else {
-                        <div class="scheduled-tasks-content">
-                          @if (totalScheduledTasksCount() === 0) {
-                            <div class="no-tasks-message empty-state-message" role="status">
-                              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                              <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
-                            </div>
-                          } @else {
-                            <div class="tasks-grid">
-                              @for (task of scheduledTasks(); track task.id) {
-                                <app-scheduled-task-card
-                                  [task]="task"
-                                  variant="compact"
-                                  (click)="onTaskClick(task)"
-                                  (toggled)="toggleScheduledTask($event)"
-                                  (openInFiles)="onOpenTaskInFiles($event)"
-                                ></app-scheduled-task-card>
-                              }
-                            </div>
-                          }
-                        </div>
+                        @if (totalScheduledTasksCount() === 0) {
+                          <div class="no-tasks-message empty-state-message" role="status">
+                            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                            <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
+                          </div>
+                        } @else {
+                          <div class="grid">
+                            @for (task of scheduledTasks(); track task.id) {
+                              <app-scheduled-task-card
+                                [task]="task"
+                                variant="compact"
+                                (click)="onTaskClick(task)"
+                                (toggled)="toggleScheduledTask($event)"
+                                (openInFiles)="onOpenTaskInFiles($event)"
+                              ></app-scheduled-task-card>
+                            }
+                          </div>
+                        }
                       }
                     </mat-expansion-panel>
                   }
@@ -584,7 +582,7 @@
                           <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
                         </div>
                       } @else {
-                        <div class="serves-grid">
+                        <div class="grid">
                           @for (serve of serves; track serve.id) {
                             <app-serve-card
                               [serve]="serve"

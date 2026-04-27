@@ -15,12 +15,16 @@ import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/
 import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
 import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
+import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor.component';
+import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rule-editor.component';
 import {
   InputModalComponent,
   InputModalData,
 } from '../../shared/modals/input-modal/input-modal.component';
 import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
 import {
+  AlertAction,
+  AlertRule,
   RemoteSettings,
   RemoteFeatures,
   STANDARD_MODAL_SIZE,
@@ -236,6 +240,22 @@ export class ModalService {
     });
   }
 
+  openAlertActionEditor(data?: AlertAction): MatDialogRef<AlertActionEditorComponent, AlertAction> {
+    return this.dialog.open(AlertActionEditorComponent, {
+      width: '600px',
+      disableClose: false,
+      data,
+    });
+  }
+
+  openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
+    return this.dialog.open(AlertRuleEditorComponent, {
+      width: '600px',
+      disableClose: true,
+      data,
+    });
+  }
+
   // ============================================================================
   // Shared / Generic Modals
   // ============================================================================
@@ -291,9 +311,7 @@ export class ModalService {
     const isMobile = window.innerWidth <= 450;
 
     if (isMobile) {
-      // Find the dialog container and add closing class
-      const overlayPane = document.querySelector('.cdk-overlay-pane.mat-mdc-dialog-panel');
-      const dialogContainer = overlayPane?.querySelector('mat-dialog-container');
+      const dialogContainer = document.getElementById(dialogRef.id);
 
       if (dialogContainer) {
         dialogContainer.classList.add('closing');

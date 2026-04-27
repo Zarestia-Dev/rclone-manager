@@ -3,14 +3,14 @@ use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
     core::scheduler::engine::get_next_run,
     rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
-        app::notification::{NotificationEvent, notify},
+        app::notification::{JobStage, NotificationEvent, TaskStage, notify},
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
@@ -73,41 +73,45 @@ impl JobMetadata {
     // Small helpers that build `NotificationEvent` values used by production
     // code and verified by unit tests to prevent divergence.
 
-    fn started_event(&self) -> NotificationEvent {
-        NotificationEvent::JobStarted {
+    fn started_event(&self, backend: String) -> NotificationEvent {
+        NotificationEvent::Job(JobStage::Started {
+            backend,
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
-        }
+        })
     }
 
-    fn completed_event(&self) -> NotificationEvent {
-        NotificationEvent::JobCompleted {
+    fn completed_event(&self, backend: String) -> NotificationEvent {
+        NotificationEvent::Job(JobStage::Completed {
+            backend,
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
-        }
+        })
     }
 
-    fn failed_event(&self, error_msg: &str) -> NotificationEvent {
-        NotificationEvent::JobFailed {
+    fn failed_event(&self, backend: String, error_msg: &str) -> NotificationEvent {
+        NotificationEvent::Job(JobStage::Failed {
+            backend,
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
             job_type: self.job_type.clone(),
             error: error_msg.to_string(),
             origin: self.resolved_origin(),
-        }
+        })
     }
 
-    fn stopped_event(&self) -> NotificationEvent {
-        NotificationEvent::JobStopped {
+    fn stopped_event(&self, backend: String) -> NotificationEvent {
+        NotificationEvent::Job(JobStage::Stopped {
+            backend,
             remote: self.remote_name.clone(),
             profile: self.profile.clone(),
             job_type: self.job_type.clone(),
             origin: self.resolved_origin(),
-        }
+        })
     }
 }
 
@@ -163,7 +167,9 @@ async fn initialize_and_register_job(
             Some(app),
         )
         .await;
-        notify(app, metadata.started_event());
+        if metadata.origin != Some(Origin::Scheduler) {
+            notify(app, metadata.started_event(backend_name.clone()));
+        }
     }
 
     Ok((jobid, backend_name, response_json, execute_id))
@@ -322,7 +328,6 @@ pub async fn monitor_job(
     app: AppHandle,
     client: reqwest::Client,
 ) -> Result<Value, RcloneError> {
-    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
     let backend_manager = app.state::<BackendManager>();
 
     let backend = backend_manager
@@ -353,12 +358,11 @@ pub async fn monitor_job(
             if should_exit {
                 info!("Monitoring for job {jobid} stopped: job removed or marked Stopped.");
                 return handle_job_completion(
+                    backend_name.clone(),
                     jobid,
                     &metadata,
                     json!({"finished": true, "success": false, "stopped": true}),
                     &app,
-                    job_cache,
-                    scheduled_tasks_cache,
                     None,
                 )
                 .await;
@@ -409,12 +413,11 @@ pub async fn monitor_job(
                         .unwrap_or(false)
                 {
                     return handle_job_completion(
+                        backend_name.clone(),
                         jobid,
                         &metadata,
                         job_status,
                         &app,
-                        job_cache,
-                        scheduled_tasks_cache,
                         None,
                     )
                     .await;
@@ -451,14 +454,15 @@ pub async fn monitor_job(
 }
 
 pub async fn handle_job_completion(
+    backend_name: String,
     jobid: u64,
     metadata: &JobMetadata,
     job_status: Value,
     app: &AppHandle,
-    job_cache: &JobCache,
-    scheduled_tasks_cache: State<'_, ScheduledTasksCache>,
     last_stats: Option<Value>,
 ) -> Result<Value, RcloneError> {
+    let job_cache = &app.state::<BackendManager>().job_cache;
+    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
     let success = job_status
         .get("success")
         .and_then(serde_json::Value::as_bool)
@@ -552,6 +556,17 @@ pub async fn handle_job_completion(
                 )
                 .await
                 .map_err(RcloneError::JobError)?;
+
+            notify(
+                app,
+                NotificationEvent::ScheduledTask(TaskStage::Completed {
+                    backend: task.backend_name.clone(),
+                    remote: task.remote_name.clone(),
+                    profile: task.profile_name.clone(),
+                    task_name: task.display_name(),
+                    task_type: task.task_type.clone(),
+                }),
+            );
         } else {
             scheduled_tasks_cache
                 .update_task(
@@ -564,19 +579,31 @@ pub async fn handle_job_completion(
                 )
                 .await
                 .map_err(RcloneError::JobError)?;
+
+            notify(
+                app,
+                NotificationEvent::ScheduledTask(TaskStage::Failed {
+                    backend: task.backend_name.clone(),
+                    remote: task.remote_name.clone(),
+                    profile: task.profile_name.clone(),
+                    task_name: task.display_name(),
+                    task_type: task.task_type.clone(),
+                    error: error_msg.clone(),
+                }),
+            );
         }
     }
 
     if stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
-        if !metadata.no_cache {
-            notify(app, metadata.stopped_event());
+        if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
+            notify(app, metadata.stopped_event(backend_name.clone()));
         }
         return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
     }
 
     if !success {
-        if !metadata.no_cache {
+        if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
@@ -584,12 +611,12 @@ pub async fn handle_job_completion(
                 format!("{} Job {jobid} failed: {error_msg}", metadata.job_type),
                 Some(json!({"jobid": jobid, "status": job_status})),
             );
-            notify(app, metadata.failed_event(&error_msg));
+            notify(app, metadata.failed_event(backend_name.clone(), &error_msg));
         }
         return Err(RcloneError::JobError(error_msg));
     }
 
-    if !metadata.no_cache {
+    if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
         log_operation(
             LogLevel::Info,
             Some(metadata.remote_name.clone()),
@@ -597,7 +624,7 @@ pub async fn handle_job_completion(
             format!("{} Job {jobid} completed successfully", metadata.job_type),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
-        notify(app, metadata.completed_event());
+        notify(app, metadata.completed_event(backend_name.clone()));
     }
 
     Ok(job_status.get("output").cloned().unwrap_or(json!({})))
@@ -1069,59 +1096,65 @@ mod tests {
     #[test]
     fn test_started_event() {
         let meta = make_meta(Some(Origin::FileManager), Some("daily"));
-        match meta.started_event() {
-            NotificationEvent::JobStarted {
+        match meta.started_event("test-backend".to_string()) {
+            NotificationEvent::Job(JobStage::Started {
+                backend,
                 remote,
                 profile,
                 job_type,
                 origin,
-            } => {
+            }) => {
+                assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, Some("daily".to_string()));
                 assert_eq!(job_type, JobType::Sync);
                 assert_eq!(origin, Origin::FileManager);
             }
-            _ => panic!("expected JobStarted"),
+            _ => panic!("expected JobStage::Started"),
         }
     }
 
     #[test]
     fn test_completed_event_defaults_origin_to_system() {
         let meta = make_meta(None, None);
-        match meta.completed_event() {
-            NotificationEvent::JobCompleted {
+        match meta.completed_event("test-backend".to_string()) {
+            NotificationEvent::Job(JobStage::Completed {
+                backend,
                 remote,
                 profile,
                 job_type,
                 origin,
-            } => {
+            }) => {
+                assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, None);
                 assert_eq!(job_type, JobType::Sync);
                 assert_eq!(origin, Origin::Internal);
             }
-            _ => panic!("expected JobCompleted"),
+            _ => panic!("expected JobStage::Completed"),
         }
     }
 
     #[test]
     fn test_failed_event_carries_error_message() {
         let meta = make_meta(None, Some("p"));
-        match meta.failed_event("disk full") {
-            NotificationEvent::JobFailed {
+        match meta.failed_event("test-backend".to_string(), "disk full") {
+            NotificationEvent::Job(JobStage::Failed {
+                backend,
                 remote,
                 profile,
                 job_type,
                 error,
                 origin,
-            } => {
+            }) => {
+                assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
                 assert_eq!(profile, Some("p".to_string()));
                 assert_eq!(job_type, JobType::Sync);
                 assert_eq!(error, "disk full");
                 assert_eq!(origin, Origin::Internal);
             }
-            _ => panic!("expected JobFailed"),
+            _ => panic!("expected JobStage::Failed"),
         }
     }
 
