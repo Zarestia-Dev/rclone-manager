@@ -2,7 +2,9 @@ use crate::{
     core::scheduler::engine::get_next_run,
     utils::types::{
         remotes::ProfileParams,
-        scheduled_task::{ScheduledTask, ScheduledTaskStats, TaskStatus, TaskType},
+        scheduled_task::{
+            ScheduledTask, ScheduledTaskArgs, ScheduledTaskStats, TaskStatus, TaskType,
+        },
     },
 };
 use log::info;
@@ -23,8 +25,20 @@ use crate::utils::types::events::SCHEDULED_TASKS_CACHE_CHANGED;
 struct ProfileConfig {
     cron_enabled: Option<bool>,
     cron_expression: Option<String>,
-    source: Option<String>,
-    dest: Option<String>,
+    source: Option<Value>,
+    dest: Option<Value>,
+}
+
+fn normalize_paths(val: Option<&Value>) -> Vec<String> {
+    match val {
+        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .filter(|s| !s.is_empty())
+            .collect(),
+        _ => vec![],
+    }
 }
 
 // ============================================================================
@@ -75,10 +89,6 @@ impl ScheduledTasksCache {
     }
 
     /// Load tasks from remote configs, preserving existing task states.
-    ///
-    /// Returns a `CacheUpdateResult` describing what changed. The caller is
-    /// responsible for all scheduler interaction — unscheduling `removed`
-    /// tasks and rescheduling `added`/`updated` tasks.
     pub async fn load_from_remote_configs(
         &self,
         all_settings: &Value,
@@ -88,59 +98,19 @@ impl ScheduledTasksCache {
         let settings_obj = all_settings
             .as_object()
             .ok_or("Settings is not an object")?;
-
-        let mut new_task_ids = HashSet::new();
-        let mut tasks_to_update = Vec::new();
+        let mut tasks = Vec::new();
 
         for (remote_name, remote_settings) in settings_obj {
-            let tasks = self.collect_tasks_from_remote(backend_name, remote_name, remote_settings);
-            for task in tasks {
-                new_task_ids.insert(task.id.clone());
-                tasks_to_update.push(task);
-            }
+            tasks.extend(self.collect_tasks_from_remote(
+                backend_name,
+                remote_name,
+                remote_settings,
+            ));
         }
 
-        let mut added = Vec::new();
-        let mut updated = Vec::new();
-
-        for task_from_config in tasks_to_update {
-            if let Some(existing_task) = self.get_task(&task_from_config.id).await {
-                if self.task_config_changed(&existing_task, &task_from_config) {
-                    self.update_task_config(&task_from_config.id, &task_from_config)
-                        .await?;
-                    info!(
-                        "✏️ Updated task config: {}: {}-{} ({})",
-                        task_from_config.backend_name,
-                        task_from_config.remote_name,
-                        task_from_config.profile_name,
-                        task_from_config.id
-                    );
-                    if let Some(t) = self.get_task(&task_from_config.id).await {
-                        updated.push(t);
-                    }
-                }
-            } else {
-                self.add_task(task_from_config.clone(), None).await?;
-                added.push(task_from_config.clone());
-                info!(
-                    "➕ Added new task: {}: {}-{} ({})",
-                    task_from_config.backend_name,
-                    task_from_config.remote_name,
-                    task_from_config.profile_name,
-                    task_from_config.id
-                );
-            }
-        }
-
-        let removed = self
-            .cleanup_tasks(backend_name, &new_task_ids, None)
+        let result = self
+            .sync_tasks(backend_name, tasks, |t| t.backend_name == backend_name)
             .await?;
-
-        let result = CacheUpdateResult {
-            added,
-            updated,
-            removed,
-        };
 
         if result.has_changes()
             && let Some(app) = app
@@ -151,6 +121,55 @@ impl ScheduledTasksCache {
         Ok(result)
     }
 
+    /// Internal helper to sync a list of tasks into the cache within a specific scope.
+    async fn sync_tasks(
+        &self,
+        backend_name: &str,
+        new_tasks: Vec<ScheduledTask>,
+        scope_predicate: impl Fn(&ScheduledTask) -> bool,
+    ) -> Result<CacheUpdateResult, String> {
+        let active_ids: HashSet<String> = new_tasks.iter().map(|t| t.id.clone()).collect();
+        let mut added = Vec::new();
+        let mut updated = Vec::new();
+
+        for task in new_tasks {
+            if let Some(existing) = self.get_task(&task.id).await {
+                if self.task_config_changed(&existing, &task) {
+                    self.update_task_config(&task.id, &task).await?;
+                    info!("✏️ Updated task: {} ({})", task.id, backend_name);
+                    if let Some(t) = self.get_task(&task.id).await {
+                        updated.push(t);
+                    }
+                }
+            } else {
+                self.add_task(task.clone(), None).await?;
+                info!("➕ Added task: {} ({})", task.id, backend_name);
+                added.push(task);
+            }
+        }
+
+        // Cleanup stale tasks within scope
+        let stale: Vec<String> = self
+            .get_all_tasks()
+            .await
+            .into_iter()
+            .filter(|t| scope_predicate(t) && !active_ids.contains(&t.id))
+            .map(|t| t.id)
+            .collect();
+
+        let mut removed = Vec::with_capacity(stale.len());
+        for id in stale {
+            info!("🗑️ Removing stale task: {id}");
+            removed.push(self.remove_task(&id, None).await?);
+        }
+
+        Ok(CacheUpdateResult {
+            added,
+            updated,
+            removed,
+        })
+    }
+
     fn collect_tasks_from_remote(
         &self,
         backend_name: &str,
@@ -158,7 +177,6 @@ impl ScheduledTasksCache {
         remote_settings: &Value,
     ) -> Vec<ScheduledTask> {
         let mut tasks = Vec::new();
-
         let Some(obj) = remote_settings.as_object() else {
             return tasks;
         };
@@ -173,17 +191,14 @@ impl ScheduledTasksCache {
         for (key, task_type) in operations {
             if let Some(profiles) = obj.get(key).and_then(|v| v.as_object()) {
                 for (profile_name, profile_val) in profiles {
-                    if let Some(task) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
-                        .ok()
-                        .and_then(|config| {
-                            self.create_task_struct(
-                                backend_name,
-                                remote_name,
-                                profile_name,
-                                &task_type,
-                                &config,
-                            )
-                        })
+                    if let Ok(config) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
+                        && let Some(task) = self.create_task_struct(
+                            backend_name,
+                            remote_name,
+                            profile_name,
+                            &task_type,
+                            &config,
+                        )
                     {
                         tasks.push(task);
                     }
@@ -220,30 +235,6 @@ impl ScheduledTasksCache {
         .map(|_| ())
     }
 
-    /// Removes tasks that belong to `backend_name` but are NOT in `active_ids`.
-    /// Returns the removed tasks so the caller can unschedule their jobs.
-    async fn cleanup_tasks(
-        &self,
-        backend_name: &str,
-        active_ids: &HashSet<String>,
-        app: Option<&AppHandle>,
-    ) -> Result<Vec<ScheduledTask>, String> {
-        let stale: Vec<String> = self
-            .get_all_tasks()
-            .await
-            .into_iter()
-            .filter(|t| t.backend_name == backend_name && !active_ids.contains(&t.id))
-            .map(|t| t.id)
-            .collect();
-
-        let mut removed = Vec::with_capacity(stale.len());
-        for id in &stale {
-            info!("🗑️ Removing obsolete task: {id}");
-            removed.push(self.remove_task(id, app).await?);
-        }
-        Ok(removed)
-    }
-
     fn create_task_struct(
         &self,
         backend_name: &str,
@@ -257,23 +248,27 @@ impl ScheduledTasksCache {
         }
 
         let cron = config.cron_expression.as_ref().filter(|s| !s.is_empty())?;
-        let source = config.source.as_ref().filter(|s| !s.is_empty())?;
-        let dest = config.dest.as_ref().filter(|s| !s.is_empty())?;
+        let src_paths = normalize_paths(config.source.as_ref());
+        let dst_paths = normalize_paths(config.dest.as_ref());
+
+        if src_paths.is_empty() || dst_paths.is_empty() {
+            return None;
+        }
 
         let task_id = Self::generate_task_id(backend_name, remote_name, task_type, profile_name);
 
         let params = ProfileParams {
             remote_name: remote_name.to_string(),
             profile_name: profile_name.to_string(),
-            origin: Some(crate::utils::types::origin::Origin::Scheduler),
+            source: Some(crate::utils::types::origin::Origin::Scheduler),
             no_cache: None,
         };
 
-        let mut args = serde_json::to_value(params).ok()?;
-        if let Some(args_obj) = args.as_object_mut() {
-            args_obj.insert("source".to_string(), Value::String(source.clone()));
-            args_obj.insert("dest".to_string(), Value::String(dest.clone()));
-        }
+        let args = ScheduledTaskArgs {
+            params,
+            src_paths,
+            dst_paths,
+        };
 
         Some(ScheduledTask {
             id: task_id,
@@ -386,9 +381,6 @@ impl ScheduledTasksCache {
 
     /// Add or update tasks derived from a single remote's settings, removing
     /// tasks for profiles that no longer have cron enabled.
-    ///
-    /// Returns a `CacheUpdateResult`. The caller handles all scheduler
-    /// interaction for the returned tasks.
     pub async fn add_or_update_task_for_remote(
         &self,
         backend_name: &str,
@@ -396,48 +388,10 @@ impl ScheduledTasksCache {
         remote_settings: &Value,
     ) -> Result<CacheUpdateResult, String> {
         let tasks = self.collect_tasks_from_remote(backend_name, remote_name, remote_settings);
-
-        let active_ids: HashSet<String> = tasks.iter().map(|t| t.id.clone()).collect();
-
-        let mut added = Vec::new();
-        let mut updated = Vec::new();
-
-        for task_from_config in tasks {
-            let task_id = task_from_config.id.clone();
-
-            if let Some(existing_task) = self.get_task(&task_id).await {
-                if self.task_config_changed(&existing_task, &task_from_config) {
-                    self.update_task_config(&task_id, &task_from_config).await?;
-                    if let Some(current_task) = self.get_task(&task_id).await {
-                        updated.push(current_task);
-                    }
-                }
-            } else {
-                self.add_task(task_from_config.clone(), None).await?;
-                added.push(task_from_config);
-            }
-        }
-
         let prefix = format!("{backend_name}:{remote_name}-");
-        let to_remove: Vec<String> = self
-            .get_all_tasks()
+
+        self.sync_tasks(backend_name, tasks, |t| t.id.starts_with(&prefix))
             .await
-            .into_iter()
-            .filter(|t| t.id.starts_with(&prefix) && !active_ids.contains(&t.id))
-            .map(|t| t.id)
-            .collect();
-
-        let mut removed = Vec::with_capacity(to_remove.len());
-        for id in &to_remove {
-            info!("🗑️ Removing task no longer in config: {id}");
-            removed.push(self.remove_task(id, None).await?);
-        }
-
-        Ok(CacheUpdateResult {
-            added,
-            updated,
-            removed,
-        })
     }
 
     /// Remove all tasks belonging to a remote and return them. The caller is
@@ -613,7 +567,8 @@ mod tests {
         let p: ProfileConfig = serde_json::from_value(json_data).unwrap();
         assert_eq!(p.cron_enabled, Some(true));
         assert_eq!(p.cron_expression.as_deref(), Some("0 0 * * *"));
-        assert_eq!(p.source.as_deref(), Some("/src"));
+        assert_eq!(p.source.as_ref().and_then(|v| v.as_str()), Some("/src"));
+        assert_eq!(p.dest.as_ref().and_then(|v| v.as_str()), Some("/dst"));
     }
 
     // -----------------------------------------------------------------------
@@ -646,8 +601,8 @@ mod tests {
         ProfileConfig {
             cron_enabled: Some(enabled),
             cron_expression: Some(cron.to_string()),
-            source: Some("/src".to_string()),
-            dest: Some("/dst".to_string()),
+            source: Some(json!("/src")),
+            dest: Some(json!("/dst")),
         }
     }
 
@@ -665,8 +620,8 @@ mod tests {
         let cfg = ProfileConfig {
             cron_enabled: Some(true),
             cron_expression: Some(String::new()),
-            source: Some("/src".to_string()),
-            dest: Some("/dst".to_string()),
+            source: Some(json!("/src")),
+            dest: Some(json!("/dst")),
         };
         let result = cache.create_task_struct("b", "r", "p", &TaskType::Sync, &cfg);
         assert!(result.is_none(), "empty cron should return None");
@@ -679,7 +634,7 @@ mod tests {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
             source: None,
-            dest: Some("/dst".to_string()),
+            dest: Some(json!("/dst")),
         };
         assert!(
             cache
@@ -695,8 +650,8 @@ mod tests {
         let cfg = ProfileConfig {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
-            source: Some(String::new()),
-            dest: Some("/dst".to_string()),
+            source: Some(json!("")),
+            dest: Some(json!("/dst")),
         };
         assert!(
             cache
@@ -712,7 +667,7 @@ mod tests {
         let cfg = ProfileConfig {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
-            source: Some("/src".to_string()),
+            source: Some(json!("/src")),
             dest: None,
         };
         assert!(
@@ -729,8 +684,8 @@ mod tests {
         let cfg = ProfileConfig {
             cron_enabled: Some(true),
             cron_expression: Some("* * * * *".to_string()),
-            source: Some("/src".to_string()),
-            dest: Some(String::new()),
+            source: Some(json!("/src")),
+            dest: Some(json!("")),
         };
         assert!(
             cache
@@ -746,8 +701,8 @@ mod tests {
         let cfg = ProfileConfig {
             cron_enabled: Some(true),
             cron_expression: Some("*/5 * * * *".to_string()),
-            source: Some("/src".to_string()),
-            dest: Some("/dst".to_string()),
+            source: Some(json!("/src")),
+            dest: Some(json!("/dst")),
         };
         let task = cache
             .create_task_struct("backend", "remote", "daily", &TaskType::Copy, &cfg)
@@ -759,11 +714,10 @@ mod tests {
         assert!(task.scheduler_job_id.is_none());
         assert!(task.current_job_id.is_none());
 
-        assert_eq!(
-            task.args.get("source").and_then(|v| v.as_str()),
-            Some("/src")
-        );
-        assert_eq!(task.args.get("dest").and_then(|v| v.as_str()), Some("/dst"));
+        assert_eq!(task.args.src_paths, vec!["/src".to_string()]);
+        assert_eq!(task.args.dst_paths, vec!["/dst".to_string()]);
+        assert_eq!(task.args.params.remote_name, "remote");
+        assert_eq!(task.args.params.profile_name, "daily");
     }
 
     // -----------------------------------------------------------------------
@@ -778,7 +732,16 @@ mod tests {
             profile_name: "p".to_string(),
             cron_expression: "* * * * *".to_string(),
             status: TaskStatus::Enabled,
-            args: json!({"remote_name": "r"}),
+            args: ScheduledTaskArgs {
+                params: ProfileParams {
+                    remote_name: "r".to_string(),
+                    profile_name: "p".to_string(),
+                    source: None,
+                    no_cache: None,
+                },
+                src_paths: vec![],
+                dst_paths: vec![],
+            },
             backend_name: "b".to_string(),
             created_at: chrono::Utc::now(),
             last_run: None,

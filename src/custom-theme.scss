@@ -156,6 +156,10 @@
   --view-bg-color-rgb: 255, 255, 255;
   --sidebar-bg-color-rgb: 235, 235, 237;
   --dim-color-rgb: 147, 144, 144;
+  --accent-color-rgb: 53, 132, 228; // GNOME Blue 4
+  --success-color-rgb: 38, 162, 105; // GNOME Green 5
+  --warning-color-rgb: 229, 165, 10; // GNOME Yellow 5
+  --destructive-color-rgb: 192, 28, 40; // GNOME Red 4
 }
 
 .dark {
@@ -228,6 +232,10 @@
   --view-bg-color-rgb: 30, 30, 30;
   --sidebar-bg-color-rgb: 46, 46, 50;
   --dim-color-rgb: 147, 144, 144;
+  --accent-color-rgb: 153, 193, 241; // GNOME Blue 1
+  --success-color-rgb: 143, 240, 164; // GNOME Green 1
+  --warning-color-rgb: 249, 240, 107; // GNOME Yellow 1
+  --destructive-color-rgb: 255, 123, 123; // GNOME Red 1
 }
 
 // ============================================================================

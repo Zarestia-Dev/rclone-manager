@@ -292,11 +292,19 @@ export class NautilusTabService {
     const known = this.nautilusService.allRemotesLookup();
 
     // Local drive match (Windows C:\ or mounted drives)
-    const driveMatch = known.find(
-      r => r.isLocal && normalized.toLowerCase().startsWith(r.name.toLowerCase())
-    );
+    const driveMatch = known.find(r => {
+      if (!r.isLocal) return false;
+      const rNameNorm = r.name.replace(/\\/g, '/').toLowerCase();
+      const inputNorm = normalized.toLowerCase();
+      return (
+        inputNorm.startsWith(rNameNorm) ||
+        (rNameNorm.endsWith('/') && inputNorm === rNameNorm.slice(0, -1))
+      );
+    });
+
     if (driveMatch) {
-      const remaining = normalized.substring(driveMatch.name.length);
+      const rNameNorm = driveMatch.name.replace(/\\/g, '/');
+      const remaining = normalized.substring(rNameNorm.length);
       return { remote: driveMatch, path: remaining.replace(/^[/:]+/, '') };
     }
 

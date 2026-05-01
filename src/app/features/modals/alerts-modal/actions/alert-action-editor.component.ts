@@ -29,138 +29,199 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
     TranslateModule,
   ],
   template: `
-    <h2 mat-dialog-title>
-      <mat-icon [svgIcon]="data?.kind ? 'bolt' : 'plus'"></mat-icon>
-      {{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}
+    <h2 mat-dialog-title class="dialog-title">
+      <div class="title-content">
+        <div class="icon-wrapper">
+          <mat-icon [svgIcon]="data?.kind ? 'bolt' : 'plus'"></mat-icon>
+        </div>
+        <span>{{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}</span>
+      </div>
     </h2>
 
-    <mat-dialog-content class="editor-content hide-scrollbar">
+    <mat-dialog-content>
       <form [formGroup]="form" (ngSubmit)="save()" class="editor-form">
-        <!-- Common Fields -->
-        <div class="form-row">
-          <mat-form-field class="flex-2">
-            <mat-label>{{ 'common.name' | translate }}</mat-label>
-            <input
-              matInput
-              formControlName="name"
-              [placeholder]="'alerts.action.placeholderName' | translate"
-            />
-            @if (form.controls.name.hasError('required')) {
-              <mat-error>{{ 'common.required' | translate }}</mat-error>
-            }
-          </mat-form-field>
+        <!-- Basic Info Section -->
+        <h3 class="section-title">
+          <mat-icon svgIcon="info" class="sm-icon"></mat-icon>
+          {{ 'alerts.action.basicInfo' | translate }}
+        </h3>
 
-          <mat-form-field class="flex-1">
-            <mat-label>{{ 'alerts.action.kind' | translate }}</mat-label>
-            <mat-select formControlName="kind" (selectionChange)="onKindChange()">
-              <mat-option value="os_toast">{{ 'alerts.action.os_toast' | translate }}</mat-option>
-              <mat-option value="webhook">{{ 'alerts.action.webhook' | translate }}</mat-option>
-              <mat-option value="script">{{ 'alerts.action.script' | translate }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <mat-slide-toggle formControlName="enabled" class="mb-xs">
-          {{ 'alerts.enabled' | translate }}
-        </mat-slide-toggle>
-
-        <mat-divider class="my-4"></mat-divider>
-
-        <!-- Webhook Fields -->
-        @if (form.controls.kind.value === 'webhook') {
-          <div class="kind-fields">
-            <mat-form-field>
-              <mat-label>{{ 'alerts.action.url' | translate }}</mat-label>
-              <input matInput formControlName="url" placeholder="https://api.example.com/webhook" />
-            </mat-form-field>
-
-            <div class="form-row">
-              <mat-form-field class="flex-1">
-                <mat-label>{{ 'alerts.action.method' | translate }}</mat-label>
-                <mat-select formControlName="method">
-                  <mat-option value="POST">POST</mat-option>
-                  <mat-option value="GET">GET</mat-option>
-                  <mat-option value="PUT">PUT</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field class="flex-1">
-                <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
-                <input matInput type="number" formControlName="timeout_secs" />
-              </mat-form-field>
-            </div>
-
-            <mat-form-field>
-              <mat-label>{{ 'alerts.action.bodyTemplate' | translate }}</mat-label>
-              <textarea matInput formControlName="body_template" rows="4"></textarea>
-            </mat-form-field>
-
-            <div class="info-box">
-              <mat-icon svgIcon="info"></mat-icon>
-              <span>
-                {{ 'alerts.action.bodyTemplateHint' | translate }}:
-                @for (key of templateKeys(); track key) {
-                  <code>{{ '{{' }}{{ key }}{{ '}}' }}</code>{{ $last ? '' : ', ' }}
-                }
-              </span>
-            </div>
-
-            <div class="form-row mt-md align-center">
-              <mat-slide-toggle formControlName="tls_verify" class="flex-1">
-                {{ 'alerts.action.tlsVerify' | translate }}
-              </mat-slide-toggle>
-              <mat-form-field class="flex-1">
-                <mat-label>{{ 'alerts.action.retryCount' | translate }}</mat-label>
-                <input matInput type="number" formControlName="retry_count" min="0" max="5" />
-              </mat-form-field>
-            </div>
-          </div>
-        }
-
-        <!-- Script Fields -->
-        @if (form.controls.kind.value === 'script') {
-          <div class="kind-fields">
-            <mat-form-field>
-              <mat-label>{{ 'alerts.action.command' | translate }}</mat-label>
-              <input matInput formControlName="command" placeholder="/usr/local/bin/notify.sh" />
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>{{ 'alerts.action.args' | translate }}</mat-label>
+        <div class="panel">
+          <div class="form-row">
+            <mat-form-field appearance="fill" class="flex-2">
+              <mat-label>{{ 'common.name' | translate }}</mat-label>
               <input
                 matInput
-                formControlName="argsRaw"
-                [placeholder]="'alerts.action.argsHint' | translate"
+                formControlName="name"
+                [placeholder]="'alerts.action.placeholderName' | translate"
               />
+              @if (form.controls.name.hasError('required')) {
+                <mat-error>{{ 'common.required' | translate }}</mat-error>
+              }
             </mat-form-field>
 
-            <div class="info-box">
-              <mat-icon svgIcon="terminal"></mat-icon>
-              <span>
-                {{ 'alerts.action.scriptContextHint' | translate }}:
-                @for (key of templateKeys(); track key) {
-                  <code>ALERT_{{ key.toUpperCase() }}</code
-                  >{{ $last ? '' : ', ' }}
-                }
-              </span>
-            </div>
-
-            <mat-form-field class="flex-1 mt-md">
-              <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
-              <input matInput type="number" formControlName="timeout_secs" />
+            <mat-form-field appearance="fill" class="flex-1">
+              <mat-label>{{ 'alerts.action.kind' | translate }}</mat-label>
+              <mat-select formControlName="kind" (selectionChange)="onKindChange()">
+                <mat-option value="os_toast">
+                  <div class="kind-option">
+                    <mat-icon svgIcon="desktop" class="sm-icon"></mat-icon>
+                    {{ 'alerts.action.os_toast' | translate }}
+                  </div>
+                </mat-option>
+                <mat-option value="webhook">
+                  <div class="kind-option">
+                    <mat-icon svgIcon="webhook" class="sm-icon"></mat-icon>
+                    {{ 'alerts.action.webhook' | translate }}
+                  </div>
+                </mat-option>
+                <mat-option value="script">
+                  <div class="kind-option">
+                    <mat-icon svgIcon="terminal" class="sm-icon"></mat-icon>
+                    {{ 'alerts.action.script' | translate }}
+                  </div>
+                </mat-option>
+              </mat-select>
             </mat-form-field>
           </div>
-        }
 
-        <!-- OS Toast Fields -->
-        @if (form.controls.kind.value === 'os_toast') {
-          <div class="kind-fields">
-            <div class="info-box accent">
-              <mat-icon svgIcon="desktop"></mat-icon>
-              <span>{{ 'alerts.action.os_toast_info' | translate }}</span>
-            </div>
+          <div class="toggle-container">
+            <mat-slide-toggle formControlName="enabled" color="primary">
+              {{ 'alerts.enabled' | translate }}
+            </mat-slide-toggle>
           </div>
-        }
+        </div>
+
+        <!-- Configuration Section -->
+        <h3 class="section-title mt-md">
+          <mat-icon svgIcon="settings" class="sm-icon"></mat-icon>
+          {{ 'alerts.action.configuration' | translate }}
+        </h3>
+
+        <div class="panel">
+          <!-- Webhook Fields -->
+          @if (form.controls.kind.value === 'webhook') {
+            <div class="kind-fields anim-fade-in">
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'alerts.action.url' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="link" class="prefix-icon"></mat-icon>
+                <input
+                  matInput
+                  formControlName="url"
+                  placeholder="https://api.example.com/webhook"
+                />
+              </mat-form-field>
+
+              <div class="form-row">
+                <mat-form-field appearance="fill" class="flex-1">
+                  <mat-label>{{ 'alerts.action.method' | translate }}</mat-label>
+                  <mat-select formControlName="method">
+                    <mat-option value="POST">POST</mat-option>
+                    <mat-option value="GET">GET</mat-option>
+                    <mat-option value="PUT">PUT</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="flex-1">
+                  <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
+                  <input matInput type="number" formControlName="timeout_secs" />
+                  <span matSuffix class="suffix-text">sec</span>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="flex-1">
+                  <mat-label>{{ 'alerts.action.retryCount' | translate }}</mat-label>
+                  <input matInput type="number" formControlName="retry_count" min="0" max="5" />
+                </mat-form-field>
+              </div>
+
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'alerts.action.bodyTemplate' | translate }}</mat-label>
+                <textarea
+                  matInput
+                  formControlName="body_template"
+                  rows="4"
+                  class="code-font"
+                ></textarea>
+              </mat-form-field>
+
+              <div class="info-box">
+                <mat-icon svgIcon="info"></mat-icon>
+                <div class="info-content">
+                  <span class="info-title"
+                    >{{ 'alerts.action.bodyTemplateHint' | translate }}:</span
+                  >
+                  <div class="tags-container">
+                    @for (key of templateKeys(); track key) {
+                      <span class="code-tag">{{ '{{' }}{{ key }}{{ '}}' }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="toggle-container mt-sm">
+                <mat-slide-toggle formControlName="tls_verify" color="primary">
+                  {{ 'alerts.action.tlsVerify' | translate }}
+                </mat-slide-toggle>
+              </div>
+            </div>
+          }
+
+          <!-- Script Fields -->
+          @if (form.controls.kind.value === 'script') {
+            <div class="kind-fields anim-fade-in">
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'alerts.action.command' | translate }}</mat-label>
+                <mat-icon matPrefix svgIcon="terminal" class="prefix-icon"></mat-icon>
+                <input
+                  matInput
+                  formControlName="command"
+                  placeholder="/usr/local/bin/notify.sh"
+                  class="code-font"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'alerts.action.args' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="argsRaw"
+                  [placeholder]="'alerts.action.argsHint' | translate"
+                  class="code-font"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
+                <input matInput type="number" formControlName="timeout_secs" />
+                <span matSuffix class="suffix-text">sec</span>
+              </mat-form-field>
+
+              <div class="info-box">
+                <mat-icon svgIcon="terminal"></mat-icon>
+                <div class="info-content">
+                  <span class="info-title"
+                    >{{ 'alerts.action.scriptContextHint' | translate }}:</span
+                  >
+                  <div class="tags-container">
+                    @for (key of templateKeys(); track key) {
+                      <span class="code-tag">ALERT_{{ key.toUpperCase() }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- OS Toast Fields -->
+          @if (form.controls.kind.value === 'os_toast') {
+            <div class="kind-fields anim-fade-in">
+              <div class="info-box accent">
+                <mat-icon svgIcon="desktop"></mat-icon>
+                <span>{{ 'alerts.action.os_toast_info' | translate }}</span>
+              </div>
+            </div>
+          }
+        </div>
 
         <!-- Hidden submit button to allow Enter key submission -->
         <button type="submit" style="display:none"></button>
@@ -176,15 +237,61 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
   `,
   styles: [
     `
-      .editor-content {
-        min-width: 500px;
-        max-width: 600px;
-        padding-top: var(--space-md) !important;
+      .dialog-title {
+        margin: 0;
+        padding: var(--space-lg) var(--space-lg) var(--space-md);
+        border-bottom: 1px solid var(--border-color);
+
+        .title-content {
+          display: flex;
+          align-items: center;
+          gap: var(--space-md);
+
+          .icon-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(var(--accent-color-rgb), 0.1);
+            color: var(--accent-color);
+          }
+        }
       }
 
       .editor-form {
         display: flex;
         flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .panel {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
+        border-radius: var(--card-border-radius);
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .section-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+
+        .sm-icon {
+          width: 18px;
+          height: 18px;
+          font-size: 18px;
+        }
       }
 
       .form-row {
@@ -203,18 +310,64 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
         }
       }
 
+      .full-width {
+        width: 100%;
+      }
+
+      .mt-md {
+        margin-top: var(--space-md);
+      }
+
+      .mt-sm {
+        margin-top: var(--space-sm);
+      }
+
+      .toggle-container {
+        padding: var(--space-xs) 0;
+      }
+
       .kind-fields {
         display: flex;
         flex-direction: column;
         gap: var(--space-sm);
       }
 
+      .kind-option {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+
+        .sm-icon {
+          width: 18px;
+          height: 18px;
+          font-size: 18px;
+          opacity: 0.7;
+        }
+      }
+
+      .prefix-icon {
+        margin-right: var(--space-sm);
+        opacity: 0.5;
+      }
+
+      .suffix-text {
+        color: var(--text-muted);
+        margin-right: 4px;
+        font-size: 0.9em;
+      }
+
+      .code-font {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.9em;
+      }
+
       .info-box {
         display: flex;
         align-items: flex-start;
-        gap: var(--space-sm);
-        padding: var(--space-sm) var(--space-md);
-        background: var(--bg-elevated);
+        gap: var(--space-md);
+        padding: var(--space-md);
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
         border-radius: var(--card-border-radius);
         color: var(--text-muted);
         font-size: var(--font-size-sm);
@@ -230,33 +383,58 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
         }
 
         mat-icon {
-          width: 20px;
-          height: 20px;
-          font-size: 20px;
+          width: 24px;
+          height: 24px;
+          font-size: 24px;
           opacity: 0.8;
-          margin-top: 2px;
+          flex-shrink: 0;
         }
 
-        code {
-          background: rgba(var(--window-fg-color-rgb), 0.1);
-          padding: 2px 4px;
+        .info-content {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm);
+        }
+
+        .info-title {
+          font-weight: 500;
+          color: var(--window-fg-color);
+        }
+
+        .tags-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-xs);
+        }
+
+        .code-tag {
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-color);
+          padding: 2px 6px;
           border-radius: 4px;
+          font-family: 'JetBrains Mono', 'Fira Code', monospace;
+          font-size: 0.85em;
+          color: var(--accent-color);
         }
       }
 
-      .my-4 {
-        margin-top: var(--space-md);
-        margin-bottom: var(--space-md);
-        opacity: 0.6;
+      .anim-fade-in {
+        animation: fadeIn 0.3s ease-in-out;
       }
-      .mt-md {
-        margin-top: var(--space-md);
-      }
-      .mb-xs {
-        margin-bottom: var(--space-xs);
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
     `,
   ],
+  styleUrl: '../../../../styles/_shared-modal.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionEditorComponent {

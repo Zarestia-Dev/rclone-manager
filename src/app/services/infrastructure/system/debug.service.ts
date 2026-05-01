@@ -93,7 +93,7 @@ export class DebugService extends TauriBaseService {
     }
 
     try {
-      await this.apiClient.invoke<string>('open_devtools');
+      await this.invokeCommand<string>('open_devtools');
     } catch (error) {
       console.error('Failed to open devtools:', error);
       this.notificationService.showError(

@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::RwLock;
 
-use crate::utils::types::origin::Origin;
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MountedRemote {
     pub fs: String,
@@ -35,10 +33,11 @@ pub struct ListOptions {
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileParams {
     pub remote_name: String,
     pub profile_name: String,
-    pub origin: Option<Origin>,
+    pub source: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
 }

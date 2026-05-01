@@ -62,8 +62,8 @@ impl FromConfig for MountParams {
 
         Some(Self {
             remote_name,
-            source: common.source,
-            mount_point: common.dest,
+            source: common.sources.first().cloned().unwrap_or_default(),
+            mount_point: common.dests.first().cloned().unwrap_or_default(),
             mount_type: config
                 .get("type")
                 .and_then(|v| v.as_str())
@@ -337,7 +337,7 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
-    mount_params.origin = params.origin;
+    mount_params.origin = params.source;
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await

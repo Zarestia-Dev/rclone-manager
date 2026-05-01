@@ -145,8 +145,8 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        origin: Some(Origin::Startup),
-        no_cache: None,
+        source: Some(Origin::Startup),
+        no_cache: Some(false),
     };
 
     match mount_remote_profile(app.clone(), params).await {
@@ -163,8 +163,8 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        origin: Some(Origin::Startup),
-        no_cache: None,
+        source: Some(Origin::Startup),
+        no_cache: Some(false),
     };
 
     match start_serve_profile(app.clone(), params).await {
@@ -184,8 +184,8 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
     let params = ProfileParams {
         remote_name: remote_name.to_string(),
         profile_name: profile_name.to_string(),
-        origin: Some(Origin::Startup),
-        no_cache: None,
+        source: Some(Origin::Startup),
+        no_cache: Some(false),
     };
 
     let transfer_type = match op_type {
@@ -199,7 +199,7 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
         }
     };
 
-    let result = start_profile_batch(app.clone(), vec![params], transfer_type).await;
+    let result = start_profile_batch(app.clone(), transfer_type, params).await;
 
     match result {
         Ok(_) => {

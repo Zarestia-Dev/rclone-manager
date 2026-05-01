@@ -389,10 +389,6 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
-      },
-      "max_upload_batch_size": {
-        "label": "Maximum Upload Batch Size (MB)",
-        "description": "The maximum size of a batch of files uploaded from the local computer in one request."
       }
     },
     "developer": {
@@ -1441,7 +1437,13 @@
         "startTime": "Start Time",
         "speed": "Speed",
         "eta": "ETA",
-        "transfers": "Transfers"
+        "transfers": "Transfers",
+        "uploadedFiles": "Uploaded files",
+        "deletedFiles": "Deleted files",
+        "movedFiles": "Moved files",
+        "copiedFiles": "Copied files",
+        "syncedFiles": "Synced files",
+        "processedFiles": "Processed files"
       },
       "types": {
         "delete": "Delete",
@@ -2348,6 +2350,8 @@
       "openNewTab": "Open in New Tab",
       "copyPath": "Copy Path",
       "newFolder": "New Folder",
+      "uploadFiles": "Upload Files",
+      "uploadFolder": "Upload Folder",
       "refresh": "Refresh",
       "properties": "Properties",
       "reload": "Reload",

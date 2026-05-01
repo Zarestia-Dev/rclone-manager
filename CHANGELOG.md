@@ -10,16 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Unified Command Registry**: Implemented a master command registry macro that automatically synchronizes Tauri IPC commands and headless HTTP endpoints. This simplifies adding new features and ensures parity between desktop and web modes.
 - **Alert & Actions**: Added a new tab to the Alerts section for managing alert actions. Users can now define custom actions (OS Toast, Webhook, Script) that can be triggered when an alert rule matches. **Needs some polish before release**!
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
+- Add option to upload files or folder to right click context menu in nautilus file browser. Separate buttons for files and folder.
 - **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
 - **Shell Command Interpolation**: Path and option fields now support shell command substitution using backticks. Wrap any command in backticks (e.g. `` `date +%Y-%m-%d` ``) and the output will be substituted into the path. Works for dynamic backup directories, timestamped mount points, and any configuration parameter. Commands are evaluated on the local system at job time.
 - Jottacloud provider added into the non-interactive remotes. 
+- Nautilus drag-and-drop lasso selection. Hold left mouse button and drag to select multiple items.
 
 ### Changed
 - **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.
 - **Frontend Communication**: Streamlined the frontend's transport layer by centralizing environment detection and routing all commands through a unified `invoke` bridge.
 - Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
 - change rclone binary location to direct binary path.
+- Remove the batch upload limit from the Nautilus drag-and-drop feature (Headless mode only). App now upload the files on the temp folder of the remote instance after starting to upload to final destination. After the upload finishes, it will remove the files from the temp folder.
 
+### Fixed
+- **Audio Cover Support**: Enhanced audio cover extraction with support for FLAC and multiple other formats. Optimized image loading by moving to a native streaming architecture that allows browsers to decode images directly, improving both performance and memory usage across Desktop and Headless modes. Maybe future I can use this for tha thumbnail view of images and any other things too.
 
 ## [v0.2.4] - 2026-04-14
 ### Added

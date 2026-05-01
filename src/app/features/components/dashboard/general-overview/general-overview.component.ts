@@ -341,7 +341,7 @@ export class GeneralOverviewComponent {
   }
 
   onTaskClick(task: ScheduledTask): void {
-    const remoteName = task.args['remote_name'];
+    const remoteName = task.args.remoteName;
     if (remoteName) {
       const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
       if (remote) this.selectRemote.emit(remote);

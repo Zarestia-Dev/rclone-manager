@@ -48,6 +48,7 @@
    ========================================================================== */
 
 .nautilus-grid {
+  position: relative;
   padding: var(--space-md) var(--space-xs);
   flex: 1;
   min-height: 0;
@@ -68,6 +69,10 @@
     outline: none;
     user-select: none;
     -webkit-user-drag: element;
+
+    .folder-card {
+      padding: var(--space-xs);
+    }
 
     &.selected .folder-card {
       background: var(--selected-bg-color);
@@ -157,8 +162,11 @@ tr.folder-drag-over {
    ========================================================================== */
 
 .nautilus-list-container {
+  position: relative;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nautilus-table {
@@ -271,6 +279,7 @@ tr.folder-drag-over {
   border: 4px dashed var(--dim-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
+  margin-bottom: var(--space-xs);
   opacity: 0.7;
 
   &.list-view {
@@ -305,7 +314,6 @@ tr.folder-drag-over {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-md);
 
   mat-icon {
     width: 128px;
@@ -317,6 +325,7 @@ tr.folder-drag-over {
   h2 {
     font-weight: 700;
     color: var(--window-fg-color);
+    text-align: center;
     opacity: 0.7;
     margin: 0;
   }
@@ -327,4 +336,13 @@ tr.folder-drag-over {
     text-align: center;
     margin: 0;
   }
+}
+
+.lasso-selection {
+  position: absolute;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--window-fg-color) 70%, transparent);
+  background: color-mix(in srgb, var(--window-fg-color) 15%, transparent);
+  pointer-events: none;
+  z-index: 1000;
+  border-radius: var(--radius-xxs);
 }

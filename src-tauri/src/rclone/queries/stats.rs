@@ -38,13 +38,38 @@ pub async fn get_completed_transfers(
         .post_json(
             &app.state::<RcloneState>().client,
             core::TRANSFERRED,
-            Some(&group_payload(group)),
+            Some(&group_payload(group.clone())),
         )
         .await
         .map_err(|e| {
             error!("❌ Failed to get completed transfers: {e}");
             format!("Failed to get completed transfers: {e}")
         })?;
+
+    // Fallback for manual jobs in our cache
+    if let Some(ref group_name) = group {
+        let job_cache = &app.state::<BackendManager>().job_cache;
+        let all_jobs = job_cache.get_jobs().await;
+        if let Some(manual_job) = all_jobs
+            .iter()
+            .find(|j| j.group == *group_name || format!("job_{}", j.jobid) == *group_name)
+            && let Some(completed) = manual_job
+                .stats
+                .as_ref()
+                .and_then(|s| s.get("completed"))
+                .and_then(|v| v.as_array())
+            && !completed.is_empty()
+        {
+            let rclone_count = value
+                .get("transferred")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            if completed.len() > rclone_count {
+                value["transferred"] = json!(completed);
+            }
+        }
+    }
 
     #[cfg(target_os = "windows")]
     {

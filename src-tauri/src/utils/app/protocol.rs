@@ -1,4 +1,6 @@
-use log::{debug, error};
+use crate::utils::app::audio;
+use log::{debug, error, warn};
+use std::path::Path;
 use tauri::{Builder, Manager, Runtime};
 
 pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
@@ -363,6 +365,171 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             response_builder.status(200).body(buffer).unwrap()
         }
     });
+
+    // -------------------------------------------------------------------------
+    // Custom Protocol for Audio Cover Extraction (Desktop)
+    // -------------------------------------------------------------------------
+    builder = builder.register_asynchronous_uri_scheme_protocol(
+        "audio-cover",
+        |app, request, responder| {
+            // 1. Handle CORS Preflight
+            if request.method() == tauri::http::Method::OPTIONS {
+                responder.respond(
+                    tauri::http::Response::builder()
+                        .status(204)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "*")
+                        .body(vec![])
+                        .unwrap(),
+                );
+                return;
+            }
+
+            let uri = request.uri().to_string();
+            debug!("🔍 audio-cover protocol handler received URI: {}", uri);
+
+            // Expected formats:
+            // audio-cover://localhost/local/<path>
+            // audio-cover://localhost/remote/<remote>/<path>
+
+            let path_part = if let Some(stripped) = uri.strip_prefix("audio-cover://localhost/") {
+                stripped
+            } else if let Some(stripped) = uri.strip_prefix("http://audio-cover.localhost/") {
+                stripped
+            } else if let Some(stripped) = uri.strip_prefix("audio-cover://") {
+                stripped
+            } else {
+                &uri
+            };
+
+            if let Some(local_path) = path_part.strip_prefix("local/") {
+                // Local file extraction
+                let decoded_path = match urlencoding::decode(local_path) {
+                    Ok(decoded) => decoded.into_owned(),
+                    Err(_) => local_path.to_string(),
+                };
+
+                #[cfg(target_os = "windows")]
+                let decoded_path = {
+                    if decoded_path.starts_with('/') && decoded_path.chars().nth(2) == Some(':') {
+                        decoded_path[1..].to_string()
+                    } else {
+                        decoded_path
+                    }
+                };
+
+                if let Some(pic) = audio::extract_picture_from_path(&decoded_path) {
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(200)
+                            .header(tauri::http::header::CONTENT_TYPE, pic.mime_type)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Cache-Control", "max-age=3600")
+                            .body(pic.data)
+                            .unwrap(),
+                    );
+                } else {
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(404)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(vec![])
+                            .unwrap(),
+                    );
+                }
+            } else if let Some(remote_part) = path_part.strip_prefix("remote/") {
+                // Remote file extraction
+                let (remote_enc, path_enc) = match remote_part.find('/') {
+                    Some(idx) => (&remote_part[..idx], &remote_part[idx + 1..]),
+                    None => (remote_part, ""),
+                };
+
+                let mut remote = match urlencoding::decode(remote_enc) {
+                    Ok(d) => d.into_owned(),
+                    Err(_) => remote_enc.to_string(),
+                };
+                if !remote.ends_with(':') {
+                    remote.push(':');
+                }
+
+                let path = match urlencoding::decode(path_enc) {
+                    Ok(d) => d.into_owned(),
+                    Err(_) => path_enc.to_string(),
+                };
+
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use crate::rclone::backend::BackendManager;
+                    let backend_manager = app_handle.state::<BackendManager>();
+                    let backend = backend_manager.get_active().await;
+                    let rclone_state = app_handle.state::<crate::utils::types::core::RcloneState>();
+
+                    // Fetch first 10MB (consistent with headless handler)
+                    match backend
+                        .fetch_file_stream_with_range(
+                            &rclone_state.client,
+                            &remote,
+                            &path,
+                            Some("bytes=0-10485760"),
+                        )
+                        .await
+                    {
+                        Ok(response) => {
+                            if response.status().is_success()
+                                && let Ok(bytes) = response.bytes().await
+                            {
+                                let extension =
+                                    Path::new(&path).extension().and_then(|ext| ext.to_str());
+                                if let Some(pic) =
+                                    audio::extract_picture_from_bytes(&bytes, extension)
+                                {
+                                    responder.respond(
+                                        tauri::http::Response::builder()
+                                            .status(200)
+                                            .header(
+                                                tauri::http::header::CONTENT_TYPE,
+                                                pic.mime_type,
+                                            )
+                                            .header("Access-Control-Allow-Origin", "*")
+                                            .header("Cache-Control", "max-age=3600")
+                                            .body(pic.data)
+                                            .unwrap(),
+                                    );
+                                    return;
+                                }
+                            }
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(404)
+                                    .header("Access-Control-Allow-Origin", "*")
+                                    .body(vec![])
+                                    .unwrap(),
+                            );
+                        }
+                        Err(e) => {
+                            warn!("Failed to fetch remote cover for {remote}:{path}: {e}");
+                            responder.respond(
+                                tauri::http::Response::builder()
+                                    .status(500)
+                                    .header("Access-Control-Allow-Origin", "*")
+                                    .body(vec![])
+                                    .unwrap(),
+                            );
+                        }
+                    }
+                });
+            } else {
+                responder.respond(
+                    tauri::http::Response::builder()
+                        .status(400)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(vec![])
+                        .unwrap(),
+                );
+            }
+        },
+    );
 
     builder
 }

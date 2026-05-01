@@ -197,8 +197,10 @@ export interface RemoteConfigStepVisibility {
 interface BaseOperationConfig {
   autoStart: boolean;
   cronEnabled?: boolean;
-  source: string;
-  dest: string;
+  source?: string;
+  dest?: string;
+  sources?: string[];
+  dests?: string[];
   cronExpression?: string | null;
   options?: any;
   name?: string;
@@ -210,8 +212,10 @@ interface BaseOperationConfig {
 
 export interface MountConfig {
   autoStart: boolean;
-  dest: string;
-  source: string;
+  dest?: string;
+  source?: string;
+  sources?: string[];
+  dests?: string[];
   type: string;
   options?: any;
   vfsProfile?: string;
@@ -252,8 +256,10 @@ export interface MoveConfig extends BaseOperationConfig {
 export interface BisyncConfig {
   autoStart: boolean;
   cronEnabled?: boolean;
-  source: string;
-  dest: string;
+  source?: string;
+  dest?: string;
+  sources?: string[];
+  dests?: string[];
   dryRun?: boolean;
   resync?: boolean;
   checkAccess?: boolean;
@@ -287,7 +293,9 @@ export interface RuntimeRemoteConfig {
 export interface ServeConfig {
   autoStart: boolean;
   type: string;
-  source: string; // or object, but usually string in the config object
+  source?: string;
+  sources?: string[];
+  dests?: string[];
   options?: any;
 
   name?: string;

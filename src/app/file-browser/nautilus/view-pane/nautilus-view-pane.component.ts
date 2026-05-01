@@ -75,11 +75,12 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly sortDirection = input.required<'asc' | 'desc'>();
   public readonly activePaneIndex = input.required<0 | 1>();
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
+  public readonly isMobile = input<boolean>(false);
   public readonly fileMenu = input.required<TemplateRef<unknown>>();
 
   // --- Outputs ---
   public readonly switchPane = output<0 | 1>();
-  public readonly clearSelection = output<void>();
+  public readonly clearSelection = output<0 | 1>();
   public readonly setContextItem = output<FileBrowserItem | null>();
   public readonly dropToCurrentDirectory = output<{ event: DragEvent; paneIndex: 0 | 1 }>();
   public readonly dragStarted = output<{ event: DragEvent; item: FileBrowserItem }>();
@@ -259,6 +260,15 @@ export class NautilusViewPaneComponent implements OnDestroy {
     return wrapper;
   }
 
+  protected onItemKeydown(event: Event, item: FileBrowserItem, index: number): void {
+    if ((event as KeyboardEvent).key === 'Enter') {
+      this.itemClick.emit({ item, event, index });
+      this.navigateTo.emit(item);
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Utilities
   // ---------------------------------------------------------------------------
@@ -281,9 +291,28 @@ export class NautilusViewPaneComponent implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   protected onMouseDown(event: MouseEvent): void {
+    // Switch pane on any left click in the content area
+    if (event.button === 0) {
+      this.switchPane.emit(this.paneIndex());
+    }
+
     // Only left click, and not on an item
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
+
+    const container =
+      this.layout() === 'grid'
+        ? this.gridContainer?.nativeElement
+        : this.listContainer?.nativeElement;
+    if (!container) return;
+
+    // Detect if we clicked on a scrollbar
+    const rect = container.getBoundingClientRect();
+    const isScrollbar =
+      event.clientX > rect.left + container.clientWidth ||
+      event.clientY > rect.top + container.clientHeight;
+    if (isScrollbar) return;
+
     if (
       target.closest('.grid-item') ||
       target.closest('tr.mat-mdc-row') ||
@@ -293,15 +322,8 @@ export class NautilusViewPaneComponent implements OnDestroy {
       return;
     }
 
-    const container =
-      this.layout() === 'grid'
-        ? this.gridContainer?.nativeElement
-        : this.listContainer?.nativeElement;
-    if (!container) return;
-
     event.preventDefault();
 
-    const rect = container.getBoundingClientRect();
     this._lassoStart = {
       x: event.clientX - rect.left + container.scrollLeft,
       y: event.clientY - rect.top + container.scrollTop,
@@ -360,14 +382,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
       this._isLassoing = true;
     }
 
-    // Determine visual rectangle relative to paneWrapper
-    const parent = this.paneWrapper?.nativeElement;
-    if (parent) {
-      const parentRect = parent.getBoundingClientRect();
-      const visualLeft = left - container.scrollLeft + rect.left - parentRect.left;
-      const visualTop = top - container.scrollTop + rect.top - parentRect.top;
-      this.lassoRect.set({ left: visualLeft, top: visualTop, width, height });
-    }
+    this.lassoRect.set({ left, top, width, height });
 
     this._handleAutoScroll(event, container);
     this._updateLassoSelection();
@@ -388,7 +403,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
       event.stopPropagation();
       return;
     }
-    this.clearSelection.emit();
+    this.clearSelection.emit(this.paneIndex());
   }
 
   private _handleAutoScroll(event: MouseEvent, container: HTMLElement): void {
@@ -422,18 +437,16 @@ export class NautilusViewPaneComponent implements OnDestroy {
         : this.listContainer?.nativeElement;
     if (!container) return;
 
-    const parent = this.paneWrapper?.nativeElement;
-    if (!parent) return;
-    const parentRect = parent.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
     const lasso = this.lassoRect();
 
-    // lasso is relative to parent, parent is relative to viewport.
-    // So lassoViewport is just lasso + parentRect.
+    // lasso is relative to container's scrollable area.
+    // viewport = (local - scroll) + containerRect
     const lassoViewport = {
-      left: lasso.left + parentRect.left,
-      top: lasso.top + parentRect.top,
-      right: lasso.left + parentRect.left + lasso.width,
-      bottom: lasso.top + parentRect.top + lasso.height,
+      left: lasso.left - container.scrollLeft + containerRect.left,
+      top: lasso.top - container.scrollTop + containerRect.top,
+      right: lasso.left - container.scrollLeft + containerRect.left + lasso.width,
+      bottom: lasso.top - container.scrollTop + containerRect.top + lasso.height,
     };
 
     const newSelection = new Set<string>();

@@ -1,116 +1,91 @@
-use crate::RcloneState;
-use base64::{Engine as _, engine::general_purpose};
-use id3::Tag;
+use lofty::prelude::*;
+use lofty::probe::Probe;
+use std::io::Cursor;
 use std::path::Path;
-use tauri::command;
 
-/// Extracts the cover art from an audio file and returns it as a Base64 encoded string
-/// prefixed with the appropriate data URI scheme (e.g., `data:image/jpeg;base64,...`).
-pub fn extract_audio_cover(path: &str) -> Result<Option<String>, String> {
+/// Result of a picture extraction
+pub struct PictureData {
+    pub data: Vec<u8>,
+    pub mime_type: String,
+}
+
+/// Extracts the first picture from a local audio file
+pub fn extract_picture_from_path(path: &str) -> Option<PictureData> {
     let file_path = Path::new(path);
 
     if !file_path.exists() || !file_path.is_file() {
-        return Err("File does not exist or is not a local file".to_string());
+        return None;
     }
 
-    // Try reading ID3 tags
-    let tag = match Tag::read_from_path(file_path) {
-        Ok(t) => t,
+    let tagged_file = match Probe::open(file_path) {
+        Ok(p) => match p.read() {
+            Ok(t) => t,
+            Err(e) => {
+                log::warn!("Failed to read tags from {path}: {e}");
+                return None;
+            }
+        },
         Err(e) => {
-            log::warn!("Failed to read ID3 tags for {path}: {e}");
-            return Ok(None);
+            log::warn!("Failed to probe file {path}: {e}");
+            return None;
         }
     };
 
-    // Find the first picture
-    if let Some(pic) = tag.pictures().next() {
-        let mime_type = &pic.mime_type;
-        let b64_data = general_purpose::STANDARD_NO_PAD.encode(&pic.data);
-        return Ok(Some(format!("data:{mime_type};base64,{b64_data}")));
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
+
+    if let Some(tag) = tag
+        && let Some(pic) = tag.pictures().first()
+    {
+        return Some(PictureData {
+            data: pic.data().to_vec(),
+            mime_type: pic
+                .mime_type()
+                .map(|m| m.to_string())
+                .unwrap_or_else(|| "image/jpeg".to_string()),
+        });
     }
 
-    Ok(None)
+    None
 }
 
-/// Extracts the cover art from ID3 tags in an in-memory byte slice
-pub fn extract_audio_cover_from_bytes(data: &[u8]) -> Result<Option<String>, String> {
-    use std::io::Cursor;
-
+/// Extracts the first picture from an in-memory byte slice
+pub fn extract_picture_from_bytes(data: &[u8], extension: Option<&str>) -> Option<PictureData> {
     let mut cursor = Cursor::new(data);
 
-    let tag = match Tag::read_from2(&mut cursor) {
+    let mut probe = Probe::new(&mut cursor);
+
+    // Provide extension hint if available (lofty uses this if magic number detection fails)
+    if let Some(ext) = extension
+        && let Some(mime) = lofty::file::FileType::from_ext(ext)
+    {
+        probe = probe.set_file_type(mime);
+    }
+
+    let tagged_file = match probe.read() {
         Ok(t) => t,
         Err(e) => {
-            log::warn!("Failed to read ID3 tags from memory: {e}");
-            return Ok(None);
+            log::warn!("Failed to read tags from bytes (ext={:?}): {e}", extension);
+            return None;
         }
     };
 
-    // Find the first picture
-    if let Some(pic) = tag.pictures().next() {
-        let mime_type = &pic.mime_type;
-        let b64_data = general_purpose::STANDARD_NO_PAD.encode(&pic.data);
-        return Ok(Some(format!("data:{mime_type};base64,{b64_data}")));
-    }
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
 
-    Ok(None)
-}
-
-#[command]
-pub async fn get_audio_cover(
-    app: tauri::AppHandle,
-    remote: String,
-    path: String,
-    is_local: bool,
-) -> Result<Option<String>, String> {
-    use crate::rclone::backend::BackendManager;
-    use tauri::Manager;
-
-    if is_local {
-        // Construct local path
-        let separator = if remote.ends_with('/') || remote.ends_with('\\') {
-            ""
-        } else {
-            "/"
-        };
-        let full_path = format!("{remote}{separator}{path}");
-        return extract_audio_cover(&full_path);
-    }
-
-    // Remote extraction
-    let backend_manager = app.state::<BackendManager>();
-    let backend: crate::rclone::backend::types::Backend = backend_manager.get_active().await;
-
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
-
-    // Request the first 1MB to find tags
-    let range_header = Some("bytes=0-1048576");
-
-    match backend
-        .fetch_file_stream_with_range(client, &remote, &path, range_header)
-        .await
+    if let Some(tag) = tag
+        && let Some(pic) = tag.pictures().first()
     {
-        Ok(response) => {
-            if response.status().is_success() {
-                match response.bytes().await {
-                    Ok(bytes) => extract_audio_cover_from_bytes(&bytes),
-                    Err(e) => {
-                        log::warn!("Failed to read stream bytes for audio cover: {e}");
-                        Ok(None)
-                    }
-                }
-            } else {
-                log::warn!(
-                    "Failed to fetch remote stream for cover: {}",
-                    response.status()
-                );
-                Ok(None)
-            }
-        }
-        Err(e) => {
-            log::warn!("Proxy error fetching audio cover: {e}");
-            Ok(None)
-        }
+        return Some(PictureData {
+            data: pic.data().to_vec(),
+            mime_type: pic
+                .mime_type()
+                .map(|m| m.to_string())
+                .unwrap_or_else(|| "image/jpeg".to_string()),
+        });
     }
+
+    None
 }

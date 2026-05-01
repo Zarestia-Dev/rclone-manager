@@ -58,16 +58,22 @@ pub async fn stream_remote_file_handler(
     let mut builder =
         axum::response::Response::builder().header(header::CONTENT_TYPE, content_type);
 
-    if query.download.unwrap_or(false) {
-        let filename = query.path.split('/').next_back().unwrap_or("file").replace(
-            |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_',
-            "_",
-        );
-        builder = builder.header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{filename}\""),
-        );
-    }
+    // Extract filename from path and clean it
+    let filename = query.path.split('/').next_back().unwrap_or("file").replace(
+        |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
+        "_",
+    );
+
+    // Always provide the filename. Use 'attachment' for forced downloads, 'inline' for streaming.
+    let disposition_type = if query.download.unwrap_or(false) {
+        "attachment"
+    } else {
+        "inline"
+    };
+    builder = builder.header(
+        header::CONTENT_DISPOSITION,
+        format!("{disposition_type}; filename=\"{filename}\""),
+    );
 
     builder
         .body(body)
@@ -99,20 +105,26 @@ pub async fn stream_file_handler(
     let mut builder =
         axum::response::Response::builder().header(header::CONTENT_TYPE, mime_type.as_ref());
 
-    if query.download.unwrap_or(false) {
-        let filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("file")
-            .replace(
-                |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_',
-                "_",
-            );
-        builder = builder.header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{filename}\""),
+    // Extract filename from path and clean it
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file")
+        .replace(
+            |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
+            "_",
         );
-    }
+
+    // Always provide the filename. Use 'attachment' for forced downloads, 'inline' for streaming.
+    let disposition_type = if query.download.unwrap_or(false) {
+        "attachment"
+    } else {
+        "inline"
+    };
+    builder = builder.header(
+        header::CONTENT_DISPOSITION,
+        format!("{disposition_type}; filename=\"{filename}\""),
+    );
 
     builder
         .body(body)

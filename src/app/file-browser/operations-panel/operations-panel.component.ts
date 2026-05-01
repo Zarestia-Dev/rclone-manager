@@ -61,9 +61,17 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     interval(1000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
+        const active = this.activeJobs();
         // Only poll if there are active running jobs
-        if (this.activeJobs().length > 0) {
+        if (active.length > 0) {
           this.jobManagementService.refreshJobs();
+
+          // Also ensure we're watching the groups of these jobs to get transfer details
+          active.forEach(job => {
+            if (job.group) {
+              this.jobManagementService.watchGroup(job.group);
+            }
+          });
         }
       });
 
@@ -99,12 +107,15 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   getFileName(job: JobInfo): string {
-    if (job.job_type === 'upload') {
-      return this.getJobTypeLabel(job);
-    }
+    return this.getJobTypeLabel(job);
+  }
 
+  getActualFileName(job: JobInfo): string {
+    if (job.source === 'multiple items' && job.stats && job.stats.totalTransfers > 0) {
+      return `${job.stats.totalTransfers} files`;
+    }
     const path = job.destination || job.source || '';
-    return this.uiStateService.extractFilename(path);
+    return this.uiStateService.extractFilename(path) || job.source || job.destination;
   }
 
   /** Get icon for the job's operation type */
@@ -175,5 +186,47 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   getFormattedJobError(errors: string | string[] | undefined): string | null {
     if (!errors) return null;
     return Array.isArray(errors) ? errors.join('\n') : errors;
+  }
+
+  /** Get list of transferred files for a job, prioritizing groupTransfersMap */
+  getTransferredFiles(job: JobInfo): string[] {
+    // 1. Try group transfers map (live data)
+    const filesFromGroup = job.group
+      ? (this.jobManagementService.groupTransfersMap().get(job.group) || []).map(t => t.name)
+      : [];
+
+    if (filesFromGroup.length > 0) return filesFromGroup;
+
+    // 2. Try final stats completion list (for finished jobs)
+    const stats = job.stats as any;
+    if (stats?.completed && Array.isArray(stats.completed)) {
+      return stats.completed.map((t: any) => t.name || t.path || 'Unknown file');
+    }
+
+    // 3. Fallback to legacy uploaded_files
+    return job.uploaded_files || [];
+  }
+
+  /** Get appropriate label for the list of transferred items */
+  getTransferredLabel(job: JobInfo): string {
+    switch (job.job_type) {
+      case 'delete':
+      case 'cleanup':
+      case 'rmdirs':
+        return 'fileBrowser.operations.details.deletedFiles';
+      case 'move':
+      case 'rename':
+        return 'fileBrowser.operations.details.movedFiles';
+      case 'copy':
+      case 'copy_url':
+        return 'fileBrowser.operations.details.copiedFiles';
+      case 'sync':
+      case 'bisync':
+        return 'fileBrowser.operations.details.syncedFiles';
+      case 'upload':
+        return 'fileBrowser.operations.details.uploadedFiles';
+      default:
+        return 'fileBrowser.operations.details.processedFiles';
+    }
   }
 }

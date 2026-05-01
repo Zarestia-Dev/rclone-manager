@@ -3,7 +3,6 @@
 use crate::rclone::commands::sync::{TransferType, start_profile_batch};
 use crate::rclone::state::scheduled_tasks::{CacheUpdateResult, ScheduledTasksCache};
 use crate::utils::app::notification::{NotificationEvent, TaskStage, notify};
-use crate::utils::types::remotes::ProfileParams;
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
@@ -378,30 +377,23 @@ async fn execute_scheduled_task(
     let backend_manager = app_handle.state::<BackendManager>();
     let job_cache = &backend_manager.job_cache;
 
-    let remote_name = match task.args.get("remote_name").and_then(|v| v.as_str()) {
-        Some(name) => name.to_string(),
-        None => {
-            return Err(crate::localized_error!(
-                "backendErrors.scheduler.invalidTaskArgs",
-                "error" => "missing 'remote_name' in args"
-            ));
-        }
-    };
-
+    let remote_name = task.args.params.remote_name.clone();
     let job_type = task.task_type.as_job_type();
-    let profile = task.args.get("profile_name").and_then(|v| v.as_str());
+    let profile = Some(task.args.params.profile_name.as_str());
 
-    if job_cache
-        .is_job_running(&remote_name, job_type.clone(), profile)
-        .await
+    if task.status == crate::utils::types::scheduled_task::TaskStatus::Running
+        || task.status == crate::utils::types::scheduled_task::TaskStatus::Stopping
+        || job_cache
+            .is_job_running(&remote_name, job_type.clone(), profile)
+            .await
     {
         let task_name = format!(
             "{}: {}-{}.{}",
             task.backend_name, task.remote_name, task.profile_name, task.id
         );
         warn!(
-            "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running.",
-            task_name, job_type, remote_name, profile
+            "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running (task status: {:?}).",
+            task_name, job_type, remote_name, profile, task.status
         );
         return Ok(());
     }
@@ -416,9 +408,7 @@ async fn execute_scheduled_task(
         )
         .await?;
 
-    let params: ProfileParams = serde_json::from_value(task.args.clone()).map_err(
-        |e| crate::localized_error!("backendErrors.scheduler.invalidTaskArgs", "error" => e),
-    )?;
+    let params = task.args.params.clone();
 
     let transfer_type = match task.task_type {
         TaskType::Copy => TransferType::Copy,
@@ -427,7 +417,9 @@ async fn execute_scheduled_task(
         TaskType::Bisync => TransferType::Bisync,
     };
 
-    let result = start_profile_batch(app_handle.clone(), vec![params], transfer_type).await;
+    let mut params = params;
+    params.source = Some(crate::utils::types::origin::Origin::Scheduler);
+    let result = start_profile_batch(app_handle.clone(), transfer_type, params).await;
 
     match result {
         Ok(job_id) => {

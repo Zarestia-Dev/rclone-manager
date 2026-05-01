@@ -413,10 +413,6 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
-      },
-      "max_upload_batch_size": {
-        "label": "最大上传批次大小 (MB)",
-        "description": "从本地计算机一次上传的文件批次的最大大小。"
       }
     },
     "developer": {
@@ -1466,7 +1462,13 @@
         "startTime": "开始时间",
         "speed": "速度",
         "eta": "预计剩余时间",
-        "transfers": "传输"
+        "transfers": "传输",
+        "uploadedFiles": "已上传文件",
+        "deletedFiles": "已删除文件",
+        "movedFiles": "已移动文件",
+        "copiedFiles": "已复制文件",
+        "syncedFiles": "已同步文件",
+        "processedFiles": "已处理文件"
       },
       "types": {
         "delete": "删除",
@@ -2370,6 +2372,8 @@
       "openNewTab": "在新标签页打开",
       "copyPath": "复制路径",
       "newFolder": "新建文件夹",
+      "uploadFiles": "上传文件",
+      "uploadFolder": "上传文件夹",
       "refresh": "刷新",
       "properties": "属性",
       "reload": "重新加载",

@@ -1,14 +1,12 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
-  AppSettingsService,
   isHeadlessMode,
   NotificationService,
   PathSelectionService,
   RemoteFileOperationsService,
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
-import { FormatFileSizePipe } from '@app/pipes';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -82,9 +80,7 @@ export class NautilusDragDropService {
   private readonly pathSel = inject(PathSelectionService);
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly settings = inject(AppSettingsService);
   private readonly fileOps = inject(NautilusFileOperationsService);
-  private readonly formatFileSize = inject(FormatFileSizePipe);
   private readonly destroyRef = inject(DestroyRef);
 
   // ---- Public state ----
@@ -130,35 +126,25 @@ export class NautilusDragDropService {
         if (!target.remote || event.payload.paths.length === 0) return;
 
         const normalized = this._normalizeRemote(target.remote);
-        let result: { uploaded: number; failed: string[] };
         try {
-          result = await this.remoteOps.uploadLocalDropPaths(
+          const batchId = await this.remoteOps.uploadLocalDropPaths(
             normalized,
             target.path,
             event.payload.paths,
             ORIGINS.FILEMANAGER
           );
+
+          if (batchId) {
+            this.notifications.showInfo(
+              this.translate.instant('nautilus.notifications.uploadStarted', {
+                count: event.payload.paths.length,
+              })
+            );
+          }
         } catch (err) {
           console.error('[Nautilus] Native drop upload failed', err);
           this.notifications.showError(
             this.translate.instant('nautilus.errors.externalDropFailed')
-          );
-          return;
-        }
-
-        if (result.uploaded > 0) {
-          this._cb.refresh();
-          this.notifications.showSuccess(
-            this.translate.instant('nautilus.notifications.uploadSuccess', {
-              count: result.uploaded,
-            })
-          );
-        }
-        if (result.failed.length > 0) {
-          this.notifications.showError(
-            this.translate.instant('nautilus.notifications.uploadFailed', {
-              count: result.failed.length,
-            })
           );
         }
       });
@@ -374,10 +360,7 @@ export class NautilusDragDropService {
     const sidebarRemote = el.closest('[data-sidebar-remote-name]');
     const paneTarget = el.closest('[data-pane-index]');
     const paneIndexRaw = paneTarget?.getAttribute('data-pane-index');
-    const targetPaneIndex =
-      paneIndexRaw !== null && paneIndexRaw !== undefined
-        ? parseInt(paneIndexRaw, 10)
-        : ctx.activePaneIndex;
+    const targetPaneIndex = paneIndexRaw != null ? parseInt(paneIndexRaw, 10) : ctx.activePaneIndex;
 
     const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
     const folder = folderTarget
@@ -510,10 +493,6 @@ export class NautilusDragDropService {
   ): Promise<void> {
     event.preventDefault();
 
-    // External file drop from the OS (browser/headless context only).
-    // In Tauri this path is never reached for external files because
-    // onContainerDrop guards it; named targets (bookmark, segment, etc.)
-    // always carry nautilus MIME data, not files.
     if (target.remote && this._hasExternalFiles(event)) {
       await this._processExternalDrop(event, target, providedFsEntries);
       return;
@@ -526,8 +505,8 @@ export class NautilusDragDropService {
     const { items } = payload;
     if (!items.length) return;
 
-    // Prevent drop onto self or same directory
     if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
+
     const sourceParentPath = items[0].entry.Path.substring(
       0,
       items[0].entry.Path.lastIndexOf(items[0].entry.Name)
@@ -559,82 +538,64 @@ export class NautilusDragDropService {
     const fsEntries = providedFsEntries ?? this._snapshotEntries(dt.items);
     if (!fsEntries.length) return;
 
-    const fileEntries: { entry: FileSystemFileEntry; relativePath: string }[] = [];
+    const allEntries: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
     for (const fsEntry of fsEntries) {
-      fileEntries.push(...(await this._collectFileEntries(fsEntry)));
+      allEntries.push(...(await this._collectFileEntries(fsEntry)));
     }
 
-    if (!fileEntries.length) return;
+    if (!allEntries.length) return;
 
-    const limitMb =
-      (await this.settings.getSettingValue<number>('core.max_upload_batch_size')) || 500;
-    const limitBytes = limitMb * 1024 * 1024;
-    let totalSize = 0;
-
-    // Deduplicate by relative path before we do any expensive work.
     const seen = new Set<string>();
-    const dedupedEntries: { entry: FileSystemFileEntry; relativePath: string }[] = [];
-    for (const item of fileEntries) {
+    const filesToUpload: { file: File; relativePath: string }[] = [];
+    const normalized = this._normalizeRemote(target.remote);
+
+    for (const item of allEntries) {
       if (seen.has(item.relativePath)) continue;
       seen.add(item.relativePath);
-      dedupedEntries.push(item);
-    }
 
-    const entries: {
-      relativePath: string;
-      filename: string;
-      size: number;
-      content: Uint8Array;
-      localPath: null;
-    }[] = [];
-
-    for (const { entry, relativePath } of dedupedEntries) {
-      const file = await this._readFileEntry(entry);
-      totalSize += file.size;
-      if (totalSize > limitBytes) {
-        this.notifications.showError(
-          this.translate.instant('nautilus.errors.uploadTooLarge', {
-            limit: this.formatFileSize.transform(limitBytes),
-          })
-        );
-        return;
+      if (item.isDir) {
+        // Just create empty directories as they are encountered
+        await this.remoteOps
+          .makeDirectory(normalized, `${target.path}/${item.relativePath}`, ORIGINS.FILEMANAGER)
+          .catch(error => {
+            console.error(error);
+            this.notifications.showError(
+              this.translate.instant('nautilus.notifications.mkdirFailed', {
+                path: `${target.path}/${item.relativePath}`,
+              })
+            );
+          });
+      } else {
+        const file = await this._readFileEntry(item.entry as FileSystemFileEntry);
+        filesToUpload.push({ file, relativePath: item.relativePath });
       }
-      const buffer = await file.arrayBuffer();
-      entries.push({
-        relativePath,
-        filename: entry.name,
-        size: file.size,
-        content: new Uint8Array(buffer),
-        localPath: null,
-      });
     }
 
-    const normalized = this._normalizeRemote(target.remote);
-    try {
-      const result = await this.remoteOps.uploadLocalDropEntries(
-        normalized,
-        target.path,
-        entries,
-        ORIGINS.FILEMANAGER
+    if (filesToUpload.length === 0) return;
+
+    const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
+      normalized,
+      target.path,
+      filesToUpload,
+      ORIGINS.FILEMANAGER
+    );
+
+    if (successCount > 0) {
+      this._cb.refresh();
+    }
+
+    if (failedPaths.length === 0 && successCount > 0) {
+      this.notifications.showSuccess(
+        this.translate.instant('nautilus.notifications.uploadSuccess', { count: successCount })
       );
-      if (result.uploaded > 0) {
-        this._cb.refresh();
-        this.notifications.showSuccess(
-          this.translate.instant('nautilus.notifications.uploadSuccess', {
-            count: result.uploaded,
-          })
-        );
-      }
-      if (result.failed.length) {
-        this.notifications.showError(
-          this.translate.instant('nautilus.notifications.uploadFailed', {
-            count: result.failed.length,
-          })
-        );
-      }
-    } catch (err) {
-      console.error('[Nautilus] External drop upload failed', err);
-      this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+    } else if (failedPaths.length > 0 && successCount > 0) {
+      this.notifications.showWarning(
+        this.translate.instant('nautilus.notifications.uploadFailed', { count: failedPaths.length })
+      );
+    } else if (failedPaths.length > 0) {
+      this.notifications.showError(
+        this.translate.instant('nautilus.notifications.uploadFailed', { count: failedPaths.length })
+      );
     }
   }
 
@@ -683,13 +644,23 @@ export class NautilusDragDropService {
   private async _collectFileEntries(
     entry: FileSystemEntry,
     prefix = ''
-  ): Promise<{ entry: FileSystemFileEntry; relativePath: string }[]> {
-    const results: { entry: FileSystemFileEntry; relativePath: string }[] = [];
+  ): Promise<{ entry: FileSystemEntry; relativePath: string; isDir: boolean }[]> {
+    const results: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
     const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
     if (entry.isFile) {
-      results.push({ entry: entry as FileSystemFileEntry, relativePath: currentPath });
+      results.push({
+        entry: entry as FileSystemFileEntry,
+        relativePath: currentPath,
+        isDir: false,
+      });
     } else if (entry.isDirectory) {
+      results.push({
+        entry: entry as FileSystemDirectoryEntry,
+        relativePath: currentPath,
+        isDir: true,
+      });
+
       const children = await this._readDirEntries(entry as FileSystemDirectoryEntry);
       for (const child of children) {
         results.push(...(await this._collectFileEntries(child, currentPath)));

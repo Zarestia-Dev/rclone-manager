@@ -9,6 +9,24 @@ export type TaskType = 'copy' | 'sync' | 'move' | 'delete' | 'purge' | 'bisync';
 export type TaskStatus = 'enabled' | 'disabled' | 'running' | 'failed' | 'stopping';
 
 /**
+ * Arguments for a scheduled task
+ */
+export interface ScheduledTaskArgs {
+  /** All source paths from the profile. Always an array after Rust serialization,
+   *  but accept string too for robustness against cached/legacy state. */
+  srcPaths: string | string[];
+  /** All destination paths from the profile. Same note as srcPaths. */
+  dstPaths: string | string[];
+  /** Core parameters for the profile operation */
+  remoteName: string;
+  profileName: string;
+  /** Origin of the operation */
+  source?: string;
+  /** Whether to use cache */
+  noCache?: boolean;
+}
+
+/**
  * Represents a scheduled task with cron configuration
  */
 export interface ScheduledTask {
@@ -34,7 +52,7 @@ export interface ScheduledTask {
   backendName: string;
 
   /** Task arguments (source, destination, options, etc.) */
-  args: Record<string, unknown>;
+  args: ScheduledTaskArgs;
 
   /** When the task was created */
   createdAt: string;
@@ -49,7 +67,7 @@ export interface ScheduledTask {
   lastError?: string;
 
   /** Current job ID if task is running */
-  currentJobId?: number;
+  currentJobId?: string;
 
   /** Total number of times this task has run */
   runCount: number;

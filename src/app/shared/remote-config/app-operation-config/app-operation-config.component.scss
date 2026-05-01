@@ -1,128 +1,256 @@
-// ============================================================================
-// HEADER SECTION (Auto-start & Cron Scheduling)
-// ============================================================================
+.operation-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem;
+}
 
 .header-section {
-  margin-bottom: var(--space-md);
-  padding: var(--space-sm);
-  box-shadow: var(--shadow-gnome);
-  border-radius: var(--radius-md);
+  padding: 1.25rem;
   background: var(--view-bg-color);
-
-  .operation-enable,
-  .cron-enable {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-weight: 500;
-  }
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 
   .section-description {
-    font-size: var(--font-size-sm);
     color: var(--window-fg-color-secondary);
-    margin: var(--space-xs) 0 0;
+    font-size: 0.9rem;
     line-height: 1.5;
-
-    strong {
-      color: var(--window-fg-color);
-    }
+    margin-top: 0.75rem;
   }
 }
 
 .cron-panel {
-  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  .no-schedule {
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .clear-schedule-btn {
+    margin-left: 0.5rem;
+    color: var(--red);
+  }
 }
 
-// ============================================================================
-// PATH SECTIONS
-// ============================================================================
-
-.path-section {
+.paths-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
+  gap: 2.5rem;
+  margin-top: 1rem;
 }
 
-.path-prefix {
-  // Mount variants (locked, no dropdown)
-  &.mount-local,
-  &.mount-remote,
-  mat-select-trigger {
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+
+  .section-title {
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
-    padding: 19.4px;
+    gap: 0.75rem;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--window-fg-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    mat-icon {
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+    }
   }
 
-  ::ng-deep .mat-mdc-select-arrow-wrapper {
-    display: none;
-  }
-
-  &.mount-local,
-  &.local mat-select-trigger {
-    background: rgba(var(--purple-rgb), 0.1);
-    color: var(--purple);
-  }
-  &.mount-remote,
-  &.remote mat-select-trigger {
-    background: rgba(var(--primary-color-rgb), 0.1);
+  .add-path-btn {
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--primary-color);
-  }
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-radius: 20px;
+    padding: 0 1.25rem;
+    height: 36px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  &.other mat-select-trigger {
-    background: rgba(var(--accent-color-rgb), 0.1);
-    color: var(--accent-color);
-  }
+    mat-icon {
+      margin-right: 4px;
+    }
 
-  mat-icon {
-    height: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
+    }
   }
 }
 
-.material-context-menu {
-  max-height: 300px;
+.path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-// ============================================================================
-// MESSAGES
-// ============================================================================
+.path-item-row {
+  animation: pathEntry 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  .path-input-wrapper {
+    width: 100%;
+
+    mat-form-field {
+      width: 100%;
+
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        border-radius: var(--radius-md);
+        background-color: var(--view-bg-color);
+        transition: all 0.2s ease;
+
+        &:hover {
+          background-color: var(--hover-bg-color);
+        }
+      }
+    }
+  }
+
+  .path-prefix {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 1rem;
+    margin-right: 0.5rem;
+    border-right: 1px solid var(--border-color);
+    height: 100%;
+    font-size: 0.95rem;
+    font-weight: 500;
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+    }
+
+    &.local {
+      color: var(--purple);
+    }
+    &.remote {
+      color: var(--primary-color);
+    }
+    &.other {
+      color: var(--accent-color);
+    }
+
+    mat-select-trigger {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+
+  .action-suffix {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-right: 0.5rem;
+
+    .remove-btn {
+      color: var(--red);
+      opacity: 0.6;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+        background: rgba(var(--red-rgb), 0.1);
+      }
+    }
+  }
+}
+
+@keyframes pathEntry {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
 
 .message {
   display: flex;
   align-items: center;
-  gap: var(--space-xxs);
-  padding: var(--space-xs);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--space-md);
-
-  mat-icon {
-    height: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
-  }
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-top: 1rem;
 
   &.warning {
-    color: var(--orange);
     background: rgba(var(--orange-rgb), 0.1);
-    box-shadow: 0 0 0 1px var(--orange);
+    color: var(--orange);
+    border: 1px solid rgba(var(--orange-rgb), 0.3);
+
+    mat-icon {
+      width: 24px;
+      height: 24px;
+      font-size: 24px;
+    }
   }
 }
 
-@media (max-width: 640px) {
-  .header-section {
-    .operation-enable,
-    .cron-enable {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--space-sm);
+.material-context-menu {
+  min-width: 240px;
+  background: var(--window-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  z-index: 1000;
+
+  .menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--window-fg-color);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: var(--hover-bg-color);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
     }
   }
 
-  .cron-panel {
-    margin-bottom: var(--space-sm);
+  .empty-state {
+    padding: 1rem;
+    text-align: center;
+    color: var(--window-fg-color-secondary);
+    font-style: italic;
   }
 }

@@ -76,10 +76,10 @@ export class MountManagementService extends TauriBaseService {
     noCache?: boolean
   ): Promise<void> {
     const params = {
-      remote_name: remoteName,
-      profile_name: profileName,
+      remoteName: remoteName,
+      profileName: profileName,
       source: source,
-      no_cache: noCache,
+      noCache: noCache,
     };
 
     await this.invokeWithNotification(

@@ -44,12 +44,12 @@
             <!-- Row 1: Name and action -->
             <div class="job-row">
               <mat-icon class="job-type-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
-              <span
-                class="job-name"
-                matTooltipShowDelay="500"
-                [matTooltip]="job.destination || job.source"
-                >{{ getFileName(job) }}</span
-              >
+              <div class="job-content">
+                <span class="job-name">{{ getFileName(job) }}</span>
+                <span class="job-subname" [matTooltip]="job.destination || job.source">
+                  {{ getActualFileName(job) }}
+                </span>
+              </div>
               <mat-icon
                 class="action-btn"
                 (click)="
@@ -140,11 +140,11 @@
                   </div>
                 }
 
-                @if (job.uploaded_files?.length) {
+                @if (getTransferredFiles(job).length > 0) {
                   <div class="detail-item uploaded-files-section">
-                    <span class="detail-label">Uploaded files</span>
+                    <span class="detail-label">{{ getTransferredLabel(job) | translate }}</span>
                     <div class="uploaded-files-list">
-                      @for (file of job.uploaded_files; track $index) {
+                      @for (file of getTransferredFiles(job); track $index) {
                         <span class="value uploaded-file-entry">{{ file }}</span>
                       }
                     </div>

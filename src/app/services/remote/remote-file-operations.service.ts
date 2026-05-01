@@ -1,19 +1,8 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
-
-export interface LocalDropUploadResult {
-  uploaded: number;
-  failed: string[];
-}
-
-export interface LocalDropUploadEntry {
-  relativePath: string;
-  filename: string;
-  size: number;
-  content?: Uint8Array;
-  localPath?: string | null;
-}
 
 /**
  * Service for remote file system operations
@@ -23,9 +12,8 @@ export interface LocalDropUploadEntry {
   providedIn: 'root',
 })
 export class RemoteFileOperationsService extends TauriBaseService {
-  /**
-   * Get filesystem info for a remote
-   */
+  private readonly http = inject(HttpClient);
+
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     try {
       return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
@@ -35,9 +23,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     }
   }
 
-  /**
-   * Get disk usage for a remote
-   */
   async getDiskUsage(
     remote: string,
     path?: string,
@@ -51,9 +36,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get size for a remote
-   */
   async getSize(
     remote: string,
     path?: string,
@@ -66,9 +48,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_size', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get stats for a single path
-   */
   async getStat(
     remote: string,
     path: string,
@@ -78,9 +57,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_stat', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get hashsum for a file
-   */
   async getHashsum(
     remote: string,
     path: string,
@@ -91,9 +67,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source, group });
   }
 
-  /**
-   * Get hashsum for a single file
-   */
   async getHashsumFile(
     remote: string,
     path: string,
@@ -110,9 +83,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Get or create a public link for a file or folder
-   */
   async getPublicLink(
     remote: string,
     path: string,
@@ -131,9 +101,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Get remote paths (directory listing)
-   */
   async getRemotePaths(
     remote: string,
     path: string,
@@ -150,9 +117,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Transfer multiple items (copy or move)
-   */
   async transferItems(
     items: { remote: string; path: string; name: string; isDir: boolean }[],
     dstRemote: string,
@@ -171,9 +135,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Delete multiple items
-   */
   async deleteItems(
     items: { remote: string; path: string; isDir: boolean }[],
     source?: Origin,
@@ -186,9 +147,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Remove all empty directories within a path
-   */
   async removeEmptyDirs(
     remote: string,
     path: string,
@@ -203,9 +161,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Rename an item (file or directory)
-   */
   async rename(
     remote: string,
     srcPath: string,
@@ -225,80 +180,25 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   /**
-   * Upload a file content string to a remote file
-   */
-  async uploadFile(
-    remote: string,
-    path: string,
-    filename: string,
-    content: string,
-    source?: Origin
-  ): Promise<string> {
-    return this.invokeCommand<string>('upload_file', {
-      remote,
-      path,
-      filename,
-      content,
-      source,
-    });
-  }
-
-  /**
-   * Upload raw file bytes to a remote file.
-   */
-  async uploadFileBytes(
-    remote: string,
-    path: string,
-    filename: string,
-    content: Uint8Array,
-    source?: Origin
-  ): Promise<string> {
-    return this.invokeCommand<string>('upload_file_bytes', {
-      remote,
-      path,
-      filename,
-      content,
-      source,
-    });
-  }
-
-  /**
    * Upload local filesystem paths (desktop native drag-drop) to target remote path.
+   * Leverages Rclone's operations/copyfile and sync/copy internally under one job id!
    */
   async uploadLocalDropPaths(
     remote: string,
     path: string,
     localPaths: string[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_paths', {
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('upload_local_drop_paths', {
       remote,
       path,
       localPaths,
-      source,
-    });
-  }
-
-  /**
-   * Upload browser-dropped entries (files and directories) to a remote path.
-   */
-  async uploadLocalDropEntries(
-    remote: string,
-    path: string,
-    entries: LocalDropUploadEntry[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_files', {
-      remote,
-      path,
-      files: entries,
       origin: source,
+      group,
     });
   }
 
-  /**
-   * Create a directory on the remote via backend `mkdir` command
-   */
   async makeDirectory(
     remote: string,
     path: string,
@@ -313,16 +213,10 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Cleanup trashed files on the remote (optional path)
-   */
   async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
     return this.invokeCommand<void>('cleanup', { remote, path, source, group });
   }
 
-  /**
-   * Copy a URL directly to a remote path
-   */
   async copyUrl(
     remote: string,
     path: string,
@@ -340,9 +234,126 @@ export class RemoteFileOperationsService extends TauriBaseService {
       group,
     });
   }
-  /**
-   * Submit a batch of operations to the remote via job/batch
-   */
+
+  async registerPreparingJob(
+    jobId: number,
+    remote: string,
+    destination: string,
+    totalFiles: number,
+    totalBytes: number,
+    origin?: Origin
+  ): Promise<void> {
+    return this.apiClient.invoke('register_preparing_job', {
+      jobid: jobId,
+      remote,
+      destination,
+      totalFiles,
+      totalBytes,
+      origin,
+    });
+  }
+
+  async updateJobStats(jobId: number, stats: any): Promise<void> {
+    return this.apiClient.invoke('update_job_stats', {
+      jobid: jobId,
+      stats,
+    });
+  }
+
+  async uploadFileStream(
+    remote: string,
+    path: string,
+    file: File,
+    source?: Origin,
+    overrideName?: string,
+    batchId?: string,
+    fileIndex?: number,
+    totalFiles?: number,
+    jobId?: number
+  ): Promise<string> {
+    const formData = new FormData();
+    formData.append('remote', remote);
+    formData.append('path', path);
+    if (source) formData.append('origin', JSON.stringify(source));
+    if (batchId) formData.append('batchId', batchId);
+    if (jobId !== undefined) formData.append('jobId', jobId.toString());
+    if (fileIndex !== undefined) formData.append('fileIndex', fileIndex.toString());
+    if (totalFiles !== undefined) formData.append('totalFiles', totalFiles.toString());
+    formData.append('file', file, overrideName || file.name);
+
+    const uploadUrl = `${this.apiClient.getApiBaseUrl()}/upload`;
+    const response = (await firstValueFrom(
+      this.http.post<{ success: boolean; data: string; error?: string }>(uploadUrl, formData, {
+        withCredentials: true,
+      })
+    )) as { success: boolean; data: string; error?: string };
+
+    if (response.success) {
+      return response.data;
+    } else {
+      throw new Error(response.error || 'Upload failed');
+    }
+  }
+
+  async uploadWebFilesBatch(
+    remote: string,
+    path: string,
+    files: { file: File; relativePath: string }[],
+    source?: Origin
+  ): Promise<{ successCount: number; failedPaths: string[] }> {
+    const batchId = Date.now().toString();
+    const jobId = Date.now();
+    const totalFiles = files.length;
+    let totalBytes = 0;
+    for (const f of files) totalBytes += f.file.size;
+
+    await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
+
+    let uploadedBytes = 0;
+    const completedItems: any[] = [];
+    const failedPaths: string[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < totalFiles; i++) {
+      const { file, relativePath } = files[i];
+      try {
+        await this.uploadFileStream(
+          remote,
+          path,
+          file,
+          source,
+          relativePath,
+          batchId,
+          i,
+          totalFiles,
+          jobId
+        );
+        successCount++;
+        uploadedBytes += file.size;
+        completedItems.push({
+          name: relativePath,
+          size: file.size,
+          bytes: file.size,
+          completed_at: new Date().toISOString(),
+        });
+
+        await this.updateJobStats(jobId, {
+          totalBytes,
+          bytes: uploadedBytes,
+          transfers: successCount,
+          totalTransfers: totalFiles,
+          completed: completedItems,
+          transferring: [],
+          preparing: true,
+        });
+      } catch (err) {
+        console.error(`Upload failed for ${relativePath}:`, err);
+        failedPaths.push(relativePath);
+      }
+    }
+    return { successCount, failedPaths };
+  }
+
   async submitBatchJob(
     inputs: Record<string, any>[],
     jobType: JobActionType,

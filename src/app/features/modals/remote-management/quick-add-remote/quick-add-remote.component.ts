@@ -52,6 +52,7 @@ import {
 } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import {
   buildPathString,
+  buildPathStrings,
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   isInteractiveContinueDisabled,
@@ -268,12 +269,21 @@ export class QuickAddRemoteComponent {
         dest: new FormControl(''),
       });
     }
+    if (opType === 'bisync') {
+      return this.fb.group({
+        autoStart: new FormControl(false),
+        cronEnabled: new FormControl(false),
+        cronExpression: new FormControl(''),
+        source: this.createOperationPathGroup('currentRemote'),
+        dest: this.createOperationPathGroup('local'),
+      });
+    }
     return this.fb.group({
       autoStart: new FormControl(false),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(''),
-      source: this.createOperationPathGroup('currentRemote'),
-      dest: this.createOperationPathGroup('local'),
+      sources: this.fb.array([this.createOperationPathGroup('currentRemote')]),
+      dests: this.fb.array([this.createOperationPathGroup('local')]),
     });
   }
 
@@ -428,8 +438,14 @@ export class QuickAddRemoteComponent {
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
     const createBaseOpConfig = (op: any) => ({
-      source: buildPathString(op.source, remoteName),
-      dest: buildPathString(op.dest, remoteName),
+      sources: op.sources ? buildPathStrings(op.sources, remoteName) : undefined,
+      dests: op.dests ? buildPathStrings(op.dests, remoteName) : undefined,
+      source: op.source ? buildPathString(op.source, remoteName) : undefined,
+      dest: op.dest
+        ? typeof op.dest === 'string'
+          ? op.dest
+          : buildPathString(op.dest, remoteName)
+        : undefined,
       autoStart: op.autoStart ?? false,
       cronEnabled: op.cronEnabled ?? false,
       cronExpression: op.cronExpression ?? null,
@@ -572,26 +588,38 @@ export class QuickAddRemoteComponent {
       {
         key: REMOTE_CONFIG_KEYS.copy,
         start: (): Promise<number> =>
-          this.jobManagementService.startCopyProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
+          this.jobManagementService.startProfileBatch('Copy', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.sync,
         start: (): Promise<number> =>
-          this.jobManagementService.startSyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
+          this.jobManagementService.startProfileBatch('Sync', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.bisync,
         start: (): Promise<number> =>
-          this.jobManagementService.startBisyncProfile(
-            remoteName,
-            DEFAULT_PROFILE_NAME,
-            'dashboard'
-          ),
+          this.jobManagementService.startProfileBatch('Bisync', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.move,
         start: (): Promise<number> =>
-          this.jobManagementService.startMoveProfile(remoteName, DEFAULT_PROFILE_NAME, 'dashboard'),
+          this.jobManagementService.startProfileBatch('Move', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
     ] as const;
 

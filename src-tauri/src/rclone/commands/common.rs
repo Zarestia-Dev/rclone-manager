@@ -55,8 +55,93 @@ use crate::rclone::backend::types::Backend;
 use crate::utils::json_helpers::{
     get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
 };
+use crate::utils::types::core::RcloneState;
 use serde_json::{Map, json};
 use std::collections::HashMap;
+
+/// Determines if the given fs path is a directory using operations/list.
+///
+/// This is a lightweight check that uses optimized flags to minimize overhead.
+pub async fn is_directory(
+    app: &AppHandle,
+    fs: &str,
+    runtime_remote_options: Option<&HashMap<String, Value>>,
+) -> Result<bool, String> {
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let state = app.state::<RcloneState>();
+
+    let fs_val = fs_value_with_runtime_overrides(fs, runtime_remote_options);
+    let url = backend.url_for(crate::utils::rclone::endpoints::operations::LIST);
+
+    // Optimized options for speed
+    let payload = json!({
+        "fs": fs_val,
+        "remote": "",
+        "opt": {
+            "metadata": false,
+            "noModTime": true,
+            "noMimeType": true,
+            "recurse": false,
+        }
+    });
+
+    let resp = backend
+        .inject_auth(state.client.post(&url))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Network error during type resolution: {e}"))?;
+
+    if !resp.status().is_success() {
+        // If the path doesn't exist or there is an error, we assume it's not a directory
+        // or return the error if it's a critical failure.
+        return Ok(false);
+    }
+
+    let val: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse type resolution response: {e}"))?;
+
+    let list = val
+        .get("list")
+        .and_then(|l| l.as_array())
+        .ok_or_else(|| "Invalid response format from operations/list".to_string())?;
+
+    // If listing returned nothing, it might be an empty directory or non-existent.
+    if list.is_empty() {
+        // We fallback to checking if it's a directory by trying to list its parent?
+        // Actually, rclone lsjson on an empty directory returns [].
+        // On a file it returns [{...}].
+        // To be safe, if it's empty, we'll assume it's a directory (or at least not a file we can copy individually).
+        return Ok(true);
+    }
+
+    // If it's a file, rclone returns one item with Path: "" (since we used fs as the full path)
+    // or the filename if we used fs as parent.
+    // Here we check if any item is a directory.
+    let any_is_dir = list
+        .iter()
+        .any(|item| item.get("IsDir").and_then(|b| b.as_bool()).unwrap_or(false));
+
+    // If the list has more than one item, it's definitely a directory.
+    if list.len() > 1 || any_is_dir {
+        return Ok(true);
+    }
+
+    // If there is exactly one item, check if its Path is non-empty.
+    // If Path is non-empty, it's a child of the directory we requested -> it's a directory.
+    // If Path is empty, it's the file itself.
+    if let Some(first) = list.first() {
+        let path = first.get("Path").and_then(|p| p.as_str()).unwrap_or("");
+        if !path.is_empty() {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
 
 /// Return the URL for a configuration operation on the given backend.
 ///
@@ -78,8 +163,8 @@ pub trait FromConfig: Sized {
 
 /// Common resolved parameters used by mount, sync, copy, etc.
 pub struct CommonConfigParams {
-    pub source: String,
-    pub dest: String,
+    pub sources: Vec<String>,
+    pub dests: Vec<String>,
     pub options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
@@ -158,12 +243,21 @@ pub fn fs_value_with_runtime_overrides(
     Value::Object(fs_obj)
 }
 
-enum ParsedFs {
+pub enum ParsedFs {
     Named { remote_name: String, root: String },
     Backend { backend_type: String, root: String },
 }
 
-fn parse_fs(fs: &str) -> Option<ParsedFs> {
+impl ParsedFs {
+    pub fn into_base_and_root(self) -> (String, String) {
+        match self {
+            ParsedFs::Named { remote_name, root } => (format!("{remote_name}:"), root),
+            ParsedFs::Backend { backend_type, root } => (format!(":{backend_type}:"), root),
+        }
+    }
+}
+
+pub fn parse_fs(fs: &str) -> Option<ParsedFs> {
     if fs.is_empty() {
         return None;
     }
@@ -216,10 +310,27 @@ pub fn parse_common_config(
     // source, dest, and all nested options are expanded consistently.
     let config = &interpolate_value(config);
 
-    let source = get_string(config, &["source"]);
-    let dest = get_string(config, &["dest"]);
+    let sources = match config.get("sources").or_else(|| config.get("source")) {
+        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .filter(|s| !s.is_empty())
+            .collect(),
+        _ => vec![],
+    };
 
-    if source.is_empty() || dest.is_empty() {
+    let dests = match config.get("dests").or_else(|| config.get("dest")) {
+        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .filter(|s| !s.is_empty())
+            .collect(),
+        _ => vec![],
+    };
+
+    if sources.is_empty() || dests.is_empty() {
         return None;
     }
 
@@ -233,8 +344,8 @@ pub fn parse_common_config(
         resolve_runtime_remote_options(config, settings, remote_name, "remotes");
 
     Some(CommonConfigParams {
-        source,
-        dest,
+        sources,
+        dests,
         options: json_to_hashmap(config.get("options")),
         vfs_options,
         filter_options,

@@ -344,11 +344,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
       const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
 
-      await this.remoteOps.uploadFile(
+      const file = new File([this.editContent()], filename, { type: 'text/plain' });
+
+      await this.remoteOps.uploadFileStream(
         fsName,
         dirPath,
-        filename,
-        this.editContent(),
+        file,
+        undefined,
         FileViewerModalComponent.FILE_OPERATION_ORIGIN
       );
 

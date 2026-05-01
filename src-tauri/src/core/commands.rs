@@ -22,7 +22,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
             #[cfg(not(feature = "web-server"))]
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
-            (get_audio_cover, $crate::utils::app::audio::get_audio_cover, [remote: String, path: String, is_local: bool]);
+            #[cfg(not(feature = "web-server"))]
+            (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
 
             // =================================================================
             // UI & THEME
@@ -76,7 +77,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // SYNC OPERATIONS
             // =================================================================
-            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [items: Vec<$crate::utils::types::remotes::ProfileParams>, transfer_type: $crate::rclone::commands::sync::TransferType]);
+            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::rclone::commands::sync::TransferType, params: $crate::utils::types::remotes::ProfileParams]);
 
             // =================================================================
             // MOUNT OPERATIONS
@@ -131,10 +132,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_file, $crate::rclone::commands::filesystem::upload_file, [remote: String, path: String, filename: String, content: String]);
-            (upload_file_bytes, $crate::rclone::commands::filesystem::upload_file_bytes, [remote: String, path: String, filename: String, content: Vec<u8>]);
-            (upload_local_drop_files, $crate::rclone::commands::filesystem::upload_local_drop_files, [remote: String, path: String, files: Vec<$crate::rclone::commands::filesystem::LocalDropUploadFile>, origin: Option<$crate::utils::types::origin::Origin>]);
-            (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>]);
+            (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            // (create_upload_batch, $crate::rclone::commands::filesystem::create_upload_batch, [total_jobs: usize, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
             (get_bandwidth_limit, $crate::rclone::queries::get_bandwidth_limit, []);
@@ -228,10 +227,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_jobs, $crate::rclone::commands::job::get_jobs, []);
             (get_active_jobs, $crate::rclone::commands::job::get_active_jobs, []);
             (get_job_status, $crate::rclone::commands::job::get_job_status, [jobid: u64]);
-            (submit_batch_job, $crate::rclone::commands::job::submit_batch_job, [inputs: Vec<serde_json::Value>, metadata_list: Option<Vec<$crate::rclone::commands::job::JobMetadata>>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, job_type: $crate::utils::types::jobs::JobType]);
+            (submit_batch_job, $crate::rclone::commands::job::submit_batch_job, [inputs: Vec<serde_json::Value>, metadata: $crate::rclone::commands::job::JobMetadata]);
             (stop_job, $crate::rclone::commands::job::stop_job, [jobid: u64, remote_name: String]);
             (delete_job, $crate::rclone::commands::job::delete_job, [jobid: u64]);
             (stop_jobs_by_group, $crate::rclone::commands::job::stop_jobs_by_group, [group: String]);
+            (register_preparing_job, $crate::rclone::commands::job::register_preparing_job, [jobid: u64, remote: String, destination: String, total_files: usize, total_bytes: u64, origin: Option<$crate::utils::types::origin::Origin>]);
+            (update_job_stats, $crate::rclone::commands::job::update_job_stats, [jobid: u64, stats: serde_json::Value]);
 
             // =================================================================
             // STATS GROUP MANAGEMENT
@@ -308,7 +309,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (clear_alert_history, $crate::core::alerts::commands::clear_alert_history, []);
             (get_alert_stats, $crate::core::alerts::commands::get_alert_stats, []);
             (get_unacknowledged_alert_count, $crate::core::alerts::commands::get_unacknowledged_alert_count, []);
-            (get_alert_template_keys, $crate::core::alerts::commands::get_alert_template_keys, []);
+            (get_alert_template_keys, $crate::core::alerts::commands::get_alert_template_keys, [], [sync, no_app, infallible]);
 
             // =================================================================
             // DESKTOP & HEADLESS UTILITIES

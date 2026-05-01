@@ -25,97 +25,148 @@ use crate::{
 #[cfg(not(feature = "web-server"))]
 pub fn show_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        info!("🪟 Showing main window");
+        info!("Showing main window");
         window.show().unwrap_or_else(|_| {
-            error!("🚨 Failed to show main window");
+            error!("Failed to show main window");
         });
     } else {
         use crate::utils::app::builder::create_app_window;
-        info!("⚠️ Main window not found. Building...");
+        info!("Main window not found, building a new one");
         create_app_window(app);
     }
 }
 
-// ========== PROFILE-SPECIFIC HANDLERS ==========
+// ── Transfer jobs ────────────────────────────────────────────────────────────
 
-/// Generic handler for starting job profiles (sync, copy, move, bisync)
-/// Uses the profile-based functions that resolve options internally
-async fn handle_start_job_profile(
-    app: AppHandle,
-    remote_name: String,
-    profile_name: String,
-    op_type: &str,
-    op_name: &str,
-) {
-    let params = ProfileParams {
-        remote_name: remote_name.clone(),
-        profile_name: profile_name.clone(),
-        origin: Some(Origin::Dashboard),
-        no_cache: None,
-    };
-
-    let transfer_type = match op_type {
-        "sync" => TransferType::Sync,
-        "copy" => TransferType::Copy,
-        "move" => TransferType::Move,
-        "bisync" => TransferType::Bisync,
-        _ => {
-            error!("🚨 Unknown operation type: {op_type}");
-            return;
-        }
-    };
-
-    match start_profile_batch(app.clone(), vec![params], transfer_type).await {
-        Ok(_) => {
-            info!("✅ Started {op_name} for {remote_name} profile '{profile_name}'");
-        }
-        Err(e) => {
-            error!("🚨 Failed to start {op_name} for {remote_name} profile '{profile_name}': {e}");
-        }
+fn transfer_type_for(op: &str) -> Option<TransferType> {
+    match op {
+        "sync" => Some(TransferType::Sync),
+        "copy" => Some(TransferType::Copy),
+        "move" => Some(TransferType::Move),
+        "bisync" => Some(TransferType::Bisync),
+        _ => None,
     }
 }
 
-pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
+fn job_type_for(op: &str) -> Option<JobType> {
+    match op {
+        "sync" => Some(JobType::Sync),
+        "copy" => Some(JobType::Copy),
+        "move" => Some(JobType::Move),
+        "bisync" => Some(JobType::Bisync),
+        _ => None,
+    }
+}
+
+fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
+    ProfileParams {
+        remote_name: remote_name.to_string(),
+        profile_name: profile_name.to_string(),
+        source: Some(Origin::Dashboard),
+        no_cache: None,
+    }
+}
+
+/// Start a transfer job (sync / copy / move / bisync) for a named profile.
+pub fn handle_start_job_profile(app: AppHandle, remote_name: &str, profile_name: &str, op: &str) {
+    let Some(transfer_type) = transfer_type_for(op) else {
+        error!("Unknown operation type: {op}");
+        return;
+    };
+
+    let params = profile_params(remote_name, profile_name);
+    let remote = remote_name.to_string();
+    let profile = profile_name.to_string();
+    let op = op.to_string();
+
+    tauri::async_runtime::spawn(async move {
+        match start_profile_batch(app, transfer_type, params).await {
+            Ok(_) => info!("Started {op} for {remote} / {profile}"),
+            Err(e) => error!("Failed to start {op} for {remote} / {profile}: {e}"),
+        }
+    });
+}
+
+/// Stop a running transfer job (sync / copy / move / bisync) for a named profile.
+pub fn handle_stop_job_profile(app: AppHandle, remote_name: &str, profile_name: &str, op: &str) {
+    let Some(job_type) = job_type_for(op) else {
+        error!("Unknown operation type: {op}");
+        return;
+    };
+
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let params = ProfileParams {
-            remote_name: remote.clone(),
-            profile_name: profile.clone(),
-            origin: Some(Origin::Dashboard),
-            no_cache: None,
-        };
+        let backend_manager = app.state::<BackendManager>();
+        let running_job = backend_manager
+            .job_cache
+            .get_jobs()
+            .await
+            .into_iter()
+            .find(|j| {
+                j.remote_name == remote
+                    && j.job_type == job_type
+                    && j.profile.as_deref() == Some(&profile)
+                    && j.status == JobStatus::Running
+            });
 
-        match mount_remote_profile(app_clone.clone(), params).await {
-            Ok(()) => {
-                info!("✅ Mounted {remote} profile '{profile}'");
-            }
-            Err(e) => {
-                error!("🚨 Failed to mount {remote} profile '{profile}': {e}");
+        match running_job {
+            Some(job) => match stop_job(app.clone(), job.jobid, remote.clone()).await {
+                Ok(()) => info!(
+                    "Stopped {job_type} job {} for {remote} / {profile}",
+                    job.jobid
+                ),
+                Err(e) => error!("Failed to stop {job_type} job {}: {e}", job.jobid),
+            },
+            None => {
+                error!("No active {job_type} job found for {remote} / {profile}");
+                let backend_name = backend_manager.get_active_name().await;
+                notify(
+                    &app,
+                    NotificationEvent::Job(JobStage::Failed {
+                        backend: backend_name,
+                        remote,
+                        profile: Some(profile),
+                        job_type,
+                        error: "no active job".to_string(),
+                        origin: Origin::Dashboard,
+                    }),
+                );
             }
         }
     });
 }
 
-pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
+// ── Mount ────────────────────────────────────────────────────────────────────
+
+pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
+    let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let manager = app_clone.state::<AppSettingsManager>();
+        match mount_remote_profile(app, params).await {
+            Ok(()) => info!("Mounted {remote} / {profile}"),
+            Err(e) => error!("Failed to mount {remote} / {profile}: {e}"),
+        }
+    });
+}
 
-        let settings = {
-            let remotes = manager.inner().sub_settings("remotes").ok();
-            remotes
-                .and_then(|r| r.get_value(&remote).ok())
-                .unwrap_or(serde_json::Value::Null)
-        };
+pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
+    let remote = remote_name.to_string();
+    let profile = profile_name.to_string();
 
-        let mount_point = settings
-            .get("mountConfigs")
+    tauri::async_runtime::spawn(async move {
+        let manager = app.state::<AppSettingsManager>();
+
+        let mount_point = manager
+            .inner()
+            .sub_settings("remotes")
+            .ok()
+            .and_then(|r| r.get_value(&remote).ok())
+            .as_ref()
+            .and_then(|v| v.get("mountConfigs"))
             .and_then(|v| v.as_object())
             .and_then(|configs| configs.get(&profile))
             .and_then(|config| config.get("dest"))
@@ -124,14 +175,13 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
             .to_string();
 
         if mount_point.is_empty() {
-            error!("❌ Mount point not found for profile '{profile}'");
-            let backend_manager = app_clone.state::<BackendManager>();
-            let backend_name = backend_manager.get_active_name().await;
+            error!("Mount point not found for profile '{profile}'");
+            let backend_name = app.state::<BackendManager>().get_active_name().await;
             notify(
-                &app_clone,
+                &app,
                 NotificationEvent::Mount(MountStage::Failed {
                     backend: backend_name,
-                    remote: remote.clone(),
+                    remote,
                     profile: Some(profile.clone()),
                     error: format!("profile not found: {profile}"),
                 }),
@@ -139,222 +189,86 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
             return;
         }
 
-        match unmount_remote(app_clone.clone(), mount_point.clone(), remote.clone()).await {
-            Ok(_) => {
-                info!("🛑 Unmounted {remote} profile '{profile}'");
-            }
-            Err(e) => {
-                error!("🚨 Failed to unmount {remote} profile '{profile}': {e}");
-            }
+        match unmount_remote(app, mount_point.clone(), remote.clone()).await {
+            Ok(_) => info!("Unmounted {remote} / {profile}"),
+            Err(e) => error!("Failed to unmount {remote} / {profile}: {e}"),
         }
     });
 }
 
-// Job profile handlers using generic function
-pub fn handle_sync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let r = remote_name.to_string();
-    let p = profile_name.to_string();
-    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "sync", "Sync"));
-}
-
-pub fn handle_copy_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let r = remote_name.to_string();
-    let p = profile_name.to_string();
-    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "copy", "Copy"));
-}
-
-pub fn handle_move_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let r = remote_name.to_string();
-    let p = profile_name.to_string();
-    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "move", "Move"));
-}
-
-pub fn handle_bisync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let r = remote_name.to_string();
-    let p = profile_name.to_string();
-    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "bisync", "BiSync"));
-}
-
-/// Generic handler for stopping job profiles
-async fn handle_stop_job_profile(
-    app: AppHandle,
-    remote_name: String,
-    profile_name: String,
-    job_type: JobType,
-) {
-    let backend_manager = app.state::<BackendManager>();
-
-    let job_cache = backend_manager.job_cache.clone();
-
-    // Filter logic same as before, but on backend-specific cache
-    if let Some(job) = job_cache.get_jobs().await.iter().find(|j| {
-        j.remote_name == remote_name
-            && j.job_type == job_type
-            && j.profile.as_ref() == Some(&profile_name)
-            && j.status == JobStatus::Running
-    }) {
-        match stop_job(app.clone(), job.jobid, remote_name.clone()).await {
-            Ok(()) => {
-                info!(
-                    "🛑 Stopped {} job {} for {} profile '{}'",
-                    job_type, job.jobid, remote_name, profile_name
-                );
-            }
-            Err(e) => {
-                error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
-            }
-        }
-    } else {
-        error!("🚨 No active {job_type} job found for {remote_name} profile '{profile_name}'");
-        let backend_manager = app.state::<BackendManager>();
-        let backend_name = backend_manager.get_active_name().await;
-        notify(
-            &app,
-            NotificationEvent::Job(JobStage::Failed {
-                backend: backend_name,
-                remote: remote_name.clone(),
-                profile: Some(profile_name.clone()),
-                job_type: job_type.clone(),
-                error: "no active job".to_string(),
-                origin: Origin::Dashboard,
-            }),
-        );
-    }
-}
-
-pub fn handle_stop_sync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    tauri::async_runtime::spawn(handle_stop_job_profile(
-        app,
-        remote_name.to_string(),
-        profile_name.to_string(),
-        JobType::Sync,
-    ));
-}
-
-pub fn handle_stop_copy_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    tauri::async_runtime::spawn(handle_stop_job_profile(
-        app,
-        remote_name.to_string(),
-        profile_name.to_string(),
-        JobType::Copy,
-    ));
-}
-
-pub fn handle_stop_move_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    tauri::async_runtime::spawn(handle_stop_job_profile(
-        app,
-        remote_name.to_string(),
-        profile_name.to_string(),
-        JobType::Move,
-    ));
-}
-
-pub fn handle_stop_bisync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    tauri::async_runtime::spawn(handle_stop_job_profile(
-        app,
-        remote_name.to_string(),
-        profile_name.to_string(),
-        JobType::Bisync,
-    ));
-}
+// ── Serve ────────────────────────────────────────────────────────────────────
 
 pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
+    let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let params = ProfileParams {
-            remote_name: remote.clone(),
-            profile_name: profile.clone(),
-            origin: Some(Origin::Dashboard),
-            no_cache: None,
-        };
-
-        match start_serve_profile(app_clone.clone(), params).await {
-            Ok(response) => {
-                info!(
-                    "✅ Started serve for {} profile '{}' at {}",
-                    remote, profile, response.addr
-                );
-            }
-            Err(e) => {
-                error!("🚨 Failed to start serve for {remote} profile '{profile}': {e}");
-            }
+        match start_serve_profile(app, params).await {
+            Ok(response) => info!(
+                "Started serve for {remote} / {profile} at {}",
+                response.addr
+            ),
+            Err(e) => error!("Failed to start serve for {remote} / {profile}: {e}"),
         }
     });
 }
 
-pub fn handle_stop_serve_profile(app: AppHandle, _remote_name: &str, serve_id: &str) {
-    let app_clone = app.clone();
-    let serve_id_clone = serve_id.to_string();
+pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
+    let serve_id = serve_id.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let backend_manager = app_clone.state::<BackendManager>();
+        let backend_manager = app.state::<BackendManager>();
+        let all_serves = backend_manager.remote_cache.get_serves().await;
 
-        let cache = backend_manager.remote_cache.clone();
-
-        let all_serves = cache.get_serves().await;
         let remote_name = all_serves
             .iter()
-            .find(|s| s.id == serve_id_clone)
+            .find(|s| s.id == serve_id)
             .and_then(|s| s.params["fs"].as_str())
-            .map_or_else(
-                || "unknown_remote".to_string(),
-                |fs| fs.split(':').next().unwrap_or("").to_string(),
-            );
+            .map(|fs| fs.split(':').next().unwrap_or("").to_string())
+            .unwrap_or_else(|| "unknown_remote".to_string());
 
-        match stop_serve(
-            app_clone.clone(),
-            serve_id_clone.clone(),
-            remote_name.clone(),
-        )
-        .await
-        {
-            Ok(_) => {
-                info!("🛑 Stopped serve {serve_id_clone} for {remote_name}");
-            }
-            Err(e) => {
-                error!("🚨 Failed to stop serve {serve_id_clone}: {e}");
-            }
+        match stop_serve(app.clone(), serve_id.clone(), remote_name.clone()).await {
+            Ok(_) => info!("Stopped serve {serve_id} for {remote_name}"),
+            Err(e) => error!("Failed to stop serve {serve_id}: {e}"),
         }
     });
 }
 
-// ========== GLOBAL ACTIONS ==========
-
-fn should_emit_stop_all_jobs_notification(active_count: usize) -> bool {
-    active_count > 0
-}
+// ── Global actions ───────────────────────────────────────────────────────────
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        // Stop all jobs across ALL backends (uses the active job cache)
         let backend_manager = app.state::<BackendManager>();
-        let job_cache = &backend_manager.job_cache;
-        let active_jobs = job_cache.get_active_jobs().await;
+        let active_jobs = backend_manager.job_cache.get_active_jobs().await;
 
-        // Nothing to do -> inform the user (tray-origin)
-        if !should_emit_stop_all_jobs_notification(active_jobs.len()) {
-            // Skip notification or use JobStage
+        if active_jobs.is_empty() {
             return;
         }
 
-        let mut stopped_count = 0usize;
+        let mut stopped = 0usize;
         for job in active_jobs {
             match stop_job(app.clone(), job.jobid, job.remote_name.clone()).await {
                 Ok(()) => {
-                    stopped_count += 1;
-                    info!("🛑 Stopped job {}", job.jobid);
+                    stopped += 1;
+                    info!("Stopped job {}", job.jobid);
                 }
-                Err(e) => {
-                    error!("🚨 Failed to stop job {}: {}", job.jobid, e);
-                }
+                Err(e) => error!("Failed to stop job {}: {e}", job.jobid),
             }
         }
 
-        if stopped_count > 0 {
+        if stopped > 0 {
             notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
+        }
+    });
+}
+
+pub fn handle_stop_all_serves(app: AppHandle) {
+    info!("Stopping all active serves");
+    tauri::async_runtime::spawn(async move {
+        match stop_all_serves(app, "menu".to_string()).await {
+            Ok(_) => info!("All serves stopped"),
+            Err(e) => error!("Failed to stop all serves: {e}"),
         }
     });
 }
@@ -364,22 +278,16 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     use tauri_plugin_opener::OpenerExt;
     let remote = remote_name.to_string();
     let app_clone = app.clone();
+
     tauri::async_runtime::spawn(async move {
-        let manager = app_clone.state::<AppSettingsManager>();
-
-        let settings = {
-            let remotes = manager.inner().sub_settings("remotes").ok();
-            remotes
-                .and_then(|r| r.get_value(&remote).ok())
-                .unwrap_or_else(|| {
-                    error!("🚨 Remote {remote} not found in cached settings");
-                    serde_json::Value::Null
-                })
-        };
-
-        // Try to get first mount point from mountConfigs (object-based)
-        let mount_point = settings
-            .get("mountConfigs")
+        let mount_point = app_clone
+            .state::<AppSettingsManager>()
+            .inner()
+            .sub_settings("remotes")
+            .ok()
+            .and_then(|r| r.get_value(&remote).ok())
+            .as_ref()
+            .and_then(|v| v.get("mountConfigs"))
             .and_then(|v| v.as_object())
             .and_then(|configs| configs.values().next())
             .and_then(|config| config.get("dest"))
@@ -388,37 +296,17 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
             .to_string();
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
-            Ok(_) => {
-                info!("📂 Opened file manager for {remote}");
-            }
-            Err(e) => {
-                error!("🚨 Failed to open file manager for {remote}: {e}");
-            }
+            Ok(_) => info!("Opened file manager for {remote}"),
+            Err(e) => error!("Failed to open file manager for {remote}: {e}"),
         }
     });
 }
 
 #[cfg(not(feature = "web-server"))]
 pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
-    if let Some(name) = remote_name {
-        info!("📂 Opening standalone in-app browser window for {}", name);
-    } else {
-        info!("📂 Opening standalone in-app browser window");
-    }
+    info!(
+        "Opening in-app browser{}",
+        remote_name.map(|n| format!(" for {n}")).unwrap_or_default()
+    );
     crate::utils::app::builder::create_nautilus_window(app.clone(), remote_name, None);
-}
-
-pub fn handle_stop_all_serves(app: AppHandle) {
-    info!("🛑 Stopping all active serves from tray action");
-    let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
-        match stop_all_serves(app_clone.clone(), "menu".to_string()).await {
-            Ok(_) => {
-                info!("✅ All serves stopped successfully");
-            }
-            Err(e) => {
-                error!("🚨 Failed to stop all serves: {e}");
-            }
-        }
-    });
 }

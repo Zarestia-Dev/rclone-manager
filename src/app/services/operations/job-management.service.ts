@@ -196,8 +196,8 @@ export class JobManagementService extends TauriBaseService {
   ): JobInfo | null {
     let jobs = this._jobs().filter(job => job.remote_name === remoteName);
 
-    if (operationType) jobs = jobs.filter(j => (j as any).job_type === operationType);
-    if (profile) jobs = jobs.filter(j => (j as any).profile === profile);
+    if (operationType) jobs = jobs.filter(j => j.job_type === operationType);
+    if (profile) jobs = jobs.filter(j => j.profile === profile);
     if (jobs.length === 0) return null;
 
     return jobs.sort((a, b) => {
@@ -210,6 +210,8 @@ export class JobManagementService extends TauriBaseService {
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
     this._jobs.set(jobs);
+    console.log(jobs);
+
     return jobs;
   }
 
@@ -218,65 +220,30 @@ export class JobManagementService extends TauriBaseService {
     return this.getActiveJobsSnapshot();
   }
 
-  async startSyncProfile(
-    remoteName: string,
-    profileName: string,
-    source?: Origin,
-    noCache?: boolean
+  async startProfileBatch(
+    transferType: 'Sync' | 'Copy' | 'Move' | 'Bisync',
+    params: {
+      remoteName: string;
+      profileName: string;
+      source?: Origin;
+      noCache?: boolean;
+    }
   ): Promise<number> {
-    return this.startProfile('sync', remoteName, profileName, source, noCache);
-  }
-
-  async startCopyProfile(
-    remoteName: string,
-    profileName: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.startProfile('copy', remoteName, profileName, source, noCache);
-  }
-
-  async startBisyncProfile(
-    remoteName: string,
-    profileName: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.startProfile('bisync', remoteName, profileName, source, noCache);
-  }
-
-  async startMoveProfile(
-    remoteName: string,
-    profileName: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.startProfile('move', remoteName, profileName, source, noCache);
-  }
-
-  private async startProfile(
-    type: 'sync' | 'copy' | 'bisync' | 'move',
-    remote_name: string,
-    profile_name: string,
-    source?: Origin,
-    no_cache?: boolean
-  ): Promise<number> {
-    const params = { remote_name, profile_name, source, no_cache };
     return this.invokeWithNotification<number>(
-      `start_${type}_profile`,
-      { params },
+      'start_profile_batch',
+      { transferType, params },
       {
         successKey: 'notification.title.operationStarted',
         successParams: {
-          operation: type.charAt(0).toUpperCase() + type.slice(1),
-          remote: remote_name,
-          profile: profile_name,
+          operation: transferType,
+          remote: params.remoteName,
+          profile: params.profileName,
         },
         errorKey: 'notification.title.operationFailed',
         errorParams: {
-          operation: type.charAt(0).toUpperCase() + type.slice(1),
-          remote: remote_name,
-          profile: profile_name,
+          operation: transferType,
+          remote: params.remoteName,
+          profile: params.profileName,
         },
       }
     );

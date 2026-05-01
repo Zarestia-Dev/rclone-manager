@@ -63,15 +63,28 @@ export class FileViewerService extends TauriBaseService {
   }
 
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {
-    try {
-      return await this.invokeCommand<string | null>('get_audio_cover', {
-        remote: remoteName,
-        path: item.Path,
-        isLocal: isLocal,
-      });
-    } catch (e) {
-      console.warn('[FileViewerService] Failed to fetch audio cover:', e);
-      return null;
+    const remote = remoteName;
+    const path = item.Path;
+
+    if (isLocal) {
+      const separator = remote.endsWith('/') || remote.endsWith('\\') ? '' : '/';
+      const fullPath = `${remote}${separator}${path}`;
+
+      if (isHeadlessMode()) {
+        const encodedPath = encodeURIComponent(fullPath);
+        return `${this.apiClient.getApiBaseUrl()}/stream/audio-cover?path=${encodedPath}`;
+      }
+      return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
+    } else {
+      // Remote
+      if (isHeadlessMode()) {
+        const encodedRemote = encodeURIComponent(remote);
+        const encodedPath = encodeURIComponent(path);
+        return `${this.apiClient.getApiBaseUrl()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
+      }
+      return `audio-cover://localhost/remote/${encodeURIComponent(remote)}/${encodeURIComponent(
+        path
+      )}`;
     }
   }
 
@@ -117,7 +130,7 @@ export class FileViewerService extends TauriBaseService {
 
       if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
-        return `${this.apiClient.getApiBaseUrl()}/fs/stream?path=${encodedPath}`;
+        return `${this.apiClient.getApiBaseUrl()}/stream?path=${encodedPath}`;
       }
       // Use our own local-asset:// custom protocol instead of Tauri's asset://.
       // Linux/macOS (WebKit): local-asset://localhost/path/to/file
@@ -150,7 +163,7 @@ export class FileViewerService extends TauriBaseService {
       .join('/');
 
     if (isHeadlessMode()) {
-      return `${this.apiClient.getApiBaseUrl()}/fs/stream/remote?remote=${encodeURIComponent(
+      return `${this.apiClient.getApiBaseUrl()}/stream/remote?remote=${encodeURIComponent(
         rName
       )}&path=${encodedPath}`;
     }

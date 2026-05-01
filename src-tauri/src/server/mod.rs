@@ -167,14 +167,9 @@ fn build_app(
     host: &str,
     port: u16,
 ) -> Router {
-    use axum::{extract::DefaultBodyLimit, http::Method, routing::get};
+    use axum::{http::Method, routing::get};
 
-    let api_router = build_api_router(state.clone())
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            dynamic_body_limit_middleware,
-        ))
-        .layer(DefaultBodyLimit::disable());
+    let api_router = build_api_router(state.clone());
 
     // Configure CORS
     let mut allowed_origins = vec![

@@ -158,7 +158,7 @@ export class GeneralDetailComponent {
     const allTasks = this.allScheduledTasks();
     const remote = this.selectedRemote();
     if (!remote) return [];
-    return allTasks.filter(task => task.args['remote_name'] === remote.name);
+    return allTasks.filter(task => task.remoteName === remote.name);
   });
 
   readonly hasScheduledTasks = computed(() => this.remoteScheduledTasks().length > 0);

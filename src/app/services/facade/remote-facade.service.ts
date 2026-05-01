@@ -474,13 +474,33 @@ export class RemoteFacadeService extends TauriBaseService {
       case 'serve':
         return this.serveService.startServeProfile(remoteName, profile);
       case 'sync':
-        return this.jobService.startSyncProfile(remoteName, profile, source, noCache);
+        return this.jobService.startProfileBatch('Sync', {
+          remoteName: remoteName,
+          profileName: profile,
+          source,
+          noCache: noCache,
+        });
       case 'copy':
-        return this.jobService.startCopyProfile(remoteName, profile, source, noCache);
+        return this.jobService.startProfileBatch('Copy', {
+          remoteName: remoteName,
+          profileName: profile,
+          source,
+          noCache: noCache,
+        });
       case 'bisync':
-        return this.jobService.startBisyncProfile(remoteName, profile, source, noCache);
+        return this.jobService.startProfileBatch('Bisync', {
+          remoteName: remoteName,
+          profileName: profile,
+          source,
+          noCache: noCache,
+        });
       case 'move':
-        return this.jobService.startMoveProfile(remoteName, profile, source, noCache);
+        return this.jobService.startProfileBatch('Move', {
+          remoteName: remoteName,
+          profileName: profile,
+          source,
+          noCache: noCache,
+        });
       default:
         throw new Error(`Unsupported operation: ${opType}`);
     }
@@ -527,9 +547,8 @@ export class RemoteFacadeService extends TauriBaseService {
       return;
     }
 
-    const groupName = profileName
-      ? `${type}/${remoteName}/${profileName}`
-      : `${type}/${remoteName}`;
+    const remote = remoteName.replace(/:$/, '');
+    const groupName = profileName ? `${type}/${remote}/${profileName}` : `${type}/${remote}`;
     await this.jobService.stopJobsByGroup(groupName);
   }
 

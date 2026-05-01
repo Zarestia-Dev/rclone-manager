@@ -63,7 +63,7 @@ impl TrayAction {
             Self::StopServeProfile(remote, profile) => {
                 format!("stop_serve_profile__{remote}__{profile}")
             }
-            Self::Browse(remote) => format!("browse-__{remote}"),
+            Self::Browse(remote) => format!("browse_remote__{remote}"),
             Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
@@ -88,10 +88,10 @@ impl TrayAction {
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {
-            // Old-style action without profile (browse only)
+            // Action without profile (browse or global)
             let (prefix, remote) = (parts[0], parts[1]);
             match prefix {
-                "browse-" => return Some(Self::Browse(remote.to_string())),
+                "browse_remote" => return Some(Self::Browse(remote.to_string())),
                 "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
                 _ => return None,
             }
@@ -122,5 +122,37 @@ impl TrayAction {
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tray_action_id_roundtrip() {
+        let actions = vec![
+            TrayAction::MountProfile("myRemote".to_string(), "profile1".to_string()),
+            TrayAction::UnmountProfile("myRemote".to_string(), "profile1".to_string()),
+            TrayAction::SyncProfile("remote".to_string(), "p".to_string()),
+            TrayAction::Browse("remote".to_string()),
+            TrayAction::BrowseInApp("remote".to_string()),
+            TrayAction::UnmountAll,
+            TrayAction::StopAllJobs,
+        ];
+
+        for action in actions {
+            let id = action.to_id();
+            let parsed = TrayAction::from_id(&id).expect("Should parse back");
+            assert_eq!(action, parsed);
+        }
+    }
+
+    #[test]
+    fn test_legacy_browse_id() {
+        // Ensure we don't break if someone still has an old ID (optional, but good for stability)
+        let id = "browse_remote__myRemote";
+        let parsed = TrayAction::from_id(id).unwrap();
+        assert_eq!(parsed, TrayAction::Browse("myRemote".to_string()));
     }
 }

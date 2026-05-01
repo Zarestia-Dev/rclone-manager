@@ -6,13 +6,10 @@ import {
   PathSelectionService,
   RemoteFileOperationsService,
   ModalService,
+  ApiClientService,
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
 import { firstValueFrom } from 'rxjs';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -26,18 +23,6 @@ export interface UndoEntry {
   }[];
 }
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
-/**
- * Manages clipboard state, undo/redo stack, and all file mutation operations
- * (copy, cut, paste, move, delete, rename, mkdir, cleanup).
- *
- * Provided at the NautilusComponent level so it shares the same lifetime.
- * Methods accept the active context (remote, path, files) as parameters so
- * the service has no signal dependency back on the component.
- */
 @Injectable()
 export class NautilusFileOperationsService {
   private readonly MAX_UNDO_STACK = 20;
@@ -47,10 +32,7 @@ export class NautilusFileOperationsService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathSelection = inject(PathSelectionService);
-
-  // ---------------------------------------------------------------------------
-  // Clipboard state
-  // ---------------------------------------------------------------------------
+  private readonly apiClient = inject(ApiClientService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
@@ -63,19 +45,11 @@ export class NautilusFileOperationsService {
     return new Set(this.clipboardItems().map(i => `${i.remote}:${i.path}`));
   });
 
-  // ---------------------------------------------------------------------------
-  // Undo / Redo stack
-  // ---------------------------------------------------------------------------
-
   private readonly _undoStack = signal<UndoEntry[]>([]);
   private readonly _redoStack = signal<UndoEntry[]>([]);
 
   readonly canUndo = computed(() => this._undoStack().length > 0);
   readonly canRedo = computed(() => this._redoStack().length > 0);
-
-  // ---------------------------------------------------------------------------
-  // Clipboard helpers
-  // ---------------------------------------------------------------------------
 
   copyItems(items: FileBrowserItem[]): void {
     this._setClipboard(items, 'copy');
@@ -102,10 +76,6 @@ export class NautilusFileOperationsService {
     );
     this.clipboardMode.set(mode);
   }
-
-  // ---------------------------------------------------------------------------
-  // Paste
-  // ---------------------------------------------------------------------------
 
   async pasteItems(
     dstRemote: ExplorerRoot | null,
@@ -141,10 +111,6 @@ export class NautilusFileOperationsService {
     return true;
   }
 
-  // ---------------------------------------------------------------------------
-  // File operations (copy / move / delete / rename / mkdir)
-  // ---------------------------------------------------------------------------
-
   async performFileOperations(
     items: FileBrowserItem[],
     dstRemote: ExplorerRoot,
@@ -179,7 +145,6 @@ export class NautilusFileOperationsService {
         ORIGINS.FILEMANAGER
       );
 
-      // Successfully dispatched batch!
       const succeededItems: UndoEntry['items'] = items.map(item => ({
         remote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
         path: item.entry.Path,
@@ -412,10 +377,6 @@ export class NautilusFileOperationsService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Undo / Redo
-  // ---------------------------------------------------------------------------
-
   async undoLastOperation(): Promise<void> {
     const stack = this._undoStack();
     if (stack.length === 0) return;
@@ -432,8 +393,6 @@ export class NautilusFileOperationsService {
         }));
         await this.remoteOps.deleteItems(itemsToDelete, ORIGINS.FILEMANAGER);
       } else {
-        // Move back: src becomes dst, dst becomes src
-        // We group by original source (which is now our destination) to use batch transfers
         const groups = new Map<string, { dstRemote: string; dstPath: string; items: any[] }>();
 
         for (const item of entry.items) {
@@ -492,8 +451,6 @@ export class NautilusFileOperationsService {
     }));
 
     try {
-      // All items in a single undo/redo entry are moved/copied to the same destination folder.
-      // We can use the parent path from the first item's destination.
       const firstItem = entry.items[0];
       const lastSlashIndex = firstItem.dstFullPath.lastIndexOf('/');
       const parentPath =
@@ -517,9 +474,97 @@ export class NautilusFileOperationsService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
+  async uploadExternalFiles(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
+    try {
+      const paths = await this.apiClient.invoke<string[] | null>('get_files_location');
+      if (paths && paths.length > 0) {
+        return await this._handleDesktopUpload(remote, currentPath, paths);
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to get files location', err);
+      this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+      return false;
+    }
+  }
+
+  async uploadExternalFolder(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
+    try {
+      const folderPath = await this.apiClient.invoke<string | null>('get_folder_location', {
+        requireEmpty: false,
+      });
+      if (folderPath) {
+        return await this._handleDesktopUpload(remote, currentPath, [folderPath]);
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to get folder location', err);
+      this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+      return false;
+    }
+  }
+
+  private async _handleDesktopUpload(
+    remote: ExplorerRoot,
+    currentPath: string,
+    paths: string[]
+  ): Promise<boolean> {
+    const normalized = this._normalizeRemote(remote);
+    try {
+      const batchId = await this.remoteOps.uploadLocalDropPaths(
+        normalized,
+        currentPath,
+        paths,
+        ORIGINS.FILEMANAGER
+      );
+      return !!batchId;
+    } catch (err) {
+      console.error('Desktop upload failed', err);
+      this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
+      return false;
+    }
+  }
+
+  async uploadWebFiles(
+    remote: ExplorerRoot,
+    currentPath: string,
+    fileList: FileList
+  ): Promise<boolean> {
+    const normalized = this._normalizeRemote(remote);
+    const filesArray = Array.from(fileList).map(file => ({
+      file,
+      relativePath: file.webkitRelativePath || file.name,
+    }));
+
+    const { successCount, failedPaths } = await this.remoteOps.uploadWebFilesBatch(
+      normalized,
+      currentPath,
+      filesArray,
+      ORIGINS.FILEMANAGER
+    );
+
+    if (failedPaths.length === 0) {
+      this.notifications.showSuccess(
+        this.translate.instant('nautilus.notifications.uploadSuccess', {
+          count: successCount,
+        })
+      );
+    } else if (successCount > 0) {
+      this.notifications.showWarning(
+        this.translate.instant('nautilus.notifications.uploadFailed', {
+          count: failedPaths.length,
+        })
+      );
+    } else {
+      this.notifications.showError(
+        this.translate.instant('nautilus.notifications.uploadFailed', {
+          count: failedPaths.length,
+        })
+      );
+    }
+
+    return successCount > 0;
+  }
 
   private _normalizeRemote(remote: ExplorerRoot): string {
     return remote.isLocal ? remote.name : this.pathSelection.normalizeRemoteForRclone(remote.name);

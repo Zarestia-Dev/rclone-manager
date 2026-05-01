@@ -89,13 +89,20 @@ export class ScheduledTaskCardComponent {
 
   protected readonly taskPaths = computed(() => {
     const { args } = this.task();
-    const source = (args['source'] as string) || `${args['remote_name']}:`;
-    const dest = (args['dest'] as string) || '';
+    // Normalize: Rust always emits arrays, but guard against plain strings in cached state.
+    const srcPaths = Array.isArray(args.srcPaths) ? args.srcPaths : [args.srcPaths].filter(Boolean);
+    const dstPaths = Array.isArray(args.dstPaths) ? args.dstPaths : [args.dstPaths].filter(Boolean);
+    const source = srcPaths[0] ?? `${args.remoteName}:`;
+    const dest = dstPaths[0] ?? '';
     return {
       source,
       dest,
+      sourcePaths: srcPaths,
+      destPaths: dstPaths,
       sourceIcon: isLocalPath(source) ? 'folder' : 'folder-open',
       destIcon: isLocalPath(dest) ? 'folder' : 'folder-open',
+      isMultiSource: srcPaths.length > 1,
+      isMultiDest: dstPaths.length > 1,
     };
   });
 

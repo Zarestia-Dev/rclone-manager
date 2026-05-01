@@ -387,10 +387,6 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
-      },
-      "max_upload_batch_size": {
-        "label": "Maksimum Yükleme Paketi Boyutu (MB)",
-        "description": "Yerel bilgisayardan bir seferde yüklenecek maksimum dosya paketi boyutu."
       }
     },
     "developer": {
@@ -1440,7 +1436,13 @@
         "startTime": "Başlangıç Zamanı",
         "speed": "Hız",
         "eta": "Tahmini Süre",
-        "transfers": "Transferler"
+        "transfers": "Transferler",
+        "uploadedFiles": "Yüklenen dosyalar",
+        "deletedFiles": "Silinen dosyalar",
+        "movedFiles": "Taşınan dosyalar",
+        "copiedFiles": "Kopyalanan dosyalar",
+        "syncedFiles": "Senkronize edilen dosyalar",
+        "processedFiles": "İşlenen dosyalar"
       },
       "types": {
         "delete": "Sil",
@@ -2344,6 +2346,8 @@
       "openNewWindow": "Yeni Pencerede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
+      "uploadFiles": "Dosyaları Yükle",
+      "uploadFolder": "Klasörü Yükle",
       "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",

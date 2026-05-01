@@ -9,11 +9,14 @@ pub fn build_api_router(state: WebServerState) -> Router {
         .merge(crate::core::commands::generate_bridge_router())
         // Manual routes for streaming and events
         .route("/events", get(handlers::sse_handler))
-        .route("/fs/stream", get(handlers::stream_file_handler))
         .route(
-            "/fs/stream/remote",
-            get(handlers::stream_remote_file_handler),
+            "/upload",
+            axum::routing::post(handlers::stream_upload_handler)
+                .layer(axum::extract::DefaultBodyLimit::disable()),
         )
+        .route("/stream", get(handlers::stream_file_handler))
+        .route("/stream/remote", get(handlers::stream_remote_file_handler))
+        .route("/stream/audio-cover", get(handlers::audio_cover_handler))
         .with_state(state.clone())
         .layer(axum::middleware::from_fn_with_state(state, auth_middleware))
 }

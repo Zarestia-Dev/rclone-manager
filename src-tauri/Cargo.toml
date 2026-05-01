@@ -44,7 +44,7 @@ tokio-cron-scheduler = "0.15.1"
 croner = "3.0.1"
 sevenz-rust2 = "0.20.2"
 clap = { version = "4.5", features = ["derive", "env"] }
-id3 = "1.16.4"
+lofty = "0.24"
 base64 = "0.22"
 url = "2.5"
 handlebars = "6.2.0"
@@ -60,7 +60,7 @@ urlencoding = "2.1"
 futures = { version = "0.3" }
 
 # Web server dependencies (optional)
-axum = { version = "0.8", optional = true }
+axum = { version = "0.8", features = ["multipart"], optional = true }
 tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }

@@ -17,30 +17,30 @@
     <app-nautilus-sidebar
       #sidebar
       [isMobile]="isMobile()"
-      [nautilusRemote]="nautilusRemote()"
-      [currentPath]="currentPath()"
-      [starredMode]="activeStarredMode()"
+      [nautilusRemote]="tabSvc.nautilusRemote()"
+      [currentPath]="tabSvc.currentPath()"
+      [starredMode]="tabSvc.activeStarredMode()"
       [localDrives]="localDrives()"
       [cloudRemotes]="cloudRemotes()"
       [bookmarks]="filteredBookmarks()"
       [title]="title()"
       [isPickerMode]="isPickerMode()"
-      [hoveredSidebarItem]="hoveredSidebarItem()"
-      [isDragging]="isDragging()"
+      [hoveredSidebarItem]="dragDrop.hoveredSidebarItem()"
+      [isDragging]="dragDrop.isDragging()"
       (remoteSelected)="selectRemote($event)"
       (bookmarkOpened)="openBookmark($event)"
       (starredSelected)="selectStarred()"
       (toggleSearch)="toggleSearchMode()"
-      (requestShortcuts)="openShortcutsModal()"
+      (requestShortcuts)="actions.openShortcutsModal()"
       (sidenavAction)="onSidebarSidenavAction($event)"
-      (requestAbout)="onSidebarRequestAbout($event)"
-      (requestCleanup)="onSidebarRequestCleanup($event)"
-      (remoteOpenedInNewTab)="openRemoteInNewTab($event)"
-      (remoteOpenedInNewWindow)="openRemoteInNewWindow($event)"
-      (bookmarkOpenedInNewTab)="openBookmarkInNewTab($event)"
-      (bookmarkOpenedInNewWindow)="openBookmarkInNewWindow($event)"
-      (requestBookmarkRemoval)="toggleBookmark($event)"
-      (requestProperties)="onSidebarRequestProperties($event)"
+      (requestAbout)="actions.openAboutModal($event)"
+      (requestCleanup)="actions.confirmAndCleanup($event)"
+      (remoteOpenedInNewTab)="tabSvc.createTab($event, '')"
+      (remoteOpenedInNewWindow)="nautilusService.newNautilusWindow($event.name, '')"
+      (bookmarkOpenedInNewTab)="actions.openBookmarkInNewTab($event)"
+      (bookmarkOpenedInNewWindow)="actions.openBookmarkInNewWindow($event)"
+      (requestBookmarkRemoval)="nautilusService.toggleItem('bookmarks', $event)"
+      (requestProperties)="actions.openPropertiesDialog('bookmark', $event)"
       (droppedToBookmark)="onDropToBookmark($event.event, $event.target)"
       (droppedToStarred)="onDropToStarred($event)"
       (droppedToLocal)="onDropToLocal($event)"
@@ -52,26 +52,26 @@
     <app-nautilus-toolbar
       data-tauri-drag-region
       [isMobile]="isMobile()"
-      [canGoBack]="canGoBack()"
-      [canGoForward]="canGoForward()"
+      [canGoBack]="tabSvc.canGoBack()"
+      [canGoForward]="tabSvc.canGoForward()"
       [isSearchMode]="isSearchMode()"
       [searchFilter]="searchFilter()"
       [isEditingPath]="isEditingPath()"
-      [starredMode]="activeStarredMode()"
-      [activeRemote]="activeRemote()"
+      [starredMode]="tabSvc.activeStarredMode()"
+      [activeRemote]="tabSvc.activeRemote()"
       [pathSegments]="pathSegments()"
-      [isDragging]="isDragging()"
-      [hoveredSegmentIndex]="hoveredSegmentIndex()"
+      [isDragging]="dragDrop.isDragging()"
+      [hoveredSegmentIndex]="dragDrop.hoveredSegmentIndex()"
       [fullPathInput]="fullPathInput()"
-      [layout]="layout()"
+      [layout]="settings.layout()"
       [pathOptionsMenu]="pathOptionsMenu"
       [viewMenu]="viewMenu"
-      (goBack)="goBack()"
-      (goForward)="goForward()"
+      (goBack)="tabSvc.goBack()"
+      (goForward)="tabSvc.goForward()"
       (navigateToSegment)="navigateToSegment($event)"
       (updatePath)="updatePath($event)"
       (navigateToPath)="navigateToPath($event)"
-      (layoutChange)="setLayout($event)"
+      (layoutChange)="settings.setLayout($event)"
       (closeOverlay)="closeOverlay.emit()"
       (copyUrl)="actions.openCopyUrlDialog()"
       (searchFilterChange)="searchFilter.set($event)"
@@ -80,23 +80,23 @@
       (droppedOnSegment)="onDropToSegment($event.event, $event.segmentIndex)"
     ></app-nautilus-toolbar>
 
-    @if (tabs().length > 1 && !isPickerMode()) {
+    @if (tabSvc.tabs().length > 1 && !isPickerMode()) {
       <app-nautilus-tabs
-        [tabs]="mappedTabs()"
-        [activeTabIndex]="activeTabIndex()"
-        [isDragging]="isDragging()"
-        [hoveredTabIndex]="hoveredTabIndex()"
-        (switchTab)="switchTab($event)"
-        (closeTab)="closeTab($event)"
-        (moveTab)="moveTab($event.previousIndex, $event.currentIndex)"
-        (duplicateTab)="duplicateTab($event)"
-        (closeOtherTabs)="closeOtherTabs($event)"
-        (closeTabsToRight)="closeTabsToRight($event)"
+        [tabs]="tabSvc.mappedTabs()"
+        [activeTabIndex]="tabSvc.activeTabIndex()"
+        [isDragging]="dragDrop.isDragging()"
+        [hoveredTabIndex]="dragDrop.hoveredTabIndex()"
+        (switchTab)="tabSvc.switchTab($event)"
+        (closeTab)="tabSvc.closeTab($event)"
+        (moveTab)="tabSvc.moveTab($event.previousIndex, $event.currentIndex)"
+        (duplicateTab)="tabSvc.duplicateTab($event)"
+        (closeOtherTabs)="tabSvc.closeOtherTabs($event)"
+        (closeTabsToRight)="tabSvc.closeTabsToRight($event)"
       ></app-nautilus-tabs>
     }
 
-    <div class="nautilus-content" [class.split-view]="isSplitEnabled()">
-      <div class="split-container" [style.gridTemplateColumns]="splitGridColumns()">
+    <div class="nautilus-content" [class.split-view]="tabSvc.isSplitEnabled()">
+      <div class="split-container" [style.gridTemplateColumns]="tabSvc.splitGridColumns()">
         @for (pane of visiblePanes(); track pane.index) {
           @if (!$first) {
             <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
@@ -105,33 +105,34 @@
             [files]="pane.files"
             [selection]="pane.selection"
             [paneIndex]="pane.index"
-            [isSplitEnabled]="isSplitEnabled()"
-            [loading]="pane.loading"
+            [isSplitEnabled]="tabSvc.isSplitEnabled()"
+            [loading]="tabSvc.isLoading()"
             [error]="pane.error"
-            [layout]="layout()"
-            [iconSize]="iconSize()"
-            [listRowHeight]="listRowHeight()"
-            [isDragging]="isDragging()"
-            [hoveredFolder]="hoveredFolder()"
-            [hoveredFolderPaneIndex]="hoveredFolderPaneIndex()"
-            [cutItemPaths]="cutItemPaths()"
+            [layout]="settings.layout()"
+            [iconSize]="settings.iconSize()"
+            [listRowHeight]="settings.listRowHeight()"
+            [isDragging]="dragDrop.isDragging()"
+            [hoveredFolder]="dragDrop.hoveredFolder()"
+            [hoveredFolderPaneIndex]="dragDrop.hoveredFolderPaneIndex()"
+            [cutItemPaths]="fileOps.cutItemPaths()"
             [starredMode]="pane.starredMode"
-            [sortKey]="sortKey()"
-            [sortDirection]="sortDirection()"
-            [activePaneIndex]="activePaneIndex()"
+            [sortKey]="settings.sortKey()"
+            [sortDirection]="settings.sortDirection()"
+            [activePaneIndex]="tabSvc.activePaneIndex()"
             [isItemSelectable]="isItemSelectable"
+            [isMobile]="isMobile()"
             [fileMenu]="fileMenu"
-            (switchPane)="switchPane($event)"
-            (clearSelection)="clearSelection()"
+            (switchPane)="tabSvc.switchPane($event)"
+            (clearSelection)="selectionSvc.clearSelection(pane.index)"
             (setContextItem)="setContextItem($event, pane.index)"
             (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
             (dragStarted)="onDragStarted($event.event, $event.item)"
             (dragEnded)="onDragEnded()"
             (itemClick)="onItemClick($event.item, $event.event, $event.index, pane.index)"
             (navigateTo)="navigateTo($event)"
-            (toggleStar)="toggleStar($event)"
-            (toggleSort)="toggleSort($event)"
-            (refresh)="refresh()"
+            (toggleStar)="nautilusService.toggleItem('starred', $event)"
+            (toggleSort)="settings.toggleSort($event)"
+            (refresh)="tabSvc.refresh(tabSvc.activePaneIndex())"
             (cancelLoad)="cancelLoad($event)"
             (updateSelection)="onUpdateSelection($event, pane.index)"
           ></app-nautilus-view-pane>
@@ -141,11 +142,11 @@
 
     @if (isMobile()) {
       <app-nautilus-bottom-bar
-        [layout]="layout()"
+        [layout]="settings.layout()"
         [viewMenu]="viewMenu"
         [isPickerMode]="isPickerMode()"
         [isConfirmDisabled]="isConfirmDisabled()"
-        (setLayout)="setLayout($event)"
+        (setLayout)="settings.setLayout($event)"
         (confirmSelection)="confirmSelection()"
         (toggleSidebar)="sidenav.toggle()"
       ></app-nautilus-bottom-bar>
@@ -160,7 +161,7 @@
         <div class="menu-pages-track" [class.show-submenu]="currentMenuView() === 'open'">
           <!-- Main Page -->
           <div class="menu-page" [class.active-page]="currentMenuView() === 'main'">
-            @if (!errorState()) {
+            @if (!tabSvc.errorState()) {
               @if (item) {
                 @if (item.entry.IsDir) {
                   <button
@@ -182,7 +183,7 @@
                 }
 
                 @if (item.entry.IsDir) {
-                  <button class="menu-item" cdkMenuItem (click)="removeEmptyDirs()">
+                  <button class="menu-item" cdkMenuItem (click)="actions.removeEmptyDirs()">
                     <span class="item-label">{{
                       'nautilus.contextMenu.removeEmptyDirs' | translate
                     }}</span>
@@ -202,21 +203,25 @@
                   <span class="item-label">{{ 'nautilus.contextMenu.cut' | translate }}</span>
                   <span class="shortcut">Ctrl+X</span>
                 </button>
-                <button class="menu-item" cdkMenuItem (click)="openContextMenuRename()">
+                <button class="menu-item" cdkMenuItem (click)="actions.openRename()">
                   <span class="item-label">{{ 'nautilus.contextMenu.rename' | translate }}</span>
                   <span class="shortcut">F2</span>
                 </button>
 
                 <mat-divider></mat-divider>
 
-                <button class="menu-item" cdkMenuItem (click)="deleteSelectedItems()">
+                <button class="menu-item" cdkMenuItem (click)="actions.deleteSelectedItems()">
                   <span class="item-label">{{ 'nautilus.contextMenu.delete' | translate }}</span>
                   <span class="shortcut">Delete</span>
                 </button>
 
                 <mat-divider></mat-divider>
 
-                <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
+                <button
+                  class="menu-item"
+                  cdkMenuItem
+                  (click)="actions.openPropertiesDialog('contextMenu')"
+                >
                   <span class="item-label">{{
                     'nautilus.contextMenu.properties' | translate
                   }}</span>
@@ -224,24 +229,43 @@
                 </button>
               }
               @if (!item) {
-                <button class="menu-item" cdkMenuItem (click)="refresh()">
+                <button
+                  class="menu-item"
+                  cdkMenuItem
+                  (click)="tabSvc.refresh(tabSvc.activePaneIndex())"
+                >
                   <span class="item-label">{{ 'nautilus.contextMenu.refresh' | translate }}</span>
                   <span class="shortcut">F5</span>
                 </button>
               }
-              @if (!item && !activeStarredMode()) {
-                <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+              @if (!item && !tabSvc.activeStarredMode()) {
+                <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
                   <span class="item-label">{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
                   <span class="shortcut">Ctrl+Shift+N</span>
                 </button>
-                @if (hasClipboard()) {
+                <mat-divider></mat-divider>
+                <button class="menu-item" cdkMenuItem (click)="uploadFiles()">
+                  <span class="item-label"
+                    >{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span
+                  >
+                </button>
+                <button class="menu-item" cdkMenuItem (click)="uploadFolder()">
+                  <span class="item-label"
+                    >{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span
+                  >
+                </button>
+                @if (fileOps.hasClipboard()) {
                   <button class="menu-item" cdkMenuItem (click)="pasteItems()">
                     <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
                     <span class="shortcut">Ctrl+V</span>
                   </button>
                 }
                 <mat-divider></mat-divider>
-                <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
+                <button
+                  class="menu-item"
+                  cdkMenuItem
+                  (click)="actions.openPropertiesDialog('contextMenu')"
+                >
                   <span class="item-label">{{
                     'nautilus.contextMenu.properties' | translate
                   }}</span>
@@ -264,12 +288,16 @@
               <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
               <span class="shortcut">Return</span>
             </button>
-            @if (contextMenuItem()?.entry?.IsDir) {
-              <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
+            @if (actions.contextMenuItem()?.entry?.IsDir) {
+              <button class="menu-item" cdkMenuItem (click)="actions.openContextMenuOpenInNewTab()">
                 <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
                 <span class="shortcut">Ctrl+Return</span>
               </button>
-              <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewWindow()">
+              <button
+                class="menu-item"
+                cdkMenuItem
+                (click)="actions.openContextMenuOpenInNewWindow()"
+              >
                 <span class="item-label">{{
                   'nautilus.contextMenu.openNewWindow' | translate
                 }}</span>
@@ -283,10 +311,17 @@
 
     <ng-template #pathOptionsMenu>
       <div class="material-context-menu" cdkMenu>
-        @if (!errorState()) {
-          @if (!activeStarredMode()) {
-            <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+        @if (!tabSvc.errorState()) {
+          @if (!tabSvc.activeStarredMode()) {
+            <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button class="menu-item" cdkMenuItem (click)="uploadFiles()">
+              <span>{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span>
+            </button>
+            <button class="menu-item" cdkMenuItem (click)="uploadFolder()">
+              <span>{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span>
             </button>
             <button class="menu-item" cdkMenuItem (click)="actions.openCopyUrlDialog()">
               <span>{{ 'nautilus.modals.copyUrl.title' | translate }}...</span>
@@ -296,19 +331,19 @@
               class="menu-item"
               cdkMenuItem
               (click)="pasteItems()"
-              [disabled]="!hasClipboard()"
+              [disabled]="!fileOps.hasClipboard()"
             >
               <span>{{ 'nautilus.contextMenu.paste' | translate }}</span>
             </button>
           }
         }
 
-        <button class="menu-item" cdkMenuItem (click)="refresh()">
+        <button class="menu-item" cdkMenuItem (click)="tabSvc.refresh(tabSvc.activePaneIndex())">
           <span>{{ 'nautilus.contextMenu.reload' | translate }}</span>
         </button>
 
-        @if (!errorState()) {
-          @if (!activeStarredMode()) {
+        @if (!tabSvc.errorState()) {
+          @if (!tabSvc.activeStarredMode()) {
             <button class="menu-item" cdkMenuItem [appCopyToClipboard]="fullPathInput()">
               <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
@@ -324,12 +359,12 @@
             <span>{{ 'nautilus.contextMenu.selectAll' | translate }}</span>
           </button>
 
-          @if (!activeStarredMode()) {
+          @if (!tabSvc.activeStarredMode()) {
             <mat-divider></mat-divider>
             <button
               class="menu-item"
               cdkMenuItem
-              (click)="setContextItem(null); openPropertiesDialog('contextMenu')"
+              (click)="setContextItem(null); actions.openPropertiesDialog('contextMenu')"
             >
               <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
             </button>
@@ -364,10 +399,10 @@
     <div class="icon-size-control">
       <span>{{ 'nautilus.view.iconSize' | translate }}</span>
       <div class="buttons">
-        <button (click)="decreaseIconSize()" [disabled]="decreaseIconDisabled()">
+        <button (click)="settings.decreaseIconSize()" [disabled]="settings.decreaseIconDisabled()">
           <mat-icon svgIcon="remove"></mat-icon>
         </button>
-        <button (click)="increaseIconSize()" [disabled]="increaseIconDisabled()">
+        <button (click)="settings.increaseIconSize()" [disabled]="settings.increaseIconDisabled()">
           <mat-icon svgIcon="plus"></mat-icon>
         </button>
       </div>
@@ -379,8 +414,8 @@
       <span class="sort-label">{{ 'nautilus.sort.label' | translate }}</span>
       <mat-radio-group
         class="sort-radio-group"
-        [value]="sortKey()"
-        (change)="setSort($event.value)"
+        [value]="settings.sortKey()"
+        (change)="settings.setSort($event.value)"
       >
         @for (opt of sortOptions; track opt.key) {
           <mat-radio-button [value]="opt.key">{{ opt.label | translate }}</mat-radio-button>
@@ -391,7 +426,7 @@
     <mat-divider></mat-divider>
 
     <div class="menu-item-wrapper">
-      <mat-checkbox [checked]="isSplitEnabled()" (change)="toggleSplit()">
+      <mat-checkbox [checked]="tabSvc.isSplitEnabled()" (change)="tabSvc.toggleSplit()">
         <span>{{ 'nautilus.contextMenu.toggleSplit' | translate }}</span>
       </mat-checkbox>
     </div>
@@ -399,9 +434,29 @@
     <mat-divider></mat-divider>
 
     <div class="menu-item-wrapper">
-      <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
+      <mat-checkbox
+        [checked]="settings.showHidden()"
+        (change)="settings.toggleShowHidden($event.checked)"
+      >
         <span>{{ 'nautilus.view.showHidden' | translate }}</span>
       </mat-checkbox>
     </div>
   </div>
 </ng-template>
+
+<!-- Hidden inputs for headless uploads -->
+<input
+  #fileUploadInput
+  type="file"
+  multiple
+  style="display: none"
+  (change)="onWebUploadFiles($event)"
+/>
+<input
+  #folderUploadInput
+  type="file"
+  webkitdirectory
+  directory
+  style="display: none"
+  (change)="onWebUploadFolder($event)"
+/>

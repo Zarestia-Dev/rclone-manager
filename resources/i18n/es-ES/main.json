@@ -410,10 +410,6 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
-      },
-      "max_upload_batch_size": {
-        "label": "Tamaño Máximo de Lote de Carga (MB)",
-        "description": "El tamaño máximo de un lote de archivos cargados desde la computadora local en una solicitud."
       }
     },
     "developer": {
@@ -1452,6 +1448,20 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Eliminar",
+      "details": {
+        "source": "Origen",
+        "destination": "Destino",
+        "startTime": "Hora de inicio",
+        "speed": "Velocidad",
+        "eta": "ETA",
+        "transfers": "Transferencias",
+        "uploadedFiles": "Archivos subidos",
+        "deletedFiles": "Archivos eliminados",
+        "movedFiles": "Archivos movidos",
+        "copiedFiles": "Archivos copiados",
+        "syncedFiles": "Archivos sincronizados",
+        "processedFiles": "Archivos procesados"
+      },
       "types": {
         "delete": "Eliminar",
         "cleanup": "Limpieza",
@@ -2319,6 +2329,8 @@
       "toggleSelect": "Alternar selección",
       "copyPath": "Copiar ruta",
       "newFolder": "Nueva carpeta",
+      "uploadFiles": "Subir archivos",
+      "uploadFolder": "Subir carpeta",
       "rename": "Renombrar",
       "refresh": "Actualizar",
       "properties": "Propiedades",

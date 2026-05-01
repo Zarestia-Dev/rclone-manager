@@ -3,7 +3,9 @@
 #[cfg(feature = "tray")]
 pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
-    let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone).await?;
+    use crate::core::tray::TraySnapshot;
+    let snapshot = TraySnapshot::fetch(&app_clone).await?;
+    let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone, &snapshot).await?;
 
     #[allow(unused_mut)]
     let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")

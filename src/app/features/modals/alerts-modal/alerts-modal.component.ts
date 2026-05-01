@@ -29,12 +29,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
           <mat-icon svgIcon="bell"></mat-icon>
         </button>
         <p class="header-title">{{ 'alerts.title' | translate }}</p>
-        <button
-          mat-icon-button
-          (click)="close()"
-          [attr.aria-label]="'common.close' | translate"
-          class="close-btn"
-        >
+        <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </header>

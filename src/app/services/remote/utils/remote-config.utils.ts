@@ -73,6 +73,18 @@ export function buildPathString(pathGroup: any, currentRemoteName: string): stri
 }
 
 /**
+ * Builds an array of rclone path strings from one or more form path groups.
+ */
+export function buildPathStrings(pathGroups: any | any[], currentRemoteName: string): string[] {
+  if (!pathGroups) return [];
+  if (Array.isArray(pathGroups)) {
+    return pathGroups.map(pg => buildPathString(pg, currentRemoteName)).filter(p => !!p);
+  }
+  const single = buildPathString(pathGroups, currentRemoteName);
+  return single ? [single] : [];
+}
+
+/**
  * Extracts the default answer from an interactive config question response.
  */
 export function getDefaultAnswerFromQuestion(

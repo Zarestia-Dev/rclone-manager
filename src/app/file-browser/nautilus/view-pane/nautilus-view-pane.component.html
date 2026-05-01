@@ -9,8 +9,10 @@
   @if (layout() === 'grid') {
     <div
       class="nautilus-grid"
-      (click)="clearSelection.emit()"
-      (keydown.enter)="clearSelection.emit()"
+      #gridContainer
+      (mousedown)="onMouseDown($event)"
+      (click)="onContainerClick($event)"
+      (keydown.enter)="clearSelection.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -18,6 +20,15 @@
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
+      @if (lassoActive()) {
+        <div
+          class="lasso-selection"
+          [style.left.px]="lassoRect().left"
+          [style.top.px]="lassoRect().top"
+          [style.width.px]="lassoRect().width"
+          [style.height.px]="lassoRect().height"
+        ></div>
+      }
       <div class="grid" [style.gridTemplateColumns]="gridColumns()">
         @for (item of files(); track getItemKey(item)) {
           @let key = getItemKey(item);
@@ -28,8 +39,10 @@
             [attr.data-item-key]="key"
             (dragstart)="onDragStart($event, item)"
             (dragend)="onDragEnd()"
-            (click)="itemClick.emit({ item, event: $event, index: $index })"
-            (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
+            (click)="
+              itemClick.emit({ item, event: $event, index: $index }); $event.stopPropagation()
+            "
+            (keydown.enter)="onItemKeydown($event, item, $index)"
             (dblclick)="navigateTo.emit(item)"
             [cdkContextMenuTriggerFor]="fileMenu()"
             [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -63,11 +76,12 @@
       </div>
     </div>
   } @else {
-    <cdk-virtual-scroll-viewport
-      [itemSize]="listRowHeight()"
+    <div
+      #listContainer
       class="nautilus-list-container"
-      (click)="clearSelection.emit()"
-      (keydown.enter)="clearSelection.emit()"
+      (mousedown)="onMouseDown($event)"
+      (click)="onContainerClick($event)"
+      (keydown.enter)="clearSelection.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -75,6 +89,15 @@
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
+      @if (lassoActive()) {
+        <div
+          class="lasso-selection"
+          [style.left.px]="lassoRect().left"
+          [style.top.px]="lassoRect().top"
+          [style.width.px]="lassoRect().width"
+          [style.height.px]="lassoRect().height"
+        ></div>
+      }
       <table mat-table [dataSource]="files()" class="nautilus-table">
         <ng-container matColumnDef="name">
           <th
@@ -176,8 +199,8 @@
           [attr.data-item-key]="getItemKey(item)"
           (dragstart)="onDragStart($event, item)"
           (dragend)="onDragEnd()"
-          (click)="itemClick.emit({ item, event: $event, index: i })"
-          (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
+          (click)="itemClick.emit({ item, event: $event, index: i }); $event.stopPropagation()"
+          (keydown.enter)="onItemKeydown($event, item, i)"
           (dblclick)="navigateTo.emit(item)"
           [cdkContextMenuTriggerFor]="fileMenu()"
           [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -195,7 +218,7 @@
           "
         ></tr>
       </table>
-    </cdk-virtual-scroll-viewport>
+    </div>
   }
 
   @if (error()) {

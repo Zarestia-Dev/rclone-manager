@@ -51,8 +51,6 @@
                         [currentRemoteName]="setupNameValue() || 'remote'"
                         [existingRemotes]="existingRemotes()"
                         [description]="tab.description | translate"
-                        (destFolderSelected)="selectFolder(tab.type, 'dest')"
-                        (sourceFolderSelected)="selectFolder(tab.type, 'source')"
                       ></app-operation-config>
                     </div>
                   </mat-tab>

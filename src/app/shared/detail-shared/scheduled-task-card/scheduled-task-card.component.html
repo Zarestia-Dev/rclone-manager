@@ -163,7 +163,7 @@
             </button>
           </div>
 
-          @if (task().args['dest']) {
+          @if (taskPaths().destPaths.length > 0) {
             <div class="path-item">
               <div class="path-content">
                 <span class="path-label">{{
