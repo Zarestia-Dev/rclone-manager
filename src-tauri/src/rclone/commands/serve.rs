@@ -7,10 +7,7 @@ use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
-        json_helpers::{
-            get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
-            unwrap_nested_options,
-        },
+        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::serve,
         types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
@@ -18,13 +15,14 @@ use crate::{
 };
 
 use super::common::{
-    fs_value_with_runtime_overrides, redact_sensitive_values, resolve_runtime_remote_options,
+    fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
 };
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ServeParams {
     pub remote_name: String,
+    pub source: String,
     pub serve_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
@@ -49,60 +47,55 @@ struct RcloneServeBody {
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let config = &interpolate_value(config);
-        let source = get_string(config, &["source"]);
-
-        // Valid if either source is set or fs is in options
-        let has_source = !source.is_empty();
-        let has_fs = config
-            .get("options")
-            .and_then(|opts| opts.get("fs"))
-            .and_then(|v| v.as_str())
-            .is_some_and(|s| !s.is_empty());
-
-        if !has_source && !has_fs {
-            return None;
-        }
-
-        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
-        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
-
-        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
-        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
-        let runtime_remote_options =
-            resolve_runtime_remote_options(config, settings, &remote_name, "runtimeRemotes");
+        let common = parse_common_config(config, settings, &remote_name)?;
 
         Some(Self {
             remote_name,
-            serve_options: json_to_hashmap(config.get("options")),
-            backend_options,
-            filter_options,
-            vfs_options,
-            runtime_remote_options,
-            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
+            source: common.first_source(),
+            serve_options: common.options,
+            backend_options: common.backend_options,
+            filter_options: common.filter_options,
+            vfs_options: common.vfs_options,
+            runtime_remote_options: common.runtime_remote_options,
+            profile: common.profile,
         })
     }
 
     pub fn to_rclone_body(&self) -> Value {
         // Pre-process serve options to handle "addr" array issue
-        let processed_serve_opts = self.serve_options.clone().map(|mut opts| {
-            if let Some(addr_val) = opts.get("addr") {
-                let final_val = match addr_val {
-                    Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                    _ => addr_val.clone(),
-                };
-                opts.insert("addr".to_string(), final_val);
-            }
-            if let Some(fs_val) = opts.get("fs").and_then(|value| value.as_str()) {
+        let processed_serve_opts = self
+            .serve_options
+            .clone()
+            .map(|mut opts| {
+                if let Some(addr_val) = opts.get("addr") {
+                    let final_val = match addr_val {
+                        Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
+                        _ => addr_val.clone(),
+                    };
+                    opts.insert("addr".to_string(), final_val);
+                }
+                // Use the explicit source as 'fs'
                 opts.insert(
                     "fs".to_string(),
-                    fs_value_with_runtime_overrides(fs_val, self.runtime_remote_options.as_ref()),
+                    fs_value_with_runtime_overrides(
+                        &self.source,
+                        self.runtime_remote_options.as_ref(),
+                    ),
                 );
-            }
-            opts
-        });
+                opts
+            })
+            .or_else(|| {
+                // If no serve_options, create one with at least 'fs'
+                let mut opts = HashMap::new();
+                opts.insert(
+                    "fs".to_string(),
+                    fs_value_with_runtime_overrides(
+                        &self.source,
+                        self.runtime_remote_options.as_ref(),
+                    ),
+                );
+                Some(opts)
+            });
 
         let body = RcloneServeBody {
             serve_options: processed_serve_opts,

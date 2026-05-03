@@ -110,7 +110,7 @@ fn submenu_from_items<R: Runtime>(
     Submenu::with_items(handle, label, enabled, &refs)
 }
 
-pub async fn create_tray_menu<R: Runtime>(
+pub fn create_tray_menu<R: Runtime>(
     app: &AppHandle<R>,
     snapshot: &TraySnapshot,
 ) -> tauri::Result<Menu<R>> {

@@ -78,6 +78,7 @@ export const BASE_ICONS: Record<string, string> = {
   broom: 'assets/icons/actions/broom.svg',
   'floppy-disk': 'assets/icons/actions/floppy-disk.svg',
   compress: 'assets/icons/actions/compress.svg',
+  unarchive: 'assets/icons/actions/unarchive.svg',
   detailed: 'assets/icons/actions/detailed.svg',
   'drag-indicator': 'assets/icons/actions/drag-indicator.svg',
 

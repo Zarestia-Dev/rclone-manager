@@ -93,131 +93,67 @@
         }
       </div>
 
-      @if (isPlural('sources')) {
-        <div class="path-list" formArrayName="sources">
-          @for (source of getFormArray('sources')?.controls || []; track $index) {
-            <div class="path-item-row" [formGroupName]="$index">
-              <div class="path-input-wrapper">
-                <mat-form-field appearance="fill">
-                  <ng-container matPrefix>
-                    @if (isMount() || isServe()) {
-                      <span class="path-prefix mount-remote">
-                        <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                        <span>{{ currentRemoteName() }}:</span>
-                      </span>
-                    } @else {
-                      <mat-select
-                        formControlName="pathType"
-                        [hideSingleSelectionIndicator]="true"
-                        class="path-prefix"
-                        [class.local]="getPathTypeAtIndex('sources', $index) === 'local'"
-                        [class.remote]="getPathTypeAtIndex('sources', $index) === 'currentRemote'"
-                        [class.other]="getPathTypeAtIndex('sources', $index) === 'otherRemote'"
-                        (selectionChange)="clearPathOnTypeChange('sources', $index)"
-                      >
-                        <mat-select-trigger>
-                          @switch (getPathTypeAtIndex('sources', $index)) {
-                            @case ('local') {
-                              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                              <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                            }
-                            @case ('currentRemote') {
-                              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                              <span>{{ currentRemoteName() }}:</span>
-                            }
-                            @case ('otherRemote') {
-                              <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                              <span>{{ getOtherRemoteName('sources', $index) }}:</span>
-                            }
-                          }
-                        </mat-select-trigger>
-
-                        <mat-option value="local">
-                          <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                          <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                        </mat-option>
-                        <mat-option value="currentRemote">
-                          <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                          <span>{{ currentRemoteName() }}:</span>
-                        </mat-option>
-
-                        @if (otherRemotes().length) {
-                          <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
-                            @for (remote of otherRemotes(); track remote) {
-                              <mat-option [value]="'otherRemote:' + remote">
-                                <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                                <span>{{ remote }}:</span>
-                              </mat-option>
-                            }
-                          </mat-optgroup>
-                        }
-                      </mat-select>
-                    }
-                  </ng-container>
-
-                  <input
-                    matInput
-                    formControlName="path"
-                    [placeholder]="
-                      (isServe()
-                        ? 'wizards.appOperation.rootFolderSpecific'
-                        : 'wizards.appOperation.enterSourcePath'
-                      ) | translate
-                    "
-                    (input)="onInputChanged($event, 'sources', $index)"
-                    [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : autocompleteMenu"
-                    [cdkMenuTriggerData]="{ group: 'sources', index: $index }"
-                  />
-
-                  <div matSuffix class="action-suffix">
-                    <button
-                      matIconButton
-                      [disabled]="isSourcePickerDisabled()"
-                      (click)="selectRemotePath('sources', $index); $event.stopPropagation()"
-                      type="button"
-                      [matTooltip]="'wizards.appOperation.selectRemoteSource' | translate"
-                    >
-                      <mat-icon
-                        svgIcon="folder"
-                        [class.purple]="
-                          getPathTypeAtIndex('sources', $index) === 'local' &&
-                          !isSourcePickerDisabled()
-                        "
-                        [class.accent]="
-                          getPathTypeAtIndex('sources', $index) !== 'local' &&
-                          !isSourcePickerDisabled()
-                        "
-                      ></mat-icon>
-                    </button>
-                    @if (canAddSource() && (getFormArray('sources')?.length || 0) > 1) {
-                      <button
-                        matIconButton
-                        class="remove-btn"
-                        (click)="removePath('sources', $index)"
-                        type="button"
-                        [matTooltip]="'wizards.appOperation.removePath' | translate"
-                      >
-                        <mat-icon svgIcon="trash" class="red"></mat-icon>
-                      </button>
-                    }
-                  </div>
-                </mat-form-field>
-              </div>
-            </div>
-          }
-        </div>
-      } @else if (opFormGroup().get('source')) {
-        <div class="path-list">
-          <div class="path-item-row" formGroupName="source">
+      <div class="path-list">
+        @for (item of sourceItems(); track item.index) {
+          <div class="path-item-row" [formGroup]="$any(item.control)">
             <div class="path-input-wrapper">
-              <mat-form-field appearance="fill">
-                <ng-container matPrefix>
-                  <span class="path-prefix mount-remote">
+              <div class="path-type-selector">
+                @if (isMount() || isServe()) {
+                  <div class="path-prefix-static mount-remote">
                     <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
                     <span>{{ currentRemoteName() }}:</span>
-                  </span>
-                </ng-container>
+                  </div>
+                } @else {
+                  <mat-select
+                    formControlName="type"
+                    [hideSingleSelectionIndicator]="true"
+                    class="path-prefix-select"
+                    [class.local]="getPathTypeAtIndex('sources', item.index) === 'local'"
+                    [class.remote]="getPathTypeAtIndex('sources', item.index) === 'currentRemote'"
+                    [class.other]="getPathTypeAtIndex('sources', item.index) === 'otherRemote'"
+                    (selectionChange)="clearPathOnTypeChange('sources', item.index)"
+                  >
+                    <mat-select-trigger>
+                      @switch (getPathTypeAtIndex('sources', item.index)) {
+                        @case ('local') {
+                          <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                          <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
+                        }
+                        @case ('currentRemote') {
+                          <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                          <span>{{ currentRemoteName() }}:</span>
+                        }
+                        @case ('otherRemote') {
+                          <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                          <span>{{ getOtherRemoteName('sources', item.index) }}:</span>
+                        }
+                      }
+                    </mat-select-trigger>
 
+                    <mat-option value="local">
+                      <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                      <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
+                    </mat-option>
+                    <mat-option value="currentRemote">
+                      <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                      <span>{{ currentRemoteName() }}:</span>
+                    </mat-option>
+
+                    @if (otherRemotes().length) {
+                      <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
+                        @for (remote of otherRemotes(); track remote) {
+                          <mat-option [value]="'otherRemote:' + remote">
+                            <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                            <span>{{ remote }}:</span>
+                          </mat-option>
+                        }
+                      </mat-optgroup>
+                    }
+                  </mat-select>
+                }
+              </div>
+
+              <mat-form-field appearance="fill" class="path-input-field">
                 <input
                   matInput
                   formControlName="path"
@@ -227,225 +163,188 @@
                       : 'wizards.appOperation.enterSourcePath'
                     ) | translate
                   "
-                  (input)="onInputChanged($event, 'sources', 0)"
+                  (input)="onInputChanged($event, 'sources', item.index)"
                   [cdkMenuTriggerFor]="isSourcePickerDisabled() ? null : autocompleteMenu"
-                  [cdkMenuTriggerData]="{ group: 'sources', index: 0 }"
+                  [cdkMenuTriggerData]="{ group: 'sources', index: item.index }"
+                />
+
+                <div matSuffix class="action-suffix">
+                  @if (
+                    isDataOperation() &&
+                    getPathTypeControl('sources', item.index)?.value === 'local'
+                  ) {
+                    <button
+                      matIconButton
+                      [disabled]="isSourcePickerDisabled()"
+                      [matMenuTriggerFor]="localPickerMenu"
+                      type="button"
+                      [matTooltip]="'wizards.appOperation.selectPath' | translate"
+                    >
+                      <mat-icon svgIcon="folder-open"></mat-icon>
+                    </button>
+                    <mat-menu #localPickerMenu="matMenu">
+                      <button
+                        mat-menu-item
+                        (click)="selectRemotePath('sources', item.index, 'folders')"
+                      >
+                        <mat-icon svgIcon="folder"></mat-icon>
+                        <span>{{ 'nautilus.titles.selectFolder' | translate }}</span>
+                      </button>
+                      <button
+                        mat-menu-item
+                        (click)="selectRemotePath('sources', item.index, 'files')"
+                      >
+                        <mat-icon svgIcon="file"></mat-icon>
+                        <span>{{ 'nautilus.titles.selectFile' | translate }}</span>
+                      </button>
+                    </mat-menu>
+                  } @else {
+                    <button
+                      matIconButton
+                      [disabled]="isSourcePickerDisabled()"
+                      (click)="selectRemotePath('sources', item.index); $event.stopPropagation()"
+                      type="button"
+                      [matTooltip]="'wizards.appOperation.selectRemoteSource' | translate"
+                    >
+                      <mat-icon
+                        [svgIcon]="
+                          getPathTypeControl('sources', item.index)?.value === 'local'
+                            ? 'folder'
+                            : 'hard-drive'
+                        "
+                      ></mat-icon>
+                    </button>
+                  }
+                  @if (canAddSource() && (getFormArray('sources')?.length || 0) > 1) {
+                    <button
+                      matIconButton
+                      class="remove-btn"
+                      (click)="removePath('sources', item.index)"
+                      type="button"
+                      [matTooltip]="'wizards.appOperation.removePath' | translate"
+                    >
+                      <mat-icon svgIcon="trash" class="red"></mat-icon>
+                    </button>
+                  }
+                </div>
+              </mat-form-field>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Destination Path Section (Strictly Singular) -->
+    @if (showDestPath()) {
+      <div class="section-header">
+        <h3 class="section-title">
+          <mat-icon svgIcon="chevron-right" class="accent"></mat-icon>
+          {{ 'wizards.appOperation.destinationPath' | translate }}
+        </h3>
+      </div>
+
+      <div class="path-list">
+        @for (item of destItems(); track item.index) {
+          <div class="path-item-row" [formGroup]="$any(item.control)">
+            <div class="path-input-wrapper">
+              <div class="path-type-selector">
+                @if (isMount()) {
+                  <div class="path-prefix-static local">
+                    <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                    <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
+                  </div>
+                } @else {
+                  <mat-select
+                    formControlName="type"
+                    [hideSingleSelectionIndicator]="true"
+                    class="path-prefix-select"
+                    [class.local]="getPathTypeAtIndex('dests', item.index) === 'local'"
+                    [class.remote]="getPathTypeAtIndex('dests', item.index) === 'currentRemote'"
+                    [class.other]="getPathTypeAtIndex('dests', item.index) === 'otherRemote'"
+                    (selectionChange)="clearPathOnTypeChange('dests', item.index)"
+                  >
+                    <mat-select-trigger>
+                      @switch (getPathTypeAtIndex('dests', item.index)) {
+                        @case ('local') {
+                          <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                          <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
+                        }
+                        @case ('currentRemote') {
+                          <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                          <span>{{ currentRemoteName() }}:</span>
+                        }
+                        @case ('otherRemote') {
+                          <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                          <span>{{ getOtherRemoteName('dests', item.index) }}:</span>
+                        }
+                      }
+                    </mat-select-trigger>
+
+                    <mat-option value="local">
+                      <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                      <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
+                    </mat-option>
+                    <mat-option value="currentRemote">
+                      <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                      <span>{{ currentRemoteName() }}:</span>
+                    </mat-option>
+
+                    @if (otherRemotes().length) {
+                      <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
+                        @for (remote of otherRemotes(); track remote) {
+                          <mat-option [value]="'otherRemote:' + remote">
+                            <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                            <span>{{ remote }}:</span>
+                          </mat-option>
+                        }
+                      </mat-optgroup>
+                    }
+                  </mat-select>
+                }
+              </div>
+
+              <mat-form-field appearance="fill" class="path-input-field">
+                <input
+                  matInput
+                  formControlName="path"
+                  [placeholder]="
+                    (isMount()
+                      ? 'wizards.appOperation.localPathPlaceholder'
+                      : 'wizards.appOperation.enterDestinationPath'
+                    ) | translate
+                  "
+                  (input)="onInputChanged($event, 'dests', item.index)"
+                  [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : autocompleteMenu"
+                  [cdkMenuTriggerData]="{ group: 'dests', index: item.index }"
                 />
 
                 <div matSuffix class="action-suffix">
                   <button
                     matIconButton
-                    [disabled]="isSourcePickerDisabled()"
-                    (click)="selectRemotePath('sources', 0); $event.stopPropagation()"
+                    [disabled]="isDestPickerDisabled()"
+                    (click)="selectRemotePath('dests', item.index); $event.stopPropagation()"
                     type="button"
-                    [matTooltip]="'wizards.appOperation.selectRemoteSource' | translate"
+                    [matTooltip]="'wizards.appOperation.selectRemoteDest' | translate"
                   >
                     <mat-icon
                       svgIcon="folder"
-                      [class.accent]="!isSourcePickerDisabled()"
+                      [class.purple]="
+                        (isMount() || getPathTypeAtIndex('dests', item.index) === 'local') &&
+                        !isDestPickerDisabled()
+                      "
+                      [class.accent]="
+                        !isMount() &&
+                        getPathTypeAtIndex('dests', item.index) !== 'local' &&
+                        !isDestPickerDisabled()
+                      "
                     ></mat-icon>
                   </button>
                 </div>
               </mat-form-field>
             </div>
           </div>
-        </div>
-      }
-    }
-
-    <!-- Destination Paths Section -->
-    @if (showDestPath()) {
-      <div class="section-header">
-        <h3 class="section-title">
-          <mat-icon svgIcon="chevron-left" class="purple"></mat-icon>
-          {{ 'wizards.appOperation.destPaths' | translate }}
-        </h3>
-        @if (canAddDest()) {
-          <button mat-button class="add-path-btn" (click)="addPath('dests')" type="button">
-            <mat-icon svgIcon="plus"></mat-icon>
-            {{ 'wizards.appOperation.addDest' | translate }}
-          </button>
         }
       </div>
-
-      @if (isPlural('dests')) {
-        <div class="path-list" formArrayName="dests">
-          @for (dest of getFormArray('dests')?.controls || []; track $index) {
-            <div class="path-item-row" [formGroupName]="isControl(dest) ? null : $index">
-              <div class="path-input-wrapper">
-                <mat-form-field appearance="fill">
-                  <ng-container matPrefix>
-                    @if (isMount()) {
-                      <span class="path-prefix mount-local">
-                        <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                        <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                      </span>
-                    } @else {
-                      <mat-select
-                        formControlName="pathType"
-                        [hideSingleSelectionIndicator]="true"
-                        class="path-prefix"
-                        [class.local]="getPathTypeAtIndex('dests', $index) === 'local'"
-                        [class.remote]="getPathTypeAtIndex('dests', $index) === 'currentRemote'"
-                        [class.other]="getPathTypeAtIndex('dests', $index) === 'otherRemote'"
-                        (selectionChange)="clearPathOnTypeChange('dests', $index)"
-                      >
-                        <mat-select-trigger>
-                          @switch (getPathTypeAtIndex('dests', $index)) {
-                            @case ('local') {
-                              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                              <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                            }
-                            @case ('currentRemote') {
-                              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                              <span>{{ currentRemoteName() }}:</span>
-                            }
-                            @case ('otherRemote') {
-                              <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                              <span>{{ getOtherRemoteName('dests', $index) }}:</span>
-                            }
-                          }
-                        </mat-select-trigger>
-
-                        <mat-option value="local">
-                          <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                          <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                        </mat-option>
-                        <mat-option value="currentRemote">
-                          <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                          <span>{{ currentRemoteName() }}:</span>
-                        </mat-option>
-
-                        @if (otherRemotes().length) {
-                          <mat-optgroup [label]="'wizards.appOperation.otherRemotes' | translate">
-                            @for (remote of otherRemotes(); track remote) {
-                              <mat-option [value]="'otherRemote:' + remote">
-                                <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                                <span>{{ remote }}:</span>
-                              </mat-option>
-                            }
-                          </mat-optgroup>
-                        }
-                      </mat-select>
-                    }
-                  </ng-container>
-
-                  @if (isMount()) {
-                    <input
-                      matInput
-                      [formControlName]="$index"
-                      [placeholder]="'wizards.appOperation.selectDestFolder' | translate"
-                      (input)="onInputChanged($event, 'dests', $index)"
-                      [cdkMenuTriggerFor]="autocompleteMenu"
-                      [cdkMenuTriggerData]="{ group: 'dests', index: $index }"
-                    />
-                  } @else {
-                    <input
-                      matInput
-                      formControlName="path"
-                      [placeholder]="'wizards.appOperation.enterDestPath' | translate"
-                      (input)="onInputChanged($event, 'dests', $index)"
-                      [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : autocompleteMenu"
-                      [cdkMenuTriggerData]="{ group: 'dests', index: $index }"
-                    />
-                  }
-
-                  <div matSuffix class="action-suffix">
-                    <button
-                      matIconButton
-                      [disabled]="isDestPickerDisabled()"
-                      (click)="selectRemotePath('dests', $index); $event.stopPropagation()"
-                      type="button"
-                      [matTooltip]="'wizards.appOperation.selectDestFolder' | translate"
-                    >
-                      <mat-icon
-                        svgIcon="folder"
-                        [class.purple]="
-                          (isMount() || getPathTypeAtIndex('dests', $index) === 'local') &&
-                          !isDestPickerDisabled()
-                        "
-                        [class.accent]="
-                          !isMount() &&
-                          getPathTypeAtIndex('dests', $index) !== 'local' &&
-                          !isDestPickerDisabled()
-                        "
-                      ></mat-icon>
-                    </button>
-                    @if (canAddDest() && (getFormArray('dests')?.length || 0) > 1) {
-                      <button
-                        matIconButton
-                        class="remove-btn"
-                        (click)="removePath('dests', $index)"
-                        type="button"
-                        [matTooltip]="'wizards.appOperation.removePath' | translate"
-                      >
-                        <mat-icon svgIcon="trash" class="red"></mat-icon>
-                      </button>
-                    }
-                  </div>
-                </mat-form-field>
-              </div>
-            </div>
-          }
-        </div>
-      } @else if (opFormGroup().get('dest')) {
-        <div class="path-list">
-          <div class="path-item-row">
-            <div class="path-input-wrapper">
-              @if (isMount()) {
-                <mat-form-field appearance="fill">
-                  <ng-container matPrefix>
-                    <span class="path-prefix mount-local">
-                      <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                      <span>{{ 'wizards.appOperation.localPath' | translate }}:</span>
-                    </span>
-                  </ng-container>
-                  <input
-                    matInput
-                    formControlName="dest"
-                    [placeholder]="'wizards.appOperation.localPathPlaceholder' | translate"
-                  />
-                </mat-form-field>
-              } @else {
-                <div [formGroupName]="'dest'">
-                  <mat-form-field appearance="fill">
-                    <ng-container matPrefix>
-                      <span class="path-prefix mount-remote">
-                        <mat-icon svgIcon="hard-drive" class="purple"></mat-icon>
-                        <span>{{ currentRemoteName() }}:</span>
-                      </span>
-                    </ng-container>
-                    <input
-                      matInput
-                      formControlName="path"
-                      [placeholder]="'wizards.appOperation.enterDestPath' | translate"
-                      (input)="onInputChanged($event, 'dests', 0)"
-                      [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : autocompleteMenu"
-                      [cdkMenuTriggerData]="{ group: 'dests', index: 0 }"
-                    />
-                  </mat-form-field>
-                </div>
-              }
-
-              <div class="path-actions">
-                <button
-                  mat-icon-button
-                  class="picker-btn"
-                  (click)="selectRemotePath('dests', 0)"
-                  [matTooltip]="'wizards.appOperation.browsePath' | translate"
-                  type="button"
-                >
-                  <mat-icon
-                    svgIcon="folder"
-                    [class.purple]="isMount() && !isDestPickerDisabled()"
-                    [class.accent]="!isMount() && !isDestPickerDisabled()"
-                  ></mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
     }
 
     @if (isNewRemote()) {
@@ -483,8 +382,8 @@
           <button
             cdkMenuItem
             class="menu-item"
-            [disabled]="!entry.IsDir"
-            (click)="entry.IsDir && onPathSelected(entry.Name, group, index)"
+            [disabled]="!entry.IsDir && !allowFiles(group)"
+            (click)="onPathSelected(entry.Name, group, index)"
           >
             <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
             <span>{{ entry.Name }}</span>

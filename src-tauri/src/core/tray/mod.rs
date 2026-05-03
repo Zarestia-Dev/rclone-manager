@@ -11,7 +11,7 @@ use crate::rclone::backend::BackendManager;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::{MountedRemote, ServeInstance};
 use std::collections::HashSet;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 #[derive(Clone)]
 pub struct TrayJobSummary {
@@ -45,7 +45,7 @@ pub struct TraySnapshot {
 }
 
 impl TraySnapshot {
-    pub async fn fetch(app: &AppHandle) -> tauri::Result<Self> {
+    pub async fn fetch<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Self> {
         let backend_manager = app.state::<BackendManager>();
         let settings_manager = app.state::<AppSettingsManager>();
 

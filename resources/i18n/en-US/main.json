@@ -296,10 +296,11 @@
       "profileFilter": "Profile Filter",
       "profileFilterPlaceholder": "e.g. GDrive-Sync",
       "profileFilterHint": "Monitor events only for specific profiles.",
+      "autoAcknowledge": "Auto Acknowledge",
+      "autoAcknowledgeHint": "Automatically mark alerts as acknowledged. Ideal for alerts that already trigger system notifications.",
       "actions": "Actions to Trigger"
     },
     "events": {
-      "any": "Any Event",
       "job": "Jobs & File Operations",
       "serve": "Background Servers",
       "mount": "Drive Mounts",
@@ -1092,12 +1093,18 @@
       "notConfigured": "Not configured",
       "clearSchedule": "Clear schedule",
       "sourcePath": "Source Path",
+      "sourcePaths": "Source Paths",
       "destPath": "Destination Path",
+      "destinationPath": "Destination Path",
       "localPath": "Local Path",
       "remotePathServe": "Remote Path to Serve",
+      "addSource": "Add Source",
+      "removePath": "Remove Path",
       "rootFolderOptional": "Root folder (optional)",
       "rootFolderSpecific": "Root folder or specific path",
       "selectRemoteSource": "Select remote source folder",
+      "remotePath": "Remote Path",
+      "enterPath": "Enter path...",
       "changeSourceType": "Change source path type",
       "enterSourcePath": "Enter source path...",
       "otherRemotes": "Other Remotes",
@@ -1454,7 +1461,9 @@
         "move": "Move",
         "rename": "Rename",
         "sync": "Sync",
-        "bisync": "BiSync"
+        "bisync": "BiSync",
+        "compress": "Compress",
+        "extract": "Extract"
       }
     },
     "fileViewer": {
@@ -1480,7 +1489,13 @@
       "edit": "Edit",
       "cancel": "Cancel",
       "saveSuccess": "File saved successfully",
-      "saveError": "Failed to save file"
+      "saveError": "Failed to save file",
+      "archiveContents": "Archive Contents",
+      "extract": "Extract",
+      "extracting": "Extracting {{name}}...",
+      "extractSuccess": "{{name}} extracted successfully",
+      "errorExtract": "Failed to extract archive",
+      "errorListArchive": "Failed to list archive contents"
     }
   },
   "dashboard": {
@@ -2324,6 +2339,16 @@
         "fileLabel": "Filename (Optional)",
         "filePlaceholder": "Leave empty to use automatic name",
         "confirm": "Download"
+      },
+      "archiveCreate": {
+        "title": "Create Archive",
+        "filenameLabel": "Archive Filename",
+        "formatLabel": "Archive Format",
+        "prefixLabel": "Prefix Path",
+        "prefixHint": "Overrides full paths if set",
+        "fullPathLabel": "Include full source paths",
+        "fullPathHint": "Keeps the directory structure from the root",
+        "compress": "Compress"
       }
     },
     "errors": {
@@ -2343,7 +2368,8 @@
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
       "minSelection": "Please select at least {{min}} item{{s}}.",
-      "copyUrlFailed": "Failed to download from URL: {{error}}"
+      "copyUrlFailed": "Failed to download from URL: {{error}}",
+      "archiveCreateFailed": "Failed to create archive: {{error}}"
     },
     "contextMenu": {
       "open": "Open",
@@ -2366,6 +2392,7 @@
       "emptyTrash": "Empty Trash",
       "removeEmptyDirs": "Remove empty folders",
       "delete": "Delete",
+      "compress": "Compress",
       "copy": "Copy",
       "cut": "Cut",
       "rename": "Rename",
@@ -2403,7 +2430,9 @@
       "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",
       "redoComplete": "Redo successful",
-      "copyUrlStarted": "Downloading from URL..."
+      "copyUrlStarted": "Downloading from URL...",
+      "archiveCreateStarted": "Archive creation started...",
+      "archiveCreateComplete": "Archive created successfully"
     }
   },
   "overview": {

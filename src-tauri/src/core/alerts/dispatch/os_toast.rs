@@ -1,12 +1,8 @@
-use crate::core::alerts::{template::TemplateContext, types::OsToastAction};
+use crate::core::alerts::template::TemplateContext;
 use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
 
-pub fn dispatch(
-    app: &AppHandle,
-    _action: &OsToastAction,
-    ctx: &TemplateContext,
-) -> Result<(), String> {
+pub fn dispatch(app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
     app.notification()
         .builder()
         .title(&ctx.title)

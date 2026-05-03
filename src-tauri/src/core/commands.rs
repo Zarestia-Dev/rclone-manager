@@ -133,10 +133,17 @@ macro_rules! MASTER_COMMAND_LIST {
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            // (create_upload_batch, $crate::rclone::commands::filesystem::create_upload_batch, [total_jobs: usize, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (upload_file, $crate::rclone::commands::filesystem::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_local_drives, $crate::rclone::queries::get_local_drives, []);
             (get_bandwidth_limit, $crate::rclone::queries::get_bandwidth_limit, []);
+            (get_local_drives, $crate::rclone::queries::get_local_drives, []);
+
+            // =================================================================
+            // ARCHIVE OPERATIONS
+            // =================================================================
+            (archive_create, $crate::rclone::commands::archive::archive_create, [source: String, destination: String, format: Option<String>, prefix: Option<String>, full_path: Option<bool>, include: Option<Vec<String>>]);
+            (archive_extract, $crate::rclone::commands::archive::archive_extract, [source: String, destination: String]);
+            (archive_list, $crate::rclone::commands::archive::archive_list, [source: String, long: Option<bool>, plain: Option<bool>, files_only: Option<bool>, dirs_only: Option<bool>]);
 
             // =================================================================
             // FLAGS & OPTIONS

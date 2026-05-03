@@ -48,17 +48,21 @@ pub fn get_string(json: &Value, path: &[&str]) -> String {
     current.and_then(|v| v.as_str()).unwrap_or("").to_string()
 }
 
-/// Evaluates shell commands wrapped in backticks — `` `command` `` — replacing
-/// each one with the command's stdout output, trimming the trailing newline.
+/// Evaluates safe macros wrapped in backticks — `` `macro` `` — replacing
+/// each one with its resolved value.
 ///
-/// Backticks were chosen as the only supported syntax because they read like
-/// quotes and the user-facing explanation is simple: *write your command inside
-/// backticks*, e.g. `` `date +%Y-%m-%d` ``.
+/// Macros are used to provide dynamic values in paths and options without
+/// the security risks of arbitrary shell execution.
 ///
-/// If a command fails or cannot be run the original `` `command` `` token is
-/// kept intact so the user sees what went wrong instead of a silent empty string.
+/// Supported Macros:
+/// - `` `date` ``: Current date in YYYY-MM-DD format.
+/// - `` `date +FORMAT` ``: Current date with custom `strftime` formatting.
+/// - `` `hostname` ``: The local system hostname.
+/// - `` `whoami` `` / `` `user` ``: The current username.
+/// - `` `os` ``: The operating system name (e.g., "linux", "windows").
 ///
-/// On Unix this runs `sh -c "<cmd>"`. On Windows it runs `cmd /C "<cmd>"`.
+/// If a macro is unknown or fails to resolve, the original `` `macro` `` token
+/// is kept intact.
 #[must_use]
 pub fn interpolate_shell_commands(s: &str) -> String {
     if !s.contains('`') {
@@ -79,7 +83,7 @@ pub fn interpolate_shell_commands(s: &str) -> String {
         };
 
         let cmd = &after_open[..close];
-        result.push_str(&run_shell_command(cmd).unwrap_or_else(|| format!("`{cmd}`")));
+        result.push_str(&resolve_macro(cmd).unwrap_or_else(|| format!("`{cmd}`")));
         remaining = &after_open[close + 1..];
     }
 
@@ -87,26 +91,32 @@ pub fn interpolate_shell_commands(s: &str) -> String {
     result
 }
 
-fn run_shell_command(cmd: &str) -> Option<String> {
-    #[cfg(target_os = "windows")]
-    let output = std::process::Command::new("cmd")
-        .args(["/C", cmd])
-        .output()
-        .ok()?;
+fn resolve_macro(cmd: &str) -> Option<String> {
+    let cmd = cmd.trim();
 
-    #[cfg(not(target_os = "windows"))]
-    let output = std::process::Command::new("sh")
-        .args(["-c", cmd])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
+    if cmd.starts_with("date") {
+        let format = if cmd.len() > 4 && cmd.as_bytes()[4] == b' ' {
+            let arg = cmd[5..].trim();
+            if let Some(stripped) = arg.strip_prefix('+') {
+                stripped
+            } else {
+                arg
+            }
+        } else {
+            "%Y-%m-%d"
+        };
+        // Use chrono for cross-platform, safe date formatting
+        return Some(chrono::Local::now().format(format).to_string());
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    // Shells strip the trailing newline from $() — replicate that behaviour.
-    Some(stdout.trim_end_matches(['\n', '\r']).to_string())
+    match cmd {
+        "hostname" => sysinfo::System::host_name(),
+        "whoami" | "user" => std::env::var("USER")
+            .or_else(|_| std::env::var("USERNAME"))
+            .ok(),
+        "os" => Some(std::env::consts::OS.to_string()),
+        _ => None,
+    }
 }
 
 /// Recursively applies [`interpolate_shell_commands`] to every string inside a
@@ -114,18 +124,19 @@ fn run_shell_command(cmd: &str) -> Option<String> {
 pub fn interpolate_value(value: &Value) -> Value {
     match value {
         Value::String(s) => Value::String(interpolate_shell_commands(s)),
-        Value::Object(map) => Value::Object(
-            map.iter()
+        Value::Object(map) => {
+            let new_map = map
+                .iter()
                 .map(|(k, v)| (k.clone(), interpolate_value(v)))
-                .collect(),
-        ),
+                .collect::<serde_json::Map<String, Value>>();
+            Value::Object(new_map)
+        }
         Value::Array(arr) => Value::Array(arr.iter().map(interpolate_value).collect()),
         _ => value.clone(),
     }
 }
 
 /// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
-#[cfg(target_os = "windows")]
 pub fn normalize_windows_path(path: &str) -> String {
     let mut p = path;
     if p.starts_with("//?/") || p.starts_with(r"\\?\") {
@@ -151,32 +162,40 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_os = "windows"))]
-    fn test_date_expands() {
-        let result = interpolate_shell_commands("backup_`date +%Y-%m-%d`");
-        assert!(
-            !result.contains('`'),
-            "backtick should be replaced: {result}"
-        );
+    fn test_date_expands_default() {
+        let result = interpolate_shell_commands("backup_`date` ");
         assert!(result.starts_with("backup_"));
-        assert_eq!(result.len(), "backup_".len() + 10); // YYYY-MM-DD
+        assert!(!result.contains('`'));
+        // Default is YYYY-MM-DD (10 chars)
+        assert_eq!(result.trim().len(), "backup_".len() + 10);
     }
 
     #[test]
-    #[cfg(not(target_os = "windows"))]
+    fn test_date_expands_custom_format() {
+        let result = interpolate_shell_commands("year_`date +%Y`_month_`date +%m` ");
+        assert!(!result.contains('`'));
+        assert!(result.contains("year_20")); // Assuming year is 20xx
+        assert!(result.contains("_month_"));
+    }
+
+    #[test]
+    fn test_date_complex_format() {
+        let result = interpolate_shell_commands("`date +%A, %d %B %Y` ");
+        assert!(!result.contains('`'));
+        // Example: "Saturday, 02 May 2026"
+        assert!(result.len() > 10);
+    }
+
+    #[test]
     fn test_multiple_expressions() {
-        let result = interpolate_shell_commands("`date +%Y`/`date +%m`");
-        assert!(
-            !result.contains('`'),
-            "all backticks should be replaced: {result}"
-        );
-        assert_eq!(result.len(), 7); // YYYY/MM
+        let result = interpolate_shell_commands("`os`/`user`/`date +%Y` ");
+        assert!(!result.contains('`'));
+        assert!(result.contains('/'));
     }
 
     #[test]
-    #[cfg(not(target_os = "windows"))]
-    fn test_failing_command_left_intact() {
-        let s = "prefix_`false`_suffix";
+    fn test_unknown_command_left_intact() {
+        let s = "prefix_`unknown_macro_123`_suffix";
         assert_eq!(interpolate_shell_commands(s), s);
     }
 

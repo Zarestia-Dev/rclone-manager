@@ -21,8 +21,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatRadioModule } from '@angular/material/radio';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import {
@@ -69,8 +67,6 @@ const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
     MatSidenavModule,
     MatButtonModule,
     MatDividerModule,
-    MatRadioModule,
-    MatCheckboxModule,
     CdkMenuModule,
     CopyToClipboardDirective,
   ],
@@ -150,6 +146,8 @@ export class NautilusComponent implements OnInit {
     const opts = this.pickerOptions();
     const count = this.tabSvc.selectedItems().size;
     if (opts.selection === 'files' && count === 0) return true;
+    if (opts.selection === 'folders' && count === 0) return false; // Allowed to pick current
+    if (opts.selection === 'both' && count === 0) return false; // Allowed to pick current folder
     return count < (opts.minSelection ?? 0);
   });
 
@@ -634,6 +632,19 @@ export class NautilusComponent implements OnInit {
         this.tabSvc.createTab(pane.remote, item.entry.Path);
       }
     } else {
+      if (this.isPickerMode()) {
+        const pIdx = this.tabSvc.activePaneIndex();
+        const files = pIdx === 0 ? this.files() : this.filesRight();
+        this.selectionSvc.handleItemClick(
+          item,
+          { ctrlKey: false, shiftKey: false } as MouseEvent,
+          -1,
+          pIdx,
+          files
+        );
+        this.confirmSelection();
+        return;
+      }
       const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
       void this.actions.openFilePreview(item, files);
     }
@@ -834,7 +845,11 @@ export class NautilusComponent implements OnInit {
     const remote = this.tabSvc.activeRemote();
     const currentPath = this.tabSvc.activePath();
 
-    if (items.length === 0 && this.pickerOptions().selection === 'folders' && remote) {
+    if (
+      items.length === 0 &&
+      (this.pickerOptions().selection === 'folders' || this.pickerOptions().selection === 'both') &&
+      remote
+    ) {
       const name = currentPath.split('/').pop() || remote.name;
       items = [
         {

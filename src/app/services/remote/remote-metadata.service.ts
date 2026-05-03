@@ -84,7 +84,7 @@ export class RemoteMetadataService extends TauriBaseService {
     try {
       const info = await this.getFsInfo(remoteName, source, group);
       const features: RemoteFeatures = {
-        isLocal: info.Features?.IsLocal ?? false,
+        isLocal: isLocalPath(normalizedKey),
         hasAbout: info.Features?.['About'] !== false, // Default to true unless explicitly false
         hasBucket: info.Features?.['BucketBased'] ?? false,
         hasCleanUp: !!info.Features?.['CleanUp'],

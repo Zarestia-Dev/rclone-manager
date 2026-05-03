@@ -6,7 +6,6 @@ use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::core::RcloneState;
 
-#[cfg(target_os = "windows")]
 use crate::utils::json_helpers::normalize_windows_path;
 
 #[command]
@@ -87,7 +86,6 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
         .await
         .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
 
-    #[cfg(target_os = "windows")]
     if let Some(disk_cache) = json.get_mut("diskCache").and_then(|v| v.as_object_mut()) {
         for key in ["path", "pathMeta"] {
             if let Some(raw) = disk_cache.get(key).and_then(|v| v.as_str()) {

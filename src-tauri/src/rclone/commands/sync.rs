@@ -100,10 +100,7 @@ impl GenericTransferParams {
         let src_parsed = parse_fs(&self.source);
         let dst_parsed = parse_fs(&self.dest);
 
-        if let (Some(src), Some(dst)) = (src_parsed, dst_parsed) {
-            let (src_fs, src_remote) = src.into_base_and_root();
-            let (dst_fs, dst_root) = dst.into_base_and_root();
-
+        if let (Some((src_fs, src_remote)), Some((dst_fs, dst_root))) = (src_parsed, dst_parsed) {
             let filename = src_remote
                 .split(['/', '\\'])
                 .next_back()
@@ -244,6 +241,11 @@ pub async fn start_profile_batch(
     let mut inputs = Vec::new();
     let is_copy_move = matches!(transfer_type, TransferType::Copy | TransferType::Move);
 
+    let dest = common.dest.clone();
+    if dest.is_empty() {
+        return Err("No destination specified".to_string());
+    }
+
     for source in &common.sources {
         let is_dir = if is_copy_move {
             is_directory(&app, source, common.runtime_remote_options.as_ref())
@@ -253,21 +255,19 @@ pub async fn start_profile_batch(
             true
         };
 
-        for dest in &common.dests {
-            inputs.push(
-                GenericTransferParams {
-                    source: source.clone(),
-                    dest: dest.clone(),
-                    options: common.options.clone(),
-                    filter_options: common.filter_options.clone(),
-                    backend_options: common.backend_options.clone(),
-                    runtime_remote_options: common.runtime_remote_options.clone(),
-                    transfer_type,
-                    is_dir,
-                }
-                .to_rclone_body(),
-            );
-        }
+        inputs.push(
+            GenericTransferParams {
+                source: source.clone(),
+                dest: dest.clone(),
+                options: common.options.clone(),
+                filter_options: common.filter_options.clone(),
+                backend_options: common.backend_options.clone(),
+                runtime_remote_options: common.runtime_remote_options.clone(),
+                transfer_type,
+                is_dir,
+            }
+            .to_rclone_body(),
+        );
     }
 
     if inputs.is_empty() {
@@ -287,7 +287,7 @@ pub async fn start_profile_batch(
             remote_name: params.remote_name.clone(),
             job_type: transfer_type.as_job_type(),
             source: job_source,
-            destination: common.dests[0].clone(),
+            destination: common.dest.clone(),
             profile: Some(params.profile_name.clone()),
             origin: params.source,
             group: None,

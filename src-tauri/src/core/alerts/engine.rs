@@ -8,14 +8,61 @@ use crate::core::alerts::{
     dispatch,
     event_ext::NotificationEventExt,
     template::TemplateContext,
-    types::{ActionResult, AlertAction, AlertDetails, AlertEventKind, AlertRecord},
+    types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
 };
 use crate::core::settings::AppSettingsManager;
 use crate::utils::app::notification::NotificationEvent;
-use crate::utils::types::core::RcloneState;
+
+use std::sync::OnceLock;
+use tokio::sync::mpsc;
+
+struct AlertRequest {
+    app: AppHandle,
+    event: NotificationEvent,
+    title: String,
+    body: String,
+}
+
+static ALERT_CHANNEL: OnceLock<mpsc::UnboundedSender<AlertRequest>> = OnceLock::new();
+
+/// Initialize the alert engine worker task.
+pub fn init() {
+    let (tx, mut rx) = mpsc::unbounded_channel::<AlertRequest>();
+    if ALERT_CHANNEL.set(tx).is_err() {
+        warn!("Alert engine already initialized");
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        debug!("Alert engine worker started");
+        while let Some(req) = rx.recv().await {
+            process_internal(req).await;
+        }
+    });
+}
 
 /// Process a `NotificationEvent` through the alert engine.
 pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: String) {
+    if let Some(tx) = ALERT_CHANNEL.get() {
+        let _ = tx.send(AlertRequest {
+            app: app.clone(),
+            event: event.clone(),
+            title,
+            body,
+        });
+    } else {
+        warn!("Alert engine not initialized, dropping alert: {}", title);
+    }
+}
+
+async fn process_internal(req: AlertRequest) {
+    let AlertRequest {
+        app,
+        event,
+        title,
+        body,
+    } = req;
+
     let severity = event.alert_severity();
     let kind = event.alert_kind();
     let remote = event.alert_remote();
@@ -36,20 +83,12 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
         return;
     }
 
-    let http_client = match app.try_state::<RcloneState>() {
-        Some(state) => state.client.clone(),
-        None => reqwest::Client::new(),
-    };
-
     for rule in enabled_rules {
         if severity < rule.severity_min {
             continue;
         }
 
-        if !rule.event_filter.is_empty()
-            && !rule.event_filter.contains(&AlertEventKind::Any)
-            && !rule.event_filter.contains(&kind)
-        {
+        if !rule.event_filter.is_empty() && !rule.event_filter.contains(&kind) {
             continue;
         }
 
@@ -100,7 +139,7 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
             rule.action_ids.len()
         );
 
-        // Prepare context for the spawned task
+        // Prepare context
         let ctx = TemplateContext {
             title: title.clone(),
             body: body.clone(),
@@ -117,94 +156,73 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
             rule_name: rule.name.clone(),
         };
 
-        let app_clone = app.clone();
-        let rule_clone = rule.clone();
-        let http_client_clone = http_client.clone();
+        let mut action_futures = vec![];
+        let manager_ref = app.state::<AppSettingsManager>();
 
-        let record_kind = kind.clone();
-        let record_sev = severity.clone();
-        let record_rem = remote.clone();
-        let record_prof = profile.clone();
-        let record_back = backend.clone();
-        let record_oper = operation.clone();
-        let record_orig = origin.clone();
-        let record_title = title.clone();
-        let record_body = body.clone();
+        for action_id in &rule.action_ids {
+            let action = match cache::get_action(&manager_ref, action_id) {
+                Some(a) if a.is_enabled() => a,
+                Some(_) => continue,
+                None => {
+                    warn!("Action '{}' in rule '{}' not found", action_id, rule.name);
+                    continue;
+                }
+            };
 
-        // Spawning the rule execution prevents blocking the engine loop
-        tokio::spawn(async move {
-            let mut action_futures = vec![];
-            let manager = app_clone.state::<AppSettingsManager>();
+            let action_ctx = ctx.clone();
+            let action_app = app.clone();
 
-            for action_id in &rule_clone.action_ids {
-                let action = match cache::get_action(&manager, action_id) {
-                    Some(a) if a.is_enabled() => a,
-                    Some(_) => continue,
-                    None => {
-                        warn!(
-                            "Action '{}' in rule '{}' not found",
-                            action_id, rule_clone.name
-                        );
-                        continue;
+            // We still use spawn for actions to allow parallel execution of external webhooks/scripts
+            // BUT the rule processing itself is now serialized in the worker.
+            action_futures.push(tokio::spawn(async move {
+                let start = std::time::Instant::now();
+                let result = execute_action(&action_app, &action, &action_ctx).await;
+                let duration_ms = start.elapsed().as_millis() as u64;
+
+                let (success, error_msg) = match result {
+                    Ok(()) => (true, None),
+                    Err(e) => {
+                        error!("Action '{}' failed: {e}", action.name());
+                        (false, Some(e))
                     }
                 };
 
-                let action_ctx = ctx.clone();
-                let action_app = app_clone.clone();
-                let action_http = http_client_clone.clone();
+                ActionResult {
+                    action_id: action.id().to_string(),
+                    action_name: action.name().to_string(),
+                    action_kind: action.kind_str().to_string(),
+                    success,
+                    error: error_msg,
+                    duration_ms,
+                }
+            }));
+        }
 
-                // Spawn concurrent execution for each action to prevent slow webhooks/scripts from bottlenecking
-                action_futures.push(tokio::spawn(async move {
-                    let start = std::time::Instant::now();
-                    let result =
-                        execute_action(&action_app, &action, &action_ctx, &action_http).await;
-                    let duration_ms = start.elapsed().as_millis() as u64;
+        // Await all parallel actions for THIS rule
+        let action_results: Vec<ActionResult> = join_all(action_futures)
+            .await
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .collect();
 
-                    let (success, error_msg) = match result {
-                        Ok(()) => (true, None),
-                        Err(e) => {
-                            error!("Action '{}' failed: {e}", action.name());
-                            (false, Some(e))
-                        }
-                    };
+        let mut record = AlertRecord::new(
+            &rule,
+            AlertDetails {
+                event_kind: kind.clone(),
+                severity: severity.clone(),
+                title: title.clone(),
+                body: body.clone(),
+                remote: remote.clone(),
+                profile: profile.clone(),
+                backend: backend.clone(),
+                operation: operation.clone(),
+                origin: Some(origin.clone()),
+            },
+        );
+        record.action_results = action_results;
 
-                    ActionResult {
-                        action_id: action.id().to_string(),
-                        action_name: action.name().to_string(),
-                        action_kind: action.kind_str().to_string(),
-                        success,
-                        error: error_msg,
-                        duration_ms,
-                    }
-                }));
-            }
-
-            // Await all parallel actions
-            let action_results: Vec<ActionResult> = join_all(action_futures)
-                .await
-                .into_iter()
-                .filter_map(std::result::Result::ok)
-                .collect();
-
-            let mut record = AlertRecord::new(
-                &rule_clone,
-                AlertDetails {
-                    event_kind: record_kind,
-                    severity: record_sev,
-                    title: record_title,
-                    body: record_body,
-                    remote: record_rem,
-                    profile: record_prof,
-                    backend: record_back,
-                    operation: record_oper,
-                    origin: Some(record_orig),
-                },
-            );
-            record.action_results = action_results;
-
-            let history_cache = app_clone.state::<AlertHistoryCache>();
-            history_cache.push(record, Some(&app_clone)).await;
-        });
+        let history_cache = app.state::<AlertHistoryCache>();
+        history_cache.push(record, Some(&app)).await;
     }
 }
 
@@ -212,11 +230,10 @@ async fn execute_action(
     app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,
-    http_client: &reqwest::Client,
 ) -> Result<(), String> {
     match action {
-        AlertAction::OsToast(a) => dispatch::os_toast::dispatch(app, a, ctx),
-        AlertAction::Webhook(a) => dispatch::webhook::dispatch(http_client, a, ctx).await,
+        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(app, ctx),
+        AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
     }
 }

@@ -85,7 +85,7 @@ export class PathSelectionService {
     if (!state) return;
 
     const selectedEntry = state.options.find(e => e.Name === entryName);
-    if (!selectedEntry || !selectedEntry.IsDir) return; // Only navigate into directories
+    if (!selectedEntry) return;
 
     const newPath = this.joinPath(state.currentPath, entryName);
 
@@ -93,7 +93,9 @@ export class PathSelectionService {
       formControl.setValue(newPath);
     }
 
-    this.fetchEntries(fieldId, state.remoteName, newPath);
+    if (selectedEntry.IsDir) {
+      this.fetchEntries(fieldId, state.remoteName, newPath);
+    }
   }
 
   /**

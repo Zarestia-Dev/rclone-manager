@@ -2,7 +2,7 @@ use crate::core::alerts::types::{
     AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRecord, AlertRule, AlertStats,
 };
 use crate::core::settings::AppSettingsManager;
-use log::error;
+use log::{debug, error};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
@@ -112,6 +112,11 @@ pub fn delete_action(manager: &AppSettingsManager, id: &str) -> Result<(), Strin
 
     sub.delete(id)
         .map_err(|e| format!("Failed to delete alert action: {e}"))?;
+
+    // Note: Any in-flight webhook clients for this action will be automatically
+    // cleaned up when their dispatch completes (Rust RAII). No new dispatches
+    // will be created for this deleted action.
+    debug!("🗑️ Deleted alert action: {id}");
 
     Ok(())
 }

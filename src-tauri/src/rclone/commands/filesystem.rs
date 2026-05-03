@@ -408,6 +408,7 @@ pub struct UploadBatchParams {
     pub group: Option<String>,
     pub cleanup_dir: Option<std::path::PathBuf>,
     pub existing_jobid: Option<u64>,
+    pub no_cache: bool,
 }
 
 pub async fn execute_upload_batch(
@@ -422,6 +423,7 @@ pub async fn execute_upload_batch(
         group,
         cleanup_dir,
         existing_jobid,
+        no_cache,
     } = params;
 
     debug!(
@@ -461,7 +463,7 @@ pub async fn execute_upload_batch(
         profile: None,
         origin: origin.clone(),
         group,
-        no_cache: false,
+        no_cache,
     };
 
     if existing_jobid.is_none() {
@@ -476,7 +478,7 @@ pub async fn execute_upload_batch(
             .await;
     }
 
-    if metadata.origin != Some(Origin::Scheduler) {
+    if metadata.origin != Some(Origin::Scheduler) && !metadata.no_cache {
         notify(&app, metadata.started_event(backend.name.clone()));
     }
 
@@ -530,7 +532,7 @@ pub async fn execute_upload_batch(
     let success = errors.is_empty();
     let error_msg = (!success).then(|| format!("{} failed: {}", errors.len(), errors.join("; ")));
 
-    if metadata.origin != Some(Origin::Scheduler) {
+    if metadata.origin != Some(Origin::Scheduler) && !metadata.no_cache {
         if success {
             notify(&app, metadata.completed_event(backend.name.clone()));
         } else if let Some(ref m) = error_msg {
@@ -567,6 +569,7 @@ pub async fn upload_local_drop_paths(
             group,
             cleanup_dir: None,
             existing_jobid: None,
+            no_cache: false,
         },
     )
     .await
@@ -626,4 +629,47 @@ pub async fn rename(
         },
     )
     .await
+}
+
+#[tauri::command]
+pub async fn upload_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    name: String,
+    content: Vec<u8>,
+) -> Result<String, String> {
+    let state = app.state::<crate::utils::types::core::RcloneState>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+
+    let client = &state.client;
+    let remote_dir = if path.is_empty() {
+        "".to_string()
+    } else if path.ends_with('/') {
+        path.clone()
+    } else {
+        format!("{}/", path)
+    };
+
+    let part = reqwest::multipart::Part::bytes(content)
+        .file_name(name.clone())
+        .mime_str("application/octet-stream")
+        .map_err(|e: reqwest::Error| e.to_string())?;
+
+    let resp = backend
+        .inject_auth(
+            client
+                .post(backend.url_for(operations::UPLOADFILE))
+                .query(&[("fs", &remote), ("remote", &remote_dir)]),
+        )
+        .multipart(reqwest::multipart::Form::new().part("file", part))
+        .send()
+        .await;
+
+    match resp {
+        Ok(r) if r.status().is_success() => Ok("File uploaded successfully".to_string()),
+        Ok(r) => Err(format!("Upload failed: {}", r.status())),
+        Err(e) => Err(format!("Network error: {e}")),
+    }
 }

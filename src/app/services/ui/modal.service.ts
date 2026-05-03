@@ -21,6 +21,7 @@ import {
   InputModalComponent,
   InputModalData,
 } from '../../shared/modals/input-modal/input-modal.component';
+import { ArchiveCreateModalComponent } from '../../shared/modals/archive-create-modal/archive-create-modal.component';
 import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
 import {
   AlertAction,
@@ -251,6 +252,17 @@ export class ModalService {
   openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
     return this.dialog.open(AlertRuleEditorComponent, {
       width: '600px',
+      disableClose: true,
+      data,
+    });
+  }
+
+  openArchiveCreate(data: {
+    items: any[];
+    defaultName: string;
+  }): MatDialogRef<ArchiveCreateModalComponent> {
+    return this.dialog.open(ArchiveCreateModalComponent, {
+      width: '450px',
       disableClose: true,
       data,
     });

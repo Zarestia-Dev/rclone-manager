@@ -29,6 +29,9 @@ pub enum JobType {
     Rename,
     Rmdirs,
     Upload,
+    ArchiveCreate,
+    ArchiveExtract,
+    ArchiveList,
     Unknown(String),
 }
 
@@ -64,6 +67,9 @@ impl JobType {
                 | JobType::Rename
                 | JobType::Rmdirs
                 | JobType::Upload
+                | JobType::ArchiveCreate
+                | JobType::ArchiveExtract
+                | JobType::ArchiveList
         )
     }
 

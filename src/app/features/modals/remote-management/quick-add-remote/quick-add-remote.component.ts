@@ -10,13 +10,14 @@ import {
   FormBuilder,
   FormControl,
   FormGroup,
+  FormArray,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { fromEvent, merge, startWith } from 'rxjs';
+import { fromEvent, merge, startWith, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -62,7 +63,7 @@ import {
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
-type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
+type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -124,6 +125,11 @@ export class QuickAddRemoteComponent {
       type: 'move' as OperationType,
       label: 'modals.quickAdd.operations.move.label',
       description: 'modals.quickAdd.operations.move.description',
+    },
+    {
+      type: 'serve' as OperationType,
+      label: 'modals.quickAdd.operations.serve.label',
+      description: 'modals.quickAdd.operations.serve.description',
     },
   ] as const;
 
@@ -255,9 +261,9 @@ export class QuickAddRemoteComponent {
     defaultType: 'local' | 'currentRemote' | 'otherRemote'
   ): FormGroup {
     return this.fb.group({
-      pathType: new FormControl(defaultType),
+      type: new FormControl(defaultType),
       path: new FormControl(''),
-      otherRemoteName: new FormControl(''),
+      remote: new FormControl(''),
     });
   }
 
@@ -266,24 +272,45 @@ export class QuickAddRemoteComponent {
       return this.fb.group({
         autoStart: new FormControl(false),
         source: this.createOperationPathGroup('currentRemote'),
-        dest: new FormControl(''),
+        dest: this.createOperationPathGroup('local'),
       });
     }
-    if (opType === 'bisync') {
+
+    if (opType === 'serve') {
       return this.fb.group({
         autoStart: new FormControl(false),
-        cronEnabled: new FormControl(false),
-        cronExpression: new FormControl(''),
+        source: this.createOperationPathGroup('currentRemote'),
+      });
+    }
+
+    const baseGroup = {
+      autoStart: new FormControl(false),
+      cronEnabled: new FormControl(false),
+      cronExpression: new FormControl(''),
+    };
+
+    if (opType === 'bisync') {
+      return this.fb.group({
+        ...baseGroup,
         source: this.createOperationPathGroup('currentRemote'),
         dest: this.createOperationPathGroup('local'),
       });
     }
+
+    // Sync, Copy, Move: Multiple sources, multiple destinations
+    if (opType === 'sync' || opType === 'copy' || opType === 'move') {
+      return this.fb.group({
+        ...baseGroup,
+        sources: this.fb.array([this.createOperationPathGroup('currentRemote')]),
+        dests: this.fb.array([this.createOperationPathGroup('local')]),
+      });
+    }
+
+    // Fallback (should not be reached if all types handled above)
     return this.fb.group({
-      autoStart: new FormControl(false),
-      cronEnabled: new FormControl(false),
-      cronExpression: new FormControl(''),
-      sources: this.fb.array([this.createOperationPathGroup('currentRemote')]),
-      dests: this.fb.array([this.createOperationPathGroup('local')]),
+      ...baseGroup,
+      source: this.createOperationPathGroup('currentRemote'),
+      dest: this.createOperationPathGroup('local'),
     });
   }
 
@@ -333,21 +360,31 @@ export class QuickAddRemoteComponent {
             destControl?.updateValueAndValidity();
           });
       } else if (QuickAddRemoteComponent.SOURCE_DEST_OP_TYPES.has(opName)) {
-        const sourcePathControl = opGroup.get('source.path');
-        const destPathControl = opGroup.get('dest.path');
+        const getGroup = (path: string) => {
+          const ctrl = opGroup.get(path);
+          if (ctrl instanceof FormGroup) return ctrl;
+          if (ctrl instanceof FormArray && ctrl.length > 0) return ctrl.at(0) as FormGroup;
+          return null;
+        };
 
-        sourcePathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
-        destPathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
+        const sourceG = getGroup('source') || getGroup('sources');
+        const destG = getGroup('dest') || getGroup('dests');
 
-        merge(
-          opGroup.get('autoStart')!.valueChanges,
-          opGroup.get('source.pathType')!.valueChanges,
-          opGroup.get('dest.pathType')!.valueChanges
-        )
+        const sourcePath = sourceG?.get('path');
+        const destPath = destG?.get('path');
+
+        sourcePath?.setValidators(this.validatorRegistry.requiredIfLocal());
+        destPath?.setValidators(this.validatorRegistry.requiredIfLocal());
+
+        const watch$: Observable<any>[] = [opGroup.get('autoStart')!.valueChanges];
+        if (sourceG) watch$.push(sourceG.get('type')!.valueChanges);
+        if (destG) watch$.push(destG.get('type')!.valueChanges);
+
+        merge(...watch$)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe(() => {
-            sourcePathControl?.updateValueAndValidity();
-            destPathControl?.updateValueAndValidity();
+            sourcePath?.updateValueAndValidity();
+            destPath?.updateValueAndValidity();
           });
       }
     }
@@ -377,11 +414,27 @@ export class QuickAddRemoteComponent {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (!selectedPath) return;
 
-      const controlPath =
-        opName === 'mount' && pathType === 'dest'
-          ? 'operations.mount.dest'
-          : `operations.${opName}.${pathType}.path`;
-      this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
+      const getControlPath = () => {
+        if (opName === 'mount' && pathType === 'dest') return 'operations.mount.dest.path';
+
+        const opGroup = this.quickAddForm.get(`operations.${opName}`);
+        if (!opGroup) return null;
+
+        if (opGroup.get(pathType)) {
+          return `operations.${opName}.${pathType}.path`;
+        } else {
+          const pluralKey = pathType === 'source' ? 'sources' : 'dests';
+          if (opGroup.get(pluralKey)) {
+            return `operations.${opName}.${pluralKey}.0.path`;
+          }
+        }
+        return null;
+      };
+
+      const controlPath = getControlPath();
+      if (controlPath) {
+        this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
+      }
     } catch (error) {
       console.error('Error selecting folder:', error);
     }
@@ -437,21 +490,37 @@ export class QuickAddRemoteComponent {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createBaseOpConfig = (op: any) => ({
-      sources: op.sources ? buildPathStrings(op.sources, remoteName) : undefined,
-      dests: op.dests ? buildPathStrings(op.dests, remoteName) : undefined,
-      source: op.source ? buildPathString(op.source, remoteName) : undefined,
-      dest: op.dest
-        ? typeof op.dest === 'string'
-          ? op.dest
-          : buildPathString(op.dest, remoteName)
-        : undefined,
-      autoStart: op.autoStart ?? false,
-      cronEnabled: op.cronEnabled ?? false,
-      cronExpression: op.cronExpression ?? null,
-      filterProfile: DEFAULT_PROFILE_NAME,
-      backendProfile: DEFAULT_PROFILE_NAME,
-    });
+    const createBaseOpConfig = (op: any) => {
+      const config: any = {
+        autoStart: op.autoStart ?? false,
+        cronEnabled: op.cronEnabled ?? false,
+        cronExpression: op.cronExpression ?? null,
+        filterProfile: DEFAULT_PROFILE_NAME,
+        backendProfile: DEFAULT_PROFILE_NAME,
+      };
+
+      const getPathValue = (p: any) => {
+        if (!p) return null;
+        return typeof p === 'string' ? p : buildPathString(p, remoteName);
+      };
+
+      // Handle singular or plural
+      if (op.sources) {
+        config.sources = buildPathStrings(op.sources, remoteName);
+      } else if (op.source) {
+        config.source = getPathValue(op.source);
+      }
+
+      if (op.dests) {
+        const destStrings = buildPathStrings(op.dests, remoteName);
+        config.dests = destStrings;
+        if (destStrings.length > 0) config.dest = destStrings[0];
+      } else if (op.dest) {
+        config.dest = getPathValue(op.dest);
+      }
+
+      return config;
+    };
 
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
@@ -467,6 +536,13 @@ export class QuickAddRemoteComponent {
         [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync),
       },
       [REMOTE_CONFIG_KEYS.move]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move) },
+      [REMOTE_CONFIG_KEYS.serve]: {
+        [DEFAULT_PROFILE_NAME]: {
+          ...createBaseOpConfig(operations.serve),
+          type: 'http', // Default to HTTP serve type
+          vfsProfile: DEFAULT_PROFILE_NAME,
+        },
+      },
       [REMOTE_CONFIG_KEYS.filter]: { [DEFAULT_PROFILE_NAME]: {} },
       [REMOTE_CONFIG_KEYS.vfs]: {
         [DEFAULT_PROFILE_NAME]: {

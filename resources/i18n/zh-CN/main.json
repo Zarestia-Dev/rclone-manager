@@ -294,11 +294,12 @@
       "backendFilterHint": "仅监控特定后端上的事件。",
       "profileFilter": "配置过滤",
       "profileFilterPlaceholder": "例如：GDrive-Sync",
-      "profileFilterHint": "仅监控特定配置的事件。",
+      "profileFilterHint": "仅监控特定配置文件的事件。",
+      "autoAcknowledge": "自动确认",
+      "autoAcknowledgeHint": "自动将警报标记为已确认。适用于已触发系统通知的警报。",
       "actions": "触发操作"
     },
     "events": {
-      "any": "任何事件",
       "job_completed": "作业已完成",
       "job_started": "作业已开始",
       "job_failed": "作业失败",
@@ -1116,12 +1117,18 @@
       "notConfigured": "未配置",
       "clearSchedule": "清除计划",
       "sourcePath": "源路径",
+      "sourcePaths": "源路径列表",
       "destPath": "目标路径",
+      "destinationPath": "目标路径",
       "localPath": "本地路径",
       "remotePathServe": "要提供服务的远程路径",
+      "addSource": "添加源",
+      "removePath": "移除路径",
       "rootFolderOptional": "根文件夹（可选）",
       "rootFolderSpecific": "根文件夹或特定路径",
       "selectRemoteSource": "选择远程源文件夹",
+      "remotePath": "远程路径",
+      "enterPath": "输入路径...",
       "changeSourceType": "更改源路径类型",
       "enterSourcePath": "输入源路径...",
       "otherRemotes": "其他远程存储",
@@ -1479,7 +1486,9 @@
         "move": "移动",
         "rename": "重命名",
         "sync": "同步",
-        "bisync": "双向同步"
+        "bisync": "双向同步",
+        "compress": "压缩",
+        "extract": "解压"
       }
     },
     "fileViewer": {
@@ -1501,6 +1510,12 @@
       "errorUnexpected": "发生未知错误",
       "errorLoadFile": "加载 {{name}} 失败",
       "downloading": "正在下载 {{name}}",
+      "archiveContents": "归档内容",
+      "errorListArchive": "列出归档内容失败",
+      "extract": "解压",
+      "extracting": "正在解压 \"{{name}}\"...",
+      "extractSuccess": "\"{{name}}\" 解压成功",
+      "errorExtract": "解压归档失败",
       "save": "保存",
       "edit": "编辑",
       "cancel": "取消",
@@ -2346,6 +2361,16 @@
         "fileLabel": "文件名（可选）",
         "filePlaceholder": "留空以使用自动命名",
         "confirm": "下载"
+      },
+      "archiveCreate": {
+        "title": "创建归档",
+        "filenameLabel": "归档文件名",
+        "formatLabel": "归档格式",
+        "prefixLabel": "前缀路径",
+        "prefixHint": "如果设置，将覆盖完整路径",
+        "fullPathLabel": "包含完整源路径",
+        "fullPathHint": "保留从根目录开始的目录结构",
+        "compress": "压缩"
       }
     },
     "errors": {
@@ -2365,7 +2390,8 @@
       "emptyTrashFailed": "清空 {{remote}} 回收站失败：{{error}}",
       "openFileFailed": "无法打开文件：缺少远程服务器上下文",
       "minSelection": "请至少选择 {{min}} 项。",
-      "copyUrlFailed": "从 URL 下载失败: {{error}}"
+      "copyUrlFailed": "从 URL 下载失败: {{error}}",
+      "archiveCreateFailed": "创建归档失败: {{error}}"
     },
     "contextMenu": {
       "open": "打开",
@@ -2424,7 +2450,9 @@
       "renameStarted": "重命名操作已开始",
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
-      "copyUrlStarted": "正在从 URL 下载..."
+      "copyUrlStarted": "正在从 URL 下载...",
+      "archiveCreateStarted": "已开始创建归档操作",
+      "archiveCreateComplete": "归档创建成功"
     }
   },
   "overview": {

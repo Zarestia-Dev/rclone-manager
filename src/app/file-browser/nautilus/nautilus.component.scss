@@ -88,61 +88,69 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-xxs) var(--space-xs);
+  padding: 8px 12px;
+  min-height: 40px;
 
-  span {
-    font-weight: 500;
+  .control-label {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--window-fg-color);
   }
 
-  .buttons {
+  .control-buttons {
     display: flex;
-    overflow: hidden;
+    gap: 4px;
 
-    button {
-      height: 28px;
-      width: 28px;
-      border-radius: var(--radius-xs);
+    .icon-button {
+      all: unset;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+      background: var(--sidebar-bg-color);
+      color: var(--window-fg-color);
 
       mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-        border-radius: var(--radius-xxs);
-        background: var(--window-bg-color) !important;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
       }
 
-      &:hover {
+      &:hover:not(:disabled) {
         background: var(--hover-bg-color);
+      }
+
+      &:active:not(:disabled) {
+        background: var(--active-bg-color);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
       }
     }
   }
 }
 
-.sort-radio-group {
-  display: flex;
-  flex-direction: column;
+.menu-section-label {
+  padding: 8px 12px 4px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim-color);
 }
 
-.sort-options {
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-
-  .sort-label {
-    font-size: var(--font-size-md);
-    font-weight: 700;
-    color: var(--dim-color);
-  }
-}
-
-.menu-item-wrapper {
-  padding: var(--space-xxs) var(--space-xs);
-  display: flex;
-  align-items: center;
-
-  mat-checkbox {
-    width: 100%;
-  }
+.selection-icon {
+  margin-left: auto;
+  color: var(--accent-color) !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 18px !important;
 }
 
 /* ==========================================================================

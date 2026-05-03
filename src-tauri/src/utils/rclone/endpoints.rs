@@ -119,6 +119,22 @@ pub mod core {
     /// ```
     pub const DU: &str = "core/du";
 
+    /// List the local disks.
+    ///
+    /// This does not take any parameters.
+    ///
+    /// This call is for rclone GUI programs to enumerate local disks and
+    /// important directories for doing transfers to and from. The list
+    /// returned will include the root directory and the user's home directory
+    /// and any mounted disks. The returned items should be usable directly as
+    /// remotes.
+    ///
+    /// Returns:
+    ///
+    /// - disks
+    ///     - This is an array of strings of local disk names
+    pub const DISKS: &str = "core/disks";
+
     /// Runs a garbage collection.
     ///
     /// This tells the go runtime to do a garbage collection run. It isn't
@@ -197,6 +213,7 @@ pub mod core {
     /// "bytes": total transferred bytes since the start of the group,
     /// "checks": number of files checked,
     /// "deletes" : number of files deleted,
+    /// "deletedDirs": number of directories deleted,
     /// "elapsedTime": time in floating point seconds since rclone was started,
     /// "errors": number of errors,
     /// "eta": estimated time in seconds until the group completes,

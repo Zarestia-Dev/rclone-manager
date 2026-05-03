@@ -100,3 +100,6 @@ tray = ["tauri/tray-icon", "tauri/image-png"]
 portable = ["desktop", "tray"]
 flatpak = ["desktop", "tray"]
 
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

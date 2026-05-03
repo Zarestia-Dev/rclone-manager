@@ -20,7 +20,7 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
-import { Subject, of } from 'rxjs';
+import { Subject, of, firstValueFrom } from 'rxjs';
 import { marked } from 'marked';
 
 // CodeMirror Imports
@@ -47,20 +47,17 @@ import {
   PathSelectionService,
   JobManagementService,
   FileSystemService,
-  UiStateService,
+  NautilusService,
 } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from '@app/services';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, ORIGINS } from '@app/types';
+import { Entry, ORIGINS, FilePickerResult } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
-import {
-  ApiClientService,
-  isHeadlessMode,
-} from 'src/app/services/infrastructure/platform/api-client.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 // ── GNOME / Adwaita Light Syntax Highlighting ──
 // Colors inspired by GNOME Builder's light theme and Adwaita palette
@@ -134,12 +131,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
   private remoteOps = inject(RemoteFileOperationsService);
+  private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly uiStateService = inject(UiStateService);
-  private readonly apiClient = inject(ApiClientService);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -164,6 +160,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   isLoading = signal(true);
   isDownloading = signal(false);
   isLoadingCover = signal(false);
+  archiveContent = signal<string>('');
+  parsedArchiveItems = signal<
+    { size: number; date: string; time: string; path: string; isDir: boolean }[]
+  >([]);
+  isExtracting = signal(false);
+  archiveError = signal<string | null>(null);
 
   // Editing state
   isEditing = signal(false);
@@ -344,20 +346,21 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
       const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
 
-      const file = new File([this.editContent()], filename, { type: 'text/plain' });
-
-      await this.remoteOps.uploadFileStream(
-        fsName,
-        dirPath,
-        file,
-        undefined,
-        FileViewerModalComponent.FILE_OPERATION_ORIGIN
-      );
+      const content = new TextEncoder().encode(this.editContent());
+      await this.remoteOps.uploadFileSimple(fsName, dirPath, filename, content);
 
       this.textContent.set(this.editContent());
       this.isEditing.set(false);
+
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.saveSuccess')
+      );
     } catch (error) {
       console.error('Failed to save file:', error);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.saveError'),
+        error instanceof Error ? error.message : String(error)
+      );
     } finally {
       this.isSaving.set(false);
     }
@@ -495,6 +498,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoadingCover.set(false);
     this.isEditing.set(false);
     this.editContent.set('');
+    this.archiveContent.set('');
+    this.archiveError.set(null);
 
     try {
       const [type, url] = await Promise.all([
@@ -596,6 +601,40 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           });
       }
 
+      if (this.currentFileType() === 'archive') {
+        const item = this.currentItem();
+        const source = this.data.isLocal
+          ? (this.data.remoteName === '/'
+              ? `/${item.Path}`
+              : `${this.data.remoteName}/${item.Path}`
+            ).replace(/\/+/g, '/')
+          : `${this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+
+        this.remoteOps
+          .archiveList(source, true) // Use long format for more info
+          .then(res => {
+            if (res && res.success) {
+              this.archiveContent.set(res.output);
+              this.parsedArchiveItems.set(this.parseArchiveList(res.output));
+              this.archiveError.set(null);
+            } else if (res) {
+              this.archiveError.set(res.output);
+              this.parsedArchiveItems.set([]);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to list archive:', err);
+            this.archiveError.set(err.toString());
+            this.archiveContent.set(
+              this.translate.instant('fileBrowser.fileViewer.errorListArchive')
+            );
+            this.parsedArchiveItems.set([]);
+          })
+          .finally(() => {
+            this.isLoading.set(false);
+          });
+        return;
+      }
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
       if (mediaTypes.includes(this.currentFileType())) {
         this.currentUrl.set(this.rawUrl());
@@ -610,6 +649,34 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       );
       this.isLoading.set(false);
     }
+  }
+
+  private parseArchiveList(
+    output: string
+  ): { size: number; date: string; time: string; path: string; isDir: boolean }[] {
+    if (!output) return [];
+
+    const lines = output.trim().split('\n');
+    return lines
+      .map(line => {
+        // Format: "        6 2025-10-30 09:46:23.000000000 file.txt"
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 4) return null;
+
+        const size = parseInt(parts[0], 10);
+        const date = parts[1];
+        const time = parts[2];
+        const path = parts.slice(3).join(' ');
+
+        return {
+          size: isNaN(size) ? 0 : size,
+          date,
+          time: time.split('.')[0],
+          path,
+          isDir: path.endsWith('/'),
+        };
+      })
+      .filter(item => item !== null) as any[];
   }
 
   /**
@@ -726,6 +793,47 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       console.error('Failed to start download:', err);
     } finally {
       this.isDownloading.set(false);
+    }
+  }
+
+  async extractArchive(): Promise<void> {
+    if (this.isExtracting()) return;
+
+    const item = this.currentItem();
+
+    // Use internal Nautilus picker for folder selection
+    this.nautilusService.openFilePicker({
+      selection: 'folders',
+      mode: 'both', // Allow picking both local and remote folders
+      multi: false,
+    });
+
+    try {
+      const result: FilePickerResult = await firstValueFrom(this.nautilusService.filePickerResult$);
+      if (result.cancelled || !result.paths.length) return;
+
+      this.isExtracting.set(true);
+      const selectedPath = result.paths[0];
+
+      const source = this.data.isLocal
+        ? (this.data.remoteName === '/'
+            ? `/${item.Path}`
+            : `${this.data.remoteName}/${item.Path}`
+          ).replace(/\/+/g, '/')
+        : `${this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.extracting', { name: this.fileName() })
+      );
+
+      await this.remoteOps.archiveExtract(source, selectedPath);
+    } catch (err) {
+      console.error('Failed to extract archive:', err);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.errorExtract')
+      );
+    } finally {
+      this.isExtracting.set(false);
     }
   }
 }

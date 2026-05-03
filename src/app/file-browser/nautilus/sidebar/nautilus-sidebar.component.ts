@@ -4,6 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
@@ -20,6 +21,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
+    MatTooltipModule,
     CdkMenuModule,
     OperationsPanelComponent,
   ],
@@ -129,6 +131,13 @@ export class NautilusSidebarComponent {
       bm.meta.isLocal
     );
     return `${remote}::${bm.entry.Path}`;
+  }
+
+  getDriveTooltip(drive: ExplorerRoot): string {
+    const pathInfo = drive.name ? `${drive.name}\n` : '';
+    if (drive.totalSpace === undefined || drive.totalSpace === 0) return pathInfo;
+    const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
+    return `${pathInfo}${fs}`;
   }
 
   private _closeSidenavOnMobile(): void {

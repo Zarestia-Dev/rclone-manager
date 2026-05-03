@@ -131,7 +131,7 @@
                       <span class="value">{{ job.stats.eta | formatEta }}</span>
                     </div>
 
-                    @if (job.stats.transferring.length > 0) {
+                    @if (job.stats.transferring && job.stats.transferring.length > 0) {
                       <div class="detail-item upload-current-file">
                         <span class="detail-label">Current file</span>
                         <span class="value">{{ job.stats.transferring[0].name }}</span>

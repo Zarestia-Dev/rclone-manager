@@ -260,6 +260,20 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
+  async uploadFileSimple(
+    remote: string,
+    path: string,
+    name: string,
+    content: Uint8Array
+  ): Promise<string> {
+    return await this.invokeCommand<string>('upload_file', {
+      remote,
+      path,
+      name,
+      content: Array.from(content), // Handled as Vec<u8> in Rust
+    });
+  }
+
   async uploadFileStream(
     remote: string,
     path: string,
@@ -365,6 +379,44 @@ export class RemoteFileOperationsService extends TauriBaseService {
       job_type: jobType,
       origin: source,
       group,
+    });
+  }
+
+  async archiveCreate(
+    source: string,
+    destination: string,
+    format?: string,
+    prefix?: string,
+    fullPath?: boolean,
+    include?: string[]
+  ): Promise<any> {
+    return this.invokeCommand('archive_create', {
+      source,
+      destination,
+      format,
+      prefix,
+      fullPath,
+      include,
+    });
+  }
+
+  async archiveExtract(source: string, destination: string): Promise<any> {
+    return this.invokeCommand('archive_extract', { source, destination });
+  }
+
+  async archiveList(
+    source: string,
+    long?: boolean,
+    plain?: boolean,
+    filesOnly?: boolean,
+    dirsOnly?: boolean
+  ): Promise<any> {
+    return this.invokeCommand('archive_list', {
+      source,
+      long,
+      plain,
+      files_only: filesOnly,
+      dirs_only: dirsOnly,
     });
   }
 }

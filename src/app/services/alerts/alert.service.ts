@@ -115,7 +115,7 @@ export class AlertService extends TauriBaseService {
 
         this.stats.update(s => ({
           ...s,
-          unacknowledged: s.unacknowledged + 1,
+          unacknowledged: newAlert.acknowledged ? s.unacknowledged : s.unacknowledged + 1,
           total: s.total + 1,
         }));
       });

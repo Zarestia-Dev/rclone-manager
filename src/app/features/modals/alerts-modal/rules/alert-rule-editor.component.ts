@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
@@ -26,14 +27,17 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
     MatSelectModule,
     MatSlideToggleModule,
     MatDividerModule,
+    MatTooltipModule,
     TranslateModule,
   ],
   template: `
     <header class="modal-header" data-tauri-drag-region>
       <button>
-        <mat-icon svgIcon="bell"></mat-icon>
+        <mat-icon [svgIcon]="data ? 'pen' : 'plus'"></mat-icon>
       </button>
-      <p class="header-title">{{ 'alerts.title' | translate }}</p>
+      <p class="header-title">
+        {{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}
+      </p>
       <button mat-icon-button (click)="cancel()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
@@ -58,6 +62,14 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
           <div class="toggle-container">
             <mat-slide-toggle formControlName="enabled" color="primary">
               {{ 'alerts.enabled' | translate }}
+            </mat-slide-toggle>
+
+            <mat-slide-toggle
+              formControlName="auto_acknowledge"
+              color="primary"
+              [matTooltip]="'alerts.rule.autoAcknowledgeHint' | translate"
+            >
+              {{ 'alerts.rule.autoAcknowledge' | translate }}
             </mat-slide-toggle>
           </div>
         </div>
@@ -88,7 +100,7 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
           {{ 'alerts.rule.filters' | translate }}
         </h3>
 
-        <div class="form-section panel">
+        <div class="form-section panel no-wrapper">
           <div class="form-row">
             <mat-form-field appearance="fill" class="flex-1">
               <mat-label>{{ 'alerts.rule.severityMin' | translate }}</mat-label>
@@ -114,55 +126,75 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
           <div class="form-row">
             <mat-form-field appearance="fill" class="flex-1">
               <mat-label>{{ 'alerts.rule.eventFilter' | translate }}</mat-label>
+              <mat-icon
+                matPrefix
+                svgIcon="circle-info"
+                [matTooltip]="'alerts.rule.eventFilterHint' | translate"
+              ></mat-icon>
               <mat-select formControlName="event_filter" multiple>
                 @for (e of eventKinds; track e) {
                   <mat-option [value]="e">{{ 'alerts.events.' + e | translate }}</mat-option>
                 }
               </mat-select>
-              <mat-hint>{{ 'alerts.rule.eventFilterHint' | translate }}</mat-hint>
             </mat-form-field>
 
             <mat-form-field appearance="fill" class="flex-1">
               <mat-label>{{ 'alerts.rule.remoteFilter' | translate }}</mat-label>
+              <mat-icon
+                matPrefix
+                svgIcon="circle-info"
+                [matTooltip]="'alerts.rule.remoteFilterHint' | translate"
+              ></mat-icon>
               <mat-select formControlName="remote_filter" multiple>
                 @for (r of remotes(); track r.name) {
                   <mat-option [value]="r.name">{{ r.name }}</mat-option>
                 }
               </mat-select>
-              <mat-hint>{{ 'alerts.rule.remoteFilterHint' | translate }}</mat-hint>
             </mat-form-field>
           </div>
 
           <div class="form-row">
             <mat-form-field appearance="fill" class="flex-1">
               <mat-label>{{ 'alerts.rule.backendFilter' | translate }}</mat-label>
+              <mat-icon
+                matPrefix
+                svgIcon="circle-info"
+                [matTooltip]="'alerts.rule.backendFilterHint' | translate"
+              ></mat-icon>
               <mat-select formControlName="backend_filter" multiple>
                 @for (b of backends(); track b.name) {
                   <mat-option [value]="b.name">{{ b.name }}</mat-option>
                 }
               </mat-select>
-              <mat-hint>{{ 'alerts.rule.backendFilterHint' | translate }}</mat-hint>
             </mat-form-field>
 
             <mat-form-field appearance="fill" class="flex-1">
               <mat-label>{{ 'alerts.rule.profileFilter' | translate }}</mat-label>
+              <mat-icon
+                matPrefix
+                svgIcon="circle-info"
+                [matTooltip]="'alerts.rule.profileFilterHint' | translate"
+              ></mat-icon>
               <mat-select formControlName="profile_filter" multiple>
                 @for (p of allProfiles(); track p) {
                   <mat-option [value]="p">{{ p }}</mat-option>
                 }
               </mat-select>
-              <mat-hint>{{ 'alerts.rule.profileFilterHint' | translate }}</mat-hint>
             </mat-form-field>
           </div>
 
           <mat-form-field appearance="fill">
             <mat-label>{{ 'alerts.origins.title' | translate }}</mat-label>
+            <mat-icon
+              matPrefix
+              svgIcon="circle-info"
+              [matTooltip]="'alerts.rule.originFilterHint' | translate"
+            ></mat-icon>
             <mat-select formControlName="origin_filter" multiple>
               @for (o of origins; track o) {
                 <mat-option [value]="o">{{ 'alerts.origins.' + o | translate }}</mat-option>
               }
             </mat-select>
-            <mat-hint>{{ 'alerts.rule.originFilterHint' | translate }}</mat-hint>
           </mat-form-field>
         </div>
       </form>
@@ -186,17 +218,14 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
       .editor-form {
         display: flex;
         flex-direction: column;
-        gap: var(--space-md);
       }
 
       .panel {
         background: var(--bg-elevated);
-        border: 1px solid var(--border-color);
+        box-shadow: 0 0 0 1px var(--border-color);
         border-radius: var(--card-border-radius);
         padding: var(--space-md);
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-sm);
+        margin-block: var(--space-xs) var(--space-md);
       }
 
       .section-title {
@@ -204,17 +233,9 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
         font-weight: 600;
         color: var(--text-muted);
         margin: 0;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
         display: flex;
         align-items: center;
-        gap: var(--space-sm);
-
-        .sm-icon {
-          width: 18px;
-          height: 18px;
-          font-size: 18px;
-        }
+        gap: var(--space-xxs);
       }
 
       .form-section {
@@ -226,14 +247,25 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
         display: flex;
         gap: var(--space-md);
         align-items: flex-start;
+      }
 
-        .flex-1 {
-          flex: 1;
+      .no-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+
+        mat-form-field {
+          ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+            display: none;
+          }
         }
       }
 
       .toggle-container {
         padding: var(--space-xs) 0;
+        display: flex;
+        gap: var(--space-lg);
+        justify-content: space-between;
       }
 
       .suffix-text {
@@ -301,7 +333,6 @@ export class AlertRuleEditorComponent {
 
   severities: AlertSeverity[] = ['info', 'warning', 'average', 'high', 'critical'];
   eventKinds: AlertEventKind[] = [
-    'any',
     'job',
     'serve',
     'mount',
@@ -323,6 +354,7 @@ export class AlertRuleEditorComponent {
     backend_filter: [[] as string[]],
     profile_filter: [[] as string[]],
     origin_filter: [[] as Origin[]],
+    auto_acknowledge: [false],
     action_ids: [[] as string[], [Validators.required, Validators.minLength(1)]],
     created_at: [new Date().toISOString()],
     last_fired: [undefined as string | undefined],

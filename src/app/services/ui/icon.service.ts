@@ -7,7 +7,15 @@ import { MIME_EXTENSION_MAP } from './constants/mime-extension-map';
 import { getIconForMimeType, getGenericIconForMimeType } from './constants/mime-icon-map';
 import { Entry } from '@app/types';
 
-export type FileCategory = 'image' | 'video' | 'audio' | 'pdf' | 'directory' | 'binary' | 'text';
+export type FileCategory =
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'pdf'
+  | 'directory'
+  | 'binary'
+  | 'text'
+  | 'archive';
 
 @Injectable({
   providedIn: 'root',
@@ -147,6 +155,10 @@ export class IconService {
     if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(extension)) return 'audio';
     if (extension === 'pdf') return 'pdf';
 
+    // Archive types
+    const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz', 'rcman'];
+    if (archiveExtensions.includes(extension)) return 'archive';
+
     // Known binary extensions that definitely cannot be previewed
     const knownBinary = [
       'exe',
@@ -218,6 +230,7 @@ export class IconService {
       pdf: 'application-pdf',
       text: 'text-x-generic',
       binary: 'package-x-generic',
+      archive: 'package-x-generic',
       directory: 'folder-adw',
     };
     return mapping[fileType] || 'text-x-generic';

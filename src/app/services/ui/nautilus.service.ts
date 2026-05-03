@@ -118,6 +118,10 @@ export class NautilusService extends TauriBaseService {
           type: 'hard-drive',
           isLocal: true,
           showName: drive.show_name,
+          totalSpace: drive.total_space,
+          availableSpace: drive.available_space,
+          fileSystem: drive.file_system,
+          isRemovable: drive.is_removable,
         }))
       );
 

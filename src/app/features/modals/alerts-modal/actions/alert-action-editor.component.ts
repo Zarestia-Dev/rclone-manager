@@ -29,14 +29,17 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
     TranslateModule,
   ],
   template: `
-    <h2 mat-dialog-title class="dialog-title">
-      <div class="title-content">
-        <div class="icon-wrapper">
-          <mat-icon [svgIcon]="data?.kind ? 'bolt' : 'plus'"></mat-icon>
-        </div>
-        <span>{{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}</span>
-      </div>
-    </h2>
+    <header class="modal-header" data-tauri-drag-region>
+      <button>
+        <mat-icon [svgIcon]="data ? 'pen' : 'plus'"></mat-icon>
+      </button>
+      <p class="header-title">
+        {{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}
+      </p>
+      <button mat-icon-button (click)="cancel()" [attr.aria-label]="'common.close' | translate">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </header>
 
     <mat-dialog-content>
       <form [formGroup]="form" (ngSubmit)="save()" class="editor-form">
@@ -101,7 +104,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
         <div class="panel">
           <!-- Webhook Fields -->
           @if (form.controls.kind.value === 'webhook') {
-            <div class="kind-fields anim-fade-in">
+            <div class="kind-fields">
               <mat-form-field appearance="fill" class="full-width">
                 <mat-label>{{ 'alerts.action.url' | translate }}</mat-label>
                 <mat-icon matPrefix svgIcon="link" class="prefix-icon"></mat-icon>
@@ -168,7 +171,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
 
           <!-- Script Fields -->
           @if (form.controls.kind.value === 'script') {
-            <div class="kind-fields anim-fade-in">
+            <div class="kind-fields">
               <mat-form-field appearance="fill" class="full-width">
                 <mat-label>{{ 'alerts.action.command' | translate }}</mat-label>
                 <mat-icon matPrefix svgIcon="terminal" class="prefix-icon"></mat-icon>
@@ -214,7 +217,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
 
           <!-- OS Toast Fields -->
           @if (form.controls.kind.value === 'os_toast') {
-            <div class="kind-fields anim-fade-in">
+            <div class="kind-fields">
               <div class="info-box accent">
                 <mat-icon svgIcon="desktop"></mat-icon>
                 <span>{{ 'alerts.action.os_toast_info' | translate }}</span>
@@ -357,7 +360,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
       }
 
       .code-font {
-        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-family: var(--font-mono);
         font-size: 0.9em;
       }
 
@@ -412,24 +415,9 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/
           border: 1px solid var(--border-color);
           padding: 2px 6px;
           border-radius: 4px;
-          font-family: 'JetBrains Mono', 'Fira Code', monospace;
+          font-family: var(--font-mono);
           font-size: 0.85em;
           color: var(--accent-color);
-        }
-      }
-
-      .anim-fade-in {
-        animation: fadeIn 0.3s ease-in-out;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(4px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
         }
       }
     `,

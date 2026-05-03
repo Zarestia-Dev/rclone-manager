@@ -5,18 +5,8 @@ use axum::{
     response::Json,
 };
 use futures::StreamExt;
-use log::{debug, error};
-use tauri::Manager;
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::JobMetadata;
 use crate::server::state::{ApiResponse, AppError, WebServerState};
-use crate::utils::app::notification::notify;
-use crate::utils::rclone::endpoints::operations;
-use crate::utils::types::core::RcloneState;
-use crate::utils::types::jobs::JobType;
-use crate::utils::types::origin::Origin;
-use serde_json::json;
 
 struct BatchMeta {
     id: String,

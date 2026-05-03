@@ -44,7 +44,9 @@ export type FileOperationType =
   | 'about'
   | 'size'
   | 'stat'
-  | 'hash';
+  | 'hash'
+  | 'archivecreate'
+  | 'archiveextract';
 
 /** Single source of truth for `JobInfo.job_type`. */
 export type JobActionType = PrimaryActionType | FileOperationType;

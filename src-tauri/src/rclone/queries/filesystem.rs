@@ -73,19 +73,6 @@ async fn run_fs_command_as_job(
     Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
 }
 
-async fn run_fs_command(
-    app: AppHandle,
-    client: reqwest::Client,
-    endpoint: &str,
-    params: serde_json::Map<String, serde_json::Value>,
-) -> Result<serde_json::Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    backend
-        .post_json(&client, endpoint, Some(&json!(params)))
-        .await
-        .map_err(|e| format!("❌ Failed to call {endpoint}: {e}"))
-}
-
 fn create_fs_params(
     remote: String,
     path: Option<String>,
@@ -98,9 +85,15 @@ fn create_fs_params(
 
 #[derive(Serialize, Clone)]
 pub struct LocalDrive {
+    id: String,
     name: String,
     label: String,
     show_name: bool,
+    total_space: u64,
+    available_space: u64,
+    file_system: String,
+    is_removable: bool,
+    mount_point: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -139,7 +132,6 @@ pub async fn get_fs_info(
     )
     .await?;
 
-    #[cfg(target_os = "windows")]
     let data = {
         let mut data = data;
         use crate::utils::json_helpers::normalize_windows_path;
@@ -193,68 +185,144 @@ pub async fn get_remote_paths(
 #[tauri::command]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
     let state = app.state::<RcloneState>();
-    use crate::utils::rclone::endpoints::{core, operations};
-    use futures::future::join_all;
+    use crate::utils::rclone::endpoints::core;
+    use std::collections::HashMap;
+    use sysinfo::Disks;
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    let os = backend
-        .post_json(&state.client, core::VERSION, None)
+    let response = backend
+        .post_json(&state.client, core::DISKS, None)
         .await
-        .ok()
-        .and_then(|v| v.get("os").and_then(|o| o.as_str()).map(str::to_string))
-        .unwrap_or_else(|| std::env::consts::OS.to_string());
+        .map_err(|e| format!("❌ Failed to call {}: {e}", core::DISKS))?;
 
-    let mut drives = Vec::new();
+    let disks_paths = response
+        .get("disks")
+        .and_then(|value| value.as_array())
+        .ok_or_else(|| "Invalid core/disks response: missing 'disks' array".to_string())?;
 
-    if os == "windows" {
-        let futures: Vec<_> = (b'A'..=b'Z')
-            .map(|i| {
-                let drive_path = format!("{}:\\", i as char);
-                let app_clone = app.clone();
-                let client = state.client.clone();
-                let path = drive_path.clone();
-                async move {
-                    let params = create_fs_params(path.clone(), None);
-                    run_fs_command(app_clone, client, operations::ABOUT, params)
-                        .await
-                        .ok()
-                        .map(|_| LocalDrive {
-                            name: path,
-                            label: "nautilus.titles.localDisk".to_string(),
-                            show_name: true,
-                        })
+    let home = std::env::var("HOME").ok();
+
+    // Refresh disk information
+    let sys_disks = Disks::new_with_refreshed_list();
+
+    #[cfg(target_os = "linux")]
+    let labels = {
+        use std::process::Command;
+        let mut map = HashMap::new();
+        if let Ok(output) = Command::new("lsblk").args(["-no", "KNAME,LABEL"]).output() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let mut parts = line.splitn(2, |c: char| c.is_whitespace());
+                if let (Some(kname), Some(label)) = (parts.next(), parts.next()) {
+                    let label = label.trim();
+                    if !label.is_empty() {
+                        map.insert(format!("/dev/{}", kname), label.to_string());
+                    }
                 }
-            })
-            .collect();
-
-        drives.extend(join_all(futures).await.into_iter().flatten());
-
-        if drives.is_empty() {
-            drives.push(LocalDrive {
-                name: "C:\\".to_string(),
-                label: "nautilus.titles.localDisk".to_string(),
-                show_name: true,
-            });
+            }
         }
-    } else {
-        if backend.is_local
-            && let Some(path) = std::env::var("HOME").ok()
-        {
-            drives.push(LocalDrive {
-                name: path,
-                label: "titlebar.home".to_string(),
-                show_name: false,
-            });
-        }
+        map
+    };
 
-        drives.push(LocalDrive {
-            name: "/".to_string(),
-            label: "nautilus.titles.fileSystem".to_string(),
-            show_name: false,
-        });
-    }
+    let drives = disks_paths
+        .iter()
+        .filter_map(|value| value.as_str())
+        .map(|path| {
+            let normalized_path = {
+                let mut p = path.to_string();
+                // Normalize Windows drive letters (e.g., "C:") to root paths (e.g., "C:\")
+                // This ensures rclone lists the root directory instead of the current working directory of the drive.
+                if p.len() == 2
+                    && p.ends_with(':')
+                    && p.chars()
+                        .next()
+                        .map(|c| c.is_ascii_alphabetic())
+                        .unwrap_or(false)
+                {
+                    p.push('\\');
+                }
+                p
+            };
+
+            // Find a matching disk in sysinfo by mount point
+            let sys_disk = sys_disks.iter().find(|d| {
+                let mp = d.mount_point().to_string_lossy();
+                mp == normalized_path
+                    || mp == format!("{normalized_path}/")
+                    || format!("{mp}/") == format!("{normalized_path}/")
+            });
+
+            let folder_name = normalized_path
+                .split(['/', '\\'])
+                .next_back()
+                .unwrap_or("")
+                .to_string();
+
+            let is_home = Some(normalized_path.as_str()) == home.as_deref()
+                || (normalized_path.starts_with("C:\\Users\\")
+                    && normalized_path.split('\\').count() == 3)
+                || (normalized_path.starts_with("/Users/")
+                    && normalized_path.split('/').count() == 3);
+
+            let (label, show_name) = if is_home {
+                ("titlebar.home".to_string(), false)
+            } else if normalized_path == "/" || normalized_path == "C:\\" {
+                ("nautilus.titles.fileSystem".to_string(), false)
+            } else {
+                let mut drive_label = None;
+                if let Some(d) = sys_disk {
+                    let name = d.name().to_string_lossy();
+                    #[cfg(target_os = "linux")]
+                    {
+                        if let Some(l) = labels.get(name.as_ref()) {
+                            drive_label = Some(l.clone());
+                        }
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        if !name.is_empty() && !name.starts_with("\\\\") {
+                            drive_label = Some(name.into_owned());
+                        }
+                    }
+                }
+
+                if let Some(l) = drive_label {
+                    (l, false)
+                } else if normalized_path.starts_with(home.as_deref().unwrap_or(""))
+                    && !folder_name.is_empty()
+                {
+                    (folder_name, false)
+                } else if let Some(d) = sys_disk {
+                    (d.name().to_string_lossy().into_owned(), false)
+                } else if !folder_name.is_empty() {
+                    (folder_name, false)
+                } else {
+                    ("nautilus.titles.localDisk".to_string(), false)
+                }
+            };
+
+            let id = sys_disk
+                .map(|d| d.name().to_string_lossy().into_owned())
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| normalized_path.to_string());
+
+            LocalDrive {
+                id,
+                name: normalized_path.to_string(),
+                label,
+                show_name,
+                total_space: sys_disk.map(|d| d.total_space()).unwrap_or(0),
+                available_space: sys_disk.map(|d| d.available_space()).unwrap_or(0),
+                file_system: sys_disk
+                    .map(|d| d.file_system().to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                is_removable: sys_disk.map(|d| d.is_removable()).unwrap_or(false),
+                mount_point: normalized_path,
+            }
+        })
+        .collect();
 
     Ok(drives)
 }

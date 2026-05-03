@@ -698,9 +698,9 @@ export class RemoteConfigModalComponent implements OnInit {
       cronEnabled: [false],
       cronExpression: [null],
       source: this.fb.group({
-        pathType: ['currentRemote'],
+        type: ['currentRemote'],
         path: [''],
-        otherRemoteName: [''],
+        remote: [''],
       }),
       type: ['http', Validators.required],
       vfsProfile: [DEFAULT_PROFILE_NAME],
@@ -719,9 +719,9 @@ export class RemoteConfigModalComponent implements OnInit {
 
     if (fields.includes('source')) {
       const sourceGroup = this.fb.group({
-        pathType: ['currentRemote'],
+        type: ['currentRemote'],
         path: [''],
-        otherRemoteName: [''],
+        remote: [''],
       });
       if (flagType === 'mount' || flagType === 'serve' || flagType === 'bisync') {
         group['source'] = sourceGroup;
@@ -730,9 +730,9 @@ export class RemoteConfigModalComponent implements OnInit {
       }
     }
     if (fields.includes('dest')) {
-      const destGroup = this.fb.group({ pathType: ['local'], path: [''], otherRemoteName: [''] });
+      const destGroup = this.fb.group({ type: ['local'], path: [''], remote: [''] });
       if (flagType === 'mount') {
-        group['dest'] = new FormControl('');
+        group['dest'] = destGroup;
       } else if (flagType === 'bisync') {
         group['dest'] = destGroup;
       } else {
@@ -1027,7 +1027,7 @@ export class RemoteConfigModalComponent implements OnInit {
         destsCtrl.clear();
         configDests.forEach(d => {
           if (flagType === 'mount') {
-            destsCtrl.push(new FormControl(d));
+            destsCtrl.push(this.fb.group({ type: ['local'], path: [d], remote: [''] }));
           } else {
             destsCtrl.push(
               this.fb.group(

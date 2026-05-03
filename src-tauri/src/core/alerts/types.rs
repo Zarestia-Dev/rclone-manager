@@ -62,12 +62,9 @@ impl AlertSeverity {
 
 /// The class of event that triggered an alert.
 /// Derived from `NotificationEvent` variants in the alert engine.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum AlertEventKind {
-    /// Matches any event (wildcard).
-    #[default]
-    Any,
     /// Manual rclone jobs (Sync, Copy, Move, Delete, etc.)
     Job,
     /// Background server processes (DLNA, WebDAV, etc.)
@@ -93,7 +90,6 @@ impl std::fmt::Display for AlertEventKind {
 impl AlertEventKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Any => "any",
             Self::Job => "job",
             Self::Serve => "serve",
             Self::Mount => "mount",
@@ -161,6 +157,11 @@ pub struct AlertRule {
     /// Total number of times this rule has fired.
     #[serde(default)]
     pub fire_count: u64,
+
+    /// If true, alerts fired by this rule will be automatically acknowledged.
+    #[setting(label = "Auto Acknowledge")]
+    #[serde(default)]
+    pub auto_acknowledge: bool,
 }
 
 impl std::fmt::Display for AlertRule {
@@ -186,6 +187,7 @@ impl Default for AlertRule {
             created_at: Utc::now(),
             last_fired: None,
             fire_count: 0,
+            auto_acknowledge: false,
         }
     }
 }
@@ -441,8 +443,12 @@ impl AlertRecord {
             origin: details.origin,
             timestamp: Utc::now(),
             action_results: vec![],
-            acknowledged: false,
-            ack_at: None,
+            acknowledged: rule.auto_acknowledge,
+            ack_at: if rule.auto_acknowledge {
+                Some(Utc::now())
+            } else {
+                None
+            },
         }
     }
 }

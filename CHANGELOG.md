@@ -12,9 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
 - Add option to upload files or folder to right click context menu in nautilus file browser. Separate buttons for files and folder.
 - **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
-- **Shell Command Interpolation**: Path and option fields now support shell command substitution using backticks. Wrap any command in backticks (e.g. `` `date +%Y-%m-%d` ``) and the output will be substituted into the path. Works for dynamic backup directories, timestamped mount points, and any configuration parameter. Commands are evaluated on the local system at job time.
+- **Shell Command Interpolation (Secure Macros)**: Path and option fields now support dynamic macro substitution using backticks. Instead of insecure shell execution, the app now uses a safe, internal engine to expand macros like `` `date` ``, `` `hostname` ``, `` `user` ``, and `` `os` ``. The `date` macro supports full `strftime` formatting (e.g., `` `date +%Y-%m-%d %H:%M:%S` ``), providing flexible and secure path generation across all platforms. Arbitrary shell command execution has been removed for security.
 - Jottacloud provider added into the non-interactive remotes. 
 - Nautilus drag-and-drop lasso selection. Hold left mouse button and drag to select multiple items.
+- **Local Disk Identification**: Improved local disk identification and labeling. Fetches volume labels (Linux) and intelligently identifies user folders (Home, Downloads, etc.) across all platforms. **Note**: This feature relies on the `core/disks` command (introduced in Rclone v1.74) and requires an updated Rclone binary to function correctly.
+- **Rclone Archive Integration**: Full support for `rclone archive` operations within the Nautilus file browser.
+  - **Archive Creation**: Dedicated modal for creating archives with support for all Rclone-compatible formats (`zip`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, `tar.br`, `tar.sz`, `tar.mz`, `tar.lz`, `tar.lz4`).
+  - **Archive Listing**: Structured tabular view of archive contents with size, date, and folder/file icons.
+  - **Archive Extraction**: One-click extraction support for remote and local archives.
 
 ### Changed
 - **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.

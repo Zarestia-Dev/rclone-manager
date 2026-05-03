@@ -107,8 +107,6 @@ import { SearchContainerComponent } from '@app/shared/components';
                         </span>
                       }
                     </div>
-                  } @else {
-                    <span class="app-pill p-dim">{{ 'alerts.events.any' | translate }}</span>
                   }
 
                   <!-- Remotes -->

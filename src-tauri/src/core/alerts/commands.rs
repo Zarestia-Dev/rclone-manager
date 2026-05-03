@@ -85,17 +85,9 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         rule_name: "Test Rule".to_string(),
     };
 
-    let http_client = {
-        use crate::utils::types::core::RcloneState;
-        match app.try_state::<RcloneState>() {
-            Some(state) => state.client.clone(),
-            None => reqwest::Client::new(),
-        }
-    };
-
     match action {
-        AlertAction::OsToast(ref a) => dispatch::os_toast::dispatch(&app, a, &ctx)?,
-        AlertAction::Webhook(ref a) => dispatch::webhook::dispatch(&http_client, a, &ctx).await?,
+        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(&app, &ctx)?,
+        AlertAction::Webhook(ref a) => dispatch::webhook::dispatch(a, &ctx).await?,
         AlertAction::Script(ref a) => dispatch::script::dispatch(a, &ctx).await?,
     }
 

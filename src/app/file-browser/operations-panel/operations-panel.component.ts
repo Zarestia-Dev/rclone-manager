@@ -138,6 +138,10 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
       case 'sync':
       case 'bisync':
         return 'refresh';
+      case 'archivecreate':
+        return 'box-archive';
+      case 'archiveextract':
+        return 'unarchive';
       default:
         return 'folder';
     }
@@ -225,6 +229,9 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
         return 'fileBrowser.operations.details.syncedFiles';
       case 'upload':
         return 'fileBrowser.operations.details.uploadedFiles';
+      case 'archivecreate':
+      case 'archiveextract':
+        return 'fileBrowser.operations.details.processedFiles';
       default:
         return 'fileBrowser.operations.details.processedFiles';
     }

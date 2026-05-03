@@ -482,7 +482,7 @@ $dark-theme: (
 // App-specific semantic colors and design system tokens.
 
 :root {
-  --font-mono: "JetBrains Mono", "Fira Code", var(--font-mono);
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   // ===== SEMANTIC COLOR ALIASES =====
   // These map to the GNOME palette for app-specific semantic meaning
@@ -924,7 +924,6 @@ button {
     display: flex;
     flex-direction: row !important;
     gap: var(--space-xs);
-    white-space: nowrap;
   }
 
   &.primary {
@@ -1186,7 +1185,6 @@ mat-accordion {
     }
 
     &:hover,
-    &:focus,
     &:focus-visible,
     &.cdk-menu-item-highlighted {
       background-color: var(--hover-bg-color);

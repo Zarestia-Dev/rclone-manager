@@ -128,13 +128,7 @@ export class NautilusActionsService {
       return;
     }
 
-    const baseName = this.pathSvc.normalizeRemoteName(actualRemoteName);
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
-    const isLocal =
-      features?.isLocal ??
-      item.meta.isLocal ??
-      currentRemote?.isLocal ??
-      isLocalPath(actualRemoteName);
+    const isLocal = isLocalPath(actualRemoteName);
 
     const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
     if (idx === -1) return;
@@ -214,6 +208,28 @@ export class NautilusActionsService {
     if (!item) return;
 
     const changed = await this.fileOps.removeEmptyDirs(remote, item);
+    if (changed) this._refresh();
+  }
+
+  async openArchiveCreate(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return;
+
+    const selection = this.tabSvc.selectedItems();
+    let selectedFiles = this.tabSvc.activeFiles().filter(f => selection.has(this._itemKey(f)));
+
+    const ctx = this.contextMenuItem();
+    if (ctx && !selection.has(this._itemKey(ctx))) {
+      selectedFiles = [ctx];
+    }
+
+    if (selectedFiles.length === 0) return;
+
+    const changed = await this.fileOps.openArchiveCreateDialog(
+      remote,
+      selectedFiles,
+      this.tabSvc.activePath()
+    );
     if (changed) this._refresh();
   }
 

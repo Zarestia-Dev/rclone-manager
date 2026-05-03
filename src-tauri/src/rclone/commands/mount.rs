@@ -59,11 +59,16 @@ struct RcloneMountBody {
 impl FromConfig for MountParams {
     fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
         let common = parse_common_config(config, settings, &remote_name)?;
+        let mount_point = common.dest.clone();
+
+        if mount_point.is_empty() {
+            return None;
+        }
 
         Some(Self {
             remote_name,
-            source: common.sources.first().cloned().unwrap_or_default(),
-            mount_point: common.dests.first().cloned().unwrap_or_default(),
+            source: common.first_source(),
+            mount_point,
             mount_type: config
                 .get("type")
                 .and_then(|v| v.as_str())

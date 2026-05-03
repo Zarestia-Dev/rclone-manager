@@ -21,9 +21,8 @@ pub async fn resolve_profile_settings(
     profile_name: &str,
     config_key: &str,
 ) -> Result<(Value, Value), String> {
-    let backend_manager = app.state::<BackendManager>();
-    let cache = &backend_manager.remote_cache;
     let manager = app.state::<AppSettingsManager>();
+    let cache = &app.state::<BackendManager>().remote_cache;
     let remote_names = cache.get_remotes().await;
 
     let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
@@ -35,14 +34,12 @@ pub async fn resolve_profile_settings(
         .get(remote_name)
         .ok_or_else(|| format!("Remote '{remote_name}' not found in settings"))?;
 
-    let configs = settings
+    let config = settings
         .get(config_key)
-        .and_then(|v| v.as_object())
-        .ok_or_else(|| format!("No {config_key} found for '{remote_name}'"))?;
-
-    let config = configs
-        .get(profile_name)
-        .ok_or_else(|| format!("{config_key} profile '{profile_name}' not found"))?;
+        .and_then(|v| v.get(profile_name))
+        .ok_or_else(|| {
+            format!("{config_key} profile '{profile_name}' for '{remote_name}' not found")
+        })?;
 
     Ok((config.clone(), settings.clone()))
 }
@@ -56,7 +53,7 @@ use crate::utils::json_helpers::{
     get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
 };
 use crate::utils::types::core::RcloneState;
-use serde_json::{Map, json};
+use serde_json::json;
 use std::collections::HashMap;
 
 /// Determines if the given fs path is a directory using operations/list.
@@ -67,80 +64,46 @@ pub async fn is_directory(
     fs: &str,
     runtime_remote_options: Option<&HashMap<String, Value>>,
 ) -> Result<bool, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let backend = app.state::<BackendManager>().get_active().await;
     let state = app.state::<RcloneState>();
 
-    let fs_val = fs_value_with_runtime_overrides(fs, runtime_remote_options);
-    let url = backend.url_for(crate::utils::rclone::endpoints::operations::LIST);
-
-    // Optimized options for speed
-    let payload = json!({
-        "fs": fs_val,
-        "remote": "",
-        "opt": {
-            "metadata": false,
-            "noModTime": true,
-            "noMimeType": true,
-            "recurse": false,
-        }
-    });
-
     let resp = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
+        .inject_auth(
+            state
+                .client
+                .post(backend.url_for(crate::utils::rclone::endpoints::operations::LIST)),
+        )
+        .json(&json!({
+            "fs": fs_value_with_runtime_overrides(fs, runtime_remote_options),
+            "remote": "",
+            "opt": { "metadata": false, "noModTime": true, "noMimeType": true, "recurse": false }
+        }))
         .send()
         .await
-        .map_err(|e| format!("Network error during type resolution: {e}"))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     if !resp.status().is_success() {
-        // If the path doesn't exist or there is an error, we assume it's not a directory
-        // or return the error if it's a critical failure.
         return Ok(false);
     }
 
-    let val: Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse type resolution response: {e}"))?;
-
+    let val: Value = resp.json().await.map_err(|e| format!("Parse error: {e}"))?;
     let list = val
         .get("list")
         .and_then(|l| l.as_array())
-        .ok_or_else(|| "Invalid response format from operations/list".to_string())?;
+        .ok_or("Invalid response")?;
 
-    // If listing returned nothing, it might be an empty directory or non-existent.
-    if list.is_empty() {
-        // We fallback to checking if it's a directory by trying to list its parent?
-        // Actually, rclone lsjson on an empty directory returns [].
-        // On a file it returns [{...}].
-        // To be safe, if it's empty, we'll assume it's a directory (or at least not a file we can copy individually).
-        return Ok(true);
-    }
-
-    // If it's a file, rclone returns one item with Path: "" (since we used fs as the full path)
-    // or the filename if we used fs as parent.
-    // Here we check if any item is a directory.
-    let any_is_dir = list
-        .iter()
-        .any(|item| item.get("IsDir").and_then(|b| b.as_bool()).unwrap_or(false));
-
-    // If the list has more than one item, it's definitely a directory.
-    if list.len() > 1 || any_is_dir {
-        return Ok(true);
-    }
-
-    // If there is exactly one item, check if its Path is non-empty.
-    // If Path is non-empty, it's a child of the directory we requested -> it's a directory.
-    // If Path is empty, it's the file itself.
-    if let Some(first) = list.first() {
-        let path = first.get("Path").and_then(|p| p.as_str()).unwrap_or("");
-        if !path.is_empty() {
-            return Ok(true);
-        }
-    }
-
-    Ok(false)
+    // If empty, assume directory. If one file, Path is "" and IsDir is false.
+    // If one dir, Path is "subdir" or IsDir is true.
+    Ok(list.is_empty()
+        || list.len() > 1
+        || list.iter().any(|item| {
+            item.get("IsDir").and_then(|b| b.as_bool()).unwrap_or(false)
+                || !item
+                    .get("Path")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("")
+                    .is_empty()
+        }))
 }
 
 /// Return the URL for a configuration operation on the given backend.
@@ -164,13 +127,19 @@ pub trait FromConfig: Sized {
 /// Common resolved parameters used by mount, sync, copy, etc.
 pub struct CommonConfigParams {
     pub sources: Vec<String>,
-    pub dests: Vec<String>,
+    pub dest: String,
     pub options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
+}
+
+impl CommonConfigParams {
+    pub fn first_source(&self) -> String {
+        self.sources.first().cloned().unwrap_or_default()
+    }
 }
 
 fn normalize_runtime_remote_profile_options(
@@ -199,105 +168,74 @@ pub fn fs_value_with_runtime_overrides(
     runtime_remote_options: Option<&HashMap<String, Value>>,
 ) -> Value {
     let Some(overrides) = runtime_remote_options else {
-        return Value::String(fs.to_string());
+        return json!(fs);
     };
 
-    let Some(parsed_fs) = parse_fs(fs) else {
-        return Value::String(fs.to_string());
+    let Some((base, root)) = parse_fs(fs) else {
+        return json!(fs);
     };
 
-    let (lookup_keys, mut fs_obj) = match parsed_fs {
-        ParsedFs::Named { remote_name, root } => (
-            vec![remote_name.clone(), format!("{remote_name}:")],
-            Map::from_iter([
-                ("_name".to_string(), Value::String(remote_name)),
-                ("_root".to_string(), Value::String(root)),
-            ]),
-        ),
-        ParsedFs::Backend { backend_type, root } => (
-            vec![format!(":{backend_type}"), backend_type.clone()],
-            Map::from_iter([
-                ("type".to_string(), Value::String(backend_type)),
-                ("_root".to_string(), Value::String(root)),
-            ]),
-        ),
-    };
-
+    let lookup_keys = [base.clone(), base.trim_end_matches(':').to_string()];
     let remote_override = lookup_keys
         .iter()
         .find_map(|key| overrides.get(key))
-        .and_then(|value| value.as_object());
+        .and_then(|v| v.as_object());
 
-    let Some(remote_override) = remote_override else {
-        return Value::String(fs.to_string());
-    };
-
-    if remote_override.is_empty() {
-        return Value::String(fs.to_string());
-    }
-
-    for (key, value) in remote_override {
-        fs_obj.insert(key.clone(), value.clone());
-    }
-
-    Value::Object(fs_obj)
-}
-
-pub enum ParsedFs {
-    Named { remote_name: String, root: String },
-    Backend { backend_type: String, root: String },
-}
-
-impl ParsedFs {
-    pub fn into_base_and_root(self) -> (String, String) {
-        match self {
-            ParsedFs::Named { remote_name, root } => (format!("{remote_name}:"), root),
-            ParsedFs::Backend { backend_type, root } => (format!(":{backend_type}:"), root),
+    match remote_override {
+        Some(opts) if !opts.is_empty() => {
+            let mut fs_obj = opts.clone();
+            if base.starts_with(':') {
+                fs_obj.insert("type".to_string(), json!(base.trim_matches(':')));
+            } else {
+                fs_obj.insert("_name".to_string(), json!(base.trim_end_matches(':')));
+            }
+            fs_obj.insert("_root".to_string(), json!(root));
+            Value::Object(fs_obj)
         }
+        _ => json!(fs),
     }
 }
 
-pub fn parse_fs(fs: &str) -> Option<ParsedFs> {
+// Removed ParsedFs enum
+
+/// Parses an rclone fs string into (base, root).
+/// Example: "remote:path" -> ("remote:", "path"), ":s3:/bucket" -> (":s3:", "/bucket")
+pub fn parse_fs(fs: &str) -> Option<(String, String)> {
     if fs.is_empty() {
         return None;
     }
 
-    // Windows local paths like C:\foo or C:/foo are not rclone remotes.
-    if fs.len() > 2 {
-        let mut chars = fs.chars();
-        let first = chars.next()?;
-        let second = chars.next()?;
-        let third = chars.next()?;
-        if first.is_ascii_alphabetic() && second == ':' && (third == '\\' || third == '/') {
-            return None;
+    // Avoid treating Windows paths (C:\) as remotes
+    let is_windows_drive = fs.len() > 2
+        && fs.chars().nth(1) == Some(':')
+        && matches!(fs.chars().nth(2), Some('\\' | '/'));
+
+    if is_windows_drive || fs.starts_with('/') {
+        return Some((fs.to_string(), "".to_string()));
+    }
+
+    match fs.find(':') {
+        Some(split_idx) => {
+            let base = &fs[..=split_idx];
+            let root = &fs[split_idx + 1..];
+
+            if base.starts_with(':') {
+                let backend_type = base[1..base.len() - 1].split(',').next()?.trim();
+                if backend_type.is_empty() {
+                    return None;
+                }
+            } else if base.len() <= 1 {
+                // Single character before colon (not a windows drive) - treat as local
+                return Some((fs.to_string(), "".to_string()));
+            }
+
+            Some((base.to_string(), root.to_string()))
+        }
+        None => {
+            // No colon found - treat as local path
+            Some((fs.to_string(), "".to_string()))
         }
     }
-
-    // Backend style remote: :local:/tmp or :s3,region=us-east-1:/bucket
-    if let Some(rest) = fs.strip_prefix(':') {
-        let split_idx = rest.find(':')?;
-        let backend_type = rest[..split_idx]
-            .split(',')
-            .next()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())?
-            .to_string();
-        let root = rest[split_idx + 1..].to_string();
-        return Some(ParsedFs::Backend { backend_type, root });
-    }
-
-    // Named remote: remote:path
-    let split_idx = fs.find(':')?;
-    let remote_name = fs[..split_idx].trim();
-    if remote_name.is_empty() {
-        return None;
-    }
-
-    let root = fs[split_idx + 1..].to_string();
-    Some(ParsedFs::Named {
-        remote_name: remote_name.to_string(),
-        root,
-    })
 }
 
 /// Helper to parse common configuration fields
@@ -306,51 +244,47 @@ pub fn parse_common_config(
     settings: &Value,
     remote_name: &str,
 ) -> Option<CommonConfigParams> {
-    // Evaluate any $(date +FORMAT) expressions before reading any field so that
-    // source, dest, and all nested options are expanded consistently.
     let config = &interpolate_value(config);
 
-    let sources = match config.get("sources").or_else(|| config.get("source")) {
-        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
-        Some(Value::Array(arr)) => arr
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .filter(|s| !s.is_empty())
-            .collect(),
-        _ => vec![],
+    let get_paths = |key: &str, alt: &str| -> Vec<String> {
+        match config.get(key).or_else(|| config.get(alt)) {
+            Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+            Some(Value::Array(arr)) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter(|s| !s.is_empty())
+                .collect(),
+            _ => vec![],
+        }
     };
 
-    let dests = match config.get("dests").or_else(|| config.get("dest")) {
-        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
-        Some(Value::Array(arr)) => arr
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .filter(|s| !s.is_empty())
-            .collect(),
-        _ => vec![],
-    };
-
-    if sources.is_empty() || dests.is_empty() {
+    let sources = get_paths("sources", "source");
+    if sources.is_empty() {
         return None;
     }
 
-    let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
-    let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
-    let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
-    let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
-    let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
-    let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
-    let runtime_remote_options =
-        resolve_runtime_remote_options(config, settings, remote_name, "remotes");
+    let dest = get_paths("dests", "dest")
+        .into_iter()
+        .next()
+        .unwrap_or_default();
+
+    let get_opts = |key: &str, section: &str| {
+        resolve_profile_options(settings, config.get(key).and_then(|v| v.as_str()), section)
+    };
 
     Some(CommonConfigParams {
         sources,
-        dests,
+        dest,
         options: json_to_hashmap(config.get("options")),
-        vfs_options,
-        filter_options,
-        backend_options,
-        runtime_remote_options,
+        vfs_options: get_opts("vfsProfile", "vfsConfigs"),
+        filter_options: get_opts("filterProfile", "filterConfigs"),
+        backend_options: get_opts("backendProfile", "backendConfigs"),
+        runtime_remote_options: resolve_runtime_remote_options(
+            config,
+            settings,
+            remote_name,
+            "remotes",
+        ),
         profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
     })
 }
@@ -361,32 +295,16 @@ pub fn resolve_runtime_remote_options(
     remote_name: &str,
     inline_remotes_key: &str,
 ) -> Option<HashMap<String, Value>> {
-    let runtime_remote_profile = config.get("runtimeRemoteProfile").and_then(|v| v.as_str());
+    let profile = config.get("runtimeRemoteProfile").and_then(|v| v.as_str());
+    let mut opts = resolve_profile_options(settings, profile, "runtimeRemoteConfigs")
+        .map(|o| normalize_runtime_remote_profile_options(remote_name, o))
+        .unwrap_or_default();
 
-    let profile_runtime_remote_options =
-        resolve_profile_options(settings, runtime_remote_profile, "runtimeRemoteConfigs").and_then(
-            |opts| {
-                if opts.is_empty() {
-                    None
-                } else {
-                    Some(normalize_runtime_remote_profile_options(remote_name, opts))
-                }
-            },
-        );
-    let inline_runtime_remote_options = json_to_hashmap(config.get(inline_remotes_key));
-
-    match (
-        profile_runtime_remote_options,
-        inline_runtime_remote_options,
-    ) {
-        (Some(mut profile_opts), Some(inline_opts)) => {
-            profile_opts.extend(inline_opts);
-            Some(profile_opts)
-        }
-        (Some(profile_opts), None) => Some(profile_opts),
-        (None, Some(inline_opts)) => Some(inline_opts),
-        (None, None) => None,
+    if let Some(inline) = json_to_hashmap(config.get(inline_remotes_key)) {
+        opts.extend(inline);
     }
+
+    if opts.is_empty() { None } else { Some(opts) }
 }
 
 /// Redact sensitive values from parameters for logging.

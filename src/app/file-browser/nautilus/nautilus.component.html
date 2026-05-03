@@ -207,6 +207,9 @@
                   <span class="item-label">{{ 'nautilus.contextMenu.rename' | translate }}</span>
                   <span class="shortcut">F2</span>
                 </button>
+                <button class="menu-item" cdkMenuItem (click)="actions.openArchiveCreate()">
+                  <span class="item-label">{{ 'nautilus.contextMenu.compress' | translate }}</span>
+                </button>
 
                 <mat-divider></mat-divider>
 
@@ -397,12 +400,20 @@
 <ng-template #viewMenu>
   <div class="material-context-menu" cdkMenu>
     <div class="icon-size-control">
-      <span>{{ 'nautilus.view.iconSize' | translate }}</span>
-      <div class="buttons">
-        <button (click)="settings.decreaseIconSize()" [disabled]="settings.decreaseIconDisabled()">
+      <span class="control-label">{{ 'nautilus.view.iconSize' | translate }}</span>
+      <div class="control-buttons">
+        <button
+          class="icon-button"
+          (click)="settings.decreaseIconSize(); $event.stopPropagation()"
+          [disabled]="settings.decreaseIconDisabled()"
+        >
           <mat-icon svgIcon="remove"></mat-icon>
         </button>
-        <button (click)="settings.increaseIconSize()" [disabled]="settings.increaseIconDisabled()">
+        <button
+          class="icon-button"
+          (click)="settings.increaseIconSize(); $event.stopPropagation()"
+          [disabled]="settings.increaseIconDisabled()"
+        >
           <mat-icon svgIcon="plus"></mat-icon>
         </button>
       </div>
@@ -410,37 +421,46 @@
 
     <mat-divider></mat-divider>
 
-    <div class="sort-options">
-      <span class="sort-label">{{ 'nautilus.sort.label' | translate }}</span>
-      <mat-radio-group
-        class="sort-radio-group"
-        [value]="settings.sortKey()"
-        (change)="settings.setSort($event.value)"
+    <div class="menu-section-label">{{ 'nautilus.sort.label' | translate }}</div>
+    @for (opt of sortOptions; track opt.key) {
+      <button
+        class="menu-item"
+        cdkMenuItemRadio
+        [cdkMenuItemChecked]="settings.sortKey() === opt.key"
+        (cdkMenuItemTriggered)="settings.setSort(opt.key)"
       >
-        @for (opt of sortOptions; track opt.key) {
-          <mat-radio-button [value]="opt.key">{{ opt.label | translate }}</mat-radio-button>
+        <span class="item-label">{{ opt.label | translate }}</span>
+        @if (settings.sortKey() === opt.key) {
+          <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
         }
-      </mat-radio-group>
-    </div>
+      </button>
+    }
 
     <mat-divider></mat-divider>
 
-    <div class="menu-item-wrapper">
-      <mat-checkbox [checked]="tabSvc.isSplitEnabled()" (change)="tabSvc.toggleSplit()">
-        <span>{{ 'nautilus.contextMenu.toggleSplit' | translate }}</span>
-      </mat-checkbox>
-    </div>
+    <button
+      class="menu-item"
+      cdkMenuItemCheckbox
+      [cdkMenuItemChecked]="tabSvc.isSplitEnabled()"
+      (cdkMenuItemTriggered)="tabSvc.toggleSplit()"
+    >
+      <span class="item-label">{{ 'nautilus.contextMenu.toggleSplit' | translate }}</span>
+      @if (tabSvc.isSplitEnabled()) {
+        <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
+      }
+    </button>
 
-    <mat-divider></mat-divider>
-
-    <div class="menu-item-wrapper">
-      <mat-checkbox
-        [checked]="settings.showHidden()"
-        (change)="settings.toggleShowHidden($event.checked)"
-      >
-        <span>{{ 'nautilus.view.showHidden' | translate }}</span>
-      </mat-checkbox>
-    </div>
+    <button
+      class="menu-item"
+      cdkMenuItemCheckbox
+      [cdkMenuItemChecked]="settings.showHidden()"
+      (cdkMenuItemTriggered)="settings.toggleShowHidden(!settings.showHidden())"
+    >
+      <span class="item-label">{{ 'nautilus.view.showHidden' | translate }}</span>
+      @if (settings.showHidden()) {
+        <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
+      }
+    </button>
   </div>
 </ng-template>
 

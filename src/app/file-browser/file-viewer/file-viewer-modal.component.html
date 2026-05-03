@@ -63,6 +63,23 @@
         }
       }
 
+      @if (currentFileType() === 'archive') {
+        <button
+          mat-icon-button
+          matTooltip="{{ 'fileBrowser.fileViewer.extract' | translate }}"
+          class="header-button"
+          [disabled]="isExtracting()"
+          (click)="extractArchive(); $event.stopPropagation()"
+          [attr.aria-label]="'fileBrowser.fileViewer.extract' | translate"
+        >
+          @if (isExtracting()) {
+            <mat-spinner diameter="24"></mat-spinner>
+          } @else {
+            <mat-icon svgIcon="unarchive"></mat-icon>
+          }
+        </button>
+      }
+
       @if (!this.data.isLocal) {
         <button
           mat-icon-button
@@ -172,6 +189,52 @@
               <div #editorContainer class="code-mirror-container"></div>
             </div>
           }
+        }
+        @case ('archive') {
+          <div class="archive-container">
+            <div class="archive-header">
+              <mat-icon svgIcon="package-x-generic"></mat-icon>
+              <h3>{{ 'fileBrowser.fileViewer.archiveContents' | translate }}</h3>
+            </div>
+            <div class="archive-list-wrapper">
+              @if (archiveError()) {
+                <div class="archive-error-container">
+                  <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                  <p class="error-title">
+                    {{ 'fileBrowser.fileViewer.errorListArchive' | translate }}
+                  </p>
+                  <p class="error-message">{{ archiveError() }}</p>
+                </div>
+              } @else {
+                <table class="archive-table">
+                  <thead>
+                    <tr>
+                      <th>{{ 'common.name' | translate }}</th>
+                      <th>{{ 'common.size' | translate }}</th>
+                      <th>{{ 'common.date' | translate }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of parsedArchiveItems(); track item.path) {
+                      <tr [class.is-dir]="item.isDir">
+                        <td class="path-cell">
+                          <mat-icon
+                            [svgIcon]="item.isDir ? 'folder' : 'file-lines'"
+                            aria-hidden="true"
+                          ></mat-icon>
+                          <span class="path-text">{{ item.path }}</span>
+                        </td>
+                        <td class="size-cell">
+                          {{ item.isDir ? '-' : (item.size | formatFileSize) }}
+                        </td>
+                        <td class="date-cell">{{ item.date }} {{ item.time }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </div>
+          </div>
         }
         @case ('directory') {
           <div class="unsupported-container" role="status">

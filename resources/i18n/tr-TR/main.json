@@ -294,10 +294,11 @@
       "profileFilter": "Profil Filtresi",
       "profileFilterPlaceholder": "Örn: GDrive-Sync",
       "profileFilterHint": "Sadece belirli profillerdeki olayları izlemek için.",
+      "autoAcknowledge": "Otomatik Onayla",
+      "autoAcknowledgeHint": "Oluşan uyarıları otomatik olarak onaylandı olarak işaretle. Sistem bildirimi tetikleyen uyarılar için idealdir.",
       "actions": "Tetiklenecek Eylemler"
     },
     "events": {
-      "any": "Herhangi Bir Olay",
       "job": "İşler ve Dosya İşlemleri",
       "serve": "Arka Plan Sunucuları",
       "mount": "Sürücü Bağlantıları",
@@ -1090,12 +1091,18 @@
       "notConfigured": "Yapılandırılmadı",
       "clearSchedule": "Zamanlamayı temizle",
       "sourcePath": "Kaynak Yol",
+      "sourcePaths": "Kaynak Yolları",
       "destPath": "Hedef Yol",
+      "destinationPath": "Hedef Yolu",
       "localPath": "Yerel Yol",
       "remotePathServe": "Sunulacak Uzak Yol",
+      "addSource": "Kaynak Ekle",
+      "removePath": "Yolu Kaldır",
       "rootFolderOptional": "Kök klasör (isteğe bağlı)",
       "rootFolderSpecific": "Kök klasör veya belirli yol",
       "selectRemoteSource": "Uzak kaynak klasörü seç",
+      "remotePath": "Uzak Yol",
+      "enterPath": "Yol girin...",
       "changeSourceType": "Kaynak yol türünü değiştir",
       "enterSourcePath": "Kaynak yolunu girin...",
       "otherRemotes": "Diğer Uzak Bağlantılar",
@@ -1453,7 +1460,9 @@
         "move": "Taşı",
         "rename": "Yeniden Adlandır",
         "sync": "Senkronize",
-        "bisync": "Çift Yönlü Senkronize"
+        "bisync": "Çift Yönlü Senkronize",
+        "compress": "Sıkıştır",
+        "extract": "Çıkar"
       }
     },
     "fileViewer": {
@@ -1479,7 +1488,13 @@
       "edit": "Düzenle",
       "cancel": "İptal",
       "saveSuccess": "Dosya başarıyla kaydedildi",
-      "saveError": "Dosya kaydedilemedi"
+      "saveError": "Dosya kaydedilemedi",
+      "archiveContents": "Arşiv İçeriği",
+      "extract": "Çıkart",
+      "extracting": "{{name}} çıkartılıyor...",
+      "extractSuccess": "{{name}} başarıyla çıkartıldı",
+      "errorExtract": "Arşiv çıkartılamadı",
+      "errorListArchive": "Arşiv içeriği listelenemedi"
     }
   },
   "dashboard": {
@@ -2320,6 +2335,16 @@
         "fileLabel": "Dosya Adı (Opsiyonel)",
         "filePlaceholder": "Otomatik adlandırmak için boş bırakın",
         "confirm": "İndir"
+      },
+      "archiveCreate": {
+        "title": "Arşiv Oluştur",
+        "filenameLabel": "Arşiv Dosya Adı",
+        "formatLabel": "Arşiv Formatı",
+        "prefixLabel": "Önek Yolu",
+        "prefixHint": "Ayarlandığında tam yolları geçersiz kılar",
+        "fullPathLabel": "Tam kaynak yollarını dahil et",
+        "fullPathHint": "Dizin yapısını kökten itibaren korur",
+        "compress": "Sıkıştır"
       }
     },
     "errors": {
@@ -2338,7 +2363,8 @@
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
-      "copyUrlFailed": "URL'den indirme başarısız: {{error}}"
+      "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
+      "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
@@ -2363,6 +2389,7 @@
       "emptyTrash": "Çöpü Boşalt",
       "removeEmptyDirs": "Boş klasörleri kaldır",
       "delete": "Sil",
+      "compress": "Sıkıştır",
       "copy": "Kopyala",
       "cut": "Kes",
       "paste": "Yapıştır",
@@ -2395,7 +2422,9 @@
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı",
-      "copyUrlStarted": "URL'den indiriliyor..."
+      "copyUrlStarted": "URL'den indiriliyor...",
+      "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
+      "archiveCreateComplete": "Arşiv başarıyla oluşturuldu"
     }
   },
   "overview": {

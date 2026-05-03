@@ -3,7 +3,6 @@ import type { Origin } from './origin';
 export type AlertSeverity = 'critical' | 'high' | 'average' | 'warning' | 'info';
 
 export type AlertEventKind =
-  | 'any'
   | 'job'
   | 'serve'
   | 'mount'
@@ -27,6 +26,7 @@ export interface AlertRule {
   created_at?: string;
   last_fired?: string;
   fire_count?: number;
+  auto_acknowledge?: boolean;
 }
 
 export type AlertActionKind = 'webhook' | 'script' | 'os_toast';

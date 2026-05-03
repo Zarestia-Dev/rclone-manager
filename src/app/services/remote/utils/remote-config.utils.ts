@@ -54,15 +54,15 @@ export function buildPathString(pathGroup: any, currentRemoteName: string): stri
   // Simple string path — e.g. mount dest which is always local
   if (typeof pathGroup === 'string') return pathGroup;
 
-  const { pathType, path, otherRemoteName } = pathGroup;
+  const { type, path, remote } = pathGroup;
   const p = path || '';
 
-  if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
-    const remote = otherRemoteName || pathType.split(':')[1];
-    return `${remote}:${p}`;
+  if (typeof type === 'string' && type.startsWith('otherRemote:')) {
+    const remoteName = remote || type.split(':')[1];
+    return `${remoteName}:${p}`;
   }
 
-  switch (pathType) {
+  switch (type) {
     case 'local':
       return p;
     case 'currentRemote':
@@ -190,23 +190,23 @@ export function parseFsString(
   defaultType: string,
   currentRemoteName: string,
   existingRemotes: string[] = []
-): { pathType: string; path: string; otherRemoteName?: string } {
-  if (!fullPath) return { pathType: defaultType, path: '' };
+): { type: string; path: string; remote?: string } {
+  if (!fullPath) return { type: defaultType, path: '' };
 
   const colonIdx = fullPath.indexOf(':');
 
   // No colon → relative path; starts with / or drive letter → local filesystem
-  if (colonIdx === -1 || isLocalPath(fullPath)) return { pathType: 'local', path: fullPath };
+  if (colonIdx === -1 || isLocalPath(fullPath)) return { type: 'local', path: fullPath };
 
   const remote = fullPath.substring(0, colonIdx);
   const path = fullPath.substring(colonIdx + 1);
 
-  if (remote === currentRemoteName) return { pathType: 'currentRemote', path };
+  if (remote === currentRemoteName) return { type: 'currentRemote', path };
   if (existingRemotes.includes(remote)) {
-    return { pathType: `otherRemote:${remote}`, path, otherRemoteName: remote };
+    return { type: `otherRemote:${remote}`, path, remote };
   }
 
-  return { pathType: defaultType, path: fullPath };
+  return { type: defaultType, path: fullPath };
 }
 
 /**

@@ -529,6 +529,9 @@ fn setup_app(
     app.manage(history_cache);
     app.manage(rcman_manager);
 
+    // Initialize Alert Engine Worker
+    crate::core::alerts::engine::init();
+
     // -------------------------------------------------------------------------
     // Initialize Logging
     // -------------------------------------------------------------------------

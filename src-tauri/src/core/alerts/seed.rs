@@ -1,7 +1,5 @@
 use crate::core::alerts::cache;
-use crate::core::alerts::types::{
-    AlertAction, AlertEventKind, AlertRule, AlertSeverity, OsToastAction,
-};
+use crate::core::alerts::types::{AlertAction, AlertRule, AlertSeverity, OsToastAction};
 use crate::core::settings::AppSettingsManager;
 use chrono::Utc;
 use log::{error, info};
@@ -30,7 +28,7 @@ pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
             id: DEFAULT_RULE_ID.to_string(),
             name: "alerts.defaultRuleName".to_string(),
             enabled: notifications_on,
-            event_filter: vec![AlertEventKind::Any],
+            event_filter: vec![],
             severity_min: AlertSeverity::Info,
             remote_filter: vec![],
             origin_filter: vec![],
@@ -41,6 +39,7 @@ pub fn seed_defaults(manager: &AppSettingsManager) -> Result<(), String> {
             created_at: Utc::now(),
             last_fired: None,
             fire_count: 0,
+            auto_acknowledge: true,
         };
         if let Err(e) = cache::upsert_rule(manager, rule) {
             error!("Failed to seed default rule: {e}");

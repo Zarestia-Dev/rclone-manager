@@ -12,10 +12,12 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormGroup,
+  FormBuilder,
   ReactiveFormsModule,
   AbstractControl,
   FormArray,
   FormControl,
+  Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -27,10 +29,16 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
-import { CronValidationResponse, EditTarget, FileBrowserItem } from '@app/types';
+import {
+  CronValidationResponse,
+  EditTarget,
+  FileBrowserItem,
+  FilePickerSelection,
+} from '@app/types';
 import {
   FileSystemService,
   NotificationService,
@@ -56,6 +64,7 @@ type PathGroup = 'sources' | 'dests';
     MatExpansionModule,
     MatDividerModule,
     CdkMenuModule,
+    MatMenuModule,
     CronInputComponent,
     MatProgressSpinner,
     MatTooltipModule,
@@ -80,6 +89,7 @@ export class OperationConfigComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fb = inject(FormBuilder);
 
   // Computed State
   readonly isMount = computed(() => this.operationType() === 'mount');
@@ -91,6 +101,7 @@ export class OperationConfigComponent {
   // Writable State Signals
   readonly sourcePathType = signal<PathType>('currentRemote');
   readonly destPathType = signal<PathType>('local');
+  private readonly refreshTrigger = signal(0);
 
   // Inline autocomplete state (indexed by "group-index")
   pathStates = new Map<string, WritableSignal<PathSelectionState>>();
@@ -120,13 +131,22 @@ export class OperationConfigComponent {
 
   readonly canAddSource = computed(() => {
     const type = this.operationType();
-    return type && ['sync', 'copy', 'move'].includes(type as string);
+    return !!(type && ['sync', 'copy', 'move'].includes(type as string));
   });
 
   readonly canAddDest = computed(() => {
     // rclone sync/copy/move/bisync/mount typically target a single destination per operation.
     return false;
   });
+
+  readonly isDataOperation = computed(() => {
+    const type = this.operationType();
+    return !!(type && ['sync', 'copy', 'move'].includes(type as string));
+  });
+
+  allowFiles(group: PathGroup): boolean {
+    return group === 'sources' && this.isDataOperation();
+  }
 
   // Writable signals synced with form controls
   readonly cronExpression = signal<string | null>(null);
@@ -138,6 +158,16 @@ export class OperationConfigComponent {
   readonly isDestPickerDisabled = computed(
     () => this.isNewRemote() && this.destPathType() === 'currentRemote'
   );
+
+  // Unified access to path items for template iteration
+  readonly sourceItems = computed(() => {
+    this.refreshTrigger();
+    return this.getPathItems('sources');
+  });
+  readonly destItems = computed(() => {
+    this.refreshTrigger();
+    return this.getPathItems('dests');
+  });
 
   // Keep subscriptions idempotent across effect re-runs
   private readonly controlSyncSubs = new Map<string, Subscription>();
@@ -192,27 +222,10 @@ export class OperationConfigComponent {
   private initializeInlineAutocomplete(): void {
     this.pathStates.clear();
 
-    const sources = this.getFormArray('sources');
-    if (sources) {
-      sources.controls.forEach((_, i) => this.registerAutocomplete('sources', i));
-    } else if (this.opFormGroup().get('source')) {
-      this.registerAutocomplete('sources', 0);
-    }
-
-    if (!this.isMount() && !this.isServe()) {
-      const dests = this.getFormArray('dests');
-      if (dests) {
-        dests.controls.forEach((_, i) => this.registerAutocomplete('dests', i));
-      } else if (this.opFormGroup().get('dest')) {
-        this.registerAutocomplete('dests', 0);
-      }
-    } else if (this.isMount()) {
-      const dests = this.getFormArray('dests');
-      if (dests && dests.length > 0) {
-        this.registerAutocomplete('dests', 0);
-      } else if (this.opFormGroup().get('dest')) {
-        this.registerAutocomplete('dests', 0);
-      }
+    // Consistently register all sources and destinations
+    this.sourceItems().forEach(item => this.registerAutocomplete('sources', item.index));
+    if (!this.isServe()) {
+      this.destItems().forEach(item => this.registerAutocomplete('dests', item.index));
     }
   }
 
@@ -237,18 +250,19 @@ export class OperationConfigComponent {
 
   private watchPathGroup(group: PathGroup): void {
     const array = this.getFormArray(group);
-    if (!array) return;
-
-    // Watch existing controls
-    array.controls.forEach((_, i) => this.watchPathAtIndex(group, i));
-
-    // Watch for new additions/removals
-    this.pathTypeSubs.get(group)?.unsubscribe();
-    const sub = array.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      // Re-sync watchers for any new or shifted controls
+    if (array) {
+      // Watch all controls in the array
       array.controls.forEach((_, i) => this.watchPathAtIndex(group, i));
-    });
-    this.pathTypeSubs.set(group, sub);
+
+      this.pathTypeSubs.get(group)?.unsubscribe();
+      const sub = array.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+        array.controls.forEach((_, i) => this.watchPathAtIndex(group, i));
+      });
+      this.pathTypeSubs.set(group, sub);
+    } else {
+      // Watch singular control (at index 0 for consistency)
+      this.watchPathAtIndex(group, 0);
+    }
   }
 
   private watchPathAtIndex(group: PathGroup, index: number): void {
@@ -272,7 +286,7 @@ export class OperationConfigComponent {
 
     if (pathType === 'otherRemote') {
       this.getGroupAtIndex(group, index)
-        ?.get('otherRemoteName')
+        ?.get('remote')
         ?.patchValue(remoteName || '', { emitEvent: false });
     }
 
@@ -312,26 +326,23 @@ export class OperationConfigComponent {
   }
 
   addPath(group: PathGroup): void {
+    if (group === 'dests') return; // Enforce singular destination
+
     const array = this.getFormArray(group);
     if (!array) return;
 
-    const defaultType = group === 'sources' ? 'currentRemote' : 'local';
-
-    if (group === 'dests' && this.isMount()) {
-      array.push(new FormControl(''));
-    } else {
-      array.push(
-        new FormGroup({
-          pathType: new FormControl(defaultType),
-          path: new FormControl(''),
-          otherRemoteName: new FormControl(''),
-        })
-      );
-    }
+    array.push(
+      new FormGroup({
+        type: new FormControl('currentRemote'),
+        path: new FormControl('', Validators.required),
+        remote: new FormControl(''),
+      })
+    );
 
     if (!this.isNewRemote()) {
       this.registerAutocomplete(group, array.length - 1);
     }
+    this.refreshTrigger.update(v => v + 1);
   }
 
   removePath(group: PathGroup, index: number): void {
@@ -340,6 +351,7 @@ export class OperationConfigComponent {
     if (array.length <= 1 && group === 'sources') return; // Keep at least one source
 
     array.removeAt(index);
+    this.refreshTrigger.update(v => v + 1);
     const fieldId = `${group}-${index}`;
     this.pathSelectionService.unregisterField(fieldId);
     this.pathStates.delete(fieldId);
@@ -374,37 +386,62 @@ export class OperationConfigComponent {
   // Path Selection (Dialogs)
   // ===================================
 
-  async selectRemotePath(group: PathGroup, index: number): Promise<void> {
+  async selectRemotePath(
+    group: PathGroup,
+    index: number,
+    target?: FilePickerSelection
+  ): Promise<void> {
     const isSource = group === 'sources';
     const isPickerDisabled = isSource ? this.isSourcePickerDisabled() : this.isDestPickerDisabled();
     if (isPickerDisabled) return;
+
+    // Default target based on operation and group
+    const defaultTarget: FilePickerSelection =
+      isSource && this.isDataOperation() ? 'both' : 'folders';
+    const finalTarget = target || defaultTarget;
 
     const pathType = this.getPathTypeControl(group, index)?.value;
     const isMountDest = this.isMount() && group === 'dests';
 
     if (isMountDest || pathType === 'local') {
-      await this.selectLocalPath(group, index);
+      await this.selectLocalPath(group, index, finalTarget);
     } else {
-      await this.selectNautilusPath(group, index);
+      await this.selectNautilusPath(group, index, finalTarget);
     }
   }
 
-  private async selectLocalPath(group: PathGroup, index: number): Promise<void> {
+  private async selectLocalPath(
+    group: PathGroup,
+    index: number,
+    target: FilePickerSelection = 'folders'
+  ): Promise<void> {
     const allowNonEmpty = this.opFormGroup().get('options.mount---allow_non_empty')?.value;
     const requireEmpty = this.isMount() && group === 'dests' && !allowNonEmpty;
     const currentPath = this.getPathControl(group, index)?.value || '';
 
     try {
-      const selectedPath = await this.fileSystemService.selectFolder(requireEmpty, currentPath);
+      let selectedPath: string | undefined;
+
+      if (target === 'files') {
+        selectedPath = await this.fileSystemService.selectFile(currentPath);
+      } else {
+        // Default to folder
+        selectedPath = await this.fileSystemService.selectFolder(requireEmpty, currentPath);
+      }
+
       if (selectedPath) {
         this.updatePathForm(group, index, selectedPath, 'local');
       }
     } catch (error) {
-      console.error('Error selecting local folder:', error);
+      console.error(`Error selecting local ${target}:`, error);
     }
   }
 
-  private async selectNautilusPath(group: PathGroup, index: number): Promise<void> {
+  private async selectNautilusPath(
+    group: PathGroup,
+    index: number,
+    target?: FilePickerSelection
+  ): Promise<void> {
     const restrictToCurrent = (this.isMount() || this.isServe()) && group === 'sources';
     const currentPathType = this.getPathTypeControl(group, index)?.value;
     const currentPath = this.getPathControl(group, index)?.value || '';
@@ -415,9 +452,13 @@ export class OperationConfigComponent {
       restrictToCurrent
     );
 
+    const selection: FilePickerSelection =
+      target ||
+      (['sync', 'copy', 'move'].includes(this.operationType() as string) ? 'both' : 'folders');
+
     const result = await this.fileSystemService.selectPathWithNautilus({
       mode: restrictToCurrent ? 'remote' : 'both',
-      selection: 'folders',
+      selection,
       multi: false,
       allowedRemotes: restrictToCurrent ? [this.currentRemoteName()] : undefined,
       minSelection: 1,
@@ -534,7 +575,7 @@ export class OperationConfigComponent {
   }
 
   getOtherRemoteName(group: PathGroup, index: number): string {
-    return this.getGroupAtIndex(group, index)?.get('otherRemoteName')?.value || '';
+    return this.getGroupAtIndex(group, index)?.get('remote')?.value || '';
   }
 
   getPathTypeAtIndex(group: PathGroup, index: number): PathType {
@@ -555,31 +596,64 @@ export class OperationConfigComponent {
     return this.getFormArray(group) !== null;
   }
 
+  getPathItems(
+    group: PathGroup
+  ): { control: AbstractControl; index: number; groupName: string | number }[] {
+    const array = this.getFormArray(group);
+    if (array && array.length > 0) {
+      return array.controls.map((ctrl, i) => {
+        if (ctrl instanceof FormGroup) {
+          return { control: ctrl, index: i, groupName: i };
+        } else {
+          // Wrap legacy FormControl in a synthetic group
+          const synthetic = this.fb.group({
+            type: ['local'],
+            path: ctrl,
+            remote: [''],
+          });
+          return { control: synthetic, index: i, groupName: i };
+        }
+      });
+    }
+    const singularName = group === 'sources' ? 'source' : 'dest';
+    const singular = this.opFormGroup()?.get(singularName);
+    if (singular) {
+      if (singular instanceof FormGroup) {
+        return [{ control: singular, index: 0, groupName: singularName }];
+      } else {
+        // Fallback for legacy FormControl structures (e.g. old mount configs)
+        // We wrap it in a synthetic group so the template's formControlName="path" works.
+        const synthetic = this.fb.group({
+          type: ['local'],
+          path: singular,
+          remote: [''],
+        });
+        return [{ control: synthetic, index: 0, groupName: singularName }];
+      }
+    }
+    return [];
+  }
+
   private getGroupAtIndex(group: PathGroup, index: number): FormGroup | null {
     const array = this.getFormArray(group);
     if (array) return array.at(index) as FormGroup | null;
 
-    const singular = group === 'sources' ? 'source' : 'dest';
-    const ctrl = this.opFormGroup().get(singular);
-    return ctrl instanceof FormGroup ? ctrl : null;
+    const items = this.getPathItems(group);
+    const item = items.find(it => it.index === index);
+    return item?.control instanceof FormGroup ? item.control : null;
   }
 
-  private getPathControl(group: PathGroup, index: number): AbstractControl | null {
-    const array = this.getFormArray(group);
-    if (array) {
-      const control = array.at(index);
-      if (control instanceof FormControl) return control;
-      return control?.get('path') || null;
-    }
+  getPathControl(group: PathGroup, index: number): AbstractControl | null {
+    const items = this.getPathItems(group);
+    const item = items.find(it => it.index === index);
+    if (!item || !item.control) return null;
 
-    const singular = group === 'sources' ? 'source' : 'dest';
-    const control = this.opFormGroup().get(singular);
-    if (control instanceof FormControl) return control;
-    return control?.get('path') || null;
+    if (item.control instanceof FormControl) return item.control;
+    return item.control.get('path') as FormControl | null;
   }
 
   getPathTypeControl(group: PathGroup, index: number): AbstractControl | null {
-    return this.getGroupAtIndex(group, index)?.get('pathType') || null;
+    return this.getGroupAtIndex(group, index)?.get('type') || null;
   }
 
   isControl(ctrl: any): boolean {

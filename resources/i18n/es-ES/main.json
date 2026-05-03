@@ -292,10 +292,11 @@
       "profileFilter": "Filtro de Perfil",
       "profileFilterPlaceholder": "ej. GDrive-Sync",
       "profileFilterHint": "Monitorear eventos solo para perfiles específicos.",
+      "autoAcknowledge": "Reconocimiento automático",
+      "autoAcknowledgeHint": "Marcar alertas como reconocidas automáticamente. Ideal para alertas que ya activan notificaciones del sistema.",
       "actions": "Acciones a activar"
     },
     "events": {
-      "any": "Cualquier evento",
       "job_completed": "Trabajo completado",
       "job_started": "Trabajo iniciado",
       "job_failed": "Trabajo fallido",
@@ -1110,12 +1111,18 @@
       "notConfigured": "No configurado",
       "clearSchedule": "Borrar programación",
       "sourcePath": "Ruta de origen",
+      "sourcePaths": "Rutas de origen",
       "destPath": "Ruta de destino",
+      "destinationPath": "Ruta de destino",
       "localPath": "Ruta local",
       "remotePathServe": "Ruta remota para servir",
+      "addSource": "Añadir origen",
+      "removePath": "Eliminar ruta",
       "rootFolderOptional": "Carpeta raíz (opcional)",
       "rootFolderSpecific": "Carpeta raíz o ruta específica",
       "selectRemoteSource": "Seleccionar carpeta de origen remota",
+      "remotePath": "Ruta remota",
+      "enterPath": "Introducir ruta...",
       "changeSourceType": "Cambiar el tipo de ruta de origen",
       "enterSourcePath": "Introducir ruta de origen...",
       "otherRemotes": "Otros controles remotos",
@@ -1471,7 +1478,9 @@
         "move": "Mover",
         "rename": "Renombrar",
         "sync": "Sincronizar",
-        "bisync": "BiSync"
+        "bisync": "BiSync",
+        "compress": "Comprimir",
+        "extract": "Extraer"
       }
     },
     "fileViewer": {
@@ -1492,7 +1501,13 @@
       "errorLoadContent": "Error al cargar el contenido del archivo",
       "errorUnexpected": "Se produjo un error inesperado",
       "errorLoadFile": "Error al cargar {{name}}",
-      "downloading": "Descargando {{name}}"
+      "downloading": "Descargando {{name}}",
+      "archiveContents": "Contenido del archivo",
+      "errorListArchive": "Error al listar el contenido del archivo",
+      "extract": "Extraer",
+      "extracting": "Extrayendo \"{{name}}\"...",
+      "extractSuccess": "\"{{name}}\" extraído con éxito",
+      "errorExtract": "Error al extraer el archivo"
     }
   },
   "dashboard": {
@@ -2307,6 +2322,16 @@
         "fileLabel": "Nombre de archivo (Opcional)",
         "filePlaceholder": "Dejar vacío para usar el nombre automático",
         "confirm": "Descargar"
+      },
+      "archiveCreate": {
+        "title": "Crear archivo",
+        "filenameLabel": "Nombre del archivo",
+        "formatLabel": "Formato del archivo",
+        "prefixLabel": "Prefijo de ruta",
+        "prefixHint": "Anula las rutas completas si se establece",
+        "fullPathLabel": "Incluir rutas de origen completas",
+        "fullPathHint": "Mantiene la estructura de directorios desde la raíz",
+        "compress": "Comprimir"
       }
     },
     "errors": {
@@ -2320,7 +2345,8 @@
       "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
-      "copyUrlFailed": "Error al descargar desde URL: {{error}}"
+      "copyUrlFailed": "Error al descargar desde URL: {{error}}",
+      "archiveCreateFailed": "Error al crear el archivo: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2358,7 +2384,9 @@
       "undo": "Deshacer",
       "trashEmptied": "Papelera vaciada",
       "renameStarted": "Operación de renombrado iniciada",
-      "copyUrlStarted": "Descargando desde URL..."
+      "copyUrlStarted": "Descargando desde URL...",
+      "archiveCreateStarted": "Operación de creación de archivo iniciada",
+      "archiveCreateComplete": "Archivo creado con éxito"
     }
   },
   "overview": {

@@ -569,4 +569,58 @@ export class NautilusFileOperationsService {
   private _normalizeRemote(remote: ExplorerRoot): string {
     return remote.isLocal ? remote.name : this.pathSelection.normalizeRemoteForRclone(remote.name);
   }
+
+  async openArchiveCreateDialog(
+    remote: ExplorerRoot,
+    items: FileBrowserItem[],
+    currentPath: string
+  ): Promise<boolean> {
+    if (items.length === 0) return false;
+
+    const firstItem = items[0];
+    const defaultName = items.length === 1 ? `${firstItem.entry.Name}.zip` : 'archive.zip';
+
+    const ref = this.modalService.openArchiveCreate({
+      items,
+      defaultName,
+    });
+
+    const result = (await firstValueFrom(ref.afterClosed())) as any;
+    if (!result) return false;
+
+    const { filename, format, prefix, fullPath } = result;
+    const isLocal = remote.isLocal;
+    const baseName = remote.name;
+
+    try {
+      const sourcePath = items.length === 1 ? firstItem.entry.Path : currentPath;
+      const source = isLocal
+        ? (baseName === '/' ? `/${sourcePath}` : `${baseName}/${sourcePath}`).replace(/\/+/g, '/')
+        : `${this.pathSelection.normalizeRemoteForRclone(baseName)}${sourcePath}`;
+
+      const destinationPath = currentPath === '' ? filename : `${currentPath}/${filename}`;
+      const destination = isLocal
+        ? (baseName === '/' ? `/${destinationPath}` : `${baseName}/${destinationPath}`).replace(
+            /\/+/g,
+            '/'
+          )
+        : `${this.pathSelection.normalizeRemoteForRclone(baseName)}${destinationPath}`;
+
+      const include = items.length > 1 ? items.map(i => i.entry.Name) : undefined;
+
+      this.notifications.showInfo(
+        this.translate.instant('nautilus.notifications.archiveCreateStarted')
+      );
+
+      await this.remoteOps.archiveCreate(source, destination, format, prefix, fullPath, include);
+      return true;
+    } catch (e) {
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.archiveCreateFailed', {
+          error: (e as Error).message,
+        })
+      );
+      return false;
+    }
+  }
 }
