@@ -1,5 +1,6 @@
 use crate::core::alerts::{
     cache::{self, AlertHistoryCache},
+    dispatch::DispatchContext,
     types::{AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRule, AlertStats},
 };
 use crate::core::settings::AppSettingsManager;
@@ -85,10 +86,24 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         rule_name: "Test Rule".to_string(),
     };
 
+    let dispatch_ctx = app.state::<DispatchContext>();
+
     match action {
         AlertAction::OsToast(_) => dispatch::os_toast::dispatch(&app, &ctx)?,
-        AlertAction::Webhook(ref a) => dispatch::webhook::dispatch(a, &ctx).await?,
+        AlertAction::Webhook(ref a) => {
+            let client = if a.tls_verify {
+                &dispatch_ctx.client
+            } else {
+                &dispatch_ctx.insecure_client
+            };
+            dispatch::webhook::dispatch(a, &ctx, client).await?
+        }
         AlertAction::Script(ref a) => dispatch::script::dispatch(a, &ctx).await?,
+        AlertAction::Telegram(ref a) => dispatch::telegram::dispatch(a, &ctx, &dispatch_ctx.client)
+            .await
+            .map(|_| ())?,
+        AlertAction::Mqtt(ref a) => dispatch::mqtt::dispatch(a, &ctx).await?,
+        AlertAction::Email(ref a) => dispatch::email::dispatch(a, &ctx).await?,
     }
 
     Ok(true)

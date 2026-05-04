@@ -5,7 +5,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::core::alerts::{
     cache::{self, AlertHistoryCache},
-    dispatch,
+    dispatch::{self, DispatchContext},
     event_ext::NotificationEventExt,
     template::TemplateContext,
     types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
@@ -35,8 +35,9 @@ pub fn init() {
 
     tauri::async_runtime::spawn(async move {
         debug!("Alert engine worker started");
+        let ctx = DispatchContext::new();
         while let Some(req) = rx.recv().await {
-            process_internal(req).await;
+            process_internal(req, &ctx).await;
         }
     });
 }
@@ -55,7 +56,7 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
     }
 }
 
-async fn process_internal(req: AlertRequest) {
+async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
     let AlertRequest {
         app,
         event,
@@ -123,6 +124,12 @@ async fn process_internal(req: AlertRequest) {
             }
         }
 
+        if let Some(body_filter) = &rule.body_filter
+            && !body.contains(body_filter.as_str())
+        {
+            continue;
+        }
+
         if rule.cooldown_secs > 0
             && let Some(last) = rule.last_fired
             && Utc::now() - last < Duration::seconds(rule.cooldown_secs as i64)
@@ -131,7 +138,16 @@ async fn process_internal(req: AlertRequest) {
             continue;
         }
 
-        cache::bump_rule_fired(&manager, &rule.id, Utc::now());
+        if rule.max_fire_count > 0 && rule.fire_count >= rule.max_fire_count {
+            debug!(
+                "Rule '{}' suppressed: fire_count {} >= max_fire_count {}",
+                rule.name, rule.fire_count, rule.max_fire_count
+            );
+            continue;
+        }
+
+        let fired_at = Utc::now();
+        cache::bump_rule_fired(&manager, &rule.id, fired_at);
 
         debug!(
             "Rule '{}' matched - dispatching {} action(s)",
@@ -151,7 +167,7 @@ async fn process_internal(req: AlertRequest) {
             backend: backend.clone().unwrap_or_default(),
             operation: operation.clone().unwrap_or_default(),
             origin: origin.clone(),
-            timestamp: Utc::now().to_rfc3339(),
+            timestamp: fired_at.to_rfc3339(),
             rule_id: rule.id.clone(),
             rule_name: rule.name.clone(),
         };
@@ -169,31 +185,37 @@ async fn process_internal(req: AlertRequest) {
                 }
             };
 
-            let action_ctx = ctx.clone();
-            let action_app = app.clone();
-
-            // We still use spawn for actions to allow parallel execution of external webhooks/scripts
-            // BUT the rule processing itself is now serialized in the worker.
-            action_futures.push(tokio::spawn(async move {
-                let start = std::time::Instant::now();
-                let result = execute_action(&action_app, &action, &action_ctx).await;
-                let duration_ms = start.elapsed().as_millis() as u64;
-
-                let (success, error_msg) = match result {
-                    Ok(()) => (true, None),
-                    Err(e) => {
-                        error!("Action '{}' failed: {e}", action.name());
-                        (false, Some(e))
+            action_futures.push(tokio::spawn({
+                let action_app = app.clone();
+                let action_ctx = ctx.clone();
+                let client = match &action {
+                    AlertAction::Webhook(a) if !a.tls_verify => {
+                        dispatch_ctx.insecure_client.clone()
                     }
+                    _ => dispatch_ctx.client.clone(),
                 };
 
-                ActionResult {
-                    action_id: action.id().to_string(),
-                    action_name: action.name().to_string(),
-                    action_kind: action.kind_str().to_string(),
-                    success,
-                    error: error_msg,
-                    duration_ms,
+                async move {
+                    let start = std::time::Instant::now();
+                    let result = execute_action(&action_app, &action, &action_ctx, &client).await;
+                    let duration_ms = start.elapsed().as_millis() as u64;
+
+                    let (success, error_msg) = match result {
+                        Ok(()) => (true, None),
+                        Err(e) => {
+                            error!("Action '{}' failed: {e}", action.name());
+                            (false, Some(e))
+                        }
+                    };
+
+                    ActionResult {
+                        action_id: action.id().to_string(),
+                        action_name: action.name().to_string(),
+                        action_kind: action.kind_str().to_string(),
+                        success,
+                        error: error_msg,
+                        duration_ms,
+                    }
                 }
             }));
         }
@@ -230,10 +252,16 @@ async fn execute_action(
     app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,
+    client: &reqwest::Client,
 ) -> Result<(), String> {
     match action {
         AlertAction::OsToast(_) => dispatch::os_toast::dispatch(app, ctx),
-        AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx).await,
+        AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx, client).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
+        AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client)
+            .await
+            .map(|_| ()),
+        AlertAction::Mqtt(a) => dispatch::mqtt::dispatch(a, ctx).await,
+        AlertAction::Email(a) => dispatch::email::dispatch(a, ctx).await,
     }
 }

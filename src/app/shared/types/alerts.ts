@@ -29,7 +29,7 @@ export interface AlertRule {
   auto_acknowledge?: boolean;
 }
 
-export type AlertActionKind = 'webhook' | 'script' | 'os_toast';
+export type AlertActionKind = 'webhook' | 'script' | 'os_toast' | 'telegram' | 'mqtt' | 'email';
 
 export interface WebhookAction {
   id: string;
@@ -63,7 +63,58 @@ export interface OsToastAction {
   kind: 'os_toast';
 }
 
-export type AlertAction = WebhookAction | ScriptAction | OsToastAction;
+export interface TelegramAction {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: 'telegram';
+  bot_token: string;
+  chat_id: string;
+  body_template: string;
+  timeout_secs: number;
+  retry_count: number;
+}
+
+export interface MqttAction {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: 'mqtt';
+  broker_url: string;
+  topic: string;
+  username?: string;
+  password?: string;
+  qos: number;
+  retain: boolean;
+  body_template: string;
+  timeout_secs: number;
+  retry_count: number;
+}
+
+export interface EmailAction {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: 'email';
+  smtp_server: string;
+  smtp_port: number;
+  username?: string;
+  password?: string;
+  from: string;
+  to: string;
+  subject_template: string;
+  body_template: string;
+  encryption: 'none' | 'tls' | 'starttls';
+  timeout_secs: number;
+}
+
+export type AlertAction =
+  | WebhookAction
+  | ScriptAction
+  | OsToastAction
+  | TelegramAction
+  | MqttAction
+  | EmailAction;
 
 export interface ActionResult {
   action_id: string;

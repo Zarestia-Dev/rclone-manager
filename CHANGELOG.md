@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Archive Creation**: Dedicated modal for creating archives with support for all Rclone-compatible formats (`zip`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, `tar.br`, `tar.sz`, `tar.mz`, `tar.lz`, `tar.lz4`).
   - **Archive Listing**: Structured tabular view of archive contents with size, date, and folder/file icons.
   - **Archive Extraction**: One-click extraction support for remote and local archives.
+- **Rclone Cat Fallback**: Implemented a robust fallback mechanism for file viewing. If direct filesystem access fails (due to permissions or platform limitations), the app now uses `rclone cat` via the RC API to retrieve content. Supports both `local-asset://` and headless `/stream` endpoints.
+- While exporing the settings If backup encryption is enabled, show toggle for incluse the secret keys like rclone config passwords, or other secrets you've added.
 
 ### Changed
 - **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.
@@ -30,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Audio Cover Support**: Enhanced audio cover extraction with support for FLAC and multiple other formats. Optimized image loading by moving to a native streaming architecture that allows browsers to decode images directly, improving both performance and memory usage across Desktop and Headless modes. Maybe future I can use this for tha thumbnail view of images and any other things too.
+- **Detailed Error Reporting**: The file viewer now displays actual rclone error messages (e.g., "File is being used by another process") instead of a generic "Not Found" error, providing better diagnostic information to the user.
 
 ## [v0.2.4] - 2026-04-14
 ### Added

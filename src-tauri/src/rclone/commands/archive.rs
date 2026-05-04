@@ -50,13 +50,12 @@ pub async fn archive_create(
     }
 
     let group_id = format!("archive_create_{}", uuid::Uuid::new_v4().simple());
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    let payload = json!({
-        "command": "archive",
-        "arg": args,
-        "_async": true,
-        "_group": group_id,
-    });
+    if let Some(obj) = payload.as_object_mut() {
+        obj.insert("_group".to_string(), json!(group_id));
+    }
 
     let metadata = JobMetadata {
         remote_name: destination.clone(),
@@ -100,13 +99,12 @@ pub async fn archive_extract(
     let args = vec!["extract".to_string(), source.clone(), destination.clone()];
 
     let group_id = format!("archive_extract_{}", uuid::Uuid::new_v4().simple());
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    let payload = json!({
-        "command": "archive",
-        "arg": args,
-        "_async": true,
-        "_group": group_id,
-    });
+    if let Some(obj) = payload.as_object_mut() {
+        obj.insert("_group".to_string(), json!(group_id));
+    }
 
     let metadata = JobMetadata {
         remote_name: source.clone(),
@@ -165,15 +163,11 @@ pub async fn archive_list(
         args.push("--dirs-only".to_string());
     }
 
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let payload = backend.build_core_command_payload("archive", args, false, os);
+
     let response = backend
-        .post_json(
-            client,
-            core::COMMAND,
-            Some(&json!({
-                "command": "archive",
-                "arg": args
-            })),
-        )
+        .post_json(client, core::COMMAND, Some(&payload))
         .await
         .map_err(|e| format!("Failed to list archive: {e}"))?;
 

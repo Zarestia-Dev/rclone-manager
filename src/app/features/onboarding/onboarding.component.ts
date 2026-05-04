@@ -25,6 +25,7 @@ import {
   FileSystemService,
   RclonePasswordService,
   SystemHealthService,
+  BackupRestoreUiService,
 } from '@app/services';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
 import { InstallationOptionsData, InstallationTabOption } from '@app/types';
@@ -75,6 +76,7 @@ export class OnboardingComponent {
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly backendService = inject(BackendService);
   readonly systemHealth = inject(SystemHealthService);
+  private readonly backupRestoreUiService = inject(BackupRestoreUiService);
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -394,5 +396,9 @@ export class OnboardingComponent {
     } finally {
       this.isSubmittingPassword.set(false);
     }
+  }
+
+  importSettings(): void {
+    this.backupRestoreUiService.launchRestoreFlow();
   }
 }

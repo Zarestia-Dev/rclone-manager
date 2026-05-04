@@ -602,17 +602,12 @@ async fn check_rclone_selfupdate(
     let client = &app_handle.state::<RcloneState>().client;
 
     // Call `rclone selfupdate --check` through the running RC daemon.
-    // The RC endpoint core/command runs any rclone sub-command and returns its
-    // COMBINED_OUTPUT in the "result" field.
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let payload =
+        backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
+
     let response = backend
-        .post_json(
-            client,
-            core::COMMAND,
-            Some(&serde_json::json!({
-                "command": "selfupdate",
-                "arg": ["--check"]
-            })),
-        )
+        .post_json(client, core::COMMAND, Some(&payload))
         .await
         .map_err(
             |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),
@@ -758,15 +753,11 @@ async fn perform_rclone_selfupdate(
         channel.as_str()
     );
 
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let payload = backend.build_core_command_payload("selfupdate", args, false, os);
+
     let response = backend
-        .post_json(
-            client,
-            core::COMMAND,
-            Some(&serde_json::json!({
-                "command": "selfupdate",
-                "arg": args
-            })),
-        )
+        .post_json(client, core::COMMAND, Some(&payload))
         .await
         .map_err(
             |e| crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e),

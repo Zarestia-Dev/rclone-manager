@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use handlebars::Handlebars;
 use log::warn;
 use once_cell::sync::Lazy;
-use serde_json::json;
+use serde::Serialize;
+use serde_json::Value;
 
 static HBS: Lazy<Handlebars<'static>> = Lazy::new(|| {
     let mut hbs = Handlebars::new();
@@ -11,7 +12,7 @@ static HBS: Lazy<Handlebars<'static>> = Lazy::new(|| {
     hbs
 });
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TemplateContext {
     pub title: String,
     pub body: String,
@@ -29,6 +30,19 @@ pub struct TemplateContext {
 }
 
 impl TemplateContext {
+    fn to_json_value(&self) -> Value {
+        let mut val =
+            serde_json::to_value(self).unwrap_or_else(|_| Value::Object(Default::default()));
+
+        let json_str = serde_json::to_string(&val).unwrap_or_default();
+
+        if let Value::Object(ref mut map) = val {
+            map.insert("json".to_string(), Value::String(json_str));
+        }
+
+        val
+    }
+
     pub fn to_env_map(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
         map.insert("ALERT_TITLE".to_string(), self.title.clone());
@@ -47,6 +61,13 @@ impl TemplateContext {
         map.insert("ALERT_TIMESTAMP".to_string(), self.timestamp.clone());
         map.insert("ALERT_RULE_ID".to_string(), self.rule_id.clone());
         map.insert("ALERT_RULE_NAME".to_string(), self.rule_name.clone());
+
+        // Full context as JSON, serialized once via to_json_value().
+        let json_val = self.to_json_value();
+        if let Ok(json_str) = serde_json::to_string(&json_val) {
+            map.insert("ALERT_JSON".to_string(), json_str);
+        }
+
         map
     }
 
@@ -65,25 +86,12 @@ impl TemplateContext {
             "timestamp".to_string(),
             "rule_id".to_string(),
             "rule_name".to_string(),
+            "json".to_string(),
         ]
     }
 
     pub fn render(&self, template: &str) -> String {
-        let data = json!({
-            "title":         self.title,
-            "body":          self.body,
-            "severity":      self.severity,
-            "severity_code": self.severity_code,
-            "event_kind":    self.event_kind,
-            "remote":        self.remote,
-            "profile":       self.profile,
-            "backend":       self.backend,
-            "operation":     self.operation,
-            "origin":        self.origin,
-            "timestamp":     self.timestamp,
-            "rule_id":       self.rule_id,
-            "rule_name":     self.rule_name,
-        });
+        let data = self.to_json_value();
 
         match HBS.render_template(template, &data) {
             Ok(rendered) => rendered,

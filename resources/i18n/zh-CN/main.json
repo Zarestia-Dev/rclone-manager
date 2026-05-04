@@ -240,6 +240,8 @@
     "history": "历史记录",
     "rules": "规则",
     "actions": "操作",
+    "defaultActionName": "系统通知",
+    "defaultRuleName": "默认规则",
     "unacknowledged": "未确认",
     "acknowledgeAll": "全部确认",
     "clearHistory": "清除历史记录",
@@ -334,10 +336,9 @@
       "all_jobs_stopped": "所有作业已停止"
     },
     "action": {
-      "kind": "操作类型",
-      "os_toast": "系统通知",
-      "webhook": "Webhook (HTTP)",
-      "script": "自定义脚本",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "电子邮件",
       "placeholderName": "输入操作名称",
       "url": "Webhook URL",
       "method": "HTTP 方法",
@@ -350,7 +351,22 @@
       "args": "脚本参数",
       "argsHint": "（以空格分隔）",
       "scriptContextHint": "作为环境变量注入",
-      "os_toast_info": "操作系统原生通知不需要额外配置。它将使用标准的系统通知子系统。"
+      "os_toast_info": "操作系统原生通知不需要额外配置。它将使用标准的系统通知子系统。",
+      "botToken": "机器人令牌 (Bot Token)",
+      "chatId": "会话 ID (Chat ID)",
+      "messageTemplate": "消息模板",
+      "messageTemplateHint": "支持 Handlebars 变量",
+      "telegram_info": "您可以从 @BotFather 获取机器人令牌，从 @userinfobot 获取您的会话 ID。",
+      "brokerUrl": "代理服务器 URL (Broker URL)",
+      "topic": "主题 (Topic)",
+      "qos": "服务质量 (QoS)",
+      "retain": "保留消息 (Retain)",
+      "smtpServer": "SMTP 服务器",
+      "smtpPort": "SMTP 端口",
+      "from": "发件人地址",
+      "to": "收件人地址",
+      "encryption": "加密方式",
+      "subjectTemplate": "主题模板"
     }
   },
   "settings": {
@@ -1511,6 +1527,7 @@
       "errorLoadFile": "加载 {{name}} 失败",
       "downloading": "正在下载 {{name}}",
       "archiveContents": "归档内容",
+      "shortcutTargets": "快捷方式目标",
       "errorListArchive": "列出归档内容失败",
       "extract": "解压",
       "extracting": "正在解压 \"{{name}}\"...",
@@ -1954,6 +1971,8 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
+      "includeSecrets": "包含密钥",
+      "includeSecretsHint": "在备份中包含敏感凭据。需要加密。",
       "exportNow": "立即导出",
       "exporting": "正在导出...",
       "fullBackup": "完整备份",
@@ -1980,7 +1999,11 @@
         },
         "remotes": {
           "label": "远程存储",
-          "description": "Rclone 远程配置数据"
+          "description": "Rclone 远程存储配置数据"
+        },
+        "alerts": {
+          "label": "告警",
+          "description": "告警规则和操作配置"
         }
       }
     },

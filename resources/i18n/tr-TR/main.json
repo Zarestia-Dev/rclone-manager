@@ -239,6 +239,8 @@
     "history": "Geçmiş",
     "rules": "Kurallar",
     "actions": "Eylemler",
+    "defaultActionName": "Sistem Bildirimi",
+    "defaultRuleName": "Varsayılan Kural",
     "unacknowledged": "Onaylanmamış",
     "acknowledgeAll": "Tümünü Onayla",
     "clearHistory": "Geçmişi Temizle",
@@ -312,6 +314,9 @@
       "os_toast": "Sistem Bildirimi",
       "webhook": "Webhook (HTTP)",
       "script": "Özel Betik",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "E-posta",
       "placeholderName": "Eylem adını girin",
       "url": "Webhook URL",
       "method": "HTTP Metodu",
@@ -324,7 +329,30 @@
       "args": "Betik Argümanları",
       "argsHint": "(Boşlukla ayrılmış)",
       "scriptContextHint": "Ortam değişkenleri olarak enjekte edilir",
-      "os_toast_info": "İşletim Sistemi Bildirimleri için ek yapılandırma gerekmez. Standart sistem bildirim alt sistemini kullanacaktır."
+      "os_toast_info": "İşletim Sistemi Bildirimleri için ek yapılandırma gerekmez. Standart sistem bildirim alt sistemini kullanacaktır.",
+      "botToken": "Bot Token",
+      "chatId": "Sohbet Kimliği (Chat ID)",
+      "messageTemplate": "Mesaj Şablonu",
+      "messageTemplateHint": "Handlebars değişkenlerini destekler",
+      "telegram_info": "Bot Token'ınızı @BotFather'dan, Sohbet Kimliğinizi (Chat ID) @userinfobot'tan bulabilirsiniz.",
+      "host": "Sunucu (Host)",
+      "port": "Bağlantı Noktası (Port)",
+      "useTls": "TLS Kullan",
+      "topic": "Konu (Topic)",
+      "qos": "QoS",
+      "retain": "Kalıcı (Retain)",
+      "smtpServer": "SMTP Sunucusu",
+      "smtpPort": "SMTP Portu",
+      "from": "Gönderen Adresi",
+      "to": "Alıcı Adresi",
+      "encryption": "Şifreleme",
+      "subjectTemplate": "Konu Şablonu",
+      "headers": "HTTP Üstbilgileri (Headers)",
+      "presets": "Hazır Ayarlar (Presets)",
+      "discord": "Discord",
+      "slack": "Slack",
+      "headerKey": "Başlık Adı",
+      "headerValue": "Değer"
     }
   },
   "settings": {
@@ -1490,6 +1518,7 @@
       "saveSuccess": "Dosya başarıyla kaydedildi",
       "saveError": "Dosya kaydedilemedi",
       "archiveContents": "Arşiv İçeriği",
+      "shortcutTargets": "Kısayol Hedefleri",
       "extract": "Çıkart",
       "extracting": "{{name}} çıkartılıyor...",
       "extractSuccess": "{{name}} başarıyla çıkartıldı",
@@ -1928,6 +1957,8 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
+      "includeSecrets": "Gizli anahtarları dahil et",
+      "includeSecretsHint": "Hassas kimlik bilgilerini yedeğe dahil et. Şifreleme gereklidir.",
       "exportNow": "Şimdi Dışa Aktar",
       "exporting": "Dışa aktarılıyor...",
       "fullBackup": "Tam Yedekleme",
@@ -1955,6 +1986,10 @@
         "remotes": {
           "label": "Uzak Bağlantılar",
           "description": "Rclone uzak bağlantı yapılandırma verileri"
+        },
+        "alerts": {
+          "label": "Alarmlar",
+          "description": "Alarm kuralları ve eylemleri yapılandırması"
         }
       }
     },

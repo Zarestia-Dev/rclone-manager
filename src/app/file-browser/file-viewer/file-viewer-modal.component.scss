@@ -552,6 +552,41 @@
       margin: 0;
       max-width: 300px;
     }
+
+    &.error-state {
+      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+      background: linear-gradient(
+        to bottom,
+        var(--card-bg-color),
+        rgba(var(--warn-color-rgb), 0.02)
+      );
+
+      .icon-wrapper.error {
+        background: rgba(var(--warn-color-rgb), 0.1);
+        mat-icon {
+          color: var(--warn-color);
+        }
+      }
+
+      .unsupported-text.error {
+        color: var(--warn-color);
+      }
+
+      .error-detail {
+        font-family: var(--font-mono);
+        font-size: var(--font-size-sm);
+        white-space: pre-wrap;
+        max-width: 500px;
+        padding: var(--space-md);
+        background: rgba(var(--warn-color-rgb), 0.05);
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(var(--warn-color-rgb), 0.1);
+        text-align: left;
+        line-height: 1.5;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+    }
   }
 }
 

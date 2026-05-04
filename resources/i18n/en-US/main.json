@@ -241,6 +241,8 @@
     "history": "History",
     "rules": "Rules",
     "actions": "Actions",
+    "defaultActionName": "OS Notification",
+    "defaultRuleName": "Default Rule",
     "unacknowledged": "Unacknowledged",
     "acknowledgeAll": "Acknowledge All",
     "clearHistory": "Clear History",
@@ -314,6 +316,9 @@
       "os_toast": "OS Notification",
       "webhook": "Webhook (HTTP)",
       "script": "Custom Script",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "Email",
       "placeholderName": "Enter action name",
       "url": "Webhook URL",
       "method": "HTTP Method",
@@ -326,7 +331,30 @@
       "args": "Script Arguments",
       "argsHint": "(Space separated)",
       "scriptContextHint": "Injected as environment variables",
-      "os_toast_info": "No additional configuration required for OS Native Notifications. It will use the standard system notification subsystem."
+      "os_toast_info": "No additional configuration required for OS Native Notifications. It will use the standard system notification subsystem.",
+      "botToken": "Bot Token",
+      "chatId": "Chat ID",
+      "messageTemplate": "Message Template",
+      "messageTemplateHint": "Supports Handlebars variables",
+      "telegram_info": "You can find your Bot Token from @BotFather and your Chat ID from @userinfobot.",
+      "host": "Host",
+      "port": "Port",
+      "useTls": "Use TLS",
+      "topic": "Topic",
+      "qos": "QoS",
+      "retain": "Retain",
+      "smtpServer": "SMTP Server",
+      "smtpPort": "SMTP Port",
+      "from": "From Address",
+      "to": "To Address",
+      "encryption": "Encryption",
+      "subjectTemplate": "Subject Template",
+      "headers": "HTTP Headers",
+      "presets": "Presets",
+      "discord": "Discord",
+      "slack": "Slack",
+      "headerKey": "Header Name",
+      "headerValue": "Value"
     }
   },
   "settings": {
@@ -1491,6 +1519,7 @@
       "saveSuccess": "File saved successfully",
       "saveError": "Failed to save file",
       "archiveContents": "Archive Contents",
+      "shortcutTargets": "Shortcut Targets",
       "extract": "Extract",
       "extracting": "Extracting {{name}}...",
       "extractSuccess": "{{name}} extracted successfully",
@@ -1927,6 +1956,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
+      "includeSecrets": "Include secret keys",
+      "includeSecretsHint": "Include sensitive credentials in the backup. Encryption is required.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -1954,6 +1985,10 @@
         "remotes": {
           "label": "Remotes",
           "description": "Rclone remote configuration data"
+        },
+        "alerts": {
+          "label": "Alerts",
+          "description": "Alert rules and actions configuration"
         }
       }
     },

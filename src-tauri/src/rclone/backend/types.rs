@@ -2,6 +2,7 @@
 //
 // Simplified flat structure - no nested types.
 
+use crate::utils::rclone::endpoints::core;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -342,6 +343,71 @@ impl Backend {
             .map_err(|e| format!("Failed to fetch remote file: {e}"))
     }
 
+    /// Fetch a file's content using the `core/command` endpoint with `cat`.
+    ///
+    /// This is used as a fallback for remote backends where the standard serve
+    /// endpoint might not support local files or specific remote configurations.
+    pub async fn fetch_file_via_cat(
+        &self,
+        client: &reqwest::Client,
+        remote: &str,
+        path: &str,
+        offset: Option<i64>,
+        count: Option<i64>,
+        os: Option<String>,
+    ) -> Result<Vec<u8>, String> {
+        // Construct the full path argument.
+        // If remote is empty or ":", we use it as a local path.
+        let full_path = if remote.is_empty() || remote == ":" {
+            path.to_string()
+        } else {
+            let r_name = if remote.ends_with(':') {
+                remote.to_string()
+            } else {
+                format!("{remote}:")
+            };
+            // Ensure path doesn't have double slashes if it starts with one
+            let separator = if path.starts_with('/') { "" } else { "/" };
+            format!("{}{}{}", r_name, separator, path)
+        };
+
+        let mut args = vec![full_path];
+        if let Some(o) = offset {
+            args.push(format!("--offset={}", o));
+        }
+        if let Some(c) = count {
+            args.push(format!("--count={}", c));
+        }
+
+        let payload = self.build_core_command_payload("cat", args, false, os);
+        let response = self
+            .post_json(client, core::COMMAND, Some(&payload))
+            .await?;
+
+        // Check if the command itself reported an error (rclone core/command returns {error: true, result: "..."})
+        if response
+            .get("error")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            let err_msg = response
+                .get("result")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown rclone error");
+            return Err(err_msg.to_string());
+        }
+
+        let result = response
+            .get("result")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "No result in cat response".to_string())?;
+
+        // Note: rclone returns the output as a string. If it's binary data,
+        // it might be escaped or potentially corrupted if not valid UTF-8,
+        // but for 'cat' it's the best we can do via RC without a serve endpoint.
+        Ok(result.as_bytes().to_vec())
+    }
+
     /// Helper for POST requests expecting a JSON response.
     pub async fn post_json(
         &self,
@@ -372,6 +438,57 @@ impl Backend {
             .ok_or_else(|| "No config path in response".to_string())?;
 
         Ok(PathBuf::from(config_path))
+    }
+
+    /// Build a payload for the `core/command` RC endpoint.
+    ///
+    /// This automatically:
+    /// 1. Disables interactive password prompts (`--ask-password=false`).
+    /// 2. Injects the configuration password via `--password-command` if available.
+    pub fn build_core_command_payload(
+        &self,
+        command: &str,
+        mut args: Vec<String>,
+        async_job: bool,
+        os: Option<String>,
+    ) -> serde_json::Value {
+        // Use positional arguments (args) for flags as well, as core/command
+        // parses them just like the CLI. This is more reliable than the 'opt' map.
+        args.push("--ask-password=false".to_string());
+
+        // Handle password command
+        if let Some(pass) = &self.config_password {
+            let is_windows = os
+                .as_ref()
+                .is_some_and(|os| os.to_lowercase().contains("windows"));
+
+            if is_windows {
+                // Windows cmd.exe: echo is a built-in, so we must run it via cmd /C.
+                // We escape special shell characters with ^.
+                let escaped_pass = pass
+                    .replace('^', "^^")
+                    .replace('&', "^&")
+                    .replace('|', "^|")
+                    .replace('<', "^<")
+                    .replace('>', "^>");
+                args.push(format!("--password-command=cmd /C echo {}", escaped_pass));
+            } else {
+                // Unix sh/bash: Use single quotes to prevent interpolation.
+                let escaped_pass = pass.replace('\'', "'\\''");
+                args.push(format!("--password-command=echo '{}'", escaped_pass));
+            }
+        }
+
+        let mut payload = serde_json::json!({
+            "command": command,
+            "arg": args,
+        });
+
+        if async_job && let Some(obj) = payload.as_object_mut() {
+            obj.insert("_async".to_string(), serde_json::json!(true));
+        }
+
+        payload
     }
 }
 

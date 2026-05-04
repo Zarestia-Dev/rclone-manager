@@ -75,7 +75,7 @@ import { AlertService, RemoteFacadeService, BackendService } from '@app/services
         </div>
 
         <h3 class="section-title mt-md">
-          <mat-icon svgIcon="bolt" class="sm-icon"></mat-icon>
+          <mat-icon svgIcon="bell" class="sm-icon"></mat-icon>
           {{ 'alerts.rule.actions' | translate }}
         </h3>
 

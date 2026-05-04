@@ -3,6 +3,7 @@ use crate::core::alerts::types::{
 };
 use crate::core::settings::AppSettingsManager;
 use log::{debug, error};
+use std::collections::VecDeque;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
@@ -86,12 +87,7 @@ pub fn upsert_action(
     mut action: AlertAction,
 ) -> Result<AlertAction, String> {
     if action.id().is_empty() {
-        let new_id = uuid::Uuid::new_v4().to_string();
-        match &mut action {
-            AlertAction::Webhook(a) => a.id = new_id,
-            AlertAction::Script(a) => a.id = new_id,
-            AlertAction::OsToast(a) => a.id = new_id,
-        }
+        action.common_mut().id = uuid::Uuid::new_v4().to_string();
     }
 
     let id = action.id().to_string();
@@ -113,9 +109,6 @@ pub fn delete_action(manager: &AppSettingsManager, id: &str) -> Result<(), Strin
     sub.delete(id)
         .map_err(|e| format!("Failed to delete alert action: {e}"))?;
 
-    // Note: Any in-flight webhook clients for this action will be automatically
-    // cleaned up when their dispatch completes (Rust RAII). No new dispatches
-    // will be created for this deleted action.
     debug!("🗑️ Deleted alert action: {id}");
 
     Ok(())
@@ -123,14 +116,14 @@ pub fn delete_action(manager: &AppSettingsManager, id: &str) -> Result<(), Strin
 
 /// Ring-buffer in-memory alert history. Memory-only, no persistence.
 pub struct AlertHistoryCache {
-    records: RwLock<Vec<AlertRecord>>,
+    records: RwLock<VecDeque<AlertRecord>>,
     max_entries: usize,
 }
 
 impl AlertHistoryCache {
     pub fn new(max_entries: usize) -> Self {
         Self {
-            records: RwLock::new(vec![]),
+            records: RwLock::new(VecDeque::new()),
             max_entries,
         }
     }
@@ -141,9 +134,9 @@ impl AlertHistoryCache {
         }
         {
             let mut records = self.records.write().await;
-            records.push(record);
+            records.push_back(record);
             if records.len() > self.max_entries {
-                records.remove(0);
+                records.pop_front();
             }
         }
     }
@@ -188,6 +181,16 @@ impl AlertHistoryCache {
                     if !origin_matches {
                         return false;
                     }
+                }
+                if let Some(from) = filter.from_ts
+                    && r.timestamp < from
+                {
+                    return false;
+                }
+                if let Some(to) = filter.to_ts
+                    && r.timestamp > to
+                {
+                    return false;
                 }
                 true
             })
@@ -249,9 +252,7 @@ impl AlertHistoryCache {
         let mut by_rule = std::collections::HashMap::new();
 
         for r in records.iter() {
-            *by_severity
-                .entry(r.severity.as_str().to_string())
-                .or_insert(0) += 1;
+            *by_severity.entry(r.severity.clone()).or_insert(0) += 1;
             *by_rule.entry(r.rule_name.clone()).or_insert(0) += 1;
         }
 

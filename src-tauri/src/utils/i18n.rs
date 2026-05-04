@@ -9,10 +9,11 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use tauri::{AppHandle, Emitter};
 
 /// Directory where backend translation files are stored (relative to executable)
 const I18N_DIR: &str = "i18n";
-const DEFAULT_LANG: &str = "en-US";
+pub const DEFAULT_LANG: &str = "en-US";
 
 /// Global translations state
 static TRANSLATIONS: Lazy<Translations> = Lazy::new(Translations::new);
@@ -168,6 +169,31 @@ pub fn set_language(lang: &str) {
     }
     // Pre-load the language if not cached
     TRANSLATIONS.load_language(lang);
+}
+
+/// Apply a language change across the application (backend, frontend event, and tray)
+pub fn apply_language_change(app: &AppHandle, lang: &str) {
+    log::debug!("🌐 Applying language change to: {lang}");
+    set_language(lang);
+
+    // Notify frontend
+    if let Err(e) = app.emit(
+        crate::utils::types::events::APP_EVENT,
+        serde_json::json!({ "status": "language_changed", "language": lang }),
+    ) {
+        log::error!("Failed to emit language change event: {e}");
+    }
+
+    // Update tray menu
+    #[cfg(feature = "tray")]
+    {
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
+                log::error!("Failed to update tray menu: {e}");
+            }
+        });
+    }
 }
 
 /// Translate a key to the current language

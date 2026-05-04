@@ -166,6 +166,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   >([]);
   isExtracting = signal(false);
   archiveError = signal<string | null>(null);
+  errorMessage = signal<string | null>(null);
 
   // Editing state
   isEditing = signal(false);
@@ -500,6 +501,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set('');
     this.archiveContent.set('');
     this.archiveError.set(null);
+    this.errorMessage.set(null);
 
     try {
       const [type, url] = await Promise.all([
@@ -565,20 +567,29 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             takeUntil(this.cancelCurrentRequest$),
             takeUntil(this.destroy$),
             catchError(err => {
-              // Failed to load - probably binary
               console.warn('Browser cannot render file:', err);
-              this.currentFileType.set('binary'); // Update signal
+              this.currentFileType.set('error');
+              const body = err.error instanceof Blob ? 'Binary data' : err.error;
+              this.errorMessage.set(body || err.message || 'Unknown error');
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
               if (this.looksLikeBinary(res.body)) {
-                this.currentFileType.set('binary'); // Update signal
+                // Special handling for LNK files to show target info even if binary
+                if (this.fileName().toLowerCase().endsWith('.lnk')) {
+                  const info = this.extractLnkInfo(res.body);
+                  this.textContent.set(info);
+                  setTimeout(() => this.initEditor(true, info), 0);
+                } else {
+                  this.currentFileType.set('binary');
+                }
               } else {
-                this.textContent.set(res.body);
+                const repaired = this.repairText(res.body);
+                this.textContent.set(repaired);
                 // Initialize CodeMirror in read-only mode
-                setTimeout(() => this.initEditor(true, res.body ?? ''), 0);
+                setTimeout(() => this.initEditor(true, repaired ?? ''), 0);
               }
             }
             this.isLoading.set(false);
@@ -684,22 +695,102 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    * Uses NULL byte detection and non-printable character ratio.
    */
   private looksLikeBinary(content: string): boolean {
-    // Quick check: NULL byte is definitive binary indicator
-    if (content.includes('\0')) return true;
+    if (!content) return false;
 
-    // Count non-printable characters (excluding whitespace)
+    // Check for common BOMs (Byte Order Marks) which often indicate UTF-16/32 text
+    // UTF-16 LE: FF FE, UTF-16 BE: FE FF, UTF-8: EF BB BF
+    const firstTwo = content.substring(0, 2);
+    if (firstTwo === '\xFF\xFE' || firstTwo === '\xFE\xFF' || content.startsWith('\xEF\xBB\xBF')) {
+      return false; // Definitely text
+    }
+
+    // NULL byte detection with UTF-16 heuristic:
+    // If NULL bytes are frequent but alternating with printable chars, it's likely UTF-16.
+    let nullCount = 0;
+    const maxCheck = Math.min(content.length, 1024);
+    for (let i = 0; i < maxCheck; i++) {
+      if (content.charCodeAt(i) === 0) nullCount++;
+    }
+
+    // If more than 10% are NULL but content is large, or if any NULL in first few bytes of non-UTF-16
+    // But let's be more practical: if NULL count is extremely high (> 40%), it's probably binary.
+    // If NULLs are present but the ratio is exactly around 50%, it's likely UTF-16 text.
+    const nullRatio = nullCount / maxCheck;
+    if (nullRatio > 0.1 && (nullRatio < 0.4 || nullRatio > 0.6)) return true;
+
+    // Count non-printable characters (excluding whitespace and common text control chars)
     let nonPrintable = 0;
-    const maxCheck = Math.min(content.length, 1024); // Only check first 1KB for performance
-
     for (let i = 0; i < maxCheck; i++) {
       const code = content.charCodeAt(i);
+      if (code === 0) continue; // Handled by nullRatio
       if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
         nonPrintable++;
       }
     }
 
-    // If >30% non-printable, likely binary
-    return nonPrintable / maxCheck > 0.3;
+    // Windows Shortcut (LNK) magic bytes: 4C 00 00 00
+    if (maxCheck >= 4 && content.startsWith('L\0\0\0')) {
+      return true;
+    }
+
+    // If >30% non-printable (excluding NULLs), likely binary
+    return nonPrintable / (maxCheck - nullCount) > 0.3;
+  }
+
+  /**
+   * Extremely basic LNK (Windows Shortcut) parser.
+   * Scans the binary content for likely target paths or descriptions.
+   */
+  private extractLnkInfo(content: string): string {
+    // Look for Windows-style paths (e.g. C:\...) or environment variables
+    const pathRegex = /[a-zA-Z]:\\[^ \ufffd\0\r\n\t]+(?:\.exe|\.dll|\.lnk|\.bat|\.cmd)/gi;
+    const envRegex = /%[a-zA-Z0-9_]+%\\[^ \ufffd\0\r\n\t]+/gi;
+
+    const paths = new Set<string>();
+    let match;
+
+    while ((match = pathRegex.exec(content)) !== null) {
+      paths.add(match[0]);
+    }
+    while ((match = envRegex.exec(content)) !== null) {
+      paths.add(match[0]);
+    }
+
+    if (paths.size > 0) {
+      let result = this.translate.instant('fileBrowser.fileViewer.shortcutTargets') + ':\n\n';
+      paths.forEach(p => (result += `- ${p}\n`));
+      return result;
+    }
+
+    return content;
+  }
+
+  /**
+   * Detects and repairs mangled UTF-16 text.
+   * Rclone cat returns raw bytes which can be misinterpreted as UTF-8 strings
+   * with embedded NULL bytes for UTF-16 encoded files (like Windows desktop.ini).
+   */
+  private repairText(content: string): string {
+    if (!content) return content;
+
+    let nullCount = 0;
+    const maxCheck = Math.min(content.length, 1024);
+    for (let i = 0; i < maxCheck; i++) {
+      if (content.charCodeAt(i) === 0) nullCount++;
+    }
+
+    const nullRatio = nullCount / maxCheck;
+
+    // If it's around 50% NULLs, it's almost certainly mangled UTF-16 text
+    if (nullRatio > 0.4 && nullRatio < 0.6) {
+      console.debug('Repairing mangled UTF-16 text...');
+      // 1. Remove the mangled BOM (replacement characters) if present
+      const repaired = content.replace(/^\ufffd\ufffd/, '');
+      // 2. Strip all NULL bytes - for ASCII range in UTF-16 this restores the text
+      return repaired.replace(/\0/g, '');
+    }
+
+    return content;
   }
 
   // Fired by Image/Video/Audio/Iframe onload events
@@ -709,9 +800,26 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   onLoadError(): void {
     this.isLoading.set(false);
-    this.notificationService.showError(
+    this.currentFileType.set('error');
+
+    // Default generic message
+    this.errorMessage.set(
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
+
+    // Try to fetch the specific error message from the protocol handler (e.g. Locked, Permission Denied)
+    this.http
+      .get(this.rawUrl(), { responseType: 'text' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        error: err => {
+          const body = err.error instanceof Blob ? 'Binary data' : err.error;
+          if (body && typeof body === 'string' && body.length < 500) {
+            this.errorMessage.set(body);
+          }
+        },
+      });
+
     console.error('Failed to load file:', this.fileName());
   }
 

@@ -162,7 +162,7 @@ async fn initialize_and_register_job(
             Some(app),
         )
         .await;
-        if metadata.origin != Some(Origin::Scheduler) {
+        if metadata.origin != Some(Origin::Scheduler) && (metadata.job_type != JobType::Mount) {
             notify(app, metadata.started_event(backend_name.clone()));
         }
     }

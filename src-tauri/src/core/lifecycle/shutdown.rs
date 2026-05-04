@@ -3,11 +3,11 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
+    core::initialization::watchers::stop_all_watchers,
     rclone::backend::BackendManager,
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
         engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
-        state::watcher::{stop_mounted_remote_watcher, stop_serve_watcher},
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
@@ -43,8 +43,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
     );
 
-    stop_mounted_remote_watcher();
-    stop_serve_watcher();
+    stop_all_watchers();
 
     #[cfg(desktop)]
     crate::core::lifecycle::auto_updater::stop_auto_updater();

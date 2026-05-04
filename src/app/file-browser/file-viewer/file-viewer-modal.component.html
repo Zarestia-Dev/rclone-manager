@@ -265,6 +265,16 @@
             }
           </div>
         }
+        @case ('error') {
+          <div class="unsupported-container error-state" role="alert">
+            <div class="icon-wrapper error">
+              <mat-icon svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+            </div>
+            <p class="unsupported-text error">{{ 'common.error' | translate }}</p>
+            <p class="unsupported-subtext error-detail">{{ errorMessage() }}</p>
+            <p class="unsupported-subtext">{{ fileName() }}</p>
+          </div>
+        }
         @case ('binary') {
           <div class="unsupported-container" role="status">
             <div class="icon-wrapper">

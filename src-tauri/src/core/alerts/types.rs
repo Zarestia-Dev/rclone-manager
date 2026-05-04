@@ -45,14 +45,10 @@ impl AlertSeverity {
         }
     }
 
+    /// Returns the numeric severity code.
+    /// Delegates to the enum discriminant — always in sync with variant order.
     pub fn as_code(&self) -> u8 {
-        match self {
-            Self::Info => 1,
-            Self::Warning => 2,
-            Self::Average => 3,
-            Self::High => 4,
-            Self::Critical => 5,
-        }
+        self.clone() as u8
     }
 }
 
@@ -79,6 +75,8 @@ pub enum AlertEventKind {
     ScheduledTask,
     /// Application-level events (Startup, etc.)
     System,
+    /// Export operations (credentials, profiles, settings, etc.)
+    Export,
 }
 
 impl std::fmt::Display for AlertEventKind {
@@ -97,6 +95,7 @@ impl AlertEventKind {
             Self::Update => "update",
             Self::ScheduledTask => "scheduled_task",
             Self::System => "system",
+            Self::Export => "export",
         }
     }
 }
@@ -149,9 +148,15 @@ pub struct AlertRule {
     #[serde(default)]
     pub cooldown_secs: u64,
 
+    /// Maximum number of times this rule may fire. 0 = unlimited.
+    #[setting(label = "Max Firings (0 = unlimited)", min = 0)]
+    #[serde(default)]
+    pub max_fire_count: u64,
+
     pub created_at: DateTime<Utc>,
 
-    /// Updated by the engine after every successful dispatch.
+    /// Updated by the engine immediately after the cooldown check passes,
+    /// before actions are dispatched, to prevent double-firing on concurrent events.
     pub last_fired: Option<DateTime<Utc>>,
 
     /// Total number of times this rule has fired.
@@ -162,6 +167,12 @@ pub struct AlertRule {
     #[setting(label = "Auto Acknowledge")]
     #[serde(default)]
     pub auto_acknowledge: bool,
+
+    /// Optional substring to match against the alert body.
+    /// The filter is case-sensitive. Empty / None = match any body.
+    #[setting(label = "Body Contains")]
+    #[serde(default)]
+    pub body_filter: Option<String>,
 }
 
 impl std::fmt::Display for AlertRule {
@@ -184,10 +195,12 @@ impl Default for AlertRule {
             profile_filter: vec![],
             action_ids: vec![],
             cooldown_secs: 0,
+            max_fire_count: 0,
             created_at: Utc::now(),
             last_fired: None,
             fire_count: 0,
             auto_acknowledge: false,
+            body_filter: None,
         }
     }
 }
@@ -195,6 +208,18 @@ impl Default for AlertRule {
 // =============================================================================
 // ALERT ACTIONS
 // =============================================================================
+
+/// Shared fields present on every action variant.
+/// Embed this in each concrete action struct so `AlertAction` accessor
+/// methods can be a single field access instead of a 6-arm match.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, DeriveSettingsSchema)]
+pub struct ActionCommon {
+    pub id: String,
+    #[setting(label = "Name")]
+    pub name: String,
+    #[setting(label = "Enabled")]
+    pub enabled: bool,
+}
 
 /// A tagged-union of the different action types.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -206,17 +231,25 @@ pub enum AlertAction {
     Script(ScriptAction),
     #[serde(rename = "os_toast")]
     OsToast(OsToastAction),
+    #[serde(rename = "telegram")]
+    Telegram(TelegramAction),
+    #[serde(rename = "mqtt")]
+    Mqtt(MqttAction),
+    #[serde(rename = "email")]
+    Email(EmailAction),
 }
 
 impl rcman::SettingsSchema for AlertAction {
     fn get_metadata() -> std::collections::HashMap<String, rcman::SettingMetadata> {
         let mut meta = std::collections::HashMap::new();
 
-        // Merge schemas from all variants to satisfy rcman's strict schema validation
-        // Without this, rcman will reject valid payloads that contain variant-specific fields (like `id`, `url`, `command`).
+        // Merge schemas from all variants to satisfy rcman's strict schema validation.
         meta.extend(<WebhookAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<ScriptAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
+        meta.extend(<TelegramAction as rcman::SettingsSchema>::get_metadata());
+        meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
+        meta.extend(<EmailAction as rcman::SettingsSchema>::get_metadata());
 
         // Add the enum tag field
         meta.insert(
@@ -227,6 +260,9 @@ impl rcman::SettingsSchema for AlertAction {
                     rcman::opt("webhook", "Webhook"),
                     rcman::opt("script", "Shell Script"),
                     rcman::opt("os_toast", "System Notification"),
+                    rcman::opt("telegram", "Telegram"),
+                    rcman::opt("mqtt", "MQTT"),
+                    rcman::opt("email", "Email"),
                 ],
             )
             .meta_str("label", "Action Type"),
@@ -238,7 +274,7 @@ impl rcman::SettingsSchema for AlertAction {
 
 impl std::fmt::Display for AlertAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        write!(f, "{}", self.common().name)
     }
 }
 
@@ -249,36 +285,44 @@ impl Default for AlertAction {
 }
 
 impl AlertAction {
-    pub fn id(&self) -> &str {
+    /// Returns a reference to the shared fields common to all action variants.
+    pub fn common(&self) -> &ActionCommon {
         match self {
-            Self::Webhook(a) => &a.id,
-            Self::Script(a) => &a.id,
-            Self::OsToast(a) => &a.id,
+            Self::Webhook(a) => &a.common,
+            Self::Script(a) => &a.common,
+            Self::OsToast(a) => &a.common,
+            Self::Telegram(a) => &a.common,
+            Self::Mqtt(a) => &a.common,
+            Self::Email(a) => &a.common,
         }
+    }
+
+    /// Returns a mutable reference to the shared fields.
+    pub fn common_mut(&mut self) -> &mut ActionCommon {
+        match self {
+            Self::Webhook(a) => &mut a.common,
+            Self::Script(a) => &mut a.common,
+            Self::OsToast(a) => &mut a.common,
+            Self::Telegram(a) => &mut a.common,
+            Self::Mqtt(a) => &mut a.common,
+            Self::Email(a) => &mut a.common,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.common().id
     }
 
     pub fn name(&self) -> &str {
-        match self {
-            Self::Webhook(a) => &a.name,
-            Self::Script(a) => &a.name,
-            Self::OsToast(a) => &a.name,
-        }
+        &self.common().name
     }
 
     pub fn is_enabled(&self) -> bool {
-        match self {
-            Self::Webhook(a) => a.enabled,
-            Self::Script(a) => a.enabled,
-            Self::OsToast(a) => a.enabled,
-        }
+        self.common().enabled
     }
 
     pub fn set_enabled(&mut self, enabled: bool) {
-        match self {
-            Self::Webhook(a) => a.enabled = enabled,
-            Self::Script(a) => a.enabled = enabled,
-            Self::OsToast(a) => a.enabled = enabled,
-        }
+        self.common_mut().enabled = enabled;
     }
 
     pub fn kind_str(&self) -> &'static str {
@@ -286,6 +330,9 @@ impl AlertAction {
             Self::Webhook(_) => "webhook",
             Self::Script(_) => "script",
             Self::OsToast(_) => "os_toast",
+            Self::Telegram(_) => "telegram",
+            Self::Mqtt(_) => "mqtt",
+            Self::Email(_) => "email",
         }
     }
 }
@@ -298,12 +345,14 @@ impl AlertAction {
 /// `{{rule_name}}`, etc.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct WebhookAction {
-    pub id: String,
-    #[setting(label = "Name")]
-    pub name: String,
-    #[setting(label = "Enabled")]
-    pub enabled: bool,
-    #[setting(label = "URL", placeholder = "https://example.com/webhook")]
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(
+        secret,
+        label = "URL",
+        placeholder = "https://example.com/webhook",
+        input_type = "password"
+    )]
     pub url: String,
     #[setting(label = "Method", options(("POST", "POST"), ("GET", "GET"), ("PUT", "PUT")))]
     pub method: String,
@@ -321,14 +370,16 @@ pub struct WebhookAction {
 impl Default for WebhookAction {
     fn default() -> Self {
         Self {
-            id: String::new(),
-            name: String::new(),
-            enabled: true,
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
             url: String::new(),
-            method: "POST".to_string(), // Solves: Value must be one of the available options
+            method: "POST".to_string(),
             headers: HashMap::new(),
             body_template: String::new(),
-            timeout_secs: 30, // Solves: min = 1 violation
+            timeout_secs: 30,
             tls_verify: true,
             retry_count: 0,
         }
@@ -339,33 +390,36 @@ impl Default for WebhookAction {
 ///
 /// The script receives alert context via environment variables:
 /// `ALERT_TITLE`, `ALERT_BODY`, `ALERT_SEVERITY`, `ALERT_SEVERITY_CODE`,
-/// `ALERT_EVENT_KIND`, `ALERT_REMOTE`, `ALERT_PROFILE`, `ALERT_BACKEND`, `ALERT_OPERATION`, `ALERT_ORIGIN`,
-/// `ALERT_TIMESTAMP`, `ALERT_RULE_ID`, `ALERT_RULE_NAME`.
+/// `ALERT_EVENT_KIND`, `ALERT_REMOTE`, `ALERT_PROFILE`, `ALERT_BACKEND`,
+/// `ALERT_OPERATION`, `ALERT_ORIGIN`, `ALERT_TIMESTAMP`, `ALERT_RULE_ID`,
+/// `ALERT_RULE_NAME`, `ALERT_JSON`.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct ScriptAction {
-    pub id: String,
-    #[setting(label = "Name")]
-    pub name: String,
-    #[setting(label = "Enabled")]
-    pub enabled: bool,
+    #[serde(flatten)]
+    pub common: ActionCommon,
     #[setting(label = "Command", placeholder = "/path/to/script.sh")]
     pub command: String,
     pub args: Vec<String>,
     #[setting(label = "Timeout (s)", min = 1, max = 3600)]
     pub timeout_secs: u64,
     pub env_vars: HashMap<String, String>,
+    #[setting(label = "Retry Count", min = 0, max = 5)]
+    pub retry_count: u8,
 }
 
 impl Default for ScriptAction {
     fn default() -> Self {
         Self {
-            id: String::new(),
-            name: String::new(),
-            enabled: true,
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
             command: String::new(),
             args: Vec::new(),
-            timeout_secs: 30, // Solves: min = 1 violation
+            timeout_secs: 30,
             env_vars: HashMap::new(),
+            retry_count: 0,
         }
     }
 }
@@ -374,14 +428,152 @@ impl Default for ScriptAction {
 ///
 /// Fires a system notification using `tauri-plugin-notification`.
 /// Enabled/disabled state is toggled directly when the user changes the
-/// `general.notifications` setting — there is no separate runtime flag check.
+/// `general.notifications` setting.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, DeriveSettingsSchema)]
 pub struct OsToastAction {
-    pub id: String,
-    #[setting(label = "Name")]
-    pub name: String,
-    #[setting(label = "Enabled")]
-    pub enabled: bool,
+    #[serde(flatten)]
+    pub common: ActionCommon,
+}
+
+/// Telegram bot notification action.
+///
+/// Sends messages to Telegram using the Bot API.
+/// The `body_template` supports Handlebars variables like webhook actions.
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
+pub struct TelegramAction {
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(secret, label = "Bot Token", input_type = "password")]
+    pub bot_token: String,
+    #[setting(secret, label = "Chat ID", input_type = "password")]
+    pub chat_id: String,
+    #[setting(label = "Message Template", input_type = "textarea")]
+    pub body_template: String,
+    #[setting(label = "Timeout (s)", min = 1, max = 300)]
+    pub timeout_secs: u64,
+    #[setting(label = "Retry Count", min = 0, max = 3)]
+    pub retry_count: u8,
+}
+
+impl Default for TelegramAction {
+    fn default() -> Self {
+        Self {
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
+            bot_token: String::new(),
+            chat_id: String::new(),
+            body_template: String::new(),
+            timeout_secs: 30,
+            retry_count: 0,
+        }
+    }
+}
+
+/// MQTT publish action.
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
+pub struct MqttAction {
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(label = "Host", placeholder = "localhost")]
+    pub host: String,
+    #[setting(label = "Port", min = 1, max = 65535)]
+    pub port: u16,
+    #[setting(label = "Use TLS")]
+    pub use_tls: bool,
+    #[setting(label = "Topic", placeholder = "rclone/alerts")]
+    pub topic: String,
+    #[setting(secret, label = "Username", input_type = "password")]
+    pub username: String,
+    #[setting(secret, label = "Password", input_type = "password")]
+    pub password: String,
+    #[setting(label = "QoS", min = 0, max = 2)]
+    pub qos: u8,
+    #[setting(label = "Retain")]
+    pub retain: bool,
+    #[setting(label = "Message Template", input_type = "textarea")]
+    pub body_template: String,
+    #[setting(label = "Timeout (s)", min = 1, max = 300)]
+    pub timeout_secs: u64,
+    #[setting(label = "Retry Count", min = 0, max = 3)]
+    pub retry_count: u8,
+}
+
+impl Default for MqttAction {
+    fn default() -> Self {
+        Self {
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
+            host: "localhost".to_string(),
+            port: 1883,
+            use_tls: false,
+            topic: "rclone/alerts".to_string(),
+            username: String::new(),
+            password: String::new(),
+            qos: 0,
+            retain: false,
+            body_template: String::new(),
+            timeout_secs: 30,
+            retry_count: 0,
+        }
+    }
+}
+
+/// Email notification action.
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
+pub struct EmailAction {
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(label = "SMTP Server", placeholder = "smtp.gmail.com")]
+    pub smtp_server: String,
+    #[setting(label = "SMTP Port", min = 1, max = 65535)]
+    pub smtp_port: u16,
+    #[setting(secret, label = "Username", input_type = "password")]
+    pub username: String,
+    #[setting(secret, label = "Password", input_type = "password")]
+    pub password: String,
+    #[setting(label = "From Address", placeholder = "alerts@example.com")]
+    pub from: String,
+    #[setting(label = "To Address", placeholder = "you@example.com")]
+    pub to: String,
+    #[setting(label = "Subject Template")]
+    pub subject_template: String,
+    #[setting(label = "Body Template", input_type = "textarea")]
+    pub body_template: String,
+    #[setting(label = "Encryption", options(("none", "None"), ("tls", "TLS"), ("starttls", "StartTLS")))]
+    pub encryption: String,
+    #[setting(label = "Timeout (s)", min = 1, max = 300)]
+    pub timeout_secs: u64,
+    #[setting(label = "Retry Count", min = 0, max = 5)]
+    pub retry_count: u8,
+}
+
+impl Default for EmailAction {
+    fn default() -> Self {
+        Self {
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
+            smtp_server: String::new(),
+            smtp_port: 587,
+            username: String::new(),
+            password: String::new(),
+            from: String::new(),
+            to: String::new(),
+            subject_template: "Rclone Alert: {{title}}".to_string(),
+            body_template: String::new(),
+            encryption: "starttls".to_string(),
+            timeout_secs: 30,
+            retry_count: 1,
+        }
+    }
 }
 
 // =============================================================================
@@ -428,6 +620,7 @@ pub struct AlertDetails {
 
 impl AlertRecord {
     pub fn new(rule: &AlertRule, details: AlertDetails) -> Self {
+        let timestamp = Utc::now();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             rule_id: rule.id.clone(),
@@ -441,14 +634,10 @@ impl AlertRecord {
             backend: details.backend,
             operation: details.operation,
             origin: details.origin,
-            timestamp: Utc::now(),
+            timestamp,
             action_results: vec![],
             acknowledged: rule.auto_acknowledge,
-            ack_at: if rule.auto_acknowledge {
-                Some(Utc::now())
-            } else {
-                None
-            },
+            ack_at: rule.auto_acknowledge.then_some(timestamp),
         }
     }
 }
@@ -474,7 +663,7 @@ pub struct ActionResult {
 pub struct AlertStats {
     pub total_fired: usize,
     pub unacknowledged: usize,
-    pub by_severity: HashMap<String, usize>,
+    pub by_severity: HashMap<AlertSeverity, usize>,
     pub by_rule: HashMap<String, usize>,
 }
 
@@ -494,6 +683,8 @@ pub struct AlertHistoryFilter {
     pub acknowledged: Option<bool>,
     pub rule_id: Option<String>,
     pub origins: Option<Vec<crate::utils::types::origin::Origin>>,
+    pub from_ts: Option<DateTime<Utc>>,
+    pub to_ts: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,15 +3,12 @@
 //! Supports both rcman library format and legacy app format backups.
 
 use crate::core::settings::AppSettingsManager;
-use crate::{
-    rclone::commands::remote::{create_remote, update_remote},
-    utils::types::events::{REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED},
-};
+use crate::rclone::commands::remote::{create_remote, update_remote};
 use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::{fs::File, io::BufReader, path::Path};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use zip::ZipArchive;
 
 use super::legacy_restore::restore_legacy_backup;
@@ -86,16 +83,7 @@ pub async fn restore_settings(
     if let Ok(result) = manager.backup().analyze(&backup_path)
         && result.format_version.parse::<u64>().unwrap_or(0) >= 1
     {
-        return restore_rcman_backup(
-            &backup_path,
-            password,
-            restore_profile,
-            restore_profile_as,
-            options,
-            &manager,
-            &app,
-        )
-        .await;
+        return restore_rcman_backup(&backup_path, options, &manager, &app).await;
     }
 
     let file = File::open(&backup_path)
@@ -117,16 +105,7 @@ pub async fn restore_settings(
 
     match format {
         BackupFormatVersion::Rcman => {
-            restore_rcman_backup(
-                &backup_path,
-                password,
-                restore_profile,
-                restore_profile_as,
-                options,
-                &manager,
-                &app,
-            )
-            .await
+            restore_rcman_backup(&backup_path, options, &manager, &app).await
         }
         BackupFormatVersion::AppLegacy => {
             restore_legacy_backup(&backup_path, password, &manifest_json, &app).await
@@ -143,9 +122,6 @@ pub async fn restore_settings(
 
 async fn restore_rcman_backup(
     backup_path: &Path,
-    _password: Option<String>,
-    _restore_profile: Option<String>,
-    _restore_profile_as: Option<String>,
     options: rcman::RestoreOptions,
     manager: &AppSettingsManager,
     app_handle: &AppHandle,
@@ -163,19 +139,7 @@ async fn restore_rcman_backup(
         .restore(&options)
         .map_err(|e| crate::localized_error!("backendErrors.backup.restoreFailed", "error" => e))?;
 
-    app_handle.emit(REMOTE_CACHE_CHANGED, ()).ok();
-
-    if result.restored.iter().any(|s| s == "settings.json") {
-        manager.invalidate_cache();
-        if let Some(app_settings) = manager
-            .get_all()
-            .ok()
-            .and_then(|s| serde_json::to_value(s).ok())
-            .and_then(|v: serde_json::Value| v.get("app_settings").cloned())
-        {
-            app_handle.emit(SYSTEM_SETTINGS_CHANGED, app_settings).ok();
-        }
-    }
+    // System refresh will be called at the very end of the process
 
     let mut remote_restore_count = 0;
     for item in &result.external_pending {
@@ -212,6 +176,11 @@ async fn restore_rcman_backup(
 
     let restored_count = result.restored.len() + remote_restore_count;
     let skipped_count = result.skipped.len();
+
+    // Perform a full system refresh to ensure all components pick up the restored state
+    if let Err(e) = crate::core::initialization::refresh_system(app_handle.clone()).await {
+        warn!("⚠️ System refresh partially failed after restore: {e}");
+    }
 
     info!("✅ Restore complete: {restored_count} restored, {skipped_count} skipped");
 

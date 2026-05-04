@@ -237,6 +237,8 @@
     "history": "Historial",
     "rules": "Reglas",
     "actions": "Acciones",
+    "defaultActionName": "Notificación del sistema",
+    "defaultRuleName": "Regla predeterminada",
     "unacknowledged": "No reconocidas",
     "acknowledgeAll": "Reconocer todas",
     "clearHistory": "Limpiar historial",
@@ -331,10 +333,9 @@
       "all_jobs_stopped": "Todos los trabajos detenidos"
     },
     "action": {
-      "kind": "Tipo de acción",
-      "os_toast": "Notificación del sistema",
-      "webhook": "Webhook (HTTP)",
-      "script": "Script personalizado",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "Correo electrónico",
       "placeholderName": "Introduce el nombre de la acción",
       "url": "URL del Webhook",
       "method": "Método HTTP",
@@ -347,7 +348,22 @@
       "args": "Argumentos del script",
       "argsHint": "(Separado por espacios)",
       "scriptContextHint": "Inyectado como variables de entorno",
-      "os_toast_info": "No se requiere configuración adicional para las notificaciones nativas del SO. Utilizará el subsistema de notificaciones estándar del sistema."
+      "os_toast_info": "No se requiere configuración adicional para las notificaciones nativas del SO. Utilizará el subsistema de notificaciones estándar del sistema.",
+      "botToken": "Token del bot",
+      "chatId": "ID de chat",
+      "messageTemplate": "Plantilla de mensaje",
+      "messageTemplateHint": "Soporta variables Handlebars",
+      "telegram_info": "Puedes encontrar tu Token del bot en @BotFather y tu ID de chat en @userinfobot.",
+      "brokerUrl": "URL del Broker",
+      "topic": "Tema (Topic)",
+      "qos": "QoS",
+      "retain": "Retener (Retain)",
+      "smtpServer": "Servidor SMTP",
+      "smtpPort": "Puerto SMTP",
+      "from": "Dirección del remitente",
+      "to": "Dirección del destinatario",
+      "encryption": "Cifrado",
+      "subjectTemplate": "Plantilla de asunto"
     }
   },
   "settings": {
@@ -1503,6 +1519,7 @@
       "errorLoadFile": "Error al cargar {{name}}",
       "downloading": "Descargando {{name}}",
       "archiveContents": "Contenido del archivo",
+      "shortcutTargets": "Objetivos del acceso directo",
       "errorListArchive": "Error al listar el contenido del archivo",
       "extract": "Extraer",
       "extracting": "Extrayendo \"{{name}}\"...",
@@ -1934,6 +1951,8 @@
       "passwordLabel": "Contraseña de cifrado",
       "passwordPlaceholder": "Introducir contraseña",
       "passwordHint": "Esta contraseña será necesaria para restaurar la copia de seguridad.",
+      "includeSecrets": "Incluir claves secretas",
+      "includeSecretsHint": "Incluye credenciales sensibles en la copia de seguridad. Se requiere cifrado.",
       "exportNow": "Exportar ahora",
       "exporting": "Exportando...",
       "fullBackup": "Copia de seguridad completa",
@@ -1960,7 +1979,11 @@
         },
         "remotes": {
           "label": "Remotos",
-          "description": "Datos de configuración remota de Rclone"
+          "description": "Datos de configuración de rclone"
+        },
+        "alerts": {
+          "label": "Alertas",
+          "description": "Configuración de reglas y acciones de alerta"
         }
       }
     },

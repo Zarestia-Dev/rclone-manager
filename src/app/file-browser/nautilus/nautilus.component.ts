@@ -718,6 +718,7 @@ export class NautilusComponent implements OnInit {
   }
 
   setContextItem(item: FileBrowserItem | null, paneIndex?: 0 | 1): void {
+    this.currentMenuView.set('main');
     const pIdx = paneIndex ?? this.tabSvc.activePaneIndex();
     const files = pIdx === 0 ? this.files() : this.filesRight();
     this.selectionSvc.handleContextItem(item, pIdx, files);

@@ -93,11 +93,11 @@ mod tests {
         let event = SettingsChangeEvent {
             category: "general".to_string(),
             key: "language".to_string(),
-            value: json!("en"),
+            value: json!("en-US"),
         };
 
         let serialized = serde_json::to_string(&event).unwrap();
-        let expected = r#"{"category":"general","key":"language","value":"en"}"#;
+        let expected = r#"{"category":"general","key":"language","value":"en-US"}"#;
         assert_eq!(serialized, expected);
 
         let deserialized: SettingsChangeEvent = serde_json::from_str(&serialized).unwrap();

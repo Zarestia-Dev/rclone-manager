@@ -11,11 +11,13 @@ import {
   AlertStats,
 } from '../../shared/types/alerts';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ALERT_FIRED } from '@app/types';
+import { ALERT_FIRED, SettingsChangeEvent } from '@app/types';
+import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 @Injectable({ providedIn: 'root' })
 export class AlertService extends TauriBaseService {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly eventListeners = inject(EventListenersService);
 
   // ── Raw local caches ─────────────────────────────────────────────────────
   private readonly _history = signal<AlertRecord[]>([]);
@@ -118,6 +120,18 @@ export class AlertService extends TauriBaseService {
           unacknowledged: newAlert.acknowledged ? s.unacknowledged : s.unacknowledged + 1,
           total: s.total + 1,
         }));
+      });
+
+    this.eventListeners
+      .listenToSystemSettingsChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: SettingsChangeEvent) => {
+        if (
+          (payload.category === '*' && payload.key === '*') ||
+          payload.category.startsWith('alerts')
+        ) {
+          this.loadInitialData();
+        }
       });
   }
 
@@ -230,7 +244,7 @@ export class AlertService extends TauriBaseService {
       case 'webhook':
         return 'globe';
       case 'script':
-        return 'file-code';
+        return 'terminal';
       default:
         return 'bolt';
     }

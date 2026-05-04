@@ -48,6 +48,11 @@ lofty = "0.24"
 base64 = "0.22"
 url = "2.5"
 handlebars = "6.2.0"
+rumqttc = "0.24"
+rustls-native-certs = "0.8"
+rustls = { version = "0.23", features = ["ring"] }
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
+
 
 tauri-plugin-shell = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true }
@@ -64,7 +69,6 @@ axum = { version = "0.8", features = ["multipart"], optional = true }
 tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
-rustls = { version = "0.23", features = ["ring"], optional = true }
 anyhow = {version = "1.0.102", optional = true}
 tokio-util = { version = "0.7.18", features = ["io"] }
 mime_guess = "2.0.5"
@@ -86,7 +90,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
 
 [features]
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "rustls", "anyhow"]
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
 
 # Container
 container = ["web-server"]

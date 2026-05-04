@@ -48,6 +48,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
             (get_rclone_info, $crate::rclone::queries::get_rclone_info, []);
             (get_rclone_pid, $crate::rclone::queries::get_rclone_pid, []);
+            (refresh_system, $crate::core::initialization::refresh_system, []);
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
             (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);

@@ -58,7 +58,7 @@ import { SearchContainerComponent } from '@app/shared/components';
       <div class="actions-table-wrap" [class.loading]="alerts.isLoading()">
         @if (alerts.actions().length === 0 && !alerts.isLoading()) {
           <div class="empty-state">
-            <mat-icon svgIcon="bolt"></mat-icon>
+            <mat-icon svgIcon="bell"></mat-icon>
             <span>{{ 'alerts.noActions' | translate }}</span>
           </div>
         }

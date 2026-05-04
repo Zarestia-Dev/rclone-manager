@@ -56,9 +56,6 @@ use crate::core::tray::{
     tray_action::TrayAction,
 };
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use crate::utils::io::network::monitor_network_changes;
-
 // =============================================================================
 // MAIN ENTRY POINT
 // =============================================================================
@@ -511,26 +508,18 @@ fn setup_app(
     app.manage(LogCache::new(1000));
     app.manage(ScheduledTasksCache::new());
     app.manage(CronScheduler::new());
+    app.manage(core::alerts::dispatch::DispatchContext::new());
 
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
 
     // -------------------------------------------------------------------------
-    // Initialize Alerts
+    // State Management
     // -------------------------------------------------------------------------
     let history_cache = AlertHistoryCache::new(10000);
 
-    // Initial load & seed defaults
-    // Ensure default rules/actions exist
-    if let Err(e) = crate::core::alerts::seed::seed_defaults(&rcman_manager) {
-        log::error!("Failed to seed default alerts: {e}");
-    }
-
     app.manage(history_cache);
     app.manage(rcman_manager);
-
-    // Initialize Alert Engine Worker
-    crate::core::alerts::engine::init();
 
     // -------------------------------------------------------------------------
     // Initialize Logging
@@ -539,31 +528,11 @@ fn setup_app(
         .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
     // -------------------------------------------------------------------------
-    // Async Initialization
+    // Async Initialization (Phased Flow)
     // -------------------------------------------------------------------------
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
-        initialization(app_handle_clone.clone()).await;
-
-        #[cfg(feature = "tray")]
-        {
-            let force_tray = cli_args.general.tray;
-            if settings.general.tray_enabled || force_tray {
-                if force_tray {
-                    log::debug!("🧊 Setting up tray (forced by --tray argument)");
-                } else {
-                    log::debug!("🧊 Setting up tray (enabled in settings)");
-                }
-                if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
-                    log::error!("Failed to setup tray: {e}");
-                }
-            }
-        }
-
-        core::lifecycle::startup::handle_startup(app_handle_clone.clone()).await;
-
-        #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        monitor_network_changes(app_handle_clone).await;
+        initialization(app_handle_clone).await;
     });
 
     // -------------------------------------------------------------------------

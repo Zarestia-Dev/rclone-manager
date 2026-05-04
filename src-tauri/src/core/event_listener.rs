@@ -140,7 +140,7 @@ fn handle_settings_changed(app: &AppHandle) {
                 }
                 ("general", "language") => {
                     if let Some(lang) = change.value.as_str() {
-                        handle_language_change(&app, lang);
+                        crate::utils::i18n::apply_language_change(&app, lang);
                     }
                 }
                 ("core", "bandwidth_limit") => {
@@ -171,17 +171,6 @@ fn handle_settings_changed(app: &AppHandle) {
                 ("developer", "destroy_window_on_close") => {
                     if let Some(destroy) = change.value.as_bool() {
                         debug!("Destroy window on close changed to: {destroy}");
-                    }
-                }
-                ("*", "*") => {
-                    info!("Global settings reset detected, re-initializing core components");
-                    handle_global_reset(&app);
-                }
-                ("*", "hot_reload") => {
-                    if let Some(path) = change.value.get("path").and_then(|p| p.as_str()) {
-                        info!("Hot reload applied from {path}");
-                    } else {
-                        info!("Hot reload applied");
                     }
                 }
                 _ => debug!(
@@ -222,21 +211,6 @@ fn handle_restrict_mode_change(app: &AppHandle, enabled: bool) {
     if let Err(e) = app.emit(REMOTE_CACHE_CHANGED, "restrict_mode_changed") {
         error!("Failed to emit remote cache changed event: {e}");
     }
-}
-
-fn handle_language_change(app: &AppHandle, lang: &str) {
-    debug!("Language changed to: {lang}");
-    crate::utils::i18n::set_language(lang);
-
-    if let Err(e) = app.emit(
-        crate::utils::types::events::APP_EVENT,
-        serde_json::json!({ "status": "language_changed", "language": lang }),
-    ) {
-        error!("Failed to emit language change event: {e}");
-    }
-
-    #[cfg(feature = "tray")]
-    trigger_tray_update(app.clone());
 }
 
 fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
@@ -282,16 +256,6 @@ fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
         Ok(()) => info!("Engine restarting due to additional flags change"),
         Err(e) => error!("Failed to restart engine for flags change: {e}"),
     }
-}
-
-fn handle_global_reset(app: &AppHandle) {
-    let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
-        let _ = set_bandwidth_limit(app_clone.clone(), None).await;
-        crate::utils::i18n::set_language("en");
-        #[cfg(feature = "tray")]
-        trigger_tray_update(app_clone);
-    });
 }
 
 fn handle_job_cache_changed(app: &AppHandle) {

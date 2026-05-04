@@ -344,10 +344,11 @@ impl BackendManager {
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(super) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
+        // Update runtime cache
         self.runtime_info
             .write()
             .await
-            .insert(name.to_string(), info);
+            .insert(name.to_string(), info.clone());
     }
 
     /// Save backend state internally (used by state module)
@@ -366,6 +367,15 @@ impl BackendManager {
             .get(name)
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// Get the runtime OS for a specific backend
+    pub async fn get_runtime_os(&self, name: &str) -> Option<String> {
+        self.runtime_info
+            .read()
+            .await
+            .get(name)
+            .and_then(|info| info.os.clone())
     }
 
     /// Get the runtime config path for a specific backend

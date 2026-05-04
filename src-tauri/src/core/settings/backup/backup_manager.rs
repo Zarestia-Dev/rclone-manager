@@ -24,6 +24,7 @@ pub async fn backup_settings(
     remote_name: Option<String>,
     user_note: Option<String>,
     include_profiles: Option<Vec<String>>,
+    include_secrets: Option<bool>,
 ) -> Result<String, String> {
     let manager = app_handle.state::<AppSettingsManager>();
     info!("Starting backup with rcman to: {backup_dir}");
@@ -52,11 +53,17 @@ pub async fn backup_settings(
     }
 
     if let ExportType::Category(ref category) = export_type {
-        options = options.include_sub_settings(category);
+        if category == "alerts" {
+            options = options.include_sub_settings("alerts/rules");
+            options = options.include_sub_settings("alerts/actions");
+        } else {
+            options = options.include_sub_settings(category);
+        }
         if category == "remotes" {
             register_rclone_config_provider(&app_handle, &manager).await?;
             options = options.include_external("rclone.conf");
         }
+        options = options.filename_suffix(category);
     }
 
     if matches!(export_type, ExportType::All) {
@@ -65,6 +72,8 @@ pub async fn backup_settings(
         options = options.include_external("rclone.conf");
         options = options.include_sub_settings("backend");
         options = options.include_sub_settings("connections");
+        options = options.include_sub_settings("alerts/rules");
+        options = options.include_sub_settings("alerts/actions");
     }
 
     if matches!(export_type, ExportType::SpecificRemote)
@@ -88,6 +97,24 @@ pub async fn backup_settings(
         if !trimmed.is_empty() {
             options = options.password(trimmed);
         }
+    }
+
+    // Determine secret export policy
+    let include_secrets_flag = include_secrets.unwrap_or(false);
+    if include_secrets_flag {
+        // If user requested including secrets, require a valid password to avoid plaintext secrets
+        let pw_ok = password
+            .as_ref()
+            .map(|s| s.trim().len() >= 4)
+            .unwrap_or(false);
+        if !pw_ok {
+            return Err(crate::localized_error!(
+                "backendErrors.backup.secretRequirePassword"
+            ));
+        }
+        options = options.secret_policy(rcman::SecretBackupPolicy::EncryptedOnly);
+    } else {
+        options = options.secret_policy(rcman::SecretBackupPolicy::Exclude);
     }
 
     if let Some(note) = user_note {
