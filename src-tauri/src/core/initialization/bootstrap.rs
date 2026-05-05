@@ -8,22 +8,25 @@ use tauri::{AppHandle, Manager};
 pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     debug!("🚀 Phase 1: Bootstrapping core state");
 
-    // 1. Initialize Rclone State (Backend Manager)
+    // Initialize Rclone State (Backend Manager)
     init_rclone_state(app_handle).await?;
 
-    // 2. Initialize Security Environment
+    // Apply any pending rclone updates before starting the engine
+    let _ = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await;
+
+    // Initialize Security Environment
     init_security_environment(app_handle)?;
 
-    // 3. Initialize Alert Engine Worker
+    // Initialize Alert Engine Worker
     crate::core::alerts::engine::init();
 
-    // 4. Setup Event Listeners
+    // Setup Event Listeners
     crate::core::event_listener::setup_event_listener(app_handle);
 
-    // 5. Initialize Engine (Background monitoring loop)
+    // Initialize Engine (Background monitoring loop)
     init_engine(app_handle).await;
 
-    // 6. Monitor Network Changes (Background task)
+    // Monitor Network Changes (Background task)
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
         let handle = app_handle.clone();

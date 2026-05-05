@@ -7,10 +7,10 @@ use tauri::{AppHandle, Manager};
 pub async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     info!("📊 Phase 3: Refreshing caches...");
 
-    // 1. Refresh Remote Caches (remotes, configs, mounts, serves)
+    // Refresh Remote Caches (remotes, configs, mounts, serves)
     refresh_remote_cache(app_handle).await?;
 
-    // 2. Seed default values (alerts, etc.)
+    // Seed default values (alerts, etc.)
     seed_system_defaults(app_handle)?;
 
     Ok(())

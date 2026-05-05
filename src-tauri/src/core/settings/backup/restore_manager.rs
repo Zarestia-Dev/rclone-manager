@@ -131,7 +131,7 @@ async fn restore_rcman_backup(
     if let Err(e) =
         super::backup_manager::register_rclone_config_provider(app_handle, manager).await
     {
-        warn!("⚠️ Failed to register rclone.conf provider for restore: {e}");
+        warn!("Failed to register rclone.conf provider for restore: {e}");
     }
 
     let result = manager
@@ -145,7 +145,7 @@ async fn restore_rcman_backup(
     for item in &result.external_pending {
         if item.starts_with("remote:") {
             let remote_name = item.trim_start_matches("remote:");
-            info!("📥 Attempting to restore external remote config: {remote_name}");
+            info!("Attempting to restore external remote config: {remote_name}");
 
             let archive_filename = format!("{remote_name}_rclone.json");
 
@@ -162,14 +162,14 @@ async fn restore_rcman_backup(
                 match upsert_remote_from_config(remote_name, parsed, app_handle).await {
                     Ok(()) => {
                         remote_restore_count += 1;
-                        info!("✅ Restored remote: {remote_name}");
+                        info!("Restored remote: {remote_name}");
                     }
                     Err(e) => {
-                        warn!("⚠️ Failed to restore remote '{remote_name}': {e}");
+                        warn!("Failed to restore remote '{remote_name}': {e}");
                     }
                 }
             } else {
-                warn!("⚠️ Could not read external config for: {item}");
+                warn!("Could not read external config for: {item}");
             }
         }
     }
@@ -179,10 +179,10 @@ async fn restore_rcman_backup(
 
     // Perform a full system refresh to ensure all components pick up the restored state
     if let Err(e) = crate::core::initialization::refresh_system(app_handle.clone()).await {
-        warn!("⚠️ System refresh partially failed after restore: {e}");
+        warn!("System refresh partially failed after restore: {e}");
     }
 
-    info!("✅ Restore complete: {restored_count} restored, {skipped_count} skipped");
+    info!("Restore complete: {restored_count} restored, {skipped_count} skipped");
 
     Ok(format!(
         "Settings restored successfully ({restored_count} items restored, {skipped_count} skipped)"
@@ -205,7 +205,7 @@ pub(super) async fn upsert_remote_from_config(
     let config_map: HashMap<String, Value> =
         serde_json::from_value(config).map_err(|e| format!("Invalid config map format: {e}"))?;
 
-    info!("🔄 Upserting remote '{remote_name}'...");
+    info!("Upserting remote '{remote_name}'...");
 
     if let Err(e) = update_remote(
         app_handle.clone(),

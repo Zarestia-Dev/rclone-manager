@@ -16,7 +16,7 @@ pub async fn load_rclone_backend_options(app: AppHandle) -> Result<serde_json::V
     let manager = app.state::<AppSettingsManager>();
     let backend = load_backend_options_sync(manager.inner());
 
-    info!("✅ RClone backend options loaded successfully");
+    info!("RClone backend options loaded successfully");
     Ok(backend)
 }
 
@@ -56,7 +56,7 @@ pub async fn save_rclone_backend_options(
         }
     }
 
-    info!("✅ RClone backend options saved successfully");
+    info!("RClone backend options saved successfully");
     Ok(())
 }
 
@@ -92,7 +92,7 @@ pub async fn save_rclone_backend_option(
     sub.set(&block, &block_value)
         .map_err(|e| format!("Failed to save block '{block}': {e}"))?;
 
-    info!("✅ RClone option {block}.{option} saved: {value}");
+    info!("RClone option {block}.{option} saved: {value}");
     Ok(())
 }
 
@@ -115,13 +115,13 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
         let _ = sub.delete(&block);
     }
 
-    info!("✅ RClone backend options file cleared");
+    info!("RClone backend options file cleared");
 
     use crate::rclone::engine::lifecycle::restart_for_config_change;
     restart_for_config_change(&app, "backend_options_reset", "custom", "defaults")
         .map_err(|e| format!("Failed to restart engine: {e}"))?;
 
-    info!("✅ RClone engine restart initiated");
+    info!("RClone engine restart initiated");
     Ok(())
 }
 
@@ -163,7 +163,7 @@ pub async fn remove_rclone_backend_option(
         }
     }
 
-    info!("✅ RClone option {block}.{option} removed (reset to default)");
+    info!("RClone option {block}.{option} removed (reset to default)");
     Ok(())
 }
 

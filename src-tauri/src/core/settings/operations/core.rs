@@ -20,7 +20,7 @@ pub async fn load_settings(app: AppHandle) -> Result<serde_json::Value, String> 
         "options": metadata
     });
 
-    info!("✅ Settings loaded and merged successfully.");
+    info!("Settings loaded and merged successfully.");
     Ok(response)
 }
 
@@ -48,7 +48,7 @@ pub async fn save_setting(
     )
     .map_err(|e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e))?;
 
-    info!("✅ Setting {category}.{key} saved successfully.");
+    info!("Setting {category}.{key} saved successfully.");
     Ok(())
 }
 
@@ -75,7 +75,7 @@ pub async fn reset_setting(
     )
     .map_err(|e| format!("Failed to emit settings change event: {e}"))?;
 
-    info!("✅ Setting {category}.{key} reset to default.");
+    info!("Setting {category}.{key} reset to default.");
     Ok(default_value)
 }
 
@@ -97,6 +97,6 @@ pub async fn reset_settings(app: AppHandle) -> Result<(), String> {
     )
     .map_err(|e| crate::localized_error!("backendErrors.settings.eventEmitFailed", "error" => e))?;
 
-    info!("✅ All settings have been reset to default.");
+    info!("All settings have been reset to default.");
     Ok(())
 }

@@ -27,9 +27,9 @@ pub async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     } else {
         // For remote backends, check connectivity with automatic fallback
         // This single call handles:
-        // 1. Checking Active (Remote)
-        // 2. Fallback to Local (if Remote fails)
-        // 3. Logging success/failure
+        // Checking Active (Remote)
+        // Fallback to Local (if Remote fails)
+        // Logging success/failure
         if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
             &backend_manager,
             &client,

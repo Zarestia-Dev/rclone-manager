@@ -500,8 +500,6 @@ fn setup_app(
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),
-        is_restart_required: AtomicBool::new(false),
-        is_update_in_progress: AtomicBool::new(false),
         oauth_process: tokio::sync::Mutex::new(None),
     });
 

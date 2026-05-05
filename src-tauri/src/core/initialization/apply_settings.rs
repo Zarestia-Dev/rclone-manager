@@ -8,7 +8,7 @@ use tauri::Manager;
 
 /// Apply core settings on startup (bandwidth limits, backend options, language, and log level)
 pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {
-    // 1. Bandwidth Limits
+    // Bandwidth Limits
     if !settings.core.bandwidth_limit.is_empty() {
         debug!(
             "🌐 Setting bandwidth limit: {}",
@@ -25,15 +25,15 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
         }
     }
 
-    // 2. RClone backend settings from backend.json
+    // RClone backend settings from backend.json
     if let Err(e) = apply_backend_settings(app_handle).await {
         error!("Failed to apply backend settings: {e}");
     }
 
-    // 3. Log Level
+    // Log Level
     crate::utils::logging::log::update_log_level(&settings.developer.log_level);
 
-    // 4. Language
+    // Language
     crate::utils::i18n::apply_language_change(app_handle, &settings.general.language);
 }
 

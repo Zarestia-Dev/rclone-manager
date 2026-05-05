@@ -11,11 +11,7 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{
-            core::RcloneState,
-            events::APP_EVENT,
-            updater::{AppUpdaterState, RcloneUpdaterState},
-        },
+        types::{core::RcloneState, events::APP_EVENT, updater::AppUpdaterState},
     },
 };
 
@@ -123,10 +119,15 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     #[cfg(desktop)]
     {
         if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
-            let pending = state.pending_action.lock().ok().and_then(|mut g| g.take());
-            let signature = state.signature.lock().ok().and_then(|mut g| g.take());
+            let staged = state.with_data(|d| {
+                if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
+                    Some((u, s))
+                } else {
+                    None
+                }
+            });
 
-            if let (Some(update), Some(sig)) = (pending, signature) {
+            if let Some((update, sig)) = staged {
                 info!("Applying staged app update...");
                 if let Err(e) = update.install(sig) {
                     error!("Failed to apply app update: {e}");
@@ -136,22 +137,8 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     }
 
     // Rclone update (binary swap — always available, not feature-gated).
-
-    if let Some(state) = app_handle.try_state::<RcloneUpdaterState>() {
-        let has_pending = state
-            .pending_update
-            .lock()
-            .ok()
-            .is_some_and(|g| g.is_some());
-
-        if has_pending {
-            info!("Applying staged rclone update...");
-            if let Err(e) =
-                crate::utils::rclone::updater::activate_pending_rclone_update(app_handle).await
-            {
-                error!("Failed to apply rclone update: {e}");
-            }
-        }
+    if let Err(e) = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await {
+        error!("Failed to apply rclone update during shutdown: {e}");
     }
 }
 

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub enum UpdateStage {
     Available { version: String },
     Started { version: String },
+    Downloaded { version: String },
     Complete { version: String },
     Failed { error: String },
     Installed { version: String },
@@ -357,6 +358,14 @@ impl NotificationEvent {
                     body: t_with_params("notification.body.updateStarted", &[("version", version)]),
                     level: LogLevel::Info,
                 },
+                UpdateStage::Downloaded { version } => RenderedContent {
+                    title: t("notification.title.updateDownloaded"),
+                    body: t_with_params(
+                        "notification.body.updateDownloaded",
+                        &[("version", version)],
+                    ),
+                    level: LogLevel::Info,
+                },
                 UpdateStage::Complete { version } => RenderedContent {
                     title: t("notification.title.updateComplete"),
                     body: t_with_params(
@@ -394,6 +403,14 @@ impl NotificationEvent {
                     title: t("notification.title.rcloneUpdateStarted"),
                     body: t_with_params(
                         "notification.body.rcloneUpdateStarted",
+                        &[("version", version)],
+                    ),
+                    level: LogLevel::Info,
+                },
+                UpdateStage::Downloaded { version } => RenderedContent {
+                    title: t("notification.title.rcloneUpdateDownloaded"),
+                    body: t_with_params(
+                        "notification.body.rcloneUpdateDownloaded",
                         &[("version", version)],
                     ),
                     level: LogLevel::Info,

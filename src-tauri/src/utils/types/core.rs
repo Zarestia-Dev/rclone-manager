@@ -9,10 +9,6 @@ pub struct RcloneState {
     pub client: reqwest::Client,
     /// Flag indicating the app is shutting down
     pub is_shutting_down: AtomicBool,
-    /// Flag indicating a restart is required (e.g., after update)
-    pub is_restart_required: AtomicBool,
-    /// Flag indicating an update is in progress
-    pub is_update_in_progress: AtomicBool,
     /// OAuth process state for interactive remote creation
     pub oauth_process: tokio::sync::Mutex<Option<Child>>,
 }
@@ -28,12 +24,6 @@ impl RcloneState {
     pub fn set_shutting_down(&self) {
         self.is_shutting_down
             .store(true, std::sync::atomic::Ordering::SeqCst);
-    }
-
-    /// Set the update in progress flag
-    pub fn set_update_in_progress(&self, value: bool) {
-        self.is_update_in_progress
-            .store(value, std::sync::atomic::Ordering::SeqCst);
     }
 }
 

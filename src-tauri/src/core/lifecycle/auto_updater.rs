@@ -14,7 +14,7 @@ static IS_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Starts the auto-update background task (no-op if already running).
 pub fn init_auto_updater(app: AppHandle) {
-    if IS_RUNNING.swap(true, Ordering::SeqCst) {
+    if IS_RUNNING.swap(true, Ordering::AcqRel) {
         warn!("Auto-updater is already running");
         return;
     }
@@ -25,12 +25,12 @@ pub fn init_auto_updater(app: AppHandle) {
     );
 
     tauri::async_runtime::spawn(async move {
-        while IS_RUNNING.load(Ordering::SeqCst) {
-            if !IS_RUNNING.load(Ordering::SeqCst) {
-                break;
-            }
-            run_update_checks(&app).await;
+        // Run initial check immediately on startup
+        run_update_checks(&app).await;
+
+        while IS_RUNNING.load(Ordering::Acquire) {
             sleep(UPDATE_CHECK_INTERVAL).await;
+            run_update_checks(&app).await;
         }
 
         info!("Auto-updater stopped.");
@@ -39,7 +39,7 @@ pub fn init_auto_updater(app: AppHandle) {
 
 /// Signals the background task to exit on its next iteration.
 pub fn stop_auto_updater() {
-    IS_RUNNING.store(false, Ordering::SeqCst);
+    IS_RUNNING.store(false, Ordering::Release);
 }
 
 async fn run_update_checks(app: &AppHandle) {

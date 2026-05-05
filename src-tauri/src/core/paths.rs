@@ -54,9 +54,9 @@ impl AppPaths {
         let cache_dir = exe_dir.join("cache");
         let logs_dir = cache_dir.join("logs");
 
-        info!("📦 Running in PORTABLE mode");
-        info!("📁 Config directory: {}", config_dir.display());
-        info!("📁 Cache directory: {}", cache_dir.display());
+        info!("Running in PORTABLE mode");
+        info!("Config directory: {}", config_dir.display());
+        info!("Cache directory: {}", cache_dir.display());
 
         Ok(Self {
             config_dir,
@@ -127,9 +127,9 @@ impl AppPaths {
         #[cfg(feature = "web-server")]
         {
             use log::info;
-            info!("📁 Config directory: {}", config_dir.display());
-            info!("📁 Cache directory: {}", cache_dir.display());
-            info!("📁 Resource directory: {}", resource_dir.display());
+            info!("Config directory: {}", config_dir.display());
+            info!("Cache directory: {}", cache_dir.display());
+            info!("Resource directory: {}", resource_dir.display());
         }
 
         Ok(Self {

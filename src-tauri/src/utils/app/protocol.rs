@@ -9,7 +9,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     // -------------------------------------------------------------------------
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
-            // 1. Handle CORS Preflight for Angular's HttpClient
+            // Handle CORS Preflight for Angular's HttpClient
             if request.method() == tauri::http::Method::OPTIONS {
                 responder.respond(
                     tauri::http::Response::builder()
@@ -224,7 +224,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     // Custom Protocol for Local Files Bypass (Desktop)
     // -------------------------------------------------------------------------
     builder = builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
-        // 1. Handle CORS Preflight for Angular's HttpClient
+        // Handle CORS Preflight for Angular's HttpClient
         if request.method() == tauri::http::Method::OPTIONS {
             responder.respond(tauri::http::Response::builder()
                 .status(204)
@@ -297,7 +297,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             return;
         }
 
-        // 1. Determine mime type
+        // Determine mime type
         let mime_type = mime_guess::from_path(&final_path)
             .first_or_octet_stream()
             .to_string();
@@ -312,7 +312,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             use crate::rclone::backend::BackendManager;
             use crate::utils::types::core::RcloneState;
 
-            // 2. Try to open the file directly
+            // Try to open the file directly
             match std::fs::File::open(&final_path_clone) {
                 Ok(mut file) => {
                     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -321,7 +321,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                         final_path_clone, file_size
                     );
 
-                    // 3. Handle HTTP 206 Partial Content
+                    // Handle HTTP 206 Partial Content
                     let mut start = 0;
                     let mut end = if file_size > 0 { file_size - 1 } else { 0 };
                     let mut is_range_request = false;
@@ -404,7 +404,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     }
                 }
                 Err(e) => {
-                    // 4. Fallback to rclone cat
+                    // Fallback to rclone cat
                     debug!("⚠️ Standard open failed for local asset {}, attempting cat fallback: {}", final_path_clone, e);
 
                     let backend_manager = app_handle.state::<BackendManager>();
@@ -463,7 +463,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder = builder.register_asynchronous_uri_scheme_protocol(
         "audio-cover",
         |app, request, responder| {
-            // 1. Handle CORS Preflight
+            // Handle CORS Preflight
             if request.method() == tauri::http::Method::OPTIONS {
                 responder.respond(
                     tauri::http::Response::builder()

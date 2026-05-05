@@ -323,7 +323,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // DESKTOP & HEADLESS UTILITIES
             // =================================================================
             (fetch_update, $crate::utils::app::updater::app_updates::fetch_update, [channel: String]);
-            (get_download_status, $crate::utils::app::updater::app_updates::get_download_status, []);
+            (get_app_update_info, $crate::utils::app::updater::app_updates::get_app_update_info, []);
             (install_update, $crate::utils::app::updater::app_updates::install_update, []);
             (apply_app_update, $crate::utils::app::updater::app_updates::apply_app_update, []);
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
@@ -361,23 +361,23 @@ pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
 /// Internal helper macro to handle different function signatures (sync/async, with/without `AppHandle`)
 #[macro_export]
 macro_rules! call_internal {
-    // 1. Sync + No AppHandle
+    // Sync + No AppHandle
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync, no_app]) => {
         $path($($args.$arg),*).map_err(|e| e.to_string())?
     };
-    // 2. Sync + AppHandle (Default if sync is present)
+    // Sync + AppHandle (Default if sync is present)
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync]) => {
         $path($app.clone(), $($args.$arg),*).map_err(|e| e.to_string())?
     };
-    // 3. Async + No AppHandle
+    // Async + No AppHandle
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [no_app]) => {
         $path($($args.$arg),*).await.map_err(|e| e.to_string())?
     };
-    // 4. Async + AppHandle (Default)
+    // Async + AppHandle (Default)
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], []) => {
         $path($app.clone(), $($args.$arg),*).await.map_err(|e| e.to_string())?
     };
-    // 5. Sync + No AppHandle + Infallible (function returns T directly, not Result)
+    // Sync + No AppHandle + Infallible (function returns T directly, not Result)
     ($path:path, $app:expr, $args:expr, [$($arg:ident),*], [sync, no_app, infallible]) => {
         $path($($args.$arg),*)
     };

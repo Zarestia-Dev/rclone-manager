@@ -54,13 +54,13 @@
     [attr.aria-label]="'titlebar.appMenu' | translate"
     class="menu-button"
     [matBadge]="
-      restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
+      readyToRestart() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
         ? '!'
         : alertService.unacknowledged() > 0
           ? alertService.unacknowledged()
           : null
     "
-    [matBadgeColor]="restartRequired() || rcloneRestartRequired() ? 'warn' : 'primary'"
+    [matBadgeColor]="readyToRestart() || rcloneRestartRequired() ? 'warn' : 'primary'"
     matBadgePosition="below before"
     matBadgeSize="small"
     [matTooltip]="updateTooltip()"
@@ -148,7 +148,7 @@
     >
       <span>{{ 'titlebar.menu.about' | translate }}</span>
       @if (
-        restartRequired() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
+        readyToRestart() || rcloneRestartRequired() || updateAvailable() || rcloneUpdateAvailable()
       ) {
         <span
           [matBadge]="aboutMenuBadge()"

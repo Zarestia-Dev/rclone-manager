@@ -313,7 +313,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
     let backend_manager = app.state::<BackendManager>();
     let remote_prefix = format!("{name}:");
 
-    // 1. Unmount all associated mounts
+    // Unmount all associated mounts
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
     for m in mounted {
         if m.fs.starts_with(&remote_prefix) {
@@ -322,7 +322,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         }
     }
 
-    // 2. Stop all associated serves
+    // Stop all associated serves
     let serves = backend_manager.remote_cache.get_serves().await;
     for s in serves {
         if let Some(fs) = s.params.get("fs").and_then(|v| v.as_str())
@@ -333,7 +333,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         }
     }
 
-    // 3. Stop all associated active jobs
+    // Stop all associated active jobs
     let jobs = backend_manager.job_cache.get_active_jobs().await;
     for j in jobs {
         if j.remote_name == name {

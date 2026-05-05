@@ -123,8 +123,9 @@ export class AboutModalComponent implements OnInit {
   readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
   readonly appUpdateChannel = this.appUpdaterService.updateChannel;
   readonly appSkippedVersions = this.appUpdaterService.skippedVersions;
-  readonly appRestartRequired = this.appUpdaterService.restartRequired;
+  readonly appReadyToRestart = this.appUpdaterService.readyToRestart;
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
+  readonly appIsChecking = this.appUpdaterService.isChecking;
 
   readonly appUpdateReleaseChannel = computed(() => {
     const tag = this.appUpdateAvailable()?.releaseTag;
@@ -151,7 +152,6 @@ export class AboutModalComponent implements OnInit {
 
   readonly restartingApp = signal(false);
   readonly restartingRcloneEngine = signal(false);
-  readonly checkingForUpdates = signal(false);
 
   // ---------------------------------------------------------------------------
   // Rclone info
@@ -208,7 +208,7 @@ export class AboutModalComponent implements OnInit {
   );
 
   readonly formattedRcloneReleaseNotes = computed(() =>
-    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.release_notes)
+    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.releaseNotes)
   );
 
   // ---------------------------------------------------------------------------
@@ -306,13 +306,8 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<void> {
-    if (this.checkingForUpdates()) return;
-    this.checkingForUpdates.set(true);
-    try {
-      await this.appUpdaterService.checkForUpdates();
-    } finally {
-      this.checkingForUpdates.set(false);
-    }
+    if (this.appIsChecking()) return;
+    await this.appUpdaterService.checkForUpdates();
   }
 
   async installUpdate(): Promise<void> {
@@ -405,7 +400,7 @@ export class AboutModalComponent implements OnInit {
   async skipRcloneUpdate(): Promise<void> {
     const info = this.rcloneUpdateStatus().updateInfo;
     if (!info) return;
-    await this.rcloneUpdateService.skipVersion(info.latest_version_clean ?? info.latest_version);
+    await this.rcloneUpdateService.skipVersion(info.version);
   }
 
   async unskipRcloneVersion(version: string): Promise<void> {

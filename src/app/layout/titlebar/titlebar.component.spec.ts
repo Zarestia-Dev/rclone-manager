@@ -40,7 +40,7 @@ describe('TitlebarComponent', () => {
 
     // badge expression should also evaluate truthy
     const badgeText =
-      component.restartRequired() ||
+      component.readyToRestart() ||
       component.rcloneRestartRequired() ||
       component.updateAvailable() ||
       component.rcloneUpdateAvailable();

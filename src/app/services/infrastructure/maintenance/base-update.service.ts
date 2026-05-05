@@ -30,7 +30,7 @@ export abstract class BaseUpdateService extends TauriBaseService {
   protected async initBaseSettings(): Promise<void> {
     const [skipped, channel, autoCheck] = await Promise.all([
       this.loadSetting<string[]>(this.skippedVersionsKey, []),
-      this.loadSetting<string>('updateChannelKey', 'stable'),
+      this.loadSetting<string>(this.updateChannelKey, 'stable'),
       this.loadSetting<boolean>(this.autoCheckKey, true),
     ]);
     this._skippedVersions.set(Array.isArray(skipped) ? skipped : []);
@@ -44,7 +44,8 @@ export abstract class BaseUpdateService extends TauriBaseService {
         `${this.settingNamespace}.${key}`
       );
       return value ?? fallback;
-    } catch {
+    } catch (error) {
+      console.error(`Failed to load setting "${this.settingNamespace}.${key}":`, error);
       return fallback;
     }
   }

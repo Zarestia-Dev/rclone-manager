@@ -84,11 +84,11 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     let manager = app_handle.state::<AppSettingsManager>();
 
-    // 1. Invalidate manager cache so it reads fresh from disk (essential after restore)
+    // Invalidate manager cache so it reads fresh from disk (essential after restore)
     manager.invalidate_cache();
     let settings = manager.get_all().map_err(|e| e.to_string())?;
 
-    // 2. Re-bootstrap (Reload Backends & Security Environment)
+    // Re-bootstrap (Reload Backends & Security Environment)
     // We don't call bootstrap::init_all because we don't want to re-setup event listeners
     let backend_manager = app_handle.state::<crate::rclone::backend::BackendManager>();
     backend_manager
@@ -101,10 +101,10 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         let _ = env_manager.init_with_stored_credentials(manager.inner());
     }
 
-    // 3. Refresh Caches (Remote Caches & Alerts)
+    // Refresh Caches (Remote Caches & Alerts)
     cache::initialize_caches(&app_handle).await?;
 
-    // 4. Reload Scheduler (from remote configs)
+    // Reload Scheduler (from remote configs)
     let remote_names = backend_manager.remote_cache.get_remotes().await;
     let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
@@ -119,17 +119,17 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         error!("⚠️ Failed to reload scheduled tasks: {e}");
     }
 
-    // 5. Apply Core Settings (bandwidth limits, backend options, language, log level)
+    // Apply Core Settings (bandwidth limits, backend options, language, log level)
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
-    // 6. Tray update
+    // Tray update
     #[cfg(feature = "tray")]
     {
         use crate::core::tray::core::update_tray_menu;
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
-    // 7. Inform frontend to reload all settings
+    // Inform frontend to reload all settings
     app_handle
         .emit(
             SYSTEM_SETTINGS_CHANGED,

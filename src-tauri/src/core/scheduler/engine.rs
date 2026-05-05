@@ -31,7 +31,7 @@ impl CronScheduler {
 
     /// Initialise the scheduler with the app handle (call once at startup).
     pub async fn initialize(&self, app_handle: AppHandle) -> Result<(), String> {
-        info!("🕐 Initializing cron scheduler...");
+        info!("Initializing cron scheduler...");
 
         let scheduler = JobScheduler::new().await.map_err(
             |e| crate::localized_error!("backendErrors.scheduler.initFailed", "error" => e),
@@ -40,7 +40,7 @@ impl CronScheduler {
         *self.scheduler.write().await = Some(scheduler);
         *self.app_handle.write().await = Some(app_handle);
 
-        info!("✅ Cron scheduler initialized");
+        info!("Cron scheduler initialized");
         Ok(())
     }
 
@@ -57,7 +57,7 @@ impl CronScheduler {
             |e| crate::localized_error!("backendErrors.scheduler.startFailed", "error" => e),
         )?;
 
-        info!("▶️  Cron scheduler started");
+        info!("Cron scheduler started");
         Ok(())
     }
 
@@ -74,7 +74,7 @@ impl CronScheduler {
             |e| crate::localized_error!("backendErrors.scheduler.stopFailed", "error" => e),
         )?;
 
-        info!("⏸️  Cron scheduler stopped");
+        info!("Cron scheduler stopped");
         Ok(())
     }
 
@@ -139,14 +139,14 @@ impl CronScheduler {
 
                 Box::pin(async move {
                     info!(
-                        "⏰ Executing scheduled task: {task_name} ({task_id}) — {task_type:?}"
+                        "Executing scheduled task: {task_name} ({task_id}) — {task_type:?}"
                     );
 
                     let cache = app_handle.state::<ScheduledTasksCache>();
                     if let Err(e) = execute_scheduled_task(&task_id, &app_handle, cache).await {
-                        error!("❌ Task execution failed {task_id}: {e}");
+                        error!("Task execution failed {task_id}: {e}");
                     } else {
-                        info!("✅ Task execution completed: {task_id}");
+                        info!("Task execution completed: {task_id}");
                     }
                 })
             }))
@@ -175,7 +175,7 @@ impl CronScheduler {
             task.backend_name, task.remote_name, task.profile_name, task.id
         );
         info!(
-            "📅 Scheduled '{}' ({}) — job ID: {}",
+            "Scheduled '{}' ({}) — job ID: {}",
             task_name, cron_expr_6_field, job_id
         );
 
@@ -191,7 +191,7 @@ impl CronScheduler {
             |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
         )?;
 
-        debug!("🗑️  Unscheduled job: {job_id}");
+        debug!("Unscheduled job: {job_id}");
         Ok(())
     }
 
@@ -247,7 +247,7 @@ impl CronScheduler {
 
     /// Reload all tasks from the cache, rescheduling every one.
     pub async fn reload_tasks(&self, app: AppHandle) -> Result<(), String> {
-        info!("🔄 Reloading all scheduled tasks…");
+        info!("Reloading all scheduled tasks…");
         let cache = app.state::<ScheduledTasksCache>();
 
         let tasks = cache.get_all_tasks().await;
@@ -266,7 +266,7 @@ impl CronScheduler {
         }
 
         if errors.is_empty() {
-            info!("✅ Scheduler reload complete");
+            info!("Scheduler reload complete");
             Ok(())
         } else {
             Err(format!(

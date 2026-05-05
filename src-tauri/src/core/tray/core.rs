@@ -72,9 +72,9 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
             };
             let _ = tray.set_tooltip(Some(tooltip));
 
-            info!("✅ Tray menu and icon updated on main thread");
+            info!("Tray menu and icon updated on main thread");
         } else {
-            info!("⚠️ Tray menu update failed: Tray not found");
+            info!("Tray menu update failed: Tray not found");
         }
     })?;
 

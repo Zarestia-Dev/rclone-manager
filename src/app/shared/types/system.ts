@@ -90,29 +90,43 @@ export interface AppEventPayload {
 
 export type AppEventPayloadType = AppEventPayload;
 
+export enum BackendUpdateStatus {
+  Idle = 'idle',
+  Downloading = 'downloading',
+  ReadyToRestart = 'readyToRestart',
+  Available = 'available',
+}
+
 // === Update Info ===
-export interface RcloneUpdateInfo {
-  current_version: string;
-  latest_version: string;
-  update_available: boolean;
-  current_version_clean: string;
-  latest_version_clean: string;
-  channel: string;
-  release_notes?: string;
-  release_date?: string;
-  release_url?: string;
-  update_in_progress?: boolean;
-  ready_to_restart?: boolean;
+export interface UpdateInfo {
+  version: string;
+  currentVersion: string;
+  updateAvailable: boolean;
+  status: BackendUpdateStatus;
+  releaseTag?: string;
+  releaseNotes?: string;
+  releaseDate?: string;
+  releaseUrl?: string;
+  channel?: string;
+}
+
+export interface DownloadStatus {
+  downloadedBytes: number;
+  totalBytes: number;
+  percentage: number;
+  isComplete: boolean;
+  isFailed: boolean;
+  failureMessage: string | null;
 }
 
 export interface UpdateStatus {
   checking: boolean;
   downloading: boolean;
   available: boolean;
-  readyToRestart?: boolean;
+  readyToRestart: boolean;
   error: string | null;
   lastCheck: Date | null;
-  updateInfo: RcloneUpdateInfo | null;
+  updateInfo: UpdateInfo | null;
 }
 
 export interface UpdateResult {
@@ -168,7 +182,7 @@ export interface SettingMetadata {
   min?: number;
   max?: number;
   step?: number;
-  options?: any[]; // Backend sends tuples or objects? Schema says options(("val", "Label"))
+  options?: any[];
   metadata?: RcloneFlagMetadata;
   reserved?: string[];
 }

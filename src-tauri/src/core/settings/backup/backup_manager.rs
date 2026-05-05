@@ -128,7 +128,7 @@ pub async fn backup_settings(
     }
 
     let backup_path = manager.backup().create(&options).map_err(|e| {
-        error!("❌ Backup failed: {e}");
+        error!("Backup failed: {e}");
         format!("Backup failed: {e}")
     })?;
 

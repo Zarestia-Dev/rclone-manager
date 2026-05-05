@@ -63,12 +63,12 @@ export class TitlebarComponent implements OnInit {
   readonly rcloneRestartRequired = computed(
     () => this.rcloneUpdateService.updateStatus().readyToRestart
   );
-  readonly restartRequired = this.appUpdaterService.restartRequired;
+  readonly readyToRestart = this.appUpdaterService.readyToRestart;
 
   readonly currentTheme = this.windowService.theme;
 
   readonly updateTooltip = computed(() => {
-    const appRestart = this.restartRequired();
+    const appRestart = this.readyToRestart();
     const rcloneRestart = this.rcloneRestartRequired();
 
     if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
@@ -141,7 +141,7 @@ export class TitlebarComponent implements OnInit {
   ];
 
   readonly aboutMenuBadge = computed(() => {
-    if (this.restartRequired() || this.rcloneRestartRequired()) return '!';
+    if (this.readyToRestart() || this.rcloneRestartRequired()) return '!';
     if (this.updateAvailable() && this.rcloneUpdateAvailable()) return '2';
     if (this.updateAvailable() || this.rcloneUpdateAvailable()) return '!';
     return '';

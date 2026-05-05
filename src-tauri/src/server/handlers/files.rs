@@ -97,7 +97,7 @@ pub async fn stream_file_handler(
     let path_str = query.path.clone();
     let path = std::path::PathBuf::from(&path_str);
 
-    // 1. Try standard file opening first
+    // Try standard file opening first
     let file_result = if path.exists() {
         File::open(&path).await.map_err(anyhow::Error::msg)
     } else {
@@ -141,7 +141,7 @@ pub async fn stream_file_handler(
                 .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
         }
         Err(e) => {
-            // 2. Fallback to rclone cat
+            // Fallback to rclone cat
             debug!(
                 "⚠️ Standard stream failed for {}, attempting cat fallback: {}",
                 path_str, e

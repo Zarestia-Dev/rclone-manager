@@ -19,7 +19,7 @@ use tauri::{AppHandle, Manager};
 /// This is called during app initialization.
 /// Profiles are started in parallel for faster startup.
 pub async fn handle_startup(app: AppHandle) {
-    info!("🚀 Starting auto-start profiles check...");
+    info!("Starting auto-start profiles check...");
     let manager = app.state::<AppSettingsManager>();
 
     use crate::rclone::backend::BackendManager;
@@ -35,7 +35,7 @@ pub async fn handle_startup(app: AppHandle) {
     let settings_map = if let Some(map) = settings_val.as_object() {
         map
     } else {
-        warn!("⚠️ Settings is not an object, skipping auto-start");
+        warn!("Settings is not an object, skipping auto-start");
         return;
     };
 
@@ -94,13 +94,13 @@ pub async fn handle_startup(app: AppHandle) {
 
     let task_count = tasks.len();
     if task_count > 0 {
-        info!("⚡ Starting {task_count} auto-start profile(s) in parallel...");
+        info!("Starting {task_count} auto-start profile(s) in parallel...");
 
         // Run all tasks in parallel and wait for completion
         let _ = futures::future::join_all(tasks).await;
     }
 
-    info!("✅ Auto-start profiles check complete");
+    info!("Auto-start profiles check complete");
 }
 
 /// Helper to collect auto-start tasks for parallel execution
@@ -151,10 +151,10 @@ async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str
 
     match mount_remote_profile(app.clone(), params).await {
         Ok(()) => {
-            info!("✅ Auto-started mount: {remote_name} profile '{profile_name}'");
+            info!("Auto-started mount: {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            warn!("⚠️ Failed to auto-start mount {remote_name} profile '{profile_name}': {e}");
+            warn!("Failed to auto-start mount {remote_name} profile '{profile_name}': {e}");
         }
     }
 }
@@ -170,12 +170,12 @@ async fn auto_start_serve(app: &AppHandle, remote_name: &str, profile_name: &str
     match start_serve_profile(app.clone(), params).await {
         Ok(response) => {
             info!(
-                "✅ Auto-started serve: {} profile '{}' at {}",
+                "Auto-started serve: {} profile '{}' at {}",
                 remote_name, profile_name, response.addr
             );
         }
         Err(e) => {
-            warn!("⚠️ Failed to auto-start serve {remote_name} profile '{profile_name}': {e}");
+            warn!("Failed to auto-start serve {remote_name} profile '{profile_name}': {e}");
         }
     }
 }
@@ -203,10 +203,10 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
 
     match result {
         Ok(_) => {
-            info!("✅ Auto-started {op_type}: {remote_name} profile '{profile_name}'");
+            info!("Auto-started {op_type}: {remote_name} profile '{profile_name}'");
         }
         Err(e) => {
-            warn!("⚠️ Failed to auto-start {op_type} {remote_name} profile '{profile_name}': {e}");
+            warn!("Failed to auto-start {op_type} {remote_name} profile '{profile_name}': {e}");
         }
     }
 }

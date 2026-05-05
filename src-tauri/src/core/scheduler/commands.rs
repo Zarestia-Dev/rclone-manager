@@ -10,7 +10,7 @@ pub async fn toggle_scheduled_task(
     app: AppHandle,
     task_id: String,
 ) -> Result<ScheduledTask, String> {
-    info!("🔄 Toggling scheduled task: {task_id}");
+    info!("Toggling scheduled task: {task_id}");
 
     let cache = app.state::<ScheduledTasksCache>();
     let scheduler = app.state::<CronScheduler>();
@@ -18,7 +18,7 @@ pub async fn toggle_scheduled_task(
     let task = cache.toggle_task_status(&task_id, Some(&app)).await?;
 
     if let Err(e) = scheduler.reschedule_task(&task, cache.clone()).await {
-        error!("⚠️  Failed to reload tasks after toggle: {e}");
+        error!("Failed to reload tasks after toggle: {e}");
     } else {
         let task_name = format!(
             "{}: {}-{}.{}",
@@ -26,7 +26,7 @@ pub async fn toggle_scheduled_task(
         );
 
         info!(
-            "✅ Task {} {}",
+            "Task {} {}",
             match task.status {
                 TaskStatus::Enabled => "enabled and scheduled",
                 TaskStatus::Stopping => "disabling after current run",
@@ -63,19 +63,19 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
 /// Reload all scheduled tasks
 #[tauri::command]
 pub async fn reload_scheduled_tasks(app: AppHandle) -> Result<(), String> {
-    info!("🔄 Reloading all scheduled tasks");
+    info!("Reloading all scheduled tasks");
     let scheduler = app.state::<CronScheduler>();
 
     scheduler.reload_tasks(app.clone()).await?;
 
-    info!("✅ Scheduled tasks reloaded");
+    info!("Scheduled tasks reloaded");
     Ok(())
 }
 
 /// Clear all scheduled tasks
 #[tauri::command]
 pub async fn clear_all_scheduled_tasks(app: AppHandle) -> Result<(), String> {
-    info!("⚠️  Clearing all scheduled tasks");
+    info!("Clearing all scheduled tasks");
 
     let cache = app.state::<ScheduledTasksCache>();
     let scheduler = app.state::<CronScheduler>();
@@ -93,7 +93,7 @@ pub async fn clear_all_scheduled_tasks(app: AppHandle) -> Result<(), String> {
 
     cache.clear_all_tasks(Some(&app)).await?;
 
-    info!("✅ All scheduled tasks cleared");
+    info!("All scheduled tasks cleared");
     Ok(())
 }
 
@@ -103,7 +103,7 @@ pub async fn reload_scheduled_tasks_from_configs(
     app: AppHandle,
     all_settings: serde_json::Value,
 ) -> Result<usize, String> {
-    info!("🔄 Reloading scheduled tasks from configs...");
+    info!("Reloading scheduled tasks from configs...");
 
     let cache = app.state::<ScheduledTasksCache>();
     let scheduler = app.state::<CronScheduler>();
@@ -123,7 +123,7 @@ pub async fn reload_scheduled_tasks_from_configs(
     scheduler.apply_cache_result(&result, cache).await?;
 
     info!(
-        "📅 Reload complete: {} added, {} updated, {} removed",
+        "Reload complete: {} added, {} updated, {} removed",
         counts.0, counts.1, counts.2,
     );
 

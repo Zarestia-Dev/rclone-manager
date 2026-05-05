@@ -8,7 +8,7 @@ static INITIAL_STARTUP: AtomicBool = AtomicBool::new(true);
 use crate::rclone::backend::BackendManager;
 
 pub fn mark_startup_complete() {
-    INITIAL_STARTUP.store(false, Ordering::Relaxed);
+    INITIAL_STARTUP.store(false, Ordering::Release);
     debug!("Initial startup complete, health monitoring enabled");
 }
 
@@ -47,7 +47,7 @@ fn spawn_monitoring_loop(app_handle: AppHandle) {
                     break;
                 }
 
-                if INITIAL_STARTUP.load(Ordering::Relaxed) {
+                if INITIAL_STARTUP.load(Ordering::Acquire) {
                     debug!("Skipping health check during initial startup");
                     continue;
                 }

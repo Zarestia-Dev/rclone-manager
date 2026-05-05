@@ -51,7 +51,7 @@ pub async fn save_remote_settings(
         .set(&remote_name, &settings)
         .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
-    info!("✅ Remote settings saved for '{remote_name}'");
+    info!("Remote settings saved for '{remote_name}'");
 
     // Detect deleted profiles
     if let Ok(existing) = remotes.get_value(&remote_name) {
@@ -75,7 +75,7 @@ pub async fn save_remote_settings(
 
                     if was_deleted {
                         info!(
-                            "🗑️ Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
+                            "Profile '{profile_name}' deleted for remote '{remote_name}', cleaning up jobs..."
                         );
                         app.state::<crate::rclone::backend::BackendManager>()
                             .job_cache
@@ -98,9 +98,9 @@ pub async fn save_remote_settings(
             use crate::core::scheduler::engine::CronScheduler;
             let scheduler = app.state::<CronScheduler>();
             if let Err(e) = scheduler.apply_cache_result(&result, cache).await {
-                warn!("⚠️  Scheduler sync incomplete for remote '{remote_name}': {e}");
+                warn!("Scheduler sync incomplete for remote '{remote_name}': {e}");
             } else {
-                info!("✅ Scheduler updated for remote '{remote_name}'");
+                info!("Scheduler updated for remote '{remote_name}'");
             }
         }
         _ => {}
@@ -119,7 +119,7 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
     )?;
 
     if remotes.get_value(&remote_name).is_err() {
-        warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
+        warn!("Remote settings for '{remote_name}' not found, but that's okay.");
         app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
         return Ok(());
     }
@@ -128,7 +128,7 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
         |e| crate::localized_error!("backendErrors.settings.deleteFailed", "error" => e),
     )?;
 
-    info!("✅ Remote settings for '{remote_name}' deleted.");
+    info!("Remote settings for '{remote_name}' deleted.");
     app.emit(REMOTE_SETTINGS_CHANGED, remote_name).ok();
     Ok(())
 }
@@ -149,7 +149,7 @@ pub async fn get_remote_settings(
         |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
     )?;
 
-    info!("✅ Loaded settings for remote '{remote_name}'.");
+    info!("Loaded settings for remote '{remote_name}'.");
     Ok(settings)
 }
 
@@ -187,7 +187,7 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
                 && let Some(mut old_config) = obj.remove(old_key)
             {
                 if obj.contains_key(new_key) {
-                    warn!("🗑️ Removed legacy {old_key} as {new_key} already exists");
+                    warn!("Removed legacy {old_key} as {new_key} already exists");
                 } else {
                     let profile_name = old_config
                         .get("name")
@@ -204,7 +204,7 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
                     profiles_obj.insert(profile_name.clone(), old_config);
                     obj.insert(new_key.to_string(), Value::Object(profiles_obj));
 
-                    info!("✨ Migrated legacy {old_key} to {new_key} (profile: '{profile_name}')");
+                    info!("Migrated legacy {old_key} to {new_key} (profile: '{profile_name}')");
                 }
             }
         }

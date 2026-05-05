@@ -63,7 +63,7 @@
         role="tab"
         [attr.aria-selected]="currentView().id === 'updates'"
         (click)="navigateTo('updates')"
-        [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
+        [matBadge]="appUpdateAvailable() || appReadyToRestart() ? '!' : null"
       >
         <span>{{ 'modals.about.updates' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -164,12 +164,12 @@
         }
         @case ('updates') {
           <div class="modal-content updates-page">
-            @if (appRestartRequired()) {
+            @if (appReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
-                    <h4>{{ 'modals.about.restartRequired' | translate }}</h4>
+                    <h4>{{ 'modals.about.readyToRestart' | translate }}</h4>
                     <p class="restart-description">
                       {{ 'modals.about.restartDescription' | translate }}
                     </p>
@@ -305,10 +305,10 @@
             <button
               mat-stroked-button
               (click)="checkForUpdates()"
-              [disabled]="checkingForUpdates() || appDownloadInProgress() || appRestartRequired()"
+              [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
               class="check-button"
             >
-              @if (checkingForUpdates()) {
+              @if (appIsChecking()) {
                 <mat-spinner diameter="16"></mat-spinner>
                 {{ 'modals.about.checking' | translate }}
               } @else {
@@ -472,7 +472,7 @@
                   </button>
                 </div>
               </div>
-            } @else if (rcloneStatus.updateInfo?.update_available) {
+            } @else if (rcloneStatus.updateInfo?.updateAvailable) {
               @let rcloneUpdateInfo = rcloneStatus.updateInfo!;
               <div class="update-card available">
                 <div class="update-header">
@@ -481,7 +481,7 @@
                     <h4>{{ 'modals.about.rcloneUpdateAvailable' | translate }}</h4>
                     <span class="new-version">
                       {{ 'modals.about.version' | translate }}
-                      {{ rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version }}
+                      {{ rcloneUpdateInfo.version }}
                       <span class="release-badge badge-{{ rcloneUpdateChannel() }}">
                         {{ getChannelLabel(rcloneUpdateChannel()) | translate }}
                       </span>
@@ -489,7 +489,7 @@
                   </div>
                 </div>
 
-                @if (rcloneUpdateInfo.release_notes) {
+                @if (rcloneUpdateInfo.releaseNotes) {
                   <button
                     mat-stroked-button
                     class="whats-new-button"
@@ -513,7 +513,11 @@
                       {{ 'modals.about.updateRclone' | translate }}
                     }
                   </button>
-                  <button mat-button (click)="skipRcloneUpdate()">
+                  <button
+                    mat-button
+                    (click)="skipRcloneUpdate()"
+                    [disabled]="rcloneStatus.downloading"
+                  >
                     {{ 'modals.about.skipVersion' | translate }}
                   </button>
                 </div>
@@ -530,7 +534,9 @@
             <button
               matButton="outlined"
               (click)="checkForRcloneUpdates()"
-              [disabled]="rcloneStatus.checking"
+              [disabled]="
+                rcloneStatus.checking || rcloneStatus.downloading || rcloneStatus.readyToRestart
+              "
               class="check-button"
             >
               @if (rcloneStatus.checking) {
@@ -562,7 +568,10 @@
                 <ng-container
                   *ngTemplateOutlet="
                     skippedList;
-                    context: { versions: rcloneSkippedVersions(), isRclone: true }
+                    context: {
+                      versions: rcloneSkippedVersions(),
+                      isRclone: true,
+                    }
                   "
                 ></ng-container>
               </div>
@@ -652,19 +661,18 @@
               <div class="release-header">
                 <div class="release-version">
                   <h2>
-                    Rclone
-                    {{ rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version }}
+                    {{ rcloneUpdateInfo.version }}
                   </h2>
-                  @if (rcloneUpdateInfo.release_date) {
+                  @if (rcloneUpdateInfo.releaseDate) {
                     <span class="release-date">
-                      {{ formatReleaseDate(rcloneUpdateInfo.release_date) }}
+                      {{ formatReleaseDate(rcloneUpdateInfo.releaseDate) }}
                     </span>
                   }
                 </div>
-                @if (rcloneUpdateInfo.release_url) {
+                @if (rcloneUpdateInfo.releaseUrl) {
                   <a
                     mat-stroked-button
-                    [href]="rcloneUpdateInfo.release_url"
+                    [href]="rcloneUpdateInfo.releaseUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="whats-new-button"

@@ -1,9 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map, take, firstValueFrom, timeout, catchError, EMPTY } from 'rxjs';
+import { filter, map, firstValueFrom } from 'rxjs';
 import { BaseUpdateService } from '../maintenance/base-update.service';
 import { EventListenersService } from '../system/event-listeners.service';
-import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
+import { UpdateInfo, UpdateStatus, UpdateResult, BackendUpdateStatus } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneUpdateService extends BaseUpdateService {
@@ -41,19 +41,25 @@ export class RcloneUpdateService extends BaseUpdateService {
   constructor() {
     super();
     this.setupEventListeners();
-    void this.initBaseSettings().then(() => {
-      if (this.autoCheckEnabled()) void this.restoreUpdateState();
-    });
+    void this.initialize();
   }
 
   // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
 
-  async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
+  async checkForUpdates(): Promise<UpdateInfo | null> {
+    const status = this._updateStatus();
+    if (status.checking || status.downloading || status.readyToRestart) {
+      // Already active — just sync the current info.
+      const info = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
+      if (info) this.processUpdateResult(info);
+      return info;
+    }
+
     this.patchStatus({ checking: true, error: null });
     try {
-      const info = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update', {
+      const info = await this.invokeCommand<UpdateInfo>('check_rclone_update', {
         channel: this.updateChannel(),
       });
       this.processUpdateResult(info);
@@ -102,24 +108,17 @@ export class RcloneUpdateService extends BaseUpdateService {
   }
 
   async applyUpdate(): Promise<boolean> {
-    // Listen for the engine restart confirmation with a 30 s timeout.
-    const restartConfirmed$ = this.eventListenersService.listenToEngineRestarted().pipe(
-      filter(event => event.reason === 'rclone_update'),
-      take(1),
-      timeout(30_000),
-      catchError(() => {
-        console.warn('Timed out waiting for rclone engine restart');
-        return EMPTY;
-      })
-    );
-
     try {
       await this.invokeWithNotification<void>('apply_rclone_update', undefined, {
         errorKey: 'rcloneUpdate.failed',
         showSuccess: false,
       });
 
-      await firstValueFrom(restartConfirmed$, { defaultValue: null });
+      await firstValueFrom(
+        this.eventListenersService
+          .listenToEngineRestarted()
+          .pipe(filter(event => event.reason === 'rclone_update'))
+      );
 
       this.patchStatus({ readyToRestart: false, updateInfo: null });
       return true;
@@ -136,14 +135,15 @@ export class RcloneUpdateService extends BaseUpdateService {
     this.notificationService.showInfo(
       this.translate.instant('rcloneUpdate.channelChanged', { channel })
     );
+    void this.checkForUpdates();
   }
 
   override async skipVersion(version: string): Promise<void> {
     await super.skipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
     const info = this._updateStatus().updateInfo;
-    if (info?.latest_version === version || info?.latest_version_clean === version) {
-      this.patchStatus({ available: false, updateInfo: { ...info, update_available: false } });
+    if (info?.version === version) {
+      this.patchStatus({ available: false, updateInfo: { ...info, updateAvailable: false } });
     }
   }
 
@@ -166,6 +166,17 @@ export class RcloneUpdateService extends BaseUpdateService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  private async initialize(): Promise<void> {
+    try {
+      await this.initBaseSettings();
+      if (this.autoCheckEnabled()) {
+        await this.restoreUpdateState();
+      }
+    } catch (error) {
+      console.error('Failed to initialize rclone updater service:', error);
+    }
+  }
+
   private setupEventListeners(): void {
     this.eventListenersService
       .listenToRcloneEngineUpdating()
@@ -187,22 +198,22 @@ export class RcloneUpdateService extends BaseUpdateService {
       .pipe(
         takeUntilDestroyed(),
         filter(event => event.status === 'rclone_update_found' && !!event.data),
-        map(event => event.data as unknown as RcloneUpdateInfo)
+        map(event => event.data as unknown as UpdateInfo)
       )
       .subscribe(data => this.processUpdateResult(data));
   }
 
   private async restoreUpdateState(): Promise<void> {
     try {
-      const cached = await this.invokeCommand<RcloneUpdateInfo | null>('get_rclone_update_info');
+      const cached = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
       if (cached) this.processUpdateResult(cached);
     } catch (error) {
       console.error('Failed to restore rclone update state:', error);
     }
   }
 
-  private processUpdateResult(info: RcloneUpdateInfo): void {
-    if (info.ready_to_restart) {
+  private processUpdateResult(info: UpdateInfo): void {
+    if (info.status === BackendUpdateStatus.ReadyToRestart) {
       this.patchStatus({
         available: false,
         readyToRestart: true,
@@ -212,15 +223,23 @@ export class RcloneUpdateService extends BaseUpdateService {
       return;
     }
 
-    const isSkipped =
-      info.update_available &&
-      this.isVersionSkipped(info.latest_version_clean ?? info.latest_version);
+    if (info.status === BackendUpdateStatus.Downloading) {
+      this.patchStatus({
+        checking: false,
+        downloading: true,
+        available: true,
+        updateInfo: info,
+      });
+      return;
+    }
+
+    const isSkipped = info.updateAvailable && this.isVersionSkipped(info.version);
 
     this.patchStatus({
       checking: false,
-      available: info.update_available && !isSkipped,
+      available: info.updateAvailable && !isSkipped,
       lastCheck: new Date(),
-      updateInfo: isSkipped ? { ...info, update_available: false } : info,
+      updateInfo: isSkipped ? { ...info, updateAvailable: false } : info,
     });
   }
 
