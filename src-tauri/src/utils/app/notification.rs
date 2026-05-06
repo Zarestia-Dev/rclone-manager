@@ -28,6 +28,8 @@ pub enum JobStage {
         profile: Option<String>,
         job_type: JobType,
         origin: Origin,
+        source: Option<String>,
+        destination: Option<String>,
     },
     Completed {
         backend: String,
@@ -35,6 +37,8 @@ pub enum JobStage {
         profile: Option<String>,
         job_type: JobType,
         origin: Origin,
+        source: Option<String>,
+        destination: Option<String>,
     },
     Failed {
         backend: String,
@@ -43,6 +47,8 @@ pub enum JobStage {
         job_type: JobType,
         error: String,
         origin: Origin,
+        source: Option<String>,
+        destination: Option<String>,
     },
     Stopped {
         backend: String,
@@ -50,6 +56,8 @@ pub enum JobStage {
         profile: Option<String>,
         job_type: JobType,
         origin: Origin,
+        source: Option<String>,
+        destination: Option<String>,
     },
 }
 

@@ -55,13 +55,13 @@ impl JobCache {
 
     pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
         let jobid = job.jobid;
-        self.jobs.write().await.insert(jobid, job);
-        self.notify_change(app, &jobid.to_string());
+        self.jobs.write().await.insert(jobid, job.clone());
+        self.notify_change(app, Some(&job));
     }
 
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        if self.jobs.write().await.remove(&jobid).is_some() {
-            self.notify_change(app, &jobid.to_string());
+        if let Some(job) = self.jobs.write().await.remove(&jobid) {
+            self.notify_change(app, Some(&job));
             Ok(())
         } else {
             Err(crate::localized_error!("backendErrors.job.notFound"))
@@ -83,7 +83,7 @@ impl JobCache {
         let result = job.clone();
         drop(jobs);
 
-        self.notify_change(app, &jobid.to_string());
+        self.notify_change(app, Some(&result));
         Ok(result)
     }
 
@@ -195,16 +195,19 @@ impl JobCache {
             .map(|j| j.jobid)
             .collect();
         for id in to_remove {
-            jobs.remove(&id);
-            self.notify_change(app, &id.to_string());
+            if let Some(job) = jobs.remove(&id) {
+                self.notify_change(app, Some(&job));
+            }
         }
     }
 
     // ---- Private helpers ----
-
-    fn notify_change(&self, app: Option<&AppHandle>, id: &str) {
-        if let Some(app) = app {
-            let _ = app.emit(JOB_CACHE_CHANGED, id);
+    fn notify_change(&self, app: Option<&AppHandle>, job: Option<&JobInfo>) {
+        if let (Some(app), Some(job)) = (app, job) {
+            let _ = app.emit(
+                JOB_CACHE_CHANGED,
+                crate::utils::types::events::JobChangeEvent::from(job),
+            );
         }
     }
 }

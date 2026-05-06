@@ -83,6 +83,29 @@ pub struct SettingsChangeEvent {
     pub value: serde_json::Value,
 }
 
+/// Strongly typed payload for job cache change events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct JobChangeEvent {
+    pub job_id: String,
+    pub status: crate::utils::types::jobs::JobStatus,
+    pub remote: Option<String>,
+    pub source: Option<String>,
+    pub destination: Option<String>,
+}
+
+impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
+    fn from(job: &crate::utils::types::jobs::JobInfo) -> Self {
+        Self {
+            job_id: job.jobid.to_string(),
+            status: job.status.clone(),
+            remote: Some(job.remote_name.clone()),
+            source: Some(job.source.clone()),
+            destination: Some(job.destination.clone()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

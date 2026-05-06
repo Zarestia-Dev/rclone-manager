@@ -598,6 +598,8 @@ pub struct AlertRecord {
     pub backend: Option<String>,
     pub operation: Option<String>,
     pub origin: Option<Origin>,
+    pub source: Option<String>,
+    pub destination: Option<String>,
     pub timestamp: DateTime<Utc>,
     pub action_results: Vec<ActionResult>,
     pub acknowledged: bool,
@@ -616,6 +618,8 @@ pub struct AlertDetails {
     pub backend: Option<String>,
     pub operation: Option<String>,
     pub origin: Option<Origin>,
+    pub source: Option<String>,
+    pub destination: Option<String>,
 }
 
 impl AlertRecord {
@@ -634,6 +638,8 @@ impl AlertRecord {
             backend: details.backend,
             operation: details.operation,
             origin: details.origin,
+            source: details.source,
+            destination: details.destination,
             timestamp,
             action_results: vec![],
             acknowledged: rule.auto_acknowledge,

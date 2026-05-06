@@ -56,3 +56,11 @@ export interface SettingsChangeEvent {
 export interface OAuthUrlEvent {
   url: string;
 }
+
+export interface JobChangeEvent {
+  jobId: string;
+  status: 'Running' | 'Completed' | 'Failed' | 'Stopped';
+  remote?: string;
+  source?: string;
+  destination?: string;
+}

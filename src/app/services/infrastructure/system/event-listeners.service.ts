@@ -26,6 +26,7 @@ import {
   SettingsChangeEvent,
   RCLONE_OAUTH_URL,
   OAuthUrlEvent,
+  JobChangeEvent,
 } from '@app/types';
 /**
  * Service for listening to backend events and exposing them as observables
@@ -77,8 +78,8 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to job cache changed events
    */
-  listenToJobCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(JOB_CACHE_CHANGED);
+  listenToJobCacheChanged(): Observable<JobChangeEvent> {
+    return this.listenToEvent<JobChangeEvent>(JOB_CACHE_CHANGED);
   }
   /**
    * Listen to mount plugin installation events

@@ -131,6 +131,8 @@ pub fn handle_stop_job_profile(app: AppHandle, remote_name: &str, profile_name: 
                         job_type,
                         error: "no active job".to_string(),
                         origin: Origin::Dashboard,
+                        source: None,
+                        destination: None,
                     }),
                 );
             }

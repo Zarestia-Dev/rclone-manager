@@ -515,6 +515,8 @@ fn setup_app(
     // State Management
     // -------------------------------------------------------------------------
     let history_cache = AlertHistoryCache::new(10000);
+    let alert_cache = core::alerts::cache::AlertRuleCache::new(&rcman_manager);
+    app.manage(alert_cache);
 
     app.manage(history_cache);
     app.manage(rcman_manager);

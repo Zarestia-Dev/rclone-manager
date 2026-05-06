@@ -160,6 +160,8 @@ export class NautilusTabService {
     this.destroyRef.onDestroy(() => {
       void this.stopListReadJobs();
     });
+
+    this.setupBackendEventListener();
   }
 
   // ── Selection ────────────────────────────────────────────────────────────────
@@ -387,6 +389,67 @@ export class NautilusTabService {
     ref.refreshTrigger.update(v => v + 1);
   }
 
+  /**
+   * Refreshes any pane/tab that is currently viewing the specified remote and path.
+   */
+  refreshPath(remoteName: string, path: string): void {
+    const normalizedTargetRemote = this.pathSelectionService.normalizeRemoteName(remoteName);
+    const normalizedTargetPath = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+    // 1. Refresh active pane signals if they match
+    for (let i = 0; i < 2; i++) {
+      const ref = this.getPaneRef(i as 0 | 1);
+      const remote = ref.remote();
+      if (!remote) continue;
+
+      const normRemote = this.pathSelectionService.normalizeRemoteName(remote.name, remote.isLocal);
+      const normPath = ref
+        .path()
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '');
+
+      if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
+        this.refresh(i as 0 | 1);
+      }
+    }
+
+    // 2. Update all matching PaneStates in all tabs
+    this.tabs.update(tabs =>
+      tabs.map(tab => {
+        const updatePane = (pane: PaneState): PaneState => {
+          if (!pane.remote) return pane;
+          const normRemote = this.pathSelectionService.normalizeRemoteName(
+            pane.remote.name,
+            pane.remote.isLocal
+          );
+          const normPath = pane.path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+          if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
+            pane.refreshTrigger.update(v => v + 1);
+          }
+          return pane;
+        };
+
+        const newTab = { ...tab, left: updatePane({ ...tab.left }) };
+        if (tab.right) {
+          newTab.right = updatePane({ ...tab.right });
+        }
+        return newTab;
+      })
+    );
+  }
+
+  /**
+   * Refresh multiple paths at once.
+   */
+  refreshAffectedPaths(affected: { remote: string; path: string }[]): void {
+    const unique = new Set(affected.map(a => `${a.remote}||${a.path}`));
+    unique.forEach(u => {
+      const [remote, path] = u.split('||');
+      this.refreshPath(remote, path);
+    });
+  }
+
   createPaneState(remote: ExplorerRoot | null, path = ''): PaneState {
     return {
       remote,
@@ -521,6 +584,7 @@ export class NautilusTabService {
     ref.rawFiles.set(state.rawFiles());
     ref.loading.set(state.isLoading());
     ref.error.set(state.error());
+    ref.refreshTrigger.set(state.refreshTrigger());
   }
 
   switchPane(index: 0 | 1): void {
@@ -629,6 +693,36 @@ export class NautilusTabService {
   }
 
   // -- Private --
+
+  private setupBackendEventListener(): void {
+    this.nautilusService.eventListenersService
+      .listenToJobCacheChanged()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(event => {
+        const { status, remote, source, destination } = event;
+        if ((status === 'Completed' || status === 'Failed' || status === 'Stopped') && remote) {
+          const affected: { remote: string; path: string }[] = [];
+          if (source) {
+            affected.push({ remote, path: source });
+            affected.push({ remote, path: this.getParentPath(source) });
+          }
+          if (destination) {
+            affected.push({ remote, path: destination });
+            affected.push({ remote, path: this.getParentPath(destination) });
+          }
+          if (affected.length > 0) {
+            this.refreshAffectedPaths(affected);
+          }
+        }
+      });
+  }
+
+  private getParentPath(path: string): string {
+    const p = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    const parts = p.split('/');
+    if (parts.length <= 1) return '';
+    return parts.slice(0, -1).join('/');
+  }
 
   private _loadSplitDividerPos(): void {
     this.appSettingsService

@@ -457,7 +457,13 @@ export class NautilusComponent implements OnInit {
       toggleStar: item => this.nautilusService.toggleItem('starred', item),
       isStarred: item => this.isStarred(item),
       toggleBookmark: item => this.nautilusService.toggleItem('bookmarks', item),
-      refresh: () => this.tabSvc.refresh(this.tabSvc.activePaneIndex()),
+      refresh: (remote, path) => {
+        if (remote) {
+          this.tabSvc.refreshPath(remote, path ?? this.tabSvc.activePath());
+        } else {
+          this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+        }
+      },
     });
 
     this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit();

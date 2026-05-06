@@ -338,7 +338,7 @@
       "email": "Correo electrónico",
       "placeholderName": "Introduce el nombre de la acción",
       "url": "URL del Webhook",
-      "method": "Método HTTP",
+      "method": "Método HTTP/S",
       "timeout": "Tiempo de espera (Segundos)",
       "bodyTemplate": "Plantilla del cuerpo (JSON)",
       "bodyTemplateHint": "Soporta variables Handlebars",
@@ -2629,7 +2629,7 @@
       "failed": "Solicitud fallida: {{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}: {{body}}"
+      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "No se puede seleccionar la raíz de una unidad (p. ej., D:\\) como punto de montaje. Por favor seleccione o cree una subcarpeta.",
@@ -2714,12 +2714,12 @@
       "quitFailed": "Error al cerrar el motor de rclone: {{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "configFailed": "Error al configurar el remoto: {{error}}",
       "deleteFailed": "Error al eliminar el remoto: {{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "notFound": "Archivo no encontrado"
     },
     "updater": {

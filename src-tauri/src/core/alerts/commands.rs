@@ -4,18 +4,63 @@ use crate::core::alerts::{
     types::{AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRule, AlertStats},
 };
 use crate::core::settings::AppSettingsManager;
+use std::collections::HashSet;
 use tauri::{AppHandle, Manager};
 
-#[tauri::command]
-pub async fn get_alert_rules(app: AppHandle) -> Result<Vec<AlertRule>, String> {
-    let manager = app.state::<AppSettingsManager>();
-    Ok(cache::get_all_rules(&manager))
+async fn prune_unused_mqtt_connections(app: &AppHandle) {
+    let cache = app.state::<cache::AlertRuleCache>();
+    let dispatch_ctx = app.state::<DispatchContext>();
+
+    let rules = cache.get_rules().await;
+    let actions = cache.get_actions().await;
+
+    let mut referenced_action_ids = HashSet::new();
+    for rule in rules.iter().filter(|r| r.enabled) {
+        referenced_action_ids.extend(rule.action_ids.iter().cloned());
+    }
+
+    let active_mqtt_action_ids: HashSet<String> = actions
+        .iter()
+        .filter_map(|action| match action {
+            AlertAction::Mqtt(_)
+                if action.is_enabled() && referenced_action_ids.contains(action.id()) =>
+            {
+                Some(action.id().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+
+    dispatch_ctx
+        .mqtt_registry
+        .prune_to_action_ids(&active_mqtt_action_ids)
+        .await;
 }
 
 #[tauri::command]
-pub async fn save_alert_rule(app: AppHandle, rule: AlertRule) -> Result<AlertRule, String> {
+pub async fn get_alert_rules(app: AppHandle) -> Result<Vec<AlertRule>, String> {
+    let cache = app.state::<cache::AlertRuleCache>();
+    Ok(cache.get_rules().await)
+}
+
+#[tauri::command]
+pub async fn save_alert_rule(app: AppHandle, mut rule: AlertRule) -> Result<AlertRule, String> {
     let manager = app.state::<AppSettingsManager>();
+    let cache = app.state::<cache::AlertRuleCache>();
+
+    // Merge runtime state from cache to avoid overwriting it with stale data from UI
+    {
+        let rules = cache.get_rules().await;
+        if let Some(existing) = rules.iter().find(|r| r.id == rule.id) {
+            rule.fire_count = existing.fire_count;
+            rule.last_fired = existing.last_fired;
+        }
+    }
+
     let result = cache::upsert_rule(&manager, rule)?;
+    cache.reload_rules(&manager).await;
+    prune_unused_mqtt_connections(&app).await;
+
     Ok(result)
 }
 
@@ -23,6 +68,11 @@ pub async fn save_alert_rule(app: AppHandle, rule: AlertRule) -> Result<AlertRul
 pub async fn delete_alert_rule(app: AppHandle, id: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     cache::delete_rule(&manager, &id)?;
+
+    let cache = app.state::<cache::AlertRuleCache>();
+    cache.reload_rules(&manager).await;
+    prune_unused_mqtt_connections(&app).await;
+
     Ok(())
 }
 
@@ -33,23 +83,39 @@ pub async fn toggle_alert_rule(
     enabled: bool,
 ) -> Result<AlertRule, String> {
     let manager = app.state::<AppSettingsManager>();
-    let mut rule =
-        cache::get_rule(&manager, &id).ok_or_else(|| format!("Alert rule '{id}' not found"))?;
+    let cache = app.state::<cache::AlertRuleCache>();
+
+    let mut rule = {
+        let rules = cache.get_rules().await;
+        rules.iter().find(|r| r.id == id).cloned()
+    }
+    .ok_or_else(|| format!("Alert rule '{id}' not found"))?;
+
     rule.enabled = enabled;
     let result = cache::upsert_rule(&manager, rule)?;
+    cache.reload_rules(&manager).await;
+    prune_unused_mqtt_connections(&app).await;
+
     Ok(result)
 }
 
 #[tauri::command]
 pub async fn get_alert_actions(app: AppHandle) -> Result<Vec<AlertAction>, String> {
-    let manager = app.state::<AppSettingsManager>();
-    Ok(cache::get_all_actions(&manager))
+    let cache = app.state::<cache::AlertRuleCache>();
+    let mut actions = cache.get_actions().await;
+    actions.sort_by(|a, b| a.name().cmp(b.name()));
+    Ok(actions)
 }
 
 #[tauri::command]
 pub async fn save_alert_action(app: AppHandle, action: AlertAction) -> Result<AlertAction, String> {
     let manager = app.state::<AppSettingsManager>();
     let result = cache::upsert_action(&manager, action)?;
+
+    let cache = app.state::<cache::AlertRuleCache>();
+    cache.reload_actions(&manager).await;
+    prune_unused_mqtt_connections(&app).await;
+
     Ok(result)
 }
 
@@ -57,6 +123,11 @@ pub async fn save_alert_action(app: AppHandle, action: AlertAction) -> Result<Al
 pub async fn delete_alert_action(app: AppHandle, id: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     cache::delete_action(&manager, &id)?;
+
+    let cache = app.state::<cache::AlertRuleCache>();
+    cache.reload_actions(&manager).await;
+    prune_unused_mqtt_connections(&app).await;
+
     Ok(())
 }
 
@@ -66,9 +137,11 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
     use crate::core::alerts::template::TemplateContext;
     use chrono::Utc;
 
-    let manager = app.state::<AppSettingsManager>();
-    let action =
-        cache::get_action(&manager, &id).ok_or_else(|| format!("Alert action '{id}' not found"))?;
+    let cache = app.state::<cache::AlertRuleCache>();
+    let action = cache
+        .get_action(&id)
+        .await
+        .ok_or_else(|| format!("Alert action '{id}' not found"))?;
 
     let ctx = TemplateContext {
         title: "Test Alert".to_string(),
@@ -84,6 +157,8 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         timestamp: Utc::now().to_rfc3339(),
         rule_id: "test-rule-id".to_string(),
         rule_name: "Test Rule".to_string(),
+        source: Some("/path/to/source".to_string()),
+        destination: Some("remote:/path/to/dest".to_string()),
     };
 
     let dispatch_ctx = app.state::<DispatchContext>();
@@ -102,7 +177,7 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         AlertAction::Telegram(ref a) => dispatch::telegram::dispatch(a, &ctx, &dispatch_ctx.client)
             .await
             .map(|_| ())?,
-        AlertAction::Mqtt(ref a) => dispatch::mqtt::dispatch(a, &ctx).await?,
+        AlertAction::Mqtt(ref a) => dispatch::mqtt::dispatch(a, &ctx, &dispatch_ctx).await?,
         AlertAction::Email(ref a) => dispatch::email::dispatch(a, &ctx).await?,
     }
 

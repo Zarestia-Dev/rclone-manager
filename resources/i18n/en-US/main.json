@@ -314,14 +314,14 @@
     "action": {
       "kind": "Action Type",
       "os_toast": "OS Notification",
-      "webhook": "Webhook (HTTP)",
+      "webhook": "Webhook (HTTP/S)",
       "script": "Custom Script",
       "telegram": "Telegram",
       "mqtt": "MQTT",
       "email": "Email",
       "placeholderName": "Enter action name",
       "url": "Webhook URL",
-      "method": "HTTP Method",
+      "method": "HTTP/S Method",
       "timeout": "Timeout (Seconds)",
       "bodyTemplate": "Body Template (JSON)",
       "bodyTemplateHint": "Supports Handlebars variables",
@@ -349,7 +349,7 @@
       "to": "To Address",
       "encryption": "Encryption",
       "subjectTemplate": "Subject Template",
-      "headers": "HTTP Headers",
+      "headers": "HTTP/S Headers",
       "presets": "Presets",
       "discord": "Discord",
       "slack": "Slack",
@@ -2686,7 +2686,7 @@
       "failed": "Request failed: {{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}: {{body}}"
+      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.",
@@ -2771,12 +2771,12 @@
       "quitFailed": "Failed to quit rclone engine: {{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "configFailed": "Failed to configure remote: {{error}}",
       "deleteFailed": "Failed to delete remote: {{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "notFound": "File not found"
     },
     "updater": {

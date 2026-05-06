@@ -7,9 +7,11 @@ pub mod webhook;
 
 use std::time::Duration;
 
+#[derive(Clone)]
 pub struct DispatchContext {
     pub client: reqwest::Client,
     pub insecure_client: reqwest::Client,
+    pub mqtt_registry: std::sync::Arc<mqtt::MqttConnectionRegistry>,
 }
 
 impl Default for DispatchContext {
@@ -34,6 +36,7 @@ impl DispatchContext {
         Self {
             client,
             insecure_client,
+            mqtt_registry: std::sync::Arc::new(mqtt::MqttConnectionRegistry::new()),
         }
     }
 }

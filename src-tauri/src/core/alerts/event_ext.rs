@@ -7,11 +7,143 @@ use crate::utils::types::origin::Origin;
 pub trait NotificationEventExt {
     fn alert_kind(&self) -> AlertEventKind;
     fn alert_severity(&self) -> AlertSeverity;
-    fn alert_remote(&self) -> Option<String>;
-    fn alert_profile(&self) -> Option<String>;
-    fn alert_backend(&self) -> Option<String>;
     fn alert_operation(&self) -> Option<String>;
     fn alert_origin(&self) -> Origin;
+    fn alert_source(&self) -> Option<String>;
+    fn alert_destination(&self) -> Option<String>;
+}
+
+#[derive(Clone, Debug)]
+pub struct AlertMeta {
+    pub remote: Option<String>,
+    pub profile: Option<String>,
+    pub backend: Option<String>,
+}
+
+impl NotificationEvent {
+    pub fn alert_meta(&self) -> AlertMeta {
+        match self {
+            Self::Job(stage) => match stage {
+                JobStage::Started {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | JobStage::Completed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | JobStage::Failed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | JobStage::Stopped {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                } => AlertMeta {
+                    remote: Some(remote.clone()),
+                    profile: profile.clone(),
+                    backend: Some(backend.clone()),
+                },
+            },
+            Self::Serve(
+                ServeStage::Started {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | ServeStage::Failed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | ServeStage::Stopped {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                },
+            ) => AlertMeta {
+                remote: Some(remote.clone()),
+                profile: profile.clone(),
+                backend: Some(backend.clone()),
+            },
+            Self::Mount(
+                MountStage::Succeeded {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | MountStage::Failed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | MountStage::UnmountSucceeded {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                },
+            ) => AlertMeta {
+                remote: Some(remote.clone()),
+                profile: profile.clone(),
+                backend: Some(backend.clone()),
+            },
+            Self::ScheduledTask(stage) => match stage {
+                TaskStage::Started {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | TaskStage::Completed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                }
+                | TaskStage::Failed {
+                    remote,
+                    profile,
+                    backend,
+                    ..
+                } => AlertMeta {
+                    remote: Some(remote.clone()),
+                    profile: Some(profile.clone()),
+                    backend: Some(backend.clone()),
+                },
+            },
+            Self::Serve(ServeStage::AllStopped) => AlertMeta {
+                remote: None,
+                profile: None,
+                backend: None,
+            },
+            Self::Mount(MountStage::AllUnmounted) => AlertMeta {
+                remote: None,
+                profile: None,
+                backend: None,
+            },
+            Self::AppUpdate(_) | Self::RcloneUpdate(_) | Self::Engine(_) | Self::System(_) => {
+                AlertMeta {
+                    remote: None,
+                    profile: None,
+                    backend: None,
+                }
+            }
+        }
+    }
 }
 
 impl NotificationEventExt for NotificationEvent {
@@ -64,87 +196,6 @@ impl NotificationEventExt for NotificationEvent {
         }
     }
 
-    fn alert_remote(&self) -> Option<String> {
-        match self {
-            Self::Job(stage) => match stage {
-                JobStage::Started { remote, .. }
-                | JobStage::Completed { remote, .. }
-                | JobStage::Failed { remote, .. }
-                | JobStage::Stopped { remote, .. } => Some(remote.clone()),
-            },
-            Self::Serve(
-                ServeStage::Started { remote, .. }
-                | ServeStage::Failed { remote, .. }
-                | ServeStage::Stopped { remote, .. },
-            ) => Some(remote.clone()),
-            Self::Mount(
-                MountStage::Succeeded { remote, .. }
-                | MountStage::Failed { remote, .. }
-                | MountStage::UnmountSucceeded { remote, .. },
-            ) => Some(remote.clone()),
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started { remote, .. }
-                | TaskStage::Completed { remote, .. }
-                | TaskStage::Failed { remote, .. } => Some(remote.clone()),
-            },
-            _ => None,
-        }
-    }
-
-    fn alert_profile(&self) -> Option<String> {
-        match self {
-            Self::Job(stage) => match stage {
-                JobStage::Started { profile, .. }
-                | JobStage::Completed { profile, .. }
-                | JobStage::Failed { profile, .. }
-                | JobStage::Stopped { profile, .. } => profile.clone(),
-            },
-            Self::Serve(
-                ServeStage::Started { profile, .. }
-                | ServeStage::Failed { profile, .. }
-                | ServeStage::Stopped { profile, .. },
-            ) => profile.clone(),
-            Self::Mount(
-                MountStage::Succeeded { profile, .. }
-                | MountStage::Failed { profile, .. }
-                | MountStage::UnmountSucceeded { profile, .. },
-            ) => profile.clone(),
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started { profile, .. }
-                | TaskStage::Completed { profile, .. }
-                | TaskStage::Failed { profile, .. } => Some(profile.clone()),
-            },
-            _ => None,
-        }
-    }
-
-    fn alert_backend(&self) -> Option<String> {
-        match self {
-            Self::Job(stage) => match stage {
-                JobStage::Started { backend, .. }
-                | JobStage::Completed { backend, .. }
-                | JobStage::Failed { backend, .. }
-                | JobStage::Stopped { backend, .. } => Some(backend.clone()),
-            },
-            Self::Serve(
-                ServeStage::Started { backend, .. }
-                | ServeStage::Failed { backend, .. }
-                | ServeStage::Stopped { backend, .. },
-            ) => Some(backend.clone()),
-            Self::Mount(
-                MountStage::Succeeded { backend, .. }
-                | MountStage::Failed { backend, .. }
-                | MountStage::UnmountSucceeded { backend, .. },
-            ) => Some(backend.clone()),
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started { backend, .. }
-                | TaskStage::Completed { backend, .. }
-                | TaskStage::Failed { backend, .. } => Some(backend.clone()),
-            },
-            _ => None,
-        }
-    }
-
     fn alert_operation(&self) -> Option<String> {
         match self {
             Self::Job(stage) => match stage {
@@ -180,6 +231,30 @@ impl NotificationEventExt for NotificationEvent {
             Self::Engine(_) => Origin::Internal,
             Self::System(_) => Origin::Internal,
             Self::Serve(_) | Self::Mount(_) => Origin::Dashboard,
+        }
+    }
+
+    fn alert_source(&self) -> Option<String> {
+        match self {
+            Self::Job(stage) => match stage {
+                JobStage::Started { source, .. }
+                | JobStage::Completed { source, .. }
+                | JobStage::Failed { source, .. }
+                | JobStage::Stopped { source, .. } => source.clone(),
+            },
+            _ => None,
+        }
+    }
+
+    fn alert_destination(&self) -> Option<String> {
+        match self {
+            Self::Job(stage) => match stage {
+                JobStage::Started { destination, .. }
+                | JobStage::Completed { destination, .. }
+                | JobStage::Failed { destination, .. }
+                | JobStage::Stopped { destination, .. } => destination.clone(),
+            },
+            _ => None,
         }
     }
 }

@@ -341,7 +341,7 @@
       "email": "电子邮件",
       "placeholderName": "输入操作名称",
       "url": "Webhook URL",
-      "method": "HTTP 方法",
+      "method": "HTTP/S 方法",
       "timeout": "超时时间（秒）",
       "bodyTemplate": "正文模板 (JSON)",
       "bodyTemplateHint": "支持 Handlebars 变量",
@@ -2694,7 +2694,7 @@
       "failed": "请求失败：{{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}：{{body}}"
+      "error": "HTTP/S {{status}}：{{body}}"
     },
     "file": {
       "driveRoot": "不能选择磁盘根目录（如 D:\\）作为挂载点，请选择或创建子文件夹。",
@@ -2779,12 +2779,12 @@
       "quitFailed": "退出 rclone 引擎失败：{{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}：{{body}}",
+      "httpError": "HTTP/S {{status}}：{{body}}",
       "configFailed": "配置远程存储失败：{{error}}",
       "deleteFailed": "删除远程存储失败：{{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}：{{body}}",
+      "httpError": "HTTP/S {{status}}：{{body}}",
       "notFound": "文件不存在"
     },
     "updater": {

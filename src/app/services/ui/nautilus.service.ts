@@ -37,7 +37,7 @@ export class NautilusService extends TauriBaseService {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly pathSelectionService = inject(PathSelectionService);
-  private readonly eventListenersService = inject(EventListenersService);
+  readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
 

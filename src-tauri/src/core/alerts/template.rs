@@ -27,13 +27,17 @@ pub struct TemplateContext {
     pub timestamp: String,
     pub rule_id: String,
     pub rule_name: String,
+    pub source: Option<String>,
+    pub destination: Option<String>,
 }
 
 impl TemplateContext {
     fn to_json_value(&self) -> Value {
-        let mut val =
-            serde_json::to_value(self).unwrap_or_else(|_| Value::Object(Default::default()));
+        serde_json::to_value(self).unwrap_or_else(|_| Value::Object(Default::default()))
+    }
 
+    fn to_render_value(&self) -> Value {
+        let mut val = self.to_json_value();
         let json_str = serde_json::to_string(&val).unwrap_or_default();
 
         if let Value::Object(ref mut map) = val {
@@ -61,8 +65,15 @@ impl TemplateContext {
         map.insert("ALERT_TIMESTAMP".to_string(), self.timestamp.clone());
         map.insert("ALERT_RULE_ID".to_string(), self.rule_id.clone());
         map.insert("ALERT_RULE_NAME".to_string(), self.rule_name.clone());
+        map.insert(
+            "ALERT_SOURCE".to_string(),
+            self.source.clone().unwrap_or_default(),
+        );
+        map.insert(
+            "ALERT_DESTINATION".to_string(),
+            self.destination.clone().unwrap_or_default(),
+        );
 
-        // Full context as JSON, serialized once via to_json_value().
         let json_val = self.to_json_value();
         if let Ok(json_str) = serde_json::to_string(&json_val) {
             map.insert("ALERT_JSON".to_string(), json_str);
@@ -86,12 +97,14 @@ impl TemplateContext {
             "timestamp".to_string(),
             "rule_id".to_string(),
             "rule_name".to_string(),
+            "source".to_string(),
+            "destination".to_string(),
             "json".to_string(),
         ]
     }
 
     pub fn render(&self, template: &str) -> String {
-        let data = self.to_json_value();
+        let data = self.to_render_value();
 
         match HBS.render_template(template, &data) {
             Ok(rendered) => rendered,
@@ -100,5 +113,74 @@ impl TemplateContext {
                 template.to_string()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TemplateContext;
+    use serde_json::Value;
+
+    fn sample_context() -> TemplateContext {
+        TemplateContext {
+            title: "Title".to_string(),
+            body: "Body".to_string(),
+            severity: "warning".to_string(),
+            severity_code: 2,
+            event_kind: "event.kind".to_string(),
+            remote: "remote".to_string(),
+            profile: "profile".to_string(),
+            backend: "backend".to_string(),
+            operation: "upload".to_string(),
+            origin: crate::utils::types::origin::Origin::Internal,
+            timestamp: "2026-05-06T00:00:00Z".to_string(),
+            rule_id: "rule-id".to_string(),
+            rule_name: "rule-name".to_string(),
+            source: Some("source".to_string()),
+            destination: Some("destination".to_string()),
+        }
+    }
+
+    #[test]
+    fn render_exposes_json_for_templates() {
+        let ctx = sample_context();
+        let rendered = ctx.render(r#"{"payload": {{{json}}}}"#);
+
+        let parsed: Value = serde_json::from_str(&rendered).expect("rendered JSON should parse");
+        let expected_json = serde_json::to_string(&serde_json::json!({
+            "title": "Title",
+            "body": "Body",
+            "severity": "warning",
+            "severity_code": 2,
+            "event_kind": "event.kind",
+            "remote": "remote",
+            "profile": "profile",
+            "backend": "backend",
+            "operation": "upload",
+            "origin": "internal",
+            "timestamp": "2026-05-06T00:00:00Z",
+            "rule_id": "rule-id",
+            "rule_name": "rule-name",
+            "source": "source",
+            "destination": "destination"
+        }))
+        .expect("plain context JSON should serialize");
+
+        let expected_value: Value =
+            serde_json::from_str(&expected_json).expect("plain context JSON should parse");
+
+        assert_eq!(parsed["payload"], expected_value);
+    }
+
+    #[test]
+    fn env_map_serializes_alert_json_once() {
+        let ctx = sample_context();
+        let env_map = ctx.to_env_map();
+        let alert_json = env_map.get("ALERT_JSON").expect("ALERT_JSON should exist");
+
+        let parsed: Value = serde_json::from_str(alert_json).expect("ALERT_JSON should parse");
+        assert_eq!(parsed["title"], "Title");
+        assert_eq!(parsed["body"], "Body");
+        assert!(parsed.get("json").is_none());
     }
 }

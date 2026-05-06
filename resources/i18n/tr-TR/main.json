@@ -312,14 +312,14 @@
     "action": {
       "kind": "Eylem Tipi",
       "os_toast": "Sistem Bildirimi",
-      "webhook": "Webhook (HTTP)",
+      "webhook": "Webhook (HTTP/S)",
       "script": "Özel Betik",
       "telegram": "Telegram",
       "mqtt": "MQTT",
       "email": "E-posta",
       "placeholderName": "Eylem adını girin",
       "url": "Webhook URL",
-      "method": "HTTP Metodu",
+      "method": "HTTP/S Metodu",
       "timeout": "Zaman Aşımı (Saniye)",
       "bodyTemplate": "Gövde Şablonu (JSON)",
       "bodyTemplateHint": "Handlebars değişkenlerini destekler",
@@ -347,7 +347,7 @@
       "to": "Alıcı Adresi",
       "encryption": "Şifreleme",
       "subjectTemplate": "Konu Şablonu",
-      "headers": "HTTP Üstbilgileri (Headers)",
+      "headers": "HTTP/S Üstbilgileri (Headers)",
       "presets": "Hazır Ayarlar (Presets)",
       "discord": "Discord",
       "slack": "Slack",
@@ -2678,7 +2678,7 @@
       "failed": "İstek başarısız: {{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}: {{body}}"
+      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "Sürücü kökü (örn. D:\\) bağlama noktası olarak seçilemez. Lütfen bir alt klasör seçin veya oluşturun.",
@@ -2763,12 +2763,12 @@
       "quitFailed": "Rclone motoru kapatılamadı: {{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}",
       "deleteFailed": "Uzak bağlantı silinemedi: {{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "notFound": "Dosya bulunamadı"
     },
     "updater": {

@@ -53,15 +53,13 @@ pub fn delete_rule(manager: &AppSettingsManager, id: &str) -> Result<(), String>
     Ok(())
 }
 
-pub fn bump_rule_fired(manager: &AppSettingsManager, id: &str, at: chrono::DateTime<chrono::Utc>) {
-    if let Some(mut rule) = get_rule(manager, id) {
-        rule.last_fired = Some(at);
-        rule.fire_count += 1;
-
-        if let Err(e) = upsert_rule(manager, rule) {
-            error!("Failed to persist alert rule firing: {e}");
-        }
-    }
+pub async fn bump_rule_fired(
+    manager: &AppSettingsManager,
+    cache: &AlertRuleCache,
+    id: &str,
+    at: chrono::DateTime<chrono::Utc>,
+) {
+    cache.bump_fired(manager, id, at).await;
 }
 
 pub fn get_all_actions(manager: &AppSettingsManager) -> Vec<AlertAction> {
@@ -114,7 +112,80 @@ pub fn delete_action(manager: &AppSettingsManager, id: &str) -> Result<(), Strin
     Ok(())
 }
 
-/// Ring-buffer in-memory alert history. Memory-only, no persistence.
+/// In-memory cache for alert rules and actions to avoid frequent disk I/O.
+#[derive(Clone)]
+pub struct AlertRuleCache {
+    rules: std::sync::Arc<RwLock<Vec<AlertRule>>>,
+    actions: std::sync::Arc<RwLock<Vec<AlertAction>>>,
+}
+
+impl AlertRuleCache {
+    pub fn new(manager: &AppSettingsManager) -> Self {
+        let rules = get_all_rules(manager);
+        let actions = get_all_actions(manager);
+        Self {
+            rules: std::sync::Arc::new(RwLock::new(rules)),
+            actions: std::sync::Arc::new(RwLock::new(actions)),
+        }
+    }
+
+    pub async fn reload_rules(&self, manager: &AppSettingsManager) {
+        let rules = get_all_rules(manager);
+        let mut cache = self.rules.write().await;
+        *cache = rules;
+        debug!("🔄 Alert rules cache reloaded ({} rules)", cache.len());
+    }
+
+    pub async fn reload_actions(&self, manager: &AppSettingsManager) {
+        let actions = get_all_actions(manager);
+        let mut cache = self.actions.write().await;
+        *cache = actions;
+        debug!("🔄 Alert actions cache reloaded ({} actions)", cache.len());
+    }
+
+    pub async fn get_rules(&self) -> Vec<AlertRule> {
+        self.rules.read().await.clone()
+    }
+
+    pub async fn get_actions(&self) -> Vec<AlertAction> {
+        self.actions.read().await.clone()
+    }
+
+    pub async fn get_action(&self, id: &str) -> Option<AlertAction> {
+        self.actions
+            .read()
+            .await
+            .iter()
+            .find(|a| a.id() == id)
+            .cloned()
+    }
+
+    /// Increments the fire count and updates the last fired timestamp for a rule.
+    /// Updates the in-memory cache immediately and persists the updated rule to disk.
+    pub async fn bump_fired(
+        &self,
+        manager: &AppSettingsManager,
+        id: &str,
+        at: chrono::DateTime<chrono::Utc>,
+    ) {
+        let mut updated_rule: Option<AlertRule> = None;
+
+        let mut rules = self.rules.write().await;
+        if let Some(rule) = rules.iter_mut().find(|r| r.id == id) {
+            rule.last_fired = Some(at);
+            rule.fire_count += 1;
+            updated_rule = Some(rule.clone());
+        }
+
+        drop(rules);
+
+        if let Some(rule) = updated_rule
+            && let Err(e) = upsert_rule(manager, rule)
+        {
+            error!("Failed to persist alert rule firing: {e}");
+        }
+    }
+}
 pub struct AlertHistoryCache {
     records: RwLock<VecDeque<AlertRecord>>,
     max_entries: usize,
@@ -144,70 +215,68 @@ impl AlertHistoryCache {
     pub async fn get_paginated(&self, filter: &AlertHistoryFilter) -> AlertHistoryPage {
         let records = self.records.read().await;
 
-        let filtered: Vec<&AlertRecord> = records
-            .iter()
-            .rev()
-            .filter(|r| {
-                if let Some(sev_min) = &filter.severity_min
-                    && &r.severity < sev_min
-                {
-                    return false;
-                }
-                if let Some(kind) = &filter.event_kind
-                    && &r.event_kind != kind
-                {
-                    return false;
-                }
-                if let Some(remote) = &filter.remote
-                    && r.remote.as_deref() != Some(remote.as_str())
-                {
-                    return false;
-                }
-                if let Some(acked) = filter.acknowledged
-                    && r.acknowledged != acked
-                {
-                    return false;
-                }
-                if let Some(rule_id) = &filter.rule_id
-                    && &r.rule_id != rule_id
-                {
-                    return false;
-                }
-                if let Some(origins) = &filter.origins {
-                    let origin_matches = r.origin.as_ref().map_or_else(
-                        || origins.contains(&crate::utils::types::origin::Origin::Internal),
-                        |o| origins.contains(o),
-                    );
-                    if !origin_matches {
-                        return false;
-                    }
-                }
-                if let Some(from) = filter.from_ts
-                    && r.timestamp < from
-                {
-                    return false;
-                }
-                if let Some(to) = filter.to_ts
-                    && r.timestamp > to
-                {
-                    return false;
-                }
-                true
-            })
-            .collect();
-
-        let total = filtered.len();
         let offset = filter.offset.unwrap_or(0);
         let limit = filter.limit.unwrap_or(50);
 
+        let mut items: Vec<AlertRecord> = Vec::new();
+        let mut total_matches: usize = 0;
+
+        for r in records.iter().rev() {
+            if let Some(sev_min) = &filter.severity_min
+                && &r.severity < sev_min
+            {
+                continue;
+            }
+            if let Some(kind) = &filter.event_kind
+                && &r.event_kind != kind
+            {
+                continue;
+            }
+            if let Some(remote) = &filter.remote
+                && r.remote.as_deref() != Some(remote.as_str())
+            {
+                continue;
+            }
+            if let Some(acked) = filter.acknowledged
+                && r.acknowledged != acked
+            {
+                continue;
+            }
+            if let Some(rule_id) = &filter.rule_id
+                && &r.rule_id != rule_id
+            {
+                continue;
+            }
+            if let Some(origins) = &filter.origins {
+                let origin_matches = r.origin.as_ref().map_or_else(
+                    || origins.contains(&crate::utils::types::origin::Origin::Internal),
+                    |o| origins.contains(o),
+                );
+                if !origin_matches {
+                    continue;
+                }
+            }
+            if let Some(from) = filter.from_ts
+                && r.timestamp < from
+            {
+                continue;
+            }
+            if let Some(to) = filter.to_ts
+                && r.timestamp > to
+            {
+                continue;
+            }
+
+            // matched
+            if total_matches >= offset && items.len() < limit {
+                items.push(r.clone());
+            }
+            total_matches += 1;
+        }
+
         AlertHistoryPage {
-            items: filtered
-                .into_iter()
-                .skip(offset)
-                .take(limit)
-                .cloned()
-                .collect(),
-            total,
+            items,
+            total: total_matches,
             offset,
             limit,
         }

@@ -275,7 +275,12 @@ export class NautilusActionsService {
   // ── Private helpers ──────────────────────────────────────────────────────────
 
   private _refresh(): void {
-    this.tabSvc.refresh(this.tabSvc.activePaneIndex() as 0 | 1);
+    const remote = this.tabSvc.activeRemote();
+    if (remote) {
+      this.tabSvc.refreshPath(remote.name, this.tabSvc.activePath());
+    } else {
+      this.tabSvc.refresh(this.tabSvc.activePaneIndex() as 0 | 1);
+    }
   }
 
   private _itemKey(item: FileBrowserItem): string {

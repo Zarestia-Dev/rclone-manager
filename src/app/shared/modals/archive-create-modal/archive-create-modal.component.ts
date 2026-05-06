@@ -91,10 +91,9 @@ export interface ArchiveCreateData {
   styles: [
     `
       .field-hint {
-        font-size: 0.75rem;
-        color: var(--mat-sys-on-surface-variant);
-        padding-left: 32px;
-        opacity: 0.8;
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+        padding-left: var(--space-lg);
       }
 
       mat-checkbox {

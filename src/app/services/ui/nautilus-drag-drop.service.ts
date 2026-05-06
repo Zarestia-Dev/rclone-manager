@@ -50,7 +50,7 @@ export interface DragDropCallbacks {
   toggleStar: (item: FileBrowserItem) => void;
   isStarred: (item: FileBrowserItem) => boolean;
   toggleBookmark: (item: FileBrowserItem) => void;
-  refresh: () => void;
+  refresh: (remote?: string, path?: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +323,8 @@ export class NautilusDragDropService {
   private _onMove(point: { x: number; y: number }): void {
     const ctx = this._cb.getContext();
     const hit = this._resolveDropHit(point, ctx);
-    const hitKey = `${hit.folder?.entry.Path ?? 'null'}:${hit.segmentIndex ?? 'null'}:${hit.tabIndex ?? 'null'}:${hit.sidebarItem ?? 'null'}`;
+
+    const hitKey = `${hit.paneIndex}:${hit.tabIndex}:${hit.segmentIndex}:${hit.folder?.entry.Path}:${hit.sidebarItem}`;
     if (hitKey === this._lastHitKey) return;
     this._lastHitKey = hitKey;
 
@@ -351,40 +352,39 @@ export class NautilusDragDropService {
         paneIndex: null,
       };
 
-    const folderTarget = el.closest('[data-folder-path]');
-    const segmentTarget = el.closest('[data-segment-index]');
-    const tabTarget = el.closest('[data-tab-index]');
-    const sidebarStarred = el.closest('[data-sidebar-starred]');
-    const sidebarBookmarksHeader = el.closest('[data-sidebar-bookmarks-header]');
-    const sidebarBookmark = el.closest('[data-sidebar-bookmark-path]');
-    const sidebarRemote = el.closest('[data-sidebar-remote-name]');
-    const paneTarget = el.closest('[data-pane-index]');
-    const paneIndexRaw = paneTarget?.getAttribute('data-pane-index');
-    const targetPaneIndex = paneIndexRaw != null ? parseInt(paneIndexRaw, 10) : ctx.activePaneIndex;
+    const getAttr = (selector: string, attr: string): string | null | undefined =>
+      el.closest(selector)?.getAttribute(attr);
+    const hasTag = (selector: string): boolean => !!el.closest(selector);
 
+    const paneIdxRaw = getAttr('[data-pane-index]', 'data-pane-index');
+    const paneIndex = paneIdxRaw != null ? parseInt(paneIdxRaw, 10) : null;
+    const targetPaneIndex = paneIndex ?? ctx.activePaneIndex;
+
+    const folderPath = getAttr('[data-folder-path]', 'data-folder-path');
     const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
-    const folder = folderTarget
-      ? (currentFiles.find(f => f.entry.Path === folderTarget.getAttribute('data-folder-path')) ??
-        null)
+    const folder = folderPath
+      ? (currentFiles.find(f => f.entry.Path === folderPath) ?? null)
       : null;
 
-    let sidebarItem: string | null = null;
-    if (sidebarStarred) sidebarItem = 'starred';
-    else if (sidebarBookmarksHeader) sidebarItem = 'bookmarks-header';
-    else if (sidebarBookmark)
-      sidebarItem = 'bookmark:' + sidebarBookmark.getAttribute('data-sidebar-bookmark-path');
-    else if (sidebarRemote)
-      sidebarItem = 'remote:' + sidebarRemote.getAttribute('data-sidebar-remote-name');
+    const segIdxRaw = getAttr('[data-segment-index]', 'data-segment-index');
+    const segmentIndex = segIdxRaw ? parseInt(segIdxRaw, 10) : null;
 
-    return {
-      folder,
-      segmentIndex: segmentTarget
-        ? parseInt(segmentTarget.getAttribute('data-segment-index')!, 10)
-        : null,
-      tabIndex: tabTarget ? parseInt(tabTarget.getAttribute('data-tab-index')!, 10) : null,
-      sidebarItem,
-      paneIndex: paneTarget ? parseInt(paneTarget.getAttribute('data-pane-index')!, 10) : null,
-    };
+    const tabIdxRaw = getAttr('[data-tab-index]', 'data-tab-index');
+    const tabIndex = tabIdxRaw ? parseInt(tabIdxRaw, 10) : null;
+
+    let sidebarItem: string | null = null;
+    if (hasTag('[data-sidebar-starred]')) sidebarItem = 'starred';
+    else if (hasTag('[data-sidebar-bookmarks-header]')) sidebarItem = 'bookmarks-header';
+    else {
+      const bmPath = getAttr('[data-sidebar-bookmark-path]', 'data-sidebar-bookmark-path');
+      if (bmPath) sidebarItem = `bookmark:${bmPath}`;
+      else {
+        const remoteName = getAttr('[data-sidebar-remote-name]', 'data-sidebar-remote-name');
+        if (remoteName) sidebarItem = `remote:${remoteName}`;
+      }
+    }
+
+    return { folder, segmentIndex, tabIndex, sidebarItem, paneIndex };
   }
 
   private _resolveDropTargetFromPoint(
@@ -522,7 +522,10 @@ export class NautilusDragDropService {
       target.path,
       isSameRemote ? 'move' : 'copy'
     );
-    this._cb.refresh();
+    this._cb.refresh(target.remote.name, target.path);
+    if (isSameRemote) {
+      this._cb.refresh(target.remote.name, sourceParentPath);
+    }
   }
 
   private async _processExternalDrop(
@@ -580,9 +583,7 @@ export class NautilusDragDropService {
       ORIGINS.FILEMANAGER
     );
 
-    if (successCount > 0) {
-      this._cb.refresh();
-    }
+    this._cb.refresh(target.remote?.name, target.path);
 
     if (failedPaths.length === 0 && successCount > 0) {
       this.notifications.showSuccess(

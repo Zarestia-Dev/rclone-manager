@@ -18,7 +18,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_security_environment(app_handle)?;
 
     // Initialize Alert Engine Worker
-    crate::core::alerts::engine::init();
+    crate::core::alerts::engine::init(app_handle.clone());
 
     // Setup Event Listeners
     crate::core::event_listener::setup_event_listener(app_handle);

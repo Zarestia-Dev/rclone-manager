@@ -452,8 +452,6 @@ impl Backend {
         async_job: bool,
         os: Option<String>,
     ) -> serde_json::Value {
-        // Use positional arguments (args) for flags as well, as core/command
-        // parses them just like the CLI. This is more reliable than the 'opt' map.
         args.push("--ask-password=false".to_string());
 
         // Handle password command
@@ -463,8 +461,6 @@ impl Backend {
                 .is_some_and(|os| os.to_lowercase().contains("windows"));
 
             if is_windows {
-                // Windows cmd.exe: echo is a built-in, so we must run it via cmd /C.
-                // We escape special shell characters with ^.
                 let escaped_pass = pass
                     .replace('^', "^^")
                     .replace('&', "^&")
@@ -473,9 +469,11 @@ impl Backend {
                     .replace('>', "^>");
                 args.push(format!("--password-command=cmd /C echo {}", escaped_pass));
             } else {
-                // Unix sh/bash: Use single quotes to prevent interpolation.
                 let escaped_pass = pass.replace('\'', "'\\''");
-                args.push(format!("--password-command=echo '{}'", escaped_pass));
+                args.push(format!(
+                    "--password-command=sh -c \"printf '%s' '{}'\"",
+                    escaped_pass
+                ));
             }
         }
 

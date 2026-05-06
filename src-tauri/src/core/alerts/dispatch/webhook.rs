@@ -15,6 +15,12 @@ pub async fn dispatch(
     let body = ctx.render(&action.body_template);
     let url = ctx.render(&action.url);
 
+    let rendered_headers: Vec<(String, String)> = action
+        .headers
+        .iter()
+        .map(|(k, v)| (k.clone(), ctx.render(v)))
+        .collect();
+
     let method = reqwest::Method::from_bytes(action.method.to_uppercase().as_bytes())
         .map_err(|e| format!("Invalid HTTP method '{}': {e}", action.method))?;
 
@@ -25,13 +31,13 @@ pub async fn dispatch(
             let method = method.clone();
             let url = url.clone();
             let body = body.clone();
+            let headers = rendered_headers.clone();
 
             async move {
                 let mut req_builder = client.request(method, &url).body(body);
 
-                for (k, v) in &action.headers {
-                    let rendered_v = ctx.render(v);
-                    req_builder = req_builder.header(k.as_str(), rendered_v);
+                for (k, v) in headers {
+                    req_builder = req_builder.header(k, v);
                 }
 
                 let resp = req_builder

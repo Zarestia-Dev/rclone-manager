@@ -57,44 +57,76 @@ impl JobMetadata {
         self.origin.clone().unwrap_or(Origin::Internal)
     }
 
-    pub fn started_event(&self, backend: String) -> NotificationEvent {
-        NotificationEvent::Job(JobStage::Started {
+    fn create_job_stage<F>(&self, backend: String, stage_fn: F) -> NotificationEvent
+    where
+        F: FnOnce(
+            String,
+            String,
+            Option<String>,
+            JobType,
+            Origin,
+            Option<String>,
+            Option<String>,
+        ) -> JobStage,
+    {
+        NotificationEvent::Job(stage_fn(
             backend,
-            remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
-            job_type: self.job_type.clone(),
-            origin: self.resolved_origin(),
+            self.remote_name.clone(),
+            self.profile.clone(),
+            self.job_type.clone(),
+            self.resolved_origin(),
+            Some(self.source.clone()),
+            Some(self.destination.clone()),
+        ))
+    }
+
+    pub fn started_event(&self, backend: String) -> NotificationEvent {
+        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Started {
+            backend: b,
+            remote: r,
+            profile: p,
+            job_type: jt,
+            origin: o,
+            source: s,
+            destination: d,
         })
     }
 
     pub fn completed_event(&self, backend: String) -> NotificationEvent {
-        NotificationEvent::Job(JobStage::Completed {
-            backend,
-            remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
-            job_type: self.job_type.clone(),
-            origin: self.resolved_origin(),
+        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Completed {
+            backend: b,
+            remote: r,
+            profile: p,
+            job_type: jt,
+            origin: o,
+            source: s,
+            destination: d,
         })
     }
 
     pub fn failed_event(&self, backend: String, error_msg: &str) -> NotificationEvent {
-        NotificationEvent::Job(JobStage::Failed {
-            backend,
-            remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
-            job_type: self.job_type.clone(),
-            error: error_msg.to_string(),
-            origin: self.resolved_origin(),
+        let error = error_msg.to_string();
+        self.create_job_stage(backend, move |b, r, p, jt, o, s, d| JobStage::Failed {
+            backend: b,
+            remote: r,
+            profile: p,
+            job_type: jt,
+            error,
+            origin: o,
+            source: s,
+            destination: d,
         })
     }
 
     fn stopped_event(&self, backend: String) -> NotificationEvent {
-        NotificationEvent::Job(JobStage::Stopped {
-            backend,
-            remote: self.remote_name.clone(),
-            profile: self.profile.clone(),
-            job_type: self.job_type.clone(),
-            origin: self.resolved_origin(),
+        self.create_job_stage(backend, |b, r, p, jt, o, s, d| JobStage::Stopped {
+            backend: b,
+            remote: r,
+            profile: p,
+            job_type: jt,
+            origin: o,
+            source: s,
+            destination: d,
         })
     }
 }
@@ -447,7 +479,7 @@ pub async fn handle_job_completion(
 ) -> Result<Value, RcloneError> {
     let job_cache = &app.state::<BackendManager>().job_cache;
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
-    let success = job_status
+    let mut success = job_status
         .get("success")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
@@ -455,12 +487,29 @@ pub async fn handle_job_completion(
         .get("stopped")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
-    let error_msg = job_status
+    let mut error_msg = job_status
         .get("error")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .trim()
         .to_string();
+
+    // Special handling for core/command jobs where rclone reports success: true
+    // but the internal command failed (indicated by output.error: true).
+    if success
+        && let Some(output) = job_status.get("output")
+        && output
+            .get("error")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    {
+        success = false;
+        if let Some(result) = output.get("result").and_then(|v| v.as_str())
+            && !result.trim().is_empty()
+        {
+            error_msg = result.trim().to_string();
+        }
+    }
 
     let task = scheduled_tasks_cache
         .get_task_by_job_id(jobid.to_string())
@@ -931,6 +980,7 @@ mod tests {
                 profile,
                 job_type,
                 origin,
+                ..
             }) => {
                 assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
@@ -952,6 +1002,7 @@ mod tests {
                 profile,
                 job_type,
                 origin,
+                ..
             }) => {
                 assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
@@ -974,6 +1025,7 @@ mod tests {
                 job_type,
                 error,
                 origin,
+                ..
             }) => {
                 assert_eq!(backend, "test-backend");
                 assert_eq!(remote, "gdrive:");
