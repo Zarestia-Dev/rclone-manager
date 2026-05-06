@@ -190,7 +190,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // BACKUP & RESTORE
             // =================================================================
-            (backup_settings, $crate::core::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>]);
+            (backup_settings, $crate::core::settings::backup::backup_manager::backup_settings, [backup_dir: String, export_type: $crate::utils::types::backup_types::ExportType, password: Option<String>, remote_name: Option<String>, user_note: Option<String>, include_profiles: Option<Vec<String>>, include_secrets: Option<bool>]);
             (analyze_backup_file, $crate::core::settings::backup::backup_manager::analyze_backup_file, [path: std::path::PathBuf]);
             (restore_settings, $crate::core::settings::backup::restore_manager::restore_settings, [backup_path: std::path::PathBuf, password: Option<String>, restore_profile: Option<String>, restore_profile_as: Option<String>]);
             (get_export_categories, $crate::core::settings::backup::export_categories::get_export_categories, []);

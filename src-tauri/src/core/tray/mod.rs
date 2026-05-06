@@ -89,12 +89,15 @@ impl TraySnapshot {
             })
             .collect();
 
+        let all_remote_settings = remotes_settings
+            .as_ref()
+            .and_then(|rs| rs.get_all_values().ok())
+            .unwrap_or_default();
+
         let remotes = remote_names
             .into_iter()
             .map(|name| {
-                let s = remotes_settings
-                    .as_ref()
-                    .and_then(|rs| rs.get_value(&name).ok());
+                let s = all_remote_settings.get(&name);
 
                 let show_on_tray = s
                     .as_ref()

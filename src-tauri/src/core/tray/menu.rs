@@ -9,15 +9,26 @@ use crate::t;
 use super::tray_action::TrayAction;
 use super::{TrayProfileSummary, TraySnapshot};
 
-/// Build a submenu for a transfer-type operation (sync / copy / move / bisync).
-fn create_job_submenu<R: Runtime>(
+/// Configuration for creating a profile-based submenu.
+struct ProfileSubmenuConfig {
+    label_key: &'static str,
+    start_label_key: &'static str,
+    stop_label_key: &'static str,
+}
+
+/// Build a generic submenu for profile-based operations (mount, sync, serve, etc.).
+fn create_profile_submenu<R: Runtime, F1, F2>(
     handle: &AppHandle<R>,
     remote: &str,
     profiles: &[TrayProfileSummary],
-    label_key: &str,
-    start_action: impl Fn(String, String) -> TrayAction,
-    stop_action: impl Fn(String, String) -> TrayAction,
-) -> tauri::Result<Submenu<R>> {
+    config: ProfileSubmenuConfig,
+    start_action: F1,
+    stop_action: F2,
+) -> tauri::Result<Submenu<R>>
+where
+    F1: Fn(String, String) -> TrayAction,
+    F2: Fn(String, String) -> TrayAction,
+{
     let items = profiles
         .iter()
         .map(|p| {
@@ -27,9 +38,9 @@ fn create_job_submenu<R: Runtime>(
                 start_action(remote.to_string(), p.name.clone())
             };
             let label = if p.is_active {
-                format!("● {} ▸ {}", p.name, t!("tray.stop"))
+                format!("● {} ▸ {}", p.name, t!(config.stop_label_key))
             } else {
-                format!("  {} ▸ {}", p.name, t!("tray.start"))
+                format!("  {} ▸ {}", p.name, t!(config.start_label_key))
             };
             MenuItem::with_id(handle, action.to_id(), label, true, None::<&str>)
                 .map(|i| Box::new(i) as Box<dyn tauri::menu::IsMenuItem<R>>)
@@ -37,64 +48,7 @@ fn create_job_submenu<R: Runtime>(
         .collect::<tauri::Result<Vec<_>>>()?;
 
     let active = profiles.iter().filter(|p| p.is_active).count();
-    let label =
-        t!(label_key, "active" => &active.to_string(), "total" => &profiles.len().to_string());
-    submenu_from_items(handle, label, !profiles.is_empty(), &items)
-}
-
-fn create_mount_submenu<R: Runtime>(
-    handle: &AppHandle<R>,
-    remote: &str,
-    profiles: &[TrayProfileSummary],
-) -> tauri::Result<Submenu<R>> {
-    let items = profiles
-        .iter()
-        .map(|p| {
-            let action = if p.is_active {
-                TrayAction::UnmountProfile(remote.to_string(), p.name.clone())
-            } else {
-                TrayAction::MountProfile(remote.to_string(), p.name.clone())
-            };
-            let label = if p.is_active {
-                format!("● {} ▸ {}", p.name, t!("tray.unmount"))
-            } else {
-                format!("  {} ▸ {}", p.name, t!("tray.mount"))
-            };
-            MenuItem::with_id(handle, action.to_id(), label, true, None::<&str>)
-                .map(|i| Box::new(i) as Box<dyn tauri::menu::IsMenuItem<R>>)
-        })
-        .collect::<tauri::Result<Vec<_>>>()?;
-
-    let active = profiles.iter().filter(|p| p.is_active).count();
-    let label = t!("tray.mountCount", "active" => &active.to_string(), "total" => &profiles.len().to_string());
-    submenu_from_items(handle, label, !profiles.is_empty(), &items)
-}
-
-fn create_serve_submenu<R: Runtime>(
-    handle: &AppHandle<R>,
-    remote: &str,
-    profiles: &[TrayProfileSummary],
-) -> tauri::Result<Submenu<R>> {
-    let items = profiles
-        .iter()
-        .map(|p| {
-            let action = if p.is_active {
-                TrayAction::StopServeProfile(remote.to_string(), p.name.clone())
-            } else {
-                TrayAction::ServeProfile(remote.to_string(), p.name.clone())
-            };
-            let label = if p.is_active {
-                format!("● {} ▸ {}", p.name, t!("tray.stop"))
-            } else {
-                format!("  {} ▸ {}", p.name, t!("tray.start"))
-            };
-            MenuItem::with_id(handle, action.to_id(), label, true, None::<&str>)
-                .map(|i| Box::new(i) as Box<dyn tauri::menu::IsMenuItem<R>>)
-        })
-        .collect::<tauri::Result<Vec<_>>>()?;
-
-    let active = profiles.iter().filter(|p| p.is_active).count();
-    let label = t!("tray.serveCount", "active" => &active.to_string(), "total" => &profiles.len().to_string());
+    let label = t!(config.label_key, "active" => &active.to_string(), "total" => &profiles.len().to_string());
     submenu_from_items(handle, label, !profiles.is_empty(), &items)
 }
 
@@ -123,11 +77,22 @@ pub fn create_tray_menu<R: Runtime>(
     let separator = PredefinedMenuItem::separator(app)?;
 
     #[cfg(not(feature = "web-server"))]
-    let show_app_item = MenuItem::with_id(app, "show_app", t!("tray.showApp"), true, None::<&str>)?;
+    let show_app_item = MenuItem::with_id(
+        app,
+        TrayAction::ShowApp.to_id(),
+        t!("tray.showApp"),
+        true,
+        None::<&str>,
+    )?;
 
     #[cfg(feature = "web-server")]
-    let open_web_ui_item =
-        MenuItem::with_id(app, "open_web_ui", t!("tray.openWebUI"), true, None::<&str>)?;
+    let open_web_ui_item = MenuItem::with_id(
+        app,
+        TrayAction::OpenWebUI.to_id(),
+        t!("tray.openWebUI"),
+        true,
+        None::<&str>,
+    )?;
 
     let open_file_browser_item = MenuItem::with_id(
         app,
@@ -138,26 +103,32 @@ pub fn create_tray_menu<R: Runtime>(
     )?;
     let unmount_all_item = MenuItem::with_id(
         app,
-        "unmount_all",
+        TrayAction::UnmountAll.to_id(),
         t!("tray.unmountAll"),
         true,
         None::<&str>,
     )?;
     let stop_all_jobs_item = MenuItem::with_id(
         app,
-        "stop_all_jobs",
+        TrayAction::StopAllJobs.to_id(),
         t!("tray.stopAllJobs"),
         true,
         None::<&str>,
     )?;
     let stop_all_serves_item = MenuItem::with_id(
         app,
-        "stop_all_serves",
+        TrayAction::StopAllServes.to_id(),
         t!("tray.stopAllServes"),
         true,
         None::<&str>,
     )?;
-    let quit_item = MenuItem::with_id(app, "quit", t!("tray.quit"), true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(
+        app,
+        TrayAction::Quit.to_id(),
+        t!("tray.quit"),
+        true,
+        None::<&str>,
+    )?;
 
     let mut remote_menus: Vec<Submenu<R>> = vec![];
 
@@ -199,47 +170,77 @@ pub fn create_tray_menu<R: Runtime>(
 
         for action in &remote_summary.primary_actions {
             let item: Box<dyn tauri::menu::IsMenuItem<R>> = match action.as_str() {
-                "mount" => Box::new(create_mount_submenu(
+                "mount" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.mount_profiles,
+                    ProfileSubmenuConfig {
+                        label_key: "tray.mountCount",
+                        start_label_key: "tray.mount",
+                        stop_label_key: "tray.unmount",
+                    },
+                    TrayAction::MountProfile,
+                    TrayAction::UnmountProfile,
                 )?),
-                "sync" => Box::new(create_job_submenu(
+                "sync" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.sync_profiles,
-                    "tray.syncCount",
+                    ProfileSubmenuConfig {
+                        label_key: "tray.syncCount",
+                        start_label_key: "tray.start",
+                        stop_label_key: "tray.stop",
+                    },
                     TrayAction::SyncProfile,
                     TrayAction::StopSyncProfile,
                 )?),
-                "copy" => Box::new(create_job_submenu(
+                "copy" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.copy_profiles,
-                    "tray.copyCount",
+                    ProfileSubmenuConfig {
+                        label_key: "tray.copyCount",
+                        start_label_key: "tray.start",
+                        stop_label_key: "tray.stop",
+                    },
                     TrayAction::CopyProfile,
                     TrayAction::StopCopyProfile,
                 )?),
-                "move" => Box::new(create_job_submenu(
+                "move" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.move_profiles,
-                    "tray.moveCount",
+                    ProfileSubmenuConfig {
+                        label_key: "tray.moveCount",
+                        start_label_key: "tray.start",
+                        stop_label_key: "tray.stop",
+                    },
                     TrayAction::MoveProfile,
                     TrayAction::StopMoveProfile,
                 )?),
-                "bisync" => Box::new(create_job_submenu(
+                "bisync" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.bisync_profiles,
-                    "tray.bisyncCount",
+                    ProfileSubmenuConfig {
+                        label_key: "tray.bisyncCount",
+                        start_label_key: "tray.start",
+                        stop_label_key: "tray.stop",
+                    },
                     TrayAction::BisyncProfile,
                     TrayAction::StopBisyncProfile,
                 )?),
-                "serve" => Box::new(create_serve_submenu(
+                "serve" => Box::new(create_profile_submenu(
                     app,
                     remote,
                     &remote_summary.serve_profiles,
+                    ProfileSubmenuConfig {
+                        label_key: "tray.serveCount",
+                        start_label_key: "tray.start",
+                        stop_label_key: "tray.stop",
+                    },
+                    TrayAction::ServeProfile,
+                    TrayAction::StopServeProfile,
                 )?),
                 _ => continue,
             };

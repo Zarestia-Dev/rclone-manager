@@ -92,7 +92,6 @@ pub async fn stream_file_handler(
 ) -> Result<impl IntoResponse, AppError> {
     use crate::rclone::backend::BackendManager;
     use crate::utils::types::core::RcloneState;
-    use tracing::debug;
 
     let path_str = query.path.clone();
     let path = std::path::PathBuf::from(&path_str);
@@ -142,9 +141,10 @@ pub async fn stream_file_handler(
         }
         Err(e) => {
             // Fallback to rclone cat
-            debug!(
+            log::debug!(
                 "⚠️ Standard stream failed for {}, attempting cat fallback: {}",
-                path_str, e
+                path_str,
+                e
             );
             let backend_manager = state.app_handle.state::<BackendManager>();
             let backend = backend_manager.get_active().await;
@@ -187,7 +187,7 @@ pub async fn stream_file_handler(
                     })
                 }
                 Err(cat_err) => {
-                    error!("❌ Cat fallback also failed for {}: {}", path_str, cat_err);
+                    log::error!("❌ Cat fallback also failed for {}: {}", path_str, cat_err);
 
                     if cat_err.contains("not found") || cat_err.contains("directory not found") {
                         Err(AppError::NotFound(cat_err))

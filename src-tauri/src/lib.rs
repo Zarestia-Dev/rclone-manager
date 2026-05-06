@@ -611,30 +611,6 @@ fn setup_app(
 fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
     if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
         dispatch_tray_action(app, action);
-        return;
-    }
-
-    match event.id.as_ref() {
-        #[cfg(not(feature = "web-server"))]
-        "show_app" => core::tray::actions::show_main_window(app.clone()),
-
-        #[cfg(feature = "web-server")]
-        "open_web_ui" => {
-            use tauri_plugin_opener::OpenerExt;
-            let url = web_ui_url(app, "");
-            if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                log::error!("Failed to open web UI: {e}");
-            }
-        }
-
-        "quit" => {
-            let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
-                app_clone.state::<RcloneState>().set_shutting_down();
-                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
-            });
-        }
-        _ => {}
     }
 }
 
@@ -718,6 +694,26 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
                     log::error!("Failed to open web UI for file browser: {e}");
                 }
             }
+        }
+        TrayAction::ShowApp => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::show_main_window(app.clone());
+        }
+        TrayAction::OpenWebUI => {
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, "");
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI: {e}");
+                }
+            }
+        }
+        TrayAction::Quit => {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                app_clone.state::<RcloneState>().set_shutting_down();
+                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
+            });
         }
     }
 }

@@ -374,11 +374,13 @@ pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::V
 
     let backend_manager = app.state::<BackendManager>();
     let remote_names = backend_manager.remote_cache.get_remotes().await;
+
+    let all_remote_settings = remotes.get_all_values().unwrap_or_default();
     let mut all_settings = serde_json::Map::new();
 
     for remote_name in remote_names {
-        if let Ok(settings) = remotes.get_value(&remote_name) {
-            all_settings.insert(remote_name, settings);
+        if let Some(settings) = all_remote_settings.get(&remote_name) {
+            all_settings.insert(remote_name, settings.clone());
         }
     }
 

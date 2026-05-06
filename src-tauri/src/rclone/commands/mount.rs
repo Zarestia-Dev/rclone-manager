@@ -209,10 +209,21 @@ pub async fn unmount_remote(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    let payload = json!({ "mountPoint": mount_point });
     if mount_point.trim().is_empty() {
-        return Err(crate::localized_error!("backendErrors.mount.pointEmpty"));
+        let error_msg = crate::localized_error!("backendErrors.mount.pointEmpty");
+        notify(
+            &app,
+            NotificationEvent::Mount(MountStage::Failed {
+                backend: backend_manager.get_active_name().await,
+                remote: remote_name.clone(),
+                profile: None,
+                error: error_msg.clone(),
+            }),
+        );
+        return Err(error_msg);
     }
+
+    let payload = json!({ "mountPoint": mount_point });
 
     log_operation(
         LogLevel::Info,
@@ -324,21 +335,49 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
 /// Resolves all options (mount, vfs, filter, backend) from cached settings
 #[tauri::command]
 pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Result<(), String> {
-    let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
+    let (config, settings) = match crate::rclone::commands::common::resolve_profile_settings(
         &app,
         &params.remote_name,
         &params.profile_name,
         "mountConfigs",
     )
-    .await?;
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            notify(
+                &app,
+                NotificationEvent::Mount(MountStage::Failed {
+                    backend: app.state::<BackendManager>().get_active_name().await,
+                    remote: params.remote_name.clone(),
+                    profile: Some(params.profile_name.clone()),
+                    error: e.clone(),
+                }),
+            );
+            return Err(e);
+        }
+    };
 
-    let mut mount_params = MountParams::from_config(params.remote_name.clone(), &config, &settings)
-        .ok_or_else(|| {
-            crate::localized_error!(
-                "backendErrors.mount.configIncomplete",
-                "profile" => &params.profile_name
-            )
-        })?;
+    let mut mount_params =
+        match MountParams::from_config(params.remote_name.clone(), &config, &settings) {
+            Some(p) => p,
+            None => {
+                let error_msg = crate::localized_error!(
+                    "backendErrors.mount.configIncomplete",
+                    "profile" => &params.profile_name
+                );
+                notify(
+                    &app,
+                    NotificationEvent::Mount(MountStage::Failed {
+                        backend: app.state::<BackendManager>().get_active_name().await,
+                        remote: params.remote_name.clone(),
+                        profile: Some(params.profile_name.clone()),
+                        error: error_msg.clone(),
+                    }),
+                );
+                return Err(error_msg);
+            }
+        };
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());

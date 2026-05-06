@@ -14,7 +14,7 @@ use crate::{
         },
     },
     utils::{
-        app::notification::{JobStage, MountStage, NotificationEvent, SystemStage, notify},
+        app::notification::{JobStage, NotificationEvent, SystemStage, notify},
         types::{
             jobs::{JobStatus, JobType},
             remotes::ProfileParams,
@@ -142,6 +142,23 @@ pub fn handle_stop_job_profile(app: AppHandle, remote_name: &str, profile_name: 
 
 // ── Mount ────────────────────────────────────────────────────────────────────
 
+fn get_mount_dest(
+    manager: &AppSettingsManager,
+    remote: &str,
+    profile: Option<&str>,
+) -> Option<String> {
+    let sub = manager.sub_settings("remotes").ok()?;
+    let settings = sub.get_value(remote).ok()?;
+    let mount_configs = settings.get("mountConfigs")?.as_object()?;
+
+    let config = match profile {
+        Some(p) => mount_configs.get(p)?,
+        None => mount_configs.values().next()?,
+    };
+
+    crate::rclone::commands::common::parse_common_config(config, &settings, remote).map(|p| p.dest)
+}
+
 pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
     let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
@@ -162,34 +179,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     tauri::async_runtime::spawn(async move {
         let manager = app.state::<AppSettingsManager>();
 
-        let mount_point = manager
-            .inner()
-            .sub_settings("remotes")
-            .ok()
-            .and_then(|r| r.get_value(&remote).ok())
-            .as_ref()
-            .and_then(|v| v.get("mountConfigs"))
-            .and_then(|v| v.as_object())
-            .and_then(|configs| configs.get(&profile))
-            .and_then(|config| config.get("dest"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        if mount_point.is_empty() {
-            error!("Mount point not found for profile '{profile}'");
-            let backend_name = app.state::<BackendManager>().get_active_name().await;
-            notify(
-                &app,
-                NotificationEvent::Mount(MountStage::Failed {
-                    backend: backend_name,
-                    remote,
-                    profile: Some(profile.clone()),
-                    error: format!("profile not found: {profile}"),
-                }),
-            );
-            return;
-        }
+        let mount_point = get_mount_dest(&manager, &remote, Some(&profile)).unwrap_or_default();
 
         match unmount_remote(app, mount_point.clone(), remote.clone()).await {
             Ok(_) => info!("Unmounted {remote} / {profile}"),
@@ -282,20 +272,8 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let app_clone = app.clone();
 
     tauri::async_runtime::spawn(async move {
-        let mount_point = app_clone
-            .state::<AppSettingsManager>()
-            .inner()
-            .sub_settings("remotes")
-            .ok()
-            .and_then(|r| r.get_value(&remote).ok())
-            .as_ref()
-            .and_then(|v| v.get("mountConfigs"))
-            .and_then(|v| v.as_object())
-            .and_then(|configs| configs.values().next())
-            .and_then(|config| config.get("dest"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+        let mount_point = get_mount_dest(&app_clone.state::<AppSettingsManager>(), &remote, None)
+            .unwrap_or_default();
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
             Ok(_) => info!("Opened file manager for {remote}"),

@@ -26,11 +26,14 @@ pub enum TrayAction {
     StopAllJobs,
     StopAllServes,
     OpenFileBrowser,
+    ShowApp,
+    OpenWebUI,
+    Quit,
 }
 
 impl TrayAction {
     /// Converts a tray action into its unique string ID.
-    /// Example: `TrayAction::MountProfile("myRemote`", "profile1") -> "mount_profile-myRemote-profile1"
+    /// Example: `TrayAction::MountProfile("myRemote", "profile1") -> "mount_profile-myRemote-profile1"
     pub fn to_id(&self) -> String {
         match self {
             Self::MountProfile(remote, profile) => {
@@ -69,11 +72,14 @@ impl TrayAction {
             Self::StopAllJobs => "stop_all_jobs".to_string(),
             Self::StopAllServes => "stop_all_serves".to_string(),
             Self::OpenFileBrowser => "open_file_browser".to_string(),
+            Self::ShowApp => "show_app".to_string(),
+            Self::OpenWebUI => "open_web_ui".to_string(),
+            Self::Quit => "quit".to_string(),
         }
     }
 
     /// Parses a unique string ID back into a `TrayAction`.
-    /// Example: "`mount_profile__myRemote__profile1`" -> `Some(TrayAction::MountProfile("myRemote`", "profile1"))
+    /// Example: "mount_profile__myRemote__profile1" -> Some(TrayAction::MountProfile("myRemote", "profile1"))
     pub fn from_id(id: &str) -> Option<Self> {
         // Check for global actions first (single word, no separators)
         match id {
@@ -81,7 +87,9 @@ impl TrayAction {
             "stop_all_jobs" => return Some(Self::StopAllJobs),
             "stop_all_serves" => return Some(Self::StopAllServes),
             "open_file_browser" => return Some(Self::OpenFileBrowser),
-            "show_app" | "open_web_ui" | "quit" => return None, // Handled separately in lib.rs
+            "show_app" => return Some(Self::ShowApp),
+            "open_web_ui" => return Some(Self::OpenWebUI),
+            "quit" => return Some(Self::Quit),
             _ => {}
         }
 
@@ -138,12 +146,15 @@ mod tests {
             TrayAction::Browse("remote".to_string()),
             TrayAction::BrowseInApp("remote".to_string()),
             TrayAction::UnmountAll,
-            TrayAction::StopAllJobs,
+            TrayAction::OpenFileBrowser,
+            TrayAction::ShowApp,
+            TrayAction::OpenWebUI,
+            TrayAction::Quit,
         ];
 
         for action in actions {
             let id = action.to_id();
-            let parsed = TrayAction::from_id(&id).expect("Should parse back");
+            let parsed = TrayAction::from_id(&id).expect(&format!("Should parse back: {id}"));
             assert_eq!(action, parsed);
         }
     }

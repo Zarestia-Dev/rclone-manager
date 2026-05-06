@@ -88,9 +88,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_tray_update_concurrency_safety() {
+        use crate::core::settings::schema::AppSettings;
+
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config = rcman::SettingsConfig::builder("test-app", "1.0.0")
+            .with_config_dir(temp_dir.path())
+            .with_schema::<AppSettings>()
+            .build();
+        let settings_manager = rcman::SettingsManager::new(config).unwrap();
+        settings_manager
+            .register_sub_settings(rcman::SubSettingsConfig::singlefile("remotes"))
+            .unwrap();
+
         // Use a mock builder to create a test app context
         let app = mock_builder()
             .manage(crate::rclone::backend::BackendManager::new())
+            .manage(settings_manager)
             .build(tauri::generate_context!())
             .unwrap();
         let handle = app.handle();
@@ -101,15 +114,25 @@ mod tests {
         let mut tasks = vec![];
         for _ in 0..50 {
             let h = handle.clone();
-            tasks.push(tokio::spawn(async move {
-                // We expect this to fail gracefully (due to missing AppSettingsManager)
-                // but it must NOT panic due to Rc threading violations.
-                let _ = update_tray_menu(h).await;
-            }));
+            tasks.push(tokio::spawn(async move { update_tray_menu(h).await }));
         }
 
-        // We don't necessarily care if the tasks succeed (they will fail because of missing state),
-        // we just care that they don't PANIC.
-        let _ = futures::future::join_all(tasks).await;
+        let results = futures::future::join_all(tasks).await;
+        for (i, res) in results.into_iter().enumerate() {
+            let task_res = res.unwrap_or_else(|e| {
+                if e.is_panic() {
+                    panic!("Task {} panicked!", i);
+                } else {
+                    panic!("Task {} failed to join: {:?}", i, e);
+                }
+            });
+
+            assert!(
+                task_res.is_ok(),
+                "Task {} returned error: {:?}",
+                i,
+                task_res.err()
+            );
+        }
     }
 }
