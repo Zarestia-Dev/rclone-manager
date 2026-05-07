@@ -292,6 +292,24 @@ impl RemoteCache {
             .and_then(|s| s.profile.clone())
     }
 
+    pub async fn get_serve_by_id(&self, serve_id: &str) -> Option<ServeInstance> {
+        self.serves
+            .read()
+            .await
+            .iter()
+            .find(|s| s.id == serve_id)
+            .cloned()
+    }
+
+    pub async fn get_mount_by_point(&self, mount_point: &str) -> Option<MountedRemote> {
+        self.mounted
+            .read()
+            .await
+            .iter()
+            .find(|m| m.mount_point == mount_point)
+            .cloned()
+    }
+
     // =========================================================================
     // PROFILE RENAME — called when a profile is renamed in settings
     // =========================================================================

@@ -61,6 +61,8 @@ pub struct BackendManager {
     pub remote_cache: Arc<RemoteCache>,
     /// Shared job cache (for active backend)
     pub job_cache: Arc<JobCache>,
+    /// Shared options cache (for active backend)
+    pub options_cache: Arc<crate::rclone::state::options::OptionsCache>,
 }
 
 impl BackendManager {
@@ -72,6 +74,7 @@ impl BackendManager {
             per_backend_state: RwLock::new(HashMap::new()),
             remote_cache: Arc::new(RemoteCache::new()),
             job_cache: Arc::new(JobCache::new()),
+            options_cache: Arc::new(crate::rclone::state::options::OptionsCache::new()),
         }
     }
 

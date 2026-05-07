@@ -9,7 +9,7 @@ use crate::{
         commands::{
             job::stop_job,
             mount::{mount_remote_profile, unmount_remote},
-            serve::{start_serve_profile, stop_all_serves, stop_serve},
+            serve::{start_serve_profile, stop_serve},
             sync::{TransferType, start_profile_batch},
         },
     },
@@ -156,7 +156,7 @@ fn get_mount_dest(
         None => mount_configs.values().next()?,
     };
 
-    crate::rclone::commands::common::parse_common_config(config, &settings, remote).map(|p| p.dest)
+    crate::rclone::commands::common::parse_common_config(config, &settings).map(|p| p.dest)
 }
 
 pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
@@ -251,16 +251,6 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
 
         if stopped > 0 {
             notify(&app, NotificationEvent::System(SystemStage::AllJobsStopped));
-        }
-    });
-}
-
-pub fn handle_stop_all_serves(app: AppHandle) {
-    info!("Stopping all active serves");
-    tauri::async_runtime::spawn(async move {
-        match stop_all_serves(app, "menu".to_string()).await {
-            Ok(_) => info!("All serves stopped"),
-            Err(e) => error!("Failed to stop all serves: {e}"),
         }
     });
 }

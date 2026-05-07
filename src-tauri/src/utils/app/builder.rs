@@ -60,7 +60,8 @@ fn apply_platform_config<'a>(
         .center()
         .shadow(false)
         .devtools(true)
-        .min_inner_size(362.0, 240.0);
+        .min_inner_size(362.0, 240.0)
+        .disable_drag_drop_handler();
 
     #[cfg(target_os = "macos")]
     {
@@ -70,9 +71,7 @@ fn apply_platform_config<'a>(
     #[cfg(target_os = "windows")]
     {
         use tauri::webview::ScrollBarStyle;
-        b = b
-            .scroll_bar_style(ScrollBarStyle::FluentOverlay)
-            .disable_drag_drop_handler();
+        b = b.scroll_bar_style(ScrollBarStyle::FluentOverlay);
     }
 
     #[cfg(not(target_os = "macos"))]

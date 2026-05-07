@@ -27,7 +27,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     let (unmount_result, stop_jobs_result, stop_serves_result) = tokio::join!(
         tokio::time::timeout(
             tokio::time::Duration::from_secs(5),
-            unmount_all_remotes(app_handle.clone(), "shutdown".to_string()),
+            unmount_all_remotes(
+                app_handle.clone(),
+                crate::rclone::commands::common::OperationContext::Shutdown,
+            ),
         ),
         tokio::time::timeout(
             tokio::time::Duration::from_secs(5),
@@ -35,7 +38,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
         tokio::time::timeout(
             tokio::time::Duration::from_secs(5),
-            stop_all_serves(app_handle.clone(), "shutdown".to_string()),
+            stop_all_serves(
+                app_handle.clone(),
+                crate::rclone::commands::common::OperationContext::Shutdown,
+            ),
         ),
     );
 

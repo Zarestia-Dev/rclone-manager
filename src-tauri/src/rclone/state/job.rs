@@ -60,7 +60,8 @@ impl JobCache {
     }
 
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        if let Some(job) = self.jobs.write().await.remove(&jobid) {
+        let job = self.jobs.write().await.remove(&jobid);
+        if let Some(job) = job {
             self.notify_change(app, Some(&job));
             Ok(())
         } else {
@@ -110,8 +111,8 @@ impl JobCache {
                         JobStatus::Failed
                     };
                     j.error = error;
+                    j.end_time = Some(chrono::Utc::now());
                 }
-                j.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -122,8 +123,10 @@ impl JobCache {
         self.update_job(
             jobid,
             |j| {
-                j.status = JobStatus::Stopped;
-                j.end_time = Some(chrono::Utc::now());
+                if !j.status.is_finished() {
+                    j.status = JobStatus::Stopped;
+                    j.end_time = Some(chrono::Utc::now());
+                }
             },
             app,
         )
@@ -194,10 +197,17 @@ impl JobCache {
             .filter(|j| predicate(j))
             .map(|j| j.jobid)
             .collect();
+
+        let mut removed_jobs = Vec::with_capacity(to_remove.len());
         for id in to_remove {
             if let Some(job) = jobs.remove(&id) {
-                self.notify_change(app, Some(&job));
+                removed_jobs.push(job);
             }
+        }
+        drop(jobs);
+
+        for job in removed_jobs {
+            self.notify_change(app, Some(&job));
         }
     }
 
@@ -266,5 +276,34 @@ mod tests {
 
         assert!(cache.delete_job(1, None).await.is_ok());
         assert_eq!(cache.get_jobs().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_complete_job_idempotency() {
+        let cache = JobCache::new();
+        let jobid = 1;
+        cache
+            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None), None)
+            .await;
+
+        // Complete the job for the first time
+        cache.complete_job(jobid, true, None, None).await.unwrap();
+        let job1 = cache.get_job(jobid).await.unwrap();
+        let first_end_time = job1.end_time.unwrap();
+
+        // Wait a bit
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+        // Complete the job again
+        cache
+            .complete_job(jobid, false, Some("error".to_string()), None)
+            .await
+            .unwrap();
+        let job2 = cache.get_job(jobid).await.unwrap();
+
+        // Verify that end_time and status/error were not changed
+        assert_eq!(job2.end_time.unwrap(), first_end_time);
+        assert_eq!(job2.status, JobStatus::Completed);
+        assert!(job2.error.is_none());
     }
 }

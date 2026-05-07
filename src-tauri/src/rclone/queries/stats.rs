@@ -33,7 +33,6 @@ pub async fn get_completed_transfers(
 ) -> Result<Value, String> {
     let backend = app.state::<BackendManager>().get_active().await;
 
-    #[allow(unused_mut)]
     let mut value = backend
         .post_json(
             &app.state::<RcloneState>().client,

@@ -692,6 +692,37 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
+  private getRuntimeRemoteOptions(
+    remoteName: string,
+    config: Record<string, unknown>
+  ): Record<string, unknown> {
+    const options = (config['options'] as Record<string, unknown>) ?? {};
+    const remoteOptions = options[remoteName];
+
+    if (remoteOptions && typeof remoteOptions === 'object' && !Array.isArray(remoteOptions)) {
+      return remoteOptions as Record<string, unknown>;
+    }
+
+    return options;
+  }
+
+  private buildRuntimeRemoteOptions(
+    remoteName: string,
+    configData: Record<string, unknown>
+  ): Record<string, unknown> {
+    const options = this.dynamicRuntimeRemoteFields().reduce(
+      (acc, field) => {
+        if (!Object.prototype.hasOwnProperty.call(configData, field.Name)) return acc;
+        const value = configData[field.Name];
+        if (!this.isDefaultValue(value, field)) acc[field.FieldName || field.Name] = value;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
+
+    return { [remoteName]: options };
+  }
+
   private createServeConfigGroup(): FormGroup {
     return this.fb.group({
       autoStart: [false],
@@ -954,7 +985,7 @@ export class RemoteConfigModalComponent implements OnInit {
         });
       }
     } else if (type === 'runtimeRemote') {
-      const options = (config['options'] as Record<string, unknown>) ?? {};
+      const options = this.getRuntimeRemoteOptions(this.currentRemoteName(), config);
       const runtimeType =
         String(this.remoteForm.get('type')?.value ?? '').trim() ||
         (options['type'] as string) ||
@@ -1615,16 +1646,7 @@ export class RemoteConfigModalComponent implements OnInit {
     }
 
     if (type === 'runtimeRemote') {
-      const options = this.dynamicRuntimeRemoteFields().reduce(
-        (acc, field) => {
-          if (!Object.prototype.hasOwnProperty.call(configData, field.Name)) return acc;
-          const value = configData[field.Name];
-          if (!this.isDefaultValue(value, field)) acc[field.FieldName || field.Name] = value;
-          return acc;
-        },
-        {} as Record<string, unknown>
-      );
-      return { options };
+      return { options: this.buildRuntimeRemoteOptions(remoteName, configData) };
     }
 
     // Flag types

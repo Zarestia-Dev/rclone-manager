@@ -1,4 +1,5 @@
 use crate::core::settings::AppSettingsManager;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
@@ -56,27 +57,26 @@ use crate::utils::types::core::RcloneState;
 use serde_json::json;
 use std::collections::HashMap;
 
-/// Determines if the given fs path is a directory using operations/list.
-///
-/// This is a lightweight check that uses optimized flags to minimize overhead.
+/// Determines if the given fs path is a directory using operations/stat.
 pub async fn is_directory(
     app: &AppHandle,
-    fs: &str,
+    fs_path: &str,
     runtime_remote_options: Option<&HashMap<String, Value>>,
 ) -> Result<bool, String> {
     let backend = app.state::<BackendManager>().get_active().await;
     let state = app.state::<RcloneState>();
 
+    let (base, remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), "".to_string()));
+
     let resp = backend
         .inject_auth(
             state
                 .client
-                .post(backend.url_for(crate::utils::rclone::endpoints::operations::LIST)),
+                .post(backend.url_for(crate::utils::rclone::endpoints::operations::STAT)),
         )
         .json(&json!({
-            "fs": fs_value_with_runtime_overrides(fs, runtime_remote_options),
-            "remote": "",
-            "opt": { "metadata": false, "noModTime": true, "noMimeType": true, "recurse": false }
+            "fs": fs_value_with_runtime_overrides(&base, runtime_remote_options),
+            "remote": remote,
         }))
         .send()
         .await
@@ -87,23 +87,15 @@ pub async fn is_directory(
     }
 
     let val: Value = resp.json().await.map_err(|e| format!("Parse error: {e}"))?;
-    let list = val
-        .get("list")
-        .and_then(|l| l.as_array())
-        .ok_or("Invalid response")?;
 
-    // If empty, assume directory. If one file, Path is "" and IsDir is false.
-    // If one dir, Path is "subdir" or IsDir is true.
-    Ok(list.is_empty()
-        || list.len() > 1
-        || list.iter().any(|item| {
-            item.get("IsDir").and_then(|b| b.as_bool()).unwrap_or(false)
-                || !item
-                    .get("Path")
-                    .and_then(|p| p.as_str())
-                    .unwrap_or("")
-                    .is_empty()
-        }))
+    // rclone operations/stat returns { "item": { ... } } or { "item": null }
+    let is_dir = val
+        .get("item")
+        .and_then(|item| item.get("IsDir"))
+        .and_then(|is_dir| is_dir.as_bool())
+        .unwrap_or(false);
+
+    Ok(is_dir)
 }
 
 /// Return the URL for a configuration operation on the given backend.
@@ -142,25 +134,19 @@ impl CommonConfigParams {
     }
 }
 
-fn normalize_runtime_remote_profile_options(
-    remote_name: &str,
-    options: HashMap<String, Value>,
-) -> HashMap<String, Value> {
-    // UI saves flat options for runtime remote profiles.
-    // RC override resolution expects options keyed by remote name.
-    if options
-        .get(remote_name)
-        .is_some_and(serde_json::Value::is_object)
-    {
-        return options;
-    }
+/// Context for bulk mount/serve stop operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OperationContext {
+    Normal,
+    Shutdown,
+}
 
-    let mut wrapped = HashMap::new();
-    wrapped.insert(
-        remote_name.to_string(),
-        Value::Object(options.into_iter().collect()),
-    );
-    wrapped
+impl OperationContext {
+    #[must_use]
+    pub fn is_shutdown(self) -> bool {
+        matches!(self, Self::Shutdown)
+    }
 }
 
 pub fn fs_value_with_runtime_overrides(
@@ -176,10 +162,23 @@ pub fn fs_value_with_runtime_overrides(
     };
 
     let lookup_keys = [base.clone(), base.trim_end_matches(':').to_string()];
-    let remote_override = lookup_keys
-        .iter()
-        .find_map(|key| overrides.get(key))
-        .and_then(|v| v.as_object());
+    let matched_key = lookup_keys.iter().find(|key| overrides.contains_key(*key));
+
+    let remote_override = matched_key.and_then(|key| {
+        let val = overrides.get(key);
+        val.and_then(|v| {
+            if v.is_object() {
+                v.as_object()
+            } else {
+                log::warn!(
+                    "⚠️ Runtime override for '{}' ignored: expected JSON object, found {:?}",
+                    key,
+                    v
+                );
+                None
+            }
+        })
+    });
 
     match remote_override {
         Some(opts) if !opts.is_empty() => {
@@ -220,6 +219,9 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
             let root = &fs[split_idx + 1..];
 
             if base.starts_with(':') {
+                if base.len() < 2 {
+                    return None;
+                }
                 let backend_type = base[1..base.len() - 1].split(',').next()?.trim();
                 if backend_type.is_empty() {
                     return None;
@@ -239,11 +241,7 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
 }
 
 /// Helper to parse common configuration fields
-pub fn parse_common_config(
-    config: &Value,
-    settings: &Value,
-    remote_name: &str,
-) -> Option<CommonConfigParams> {
+pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let config = &interpolate_value(config);
 
     let get_paths = |key: &str, alt: &str| -> Vec<String> {
@@ -279,12 +277,7 @@ pub fn parse_common_config(
         vfs_options: get_opts("vfsProfile", "vfsConfigs"),
         filter_options: get_opts("filterProfile", "filterConfigs"),
         backend_options: get_opts("backendProfile", "backendConfigs"),
-        runtime_remote_options: resolve_runtime_remote_options(
-            config,
-            settings,
-            remote_name,
-            "remotes",
-        ),
+        runtime_remote_options: resolve_runtime_remote_options(config, settings, "remotes"),
         profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
     })
 }
@@ -292,19 +285,25 @@ pub fn parse_common_config(
 pub fn resolve_runtime_remote_options(
     config: &Value,
     settings: &Value,
-    remote_name: &str,
     inline_remotes_key: &str,
 ) -> Option<HashMap<String, Value>> {
     let profile = config.get("runtimeRemoteProfile").and_then(|v| v.as_str());
-    let mut opts = resolve_profile_options(settings, profile, "runtimeRemoteConfigs")
-        .map(|o| normalize_runtime_remote_profile_options(remote_name, o))
-        .unwrap_or_default();
+    let mut opts =
+        resolve_profile_options(settings, profile, "runtimeRemoteConfigs").unwrap_or_default();
 
     if let Some(inline) = json_to_hashmap(config.get(inline_remotes_key)) {
         opts.extend(inline);
     }
 
-    if opts.is_empty() { None } else { Some(opts) }
+    // Filter to ensure only objects are returned as overrides
+    let filtered: HashMap<String, Value> =
+        opts.into_iter().filter(|(_, v)| v.is_object()).collect();
+
+    if filtered.is_empty() {
+        None
+    } else {
+        Some(filtered)
+    }
 }
 
 /// Redact sensitive values from parameters for logging.

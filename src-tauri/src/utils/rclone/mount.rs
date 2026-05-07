@@ -162,6 +162,7 @@ async fn get_latest_fuse_t_url() -> Result<MountPluginInfo, String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+    use tauri::Manager;
     let state = app_handle.state::<RcloneState>();
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
@@ -182,7 +183,7 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
 
     match result {
         Ok(_) => {
-            if check_mount_plugin_installed() {
+            if check_mount_plugin_installed().await? {
                 if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
                     let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }
@@ -202,6 +203,7 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
+    use tauri::Manager;
     let state = app_handle.state::<RcloneState>();
     let download_path = std::env::temp_dir().join("rclone_temp");
     std::fs::create_dir_all(&download_path)
@@ -222,7 +224,7 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
 
     match result {
         Ok(_) => {
-            if check_mount_plugin_installed() {
+            if check_mount_plugin_installed().await? {
                 if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
                     let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }

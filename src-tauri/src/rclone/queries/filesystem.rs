@@ -186,7 +186,6 @@ pub async fn get_remote_paths(
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
     let state = app.state::<RcloneState>();
     use crate::utils::rclone::endpoints::core;
-    use std::collections::HashMap;
     use sysinfo::Disks;
 
     let backend_manager = app.state::<BackendManager>();
@@ -209,6 +208,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
 
     #[cfg(target_os = "linux")]
     let labels = {
+        use std::collections::HashMap;
         use std::process::Command;
         let mut map = HashMap::new();
         if let Ok(output) = Command::new("lsblk").args(["-no", "KNAME,LABEL"]).output() {

@@ -4,6 +4,7 @@ use crate::rclone::backend::BackendManager;
 use crate::rclone::state::cache::RemoteCacheContext;
 use log::info;
 
+use crate::rclone::state::options::OptionsCacheEntry;
 use crate::utils::types::jobs::JobInfo;
 
 /// Per-backend cached state (jobs and remote context)
@@ -14,6 +15,7 @@ use crate::utils::types::jobs::JobInfo;
 pub struct BackendState {
     pub jobs: Vec<JobInfo>,
     pub context: RemoteCacheContext,
+    pub options: Option<OptionsCacheEntry>,
 }
 
 /// Save active jobs and remote context for the given backend name.
@@ -24,9 +26,17 @@ pub struct BackendState {
 pub async fn save_backend_state(manager: &BackendManager, name: &str) {
     let jobs = manager.job_cache.get_jobs().await;
     let context = manager.remote_cache.get_context().await;
+    let options = manager.options_cache.get_entry().await;
 
     manager
-        .save_state(name, BackendState { jobs, context })
+        .save_state(
+            name,
+            BackendState {
+                jobs,
+                context,
+                options,
+            },
+        )
         .await;
 
     info!("💾 Saved state for backend: {name}");
@@ -40,6 +50,7 @@ pub async fn restore_backend_state(manager: &BackendManager, name: &str) {
 
     manager.job_cache.set_all_jobs(saved.jobs).await;
     manager.remote_cache.set_context(saved.context).await;
+    manager.options_cache.set_entry(saved.options).await;
 
     info!("📂 Restored state for backend: {name}");
 }

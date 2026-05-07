@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::common::{
-    FromConfig, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
+    FromConfig, OperationContext, fs_value_with_runtime_overrides, parse_common_config,
+    redact_sensitive_values,
 };
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
@@ -58,7 +59,7 @@ struct RcloneMountBody {
 
 impl FromConfig for MountParams {
     fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let common = parse_common_config(config, settings, &remote_name)?;
+        let common = parse_common_config(config, settings)?;
         let mount_point = common.dest.clone();
 
         if mount_point.is_empty() {
@@ -235,8 +236,9 @@ pub async fn unmount_remote(
 
     let profile = backend_manager
         .remote_cache
-        .get_mount_profile(&mount_point)
+        .get_mount_by_point(&mount_point)
         .await
+        .and_then(|m| m.profile)
         .unwrap_or_default();
 
     let backend_name_for_err = backend_manager.get_active_name().await;
@@ -288,7 +290,10 @@ pub async fn unmount_remote(
 
 /// Unmount all remotes
 #[tauri::command]
-pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<String, String> {
+pub async fn unmount_all_remotes(
+    app: AppHandle,
+    context: OperationContext,
+) -> Result<String, String> {
     let state = app.state::<RcloneState>();
     info!("🗑️ Unmounting all remotes");
 
@@ -297,10 +302,10 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
 
     // Check current mounted remotes first.
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-    if mounted.is_empty() || context == "shutdown" {
+    if mounted.is_empty() || context.is_shutdown() {
         debug!("No mounted remotes to unmount — skipping API call");
         // Refresh cache for UI consistency (unless during shutdown)
-        if context != "shutdown"
+        if !context.is_shutdown()
             && let Err(e) = force_check_mounted_remotes(app.clone()).await
         {
             warn!("Failed to refresh mounted remotes: {e}");
@@ -316,7 +321,7 @@ pub async fn unmount_all_remotes(app: AppHandle, context: String) -> Result<Stri
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    if context != "shutdown"
+    if !context.is_shutdown()
         && let Err(e) = force_check_mounted_remotes(app.clone()).await
     {
         warn!("Failed to refresh mounted remotes: {e}");

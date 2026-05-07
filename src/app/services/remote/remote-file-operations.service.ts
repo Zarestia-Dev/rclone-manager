@@ -410,7 +410,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     plain?: boolean,
     filesOnly?: boolean,
     dirsOnly?: boolean
-  ): Promise<any> {
+  ): Promise<{ success: boolean; items: any[] }> {
     return this.invokeCommand('archive_list', {
       source,
       long,

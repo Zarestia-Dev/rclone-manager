@@ -12,6 +12,7 @@ use crate::utils::{
 use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
 use super::job::JobMetadata;
 use crate::utils::rclone::endpoints::operations;
+use futures::future::join_all;
 
 // ============================================================================
 // SHARED TYPES
@@ -59,11 +60,11 @@ pub struct GenericTransferParams {
 }
 
 impl GenericTransferParams {
-    pub fn to_rclone_body(&self) -> Value {
+    pub fn to_rclone_body(&self) -> Result<Value, String> {
         let mut body = Map::new();
 
         if !self.is_dir && matches!(self.transfer_type, TransferType::Copy | TransferType::Move) {
-            self.build_file_transfer_body(&mut body);
+            self.build_file_transfer_body(&mut body)?;
         } else {
             self.build_directory_transfer_body(&mut body);
         }
@@ -88,10 +89,10 @@ impl GenericTransferParams {
             );
         }
 
-        Value::Object(body)
+        Ok(Value::Object(body))
     }
 
-    fn build_file_transfer_body(&self, body: &mut Map<String, Value>) {
+    fn build_file_transfer_body(&self, body: &mut Map<String, Value>) -> Result<(), String> {
         let endpoint = if self.transfer_type == TransferType::Copy {
             operations::COPYFILE
         } else {
@@ -122,8 +123,12 @@ impl GenericTransferParams {
             );
             body.insert("dstRemote".to_string(), Value::String(dst_remote));
             body.insert("_path".to_string(), Value::String(endpoint.to_string()));
+            Ok(())
         } else {
-            self.build_directory_transfer_body(body);
+            Err(format!(
+                "Could not parse source '{}' or destination '{}' as a file path. Ensure the format is 'remote:path/to/file' or a local path.",
+                self.source, self.dest
+            ))
         }
     }
 
@@ -231,7 +236,7 @@ pub async fn start_profile_batch(
     .await
     .map_err(|e| format!("Profile error: {e}"))?;
 
-    let common = parse_common_config(&config, &settings, &params.remote_name).ok_or_else(|| {
+    let common = parse_common_config(&config, &settings).ok_or_else(|| {
         format!(
             "Profile {} configuration is incomplete",
             params.profile_name
@@ -246,28 +251,40 @@ pub async fn start_profile_batch(
         return Err("No destination specified".to_string());
     }
 
+    let mut tasks = Vec::new();
     for source in &common.sources {
-        let is_dir = if is_copy_move {
-            is_directory(&app, source, common.runtime_remote_options.as_ref())
-                .await
-                .unwrap_or(true)
-        } else {
-            true
-        };
+        let app = app.clone();
+        let source = source.clone();
+        let runtime_remote_options = common.runtime_remote_options.clone();
+        tasks.push(async move {
+            let is_dir = if is_copy_move {
+                is_directory(&app, &source, runtime_remote_options.as_ref())
+                    .await
+                    .unwrap_or(true)
+            } else {
+                true
+            };
+            (source, is_dir)
+        });
+    }
 
-        inputs.push(
-            GenericTransferParams {
-                source: source.clone(),
-                dest: dest.clone(),
-                options: common.options.clone(),
-                filter_options: common.filter_options.clone(),
-                backend_options: common.backend_options.clone(),
-                runtime_remote_options: common.runtime_remote_options.clone(),
-                transfer_type,
-                is_dir,
-            }
-            .to_rclone_body(),
-        );
+    let results = join_all(tasks).await;
+
+    for (source, is_dir) in results {
+        let body = GenericTransferParams {
+            source,
+            dest: dest.clone(),
+            options: common.options.clone(),
+            filter_options: common.filter_options.clone(),
+            backend_options: common.backend_options.clone(),
+            runtime_remote_options: common.runtime_remote_options.clone(),
+            transfer_type,
+            is_dir,
+        }
+        .to_rclone_body()
+        .map_err(|e| format!("Body generation error: {e}"))?;
+
+        inputs.push(body);
     }
 
     if inputs.is_empty() {
@@ -319,7 +336,7 @@ mod tests {
             is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -343,7 +360,7 @@ mod tests {
             is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("path1").unwrap(), "path1");
@@ -373,7 +390,7 @@ mod tests {
             is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         let src_fs = obj.get("srcFs").unwrap().as_object().unwrap();
@@ -400,7 +417,7 @@ mod tests {
             is_dir: false,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -408,5 +425,27 @@ mod tests {
         assert_eq!(obj.get("dstFs").unwrap(), "dst:");
         assert_eq!(obj.get("dstRemote").unwrap(), "backup/file.txt");
         assert_eq!(obj.get("_path").unwrap(), operations::COPYFILE);
+    }
+
+    #[test]
+    fn test_file_copy_body_generation_failure() {
+        let params = GenericTransferParams {
+            source: "::invalid".to_string(),
+            dest: "dst:".to_string(),
+            options: None,
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: None,
+            transfer_type: TransferType::Copy,
+            is_dir: false,
+        };
+
+        let result = params.to_rclone_body();
+        assert!(result.is_err());
+        assert!(
+            result.unwrap_err().contains(
+                "Could not parse source '::invalid' or destination 'dst:' as a file path"
+            )
+        );
     }
 }

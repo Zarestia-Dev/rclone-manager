@@ -160,7 +160,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   isLoading = signal(true);
   isDownloading = signal(false);
   isLoadingCover = signal(false);
-  archiveContent = signal<string>('');
   parsedArchiveItems = signal<
     { size: number; date: string; time: string; path: string; isDir: boolean }[]
   >([]);
@@ -499,7 +498,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoadingCover.set(false);
     this.isEditing.set(false);
     this.editContent.set('');
-    this.archiveContent.set('');
     this.archiveError.set(null);
     this.errorMessage.set(null);
 
@@ -625,20 +623,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           .archiveList(source, true) // Use long format for more info
           .then(res => {
             if (res && res.success) {
-              this.archiveContent.set(res.output);
-              this.parsedArchiveItems.set(this.parseArchiveList(res.output));
+              this.parsedArchiveItems.set(res.items);
               this.archiveError.set(null);
-            } else if (res) {
-              this.archiveError.set(res.output);
+            } else {
+              this.archiveError.set('Unknown error');
               this.parsedArchiveItems.set([]);
             }
           })
           .catch(err => {
             console.error('Failed to list archive:', err);
             this.archiveError.set(err.toString());
-            this.archiveContent.set(
-              this.translate.instant('fileBrowser.fileViewer.errorListArchive')
-            );
             this.parsedArchiveItems.set([]);
           })
           .finally(() => {
@@ -660,34 +654,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       );
       this.isLoading.set(false);
     }
-  }
-
-  private parseArchiveList(
-    output: string
-  ): { size: number; date: string; time: string; path: string; isDir: boolean }[] {
-    if (!output) return [];
-
-    const lines = output.trim().split('\n');
-    return lines
-      .map(line => {
-        // Format: "        6 2025-10-30 09:46:23.000000000 file.txt"
-        const parts = line.trim().split(/\s+/);
-        if (parts.length < 4) return null;
-
-        const size = parseInt(parts[0], 10);
-        const date = parts[1];
-        const time = parts[2];
-        const path = parts.slice(3).join(' ');
-
-        return {
-          size: isNaN(size) ? 0 : size,
-          date,
-          time: time.split('.')[0],
-          path,
-          isDir: path.endsWith('/'),
-        };
-      })
-      .filter(item => item !== null) as any[];
   }
 
   /**

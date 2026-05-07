@@ -34,6 +34,7 @@ use crate::{
         alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
         scheduler::engine::CronScheduler,
     },
+    rclone::commands::common::OperationContext,
     utils::types::{
         core::{RcApiEngine, RcloneState},
         logs::LogCache,
@@ -50,8 +51,7 @@ use crate::core::tray::actions::handle_browse_remote;
 use crate::core::tray::{
     actions::{
         handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
-        handle_stop_all_serves, handle_stop_job_profile, handle_stop_serve_profile,
-        handle_unmount_profile,
+        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
@@ -616,7 +616,6 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent
 
 #[cfg(all(desktop, feature = "tray"))]
 fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
-    use crate::rclone::commands::mount::unmount_all_remotes;
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
@@ -676,13 +675,30 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::UnmountAll => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await {
+                if let Err(e) = rclone::commands::mount::unmount_all_remotes(
+                    app_clone.clone(),
+                    OperationContext::Normal,
+                )
+                .await
+                {
                     log::error!("Failed to unmount all remotes: {e}");
                 }
             });
         }
         TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
-        TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
+        TrayAction::StopAllServes => {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = rclone::commands::serve::stop_all_serves(
+                    app_clone.clone(),
+                    OperationContext::Normal,
+                )
+                .await
+                {
+                    log::error!("Failed to stop all serves: {e}");
+                }
+            });
+        }
         TrayAction::OpenFileBrowser => {
             #[cfg(not(feature = "web-server"))]
             core::tray::actions::handle_browse_in_app(app, None);

@@ -85,7 +85,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (mount_remote_profile, $crate::rclone::commands::mount::mount_remote_profile, [params: $crate::utils::types::remotes::ProfileParams]);
             (unmount_remote, $crate::rclone::commands::mount::unmount_remote, [mount_point: String, remote_name: String]);
-            (unmount_all_remotes, $crate::rclone::commands::mount::unmount_all_remotes, [context: String]);
+            (unmount_all_remotes, $crate::rclone::commands::mount::unmount_all_remotes, [context: $crate::rclone::commands::common::OperationContext]);
             (get_mount_types, $crate::rclone::queries::get_mount_types, []);
 
             // =================================================================
@@ -104,7 +104,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (start_serve_profile, $crate::rclone::commands::serve::start_serve_profile, [params: $crate::utils::types::remotes::ProfileParams]);
             (stop_serve, $crate::rclone::commands::serve::stop_serve, [id: String, remote_name: String]);
-            (stop_all_serves, $crate::rclone::commands::serve::stop_all_serves, [context: String]);
+            (stop_all_serves, $crate::rclone::commands::serve::stop_all_serves, [context: $crate::rclone::commands::common::OperationContext]);
             (get_serve_types, $crate::rclone::queries::get_serve_types, []);
             (get_serve_flags, $crate::rclone::queries::flags::get_serve_flags, [serve_type: Option<String>]);
             (list_serves, $crate::rclone::queries::list_serves, []);

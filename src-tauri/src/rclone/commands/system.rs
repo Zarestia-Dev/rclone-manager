@@ -104,9 +104,6 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
 }
 
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
-    let state = app.state::<RcloneState>();
-    let mut guard = state.oauth_process.lock().await;
-
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
@@ -114,33 +111,56 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         return Ok(());
     }
 
-    // Already tracked in memory — process is up, URL was already emitted.
-    if guard.is_some() {
-        return Ok(());
-    }
-
-    // Port already open from a previous run not tracked in memory.
-    if TcpStream::connect(backend.oauth_addr()).await.is_ok() {
-        warn!(
-            "OAuth process already running on port {} (not tracked in memory)",
-            backend.oauth_port
-        );
-        return Ok(());
-    }
-
+    // Pre-build command outside the lock to keep the critical section small.
     let cmd = build_rclone_process_command(app, ProcessKind::OAuth)
         .await
         .map_err(|e| RcloneError::OAuthError(format!("Failed to build OAuth command: {e}")))?;
 
+    let state = app.state::<RcloneState>();
+    let mut guard = state.oauth_process.lock().await;
+
+    // 1. Check if we already have a tracked process and if it's still alive.
+    if let Some(process) = guard.as_mut() {
+        if let Ok(None) = process.try_wait() {
+            debug!("OAuth process is already tracked and running");
+            return Ok(());
+        }
+        debug!("Tracked OAuth process is dead, clearing handle");
+        *guard = None;
+    }
+
+    let addr = backend.oauth_addr();
+
+    // 2. Probe port availability with a small TOCTOU window.
+    match tokio::net::TcpListener::bind(&addr).await {
+        Ok(l) => {
+            // Port is free, drop immediately to allow rclone to bind.
+            drop(l);
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+            warn!(
+                "OAuth port {} is already in use, assuming another instance or orphan is running",
+                backend.oauth_port
+            );
+            return Ok(());
+        }
+        Err(e) => {
+            return Err(RcloneError::OAuthError(format!(
+                "Failed to probe OAuth port {}: {e}",
+                backend.oauth_port
+            )));
+        }
+    }
+
+    // 3. Spawn the process and update the guard immediately.
     let mut process = cmd.spawn().map_err(|e| {
         RcloneError::OAuthError(format!(
             "Failed to spawn OAuth process: {e}. Is rclone installed and in PATH?"
         ))
     })?;
 
-    info!("✅ Rclone OAuth process spawned");
+    info!("Rclone OAuth process spawned");
 
-    // Take stderr before moving the process into the guard.
     let stderr = process
         .stderr
         .take()
@@ -148,7 +168,6 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
 
     *guard = Some(process);
 
-    // Spawn a task that reads stderr and emits the auth URL immediately.
     let app_clone = app.clone();
     tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
@@ -156,7 +175,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
             debug!("[oauth] {line}");
 
             if let Some(url) = extract_oauth_auth_url(&line) {
-                info!("🔗 OAuth URL ready: {url}");
+                info!("OAuth URL ready: {url}");
                 if let Err(e) = app_clone.emit(RCLONE_OAUTH_URL, json!({ "url": url })) {
                     warn!("Failed to emit OAuth URL event: {e}");
                 }
@@ -166,22 +185,35 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         info!("OAuth stderr reader closed");
     });
 
-    // Wait until the rc port is open (process is accepting connections).
     let start = Instant::now();
     let timeout = Duration::from_secs(5);
-    let addr = backend.oauth_addr();
 
     while start.elapsed() < timeout {
         if TcpStream::connect(&addr).await.is_ok() {
-            info!(
-                "✅ Rclone OAuth process ready on port {}",
-                backend.oauth_port
-            );
+            info!("Rclone OAuth process ready on port {}", backend.oauth_port);
             return Ok(());
         }
+
+        if let Some(process_in_guard) = guard.as_mut()
+            && let Ok(Some(status)) = process_in_guard.try_wait()
+        {
+            if TcpStream::connect(&addr).await.is_ok() {
+                warn!(
+                    "OAuth process exited but port is taken. Assuming another instance won the race."
+                );
+                *guard = None;
+                return Ok(());
+            }
+            *guard = None;
+            return Err(RcloneError::OAuthError(format!(
+                "OAuth process exited prematurely with status {status}"
+            )));
+        }
+
         sleep(Duration::from_millis(100)).await;
     }
 
+    *guard = None;
     Err(RcloneError::OAuthError(format!(
         "Timeout waiting for OAuth process to start on port {}",
         backend.oauth_port
@@ -247,8 +279,7 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let found_process =
-        guard.is_some() || std::net::TcpStream::connect(backend.oauth_addr()).is_ok();
+    let found_process = guard.is_some() || TcpStream::connect(backend.oauth_addr()).await.is_ok();
 
     if !found_process {
         warn!("⚠️ No active OAuth process found (not in memory, port not open)");

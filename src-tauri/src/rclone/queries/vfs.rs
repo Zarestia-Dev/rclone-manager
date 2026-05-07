@@ -76,7 +76,6 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
         payload["fs"] = Value::String(f);
     }
 
-    #[allow(unused_mut)]
     let mut json = backend
         .post_json(
             &app.state::<RcloneState>().client,

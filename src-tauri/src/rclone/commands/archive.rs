@@ -184,7 +184,102 @@ pub async fn archive_list(
         return Err(format!("Archive list failed: {result}"));
     }
 
-    // Since rclone doesn't return JSON for archive list, we return the raw string.
-    // The frontend can parse it if needed (e.g. splitting by lines).
-    Ok(json!({ "success": true, "output": result }))
+    let is_long = long.unwrap_or(false);
+    let is_plain = plain.unwrap_or(false);
+
+    let mut items = Vec::new();
+    for line in result.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let mut item = serde_json::Map::new();
+
+        if is_plain {
+            item.insert("path".to_string(), json!(trimmed));
+            item.insert("isDir".to_string(), json!(trimmed.ends_with('/')));
+        } else if is_long {
+            // Format: size date time path
+            // Example: 6 2025-10-30 09:46:23.000000000 file.txt
+            // Note: Rclone uses varying whitespace for padding. We use a robust split.
+            // Assumption: Rclone output format remains [size] [date] [time] [path].
+            // This may be fragile if the time field contains spaces in some locales/OS,
+            // though Rclone typically uses ISO-like formats.
+            let parts = split_n_robust(trimmed, 4);
+            if parts.len() >= 4 {
+                let size = parts[0].parse::<i64>().unwrap_or(0);
+                let date = parts[1];
+                let time = parts[2].split('.').next().unwrap_or(parts[2]); // Remove nanoseconds
+                let path = parts[3];
+                let is_dir = path.ends_with('/');
+
+                item.insert("size".to_string(), json!(size));
+                item.insert("date".to_string(), json!(date));
+                item.insert("time".to_string(), json!(time));
+                item.insert(
+                    "path".to_string(),
+                    json!(if is_dir {
+                        path.trim_end_matches('/')
+                    } else {
+                        path
+                    }),
+                );
+                item.insert("isDir".to_string(), json!(is_dir));
+            } else {
+                item.insert("path".to_string(), json!(trimmed));
+                item.insert("isDir".to_string(), json!(trimmed.ends_with('/')));
+            }
+        } else {
+            // Default Format: size path
+            // Example: 6 file.txt
+            // Note: Rclone uses varying whitespace for padding. We use a robust split.
+            let parts = split_n_robust(trimmed, 2);
+            if parts.len() >= 2 {
+                let size = parts[0].parse::<i64>().unwrap_or(0);
+                let path = parts[1];
+                let is_dir = path.ends_with('/');
+
+                item.insert("size".to_string(), json!(size));
+                item.insert(
+                    "path".to_string(),
+                    json!(if is_dir {
+                        path.trim_end_matches('/')
+                    } else {
+                        path
+                    }),
+                );
+                item.insert("isDir".to_string(), json!(is_dir));
+            } else {
+                item.insert("path".to_string(), json!(trimmed));
+                item.insert("isDir".to_string(), json!(trimmed.ends_with('/')));
+            }
+        }
+
+        items.push(Value::Object(item));
+    }
+
+    Ok(json!({ "success": true, "items": items }))
+}
+
+/// Robustly splits a string into N parts based on whitespace.
+/// Unlike `splitn`, this handles multiple whitespace characters between parts
+/// and preserves any remaining content (including spaces) in the final part.
+fn split_n_robust(s: &str, n: usize) -> Vec<&str> {
+    let mut parts = Vec::with_capacity(n);
+    let mut current = s;
+    for _ in 0..n - 1 {
+        let trimmed = current.trim_start();
+        if let Some(pos) = trimmed.find(|c: char| c.is_whitespace()) {
+            parts.push(&trimmed[..pos]);
+            current = &trimmed[pos..];
+        } else {
+            break;
+        }
+    }
+    let final_part = current.trim_start();
+    if !final_part.is_empty() {
+        parts.push(final_part);
+    }
+    parts
 }

@@ -16,7 +16,7 @@
       <mat-icon svgIcon="drag-indicator" class="drag-handle"></mat-icon>
       <button
         class="hide-btn"
-        [matTooltip]="(isHidden() ? 'actions.show' : 'actions.hide') | translate"
+        [matTooltip]="(isHidden() ? 'shared.actions.show' : 'shared.actions.hide') | translate"
         (click)="onToggleHidden($event)"
       >
         <mat-icon [svgIcon]="isHidden() ? 'eye' : 'eye-slash'"></mat-icon>

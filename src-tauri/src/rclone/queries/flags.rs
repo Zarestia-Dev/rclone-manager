@@ -1,26 +1,12 @@
 use serde_json::{Map, Value, json};
-use std::time::{Duration, Instant};
 
-use once_cell::sync::Lazy;
 use tauri::{AppHandle, Manager};
-use tokio::sync::RwLock;
 use tokio::try_join;
 
 use crate::{
     rclone::backend::BackendManager,
     utils::{rclone::endpoints::options, types::core::RcloneState},
 };
-
-const OPTIONS_CACHE_TTL: Duration = Duration::from_secs(300);
-
-#[derive(Clone)]
-struct OptionsCacheEntry {
-    backend_name: String,
-    cached_at: Instant,
-    payload: Value,
-}
-
-static OPTIONS_CACHE: Lazy<RwLock<Option<OptionsCacheEntry>>> = Lazy::new(|| RwLock::new(None));
 
 // --- PRIVATE HELPERS ---
 
@@ -149,14 +135,8 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     let state = app.state::<RcloneState>();
     let active_name = backend_manager.get_active().await.name.clone();
 
-    {
-        let cache = OPTIONS_CACHE.read().await;
-        if let Some(entry) = cache.as_ref()
-            && entry.backend_name == active_name
-            && entry.cached_at.elapsed() < OPTIONS_CACHE_TTL
-        {
-            return Ok(entry.payload.clone());
-        }
+    if let Some(payload) = backend_manager.options_cache.get(&active_name).await {
+        return Ok(payload);
     }
 
     let (mut options_info, current_options) = try_join!(
@@ -166,11 +146,10 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
 
     merge_options(&mut options_info, &current_options);
 
-    *OPTIONS_CACHE.write().await = Some(OptionsCacheEntry {
-        backend_name: active_name,
-        cached_at: Instant::now(),
-        payload: options_info.clone(),
-    });
+    backend_manager
+        .options_cache
+        .set(active_name, options_info.clone())
+        .await;
 
     Ok(options_info)
 }

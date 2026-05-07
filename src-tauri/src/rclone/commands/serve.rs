@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::common::{
-    fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
+    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
 };
 
 /// Parameters for starting a serve instance
@@ -47,7 +47,7 @@ struct RcloneServeBody {
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let common = parse_common_config(config, settings, &remote_name)?;
+        let common = parse_common_config(config, settings)?;
 
         Some(Self {
             remote_name,
@@ -254,11 +254,17 @@ pub async fn stop_serve(
     let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
 
-    // Get profile from cache before stopping
-    let profile = backend_manager
+    // Get serve details from cache before stopping
+    let serve_info = backend_manager
         .remote_cache
-        .get_serve_profile(&server_id)
+        .get_serve_by_id(&server_id)
         .await;
+    let profile = serve_info.as_ref().and_then(|s| s.profile.clone());
+    let protocol = serve_info
+        .as_ref()
+        .and_then(|s| s.params.get("type").and_then(|v| v.as_str()))
+        .unwrap_or("unknown")
+        .to_string();
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
@@ -284,7 +290,7 @@ pub async fn stop_serve(
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: profile.clone(),
-                    protocol: "unknown".to_string(),
+                    protocol: protocol.clone(),
                     error: e.clone(),
                 }),
             );
@@ -311,16 +317,16 @@ pub async fn stop_serve(
             backend: backend_name,
             remote: remote_name.clone(),
             profile,
-            protocol: "unknown".to_string(),
+            protocol: protocol.clone(),
         }),
     );
 
-    Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
+    Ok(crate::localized_success!("backendSuccess.serve.stopSuccess", "serverId" => &server_id))
 }
 
 /// Stop all running serve instances
 #[tauri::command]
-pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, String> {
+pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
     let backend_manager = app.state::<BackendManager>();
@@ -328,9 +334,9 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
 
     // If there are no active serves, skip the API call.
     let serves = backend_manager.remote_cache.get_serves().await;
-    if serves.is_empty() || context == "shutdown" {
+    if serves.is_empty() || context.is_shutdown() {
         debug!("No active serves to stop — skipping STOPALL");
-        if context != "shutdown"
+        if !context.is_shutdown()
             && let Err(e) = force_check_serves(app.clone()).await
         {
             warn!("Failed to refresh serves: {e}");
@@ -346,7 +352,7 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
         warn!("Failed to stop all serves: {e}");
     }
 
-    if context != "shutdown"
+    if !context.is_shutdown()
         && let Err(e) = force_check_serves(app.clone()).await
     {
         warn!("Failed to refresh serves: {e}");

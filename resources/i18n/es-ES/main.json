@@ -2617,7 +2617,6 @@
     "serve": {
       "failed": "Error al {{operation}}: {{error}}",
       "parseFailed": "Error al analizar la respuesta: {{error}}",
-      "stopSuccess": "Servicio detenido exitosamente {{serverId}}",
       "remoteEmpty": "El nombre del remoto no puede estar vacío",
       "typeRequired": "Se debe especificar el tipo de servicio",
       "portInUse": "El puerto {{port}} ya está en uso"
@@ -2753,6 +2752,7 @@
     },
     "serve": {
       "started": "Servicio iniciado en el puerto {{port}}",
+      "stopSuccess": "Servicio detenido exitosamente {{serverId}}",
       "stopped": "Servicio detenido"
     },
     "sync": {

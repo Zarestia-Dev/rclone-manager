@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - **Audio Cover Support**: Enhanced audio cover extraction with support for FLAC and multiple other formats. Optimized image loading by moving to a native streaming architecture that allows browsers to decode images directly, improving both performance and memory usage across Desktop and Headless modes. Maybe future I can use this for tha thumbnail view of images and any other things too.
 - **Detailed Error Reporting**: The file viewer now displays actual rclone error messages (e.g., "File is being used by another process") instead of a generic "Not Found" error, providing better diagnostic information to the user.
+- Fix internal drag and drop problems in nautilus (MacOS). 
 
 ## [v0.2.4] - 2026-04-14
 ### Added

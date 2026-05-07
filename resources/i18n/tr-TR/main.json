@@ -2666,7 +2666,6 @@
     "serve": {
       "failed": "{{operation}} başarısız: {{error}}",
       "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
-      "stopSuccess": "{{serverId}} sunucusu başarıyla durduruldu",
       "remoteEmpty": "Uzak bağlantı adı boş olamaz",
       "typeRequired": "Sunucu tipi belirtilmelidir",
       "portInUse": "{{port}} portu zaten kullanımda"
@@ -2802,6 +2801,7 @@
     },
     "serve": {
       "started": "Sunucu {{port}} portunda başlatıldı",
+      "stopSuccess": "{{serverId}} sunucusu başarıyla durduruldu",
       "stopped": "Sunucu durduruldu"
     },
     "sync": {

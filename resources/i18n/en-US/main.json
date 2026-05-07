@@ -138,6 +138,7 @@
     "toggleSearch": "Toggle search bar",
     "remotes": "Remotes",
     "searchPlaceholder": "Search remotes...",
+    "hiddenOnDashboard": "Hidden on Dashboard",
     "searchAriaLabel": "Search remotes",
     "noRemotesFound": "No remotes found matching \"{{term}}\"",
     "noRemotesConfigured": "No remotes configured",
@@ -794,6 +795,12 @@
       "alreadyExists": "{{name}} already exists",
       "forbiddenChars": "{{name}} contains forbidden characters ('/' or ':' )",
       "create": "Create"
+    },
+    "actions": {
+      "hide": "Hide",
+      "show": "Show",
+      "open": "Open",
+      "reset": "Reset"
     },
     "overviewHeader": {
       "manageBackends": "Manage Backends",
@@ -1512,6 +1519,7 @@
       "errorLoadContent": "Failed to load file content",
       "errorUnexpected": "An unexpected error occurred",
       "errorLoadFile": "Failed to load {{name}}",
+      "errorDownload": "Error downloading file",
       "downloading": "Downloading {{name}}",
       "save": "Save",
       "edit": "Edit",
@@ -2674,7 +2682,6 @@
     "serve": {
       "failed": "Failed to {{operation}}: {{error}}",
       "parseFailed": "Failed to parse response: {{error}}",
-      "stopSuccess": "Successfully stopped serve {{serverId}}",
       "remoteEmpty": "Remote name cannot be empty",
       "typeRequired": "Serve type must be specified",
       "portInUse": "Port {{port}} is already in use"
@@ -2810,6 +2817,7 @@
     },
     "serve": {
       "started": "Serve started on port {{port}}",
+      "stopSuccess": "Successfully stopped serve {{serverId}}",
       "stopped": "Serve stopped"
     },
     "sync": {
@@ -3137,6 +3145,8 @@
     "refreshUi": "Refresh UI",
     "clearCache": "Clear Cache",
     "openDevTools": "Open Developer Tools",
+    "openDevToolsError": "Failed to open DevTools",
+    "openDevToolsHint": "Open DevTools for debugging",
     "clearing": "Clearing Data...",
     "cleared": "Data Cleared"
   }
