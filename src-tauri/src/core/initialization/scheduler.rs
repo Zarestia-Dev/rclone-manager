@@ -43,12 +43,3 @@ pub async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    // TODO: Add scheduler initialization tests
-    // - Test task loading from configs
-    // - Test scheduler start/stop
-    // - Test empty config handling
-    // - Test error handling for invalid tasks
-}

@@ -55,8 +55,3 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
     info!("✅ RClone backend settings applied successfully");
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    // Basic structural tests for settings application could be added here
-}

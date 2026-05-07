@@ -5,7 +5,6 @@
 // =============================================================================
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
-use crate::core::settings::schema::AppSettings;
 
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
@@ -28,7 +27,6 @@ mod server;
 // SHARED IMPORTS (Both modes)
 // =============================================================================
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::logging::log::init_logging;
 use crate::{
     core::{
         alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
@@ -296,207 +294,26 @@ fn setup_app(
     cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
+
     let app_paths = AppPaths::setup(app_handle)?;
-    let config_dir = app_paths.config_dir.clone();
 
     let rcman_manager =
-        rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-            .with_config_dir(&config_dir)
-            .with_env_credentials()
-            .with_schema::<AppSettings>()
-            .with_migrator(|mut value: serde_json::Value| {
-                if let Some(root) = value.as_object_mut() {
-                    // Flatten legacy app_settings if present
-                    if let Some(app_settings) = root.remove("app_settings") {
-                        log::info!("found legacy app_settings, flattening to root");
-                        if let Some(app_settings_obj) = app_settings.as_object() {
-                            for (k, v) in app_settings_obj {
-                                if !root.contains_key(k) {
-                                    root.insert(k.clone(), v.clone());
-                                }
-                            }
-                        }
-                    }
-
-                    // Migrate rclone_path to rclone_binary and ensure it ends with the binary name
-                    if let Some(core) = root.get_mut("core")
-                        && let Some(core_obj) = core.as_object_mut()
-                    {
-                        let bin_name = if cfg!(windows) {
-                            "rclone.exe"
-                        } else {
-                            "rclone"
-                        };
-
-                        let rclone_binary = if let Some(old_path) = core_obj.remove("rclone_path") {
-                            log::info!("migrating core.rclone_path to core.rclone_binary");
-                            Some(old_path)
-                        } else {
-                            core_obj.get("rclone_binary").cloned()
-                        };
-
-                        if let Some(path_str) = rclone_binary.as_ref().and_then(|v| v.as_str())
-                            && !path_str.is_empty()
-                            && path_str != "system"
-                            && !path_str.ends_with(bin_name)
-                        {
-                            let mut path = std::path::PathBuf::from(path_str);
-                            path.push(bin_name);
-                            core_obj.insert(
-                                "rclone_binary".to_string(),
-                                serde_json::Value::String(path.to_string_lossy().to_string()),
-                            );
-                        } else if let Some(path_val) = rclone_binary {
-                            core_obj.insert("rclone_binary".to_string(), path_val);
-                        }
-                    }
-                }
-                value
-            })
-            .with_sub_settings(
-                rcman::SubSettingsConfig::new("remotes")
-                    .with_profiles()
-                    .with_migrator(
-                        crate::core::settings::remote::manager::migrate_to_multi_profile,
-                    ),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("backend")
-                    .with_profiles()
-                    .with_migrator(|mut value: serde_json::Value| {
-                        if let Some(root) = value.as_object_mut()
-                            && let Some(backend_settings) = root.remove("backend")
-                        {
-                            log::info!("found legacy backend settings, flattening to root");
-                            if let Some(backend_obj) = backend_settings.as_object() {
-                                for (k, v) in backend_obj {
-                                    if !root.contains_key(k) {
-                                        root.insert(k.clone(), v.clone());
-                                    }
-                                }
-                            }
-                        }
-                        value
-                    }),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("connections")
-                    .with_schema::<crate::rclone::backend::schema::BackendConnectionSchema>()
-                    .with_migrator(|value: serde_json::Value| {
-                        // Secret Migration: Move keys from `backend:{name}:password`
-                        // to `sub.connections.{name}.password`
-                        #[cfg(desktop)]
-                        {
-                            use rcman::CredentialManager;
-                            let service_name = env!("CARGO_PKG_NAME");
-                            let creds = CredentialManager::new(service_name);
-
-                            if let Some(connections) = value.as_object() {
-                                for (name, _) in connections {
-                                    // Password field
-                                    let legacy_pass_key = format!("backend:{name}:password");
-                                    let new_pass_key = format!("sub.connections.{name}.password");
-
-                                    if creds.exists(&legacy_pass_key) {
-                                        if creds.exists(&new_pass_key) {
-                                            log::debug!(
-                                                "Cleaning up legacy password for '{name}' \
-                                                 (already migrated)"
-                                            );
-                                            let _ = creds.remove(&legacy_pass_key);
-                                        } else if let Ok(Some(secret)) = creds.get(&legacy_pass_key)
-                                        {
-                                            log::info!("🔐 Migrating legacy password for '{name}'");
-                                            if let Err(e) = creds.store(&new_pass_key, &secret) {
-                                                log::error!(
-                                                    "Failed to migrate password for '{name}': {e}"
-                                                );
-                                            } else {
-                                                let _ = creds.remove(&legacy_pass_key);
-                                            }
-                                        }
-                                    }
-
-                                    // Config Password field
-                                    let legacy_conf_key = format!("backend:{name}:config_password");
-                                    let new_conf_key =
-                                        format!("sub.connections.{name}.config_password");
-
-                                    if creds.exists(&legacy_conf_key) {
-                                        if creds.exists(&new_conf_key) {
-                                            log::debug!(
-                                                "Cleaning up legacy config_password for '{name}' \
-                                                 (already migrated)"
-                                            );
-                                            let _ = creds.remove(&legacy_conf_key);
-                                        } else if let Ok(Some(secret)) = creds.get(&legacy_conf_key)
-                                        {
-                                            log::info!(
-                                                "🔐 Migrating legacy config_password for '{name}'"
-                                            );
-                                            if let Err(e) = creds.store(&new_conf_key, &secret) {
-                                                log::error!(
-                                                    "Failed to migrate config_password \
-                                                         for '{name}': {e}"
-                                                );
-                                            } else {
-                                                let _ = creds.remove(&legacy_conf_key);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        value
-                    }),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("alerts/rules")
-                    .with_schema::<crate::core::alerts::types::AlertRule>(),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("alerts/actions")
-                    .with_schema::<crate::core::alerts::types::AlertAction>(),
-            )
-            .build()
-            .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
-
-    // -------------------------------------------------------------------------
-    // Initialize Backend Manager (Core Dependency)
-    // -------------------------------------------------------------------------
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = BackendManager::new();
-    app.manage(backend_manager);
-
-    // -------------------------------------------------------------------------
-    // Load Settings & Initialize State
-    // -------------------------------------------------------------------------
-    app.manage(cli_args.clone());
-
-    let settings = rcman_manager
-        .get_all()
-        .map_err(|e: rcman::Error| format!("Failed to load startup settings: {e}"))?;
+        crate::core::settings::manager::create_settings_manager(&app_paths.config_dir)?;
 
     use crate::core::security::SafeEnvironmentManager;
     let env_manager = SafeEnvironmentManager::new();
 
-    if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
-        log::error!("Failed to initialize environment manager with stored credentials: {e}");
-    }
-
-    // -------------------------------------------------------------------------
-    // Initialize Backend i18n (before managing rcman_manager)
-    // -------------------------------------------------------------------------
-    crate::utils::i18n::init(app_paths.resource_dir);
-
-    crate::utils::i18n::set_language(&settings.general.language);
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = BackendManager::new();
 
     // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
-    app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
+    app.manage(backend_manager);
     app.manage(env_manager);
+    app.manage(rcman_manager);
 
+    app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),
@@ -511,21 +328,13 @@ fn setup_app(
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
 
-    // -------------------------------------------------------------------------
-    // State Management
-    // -------------------------------------------------------------------------
     let history_cache = AlertHistoryCache::new(10000);
-    let alert_cache = core::alerts::cache::AlertRuleCache::new(&rcman_manager);
-    app.manage(alert_cache);
-
     app.manage(history_cache);
-    app.manage(rcman_manager);
 
-    // -------------------------------------------------------------------------
-    // Initialize Logging
-    // -------------------------------------------------------------------------
-    init_logging(&settings.developer.log_level, app_handle.clone())
-        .map_err(|e| format!("Failed to initialize logging: {e}"))?;
+    let alert_cache = core::alerts::cache::AlertRuleCache::new(
+        app.state::<core::settings::AppSettingsManager>().inner(),
+    );
+    app.manage(alert_cache);
 
     // -------------------------------------------------------------------------
     // Async Initialization (Phased Flow)
@@ -543,19 +352,13 @@ fn setup_app(
         use crate::server::start_web_server;
 
         let web_handle = app.handle().clone();
-        let args = cli_args;
+        let args = cli_args.clone();
 
         log::info!(
             "🚀 Initializing Web Server on {}:{}...",
             args.headless.host,
             args.headless.port
         );
-        if args.headless.user.is_some() {
-            log::info!("🔐 Basic authentication enabled");
-        }
-        if args.headless.tls_cert.is_some() && args.headless.tls_key.is_some() {
-            log::info!("🔒 TLS/HTTPS enabled");
-        }
 
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
@@ -569,8 +372,6 @@ fn setup_app(
             .await
             {
                 let msg = e.to_string();
-
-                // OS error 98 = Linux (EADDRINUSE), OS error 48 = macOS (EADDRINUSE)
                 if msg.contains("address already in use")
                     || msg.contains("os error 98")
                     || msg.contains("os error 48")
@@ -583,9 +384,6 @@ fn setup_app(
                 } else {
                     log::error!("❌ Web server failed to start: {e:#}");
                 }
-
-                // In web-server mode the process is useless without the server.
-                // Exit cleanly so Tauri's shutdown hooks still run.
                 web_handle.exit(1);
             }
         });

@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::initialization::watchers::stop_all_watchers,
+    core::initialization::stop_all_watchers,
     rclone::backend::BackendManager,
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},

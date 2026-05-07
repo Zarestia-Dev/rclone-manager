@@ -24,7 +24,6 @@ export class RcloneStatusService {
   private systemInfoService = inject(SystemInfoService);
   private backendService = inject(BackendService);
   private eventListenersService = inject(EventListenersService);
-  // private rcloneUpdateService = inject(RcloneUpdateService);
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
