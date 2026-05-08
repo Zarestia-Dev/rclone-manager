@@ -13,6 +13,7 @@ import {
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
   SERVE_STATE_CHANGED,
+  SYSTEM_STATUS,
   RCLONE_ENGINE_READY,
   RCLONE_ENGINE_ERROR,
   RCLONE_ENGINE_PASSWORD_ERROR,
@@ -27,6 +28,7 @@ import {
   RCLONE_OAUTH_URL,
   OAuthUrlEvent,
   JobChangeEvent,
+  SystemStatusPayload,
 } from '@app/types';
 /**
  * Service for listening to backend events and exposing them as observables
@@ -184,5 +186,12 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToOAuthUrl(): Observable<OAuthUrlEvent> {
     return this.listenToEvent<OAuthUrlEvent>(RCLONE_OAUTH_URL);
+  }
+
+  /**
+   * Listen to consolidated system status updates
+   */
+  listenToSystemStatus(): Observable<SystemStatusPayload> {
+    return this.listenToEvent<SystemStatusPayload>(SYSTEM_STATUS);
   }
 }

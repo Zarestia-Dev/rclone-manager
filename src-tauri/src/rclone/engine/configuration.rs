@@ -5,8 +5,8 @@ use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     rclone::backend::BackendManager,
     utils::types::{
-        core::RcApiEngine,
         events::{RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR, RCLONE_ENGINE_PATH_ERROR},
+        state::RcApiEngine,
     },
 };
 

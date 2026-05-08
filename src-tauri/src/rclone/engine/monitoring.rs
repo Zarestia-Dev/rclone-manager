@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::core::RcApiEngine;
+use crate::utils::types::state::RcApiEngine;
 
 const API_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
 const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);

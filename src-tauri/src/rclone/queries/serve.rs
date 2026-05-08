@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::utils::{
     rclone::endpoints::serve,
-    types::{core::RcloneState, remotes::ServeInstance},
+    types::{remotes::ServeInstance, state::RcloneState},
 };
 
 /// Parse serves list from API JSON response

@@ -5,7 +5,7 @@
 
 use crate::core::initialization::apply_settings::apply_core_settings;
 use crate::rclone::backend::BackendManager;
-use crate::utils::types::core::{EngineState, RcloneState};
+use crate::utils::types::state::{EngineState, RcloneState};
 use log::{debug, error};
 use tauri::{AppHandle, Manager};
 

@@ -5,7 +5,8 @@ use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::schema::CoreSettings;
-use crate::utils::types::core::{ProcessKind, is_sensitive_field};
+use crate::utils::security::is_sensitive_field;
+use crate::utils::types::rclone::ProcessKind;
 use rcman::SettingsSchema;
 
 /// Apply environment variables to the rclone command.

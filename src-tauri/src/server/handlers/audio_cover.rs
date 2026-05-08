@@ -38,7 +38,7 @@ pub async fn audio_cover_handler(
 
         let rclone_state = state
             .app_handle
-            .state::<crate::utils::types::core::RcloneState>();
+            .state::<crate::utils::types::state::RcloneState>();
         let client = &rclone_state.client;
 
         // Fetch first 10MB (fast and covers almost all embedded covers)

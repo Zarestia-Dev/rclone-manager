@@ -53,7 +53,7 @@ use crate::rclone::backend::types::Backend;
 use crate::utils::json_helpers::{
     get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
 };
-use crate::utils::types::core::RcloneState;
+use crate::utils::types::state::RcloneState;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -317,7 +317,7 @@ pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle)
     let map: serde_json::Map<String, Value> = params
         .iter()
         .map(|(k, v)| {
-            let value = if restrict_enabled && crate::utils::types::core::is_sensitive_field(k) {
+            let value = if restrict_enabled && crate::utils::security::is_sensitive_field(k) {
                 json!("[RESTRICTED]")
             } else {
                 v.clone()

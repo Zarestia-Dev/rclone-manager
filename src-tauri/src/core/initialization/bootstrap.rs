@@ -62,7 +62,7 @@ async fn init_rclone_state(app_handle: &AppHandle) -> Result<(), String> {
 
 /// Initialize the engine monitoring loop
 async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
-    use crate::utils::types::core::EngineState;
+    use crate::utils::types::state::EngineState;
 
     // Hidden dependency: EngineState must be managed in lib.rs before this is called
     let engine_state = app_handle.try_state::<EngineState>().ok_or_else(|| {

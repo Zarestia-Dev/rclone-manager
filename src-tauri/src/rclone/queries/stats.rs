@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::core::RcloneState;
+use crate::utils::types::state::RcloneState;
 
 fn group_payload(group: Option<String>) -> Value {
     match group {

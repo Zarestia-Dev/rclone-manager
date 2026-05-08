@@ -19,8 +19,8 @@ use crate::{
     utils::{
         rclone::endpoints::{config, core},
         types::{
-            core::{EngineState, RcloneState},
             events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
+            state::{EngineState, RcloneState},
         },
     },
 };
@@ -417,13 +417,19 @@ async fn test_remote_connection(
         Ok(_) => {
             info!("✅ Remote backend '{}' is reachable", backend.name);
             backend_manager
-                .set_runtime_status(&backend.name, "connected")
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Connected,
+                )
                 .await;
             Ok(())
         }
         Err(e) => {
             backend_manager
-                .set_runtime_status(&backend.name, &format!("error:{e}"))
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(e.clone()),
+                )
                 .await;
             Err(format!("Cannot connect to '{}': {e}", backend.name))
         }
@@ -490,7 +496,12 @@ async fn refresh_and_verify_cache(
             warn!("⏱️ Cache refresh timed out for backend '{name}'");
             if name != "Local" {
                 backend_manager
-                    .set_runtime_status(name, "error:Connection too slow")
+                    .set_runtime_status(
+                        name,
+                        crate::rclone::backend::runtime::RuntimeStatus::Error(
+                            "Connection too slow".to_string(),
+                        ),
+                    )
                     .await;
             }
             revert_to_local(backend_manager, settings_manager, name).await;

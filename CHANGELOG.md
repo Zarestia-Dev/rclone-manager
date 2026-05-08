@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.
 - **Frontend Communication**: Streamlined the frontend's transport layer by centralizing environment detection and routing all commands through a unified `invoke` bridge.
+- **Unified Monitoring System**: Replaced multiple independent background monitors with a single, smarter polling system. The app now uses significantly fewer resources while providing faster and more responsive status updates.
+  - System status, mount state, serve state, and engine health are now all checked in a single request instead of four separate ones.
+  - Static information like rclone version and process ID is cached once at startup instead of being re-fetched continuously.
+  - Polling speed automatically adapts: faster updates when jobs are running, slower when idle, and pauses when the app is hidden.
+  - Job progress monitoring is also batched into fewer requests for better performance during transfers.
 - Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
 - change rclone binary location to direct binary path.
 - Remove the batch upload limit from the Nautilus drag-and-drop feature (Headless mode only). App now upload the files on the temp folder of the remote instance after starting to upload to final destination. After the upload finishes, it will remove the files from the temp folder.

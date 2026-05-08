@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, command};
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::vfs;
-use crate::utils::types::core::RcloneState;
+use crate::utils::types::state::RcloneState;
 
 use crate::utils::json_helpers::normalize_windows_path;
 

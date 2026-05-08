@@ -5,7 +5,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::{config, core};
-use crate::utils::types::core::{BandwidthLimitResponse, RcloneCoreVersion, RcloneState};
+use crate::utils::types::rclone::{BandwidthLimitResponse, RcloneCoreVersion};
+use crate::utils::types::state::RcloneState;
 
 #[tauri::command]
 pub async fn get_bandwidth_limit(app: AppHandle) -> Result<BandwidthLimitResponse, String> {
@@ -39,25 +40,79 @@ pub async fn fetch_version_info(
     serde_json::from_value(json).map_err(|e| format!("Failed to parse version info: {e}"))
 }
 
+async fn update_runtime_cache<F>(backend_manager: &BackendManager, active_name: &str, update: F)
+where
+    F: FnOnce(&mut crate::rclone::backend::runtime::RuntimeInfo),
+{
+    let mut runtime = backend_manager
+        .get_runtime_info(active_name)
+        .await
+        .unwrap_or_default();
+    update(&mut runtime);
+    backend_manager.set_runtime_info(active_name, runtime).await;
+}
+
 #[tauri::command]
 pub async fn get_rclone_info(app: AppHandle) -> Result<RcloneCoreVersion, String> {
     let backend_manager = app.state::<BackendManager>();
+    let active_name = backend_manager.get_active_name().await;
+
+    // Try cache first
+    if let Some(runtime) = backend_manager.get_runtime_info(&active_name).await
+        && let Some(core_version) = runtime.core_version
+    {
+        return Ok(core_version);
+    }
+
+    // Fallback to network request
     let backend = backend_manager.get_active().await;
-    fetch_version_info(&backend, &app.state::<RcloneState>().client).await
+    let version_data = fetch_version_info(&backend, &app.state::<RcloneState>().client).await?;
+
+    // Update cache if possible
+    update_runtime_cache(&backend_manager, &active_name, |runtime| {
+        runtime.version = Some(version_data.version.clone());
+        runtime.os = Some(version_data.os.clone());
+        runtime.arch = Some(version_data.arch.clone());
+        runtime.go_version = Some(version_data.go_version.clone());
+        runtime.core_version = Some(version_data.clone());
+    })
+    .await;
+
+    Ok(version_data)
 }
 
 #[tauri::command]
 pub async fn get_rclone_pid(app: AppHandle) -> Result<Option<u32>, String> {
     let backend_manager = app.state::<BackendManager>();
+    let active_name = backend_manager.get_active_name().await;
+
+    // Try cache first
+    if let Some(runtime) = backend_manager.get_runtime_info(&active_name).await
+        && runtime.pid.is_some()
+    {
+        return Ok(runtime.pid);
+    }
+
+    // Fallback to network request
     let backend = backend_manager.get_active().await;
     match backend
         .post_json(&app.state::<RcloneState>().client, core::PID, None)
         .await
     {
-        Ok(json) => Ok(json
-            .get("pid")
-            .and_then(serde_json::Value::as_u64)
-            .map(|v| v as u32)),
+        Ok(json) => {
+            let pid = json
+                .get("pid")
+                .and_then(serde_json::Value::as_u64)
+                .map(|v| v as u32);
+
+            // Update cache
+            update_runtime_cache(&backend_manager, &active_name, |runtime| {
+                runtime.pid = pid;
+            })
+            .await;
+
+            Ok(pid)
+        }
         Err(e) => {
             debug!("Failed to query /core/pid: {e}");
             Err(format!("Failed to query /core/pid: {e}"))

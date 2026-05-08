@@ -7,12 +7,8 @@ use crate::core::cli::CliArgs;
 use crate::core::lifecycle::startup::handle_startup;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
-use crate::rclone::state::watcher::{
-    start_mounted_remote_watcher, start_serve_watcher, stop_mounted_remote_watcher,
-    stop_serve_watcher,
-};
-use crate::utils::types::core::RcloneState;
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
+use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
@@ -59,9 +55,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         error!("❌ Failed to initialize cron scheduler: {e}");
     }
 
-    // Watchers
-    start_all_watchers(&app_handle);
-
     // Auto Updater
     #[cfg(desktop)]
     crate::core::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
@@ -93,7 +86,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     info!("🎉 Initialization complete");
 
     // Enable engine health monitoring now that startup is complete
-    crate::rclone::engine::lifecycle::mark_startup_complete();
+    crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 }
 
 /// Fully refreshes all system components after settings change or restore.
@@ -164,26 +157,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Phase 4: Services - Starts background watchers
-pub fn start_all_watchers(app_handle: &AppHandle) {
-    info!("📡 Phase 4: Starting background watchers...");
-
-    debug!("📡 Starting mounted remote watcher...");
-    start_mounted_remote_watcher(app_handle.clone());
-
-    debug!("📡 Starting serve watcher...");
-    start_serve_watcher(app_handle.clone());
-
-    info!("✅ All watchers started successfully");
-}
-
-/// Stop all active background watchers
-pub fn stop_all_watchers() {
-    info!("🛑 Stopping all background watchers...");
-    stop_mounted_remote_watcher();
-    stop_serve_watcher();
-}
-
 /// Phase 3: Data - Hydrates caches and ensures defaults
 async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     info!("📊 Phase 3: Refreshing caches...");
@@ -227,7 +200,10 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
             "⏭️ Skipping redundant Local backend connectivity check (already verified during engine startup)"
         );
         backend_manager
-            .set_runtime_status("Local", "connected")
+            .set_runtime_status(
+                "Local",
+                crate::rclone::backend::runtime::RuntimeStatus::Connected,
+            )
             .await;
     } else {
         // For remote backends, check connectivity with automatic fallback

@@ -5,9 +5,9 @@ use tauri::{AppHandle, Manager};
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::core::RcloneState;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
+use crate::utils::types::state::RcloneState;
 
 #[tauri::command]
 pub async fn archive_create(

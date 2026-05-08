@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::config;
-use crate::utils::types::core::RcloneState;
+use crate::utils::types::state::RcloneState;
 use tauri::{AppHandle, Manager};
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {

@@ -152,6 +152,14 @@ impl JobCache {
             .collect()
     }
 
+    pub async fn has_running_jobs(&self) -> bool {
+        self.jobs
+            .read()
+            .await
+            .values()
+            .any(|j| j.status.is_running())
+    }
+
     pub async fn is_job_running(
         &self,
         remote_name: &str,

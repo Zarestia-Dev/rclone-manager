@@ -247,10 +247,11 @@ impl Backend {
         match tokio::time::timeout(timeout, fetch_version_info(self, client)).await {
             Ok(Ok(version_data)) => {
                 log::debug!("Fetched version info for backend: {}", self.name);
-                info.version = Some(version_data.version);
-                info.os = Some(version_data.os);
-                info.arch = Some(version_data.arch);
-                info.go_version = Some(version_data.go_version);
+                info.version = Some(version_data.version.clone());
+                info.os = Some(version_data.os.clone());
+                info.arch = Some(version_data.arch.clone());
+                info.go_version = Some(version_data.go_version.clone());
+                info.core_version = Some(version_data);
             }
             Ok(Err(e)) => {
                 log::warn!("Failed to fetch version for backend {}: {e}", self.name);
@@ -259,6 +260,19 @@ impl Backend {
             Err(_) => {
                 log::warn!("Timeout fetching version for backend {}", self.name);
                 return RuntimeInfo::with_error("Connection timed out");
+            }
+        }
+
+        // Fetch PID — also critical for some operations but we allow it to be None if it fails
+        match tokio::time::timeout(timeout, self.post_json(client, core::PID, None)).await {
+            Ok(Ok(json)) => {
+                info.pid = json
+                    .get("pid")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|v| v as u32);
+            }
+            _ => {
+                log::debug!("Could not fetch PID for backend {}", self.name);
             }
         }
 
@@ -282,7 +296,7 @@ impl Backend {
             }
         }
 
-        info.set_status("connected");
+        info.set_status(crate::rclone::backend::runtime::RuntimeStatus::Connected);
         info
     }
 
@@ -515,9 +529,9 @@ pub struct BackendInfo {
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os: Option<String>,
-    /// Connection status: "connected", "error:message", or empty
+    /// Connection status
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<crate::rclone::backend::runtime::RuntimeStatus>,
     /// Actual config path being used by rclone (fetched at runtime)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_config_path: Option<PathBuf>,
@@ -550,7 +564,7 @@ impl BackendInfo {
         mut self,
         version: Option<String>,
         os: Option<String>,
-        status: Option<String>,
+        status: Option<crate::rclone::backend::runtime::RuntimeStatus>,
         runtime_config_path: Option<PathBuf>,
     ) -> Self {
         self.version = version;

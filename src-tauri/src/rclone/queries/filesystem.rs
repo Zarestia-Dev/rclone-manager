@@ -7,9 +7,10 @@ use crate::utils::{
     rclone::endpoints::operations,
     rclone::util::build_full_path,
     types::{
-        core::{DiskUsage, RcloneState},
         jobs::{JobStatus, JobType},
+        rclone::DiskUsage,
         remotes::ListOptions,
+        state::RcloneState,
     },
 };
 

@@ -30,6 +30,7 @@ export class SystemInfoService extends TauriBaseService {
   }
   /**
    * Get rclone information
+   * NOTE: Use sparingly for on-demand refresh only. Primary status updates come via SYSTEM_STATUS event.
    */
   async getRcloneInfo(): Promise<RcloneInfo | null> {
     return this.invokeCommand<RcloneInfo>('get_rclone_info');
@@ -37,6 +38,7 @@ export class SystemInfoService extends TauriBaseService {
 
   /**
    * Get rclone process ID
+   * NOTE: Use sparingly for on-demand refresh only.
    */
   async getRclonePID(): Promise<number | null> {
     return this.invokeCommand<number>('get_rclone_pid');
@@ -60,6 +62,7 @@ export class SystemInfoService extends TauriBaseService {
 
   /**
    * Get memory statistics
+   * NOTE: Use sparingly for on-demand refresh only. Primary updates come via SYSTEM_STATUS event.
    */
   async getMemoryStats(): Promise<MemoryStats> {
     return this.invokeCommand<MemoryStats>('get_memory_stats');
@@ -67,6 +70,7 @@ export class SystemInfoService extends TauriBaseService {
 
   /**
    * Get core statistics
+   * NOTE: Use sparingly for on-demand refresh only. Primary updates come via SYSTEM_STATUS event.
    */
   async getStats(groupName?: string): Promise<GlobalStats> {
     return this.invokeCommand('get_stats', { group: groupName });
@@ -121,5 +125,12 @@ export class SystemInfoService extends TauriBaseService {
    */
   async getLocalDiskUsage(dir?: string): Promise<LocalDiskUsage> {
     return this.invokeCommand<LocalDiskUsage>('get_local_disk_usage', { dir });
+  }
+
+  /**
+   * Set the system poller visibility state
+   */
+  async setPollerVisibility(visible: boolean): Promise<void> {
+    return this.invokeCommand('set_poller_visibility', { visible });
   }
 }

@@ -2,7 +2,8 @@ use log::{debug, error, info};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::core::{ProcessKind, RcApiEngine};
+use crate::utils::types::rclone::ProcessKind;
+use crate::utils::types::state::RcApiEngine;
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
     rclone::{endpoints::core, process_common::build_rclone_process_command},

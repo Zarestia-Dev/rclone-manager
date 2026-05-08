@@ -21,9 +21,9 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::config,
         types::{
-            core::RcloneState,
             events::REMOTE_CACHE_CHANGED,
             logs::{LogCache, LogLevel},
+            state::RcloneState,
         },
     },
 };

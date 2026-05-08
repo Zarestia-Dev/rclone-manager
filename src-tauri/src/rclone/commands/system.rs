@@ -14,8 +14,9 @@ use crate::{
             process_common::build_rclone_process_command,
         },
         types::{
-            core::{BandwidthLimitResponse, ProcessKind, RcloneState},
             events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED, RCLONE_OAUTH_URL},
+            rclone::{BandwidthLimitResponse, ProcessKind},
+            state::RcloneState,
         },
     },
 };

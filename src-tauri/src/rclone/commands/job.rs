@@ -13,10 +13,10 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
-            core::RcloneState,
             jobs::{JobCache, JobInfo, JobStatus, JobType},
             logs::LogLevel,
             origin::Origin,
+            state::RcloneState,
         },
     },
 };
@@ -340,8 +340,6 @@ pub async fn monitor_job(
         .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{backend_name}' not found")))?;
 
     let job_cache = &backend_manager.job_cache;
-    let job_status_url = backend.url_for(job::STATUS);
-    let stats_url = backend.url_for(core::STATS);
 
     info!(
         "Starting monitoring for job {jobid} ({})",
@@ -371,72 +369,75 @@ pub async fn monitor_job(
             }
         }
 
-        let stats_payload = if let Some(ref g) = metadata.group {
-            json!({ "group": g })
-        } else {
-            json!({ "jobid": jobid })
-        };
+        let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
+        if !metadata.no_cache {
+            let group = metadata.group_name();
+            inputs.push(json!({ "_path": core::STATS, "group": group }));
+            inputs.push(json!({ "_path": core::TRANSFERRED, "group": group }));
+        }
 
-        let poll_result = if metadata.no_cache {
-            backend
-                .inject_auth(client.post(&job_status_url))
-                .json(&json!({ "jobid": jobid }))
-                .send()
-                .await
-                .map(|r| (r, None))
-        } else {
-            let status_req = backend
-                .inject_auth(client.post(&job_status_url))
-                .json(&json!({ "jobid": jobid }));
-
-            let job_stats_req = backend
-                .inject_auth(client.post(&stats_url))
-                .json(&stats_payload);
-
-            tokio::try_join!(status_req.send(), job_stats_req.send())
-                .map(|(status_resp, stats_resp)| (status_resp, Some(stats_resp)))
-        };
+        let poll_result = backend
+            .post_json(&client, job::BATCH, Some(&json!({ "inputs": inputs })))
+            .await;
 
         match poll_result {
-            Ok((status_resp, stats_resp_opt)) => {
+            Ok(batch_resp) => {
                 consecutive_errors = 0;
 
-                if let Some(stats_resp) = stats_resp_opt
-                    && let Ok(mut stats_val) = stats_resp.json::<Value>().await
-                {
-                    let transferred_req = backend
-                        .inject_auth(client.post(
-                            backend.url_for(crate::utils::rclone::endpoints::core::TRANSFERRED),
-                        ))
-                        .json(&stats_payload);
-
-                    if let Ok(trans_resp) = transferred_req.send().await
-                        && let Ok(trans_data) = trans_resp.json::<Value>().await
-                        && let Some(obj) = stats_val.as_object_mut()
-                    {
-                        obj.insert(
-                            "completed".to_string(),
-                            trans_data.get("transferred").cloned().unwrap_or(json!([])),
-                        );
+                if let Some(results) = batch_resp["results"].as_array() {
+                    if results.is_empty() {
+                        warn!("Job {jobid} batch returned empty results array");
+                        consecutive_errors += 1;
+                        sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
+                        continue;
                     }
 
-                    let _ = job_cache.update_job_stats(jobid, stats_val).await;
-                }
+                    // Result 0 is always job/status (returned directly, not wrapped)
+                    let status_result = &results[0];
 
-                if let Ok(job_status) = status_resp
-                    .json::<crate::utils::types::jobs::JobStatusResponse>()
-                    .await
-                    && job_status.finished
-                {
-                    return handle_job_completion(
-                        backend_name.clone(),
-                        jobid,
-                        &metadata,
-                        serde_json::to_value(job_status).unwrap_or(json!({})),
-                        &app,
-                        None,
-                    )
-                    .await;
+                    // Check if status result is valid
+                    if status_result.is_null() {
+                        warn!("Job {jobid} status result is null");
+                        consecutive_errors += 1;
+                        sleep(Duration::from_millis(JOB_POLL_INTERVAL_MS)).await;
+                        continue;
+                    }
+
+                    // Results 1 and 2 are stats and transferred (if not no_cache)
+                    if !metadata.no_cache && results.len() >= 3 {
+                        let stats_result = &results[1];
+                        let trans_result = &results[2];
+
+                        if !stats_result.is_null() {
+                            let mut stats_val = stats_result.clone();
+                            if let Some(obj) = stats_val.as_object_mut() {
+                                obj.insert(
+                                    "completed".to_string(),
+                                    trans_result
+                                        .get("transferred")
+                                        .cloned()
+                                        .unwrap_or(json!([])),
+                                );
+                            }
+                            let _ = job_cache.update_job_stats(jobid, stats_val).await;
+                        }
+                    }
+
+                    if let Ok(job_status) = serde_json::from_value::<
+                        crate::utils::types::jobs::JobStatusResponse,
+                    >(status_result.clone())
+                        && job_status.finished
+                    {
+                        return handle_job_completion(
+                            backend_name.clone(),
+                            jobid,
+                            &metadata,
+                            status_result.clone(),
+                            &app,
+                            None,
+                        )
+                        .await;
+                    }
                 }
             }
             Err(e) => {

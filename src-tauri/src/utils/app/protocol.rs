@@ -87,7 +87,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 let backend: crate::rclone::backend::types::Backend =
                     backend_manager.get_active().await;
 
-                let rclone_state = app_handle.state::<crate::utils::types::core::RcloneState>();
+                let rclone_state = app_handle.state::<crate::utils::types::state::RcloneState>();
                 let client = &rclone_state.client;
 
                 // forward Range header to rclone so we only fetch the requested bytes
@@ -310,7 +310,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
         tauri::async_runtime::spawn(async move {
             use std::io::{Read, Seek, SeekFrom};
             use crate::rclone::backend::BackendManager;
-            use crate::utils::types::core::RcloneState;
+            use crate::utils::types::state::RcloneState;
 
             // Try to open the file directly
             match std::fs::File::open(&final_path_clone) {
@@ -554,7 +554,8 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     use crate::rclone::backend::BackendManager;
                     let backend_manager = app_handle.state::<BackendManager>();
                     let backend = backend_manager.get_active().await;
-                    let rclone_state = app_handle.state::<crate::utils::types::core::RcloneState>();
+                    let rclone_state =
+                        app_handle.state::<crate::utils::types::state::RcloneState>();
 
                     // Fetch first 10MB (consistent with headless handler)
                     match backend

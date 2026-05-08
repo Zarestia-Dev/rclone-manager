@@ -279,6 +279,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
             (force_check_serves, $crate::rclone::state::watcher::force_check_serves, []);
+            (set_poller_visibility, $crate::rclone::engine::poller::set_poller_visibility, [visible: bool], [sync, no_app]);
 
             // =================================================================
             // APPLICATION CONTROL

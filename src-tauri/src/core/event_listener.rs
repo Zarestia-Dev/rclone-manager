@@ -48,7 +48,7 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            use crate::utils::types::core::EngineState;
+            use crate::utils::types::state::EngineState;
             app.state::<EngineState>()
                 .lock()
                 .await

@@ -3,7 +3,6 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::initialization::stop_all_watchers,
     rclone::backend::BackendManager,
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
@@ -11,7 +10,7 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{core::RcloneState, events::APP_EVENT, updater::AppUpdaterState},
+        types::{events::APP_EVENT, state::RcloneState, updater::AppUpdaterState},
     },
 };
 
@@ -45,10 +44,8 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
     );
 
-    stop_all_watchers();
-
     #[cfg(desktop)]
-    crate::core::lifecycle::auto_updater::stop_auto_updater();
+    crate::core::lifecycle::auto_updater::stop_auto_updater(&app_handle);
 
     match scheduler_state.stop().await {
         Ok(()) => info!("Cron scheduler stopped."),
@@ -76,7 +73,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
     let engine_result = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
-        let engine_state = app_clone.state::<crate::utils::types::core::EngineState>();
+        let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
         engine_state.lock().await.shutdown(&app_clone).await;
         Ok::<(), String>(())
     })

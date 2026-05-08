@@ -2,8 +2,8 @@ use log::debug;
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::mount;
-use crate::utils::types::core::RcloneState;
 use crate::utils::types::remotes::MountedRemote;
+use crate::utils::types::state::RcloneState;
 use tauri::{AppHandle, Manager};
 
 pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {

@@ -9,7 +9,7 @@ use crate::rclone::commands::job::JobMetadata;
 use crate::utils::app::notification::notify;
 use crate::utils::rclone::endpoints::{operations, sync};
 use crate::utils::rclone::util::build_full_path;
-use crate::utils::types::{core::RcloneState, jobs::JobType, origin::Origin};
+use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -639,7 +639,7 @@ pub async fn upload_file(
     name: String,
     content: Vec<u8>,
 ) -> Result<String, String> {
-    let state = app.state::<crate::utils::types::core::RcloneState>();
+    let state = app.state::<crate::utils::types::state::RcloneState>();
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 

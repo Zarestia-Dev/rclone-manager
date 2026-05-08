@@ -9,7 +9,7 @@ pub mod app_updates {
     use crate::utils::{
         app::notification::{NotificationEvent, UpdateStage, notify},
         github_client,
-        types::core::RcloneState,
+        types::state::RcloneState,
     };
     use log::{debug, info, warn};
     use std::sync::atomic::Ordering;

@@ -1,5 +1,8 @@
 // Event constants for emit/listen operations
 
+import { GlobalStats } from './jobs';
+import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
+
 // Core engine events
 export const ENGINE_RESTARTED = 'engine_restarted';
 
@@ -29,6 +32,7 @@ export const UPDATE_TRAY_MENU = 'tray_menu_updated';
 export const JOB_CACHE_CHANGED = 'job_cache_changed';
 export const MOUNT_STATE_CHANGED = 'mount_state_changed';
 export const SERVE_STATE_CHANGED = 'serve_state_changed';
+export const SYSTEM_STATUS = 'system_status';
 
 // Plugin and installation events
 export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
@@ -63,4 +67,12 @@ export interface JobChangeEvent {
   remote?: string;
   source?: string;
   destination?: string;
+}
+export interface SystemStatusPayload {
+  rcloneInfo: RcloneInfo | null;
+  pid: number | null;
+  stats: GlobalStats;
+  memory: MemoryStats | null;
+  status: RcloneStatus;
+  hasActiveJobs: boolean;
 }

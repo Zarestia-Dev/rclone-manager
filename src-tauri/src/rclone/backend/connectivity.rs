@@ -114,7 +114,12 @@ pub async fn ensure_connectivity_or_fallback(
                 "⚠️ Local backend timed out after {}s. Marking connected; runtime info may be missing.",
                 timeout.as_secs()
             );
-            manager.set_runtime_status("Local", "connected").await;
+            manager
+                .set_runtime_status(
+                    "Local",
+                    crate::rclone::backend::runtime::RuntimeStatus::Connected,
+                )
+                .await;
             Ok(())
         };
     }
@@ -133,7 +138,10 @@ pub async fn ensure_connectivity_or_fallback(
         Err(e) => {
             log::warn!("⚠️ Active backend '{active_name}' unreachable: {e}. Marking offline.");
             manager
-                .set_runtime_status(&active_name, &format!("error:{e}"))
+                .set_runtime_status(
+                    &active_name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(e),
+                )
                 .await;
             Ok(())
         }
@@ -156,7 +164,10 @@ pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Cl
             Err(e) => {
                 log::warn!("⚠️ Backend '{}' unreachable: {}", backend.name, e);
                 manager
-                    .set_runtime_status(&backend.name, &format!("error:{e}"))
+                    .set_runtime_status(
+                        &backend.name,
+                        crate::rclone::backend::runtime::RuntimeStatus::Error(e),
+                    )
                     .await;
             }
         }

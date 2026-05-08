@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, command};
 
-use crate::utils::types::core::CheckResult;
-use crate::utils::types::core::LinkChecker;
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
+use crate::utils::types::rclone::CheckResult;
 
 #[command]
 pub async fn check_links(
@@ -13,6 +12,12 @@ pub async fn check_links(
 ) -> Result<CheckResult, String> {
     let checker = LinkChecker::new(max_retries, retry_delay_secs);
     checker.check_links(&links).await.map_err(|e| e.to_string())
+}
+
+pub struct LinkChecker {
+    pub client: reqwest::Client,
+    pub max_retries: usize,
+    pub retry_delay: std::time::Duration,
 }
 
 impl LinkChecker {
@@ -170,7 +175,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        use crate::utils::types::core::NetworkStatusPayload;
+        use crate::utils::types::monitoring::NetworkStatusPayload;
         debug!("'Metered' property changed!");
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
@@ -194,7 +199,7 @@ pub fn is_metered() -> bool {
 
 #[cfg(feature = "container")]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
-    use crate::utils::types::core::NetworkStatusPayload;
+    use crate::utils::types::monitoring::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
@@ -214,7 +219,7 @@ pub fn is_metered() -> bool {
 #[cfg(target_os = "macos")]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
-    use crate::utils::types::core::NetworkStatusPayload;
+    use crate::utils::types::monitoring::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
@@ -248,7 +253,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
-        use crate::utils::types::core::NetworkStatusPayload;
+        use crate::utils::types::monitoring::NetworkStatusPayload;
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };

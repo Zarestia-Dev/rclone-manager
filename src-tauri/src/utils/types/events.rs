@@ -28,6 +28,7 @@ pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 pub const MOUNT_STATE_CHANGED: &str = "mount_state_changed";
 pub const SERVE_STATE_CHANGED: &str = "serve_state_changed";
+pub const SYSTEM_STATUS: &str = "system_status";
 
 // Plugin and installation events
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -73,6 +74,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     APP_EVENT,
     BROWSE,
     ALERT_FIRED,
+    SYSTEM_STATUS,
 ];
 
 /// Strongly typed payload for settings change events

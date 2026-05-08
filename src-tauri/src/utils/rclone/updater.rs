@@ -18,10 +18,10 @@ use crate::rclone::queries::get_rclone_info;
 use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::core::EngineState;
-use crate::utils::types::core::RcloneState;
 use crate::utils::types::events::APP_EVENT;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
+use crate::utils::types::state::EngineState;
+use crate::utils::types::state::RcloneState;
 use crate::utils::types::updater::{
     RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateResult, UpdateStatus,
     UpdaterError as Error,

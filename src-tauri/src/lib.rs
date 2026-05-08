@@ -34,8 +34,8 @@ use crate::{
     },
     rclone::commands::common::OperationContext,
     utils::types::{
-        core::{RcApiEngine, RcloneState},
         logs::LogCache,
+        state::{RcApiEngine, RcloneState},
         updater::{AppUpdaterState, RcloneUpdaterState},
     },
 };
@@ -318,6 +318,10 @@ fn setup_app(
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),
         oauth_process: tokio::sync::Mutex::new(None),
+        poller_running: AtomicBool::new(false),
+        poller_visible: AtomicBool::new(true),
+        initial_startup: AtomicBool::new(true),
+        updater_running: AtomicBool::new(false),
     });
 
     app.manage(LogCache::new(1000));

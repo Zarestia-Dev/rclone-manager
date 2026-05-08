@@ -10,7 +10,7 @@ use crate::{
         json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::serve,
-        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
+        types::{logs::LogLevel, remotes::ProfileParams, state::RcloneState},
     },
 };
 

@@ -491,24 +491,24 @@ export class BackendModalComponent implements OnInit {
   }
 
   getStatusClass(backend: BackendInfo): string {
-    if (!backend.status) return BACKEND_CONSTANTS.STATUS.UNKNOWN;
-    if (backend.status === BACKEND_CONSTANTS.STATUS.CONNECTED)
-      return BACKEND_CONSTANTS.STATUS.CONNECTED;
-    if (backend.status.startsWith(BACKEND_CONSTANTS.STATUS.ERROR_PREFIX))
-      return BACKEND_CONSTANTS.STATUS.ERROR_PREFIX;
+    if (!backend.status || backend.status.type === 'unknown')
+      return BACKEND_CONSTANTS.STATUS.UNKNOWN;
+    if (backend.status.type === 'connected') return BACKEND_CONSTANTS.STATUS.CONNECTED;
+    if (backend.status.type === 'error') return BACKEND_CONSTANTS.STATUS.ERROR_PREFIX;
     return BACKEND_CONSTANTS.STATUS.UNKNOWN;
   }
 
   getStatusTooltip(backend: BackendInfo): string {
-    if (!backend.status) return this.translate.instant('modals.backend.status.notTested');
-    if (backend.status === BACKEND_CONSTANTS.STATUS.CONNECTED)
+    if (!backend.status || backend.status.type === 'unknown')
+      return this.translate.instant('modals.backend.status.notTested');
+    if (backend.status.type === 'connected')
       return this.translate.instant('modals.backend.status.connected');
-    if (backend.status.startsWith(BACKEND_CONSTANTS.STATUS.ERROR_PREFIX)) {
+    if (backend.status.type === 'error') {
       return this.translate.instant('modals.backend.status.error', {
-        message: backend.status.replace(`${BACKEND_CONSTANTS.STATUS.ERROR_PREFIX}:`, '').trim(),
+        message: backend.status.message,
       });
     }
-    return backend.status;
+    return BACKEND_CONSTANTS.STATUS.UNKNOWN;
   }
 
   getFieldClasses(field: { key: string }, group: string): string[] {

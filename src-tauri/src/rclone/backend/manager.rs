@@ -114,11 +114,7 @@ impl BackendManager {
                     info.with_runtime_info(
                         runtime.version.clone(),
                         runtime.os.clone(),
-                        if runtime.status.is_empty() {
-                            None
-                        } else {
-                            Some(runtime.status.clone())
-                        },
+                        Some(runtime.status.clone()),
                         runtime.config_path.clone(),
                     )
                 } else {
@@ -346,12 +342,17 @@ impl BackendManager {
     // ============================================================================
 
     /// Set runtime info for a backend (used by connectivity module)
-    pub(super) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
+    pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
         // Update runtime cache
         self.runtime_info
             .write()
             .await
             .insert(name.to_string(), info.clone());
+    }
+
+    /// Get runtime info for a specific backend
+    pub(crate) async fn get_runtime_info(&self, name: &str) -> Option<RuntimeInfo> {
+        self.runtime_info.read().await.get(name).cloned()
     }
 
     /// Save backend state internally (used by state module)
@@ -373,7 +374,7 @@ impl BackendManager {
     }
 
     /// Get the runtime OS for a specific backend
-    pub async fn get_runtime_os(&self, name: &str) -> Option<String> {
+    pub(crate) async fn get_runtime_os(&self, name: &str) -> Option<String> {
         self.runtime_info
             .read()
             .await
@@ -382,7 +383,7 @@ impl BackendManager {
     }
 
     /// Get the runtime config path for a specific backend
-    pub async fn get_runtime_config_path(&self, name: &str) -> Option<PathBuf> {
+    pub(crate) async fn get_runtime_config_path(&self, name: &str) -> Option<PathBuf> {
         self.runtime_info
             .read()
             .await
@@ -391,17 +392,17 @@ impl BackendManager {
     }
 
     /// Update runtime status for a backend (used for error states)
-    pub async fn set_runtime_status(&self, name: &str, status: &str) {
-        let mut cache = self.runtime_info.write().await;
-        if status.starts_with("error") {
-            let error_msg = status.strip_prefix("error:").unwrap_or(status);
-            cache.insert(name.to_string(), RuntimeInfo::with_error(error_msg));
-        } else {
-            cache
-                .entry(name.to_string())
-                .or_insert_with(RuntimeInfo::new)
-                .status = status.to_string();
-        }
+    pub(crate) async fn set_runtime_status(
+        &self,
+        name: &str,
+        status: crate::rclone::backend::runtime::RuntimeStatus,
+    ) {
+        self.runtime_info
+            .write()
+            .await
+            .entry(name.to_string())
+            .or_insert_with(RuntimeInfo::new)
+            .status = status;
     }
 
     /// Load backends from settings
@@ -497,19 +498,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_runtime_status() {
+        use crate::rclone::backend::runtime::RuntimeStatus;
         let manager = BackendManager::new();
-        manager.set_runtime_status("Local", "connected").await;
+        manager
+            .set_runtime_status("Local", RuntimeStatus::Connected)
+            .await;
 
         let backends = manager.list_all().await;
-        assert_eq!(backends[0].status, Some("connected".to_string()));
+        assert_eq!(backends[0].status, Some(RuntimeStatus::Connected));
 
         manager
-            .set_runtime_status("Local", "error:connection failed")
+            .set_runtime_status(
+                "Local",
+                RuntimeStatus::Error("connection failed".to_string()),
+            )
             .await;
         let backends = manager.list_all().await;
         assert_eq!(
             backends[0].status,
-            Some("error:connection failed".to_string())
+            Some(RuntimeStatus::Error("connection failed".to_string()))
         );
     }
 

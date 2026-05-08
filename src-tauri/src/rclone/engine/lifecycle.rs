@@ -1,69 +1,28 @@
 use log::{debug, error, info, warn};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
-
-static INITIAL_STARTUP: AtomicBool = AtomicBool::new(true);
 
 use crate::rclone::backend::BackendManager;
 
-pub fn mark_startup_complete() {
-    INITIAL_STARTUP.store(false, Ordering::Release);
+pub fn mark_startup_complete(app: &AppHandle) {
+    let state = app.state::<RcloneState>();
+    state.initial_startup.store(false, Ordering::Release);
     debug!("Initial startup complete, health monitoring enabled");
 }
 
 const API_READY_TIMEOUT_SECS: u64 = 10;
-const MONITORING_INTERVAL_SECS: u64 = if cfg!(test) { 1 } else { 5 };
 
+use crate::rclone::engine::poller::{start_system_poller, stop_system_poller};
 use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
-        core::{RcApiEngine, RcloneState},
         events::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
         },
+        state::{RcApiEngine, RcloneState},
     },
 };
-
-fn spawn_monitoring_loop(app_handle: AppHandle) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(MONITORING_INTERVAL_SECS));
-        interval.tick().await;
-
-        loop {
-            interval.tick().await;
-
-            if app_handle.state::<RcloneState>().is_shutting_down() {
-                break;
-            }
-
-            {
-                use crate::utils::types::core::EngineState;
-                let engine_state = app_handle.state::<EngineState>();
-                let mut engine = engine_state.lock().await;
-
-                if engine.should_exit {
-                    break;
-                }
-
-                if INITIAL_STARTUP.load(Ordering::Acquire) {
-                    debug!("Skipping health check during initial startup");
-                    continue;
-                }
-
-                let client = app_handle.state::<RcloneState>().client.clone();
-                let backend_manager = app_handle.state::<BackendManager>();
-                if !engine.is_api_healthy(&client, &backend_manager).await && !engine.should_exit {
-                    debug!("Rclone API not healthy, attempting restart...");
-                    start(&mut engine, &app_handle).await;
-                }
-            }
-        }
-
-        info!("Engine monitoring task exiting.");
-    });
-}
 
 impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
@@ -75,7 +34,7 @@ impl RcApiEngine {
             warn!("Engine startup aborted due to configuration validation failure");
         }
 
-        spawn_monitoring_loop(app_handle);
+        start_system_poller(app_handle);
     }
 
     pub async fn shutdown(&mut self, app: &AppHandle) {
@@ -88,6 +47,7 @@ impl RcApiEngine {
 
         self.process = None;
         self.running = false;
+        stop_system_poller(app);
     }
 }
 
@@ -221,7 +181,7 @@ pub fn restart_for_config_change(
 
 async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::EngineResult<()> {
     use super::error::EngineError;
-    use crate::utils::types::core::EngineState;
+    use crate::utils::types::state::EngineState;
 
     let engine_state = app.state::<EngineState>();
     let mut engine = engine_state.lock().await;
@@ -251,7 +211,7 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
 #[cfg(test)]
 mod tests {
     use crate::rclone::engine::core::PauseReason;
-    use crate::utils::types::core::RcApiEngine;
+    use crate::utils::types::state::RcApiEngine;
 
     #[test]
     fn test_start_blocked_reason_priority() {

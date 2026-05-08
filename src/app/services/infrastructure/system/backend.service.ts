@@ -7,6 +7,7 @@ import {
   TestConnectionResult,
   BackendSettingMetadata,
   addBackendArgs,
+  RuntimeStatus,
 } from 'src/app/shared/types/backend.types';
 
 @Injectable({
@@ -148,7 +149,9 @@ export class BackendService extends TauriBaseService {
             ? b
             : {
                 ...b,
-                status: result.success ? 'connected' : 'error',
+                status: result.success
+                  ? { type: 'connected' }
+                  : { type: 'error', message: result.message },
                 version: result.version,
                 os: result.os,
                 runtimeConfigPath: result.config_path,
@@ -183,14 +186,15 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  getStatusClass(status?: string): string {
+  getStatusClass(status?: RuntimeStatus): string {
     if (!status) return 'disconnected';
-    if (status === 'connected') return 'connected';
+    if (status.type === 'connected') return 'connected';
+    if (status.type === 'inactive') return 'inactive';
     return 'disconnected';
   }
 
   updateActiveBackendStatus(
-    status: 'connected' | 'error',
+    status: RuntimeStatus,
     info?: { version?: string; os?: string; configPath?: string }
   ): void {
     const activeBackend = this.activeBackend();

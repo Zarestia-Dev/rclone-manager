@@ -29,7 +29,7 @@ pub async fn stream_remote_file_handler(
 
     let rclone_state = state
         .app_handle
-        .state::<crate::utils::types::core::RcloneState>();
+        .state::<crate::utils::types::state::RcloneState>();
     let client = &rclone_state.client;
 
     let response = backend
@@ -91,7 +91,7 @@ pub async fn stream_file_handler(
     Query(query): Query<ConvertFileSrcQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     use crate::rclone::backend::BackendManager;
-    use crate::utils::types::core::RcloneState;
+    use crate::utils::types::state::RcloneState;
 
     let path_str = query.path.clone();
     let path = std::path::PathBuf::from(&path_str);
