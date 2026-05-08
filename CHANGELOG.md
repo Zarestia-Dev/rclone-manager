@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Archive Extraction**: One-click extraction support for remote and local archives.
 - **Rclone Cat Fallback**: Implemented a robust fallback mechanism for file viewing. If direct filesystem access fails (due to permissions or platform limitations), the app now uses `rclone cat` via the RC API to retrieve content. Supports both `local-asset://` and headless `/stream` endpoints.
 - While exporing the settings If backup encryption is enabled, show toggle for incluse the secret keys like rclone config passwords, or other secrets you've added.
+- Implemented a offline page and PWA support for headless mode.
 
 ### Changed
 - **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.

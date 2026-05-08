@@ -18,9 +18,13 @@ use crate::utils::types::state::{EngineState, RcloneState};
 
 /// Update the system poller visibility state
 #[tauri::command]
-pub fn set_poller_visibility(visible: bool, state: tauri::State<'_, RcloneState>) {
+pub fn set_poller_visibility(app_handle: AppHandle, visible: bool) -> Result<(), String> {
     debug!("🔄 System poller visibility set to: {}", visible);
-    state.poller_visible.store(visible, Ordering::SeqCst);
+    app_handle
+        .state::<RcloneState>()
+        .poller_visible
+        .store(visible, Ordering::SeqCst);
+    Ok(())
 }
 
 /// Background task that performs unified system monitoring

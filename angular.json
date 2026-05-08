@@ -48,7 +48,13 @@
             "browser": "src/main.ts",
             "polyfills": [],
             "tsConfig": "tsconfig.app.json",
-            "assets": ["src/assets", "src/favicon.ico"],
+            "assets": [
+              "src/assets",
+              "src/favicon.ico",
+              "src/manifest.webmanifest",
+              "src/sw.js",
+              "src/offline.html"
+            ],
             "styles": ["src/custom-theme.scss"],
             "allowedCommonJsDependencies": [
               "cronstrue",

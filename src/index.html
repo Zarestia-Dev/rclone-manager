@@ -5,11 +5,24 @@
     <title>RClone Manager</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fafafb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#222226" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Web-based rclone management interface" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"> -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/icons/pwa-192x192.png" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
   </head>
 
   <body class="mat-typography">
     <app-root></app-root>
+    <script>
+      if ('serviceWorker' in navigator && !window.__TAURI_INTERNALS__) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    </script>
   </body>
 </html>
