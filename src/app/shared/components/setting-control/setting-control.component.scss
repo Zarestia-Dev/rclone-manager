@@ -166,6 +166,13 @@
         flex: 1;
       }
     }
+
+    .additional-selection {
+      font-size: var(--font-size-xs);
+      color: var(--secondary-text-color);
+      margin-left: var(--space-xs);
+      font-weight: 400;
+    }
   }
 
   .array-items {

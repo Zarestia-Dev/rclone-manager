@@ -15,8 +15,8 @@ import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/
 import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
 import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
-import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor.component';
-import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rule-editor.component';
+import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor/alert-action-editor.component';
+import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rules-editor/alert-rule-editor.component';
 import {
   InputModalComponent,
   InputModalData,

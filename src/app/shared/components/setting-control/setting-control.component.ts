@@ -679,4 +679,10 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
     return this.translate.instant('shared.settingControl.errors.invalidValue');
   }
+
+  getSelectedLabel(value: unknown, examples?: any[]): string {
+    if (value === null || value === undefined || value === '') return '';
+    const example = examples?.find(e => (e.Value ?? e) === value);
+    return example?.Help || example?.Value || String(value);
+  }
 }

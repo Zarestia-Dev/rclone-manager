@@ -222,8 +222,8 @@ impl AlertHistoryCache {
         let mut total_matches: usize = 0;
 
         for r in records.iter().rev() {
-            if let Some(sev_min) = &filter.severity_min
-                && &r.severity < sev_min
+            if let Some(sev) = &filter.severity
+                && &r.severity != sev
             {
                 continue;
             }

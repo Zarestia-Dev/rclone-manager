@@ -5,7 +5,6 @@ use lettre::{
     AsyncTransport, Message, message::header::ContentType,
     transport::smtp::authentication::Credentials,
 };
-use log::debug;
 
 /// Send an email notification.
 pub async fn dispatch(action: &EmailAction, ctx: &TemplateContext) -> Result<(), String> {
@@ -25,11 +24,6 @@ pub async fn dispatch(action: &EmailAction, ctx: &TemplateContext) -> Result<(),
 
     let subject = ctx.render(&action.subject_template);
     let body = ctx.render(&action.body_template);
-
-    debug!(
-        "📧 Sending Email: '{}' via {} to {}",
-        action.common.name, action.smtp_server, action.to
-    );
 
     let from = if action.from.is_empty() {
         "rclone-manager@localhost"

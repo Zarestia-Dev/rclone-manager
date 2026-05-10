@@ -397,7 +397,7 @@ impl Default for WebhookAction {
 pub struct ScriptAction {
     #[serde(flatten)]
     pub common: ActionCommon,
-    #[setting(label = "Command", placeholder = "/path/to/script.sh")]
+    #[setting(secret, label = "Command", placeholder = "/path/to/script.sh")]
     pub command: String,
     pub args: Vec<String>,
     #[setting(label = "Timeout (s)", min = 1, max = 3600)]
@@ -681,7 +681,7 @@ pub struct AlertStats {
 pub struct AlertHistoryFilter {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
-    pub severity_min: Option<AlertSeverity>,
+    pub severity: Option<AlertSeverity>,
     pub event_kind: Option<AlertEventKind>,
     pub remote: Option<String>,
     pub profile: Option<String>,

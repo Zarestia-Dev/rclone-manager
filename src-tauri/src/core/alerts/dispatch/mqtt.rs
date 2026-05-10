@@ -257,11 +257,6 @@ pub async fn dispatch(
     let topic = ctx.render(&action.topic);
     let timeout = Duration::from_secs(action.timeout_secs.max(1));
 
-    debug!(
-        "📡 Publishing to MQTT: '{}' at {}:{} (tls: {}) → topic: {}",
-        action.common.name, action.host, action.port, action.use_tls, topic
-    );
-
     let mqttoptions = build_mqtt_options(action);
 
     let qos = match action.qos {

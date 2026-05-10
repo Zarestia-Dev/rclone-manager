@@ -1,7 +1,6 @@
 use crate::core::alerts::{
     dispatch::run_with_retry, template::TemplateContext, types::ScriptAction,
 };
-use log::debug;
 use std::time::Duration;
 use tokio::process::Command;
 
@@ -37,7 +36,6 @@ pub async fn dispatch(action: &ScriptAction, ctx: &TemplateContext) -> Result<()
                 match result {
                     Ok(Ok(output)) => {
                         if output.status.success() {
-                            debug!("⚡ Script '{}' completed successfully", action.common.name);
                             Ok(())
                         } else {
                             let stderr = String::from_utf8_lossy(&output.stderr);

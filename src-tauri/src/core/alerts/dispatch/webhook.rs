@@ -1,7 +1,6 @@
 use crate::core::alerts::{
     dispatch::run_with_retry, template::TemplateContext, types::WebhookAction,
 };
-use log::debug;
 
 /// Fire an HTTP webhook request with the rendered body template.
 ///
@@ -47,10 +46,6 @@ pub async fn dispatch(
 
                 let status = resp.status();
                 if status.is_success() {
-                    debug!(
-                        "📡 Webhook '{}' completed successfully: {url}",
-                        action.common.name
-                    );
                     return Ok(());
                 }
 

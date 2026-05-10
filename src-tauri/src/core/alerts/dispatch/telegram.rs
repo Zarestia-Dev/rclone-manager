@@ -1,7 +1,6 @@
 use crate::core::alerts::{
     dispatch::run_with_retry, template::TemplateContext, types::TelegramAction,
 };
-use log::debug;
 use serde_json::json;
 
 /// Send a Telegram message to a chat using the Bot API.
@@ -35,7 +34,6 @@ pub async fn dispatch(
             let body = body.clone();
 
             async move {
-                debug!("📱 Sending Telegram message to chat {}", action.chat_id);
                 let resp = client
                     .post(format!("{}sendMessage", api_url))
                     .json(&json!({

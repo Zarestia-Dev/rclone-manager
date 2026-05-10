@@ -158,7 +158,7 @@ export interface AlertStats {
 export interface AlertHistoryFilter {
   limit?: number;
   offset?: number;
-  severity_min?: AlertSeverity;
+  severity?: AlertSeverity;
   event_kind?: AlertEventKind;
   remote?: string;
   profile?: string;

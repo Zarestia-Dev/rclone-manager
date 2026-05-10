@@ -28,8 +28,6 @@ import { SearchContainerComponent } from '@app/shared/components';
     <div class="actions-container">
       <!-- Toolbar -->
       <div class="toolbar">
-        <div class="spacer"></div>
-
         <button
           mat-icon-button
           (click)="searchVisible.set(!searchVisible())"
@@ -38,12 +36,7 @@ import { SearchContainerComponent } from '@app/shared/components';
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="createAction()"
-          [matTooltip]="'alerts.createAction' | translate"
-        >
+        <button mat-flat-button (click)="createAction()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createAction' | translate }}
         </button>
@@ -55,61 +48,72 @@ import { SearchContainerComponent } from '@app/shared/components';
         (searchTextChange)="onSearchChange($event)"
       ></app-search-container>
 
-      <div class="actions-table-wrap" [class.loading]="alerts.isLoading()">
-        @if (alerts.actions().length === 0 && !alerts.isLoading()) {
+      <div class="table-wrap" [class.loading]="alerts.isLoading()">
+        <!-- Loading -->
+        @if (alerts.isLoading() && alerts.actions().length === 0) {
           <div class="empty-state">
-            <mat-icon svgIcon="bell"></mat-icon>
-            <span>{{ 'alerts.noActions' | translate }}</span>
+            <mat-progress-spinner mode="indeterminate" diameter="24"> </mat-progress-spinner>
           </div>
         }
 
+        <!-- Empty -->
+        @if (!alerts.isLoading() && alerts.actions().length === 0) {
+          <div class="empty-state">
+            <mat-icon svgIcon="bolt"></mat-icon>
+            <span>{{ 'alerts.noActions' | translate }}</span>
+            <p>{{ 'alerts.noActionsHint' | translate }}</p>
+          </div>
+        }
+
+        <!-- Table -->
         @if (alerts.actions().length > 0) {
           <table mat-table [dataSource]="alerts.actions()">
-            <!-- Kind Column -->
+            <!-- Kind -->
             <ng-container matColumnDef="kind">
-              <th mat-header-cell *matHeaderCellDef>{{ 'alerts.action.kind' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'alerts.action.kind' | translate }}
+              </th>
               <td mat-cell *matCellDef="let action">
-                <div class="cell-content">
-                  <span class="app-pill p-dim action-kind-pill">
-                    <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
-                    {{ 'alerts.action.' + action.kind | translate }}
-                  </span>
-                </div>
+                <span class="app-pill p-dim kind-pill">
+                  <mat-icon [svgIcon]="alerts.getActionIcon(action.kind)"></mat-icon>
+                  {{ 'alerts.action.' + action.kind | translate }}
+                </span>
               </td>
             </ng-container>
 
-            <!-- Name Column -->
+            <!-- Name -->
             <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>{{ 'common.name' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'common.name' | translate }}
+              </th>
               <td mat-cell *matCellDef="let action">
-                <div class="cell-content">
-                  <span class="action-name">{{ action.name | translate }}</span>
-                </div>
+                <!-- ⚠ No | translate here — action.name is a user string, not an i18n key -->
+                <span class="action-name">{{ action.name }}</span>
               </td>
             </ng-container>
 
-            <!-- Status Column -->
+            <!-- Status -->
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>{{ 'common.status' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'common.status' | translate }}
+              </th>
               <td mat-cell *matCellDef="let action">
-                <div class="cell-content">
-                  <mat-slide-toggle
-                    [checked]="action.enabled"
-                    (change)="toggleAction(action)"
-                    color="primary"
-                    [matTooltip]="
-                      (action.enabled ? 'task.status.enabled' : 'task.status.disabled') | translate
-                    "
-                  ></mat-slide-toggle>
-                </div>
+                <mat-slide-toggle
+                  [checked]="action.enabled"
+                  (change)="toggleAction(action)"
+                  [matTooltip]="
+                    (action.enabled ? 'task.status.enabled' : 'task.status.disabled') | translate
+                  "
+                ></mat-slide-toggle>
               </td>
             </ng-container>
 
-            <!-- Actions Column -->
+            <!-- Row actions -->
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let action">
-                <div class="cell-content actions-wrap">
+                <div class="row-actions">
+                  <!-- Test -->
                   <button
                     mat-icon-button
                     (click)="testAction(action)"
@@ -120,12 +124,13 @@ import { SearchContainerComponent } from '@app/shared/components';
                       <mat-progress-spinner
                         mode="indeterminate"
                         diameter="24"
-                        strokeWidth="2"
                       ></mat-progress-spinner>
                     } @else {
                       <mat-icon svgIcon="play"></mat-icon>
                     }
                   </button>
+
+                  <!-- Edit -->
                   <button
                     mat-icon-button
                     (click)="editAction(action)"
@@ -133,9 +138,10 @@ import { SearchContainerComponent } from '@app/shared/components';
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
+
+                  <!-- Delete -->
                   <button
                     mat-icon-button
-                    color="warn"
                     (click)="deleteAction(action)"
                     [matTooltip]="'common.delete' | translate"
                   >
@@ -149,175 +155,129 @@ import { SearchContainerComponent } from '@app/shared/components';
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
-              [class.disabled]="!row.enabled"
+              [class.row-disabled]="!row.enabled"
             ></tr>
           </table>
         }
       </div>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: block;
-        height: 100%;
+  styles: `
+    :host {
+      display: block;
+      height: 100%;
+    }
+
+    .actions-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-xs);
+      padding: var(--space-md);
+      flex-shrink: 0;
+    }
+
+    .table-wrap {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+      border-top: 1px solid var(--border-color);
+      transition: opacity 0.2s ease;
+
+      &.loading {
+        opacity: 0.5;
+        pointer-events: none;
       }
 
-      .actions-container {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
+      table {
+        width: 100%;
+        min-width: 640px;
       }
+    }
 
-      .toolbar {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-md);
-        flex-shrink: 0;
+    .mat-mdc-header-row {
+      height: 44px;
+    }
+
+    /* ── Sticky Header ───────────────────────────────── */
+    .mat-mdc-header-cell {
+      background: var(--window-bg-color) !important;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 2px solid var(--border-color) !important;
+      border-right: 1px solid var(--border-color);
+      font-weight: 700;
+      font-size: var(--font-size-xs);
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .mat-mdc-cell {
+      padding: var(--space-sm) !important;
+      border-bottom: 1px solid var(--border-color) !important;
+      border-right: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .mat-mdc-row {
+      transition: background 0.1s ease;
+
+      &:hover {
+        background: var(--hover-bg-color);
       }
-
-      .spacer {
-        flex: 1;
+      &.row-disabled {
+        opacity: 0.5;
       }
+    }
 
-      /* ── Table Layout ────────────────────────────────── */
-      .actions-table-wrap {
-        flex: 1;
-        overflow: auto;
-        position: relative;
-        border-top: 1px solid var(--border-color);
+    .mat-column-kind {
+      width: 160px;
+    }
+    .mat-column-name {
+      min-width: 180px;
+    }
+    .mat-column-status {
+      width: 90px;
+    }
+    .mat-column-actions {
+      width: 136px;
+    }
 
-        &.loading {
-          opacity: 0.6;
-          pointer-events: none;
-        }
+    .kind-pill {
+      width: fit-content;
 
-        table {
-          width: 100%;
-          min-width: 700px;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
       }
+    }
 
-      .mat-mdc-header-row {
-        height: 48px;
-      }
+    .action-name {
+      font-weight: 600;
+      font-size: var(--font-size-md);
+      color: var(--window-fg-color);
+    }
 
-      /* ── Sticky Header ───────────────────────────────── */
-      .mat-mdc-header-cell {
-        background: var(--window-bg-color) !important;
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        border-bottom: 2px solid var(--border-color) !important;
-        border-right: 1px solid var(--border-color);
-        font-weight: 700;
-        font-size: var(--font-size-xs);
-        letter-spacing: 0.05em;
-        color: var(--text-muted);
-        white-space: nowrap;
-      }
-
-      .mat-mdc-cell {
-        padding: 0 var(--space-sm) !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        border-right: 1px solid var(--border-color);
-        vertical-align: middle;
-
-        &:last-child {
-          border-right: none;
-        }
-      }
-
-      .cell-content {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 12px 0;
-      }
-
-      .mat-mdc-row {
-        transition: background 0.12s ease;
-        &:hover {
-          background: var(--bg-elevated);
-        }
-        &.disabled {
-          opacity: 0.6;
-        }
-      }
-
-      /* ── Column Widths ────────────────────────────────── */
-      .mat-column-kind {
-        width: 150px;
-      }
-      .mat-column-name {
-        min-width: 200px;
-      }
-      .mat-column-status {
-        width: 100px;
-      }
-      .mat-column-actions {
-        width: 150px;
-      }
-
-      /* ── Kind Pill ───────────────────────────────────── */
-      .action-kind-pill {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        width: fit-content;
-        font-weight: 600;
-
-        mat-icon {
-          width: 14px;
-          height: 14px;
-          font-size: 14px;
-        }
-      }
-
-      .action-name {
-        font-weight: 600;
-        font-size: var(--font-size-md);
-        color: var(--window-fg-color);
-      }
-
-      /* ── Actions ─────────────────────────────────────── */
-      .actions-wrap {
-        flex-direction: row;
-        align-items: center;
-        gap: var(--space-xs);
-      }
-
-      /* ── Empty State ─────────────────────────────────── */
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 48px;
-        gap: var(--space-md);
-        color: var(--text-muted);
-
-        mat-icon {
-          width: 48px;
-          height: 48px;
-          font-size: 48px;
-          opacity: 0.2;
-        }
-
-        span {
-          font-size: var(--font-size-lg);
-          font-weight: 500;
-        }
-      }
-    `,
-  ],
+    .row-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-xxs);
+    }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionsComponent {
-  public readonly alerts = inject(AlertService);
+  readonly alerts = inject(AlertService);
   private readonly modalService = inject(ModalService);
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
@@ -333,8 +293,8 @@ export class AlertActionsComponent {
     this.modalService
       .openAlertActionEditor()
       .afterClosed()
-      .subscribe(action => {
-        if (action) this.alerts.saveAlertAction(action).subscribe();
+      .subscribe(async action => {
+        if (action) await this.alerts.saveAlertAction(action);
       });
   }
 
@@ -342,8 +302,8 @@ export class AlertActionsComponent {
     this.modalService
       .openAlertActionEditor(action)
       .afterClosed()
-      .subscribe(updated => {
-        if (updated) this.alerts.saveAlertAction(updated).subscribe();
+      .subscribe(async updated => {
+        if (updated) await this.alerts.saveAlertAction(updated);
       });
   }
 
@@ -356,33 +316,30 @@ export class AlertActionsComponent {
         cancelText: 'common.cancel',
       })
       .afterClosed()
-      .subscribe(confirmed => {
-        if (confirmed) this.alerts.deleteAlertAction(action.id).subscribe();
+      .subscribe(async confirmed => {
+        if (confirmed) await this.alerts.deleteAlertAction(action.id);
       });
   }
 
-  toggleAction(action: AlertAction): void {
-    const updated = { ...action, enabled: !action.enabled };
-    this.alerts.saveAlertAction(updated).subscribe();
+  async toggleAction(action: AlertAction): Promise<void> {
+    await this.alerts.saveAlertAction({ ...action, enabled: !action.enabled });
   }
 
-  testAction(action: AlertAction): void {
-    this.alerts.testAlertAction(action.id).subscribe({
-      next: success => {
-        if (success) {
-          this.notifications.showSuccess(this.translate.instant('alerts.testActionSuccess'));
-        } else {
-          this.notifications.showError(
-            this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
-          );
-        }
-      },
-      error: err => {
+  async testAction(action: AlertAction): Promise<void> {
+    try {
+      const success = await this.alerts.testAlertAction(action.id);
+      if (success) {
+        this.notifications.showSuccess(this.translate.instant('alerts.testActionSuccess'));
+      } else {
         this.notifications.showError(
-          this.translate.instant('alerts.testActionError', { error: err })
+          this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
         );
-        console.error('Test failed', err);
-      },
-    });
+      }
+    } catch (err) {
+      this.notifications.showError(
+        this.translate.instant('alerts.testActionError', { error: err })
+      );
+      console.error('Test failed', err);
+    }
   }
 }
