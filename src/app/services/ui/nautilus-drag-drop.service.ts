@@ -70,10 +70,6 @@ const HOVER_OPEN_DELAY_MS = 1000;
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
-
-/**
- * Owns all drag-and-drop state and logic for the Nautilus file manager.
- */
 @Injectable()
 export class NautilusDragDropService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
@@ -83,7 +79,7 @@ export class NautilusDragDropService {
   private readonly fileOps = inject(NautilusFileOperationsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  // ---- Public state ----
+  // ── Public state ────────────────────────────────────────────────────────────
   readonly isDragging = signal(false);
   readonly hoveredFolder = signal<FileBrowserItem | null>(null);
   readonly hoveredFolderPaneIndex = signal<number | null>(null);
@@ -91,7 +87,7 @@ export class NautilusDragDropService {
   readonly hoveredTabIndex = signal<number | null>(null);
   readonly hoveredSidebarItem = signal<string | null>(null);
 
-  // ---- Private internals ----
+  // ── Private state ────────────────────────────────────────────────────────────
   private _items: FileBrowserItem[] = [];
   private _counter = 0;
   private _lastHitKey = '';
@@ -107,18 +103,13 @@ export class NautilusDragDropService {
     this._cb = cb;
   }
 
-  /**
-   * Attaches the Tauri native-drop listener; no-op in browser.
-   *
-   * This is the ONLY upload path for OS-level file drops in Tauri. It passes
-   * local filesystem paths directly to Rust, which reads them natively —
-   * no bytes flow over IPC.
-   */
   async setupDesktopNativeDropListener(): Promise<void> {
     if (isHeadlessMode()) return;
+
     try {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
         if (event.payload.type !== 'drop') return;
+
         const target = this._resolveDropTargetFromPoint(
           event.payload.position.x,
           event.payload.position.y
@@ -148,6 +139,7 @@ export class NautilusDragDropService {
           );
         }
       });
+
       this.destroyRef.onDestroy(() => unlisten());
     } catch (err) {
       console.warn('[Nautilus] Desktop drag-drop listener setup failed', err);
@@ -163,8 +155,8 @@ export class NautilusDragDropService {
     this._lastHitKey = '';
     this._items = items;
 
-    const payload: NautilusDragPayload = { items, sourcePaneIndex: paneIndex };
     if (event.dataTransfer) {
+      const payload: NautilusDragPayload = { items, sourcePaneIndex: paneIndex };
       event.dataTransfer.effectAllowed = 'copyMove';
       event.dataTransfer.setData(NAUTILUS_DRAG_MIME_TYPE, JSON.stringify(payload));
     }
@@ -174,8 +166,8 @@ export class NautilusDragDropService {
     this.isDragging.set(false);
     this._counter = 0;
     this._lastHitKey = '';
-    this._clearHoverTimer();
     this._items = [];
+    this._clearHoverTimer();
     this.hoveredFolder.set(null);
     this.hoveredFolderPaneIndex.set(null);
     this.hoveredSegmentIndex.set(null);
@@ -212,7 +204,7 @@ export class NautilusDragDropService {
     const ctx = this._cb.getContext();
 
     if (
-      !isHeadlessMode() &&
+      isHeadlessMode() &&
       ctx.activeRemote &&
       event.dataTransfer &&
       this._hasExternalFiles(event)
@@ -310,14 +302,16 @@ export class NautilusDragDropService {
     const pIdx = ctx.activePaneIndex;
     const targetRemote = ctx.panes[pIdx].remote;
     if (!targetRemote) return;
+
     const targetPath = segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? '');
     if (targetPath === ctx.panes[pIdx].path) return;
+
     const fsEntries = event.dataTransfer ? this._snapshotEntries(event.dataTransfer.items) : [];
     await this._processDrop(event, { remote: targetRemote, path: targetPath }, fsEntries);
   }
 
   // ---------------------------------------------------------------------------
-  // Private: hit resolution & hover-open timer
+  // Private: hover-open timer
   // ---------------------------------------------------------------------------
 
   private _onMove(point: { x: number; y: number }): void {
@@ -339,99 +333,6 @@ export class NautilusDragDropService {
     }
 
     this._scheduleHoverOpen(hitKey, hit, ctx);
-  }
-
-  private _resolveDropHit(point: { x: number; y: number }, ctx: DragDropContext): HitResult {
-    const el = document.elementFromPoint(point.x, point.y);
-    if (!el)
-      return {
-        folder: null,
-        segmentIndex: null,
-        tabIndex: null,
-        sidebarItem: null,
-        paneIndex: null,
-      };
-
-    const getAttr = (selector: string, attr: string): string | null | undefined =>
-      el.closest(selector)?.getAttribute(attr);
-    const hasTag = (selector: string): boolean => !!el.closest(selector);
-
-    const paneIdxRaw = getAttr('[data-pane-index]', 'data-pane-index');
-    const paneIndex = paneIdxRaw != null ? parseInt(paneIdxRaw, 10) : null;
-    const targetPaneIndex = paneIndex ?? ctx.activePaneIndex;
-
-    const folderPath = getAttr('[data-folder-path]', 'data-folder-path');
-    const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
-    const folder = folderPath
-      ? (currentFiles.find(f => f.entry.Path === folderPath) ?? null)
-      : null;
-
-    const segIdxRaw = getAttr('[data-segment-index]', 'data-segment-index');
-    const segmentIndex = segIdxRaw ? parseInt(segIdxRaw, 10) : null;
-
-    const tabIdxRaw = getAttr('[data-tab-index]', 'data-tab-index');
-    const tabIndex = tabIdxRaw ? parseInt(tabIdxRaw, 10) : null;
-
-    let sidebarItem: string | null = null;
-    if (hasTag('[data-sidebar-starred]')) sidebarItem = 'starred';
-    else if (hasTag('[data-sidebar-bookmarks-header]')) sidebarItem = 'bookmarks-header';
-    else {
-      const bmPath = getAttr('[data-sidebar-bookmark-path]', 'data-sidebar-bookmark-path');
-      if (bmPath) sidebarItem = `bookmark:${bmPath}`;
-      else {
-        const remoteName = getAttr('[data-sidebar-remote-name]', 'data-sidebar-remote-name');
-        if (remoteName) sidebarItem = `remote:${remoteName}`;
-      }
-    }
-
-    return { folder, segmentIndex, tabIndex, sidebarItem, paneIndex };
-  }
-
-  private _resolveDropTargetFromPoint(
-    x: number,
-    y: number
-  ): { remote: ExplorerRoot | null; path: string } {
-    const ctx = this._cb.getContext();
-    const resolved = this._resolveDropHit({ x, y }, ctx);
-    const folder = resolved.folder ?? this.hoveredFolder();
-    const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
-    const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
-
-    if (tabIdx !== null) {
-      const tab = ctx.tabs[tabIdx];
-      if (tab?.left.remote) return { remote: tab.left.remote, path: tab.left.path };
-    }
-
-    const pIdx = (resolved.paneIndex as 0 | 1 | null) ?? ctx.activePaneIndex;
-    const pane = ctx.panes[pIdx];
-    if (!pane.remote) return { remote: null, path: '' };
-
-    if (folder?.entry.IsDir) {
-      const folderRemote =
-        ctx.allRemotesLookup.find(
-          r =>
-            this.pathSel.normalizeRemoteName(r.name) ===
-            this.pathSel.normalizeRemoteName(folder.meta.remote)
-        ) ?? pane.remote;
-      return { remote: folderRemote, path: folder.entry.Path };
-    }
-
-    if (segIdx !== null) {
-      return {
-        remote: pane.remote,
-        path: segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? ''),
-      };
-    }
-
-    return { remote: pane.remote, path: pane.path };
-  }
-
-  private _clearHoverTimer(): void {
-    if (this._hoverTimer !== null) {
-      clearTimeout(this._hoverTimer);
-      this._hoverTimer = null;
-    }
-    this._hoverKey = '';
   }
 
   private _scheduleHoverOpen(hitKey: string, hit: HitResult, ctx: DragDropContext): void {
@@ -482,6 +383,14 @@ export class NautilusDragDropService {
     }, HOVER_OPEN_DELAY_MS);
   }
 
+  private _clearHoverTimer(): void {
+    if (this._hoverTimer !== null) {
+      clearTimeout(this._hoverTimer);
+      this._hoverTimer = null;
+    }
+    this._hoverKey = '';
+  }
+
   // ---------------------------------------------------------------------------
   // Private: drop processing
   // ---------------------------------------------------------------------------
@@ -493,7 +402,7 @@ export class NautilusDragDropService {
   ): Promise<void> {
     event.preventDefault();
 
-    if (target.remote && this._hasExternalFiles(event)) {
+    if (target.remote && this._hasExternalFiles(event) && isHeadlessMode()) {
       await this._processExternalDrop(event, target, providedFsEntries);
       return;
     }
@@ -511,9 +420,11 @@ export class NautilusDragDropService {
       0,
       items[0].entry.Path.lastIndexOf(items[0].entry.Name)
     ).replace(/\/$/, '');
+
     const isSameRemote =
       this.pathSel.normalizeRemoteName(items[0].meta.remote ?? '') ===
       this.pathSel.normalizeRemoteName(target.remote.name);
+
     if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
 
     await this.fileOps.performFileOperations(
@@ -534,7 +445,6 @@ export class NautilusDragDropService {
     providedFsEntries?: FileSystemEntry[]
   ): Promise<void> {
     if (!target.remote) return;
-
     const dt = event.dataTransfer;
     if (!dt) return;
 
@@ -545,19 +455,17 @@ export class NautilusDragDropService {
     for (const fsEntry of fsEntries) {
       allEntries.push(...(await this._collectFileEntries(fsEntry)));
     }
-
     if (!allEntries.length) return;
 
+    const normalized = this._normalizeRemote(target.remote);
     const seen = new Set<string>();
     const filesToUpload: { file: File; relativePath: string }[] = [];
-    const normalized = this._normalizeRemote(target.remote);
 
     for (const item of allEntries) {
       if (seen.has(item.relativePath)) continue;
       seen.add(item.relativePath);
 
       if (item.isDir) {
-        // Just create empty directories as they are encountered
         await this.remoteOps
           .makeDirectory(normalized, `${target.path}/${item.relativePath}`, ORIGINS.FILEMANAGER)
           .catch(error => {
@@ -583,7 +491,7 @@ export class NautilusDragDropService {
       ORIGINS.FILEMANAGER
     );
 
-    this._cb.refresh(target.remote?.name, target.path);
+    this._cb.refresh(target.remote.name, target.path);
 
     if (failedPaths.length === 0 && successCount > 0) {
       this.notifications.showSuccess(
@@ -591,17 +499,110 @@ export class NautilusDragDropService {
       );
     } else if (failedPaths.length > 0 && successCount > 0) {
       this.notifications.showWarning(
-        this.translate.instant('nautilus.notifications.uploadFailed', { count: failedPaths.length })
+        this.translate.instant('nautilus.notifications.uploadFailed', {
+          count: failedPaths.length,
+        })
       );
     } else if (failedPaths.length > 0) {
       this.notifications.showError(
-        this.translate.instant('nautilus.notifications.uploadFailed', { count: failedPaths.length })
+        this.translate.instant('nautilus.notifications.uploadFailed', {
+          count: failedPaths.length,
+        })
       );
     }
   }
 
+  private _resolveDropHit(point: { x: number; y: number }, ctx: DragDropContext): HitResult {
+    const el = document.elementFromPoint(point.x, point.y);
+    if (!el) {
+      return {
+        folder: null,
+        segmentIndex: null,
+        tabIndex: null,
+        sidebarItem: null,
+        paneIndex: null,
+      };
+    }
+
+    const getAttr = (selector: string, attr: string): string | null | undefined =>
+      el.closest(selector)?.getAttribute(attr);
+    const hasTag = (selector: string): boolean => !!el.closest(selector);
+
+    const paneIdxRaw = getAttr('[data-pane-index]', 'data-pane-index');
+    const paneIndex = paneIdxRaw != null ? parseInt(paneIdxRaw, 10) : null;
+    const targetPaneIndex = paneIndex ?? ctx.activePaneIndex;
+
+    const folderPath = getAttr('[data-folder-path]', 'data-folder-path');
+    const currentFiles = targetPaneIndex === 0 ? ctx.files : ctx.filesRight;
+    const folder = folderPath
+      ? (currentFiles.find(f => f.entry.Path === folderPath) ?? null)
+      : null;
+
+    const segIdxRaw = getAttr('[data-segment-index]', 'data-segment-index');
+    const segmentIndex = segIdxRaw ? parseInt(segIdxRaw, 10) : null;
+
+    const tabIdxRaw = getAttr('[data-tab-index]', 'data-tab-index');
+    const tabIndex = tabIdxRaw ? parseInt(tabIdxRaw, 10) : null;
+
+    let sidebarItem: string | null = null;
+    if (hasTag('[data-sidebar-starred]')) {
+      sidebarItem = 'starred';
+    } else if (hasTag('[data-sidebar-bookmarks-header]')) {
+      sidebarItem = 'bookmarks-header';
+    } else {
+      const bmPath = getAttr('[data-sidebar-bookmark-path]', 'data-sidebar-bookmark-path');
+      if (bmPath) {
+        sidebarItem = `bookmark:${bmPath}`;
+      } else {
+        const remoteName = getAttr('[data-sidebar-remote-name]', 'data-sidebar-remote-name');
+        if (remoteName) sidebarItem = `remote:${remoteName}`;
+      }
+    }
+
+    return { folder, segmentIndex, tabIndex, sidebarItem, paneIndex };
+  }
+
+  private _resolveDropTargetFromPoint(
+    x: number,
+    y: number
+  ): { remote: ExplorerRoot | null; path: string } {
+    const ctx = this._cb.getContext();
+    const resolved = this._resolveDropHit({ x, y }, ctx);
+    const folder = resolved.folder ?? this.hoveredFolder();
+    const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
+    const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
+
+    if (tabIdx !== null) {
+      const tab = ctx.tabs[tabIdx];
+      if (tab?.left.remote) return { remote: tab.left.remote, path: tab.left.path };
+    }
+
+    const pIdx = (resolved.paneIndex as 0 | 1 | null) ?? ctx.activePaneIndex;
+    const pane = ctx.panes[pIdx];
+    if (!pane.remote) return { remote: null, path: '' };
+
+    if (folder?.entry.IsDir) {
+      const folderRemote =
+        ctx.allRemotesLookup.find(
+          r =>
+            this.pathSel.normalizeRemoteName(r.name) ===
+            this.pathSel.normalizeRemoteName(folder.meta.remote)
+        ) ?? pane.remote;
+      return { remote: folderRemote, path: folder.entry.Path };
+    }
+
+    if (segIdx !== null) {
+      return {
+        remote: pane.remote,
+        path: segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? ''),
+      };
+    }
+
+    return { remote: pane.remote, path: pane.path };
+  }
+
   // ---------------------------------------------------------------------------
-  // Private: file-system utilities
+  // Private: FileSystem API utilities
   // ---------------------------------------------------------------------------
 
   private _hasExternalFiles(event: DragEvent): boolean {
@@ -661,17 +662,17 @@ export class NautilusDragDropService {
         relativePath: currentPath,
         isDir: true,
       });
-
       const children = await this._readDirEntries(entry as FileSystemDirectoryEntry);
       for (const child of children) {
         results.push(...(await this._collectFileEntries(child, currentPath)));
       }
     }
+
     return results;
   }
 
   // ---------------------------------------------------------------------------
-  // Util
+  // Private: utilities
   // ---------------------------------------------------------------------------
 
   private _normalizeRemote(remote: ExplorerRoot): string {

@@ -3,9 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <title>RClone Manager — Offline</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fafafb" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#222226" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link
       rel="stylesheet"
@@ -20,6 +23,11 @@
         --dim: #939090;
         --accent: #2ec27e;
         --shadow: rgba(0, 0, 0, 0.08);
+
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
       }
 
       @media (prefers-color-scheme: dark) {
@@ -38,6 +46,8 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
       }
 
       body {
@@ -51,11 +61,14 @@
         background: var(--bg);
         color: var(--fg);
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 24px;
+        padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right))
+          calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
         -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
       }
 
       .container {
@@ -65,9 +78,9 @@
       }
 
       .logo {
-        width: 96px;
-        height: 96px;
-        margin-bottom: 32px;
+        width: clamp(64px, 18vw, 96px);
+        height: clamp(64px, 18vw, 96px);
+        margin-bottom: clamp(20px, 5vw, 32px);
         opacity: 0.85;
         animation: float 3s ease-in-out infinite;
       }
@@ -86,7 +99,7 @@
         background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 16px;
-        padding: 40px 32px;
+        padding: clamp(24px, 6vw, 40px) clamp(20px, 6vw, 32px);
         box-shadow: 0 4px 24px var(--shadow);
       }
 
@@ -108,14 +121,14 @@
       }
 
       h1 {
-        font-size: 20px;
+        font-size: clamp(16px, 4.5vw, 20px);
         font-weight: 600;
         margin-bottom: 8px;
         letter-spacing: -0.02em;
       }
 
       p {
-        font-size: 14px;
+        font-size: clamp(13px, 3.5vw, 14px);
         color: var(--dim);
         line-height: 1.6;
         margin-bottom: 24px;
@@ -124,39 +137,48 @@
       .retry-btn {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        min-height: 44px;
         padding: 10px 24px;
         background: var(--accent);
         color: #fff;
         border: none;
         border-radius: 10px;
         font-family: inherit;
-        font-size: 14px;
+        font-size: clamp(13px, 3.5vw, 14px);
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition:
+          transform 0.15s ease,
+          opacity 0.15s ease;
         outline: none;
+        touch-action: manipulation;
+        width: clamp(180px, 60vw, auto);
       }
 
-      .retry-btn:hover {
-        transform: translateY(-1px);
+      @media (hover: hover) and (pointer: fine) {
+        .retry-btn:hover {
+          transform: translateY(-1px);
+        }
+        .retry-btn:hover svg {
+          transform: rotate(180deg);
+        }
       }
 
       .retry-btn:active {
-        transform: translateY(0);
+        transform: scale(0.96);
+        opacity: 0.85;
       }
 
       .retry-btn svg {
+        flex-shrink: 0;
         transition: transform 0.3s ease;
-      }
-
-      .retry-btn:hover svg {
-        transform: rotate(180deg);
       }
 
       .hint {
         margin-top: 24px;
-        font-size: 12px;
+        font-size: clamp(11px, 3vw, 12px);
         color: var(--dim);
         opacity: 0.7;
       }
@@ -165,13 +187,52 @@
         background: var(--border);
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 11px;
+        font-size: clamp(10px, 2.8vw, 11px);
+      }
+
+      @media (max-height: 500px) and (orientation: landscape) {
+        body {
+          align-items: flex-start;
+        }
+
+        .container {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          text-align: left;
+          max-width: 600px;
+        }
+
+        .logo {
+          flex-shrink: 0;
+          width: 56px;
+          height: 56px;
+          margin-bottom: 0;
+          animation: none;
+        }
+
+        .card {
+          padding: 20px 24px;
+        }
+
+        .status-icon {
+          margin-left: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .logo {
+          animation: none;
+        }
+        .retry-btn,
+        .retry-btn svg {
+          transition: none;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <!-- App Logo -->
       <svg
         width="512"
         height="512"
@@ -179,6 +240,7 @@
         fill="none"
         class="logo"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
       >
         <path
           d="M256 500C388.548 500 496 394.339 496 264C496 133.661 388.548 28 256 28C123.452 28 16 133.661 16 264C16 394.339 123.452 500 256 500Z"
@@ -229,14 +291,14 @@
       </svg>
 
       <div class="card">
-        <!-- Disconnected icon -->
-        <div class="status-icon">
+        <div class="status-icon" role="img" aria-label="Disconnected">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             height="24px"
             viewBox="0 -960 960 960"
             width="24px"
             fill="currentColor"
+            aria-hidden="true"
           >
             <path
               d="M762-84 414-434q-31 7-59.5 19T301-386q-21 14-46.5 14.5T212-389q-18-18-16.5-43.5T217-473q23-17 48.5-31t52.5-26l-90-90q-26 14-50.5 29.5T130-557q-20 16-45.5 16T42-559q-18-18-17-43t21-41q22-18 45-34.5t49-30.5l-56-56q-11-11-11-28t11-28q11-11 28-11t28 11l679 679q12 12 12 28.5T819-84q-12 11-28.5 11.5T762-84Zm-353-65.5Q380-179 380-220q0-42 29-71t71-29q42 0 71 29t29 71q0 41-29 70.5T480-120q-42 0-71-29.5ZM753-395q-16 16-37.5 15.5T678-396l-10-10-10-10-96-96q-13-13-5-27t28-9q45 11 85.5 31t75.5 47q18 14 20.5 36.5T753-395Zm165-164q-17 18-42 18.5T831-556q-72-59-161.5-91.5T480-680q-21 0-40.5 1.5T400-674q-25 4-45-10.5T331-724q-4-25 11-45t40-24q24-4 48.5-5.5T480-800q125 0 235.5 41.5T914-644q20 17 21 42t-17 43Z"
@@ -250,13 +312,14 @@
           again.
         </p>
 
-        <button class="retry-btn" onclick="location.reload()">
+        <button class="retry-btn" onclick="location.reload()" aria-label="Retry connection">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            height="28px"
+            height="20px"
             viewBox="0 -960 960 960"
-            width="28px"
+            width="20px"
             fill="currentColor"
+            aria-hidden="true"
           >
             <path
               d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-70q0-17 11.5-28.5T760-800q17 0 28.5 11.5T800-760v200q0 17-11.5 28.5T760-520H560q-17 0-28.5-11.5T520-560q0-17 11.5-28.5T560-600h128q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q68 0 124.5-34.5T692-367q8-14 22.5-19.5t29.5-.5q16 5 23 21t-1 30q-41 80-117 128t-169 48Z"
@@ -270,7 +333,6 @@
     </div>
 
     <script>
-      // Localized messages using browser language
       const translations = {
         en: {
           title: 'Cannot Connect to Server',
@@ -301,7 +363,6 @@
         },
       };
 
-      // Detect browser language and apply translations
       const lang = navigator.language?.split('-')[0] || 'en';
       const t = translations[lang] || translations.en;
 

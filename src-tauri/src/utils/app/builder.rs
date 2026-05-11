@@ -5,29 +5,42 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
     use crate::core::tray::TraySnapshot;
     let snapshot = TraySnapshot::fetch(&app_clone).await?;
-    let tray_menu = crate::core::tray::menu::create_tray_menu(&app_clone, &snapshot)?;
-
-    #[allow(unused_mut)]
-    let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
-        .icon(crate::core::tray::icon::get_icon(false)?)
-        .tooltip(crate::t!("tray.tooltipDefault"))
-        .menu(&tray_menu);
-
-    #[cfg(not(feature = "web-server"))]
-    {
-        tray = tray.on_tray_icon_event(move |tray, event| {
-            if let tauri::tray::TrayIconEvent::DoubleClick {
-                button: tauri::tray::MouseButton::Left,
-                ..
-            } = event
-            {
-                crate::core::tray::actions::show_main_window(tray.app_handle().clone());
+    app.run_on_main_thread(move || {
+        let tray_menu = match crate::core::tray::menu::create_tray_menu(&app_clone, &snapshot) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("Failed to create tray menu during setup: {e}");
+                return;
             }
-        });
-    }
+        };
 
-    tray.build(&app_clone)?;
-    tauri::Emitter::emit(&app, crate::utils::types::events::UPDATE_TRAY_MENU, ())?;
+        #[allow(unused_mut)]
+        let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
+            .icon(
+                crate::core::tray::icon::get_icon(false)
+                    .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0)),
+            )
+            .tooltip(crate::t!("tray.tooltipDefault"))
+            .menu(&tray_menu);
+
+        #[cfg(not(feature = "web-server"))]
+        {
+            tray = tray.on_tray_icon_event(move |tray, event| {
+                if let tauri::tray::TrayIconEvent::DoubleClick {
+                    button: tauri::tray::MouseButton::Left,
+                    ..
+                } = event
+                {
+                    crate::core::tray::actions::show_main_window(tray.app_handle().clone());
+                }
+            });
+        }
+
+        if let Err(e) = tray.build(&app_clone) {
+            log::error!("Failed to build tray icon: {e}");
+        }
+    })?;
+
     Ok(())
 }
 

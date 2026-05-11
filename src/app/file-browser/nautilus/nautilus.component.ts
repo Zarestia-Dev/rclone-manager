@@ -1,16 +1,16 @@
-// Handles tabs, split-view navigation, and rich file operations.
+// Nautilus file manager – handles tabs, split-view, rich file operations.
 import {
   Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
   inject,
   OnInit,
-  ViewChild,
-  signal,
-  computed,
-  effect,
-  untracked,
-  DestroyRef,
   output,
-  ElementRef,
+  signal,
+  untracked,
+  ViewChild,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -30,15 +30,15 @@ import {
   isHeadlessMode,
 } from '@app/services';
 import { Entry, ExplorerRoot, FileBrowserItem, FilePickerConfig } from '@app/types';
-
 import { FormatFileSizePipe } from '@app/pipes';
+import { CopyToClipboardDirective, NautilusKeyboardDirective } from '@app/directives';
+
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import { NautilusTabService, PaneViewModel } from 'src/app/services/ui/nautilus-tab.service';
 import { NautilusActionsService } from 'src/app/services/ui/nautilus-actions.service';
 import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection.service';
-import { CopyToClipboardDirective, NautilusKeyboardDirective } from '@app/directives';
 
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
 import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
@@ -46,12 +46,20 @@ import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
   mode: 'both',
   selection: 'both',
   multi: false,
   minSelection: 0,
 };
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 @Component({
   selector: 'app-nautilus',
@@ -84,23 +92,24 @@ const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
   styleUrl: './nautilus.component.scss',
 })
 export class NautilusComponent implements OnInit {
-  // ── Services ────────────────────────────────────────────────────────────────
+  // ── Services ─────────────────────────────────────────────────────────────────
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
-  protected readonly nautilusService = inject(NautilusService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
+  private readonly keyboard = inject(NautilusKeyboardDirective);
+
+  protected readonly nautilusService = inject(NautilusService);
   protected readonly fileOps = inject(NautilusFileOperationsService);
   protected readonly dragDrop = inject(NautilusDragDropService);
   protected readonly settings = inject(NautilusSettingsService);
   protected readonly tabSvc = inject(NautilusTabService);
   protected readonly actions = inject(NautilusActionsService);
   protected readonly selectionSvc = inject(NautilusSelectionService);
-  private readonly keyboard = inject(NautilusKeyboardDirective);
 
   // ── Outputs & ViewChild ──────────────────────────────────────────────────────
-  public readonly closeOverlay = output<void>();
+  readonly closeOverlay = output<void>();
   @ViewChild('sidenav') sidenav!: MatSidenav;
   @ViewChild('fileUploadInput') fileUploadInput!: ElementRef<HTMLInputElement>;
   @ViewChild('folderUploadInput') folderUploadInput!: ElementRef<HTMLInputElement>;
@@ -113,30 +122,14 @@ export class NautilusComponent implements OnInit {
     ),
     { initialValue: window.innerWidth }
   );
+
   protected readonly isMobile = computed(() => this._windowWidth() < 680);
   protected readonly isSidenavOpen = signal(!this.isMobile());
   protected readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
 
-  // ── Actions aliases (keep template unchanged) ────────────────────────────────
-  protected openContextMenuOpen(): void {
-    const item = this.actions.contextMenuItem();
-    if (item) this.navigateTo(item);
-  }
-
-  protected getFormattedPath(item: FileBrowserItem | null): string {
-    if (!item) return this.fullPathInput();
-    const remote = this.tabSvc.activeRemote();
-    if (!remote) return '';
-
-    const cleanRemote = remote.isLocal
-      ? remote.name
-      : this.pathSelectionService.normalizeRemoteForRclone(remote.name) + ':';
-
-    return `${cleanRemote}${item.entry.Path}`.replace('//', '/');
-  }
-
-  // ── Picker state ──────────────────────────────────────────────────────────────
+  // ── Picker state ─────────────────────────────────────────────────────────────
   private readonly filePickerState = this.nautilusService.filePickerState;
+
   protected readonly isPickerMode = computed(() => this.filePickerState().isOpen);
   protected readonly pickerOptions = computed(
     (): FilePickerConfig => this.filePickerState().options ?? DEFAULT_PICKER_OPTIONS
@@ -146,11 +139,10 @@ export class NautilusComponent implements OnInit {
     const opts = this.pickerOptions();
     const count = this.tabSvc.selectedItems().size;
     if (opts.selection === 'files' && count === 0) return true;
-    if (opts.selection === 'folders' && count === 0) return false; // Allowed to pick current
-    if (opts.selection === 'both' && count === 0) return false; // Allowed to pick current folder
+    if (opts.selection === 'folders' && count === 0) return false; // current folder is allowed
+    if (opts.selection === 'both' && count === 0) return false; // current folder is allowed
     return count < (opts.minSelection ?? 0);
   });
-
   protected readonly title = computed(() => {
     const state = this.filePickerState();
     if (!state.isOpen) return 'nautilus.titles.files';
@@ -160,17 +152,16 @@ export class NautilusComponent implements OnInit {
     return 'nautilus.titles.selectItems';
   });
 
-  // ── UI state ──────────────────────────────────────────────────────────────────
+  // ── UI state ─────────────────────────────────────────────────────────────────
   protected readonly isEditingPath = signal(false);
   protected readonly isSearchMode = signal(false);
   protected readonly searchFilter = signal('');
   protected readonly currentMenuView = signal<'main' | 'open'>('main');
   protected readonly contextMenuHeight = signal<number | null>(null);
   private readonly initialLocationApplied = signal(false);
-
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
-  // ── Computed path/breadcrumb ─────────────────────────────────────────────────
+  // ── Computed path / breadcrumbs ──────────────────────────────────────────────
   protected readonly pathSegments = computed(() => {
     const path = this.tabSvc.activePath();
     if (!path) return [];
@@ -199,8 +190,7 @@ export class NautilusComponent implements OnInit {
     this.isMobile() || this.isPickerMode() ? '64px' : '4px'
   );
 
-  // ── Sidebar data (picker-filtered) ──────────────────────────────────────────
-
+  // ── Sidebar data (filtered for picker mode) ──────────────────────────────────
   protected readonly filteredBookmarks = computed(() => {
     const marks = this.nautilusService.bookmarks();
     if (!this.isPickerMode()) return marks;
@@ -238,7 +228,7 @@ export class NautilusComponent implements OnInit {
     ...this.cloudRemotes(),
   ]);
 
-  // ── Sort options metadata ────────────────────────────────────────────────────
+  // ── Sort options ─────────────────────────────────────────────────────────────
   protected readonly sortOptions = [
     { key: 'name-asc', label: 'nautilus.sort.az' },
     { key: 'name-desc', label: 'nautilus.sort.za' },
@@ -248,84 +238,9 @@ export class NautilusComponent implements OnInit {
     { key: 'size-asc', label: 'nautilus.sort.sizeSmallest' },
   ];
 
-  // ── File list (filtered + sorted) ───────────────────────────────────────────
-  private getPaneFiles(paneIndex: number): FileBrowserItem[] {
-    const isStarred = paneIndex === 0 ? this.tabSvc.starredMode() : this.tabSvc.starredModeRight();
-    const rawFiles = paneIndex === 0 ? this.tabSvc.rawFiles() : this.tabSvc.rawFilesRight();
-    const cfg = this.pickerOptions();
-    const isPicker = this.isPickerMode();
-
-    let files: FileBrowserItem[];
-
-    if (isStarred) {
-      files = this.nautilusService.starredItems();
-      if (isPicker) {
-        files = files.filter(i => {
-          if (cfg.mode === 'local' && !i.meta.isLocal) return false;
-          if (cfg.mode === 'remote' && i.meta.isLocal) return false;
-          if (cfg.allowedRemotes?.length && !i.meta.isLocal) {
-            return cfg.allowedRemotes.includes(
-              this.pathSelectionService.normalizeRemoteName(i.meta.remote ?? '')
-            );
-          }
-          return true;
-        });
-      }
-    } else {
-      files = rawFiles;
-    }
-
-    if (!this.settings.showHidden() && !isStarred) {
-      files = files.filter(f => !f.entry.Name.startsWith('.'));
-    }
-
-    const search = this.searchFilter().toLowerCase().trim();
-    if (search) {
-      files = files.filter(f => f.entry.Name.toLowerCase().includes(search));
-    }
-
-    return this.sortFiles(files);
-  }
-
-  protected readonly files = computed(() => this.getPaneFiles(0));
-  protected readonly filesRight = computed(() => this.getPaneFiles(1));
-
-  private sortFiles(files: FileBrowserItem[]): FileBrowserItem[] {
-    const list = [...files];
-    const sort = this.settings.sortKey().split('-')[0] as 'name' | 'size' | 'modified';
-    const ascending = !this.settings.sortKey().endsWith('desc');
-    const multiplier = ascending ? 1 : -1;
-
-    const timeCache = new Map<string, number>();
-    const getTime = (modTime: string): number => {
-      let t = timeCache.get(modTime);
-      if (t === undefined) {
-        t = new Date(modTime).getTime();
-        timeCache.set(modTime, t);
-      }
-      return t;
-    };
-
-    return list.sort((a, b) => {
-      if (a.entry.IsDir !== b.entry.IsDir) return a.entry.IsDir ? -1 : 1;
-      const aHidden = a.entry.Name.startsWith('.');
-      const bHidden = b.entry.Name.startsWith('.');
-      if (aHidden !== bHidden) return aHidden ? 1 : -1;
-
-      switch (sort) {
-        case 'name':
-          return (
-            a.entry.Name.localeCompare(b.entry.Name, undefined, { numeric: true }) * multiplier
-          );
-        case 'size':
-          return (a.entry.Size - b.entry.Size) * multiplier;
-        case 'modified':
-          return (getTime(a.entry.ModTime) - getTime(b.entry.ModTime)) * multiplier;
-        default:
-          return 0;
-      }
-    });
-  }
+  // ── File lists (filtered + sorted) ──────────────────────────────────────────
+  protected readonly files = computed(() => this._getPaneFiles(0));
+  protected readonly filesRight = computed(() => this._getPaneFiles(1));
 
   protected readonly visiblePanes = computed((): PaneViewModel[] => {
     const left: PaneViewModel = {
@@ -351,7 +266,7 @@ export class NautilusComponent implements OnInit {
   });
 
   protected readonly selectionSummary = computed(() => {
-    this._langChange(); // re-run on language change
+    this._langChange(); // recompute on language change
 
     const selectedPaths = this.tabSvc.selectedItems();
     const count = selectedPaths.size;
@@ -365,9 +280,7 @@ export class NautilusComponent implements OnInit {
       if (!item) return '';
       const name = `"${item.entry.Name}"`;
       const sel = this.translate.instant('nautilus.selection.selected');
-      if (item.entry.IsDir) {
-        return `${name} ${sel}`;
-      }
+      if (item.entry.IsDir) return `${name} ${sel}`;
       return `${name} ${sel} (${this.formatFileSizePipe.transform(item.entry.Size)})`;
     }
 
@@ -394,11 +307,148 @@ export class NautilusComponent implements OnInit {
     return parts.join(', ');
   });
 
-  // ── Lifecycle ────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
 
   constructor() {
     this._setupEffects();
+    this._registerKeyboard();
+    this._registerDragDrop();
 
+    this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit();
+
+    this.destroyRef.onDestroy(() => {
+      this.nautilusService.setWindowTitle('RClone Manager');
+    });
+  }
+
+  async ngOnInit(): Promise<void> {
+    const applied = await this.tabSvc.setupInitialTab(this.localDrives(), this.cloudRemotes());
+    this.initialLocationApplied.set(applied);
+    void this.dragDrop.setupDesktopNativeDropListener();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Effects
+  // ---------------------------------------------------------------------------
+
+  private _setupEffects(): void {
+    // Sync sidenav open state with screen size.
+    effect(() => {
+      this.isSidenavOpen.set(!this.isMobile());
+    });
+
+    // Track context menu page height for the sliding animation.
+    effect(() => {
+      this.currentMenuView();
+      // setTimeout defers the DOM read until after the next render cycle.
+      setTimeout(() => {
+        const activePage = document.querySelector('.menu-page.active-page');
+        if (activePage) {
+          this.contextMenuHeight.set((activePage as HTMLElement).offsetHeight);
+        }
+      }, 0);
+    });
+
+    // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
+    effect(() => {
+      const open = this.isPickerMode();
+      const applied = this.initialLocationApplied();
+      const cfg = this.pickerOptions();
+
+      if (open && !applied && cfg.initialLocation) {
+        if (!this.tabSvc.isDataReadyForConfig(cfg, this.localDrives(), this.cloudRemotes())) return;
+        if (this.tabSvc.isLocationAllowedByConfig(cfg.initialLocation, cfg)) {
+          this.navigateToPath(cfg.initialLocation);
+          this.initialLocationApplied.set(true);
+        }
+      }
+
+      if (!open && applied) this.initialLocationApplied.set(false);
+    });
+
+    // Handle remote selection triggered externally (e.g. from system tray).
+    effect(() => {
+      const selectedMap = this.nautilusService.selectedNautilusRemote();
+      if (selectedMap) {
+        untracked(() => {
+          const remote = this.allRemotesLookup().find(r => r.name === selectedMap);
+          if (remote && this.tabSvc.tabs().length > 0) {
+            this.selectRemote(remote);
+            this.nautilusService.selectedNautilusRemote.set(null);
+          }
+        });
+      }
+    });
+
+    // Handle path navigation triggered externally (e.g. from debug menu).
+    effect(() => {
+      const targetPath = this.nautilusService.targetPath();
+      if (targetPath) {
+        untracked(() => {
+          const parsed = this.tabSvc.parseLocationToRemoteAndPath(targetPath);
+          if (parsed && this.tabSvc.tabs().length > 0) {
+            this._navigate(parsed.remote, parsed.path, true);
+            this.nautilusService.targetPath.set(null);
+          }
+        });
+      }
+    });
+
+    // Sync browser URL to the active remote/path.
+    effect(() => {
+      if (this.isPickerMode()) return;
+      const remote = this.tabSvc.activeRemote();
+      const path = this.tabSvc.activePath();
+      const isOpen = this.nautilusService.isNautilusOverlayOpen();
+      const isStandalone = this.nautilusService.isStandaloneWindow();
+
+      untracked(() => {
+        let newPath = '/';
+        if (isOpen || isStandalone) {
+          newPath = remote
+            ? `/nautilus/${encodeURIComponent(remote.name)}${path ? `/${path}` : ''}`
+            : '/nautilus';
+        }
+        if (window.location.pathname !== newPath) {
+          window.history.replaceState(null, '', newPath + window.location.search);
+        }
+      });
+    });
+
+    // Sync window title to the active remote/path.
+    effect(() => {
+      const isPicker = this.isPickerMode();
+      const remote = this.tabSvc.activeRemote();
+      const path = this.tabSvc.activePath();
+      const starred = this.tabSvc.activeStarredMode();
+      this._langChange();
+
+      const appSuffix = 'RClone Browser';
+      let segment: string;
+
+      if (isPicker) {
+        segment = this.translate.instant(this.title());
+      } else if (starred) {
+        segment = this.translate.instant('nautilus.titles.starred');
+      } else if (remote) {
+        segment = path
+          ? (path.split('/').filter(Boolean).pop() ?? path)
+          : this.translate.instant(remote.label || remote.name);
+      } else {
+        segment = this.translate.instant('nautilus.titles.files');
+      }
+
+      this.nautilusService.setWindowTitle(segment ? `${segment} - ${appSuffix}` : appSuffix);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Registration helpers (called from constructor)
+  // ---------------------------------------------------------------------------
+
+  private _registerKeyboard(): void {
     this.keyboard.register({
       navigateTo: item => this.navigateTo(item),
       getSelectedItems: () =>
@@ -426,7 +476,9 @@ export class NautilusComponent implements OnInit {
       isPickerMode: this.isPickerMode,
       navigateToSegment: index => this.navigateToSegment(index),
     });
+  }
 
+  private _registerDragDrop(): void {
     this.dragDrop.register({
       getContext: () => ({
         activeRemote: this.tabSvc.activeRemote(),
@@ -465,136 +517,11 @@ export class NautilusComponent implements OnInit {
         }
       },
     });
-
-    this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit();
-
-    this.destroyRef.onDestroy(() => {
-      this.nautilusService.setWindowTitle('RClone Manager');
-    });
   }
 
-  async ngOnInit(): Promise<void> {
-    const applied = await this.tabSvc.setupInitialTab(this.localDrives(), this.cloudRemotes());
-    this.initialLocationApplied.set(applied);
-    void this.dragDrop.setupDesktopNativeDropListener();
-  }
-
-  // ── Effects ───────────────────────────────────────────────────────────────────
-
-  private _setupEffects(): void {
-    // Close sidenav on mobile.
-    effect(() => {
-      this.isSidenavOpen.set(!this.isMobile());
-    });
-
-    // Track context menu height for sliding animation
-    effect(() => {
-      this.currentMenuView();
-      // Wait for DOM to update and measure the correct menu page
-      setTimeout(() => {
-        const activePage = document.querySelector('.menu-page.active-page');
-        if (activePage) {
-          this.contextMenuHeight.set((activePage as HTMLElement).offsetHeight);
-        }
-      }, 0);
-    });
-
-    // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
-    effect(() => {
-      const open = this.isPickerMode();
-      const applied = this.initialLocationApplied();
-      const cfg = this.pickerOptions();
-
-      if (open && !applied && cfg.initialLocation) {
-        if (!this.tabSvc.isDataReadyForConfig(cfg, this.localDrives(), this.cloudRemotes())) return;
-        if (this.tabSvc.isLocationAllowedByConfig(cfg.initialLocation, cfg)) {
-          this.navigateToPath(cfg.initialLocation);
-          this.initialLocationApplied.set(true);
-        }
-      }
-
-      if (!open && applied) this.initialLocationApplied.set(false);
-    });
-
-    // Handle dynamic remote selection (e.g. from Tray).
-    effect(() => {
-      const selectedMap = this.nautilusService.selectedNautilusRemote();
-      if (selectedMap) {
-        untracked(() => {
-          const remote = this.allRemotesLookup().find(r => r.name === selectedMap);
-          if (remote && this.tabSvc.tabs().length > 0) {
-            this.selectRemote(remote);
-            this.nautilusService.selectedNautilusRemote.set(null);
-          }
-        });
-      }
-    });
-
-    // Handle dynamic path navigation (e.g. from Debug menu).
-    effect(() => {
-      const targetPath = this.nautilusService.targetPath();
-      if (targetPath) {
-        untracked(() => {
-          const parsed = this.tabSvc.parseLocationToRemoteAndPath(targetPath);
-          if (parsed && this.tabSvc.tabs().length > 0) {
-            this._navigate(parsed.remote, parsed.path, true);
-            this.nautilusService.targetPath.set(null);
-          }
-        });
-      }
-    });
-
-    // URL sync.
-    effect(() => {
-      if (this.isPickerMode()) return;
-      const remote = this.tabSvc.activeRemote();
-      const path = this.tabSvc.activePath();
-      const isOpen = this.nautilusService.isNautilusOverlayOpen();
-      const isStandalone = this.nautilusService.isStandaloneWindow();
-
-      untracked(() => {
-        let newPath = '/';
-        if (isOpen || isStandalone) {
-          if (remote) {
-            newPath = `/nautilus/${encodeURIComponent(remote.name)}${path ? `/${path}` : ''}`;
-          } else {
-            newPath = '/nautilus';
-          }
-        }
-        if (window.location.pathname !== newPath) {
-          window.history.replaceState(null, '', newPath + window.location.search);
-        }
-      });
-    });
-
-    // Window title.
-    effect(() => {
-      const isPicker = this.isPickerMode();
-      const remote = this.tabSvc.activeRemote();
-      const path = this.tabSvc.activePath();
-      const starred = this.tabSvc.activeStarredMode();
-      this._langChange();
-
-      const appSuffix = 'RClone Browser';
-      let segment: string;
-
-      if (isPicker) {
-        segment = this.translate.instant(this.title());
-      } else if (starred) {
-        segment = this.translate.instant('nautilus.titles.starred');
-      } else if (remote) {
-        segment = path
-          ? (path.split('/').filter(Boolean).pop() ?? path)
-          : this.translate.instant(remote.label || remote.name);
-      } else {
-        segment = this.translate.instant('nautilus.titles.files');
-      }
-
-      this.nautilusService.setWindowTitle(segment ? `${segment} - ${appSuffix}` : appSuffix);
-    });
-  }
-
-  // ── Navigation ────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
 
   selectRemote(remote: ExplorerRoot | null): void {
     if (!remote) return;
@@ -684,7 +611,9 @@ export class NautilusComponent implements OnInit {
     this._navigate(null, '', true);
   }
 
-  // ── Split divider ─────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Split divider
+  // ---------------------------------------------------------------------------
 
   onSplitDividerDrag(event: MouseEvent): void {
     event.preventDefault();
@@ -711,13 +640,15 @@ export class NautilusComponent implements OnInit {
     document.body.style.userSelect = 'none';
   }
 
-  // ── Selection ─────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Selection
+  // ---------------------------------------------------------------------------
 
   onItemClick(item: FileBrowserItem, event: Event, index: number, paneIndex: 0 | 1): void {
     const files = paneIndex === 0 ? this.files() : this.filesRight();
     this.selectionSvc.handleItemClick(item, event as MouseEvent, index, paneIndex, files);
 
-    // On mobile, single tap should navigate/open.
+    // On mobile, single tap navigates/opens immediately.
     if (this.isMobile() && !(event as MouseEvent).ctrlKey && !(event as MouseEvent).shiftKey) {
       this.navigateTo(item);
     }
@@ -739,16 +670,25 @@ export class NautilusComponent implements OnInit {
     this.selectionSvc.selectAll(this.tabSvc.activePaneIndex(), files);
   }
 
-  // ── Clipboard & file ops (thin wrappers) ──────────────────────────────────────
+  protected readonly getItemKey = (item: FileBrowserItem | null): string =>
+    this.selectionSvc.getItemKey(item);
+
+  isItemSelectable = (item: Entry): boolean => this.selectionSvc.isItemSelectable(item);
+
+  // ---------------------------------------------------------------------------
+  // Clipboard & file ops (thin wrappers over NautilusFileOperationsService)
+  // ---------------------------------------------------------------------------
 
   protected copyItems(): void {
     const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
     this.fileOps.copyItems(this.selectionSvc.getSelectedItemsList(files));
   }
+
   protected cutItems(): void {
     const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
     this.fileOps.cutItems(this.selectionSvc.getSelectedItemsList(files));
   }
+
   protected clearClipboard(): void {
     this.fileOps.clearClipboard();
   }
@@ -773,15 +713,13 @@ export class NautilusComponent implements OnInit {
   }
 
   // ── Stars & bookmarks ────────────────────────────────────────────────────────
-
   isStarred(item: FileBrowserItem): boolean {
     const remote = item.meta.remote || this.tabSvc.nautilusRemote()?.name;
     if (!remote) return false;
     return this.nautilusService.isSaved('starred', remote, item.entry.Path);
   }
 
-  // ── Misc ──────────────────────────────────────────────────────────────────────
-
+  // ── Misc ─────────────────────────────────────────────────────────────────────
   cancelLoad(paneIndex: 0 | 1 = 0): void {
     const pane = this.tabSvc.getPaneRef(paneIndex);
     pane.loading.set(false);
@@ -798,7 +736,92 @@ export class NautilusComponent implements OnInit {
     else this.sidenav.toggle();
   }
 
-  // ── Drag/drop passthrough ─────────────────────────────────────────────────────
+  protected getFormattedPath(item: FileBrowserItem | null): string {
+    if (!item) return this.fullPathInput();
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return '';
+    const cleanRemote = remote.isLocal
+      ? remote.name
+      : this.pathSelectionService.normalizeRemoteForRclone(remote.name) + ':';
+    return `${cleanRemote}${item.entry.Path}`.replace('//', '/');
+  }
+
+  protected openContextMenuOpen(): void {
+    const item = this.actions.contextMenuItem();
+    if (item) this.navigateTo(item);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Upload
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Triggered by toolbar "Upload Files" button.
+   * Desktop: opens native file picker (Tauri IPC path).
+   * Web:     triggers the hidden <input type="file"> (HTTP streaming path).
+   */
+  async uploadFiles(): Promise<void> {
+    if (isHeadlessMode()) {
+      this.fileUploadInput.nativeElement.click();
+      return;
+    }
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return;
+    const success = await this.fileOps.uploadExternalFiles(remote, this.tabSvc.activePath());
+    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+  }
+
+  /**
+   * Triggered by toolbar "Upload Folder" button.
+   * Desktop: opens native folder picker (Tauri IPC path).
+   * Web:     triggers the hidden <input webkitdirectory> (HTTP streaming path).
+   */
+  async uploadFolder(): Promise<void> {
+    if (isHeadlessMode()) {
+      this.folderUploadInput.nativeElement.click();
+      return;
+    }
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return;
+    const success = await this.fileOps.uploadExternalFolder(remote, this.tabSvc.activePath());
+    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+  }
+
+  /** Handler for the hidden file <input> — headless mode only. */
+  async onWebUploadFiles(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const remote = this.tabSvc.activeRemote();
+    if (remote) {
+      const success = await this.fileOps.uploadWebFiles(
+        remote,
+        this.tabSvc.activePath(),
+        input.files
+      );
+      if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    }
+    input.value = '';
+  }
+
+  /** Handler for the hidden folder <input> — headless mode only. */
+  async onWebUploadFolder(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const remote = this.tabSvc.activeRemote();
+    if (remote) {
+      const success = await this.fileOps.uploadWebFiles(
+        remote,
+        this.tabSvc.activePath(),
+        input.files
+      );
+      if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    }
+    input.value = '';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drag/drop passthrough (delegates to NautilusDragDropService)
+  // ---------------------------------------------------------------------------
 
   onDragStarted(event: DragEvent, item: FileBrowserItem): void {
     const currentSelected = this.tabSvc.selectedItems();
@@ -831,20 +854,22 @@ export class NautilusComponent implements OnInit {
   onDropToLocal(event: DragEvent): void {
     this.dragDrop.dropToLocal(event);
   }
-  async onDropToBookmark(e: DragEvent, bm: FileBrowserItem): Promise<void> {
+  async onDropToBookmark(e: DragEvent, bm: FileBrowserItem) {
     await this.dragDrop.dropToBookmark(e, bm);
   }
-  async onDropToRemote(e: DragEvent, remote: ExplorerRoot): Promise<void> {
+  async onDropToRemote(e: DragEvent, remote: ExplorerRoot) {
     await this.dragDrop.dropToRemote(e, remote);
   }
-  async onDropToCurrentDirectory(e: DragEvent, paneIndex: number): Promise<void> {
+  async onDropToCurrentDirectory(e: DragEvent, paneIndex: number) {
     await this.dragDrop.dropToCurrentDirectory(e, paneIndex);
   }
-  async onDropToSegment(e: DragEvent, segIdx: number): Promise<void> {
+  async onDropToSegment(e: DragEvent, segIdx: number) {
     await this.dragDrop.dropToSegment(e, segIdx);
   }
 
-  // ── Picker ────────────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Picker confirmation
+  // ---------------------------------------------------------------------------
 
   confirmSelection(): void {
     const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
@@ -852,6 +877,7 @@ export class NautilusComponent implements OnInit {
     const remote = this.tabSvc.activeRemote();
     const currentPath = this.tabSvc.activePath();
 
+    // Allow confirming the current folder when no individual item is selected.
     if (
       items.length === 0 &&
       (this.pickerOptions().selection === 'folders' || this.pickerOptions().selection === 'both') &&
@@ -888,79 +914,82 @@ export class NautilusComponent implements OnInit {
     this.nautilusService.closeFilePicker(items);
   }
 
-  isItemSelectable = (item: Entry): boolean => {
-    return this.selectionSvc.isItemSelectable(item);
-  };
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
 
-  protected readonly getItemKey = (item: FileBrowserItem | null): string => {
-    return this.selectionSvc.getItemKey(item);
-  };
+  private _getPaneFiles(paneIndex: number): FileBrowserItem[] {
+    const isStarred = paneIndex === 0 ? this.tabSvc.starredMode() : this.tabSvc.starredModeRight();
+    const rawFiles = paneIndex === 0 ? this.tabSvc.rawFiles() : this.tabSvc.rawFilesRight();
+    const cfg = this.pickerOptions();
+    const isPicker = this.isPickerMode();
 
-  // ── Upload ──────────────────────────────────────────────────────────────────
+    let files: FileBrowserItem[];
 
-  async uploadFiles(): Promise<void> {
-    if (isHeadlessMode()) {
-      this.fileUploadInput.nativeElement.click();
-      return;
-    }
-
-    const remote = this.tabSvc.activeRemote();
-    if (!remote) return;
-
-    const success = await this.fileOps.uploadExternalFiles(remote, this.tabSvc.activePath());
-    if (success) {
-      this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-    }
-  }
-
-  async uploadFolder(): Promise<void> {
-    if (isHeadlessMode()) {
-      this.folderUploadInput.nativeElement.click();
-      return;
-    }
-
-    const remote = this.tabSvc.activeRemote();
-    if (!remote) return;
-
-    const success = await this.fileOps.uploadExternalFolder(remote, this.tabSvc.activePath());
-    if (success) {
-      this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-    }
-  }
-
-  async onWebUploadFiles(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const remote = this.tabSvc.activeRemote();
-    if (remote) {
-      const success = await this.fileOps.uploadWebFiles(
-        remote,
-        this.tabSvc.activePath(),
-        input.files
-      );
-      if (success) {
-        this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    if (isStarred) {
+      files = this.nautilusService.starredItems();
+      if (isPicker) {
+        files = files.filter(i => {
+          if (cfg.mode === 'local' && !i.meta.isLocal) return false;
+          if (cfg.mode === 'remote' && i.meta.isLocal) return false;
+          if (cfg.allowedRemotes?.length && !i.meta.isLocal) {
+            return cfg.allowedRemotes.includes(
+              this.pathSelectionService.normalizeRemoteName(i.meta.remote ?? '')
+            );
+          }
+          return true;
+        });
       }
+    } else {
+      files = rawFiles;
     }
-    input.value = '';
+
+    if (!this.settings.showHidden() && !isStarred) {
+      files = files.filter(f => !f.entry.Name.startsWith('.'));
+    }
+
+    const search = this.searchFilter().toLowerCase().trim();
+    if (search) {
+      files = files.filter(f => f.entry.Name.toLowerCase().includes(search));
+    }
+
+    return this._sortFiles(files);
   }
 
-  async onWebUploadFolder(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
+  private _sortFiles(files: FileBrowserItem[]): FileBrowserItem[] {
+    const list = [...files];
+    const sort = this.settings.sortKey().split('-')[0] as 'name' | 'size' | 'modified';
+    const ascending = !this.settings.sortKey().endsWith('desc');
+    const multiplier = ascending ? 1 : -1;
 
-    const remote = this.tabSvc.activeRemote();
-    if (remote) {
-      const success = await this.fileOps.uploadWebFiles(
-        remote,
-        this.tabSvc.activePath(),
-        input.files
-      );
-      if (success) {
-        this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+    const timeCache = new Map<string, number>();
+    const getTime = (modTime: string): number => {
+      let t = timeCache.get(modTime);
+      if (t === undefined) {
+        t = new Date(modTime).getTime();
+        timeCache.set(modTime, t);
       }
-    }
-    input.value = '';
+      return t;
+    };
+
+    return list.sort((a, b) => {
+      if (a.entry.IsDir !== b.entry.IsDir) return a.entry.IsDir ? -1 : 1;
+      const aHidden = a.entry.Name.startsWith('.');
+      const bHidden = b.entry.Name.startsWith('.');
+      if (aHidden !== bHidden) return aHidden ? 1 : -1;
+
+      switch (sort) {
+        case 'name':
+          return (
+            a.entry.Name.localeCompare(b.entry.Name, undefined, { numeric: true }) * multiplier
+          );
+        case 'size':
+          return (a.entry.Size - b.entry.Size) * multiplier;
+        case 'modified':
+          return (getTime(a.entry.ModTime) - getTime(b.entry.ModTime)) * multiplier;
+        default:
+          return 0;
+      }
+    });
   }
 }

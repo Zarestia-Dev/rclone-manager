@@ -10,6 +10,11 @@
     "beforeBuildCommand": "npm run build && node scripts/ensure-tauri-empty-dir.cjs",
     "frontendDist": "empty"
   },
+  "app": {
+    "security": {
+      "capabilities": []
+    }
+  },
   "bundle": {
     "resources": {
       "../dist/rclone-manager/browser": "browser",

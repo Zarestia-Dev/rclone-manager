@@ -189,6 +189,7 @@
                     }}</span>
                   </button>
                 }
+
                 <button class="menu-item" cdkMenuItem [appCopyToClipboard]="getFormattedPath(item)">
                   <span class="item-label">{{ 'nautilus.contextMenu.copyPath' | translate }}</span>
                 </button>
@@ -241,12 +242,15 @@
                   <span class="shortcut">F5</span>
                 </button>
               }
+
               @if (!item && !tabSvc.activeStarredMode()) {
                 <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
                   <span class="item-label">{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
                   <span class="shortcut">Ctrl+Shift+N</span>
                 </button>
+
                 <mat-divider></mat-divider>
+
                 <button class="menu-item" cdkMenuItem (click)="uploadFiles()">
                   <span class="item-label"
                     >{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span
@@ -257,13 +261,16 @@
                     >{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span
                   >
                 </button>
+
                 @if (fileOps.hasClipboard()) {
                   <button class="menu-item" cdkMenuItem (click)="pasteItems()">
                     <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
                     <span class="shortcut">Ctrl+V</span>
                   </button>
                 }
+
                 <mat-divider></mat-divider>
+
                 <button
                   class="menu-item"
                   cdkMenuItem
@@ -285,12 +292,14 @@
             >
               <span class="item-label">{{ 'common.back' | translate }}</span>
             </button>
+
             <mat-divider></mat-divider>
 
             <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
               <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
               <span class="shortcut">Return</span>
             </button>
+
             @if (actions.contextMenuItem()?.entry?.IsDir) {
               <button class="menu-item" cdkMenuItem (click)="actions.openContextMenuOpenInNewTab()">
                 <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
@@ -319,17 +328,22 @@
             <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
               <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
             </button>
+
             <mat-divider></mat-divider>
+
             <button class="menu-item" cdkMenuItem (click)="uploadFiles()">
               <span>{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span>
             </button>
             <button class="menu-item" cdkMenuItem (click)="uploadFolder()">
               <span>{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span>
             </button>
+
             <button class="menu-item" cdkMenuItem (click)="actions.openCopyUrlDialog()">
               <span>{{ 'nautilus.modals.copyUrl.title' | translate }}...</span>
             </button>
+
             <mat-divider></mat-divider>
+
             <button
               class="menu-item"
               cdkMenuItem
@@ -351,6 +365,7 @@
               <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
           }
+
           <mat-divider></mat-divider>
 
           <button
