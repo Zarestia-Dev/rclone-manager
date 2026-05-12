@@ -48,7 +48,6 @@
             [class.selected]="selection().has(key)"
             [class.unselectable]="!isItemSelectable()(item.entry)"
             [class.cut-item]="isCut"
-            [class.dragging]="isDraggingItem(item)"
             [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
@@ -117,7 +116,8 @@
             </div>
           </th>
           <td mat-cell *matCellDef="let item">
-            @let isCut = cutItemPaths().has(getItemKey(item));
+            @let key = getItemKey(item);
+            @let isCut = cutItemPaths().has(key);
             <div class="cell-content name-cell">
               <ng-container
                 [ngTemplateOutlet]="nameCellContent"
@@ -205,7 +205,6 @@
           [class.selected]="selection().has(getItemKey(item))"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
           [class.cut-item]="cutItemPaths().has(getItemKey(item))"
-          [class.dragging]="isDraggingItem(item)"
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="

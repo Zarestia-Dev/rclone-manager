@@ -65,6 +65,7 @@ impl JobCache {
             self.notify_change(app, Some(&job));
             Ok(())
         } else {
+            log::warn!("Attempted to delete job {jobid}, but it was not found in cache");
             Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }

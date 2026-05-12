@@ -453,8 +453,7 @@ pub async fn execute_upload_batch(
             .sum();
 
     let destination = build_full_path(&remote, &path);
-    let jobid = existing_jobid
-        .unwrap_or_else(|| chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0) as u64);
+    let jobid = existing_jobid.unwrap_or_else(|| chrono::Utc::now().timestamp_millis() as u64);
     let metadata = JobMetadata {
         remote_name: remote.clone(),
         job_type: JobType::Upload,
@@ -501,12 +500,10 @@ pub async fn execute_upload_batch(
         };
 
         let size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
-        let part = reqwest::multipart::Part::stream(reqwest::Body::wrap_stream(
-            tokio_util::io::ReaderStream::new(file),
-        ))
-        .file_name(filename.clone())
-        .mime_str("application/octet-stream")
-        .map_err(|e| e.to_string())?;
+        let part = reqwest::multipart::Part::stream(reqwest::Body::from(file))
+            .file_name(filename.clone())
+            .mime_str("application/octet-stream")
+            .map_err(|e| e.to_string())?;
 
         let resp = backend
             .inject_auth(
@@ -524,7 +521,13 @@ pub async fn execute_upload_batch(
                 completed.push(json!({ "name": filename, "size": size, "bytes": size, "completed_at": chrono::Utc::now() }));
                 let _ = job_cache.update_job_stats(jobid, json!({ "totalBytes": total_bytes, "bytes": uploaded_bytes, "transfers": completed.len(), "totalTransfers": completed.len(), "completed": completed, "transferring": [] })).await;
             }
-            Ok(r) => errors.push(format!("Upload failed for {filename}: {}", r.status())),
+            Ok(r) => {
+                let status = r.status();
+                let err_text = r.text().await.unwrap_or_default();
+                errors.push(format!(
+                    "Upload failed for {filename}: {status} - {err_text}"
+                ));
+            }
             Err(e) => errors.push(format!("Network error for {filename}: {e}")),
         }
     }
@@ -669,7 +672,11 @@ pub async fn upload_file(
 
     match resp {
         Ok(r) if r.status().is_success() => Ok("File uploaded successfully".to_string()),
-        Ok(r) => Err(format!("Upload failed: {}", r.status())),
+        Ok(r) => {
+            let status = r.status();
+            let err_text = r.text().await.unwrap_or_default();
+            Err(format!("Upload failed: {status} - {err_text}"))
+        }
         Err(e) => Err(format!("Network error: {e}")),
     }
 }

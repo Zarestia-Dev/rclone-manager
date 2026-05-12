@@ -305,6 +305,7 @@ pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
 
 #[tauri::command]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
+    info!("Deleting job with ID: {jobid}");
     app.state::<BackendManager>()
         .job_cache
         .delete_job(jobid, Some(&app))

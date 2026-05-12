@@ -78,6 +78,14 @@ const GHOST_CARD_H = 44;
 const GHOST_STACK_OFFSET = 4;
 const GHOST_BG_CARDS = 2;
 
+const NULL_HIT: HitResult = {
+  folder: null,
+  segmentIndex: null,
+  tabIndex: null,
+  sidebarItem: null,
+  paneIndex: null,
+};
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -126,12 +134,7 @@ export class NautilusDragDropService {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
         if (this.isInternalDragging()) return;
 
-        if (event.payload.type === 'enter') {
-          this.isExternalDragging.set(true);
-          return;
-        }
-
-        if (event.payload.type === 'over') {
+        if (event.payload.type === 'enter' || event.payload.type === 'over') {
           this.isExternalDragging.set(true);
           return;
         }
@@ -141,10 +144,8 @@ export class NautilusDragDropService {
           return;
         }
 
-        if (event.payload.type !== 'drop') return;
-        if (event.payload.paths.length === 0) {
-          return;
-        }
+        if (event.payload.type !== 'drop' || event.payload.paths.length === 0) return;
+
         this.isExternalDragging.set(false);
         this.endDrag();
 
@@ -152,7 +153,7 @@ export class NautilusDragDropService {
           event.payload.position.x,
           event.payload.position.y
         );
-        if (!target.remote || event.payload.paths.length === 0) return;
+        if (!target.remote) return;
 
         const normalized = this._normalizeRemote(target.remote);
         try {
@@ -199,7 +200,8 @@ export class NautilusDragDropService {
   beginInternalPointerDrag(
     items: FileBrowserItem[],
     paneIndex: 0 | 1,
-    point: { x: number; y: number }
+    point: { x: number; y: number },
+    svgIcon: SVGElement | null = null
   ): void {
     this.isInternalDragging.set(true);
     this.isExternalDragging.set(false);
@@ -213,9 +215,17 @@ export class NautilusDragDropService {
     };
 
     this._dragGhostEl?.remove();
-    this._dragGhostHost = document.body;
-    this._dragGhostEl = this._createDragGhost(items);
+    this._dragGhostHost = document.documentElement;
+    this._dragGhostEl = this._createDragGhost(items, svgIcon);
     this._dragGhostHost.appendChild(this._dragGhostEl);
+    if ('popover' in this._dragGhostEl) {
+      try {
+        (this._dragGhostEl as any).popover = 'manual';
+        (this._dragGhostEl as any).showPopover();
+      } catch {
+        // Popover API might not be supported
+      }
+    }
     this._updateDragGhostPosition(point.x + 12, point.y + 12);
   }
 
@@ -226,7 +236,7 @@ export class NautilusDragDropService {
     this._onMove(point);
   }
 
-  private _createDragGhost(items: FileBrowserItem[]): HTMLElement {
+  private _createDragGhost(items: FileBrowserItem[], svgIcon: SVGElement | null): HTMLElement {
     const isMulti = items.length > 1;
     const bgCards = isMulti ? GHOST_BG_CARDS : 0;
     const wrapper = document.createElement('div');
@@ -235,6 +245,10 @@ export class NautilusDragDropService {
       position: 'fixed',
       top: '0',
       left: '0',
+      margin: '0',
+      padding: '0',
+      border: 'none',
+      background: 'transparent',
       zIndex: '2147483647',
       pointerEvents: 'none',
       width: `${GHOST_CARD_W + bgCards * GHOST_STACK_OFFSET}px`,
@@ -280,8 +294,29 @@ export class NautilusDragDropService {
       overflow: 'hidden',
     });
 
-    const icon = this._createGhostIcon(items[0]?.entry.IsDir ?? false);
-    front.appendChild(icon);
+    const iconWrapper = document.createElement('span');
+    Object.assign(iconWrapper.style, {
+      width: 'var(--icon-size-sm)',
+      height: 'var(--icon-size-sm)',
+      flexShrink: '0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+
+    if (svgIcon) {
+      const clone = svgIcon.cloneNode(true) as SVGElement;
+      Object.assign(clone.style, {
+        width: 'var(--icon-size-sm)',
+        height: 'var(--icon-size-sm)',
+        display: 'block',
+        color: items[0]?.entry.IsDir ? 'var(--accent-color)' : 'var(--dim-color)',
+      });
+      iconWrapper.appendChild(clone);
+    } else {
+      iconWrapper.textContent = items[0]?.entry.IsDir ? '📁' : '📄';
+    }
+    front.appendChild(iconWrapper);
 
     const label = document.createElement('span');
     Object.assign(label.style, {
@@ -314,25 +349,6 @@ export class NautilusDragDropService {
 
     wrapper.appendChild(front);
     return wrapper;
-  }
-
-  private _createGhostIcon(isDir: boolean): HTMLElement {
-    const icon = document.createElement('span');
-    const svg = isDir
-      ? '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 7.75A2.75 2.75 0 0 1 5.75 5h4.01c.53 0 1.04.24 1.37.65l.83 1.03c.14.17.34.27.56.27h5.73A2.75 2.75 0 0 1 21 9.7v6.55A2.75 2.75 0 0 1 18.25 19H5.75A2.75 2.75 0 0 1 3 16.25V7.75Z" fill="currentColor" opacity="0.95"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.75 3A2.75 2.75 0 0 0 5 5.75v12.5A2.75 2.75 0 0 0 7.75 21h8.5A2.75 2.75 0 0 0 19 18.25V9.56c0-.73-.29-1.43-.8-1.94l-2.82-2.82A2.75 2.75 0 0 0 13.44 4H7.75Z" fill="currentColor" opacity="0.95"/><path d="M14 4.25V7.5A1.5 1.5 0 0 0 15.5 9H18.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-    Object.assign(icon.style, {
-      width: 'var(--icon-size-sm, 18px)',
-      height: 'var(--icon-size-sm, 18px)',
-      flexShrink: '0',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: isDir ? 'var(--accent-color, #0ea5e9)' : 'var(--dim-color, #b6bdc6)',
-    });
-    icon.innerHTML = svg;
-    return icon;
   }
 
   private _updateDragGhostPosition(x: number, y: number): void {
@@ -628,9 +644,7 @@ export class NautilusDragDropService {
     }
 
     const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
-    if (!data || !target.remote) {
-      return;
-    }
+    if (!data || !target.remote) return;
 
     const payload: NautilusDragPayload = JSON.parse(data);
     await this._processInternalItemsDrop(payload.items, target);
@@ -640,17 +654,9 @@ export class NautilusDragDropService {
     items: FileBrowserItem[],
     target: { remote: ExplorerRoot | null; path: string }
   ): Promise<void> {
-    if (!target.remote) {
-      return;
-    }
+    if (!target.remote || !items.length) return;
 
-    if (!items.length) {
-      return;
-    }
-
-    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) {
-      return;
-    }
+    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
 
     const sourceParentPath = items[0].entry.Path.substring(
       0,
@@ -661,9 +667,7 @@ export class NautilusDragDropService {
       this.pathSel.normalizeRemoteName(items[0].meta.remote ?? '') ===
       this.pathSel.normalizeRemoteName(target.remote.name);
 
-    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) {
-      return;
-    }
+    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
 
     await this.fileOps.performFileOperations(
       items,
@@ -687,17 +691,13 @@ export class NautilusDragDropService {
     if (!dt) return;
 
     const fsEntries = providedFsEntries ?? this._snapshotEntries(dt.items);
-    if (!fsEntries.length) {
-      return;
-    }
+    if (!fsEntries.length) return;
 
     const allEntries: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
     for (const fsEntry of fsEntries) {
       allEntries.push(...(await this._collectFileEntries(fsEntry)));
     }
-    if (!allEntries.length) {
-      return;
-    }
+    if (!allEntries.length) return;
 
     const normalized = this._normalizeRemote(target.remote);
     const seen = new Set<string>();
@@ -756,15 +756,7 @@ export class NautilusDragDropService {
 
   private _resolveDropHit(point: { x: number; y: number }, ctx: DragDropContext): HitResult {
     const el = document.elementFromPoint(point.x, point.y);
-    if (!el) {
-      return {
-        folder: null,
-        segmentIndex: null,
-        tabIndex: null,
-        sidebarItem: null,
-        paneIndex: null,
-      };
-    }
+    if (!el) return NULL_HIT;
 
     const getAttr = (selector: string, attr: string): string | null | undefined =>
       el.closest(selector)?.getAttribute(attr);
@@ -817,16 +809,13 @@ export class NautilusDragDropService {
     if (tabIdx !== null) {
       const tab = ctx.tabs[tabIdx];
       if (tab?.left.remote) {
-        const result = { remote: tab.left.remote, path: tab.left.path };
-        return result;
+        return { remote: tab.left.remote, path: tab.left.path };
       }
     }
 
     const pIdx = (resolved.paneIndex as 0 | 1 | null) ?? ctx.activePaneIndex;
     const pane = ctx.panes[pIdx];
-    if (!pane.remote) {
-      return { remote: null, path: '' };
-    }
+    if (!pane.remote) return { remote: null, path: '' };
 
     if (folder?.entry.IsDir) {
       const folderRemote =
@@ -835,16 +824,14 @@ export class NautilusDragDropService {
             this.pathSel.normalizeRemoteName(r.name) ===
             this.pathSel.normalizeRemoteName(folder.meta.remote)
         ) ?? pane.remote;
-      const result = { remote: folderRemote, path: folder.entry.Path };
-      return result;
+      return { remote: folderRemote, path: folder.entry.Path };
     }
 
     if (segIdx !== null) {
-      const result = {
+      return {
         remote: pane.remote,
         path: segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? ''),
       };
-      return result;
     }
 
     return { remote: pane.remote, path: pane.path };

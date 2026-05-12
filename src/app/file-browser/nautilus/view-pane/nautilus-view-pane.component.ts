@@ -15,7 +15,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -32,7 +31,6 @@ import { Entry, FileBrowserItem } from '@app/types';
     MatProgressSpinnerModule,
     MatButtonModule,
     CdkMenuModule,
-    ScrollingModule,
     MatTableModule,
     TranslateModule,
     FormatFileSizePipe,
@@ -71,6 +69,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
   public readonly isMobile = input<boolean>(false);
   public readonly fileMenu = input.required<TemplateRef<unknown>>();
+  public readonly isMultiSelectEnabled = input<boolean>(true);
 
   // --- Outputs ---
   public readonly switchPane = output<0 | 1>();
@@ -91,10 +90,11 @@ export class NautilusViewPaneComponent implements OnDestroy {
   protected readonly lassoActive = signal(false);
   protected readonly lassoRect = signal({ left: 0, top: 0, width: 0, height: 0 });
   private _lassoStart = { x: 0, y: 0 };
-  private _autoScrollTimer: ReturnType<typeof setInterval> | null = null;
   private _isLassoing = false;
   private _lassoJustFinished = false;
   private _lastMoveEvent?: MouseEvent;
+  private _autoScrollRafId: number | null = null;
+  private _lassoRafId: number | null = null;
 
   // --- Computeds ---
   protected readonly gridColumns = computed(() => `repeat(auto-fill, ${this.iconSize() + 40}px)`);
@@ -115,8 +115,10 @@ export class NautilusViewPaneComponent implements OnDestroy {
     startX: number;
     startY: number;
     started: boolean;
+    svgIcon: SVGElement | null;
   } | null = null;
   private _ignoreNextItemClick = false;
+
   private readonly _onWindowPointerMove = (event: PointerEvent): void => {
     if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
 
@@ -128,10 +130,12 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
       this._pendingPointerDrag.started = true;
       this._draggedItemPath.set(this._pendingPointerDrag.item.entry.Path);
-      this.dragDrop.beginInternalPointerDrag(this._pendingPointerDrag.items, this.paneIndex(), {
-        x: event.clientX,
-        y: event.clientY,
-      });
+      this.dragDrop.beginInternalPointerDrag(
+        this._pendingPointerDrag.items,
+        this.paneIndex(),
+        { x: event.clientX, y: event.clientY },
+        this._pendingPointerDrag.svgIcon
+      );
       event.preventDefault();
       return;
     }
@@ -139,15 +143,13 @@ export class NautilusViewPaneComponent implements OnDestroy {
     this.dragDrop.updateInternalPointerDrag({ x: event.clientX, y: event.clientY });
     event.preventDefault();
   };
+
   private readonly _onWindowPointerUp = async (event: PointerEvent): Promise<void> => {
     if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
 
     const wasDragging = this._pendingPointerDrag.started;
     this._pendingPointerDrag = null;
-
-    window.removeEventListener('pointermove', this._onWindowPointerMove);
-    window.removeEventListener('pointerup', this._onWindowPointerUp);
-    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
+    this._removePointerListeners();
 
     if (wasDragging) {
       this._ignoreNextItemClick = true;
@@ -159,17 +161,20 @@ export class NautilusViewPaneComponent implements OnDestroy {
       this._draggedItemPath.set(null);
     }
   };
+
   private readonly _onWindowPointerCancel = (): void => {
     if (!this._pendingPointerDrag) return;
-
     this._pendingPointerDrag = null;
     this._draggedItemPath.set(null);
     this.dragDrop.cancelInternalPointerDrag();
+    this._removePointerListeners();
+  };
 
+  private _removePointerListeners(): void {
     window.removeEventListener('pointermove', this._onWindowPointerMove);
     window.removeEventListener('pointerup', this._onWindowPointerUp);
     window.removeEventListener('pointercancel', this._onWindowPointerCancel);
-  };
+  }
 
   private readonly _dateFormatter = new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
@@ -179,8 +184,16 @@ export class NautilusViewPaneComponent implements OnDestroy {
     minute: '2-digit',
   });
 
+  private get _activeContainer(): HTMLElement | undefined {
+    return (this.layout() === 'grid' ? this.gridContainer : this.listContainer)?.nativeElement;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pointer / item interaction
+  // ---------------------------------------------------------------------------
+
   protected onItemPointerDown(event: PointerEvent, item: FileBrowserItem): void {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
 
     const target = event.target as HTMLElement;
     if (target.closest('button') || target.closest('a')) return;
@@ -193,6 +206,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
       ? this.files().filter(f => this.selection().has(this.getItemKey(f)))
       : [item];
 
+    const itemEl = event.currentTarget as HTMLElement;
+    const svgIcon = itemEl.querySelector<SVGElement>('mat-icon:not(.cut-icon) svg') ?? null;
+
     this._pendingPointerDrag = {
       item,
       items,
@@ -200,6 +216,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
       startX: event.clientX,
       startY: event.clientY,
       started: false,
+      svgIcon,
     };
 
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -224,19 +241,15 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
     if (!this._pendingPointerDrag.started) {
       this._pendingPointerDrag = null;
-      window.removeEventListener('pointermove', this._onWindowPointerMove);
-      window.removeEventListener('pointerup', this._onWindowPointerUp);
-      window.removeEventListener('pointercancel', this._onWindowPointerCancel);
+      this._removePointerListeners();
     }
   }
 
   protected onItemKeydown(event: Event, item: FileBrowserItem, index: number): void {
-    if ((event as KeyboardEvent).key === 'Enter') {
-      this.itemClick.emit({ item, event, index });
-      this.navigateTo.emit(item);
-      event.preventDefault();
-      event.stopPropagation();
-    }
+    this.itemClick.emit({ item, event, index });
+    this.navigateTo.emit(item);
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   // ---------------------------------------------------------------------------
@@ -265,22 +278,17 @@ export class NautilusViewPaneComponent implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   protected onMouseDown(event: MouseEvent): void {
-    // Switch pane on any left click in the content area
+    // Emit pane switch on any left-click before any early returns.
     if (event.button === 0) {
       this.switchPane.emit(this.paneIndex());
     }
+    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
 
-    // Only left click, and not on an item
-    if (event.button !== 0) return;
     const target = event.target as HTMLElement;
-
-    const container =
-      this.layout() === 'grid'
-        ? this.gridContainer?.nativeElement
-        : this.listContainer?.nativeElement;
+    // CHANGED: use _activeContainer getter instead of inline ternary.
+    const container = this._activeContainer;
     if (!container) return;
 
-    // Detect if we clicked on a scrollbar
     const rect = container.getBoundingClientRect();
     const isScrollbar =
       event.clientX > rect.left + container.clientWidth ||
@@ -311,10 +319,10 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
     const moveHandler = (e: MouseEvent): void => {
       this._lastMoveEvent = e;
-      this._onMouseMove(e);
+      this._scheduleLassoFrame();
     };
     const scrollHandler = (): void => {
-      if (this._lastMoveEvent) this._onMouseMove(this._lastMoveEvent);
+      if (this._lastMoveEvent) this._scheduleLassoFrame();
       else this._updateLassoSelection();
     };
     const upHandler = (): void => {
@@ -329,21 +337,24 @@ export class NautilusViewPaneComponent implements OnDestroy {
     container.addEventListener('scroll', scrollHandler);
   }
 
+  private _scheduleLassoFrame(): void {
+    if (this._lassoRafId !== null) return;
+    this._lassoRafId = requestAnimationFrame(() => {
+      this._lassoRafId = null;
+      if (this._lastMoveEvent) this._onMouseMove(this._lastMoveEvent);
+    });
+  }
+
   private _onMouseMove(event: MouseEvent): void {
     if (!this.lassoActive()) return;
 
-    const container =
-      this.layout() === 'grid'
-        ? this.gridContainer?.nativeElement
-        : this.listContainer?.nativeElement;
+    const container = this._activeContainer;
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
     let currentX = event.clientX - rect.left + container.scrollLeft;
     let currentY = event.clientY - rect.top + container.scrollTop;
 
-    // Clamp to container boundaries to prevent "growing" the scroll area
-    // Width is constrained to clientWidth since we don't want horizontal scroll
     currentX = Math.max(0, Math.min(currentX, container.clientWidth));
     currentY = Math.max(0, Math.min(currentY, container.scrollHeight));
 
@@ -357,7 +368,6 @@ export class NautilusViewPaneComponent implements OnDestroy {
     }
 
     this.lassoRect.set({ left, top, width, height });
-
     this._handleAutoScroll(event, container);
     this._updateLassoSelection();
   }
@@ -370,6 +380,11 @@ export class NautilusViewPaneComponent implements OnDestroy {
     this.lassoActive.set(false);
     this._lastMoveEvent = undefined;
     this._stopAutoScroll();
+
+    if (this._lassoRafId !== null) {
+      cancelAnimationFrame(this._lassoRafId);
+      this._lassoRafId = null;
+    }
   }
 
   protected onContainerClick(event: MouseEvent): void {
@@ -390,32 +405,29 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
     this._stopAutoScroll();
     if (scrollY !== 0) {
-      this._autoScrollTimer = setInterval(() => {
+      const tick = (): void => {
         container.scrollBy(0, scrollY);
         this._updateLassoSelection();
-      }, 16);
+        this._autoScrollRafId = requestAnimationFrame(tick);
+      };
+      this._autoScrollRafId = requestAnimationFrame(tick);
     }
   }
 
   private _stopAutoScroll(): void {
-    if (this._autoScrollTimer !== null) {
-      clearInterval(this._autoScrollTimer);
-      this._autoScrollTimer = null;
+    if (this._autoScrollRafId !== null) {
+      cancelAnimationFrame(this._autoScrollRafId);
+      this._autoScrollRafId = null;
     }
   }
 
   private _updateLassoSelection(): void {
-    const container =
-      this.layout() === 'grid'
-        ? this.gridContainer?.nativeElement
-        : this.listContainer?.nativeElement;
+    const container = this._activeContainer;
     if (!container) return;
 
     const containerRect = container.getBoundingClientRect();
     const lasso = this.lassoRect();
 
-    // lasso is relative to container's scrollable area.
-    // viewport = (local - scroll) + containerRect
     const lassoViewport = {
       left: lasso.left - container.scrollLeft + containerRect.left,
       top: lasso.top - container.scrollTop + containerRect.top,
@@ -428,30 +440,22 @@ export class NautilusViewPaneComponent implements OnDestroy {
     const items = container.querySelectorAll(selector);
 
     items.forEach((itemEl: Element) => {
-      const el = itemEl as HTMLElement;
-      const itemKey = el.getAttribute('data-item-key');
+      const itemKey = (itemEl as HTMLElement).getAttribute('data-item-key');
       if (!itemKey) return;
 
-      const itemRect = el.getBoundingClientRect();
+      const itemRect = itemEl.getBoundingClientRect();
+      const intersects =
+        lassoViewport.left <= itemRect.right &&
+        lassoViewport.right >= itemRect.left &&
+        lassoViewport.top <= itemRect.bottom &&
+        lassoViewport.bottom >= itemRect.top;
 
-      const intersect = !(
-        lassoViewport.left > itemRect.right ||
-        lassoViewport.right < itemRect.left ||
-        lassoViewport.top > itemRect.bottom ||
-        lassoViewport.bottom < itemRect.top
-      );
-
-      if (intersect) {
-        newSelection.add(itemKey);
-      }
+      if (intersects) newSelection.add(itemKey);
     });
 
-    // Check if selection actually changed to avoid unnecessary emits
     const current = this.selection();
     const isDifferent =
-      newSelection.size !== current.size ||
-      [...newSelection].some(k => !current.has(k)) ||
-      [...current].some(k => !newSelection.has(k));
+      newSelection.size !== current.size || [...newSelection].some(k => !current.has(k));
 
     if (isDifferent) {
       this.updateSelection.emit(newSelection);
@@ -460,8 +464,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this._stopAutoScroll();
-    window.removeEventListener('pointermove', this._onWindowPointerMove);
-    window.removeEventListener('pointerup', this._onWindowPointerUp);
-    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
+    if (this._lassoRafId !== null) {
+      cancelAnimationFrame(this._lassoRafId);
+    }
+    this._removePointerListeners();
   }
 }

@@ -79,10 +79,6 @@
       background: var(--selected-bg-color);
     }
 
-    &.dragging .folder-card {
-      opacity: 0.65;
-    }
-
     &:focus-visible .folder-card {
       outline: 2px solid var(--accent-color);
       outline-offset: 2px;
@@ -212,10 +208,6 @@ tr.folder-drag-over {
 
     &.selected {
       background-color: var(--selected-bg-color);
-    }
-
-    &.dragging {
-      opacity: 0.65;
     }
 
     &:focus-visible {
