@@ -73,8 +73,7 @@ fn apply_platform_config<'a>(
         .center()
         .shadow(false)
         .devtools(true)
-        .min_inner_size(362.0, 240.0)
-        .disable_drag_drop_handler();
+        .min_inner_size(362.0, 240.0);
 
     #[cfg(target_os = "macos")]
     {

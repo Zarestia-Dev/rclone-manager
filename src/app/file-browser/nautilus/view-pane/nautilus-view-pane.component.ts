@@ -20,15 +20,8 @@ import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
 import { IconService, NautilusService } from '@app/services';
+import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
 import { Entry, FileBrowserItem } from '@app/types';
-
-// ---------------------------------------------------------------------------
-// Drag ghost constants
-// ---------------------------------------------------------------------------
-const GHOST_CARD_W = 220;
-const GHOST_CARD_H = 44;
-const GHOST_STACK_OFFSET = 3;
-const GHOST_BG_CARDS = 2;
 
 @Component({
   selector: 'app-nautilus-view-pane',
@@ -53,6 +46,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   @ViewChild('listContainer', { read: ElementRef }) listContainer?: ElementRef<HTMLElement>;
 
   private readonly nautilusService = inject(NautilusService);
+  protected readonly dragDrop = inject(NautilusDragDropService);
   protected readonly iconService = inject(IconService);
 
   // --- Inputs ---
@@ -97,7 +91,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   protected readonly lassoActive = signal(false);
   protected readonly lassoRect = signal({ left: 0, top: 0, width: 0, height: 0 });
   private _lassoStart = { x: 0, y: 0 };
-  private _autoScrollTimer?: any;
+  private _autoScrollTimer: ReturnType<typeof setInterval> | null = null;
   private _isLassoing = false;
   private _lassoJustFinished = false;
   private _lastMoveEvent?: MouseEvent;
@@ -114,6 +108,69 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   protected readonly _draggedItemPath = signal<string | null>(null);
 
+  private _pendingPointerDrag: {
+    item: FileBrowserItem;
+    items: FileBrowserItem[];
+    pointerId: number;
+    startX: number;
+    startY: number;
+    started: boolean;
+  } | null = null;
+  private _ignoreNextItemClick = false;
+  private readonly _onWindowPointerMove = (event: PointerEvent): void => {
+    if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
+
+    const dx = Math.abs(event.clientX - this._pendingPointerDrag.startX);
+    const dy = Math.abs(event.clientY - this._pendingPointerDrag.startY);
+
+    if (!this._pendingPointerDrag.started) {
+      if (dx < 4 && dy < 4) return;
+
+      this._pendingPointerDrag.started = true;
+      this._draggedItemPath.set(this._pendingPointerDrag.item.entry.Path);
+      this.dragDrop.beginInternalPointerDrag(this._pendingPointerDrag.items, this.paneIndex(), {
+        x: event.clientX,
+        y: event.clientY,
+      });
+      event.preventDefault();
+      return;
+    }
+
+    this.dragDrop.updateInternalPointerDrag({ x: event.clientX, y: event.clientY });
+    event.preventDefault();
+  };
+  private readonly _onWindowPointerUp = async (event: PointerEvent): Promise<void> => {
+    if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
+
+    const wasDragging = this._pendingPointerDrag.started;
+    this._pendingPointerDrag = null;
+
+    window.removeEventListener('pointermove', this._onWindowPointerMove);
+    window.removeEventListener('pointerup', this._onWindowPointerUp);
+    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
+
+    if (wasDragging) {
+      this._ignoreNextItemClick = true;
+      setTimeout(() => {
+        this._ignoreNextItemClick = false;
+      }, 0);
+      await this.dragDrop.commitInternalPointerDrag({ x: event.clientX, y: event.clientY });
+    } else {
+      this._draggedItemPath.set(null);
+    }
+  };
+  private readonly _onWindowPointerCancel = (): void => {
+    if (!this._pendingPointerDrag) return;
+
+    this._pendingPointerDrag = null;
+    this._draggedItemPath.set(null);
+    this.dragDrop.cancelInternalPointerDrag();
+
+    window.removeEventListener('pointermove', this._onWindowPointerMove);
+    window.removeEventListener('pointerup', this._onWindowPointerUp);
+    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
+  };
+
   private readonly _dateFormatter = new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'short',
@@ -122,142 +179,55 @@ export class NautilusViewPaneComponent implements OnDestroy {
     minute: '2-digit',
   });
 
-  protected onDragStart(event: DragEvent, item: FileBrowserItem): void {
-    this._draggedItemPath.set(item.entry.Path);
+  protected onItemPointerDown(event: PointerEvent, item: FileBrowserItem): void {
+    if (event.button !== 0) return;
 
-    const itemEl = event.currentTarget as HTMLElement;
-    const svgIcon = itemEl.querySelector<SVGElement>('mat-icon:not(.cut-icon) svg') ?? null;
+    const target = event.target as HTMLElement;
+    if (target.closest('button') || target.closest('a')) return;
 
-    const ghost = this._buildDragGhost(item, svgIcon);
-    document.body.appendChild(ghost);
+    event.preventDefault();
+    event.stopPropagation();
 
-    event.dataTransfer?.setDragImage(ghost, 0, 0);
+    const itemKey = this.getItemKey(item);
+    const items = this.selection().has(itemKey)
+      ? this.files().filter(f => this.selection().has(this.getItemKey(f)))
+      : [item];
 
-    requestAnimationFrame(() => ghost.remove());
-    this.dragStarted.emit({ event, item });
+    this._pendingPointerDrag = {
+      item,
+      items,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      started: false,
+    };
+
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    window.addEventListener('pointermove', this._onWindowPointerMove);
+    window.addEventListener('pointerup', this._onWindowPointerUp);
+    window.addEventListener('pointercancel', this._onWindowPointerCancel);
   }
 
-  protected onDragEnd(): void {
-    this._draggedItemPath.set(null);
-    this.dragEnded.emit();
+  protected onItemClick(event: MouseEvent, item: FileBrowserItem, index: number): void {
+    if (this._ignoreNextItemClick) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+
+    this.itemClick.emit({ item, event, index });
+    event.stopPropagation();
   }
 
-  private _isMultiDrag(item: FileBrowserItem): boolean {
-    return this.selection().has(this.getItemKey(item)) && this.selection().size > 1;
-  }
+  protected onItemPointerUp(event: PointerEvent): void {
+    if (!this._pendingPointerDrag || event.pointerId !== this._pendingPointerDrag.pointerId) return;
 
-  private _buildDragGhost(item: FileBrowserItem, svgIcon: SVGElement | null): HTMLElement {
-    const isMulti = this._isMultiDrag(item);
-    const bgCards = isMulti ? GHOST_BG_CARDS : 0;
-    const wrapperW = GHOST_CARD_W + bgCards * GHOST_STACK_OFFSET;
-    const wrapperH = GHOST_CARD_H + bgCards * GHOST_STACK_OFFSET;
-
-    const wrapper = document.createElement('div');
-    Object.assign(wrapper.style, {
-      position: 'fixed',
-      top: '-9999px',
-      left: '-9999px',
-      width: `${wrapperW}px`,
-      height: `${wrapperH}px`,
-      pointerEvents: 'none',
-      fontFamily: 'system-ui, Inter, sans-serif',
-    });
-
-    for (let step = bgCards; step >= 1; step--) {
-      const bg = document.createElement('div');
-      const opacity = 0.45 + ((bgCards - step) / bgCards) * 0.25;
-      Object.assign(bg.style, {
-        position: 'absolute',
-        top: `${(bgCards - step) * GHOST_STACK_OFFSET}px`,
-        left: `${step * GHOST_STACK_OFFSET}px`,
-        width: `${GHOST_CARD_W}px`,
-        height: `${GHOST_CARD_H}px`,
-        borderRadius: 'var(--card-border-radius)',
-        background: 'var(--sidebar-bg-color)',
-        border: '1px solid var(--card-shade-color)',
-        opacity: String(opacity),
-        boxSizing: 'border-box',
-      });
-      wrapper.appendChild(bg);
+    if (!this._pendingPointerDrag.started) {
+      this._pendingPointerDrag = null;
+      window.removeEventListener('pointermove', this._onWindowPointerMove);
+      window.removeEventListener('pointerup', this._onWindowPointerUp);
+      window.removeEventListener('pointercancel', this._onWindowPointerCancel);
     }
-
-    const front = document.createElement('div');
-    Object.assign(front.style, {
-      position: 'absolute',
-      top: `${bgCards * GHOST_STACK_OFFSET}px`,
-      left: '0',
-      width: `${GHOST_CARD_W}px`,
-      height: `${GHOST_CARD_H}px`,
-      borderRadius: 'var(--card-border-radius)',
-      background: 'var(--popover-bg-color)',
-      border: '1px solid var(--card-shade-color)',
-      boxShadow: 'var(--shadow-popover)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 'var(--space-xs)',
-      padding: '0 var(--space-sm)',
-      overflow: 'hidden',
-      boxSizing: 'border-box',
-    });
-
-    const iconWrapper = document.createElement('span');
-    Object.assign(iconWrapper.style, {
-      width: 'var(--icon-size-sm)',
-      height: 'var(--icon-size-sm)',
-      flexShrink: '0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    });
-
-    if (svgIcon) {
-      const clone = svgIcon.cloneNode(true) as SVGElement;
-      Object.assign(clone.style, {
-        width: 'var(--icon-size-sm)',
-        height: 'var(--icon-size-sm)',
-        display: 'block',
-        color: item.entry.IsDir ? 'var(--accent-color)' : 'var(--dim-color)',
-      });
-      iconWrapper.appendChild(clone);
-    } else {
-      iconWrapper.textContent = item.entry.IsDir ? '📁' : '📄';
-    }
-
-    const label = document.createElement('span');
-    Object.assign(label.style, {
-      flex: '1',
-      minWidth: '0',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      fontSize: 'var(--font-size-md)',
-      fontWeight: '500',
-      color: 'var(--window-fg-color)',
-    });
-    label.textContent = item.entry.Name;
-
-    front.appendChild(iconWrapper);
-    front.appendChild(label);
-
-    if (isMulti) {
-      const badge = document.createElement('span');
-      Object.assign(badge.style, {
-        flexShrink: '0',
-        background: 'var(--accent-color)',
-        color: 'var(--accent-fg-color)',
-        borderRadius: 'var(--radius-xs)',
-        padding: 'var(--space-xxs) var(--space-xs)',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: '700',
-        lineHeight: '1.5',
-        letterSpacing: '0.3px',
-      });
-      badge.textContent = String(this.selection().size);
-      front.appendChild(badge);
-    }
-
-    wrapper.appendChild(front);
-    return wrapper;
   }
 
   protected onItemKeydown(event: Event, item: FileBrowserItem, index: number): void {
@@ -275,6 +245,10 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   protected isStarred(item: FileBrowserItem): boolean {
     return this.nautilusService.isSaved('starred', item.meta.remote || '', item.entry.Path);
+  }
+
+  protected isDraggingItem(item: FileBrowserItem): boolean {
+    return this._draggedItemPath() === item.entry.Path;
   }
 
   protected getItemKey(item: FileBrowserItem): string {
@@ -424,9 +398,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
   }
 
   private _stopAutoScroll(): void {
-    if (this._autoScrollTimer) {
+    if (this._autoScrollTimer !== null) {
       clearInterval(this._autoScrollTimer);
-      this._autoScrollTimer = undefined;
+      this._autoScrollTimer = null;
     }
   }
 
@@ -486,5 +460,8 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this._stopAutoScroll();
+    window.removeEventListener('pointermove', this._onWindowPointerMove);
+    window.removeEventListener('pointerup', this._onWindowPointerUp);
+    window.removeEventListener('pointercancel', this._onWindowPointerCancel);
   }
 }

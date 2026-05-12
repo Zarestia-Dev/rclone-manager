@@ -68,7 +68,8 @@
   .grid-item {
     outline: none;
     user-select: none;
-    -webkit-user-drag: element;
+    touch-action: none;
+    -webkit-user-drag: none;
 
     .folder-card {
       padding: var(--space-xs);
@@ -76,6 +77,10 @@
 
     &.selected .folder-card {
       background: var(--selected-bg-color);
+    }
+
+    &.dragging .folder-card {
+      opacity: 0.65;
     }
 
     &:focus-visible .folder-card {
@@ -198,7 +203,8 @@ tr.folder-drag-over {
     transition: none;
     border-radius: var(--border-radius);
     user-select: none;
-    -webkit-user-drag: element;
+    touch-action: none;
+    -webkit-user-drag: none;
 
     &:hover {
       background-color: var(--hover-bg-color);
@@ -206,6 +212,10 @@ tr.folder-drag-over {
 
     &.selected {
       background-color: var(--selected-bg-color);
+    }
+
+    &.dragging {
+      opacity: 0.65;
     }
 
     &:focus-visible {

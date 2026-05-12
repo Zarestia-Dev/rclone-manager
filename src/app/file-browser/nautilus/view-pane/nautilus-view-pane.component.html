@@ -35,13 +35,10 @@
           @let isCut = cutItemPaths().has(key);
           <div
             class="grid-item"
-            draggable="true"
             [attr.data-item-key]="key"
-            (dragstart)="onDragStart($event, item)"
-            (dragend)="onDragEnd()"
-            (click)="
-              itemClick.emit({ item, event: $event, index: $index }); $event.stopPropagation()
-            "
+            (pointerdown)="onItemPointerDown($event, item)"
+            (pointerup)="onItemPointerUp($event)"
+            (click)="onItemClick($event, item, $index)"
             (keydown.enter)="onItemKeydown($event, item, $index)"
             (dblclick)="navigateTo.emit(item)"
             [cdkContextMenuTriggerFor]="fileMenu()"
@@ -51,6 +48,7 @@
             [class.selected]="selection().has(key)"
             [class.unselectable]="!isItemSelectable()(item.entry)"
             [class.cut-item]="isCut"
+            [class.dragging]="isDraggingItem(item)"
             [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
@@ -195,11 +193,10 @@
         <tr
           mat-row
           *matRowDef="let item; columns: displayedColumns(); let i = index"
-          draggable="true"
           [attr.data-item-key]="getItemKey(item)"
-          (dragstart)="onDragStart($event, item)"
-          (dragend)="onDragEnd()"
-          (click)="itemClick.emit({ item, event: $event, index: i }); $event.stopPropagation()"
+          (pointerdown)="onItemPointerDown($event, item)"
+          (pointerup)="onItemPointerUp($event)"
+          (click)="onItemClick($event, item, i)"
           (keydown.enter)="onItemKeydown($event, item, i)"
           (dblclick)="navigateTo.emit(item)"
           [cdkContextMenuTriggerFor]="fileMenu()"
@@ -208,6 +205,7 @@
           [class.selected]="selection().has(getItemKey(item))"
           [class.hidden-item]="item.entry.Name.startsWith('.')"
           [class.cut-item]="cutItemPaths().has(getItemKey(item))"
+          [class.dragging]="isDraggingItem(item)"
           [attr.data-folder-path]="item.entry.IsDir ? item.entry.Path : null"
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="

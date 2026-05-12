@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
   isHeadlessMode,
@@ -65,7 +65,18 @@ interface HitResult {
   paneIndex: number | null;
 }
 
+interface InternalPointerDragState {
+  items: FileBrowserItem[];
+  paneIndex: 0 | 1;
+  startPoint: { x: number; y: number };
+  lastPoint: { x: number; y: number };
+}
+
 const HOVER_OPEN_DELAY_MS = 1000;
+const GHOST_CARD_W = 240;
+const GHOST_CARD_H = 44;
+const GHOST_STACK_OFFSET = 4;
+const GHOST_BG_CARDS = 2;
 
 // ---------------------------------------------------------------------------
 // Service
@@ -80,7 +91,9 @@ export class NautilusDragDropService {
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Public state ────────────────────────────────────────────────────────────
-  readonly isDragging = signal(false);
+  readonly isInternalDragging = signal(false);
+  readonly isExternalDragging = signal(false);
+  readonly isDragging = computed(() => this.isInternalDragging() || this.isExternalDragging());
   readonly hoveredFolder = signal<FileBrowserItem | null>(null);
   readonly hoveredFolderPaneIndex = signal<number | null>(null);
   readonly hoveredSegmentIndex = signal<number | null>(null);
@@ -93,6 +106,9 @@ export class NautilusDragDropService {
   private _lastHitKey = '';
   private _hoverTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverKey = '';
+  private _internalPointerDrag: InternalPointerDragState | null = null;
+  private _dragGhostEl: HTMLElement | null = null;
+  private _dragGhostHost: HTMLElement | null = null;
   private _cb!: DragDropCallbacks;
 
   // ---------------------------------------------------------------------------
@@ -108,7 +124,29 @@ export class NautilusDragDropService {
 
     try {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
+        if (this.isInternalDragging()) return;
+
+        if (event.payload.type === 'enter') {
+          this.isExternalDragging.set(true);
+          return;
+        }
+
+        if (event.payload.type === 'over') {
+          this.isExternalDragging.set(true);
+          return;
+        }
+
+        if (event.payload.type === 'leave') {
+          this.isExternalDragging.set(false);
+          return;
+        }
+
         if (event.payload.type !== 'drop') return;
+        if (event.payload.paths.length === 0) {
+          return;
+        }
+        this.isExternalDragging.set(false);
+        this.endDrag();
 
         const target = this._resolveDropTargetFromPoint(
           event.payload.position.x,
@@ -151,10 +189,6 @@ export class NautilusDragDropService {
   // ---------------------------------------------------------------------------
 
   startDrag(event: DragEvent, items: FileBrowserItem[], paneIndex: 0 | 1): void {
-    this.isDragging.set(true);
-    this._lastHitKey = '';
-    this._items = items;
-
     if (event.dataTransfer) {
       const payload: NautilusDragPayload = { items, sourcePaneIndex: paneIndex };
       event.dataTransfer.effectAllowed = 'copyMove';
@@ -162,11 +196,188 @@ export class NautilusDragDropService {
     }
   }
 
+  beginInternalPointerDrag(
+    items: FileBrowserItem[],
+    paneIndex: 0 | 1,
+    point: { x: number; y: number }
+  ): void {
+    this.isInternalDragging.set(true);
+    this.isExternalDragging.set(false);
+    this._lastHitKey = '';
+    this._items = items;
+    this._internalPointerDrag = {
+      items,
+      paneIndex,
+      startPoint: point,
+      lastPoint: point,
+    };
+
+    this._dragGhostEl?.remove();
+    this._dragGhostHost = document.body;
+    this._dragGhostEl = this._createDragGhost(items);
+    this._dragGhostHost.appendChild(this._dragGhostEl);
+    this._updateDragGhostPosition(point.x + 12, point.y + 12);
+  }
+
+  updateInternalPointerDrag(point: { x: number; y: number }): void {
+    if (!this._internalPointerDrag) return;
+    this._internalPointerDrag.lastPoint = point;
+    this._updateDragGhostPosition(point.x + 12, point.y + 12);
+    this._onMove(point);
+  }
+
+  private _createDragGhost(items: FileBrowserItem[]): HTMLElement {
+    const isMulti = items.length > 1;
+    const bgCards = isMulti ? GHOST_BG_CARDS : 0;
+    const wrapper = document.createElement('div');
+
+    Object.assign(wrapper.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      zIndex: '2147483647',
+      pointerEvents: 'none',
+      width: `${GHOST_CARD_W + bgCards * GHOST_STACK_OFFSET}px`,
+      height: `${GHOST_CARD_H + bgCards * GHOST_STACK_OFFSET}px`,
+      opacity: '1',
+      visibility: 'visible',
+    });
+
+    for (let step = bgCards; step >= 1; step--) {
+      const bg = document.createElement('div');
+      const opacity = 0.45 + ((bgCards - step) / bgCards) * 0.25;
+      Object.assign(bg.style, {
+        position: 'absolute',
+        top: `${(bgCards - step) * GHOST_STACK_OFFSET}px`,
+        left: `${step * GHOST_STACK_OFFSET}px`,
+        width: `${GHOST_CARD_W}px`,
+        height: `${GHOST_CARD_H}px`,
+        borderRadius: 'var(--card-border-radius, 10px)',
+        background: 'var(--sidebar-bg-color, #272a2f)',
+        border: '1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12))',
+        boxSizing: 'border-box',
+        opacity: String(opacity),
+      });
+      wrapper.appendChild(bg);
+    }
+
+    const front = document.createElement('div');
+    Object.assign(front.style, {
+      position: 'absolute',
+      top: `${bgCards * GHOST_STACK_OFFSET}px`,
+      left: '0',
+      width: `${GHOST_CARD_W}px`,
+      height: `${GHOST_CARD_H}px`,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 'var(--space-xs)',
+      padding: '0 var(--space-sm)',
+      borderRadius: 'var(--card-border-radius, 10px)',
+      background: 'var(--popover-bg-color, #2f3136)',
+      border: '1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12))',
+      boxShadow: 'var(--shadow-popover, 0 8px 24px rgba(0, 0, 0, 0.35))',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+    });
+
+    const icon = this._createGhostIcon(items[0]?.entry.IsDir ?? false);
+    front.appendChild(icon);
+
+    const label = document.createElement('span');
+    Object.assign(label.style, {
+      flex: '1',
+      minWidth: '0',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      fontSize: 'var(--font-size-md)',
+      fontWeight: '500',
+      color: 'var(--window-fg-color, #f3f4f6)',
+    });
+    label.textContent = items[0]?.entry.Name ?? '';
+    front.appendChild(label);
+
+    if (isMulti) {
+      const badge = document.createElement('span');
+      Object.assign(badge.style, {
+        flexShrink: '0',
+        borderRadius: 'var(--radius-xs, 6px)',
+        padding: 'var(--space-xxs, 2px) var(--space-xs, 6px)',
+        fontSize: 'var(--font-size-sm)',
+        fontWeight: '700',
+        color: 'var(--accent-fg-color, #ffffff)',
+        background: 'var(--accent-color, #0ea5e9)',
+      });
+      badge.textContent = items.length.toString();
+      front.appendChild(badge);
+    }
+
+    wrapper.appendChild(front);
+    return wrapper;
+  }
+
+  private _createGhostIcon(isDir: boolean): HTMLElement {
+    const icon = document.createElement('span');
+    const svg = isDir
+      ? '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 7.75A2.75 2.75 0 0 1 5.75 5h4.01c.53 0 1.04.24 1.37.65l.83 1.03c.14.17.34.27.56.27h5.73A2.75 2.75 0 0 1 21 9.7v6.55A2.75 2.75 0 0 1 18.25 19H5.75A2.75 2.75 0 0 1 3 16.25V7.75Z" fill="currentColor" opacity="0.95"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.75 3A2.75 2.75 0 0 0 5 5.75v12.5A2.75 2.75 0 0 0 7.75 21h8.5A2.75 2.75 0 0 0 19 18.25V9.56c0-.73-.29-1.43-.8-1.94l-2.82-2.82A2.75 2.75 0 0 0 13.44 4H7.75Z" fill="currentColor" opacity="0.95"/><path d="M14 4.25V7.5A1.5 1.5 0 0 0 15.5 9H18.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    Object.assign(icon.style, {
+      width: 'var(--icon-size-sm, 18px)',
+      height: 'var(--icon-size-sm, 18px)',
+      flexShrink: '0',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: isDir ? 'var(--accent-color, #0ea5e9)' : 'var(--dim-color, #b6bdc6)',
+    });
+    icon.innerHTML = svg;
+    return icon;
+  }
+
+  private _updateDragGhostPosition(x: number, y: number): void {
+    if (!this._dragGhostEl) return;
+    this._dragGhostEl.style.left = `${x}px`;
+    this._dragGhostEl.style.top = `${y}px`;
+  }
+
+  async commitInternalPointerDrag(point: { x: number; y: number }): Promise<void> {
+    if (!this._internalPointerDrag) return;
+
+    const ctx = this._cb.getContext();
+    const target = this._resolveDropTargetFromPoint(point.x, point.y);
+
+    if (!target.remote) {
+      this.cancelInternalPointerDrag();
+      return;
+    }
+
+    try {
+      await this._processInternalItemsDrop(this._internalPointerDrag.items, target);
+    } finally {
+      this.cancelInternalPointerDrag();
+      if (ctx.activeRemote) {
+        this._cb.refresh(ctx.activeRemote.name, ctx.activePath);
+      }
+    }
+  }
+
+  cancelInternalPointerDrag(): void {
+    if (!this._internalPointerDrag) return;
+    this._internalPointerDrag = null;
+    this.endDrag();
+  }
+
   endDrag(): void {
-    this.isDragging.set(false);
+    this.isInternalDragging.set(false);
+    this.isExternalDragging.set(false);
     this._counter = 0;
     this._lastHitKey = '';
     this._items = [];
+    this._internalPointerDrag = null;
+    this._dragGhostEl?.remove();
+    this._dragGhostEl = null;
+    this._dragGhostHost = null;
     this._clearHoverTimer();
     this.hoveredFolder.set(null);
     this.hoveredFolderPaneIndex.set(null);
@@ -188,14 +399,22 @@ export class NautilusDragDropService {
 
   onContainerDragEnter(_event: DragEvent): void {
     this._counter++;
-    if (this._counter === 1 && !this.isDragging()) this.isDragging.set(true);
+    if (this._counter === 1 && this._items.length > 0) {
+      this.isInternalDragging.set(true);
+    } else if (this._counter === 1) {
+      this.isExternalDragging.set(true);
+    }
   }
 
   onContainerDragLeave(_event: DragEvent): void {
     this._counter--;
     if (this._counter <= 0) {
       this._counter = 0;
-      if (this._items.length === 0) this.endDrag();
+      if (this._items.length === 0) {
+        this.isExternalDragging.set(false);
+      } else {
+        this.isInternalDragging.set(false);
+      }
     }
   }
 
@@ -346,9 +565,10 @@ export class NautilusDragDropService {
       this._hoverTimer = null;
       if (!this.isDragging()) return;
 
-      if (hit.folder?.entry.IsDir) {
-        if (!this._items.some(item => item.entry.Path === hit.folder!.entry.Path)) {
-          this._cb.navigateTo(hit.folder);
+      const hitFolder = hit.folder;
+      if (hitFolder?.entry.IsDir) {
+        if (!this._items.some(item => item.entry.Path === hitFolder.entry.Path)) {
+          this._cb.navigateTo(hitFolder);
         }
         return;
       }
@@ -408,13 +628,29 @@ export class NautilusDragDropService {
     }
 
     const data = event.dataTransfer?.getData(NAUTILUS_DRAG_MIME_TYPE);
-    if (!data || !target.remote) return;
+    if (!data || !target.remote) {
+      return;
+    }
 
     const payload: NautilusDragPayload = JSON.parse(data);
-    const { items } = payload;
-    if (!items.length) return;
+    await this._processInternalItemsDrop(payload.items, target);
+  }
 
-    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) return;
+  private async _processInternalItemsDrop(
+    items: FileBrowserItem[],
+    target: { remote: ExplorerRoot | null; path: string }
+  ): Promise<void> {
+    if (!target.remote) {
+      return;
+    }
+
+    if (!items.length) {
+      return;
+    }
+
+    if (items.some(item => item.entry.IsDir && item.entry.Path === target.path)) {
+      return;
+    }
 
     const sourceParentPath = items[0].entry.Path.substring(
       0,
@@ -425,7 +661,9 @@ export class NautilusDragDropService {
       this.pathSel.normalizeRemoteName(items[0].meta.remote ?? '') ===
       this.pathSel.normalizeRemoteName(target.remote.name);
 
-    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
+    if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) {
+      return;
+    }
 
     await this.fileOps.performFileOperations(
       items,
@@ -449,13 +687,17 @@ export class NautilusDragDropService {
     if (!dt) return;
 
     const fsEntries = providedFsEntries ?? this._snapshotEntries(dt.items);
-    if (!fsEntries.length) return;
+    if (!fsEntries.length) {
+      return;
+    }
 
     const allEntries: { entry: FileSystemEntry; relativePath: string; isDir: boolean }[] = [];
     for (const fsEntry of fsEntries) {
       allEntries.push(...(await this._collectFileEntries(fsEntry)));
     }
-    if (!allEntries.length) return;
+    if (!allEntries.length) {
+      return;
+    }
 
     const normalized = this._normalizeRemote(target.remote);
     const seen = new Set<string>();
@@ -574,12 +816,17 @@ export class NautilusDragDropService {
 
     if (tabIdx !== null) {
       const tab = ctx.tabs[tabIdx];
-      if (tab?.left.remote) return { remote: tab.left.remote, path: tab.left.path };
+      if (tab?.left.remote) {
+        const result = { remote: tab.left.remote, path: tab.left.path };
+        return result;
+      }
     }
 
     const pIdx = (resolved.paneIndex as 0 | 1 | null) ?? ctx.activePaneIndex;
     const pane = ctx.panes[pIdx];
-    if (!pane.remote) return { remote: null, path: '' };
+    if (!pane.remote) {
+      return { remote: null, path: '' };
+    }
 
     if (folder?.entry.IsDir) {
       const folderRemote =
@@ -588,14 +835,16 @@ export class NautilusDragDropService {
             this.pathSel.normalizeRemoteName(r.name) ===
             this.pathSel.normalizeRemoteName(folder.meta.remote)
         ) ?? pane.remote;
-      return { remote: folderRemote, path: folder.entry.Path };
+      const result = { remote: folderRemote, path: folder.entry.Path };
+      return result;
     }
 
     if (segIdx !== null) {
-      return {
+      const result = {
         remote: pane.remote,
         path: segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? ''),
       };
+      return result;
     }
 
     return { remote: pane.remote, path: pane.path };

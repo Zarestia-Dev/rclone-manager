@@ -854,16 +854,16 @@ export class NautilusComponent implements OnInit {
   onDropToLocal(event: DragEvent): void {
     this.dragDrop.dropToLocal(event);
   }
-  async onDropToBookmark(e: DragEvent, bm: FileBrowserItem) {
+  async onDropToBookmark(e: DragEvent, bm: FileBrowserItem): Promise<void> {
     await this.dragDrop.dropToBookmark(e, bm);
   }
-  async onDropToRemote(e: DragEvent, remote: ExplorerRoot) {
+  async onDropToRemote(e: DragEvent, remote: ExplorerRoot): Promise<void> {
     await this.dragDrop.dropToRemote(e, remote);
   }
-  async onDropToCurrentDirectory(e: DragEvent, paneIndex: number) {
+  async onDropToCurrentDirectory(e: DragEvent, paneIndex: number): Promise<void> {
     await this.dragDrop.dropToCurrentDirectory(e, paneIndex);
   }
-  async onDropToSegment(e: DragEvent, segIdx: number) {
+  async onDropToSegment(e: DragEvent, segIdx: number): Promise<void> {
     await this.dragDrop.dropToSegment(e, segIdx);
   }
 
