@@ -179,4 +179,9 @@ impl AppPaths {
     pub fn get_rclone_log_dir(&self) -> PathBuf {
         self.logs_dir.join("rclone")
     }
+
+    /// Get the path to the bundled serve template
+    pub fn serve_template_path(&self) -> PathBuf {
+        self.resource_dir.join("serve-template.html")
+    }
 }

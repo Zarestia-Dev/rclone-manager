@@ -4,6 +4,9 @@ const angular = require("angular-eslint");
 
 module.exports = tseslint.config(
   {
+    ignores: ["src-tauri/resources/serve-template.html"],
+  },
+  {
     files: ["**/*.ts"],
     extends: [
       eslint.configs.recommended,

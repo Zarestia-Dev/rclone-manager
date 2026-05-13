@@ -252,7 +252,7 @@ pub async fn start_profile_batch(
     }
 
     let mut tasks = Vec::new();
-    for source in &common.sources {
+    for source in &common.source {
         let app = app.clone();
         let source = source.clone();
         let runtime_remote_options = common.runtime_remote_options.clone();
@@ -291,10 +291,10 @@ pub async fn start_profile_batch(
         return Err("No valid jobs generated".to_string());
     }
 
-    let job_source = if common.sources.len() > 1 {
-        format!("{} (+...)", common.sources[0])
+    let job_source = if common.source.len() > 1 {
+        format!("{} (+...)", common.source[0])
     } else {
-        common.sources[0].clone()
+        common.source[0].clone()
     };
 
     crate::rclone::commands::job::submit_batch_job(

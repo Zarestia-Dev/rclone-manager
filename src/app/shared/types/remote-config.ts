@@ -208,7 +208,7 @@ interface RcloneBaseConfig {
 export interface MultiSourceConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
-  sources?: string[];
+  source?: string[];
   dest?: string;
 }
 

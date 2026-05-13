@@ -47,11 +47,11 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
             <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
           }
         </div>
-        <div class="path-info" [matTooltip]="config().source">
+        <div class="path-info" [matTooltip]="formatTooltip(config().source)">
           <div class="path-label">
             {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
           </div>
-          <div class="path-value">{{ config().source }}</div>
+          <div class="path-value">{{ formatDisplay(config().source) }}</div>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 })
 export class PathDisplayComponent {
   readonly config = input.required<PathDisplayConfig>();
-  readonly openPath = output<string>();
+  readonly openPath = output<string | string[]>();
 
   readonly isMobile = signal(false);
 
@@ -116,5 +116,21 @@ export class PathDisplayComponent {
       observer.observe(document.body);
       this.destroyRef.onDestroy(() => observer.disconnect());
     });
+  }
+
+  formatDisplay(path: string | string[]): string {
+    if (Array.isArray(path)) {
+      if (path.length === 0) return '';
+      if (path.length === 1) return path[0];
+      return `${path[0]} (+${path.length - 1})`;
+    }
+    return path;
+  }
+
+  formatTooltip(path: string | string[]): string {
+    if (Array.isArray(path)) {
+      return path.join('\n');
+    }
+    return path;
   }
 }

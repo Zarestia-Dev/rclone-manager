@@ -90,10 +90,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
       </mat-expansion-panel-header>
 
       <div class="panel-content">
-        <app-path-display
-          [config]="config().pathConfig"
-          (openPath)="openPath.emit($event)"
-        ></app-path-display>
+        <app-path-display [config]="config().pathConfig"></app-path-display>
 
         @if (shouldPollDiskUsage()) {
           <div class="disk-usage-info">

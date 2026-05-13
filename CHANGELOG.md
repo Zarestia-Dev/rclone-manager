@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
 - Add option to upload files or folder to right click context menu in nautilus file browser. Separate buttons for files and folder.
 - **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
-- **Shell Command Interpolation (Secure Macros)**: Path and option fields now support dynamic macro substitution using backticks. Instead of insecure shell execution, the app now uses a safe, internal engine to expand macros like `` `date` ``, `` `hostname` ``, `` `user` ``, and `` `os` ``. The `date` macro supports full `strftime` formatting (e.g., `` `date +%Y-%m-%d %H:%M:%S` ``), providing flexible and secure path generation across all platforms. Arbitrary shell command execution has been removed for security.
+- **Shell Command Interpolation (Secure Macros)**: Path and option fields now support dynamic macro substitution using both backticks (`` `date` ``) and POSIX shell-style syntax (`$(date)`). Instead of insecure shell execution, the app now uses a safe, internal engine to expand macros like `date`, `hostname`, `user`, and `os`. The `date` macro supports full `strftime` formatting (e.g., `$(date +%Y-%m-%d %H:%M:%S)`), providing flexible and secure path generation across all platforms. Arbitrary shell command execution has been removed for security.
 - Jottacloud provider added into the non-interactive remotes. 
 - Nautilus drag-and-drop lasso selection. Hold left mouse button and drag to select multiple items.
 - **Local Disk Identification**: Improved local disk identification and labeling. Fetches volume labels (Linux) and intelligently identifies user folders (Home, Downloads, etc.) across all platforms. **Note**: This feature relies on the `core/disks` command (introduced in Rclone v1.74) and requires an updated Rclone binary to function correctly.
@@ -23,10 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Rclone Cat Fallback**: Implemented a robust fallback mechanism for file viewing. If direct filesystem access fails (due to permissions or platform limitations), the app now uses `rclone cat` via the RC API to retrieve content. Supports both `local-asset://` and headless `/stream` endpoints.
 - While exporing the settings If backup encryption is enabled, show toggle for incluse the secret keys like rclone config passwords, or other secrets you've added.
 - Implemented a offline page and PWA support for headless mode.
+- Serve web template added (Beta). Needs some tweeks and polish.
 
 ### Changed
-- **Architecture Refactor**: Completely rebuilt the backend dispatch system, removing nearly 4,000 lines of redundant routing and handler code.
-- **Frontend Communication**: Streamlined the frontend's transport layer by centralizing environment detection and routing all commands through a unified `invoke` bridge.
 - **Unified Monitoring System**: Replaced multiple independent background monitors with a single, smarter polling system. The app now uses significantly fewer resources while providing faster and more responsive status updates.
   - System status, mount state, serve state, and engine health are now all checked in a single request instead of four separate ones.
   - Static information like rclone version and process ID is cached once at startup instead of being re-fetched continuously.

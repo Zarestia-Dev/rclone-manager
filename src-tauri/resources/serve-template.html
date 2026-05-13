@@ -1,0 +1,1812 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ .Title }} - RClone Manager (Beta)</title>
+    <style>
+      :root {
+        /* GNOME Palette */
+        --gnome-blue-2: #62a0ea;
+        --gnome-blue-3: #3584e4;
+        --gnome-green-4: #2ec27e;
+        --gnome-yellow-4: #f5c211;
+        --gnome-orange-3: #ff7800;
+        --gnome-red-2: #ed333b;
+        --gnome-light-4: #c0bfbc;
+
+        /* Standard Tokens */
+        --radius-xs: 8px;
+        --radius-sm: 12px;
+        --space-xs: 8px;
+        --space-md: 16px;
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --shadow-popover: 0 2px 14px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Libadwaita Light */
+      :root,
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg-color: #fafafb;
+        --view-bg: #ffffff;
+        --view-bg-color: #ffffff;
+        --sidebar-bg: #ebebed;
+        --header-bg: #ffffff;
+        --text-color: rgba(0, 0, 6, 0.8);
+        --window-fg-color-rgb: 0, 0, 6;
+        --text-muted: rgba(0, 0, 6, 0.55);
+        --dim-color: rgba(0, 0, 6, 0.55);
+        --accent-color: var(--gnome-blue-3);
+        --border-color: rgba(0, 0, 0, 0.12);
+        --hover-bg: rgba(0, 0, 6, 0.07);
+        --selection-bg: rgba(53, 132, 228, 0.15);
+        --folder-color: var(--gnome-yellow-4);
+        --file-color: var(--gnome-light-4);
+      }
+
+      /* Libadwaita Dark */
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg-color: #1e1e1e;
+        --view-bg: #1e1e1e;
+        --view-bg-color: #1e1e1e;
+        --sidebar-bg: #2e2e32;
+        --header-bg: #2e2e32;
+        --text-color: #ffffff;
+        --window-fg-color-rgb: 255, 255, 255;
+        --text-muted: rgba(255, 255, 255, 0.55);
+        --dim-color: rgba(255, 255, 255, 0.55);
+        --accent-color: var(--gnome-blue-3);
+        --border-color: rgba(255, 255, 255, 0.1);
+        --hover-bg: rgba(255, 255, 255, 0.07);
+        --selection-bg: rgba(53, 132, 228, 0.3);
+        --folder-color: var(--gnome-yellow-4);
+        --file-color: var(--gnome-light-4);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        transition:
+          background 0.5s ease,
+          background-color 0.5s ease,
+          color 0.05s ease;
+        -webkit-user-drag: none;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Layout */
+      .window {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Sidebar */
+      aside {
+        width: 250px;
+        background-color: var(--sidebar-bg);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 0.75rem;
+        transition:
+          width var(--transition),
+          padding var(--transition);
+      }
+
+      aside.collapsed {
+        width: 68px;
+        padding: 1rem 0.5rem;
+      }
+
+      aside.collapsed .sidebar-label,
+      aside.collapsed .sidebar-text {
+        display: none;
+      }
+
+      aside.collapsed .sidebar-item {
+        justify-content: center;
+        padding: 0.6rem;
+      }
+
+      .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: var(--radius-xs);
+        font-size: 0.9rem;
+        color: var(--text-color);
+        cursor: pointer;
+        margin-bottom: 2px;
+        transition: background-color 0.2s;
+      }
+
+      .sidebar-item:hover {
+        background-color: var(--hover-bg);
+      }
+
+      .sidebar-item.active {
+        background-color: var(--hover-bg);
+        font-weight: 600;
+      }
+
+      .sidebar-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        padding: 1.25rem 0.75rem 0.5rem;
+        letter-spacing: 0.05em;
+      }
+
+      /* Main Area */
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--view-bg);
+      }
+
+      /* Header Bar (Libadwaita Style) */
+      .header-bar {
+        height: 48px;
+        background-color: var(--header-bg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        padding: 0 0.5rem;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        z-index: 100;
+      }
+
+      .nav-buttons {
+        display: flex;
+        gap: 2px;
+      }
+
+      .nav-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: var(--text-color);
+        transition: background-color 0.2s;
+      }
+
+      .nav-btn:hover {
+        background-color: var(--hover-bg);
+      }
+
+      .nav-btn:active {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+
+      .path-bar {
+        flex: 1;
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        padding: 0 0.75rem;
+        gap: 0.25rem;
+        overflow: hidden;
+        font-size: 0.85rem;
+        margin: 0 0.5rem;
+      }
+
+      .path-segment {
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        cursor: pointer;
+        white-space: nowrap;
+        color: var(--text-color);
+      }
+
+      .path-segment:hover {
+        background-color: var(--hover-bg);
+      }
+
+      .path-sep {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        opacity: 0.5;
+      }
+
+      /* Content Area */
+      .view-pane {
+        flex: 1;
+        overflow-y: auto;
+        position: relative;
+      }
+
+      /* Table View */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+
+      th {
+        text-align: left;
+        padding: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        background-color: var(--view-bg);
+        z-index: 10;
+      }
+
+      td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .file-row:hover td {
+        background-color: var(--hover-bg);
+      }
+
+      .file-row.selected td {
+        background-color: var(--selection-bg);
+      }
+
+      .name-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .file-link {
+        text-decoration: none;
+        color: var(--text-color);
+      }
+
+      .file-link:hover {
+        text-decoration: underline;
+      }
+
+      .icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+
+      .icon-folder {
+        color: var(--folder-color);
+      }
+      .icon-file {
+        color: var(--file-color);
+      }
+
+      /* Grid View */
+      .grid-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+      }
+
+      .grid-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.25rem;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        text-align: center;
+        gap: 0.75rem;
+        transition: background-color 0.2s;
+      }
+
+      .grid-item:hover {
+        background-color: var(--hover-bg);
+      }
+
+      .grid-item.selected {
+        background-color: var(--selection-bg);
+      }
+
+      .grid-icon {
+        width: 48px;
+        height: 48px;
+      }
+
+      .grid-name {
+        font-size: 0.85rem;
+        word-break: break-all;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.4;
+      }
+
+      /* Context Menu */
+      #context-menu {
+        position: fixed;
+        background-color: var(--header-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 6px;
+        min-width: 180px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        display: none;
+      }
+
+      .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        color: var(--text-color);
+      }
+
+      .menu-item:hover {
+        background-color: var(--accent-color);
+        color: #ffffff;
+      }
+
+      .menu-sep {
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 4px 6px;
+      }
+
+      /* Search Overlay */
+      #search-overlay {
+        position: absolute;
+        top: 48px;
+        left: 0;
+        right: 0;
+        background-color: var(--header-bg);
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        display: none;
+        z-index: 50;
+      }
+
+      #search-input {
+        width: 100%;
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        outline: none;
+        font-size: 0.9rem;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .file-item.cut {
+        opacity: 0.5;
+        filter: grayscale(0.5);
+      }
+
+      .file-item {
+        -webkit-user-drag: element !important;
+        user-select: none;
+      }
+
+      #selection-rect {
+        position: fixed;
+        border: 1px solid var(--accent-color);
+        background: rgba(53, 132, 228, 0.2);
+        pointer-events: none;
+        display: none;
+        z-index: 1000;
+      }
+
+      .drag-over {
+        background-color: var(--hover-bg) !important;
+        outline: 2px dashed var(--accent-color);
+        outline-offset: -4px;
+      }
+
+      .drop-target {
+        background-color: var(--selection-bg) !important;
+        border-radius: 6px;
+      }
+
+      /* Advanced Theme Toggle (Website Port) */
+      .theme-switch-wrapper {
+        display: inline-flex;
+        margin-right: 0.5rem;
+      }
+
+      .theme-switch-track {
+        position: relative;
+        display: flex;
+        width: 100px;
+        height: 34px;
+        border-radius: 99px;
+        background: rgba(var(--window-fg-color-rgb), 0.08);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: background 0.3s ease;
+      }
+
+      .theme-switch-track.light {
+        background: rgba(var(--window-fg-color-rgb), 0.05);
+      }
+      .theme-switch-track.system {
+        background: rgba(var(--window-fg-color-rgb), 0.08);
+      }
+      .theme-switch-track.dark {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .click-areas {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        z-index: 2;
+      }
+
+      .click-areas button {
+        flex: 1;
+        background: transparent;
+        border: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        border-radius: 99px;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .track-placeholders {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+        gap: 4px;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .placeholder {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--dim-color);
+        opacity: 0.4;
+      }
+
+      .placeholder svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .theme-thumb {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--view-bg-color);
+        box-shadow: var(--shadow-popover);
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+          color 0.5s ease;
+      }
+
+      .theme-svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .mask-half,
+      .mask-crescent,
+      .core,
+      .system-outline,
+      .sun-rays,
+      .moon-star,
+      .moon-star-2 {
+        transition:
+          transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+          opacity 0.5s ease;
+        transform-origin: 12px 12px;
+      }
+
+      .moon-star {
+        transform-origin: 16px 4px;
+      }
+      .moon-star-2 {
+        transform-origin: 21.5px 9px;
+      }
+
+      /* Light State */
+      .theme-switch-track.light .theme-thumb {
+        transform: translateX(0);
+        color: var(--gnome-orange-3);
+      }
+      .theme-switch-track.light .mask-half {
+        transform: translateX(12px);
+      }
+      .theme-switch-track.light .mask-crescent {
+        transform: translate(12px, -12px);
+      }
+      .theme-switch-track.light .core {
+        transform: scale(0.85);
+      }
+      .theme-switch-track.light .system-outline {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      .theme-switch-track.light .sun-rays {
+        opacity: 1;
+        transform: rotate(0) scale(1);
+      }
+      .theme-switch-track.light .moon-star,
+      .theme-switch-track.light .moon-star-2 {
+        opacity: 0;
+        transform: scale(0) rotate(-45deg);
+      }
+
+      /* System State */
+      .theme-switch-track.system .theme-thumb {
+        transform: translateX(33px);
+        color: var(--dim-color);
+      }
+      .theme-switch-track.system .mask-half {
+        transform: translateX(0);
+      }
+      .theme-switch-track.system .mask-crescent {
+        transform: translate(12px, -12px);
+      }
+      .theme-switch-track.system .core {
+        transform: scale(1);
+      }
+      .theme-switch-track.system .system-outline {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .theme-switch-track.system .sun-rays {
+        opacity: 0;
+        transform: rotate(45deg) scale(0.2);
+      }
+      .theme-switch-track.system .moon-star,
+      .theme-switch-track.system .moon-star-2 {
+        opacity: 0;
+        transform: scale(0) rotate(-45deg);
+      }
+
+      /* Dark State */
+      .theme-switch-track.dark .theme-thumb {
+        transform: translateX(66px);
+        color: var(--gnome-blue-2);
+      }
+      .theme-switch-track.dark .mask-half {
+        transform: translateX(12px);
+      }
+      .theme-switch-track.dark .mask-crescent {
+        transform: translate(0, 0);
+      }
+      .theme-switch-track.dark .core {
+        transform: scale(1.15);
+      }
+      .theme-switch-track.dark .system-outline {
+        opacity: 0;
+        transform: scale(1.2);
+      }
+      .theme-switch-track.dark .sun-rays {
+        opacity: 0;
+        transform: rotate(90deg) scale(0);
+      }
+      .theme-switch-track.dark .moon-star,
+      .theme-switch-track.dark .moon-star-2 {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+      .theme-switch-track.dark .moon-star-2 {
+        transition-delay: 0.1s;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-bar">
+      <div class="nav-buttons">
+        <button class="nav-btn" onclick="window.history.back()" title="Back">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <button class="nav-btn" onclick="window.history.forward()" title="Forward">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      </div>
+
+      <button class="nav-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="path-bar" id="path-bar">
+        <!-- Breadcrumbs injected by JS -->
+      </div>
+
+      <button class="nav-btn" onclick="toggleSearch()" title="Search">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
+
+      <button class="nav-btn" onclick="toggleView()" title="Switch View">
+        <svg
+          id="view-icon-list"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <svg
+          id="view-icon-grid"
+          class="hidden"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="theme-switch-wrapper" role="group" aria-label="Theme selection">
+        <div class="theme-switch-track" id="theme-track">
+          <div class="track-placeholders">
+            <div class="placeholder">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+                <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" />
+                <line x1="17.66" y1="17.66" x2="19.07" y2="19.07" />
+                <line x1="2" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22" y2="12" />
+                <line x1="4.93" y1="19.07" x2="6.34" y2="17.66" />
+                <line x1="17.66" y1="6.34" x2="19.07" y2="4.93" />
+              </svg>
+            </div>
+            <div class="placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="6" />
+                <path d="M12 6v12a6 6 0 0 0 0-12z" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+            <div class="placeholder">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </div>
+          </div>
+          <div class="theme-thumb">
+            <svg
+              class="theme-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              overflow="hidden"
+            >
+              <circle class="core" cx="12" cy="12" r="6" fill="currentColor" />
+              <rect
+                class="mask-half"
+                x="12"
+                y="-5"
+                width="20"
+                height="34"
+                fill="var(--view-bg-color)"
+              />
+              <circle class="mask-crescent" cx="17" cy="7" r="6.5" fill="var(--view-bg-color)" />
+              <circle
+                class="system-outline"
+                cx="12"
+                cy="12"
+                r="6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <g class="sun-rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="2.5" x2="12" y2="4.5" />
+                <line x1="12" y1="19.5" x2="12" y2="21.5" />
+                <line x1="5.3" y1="5.3" x2="6.7" y2="6.7" />
+                <line x1="17.3" y1="17.3" x2="18.7" y2="18.7" />
+                <line x1="2.5" y1="12" x2="4.5" y2="12" />
+                <line x1="19.5" y1="12" x2="21.5" y2="12" />
+                <line x1="5.3" y1="18.7" x2="6.7" y2="17.3" />
+                <line x1="17.3" y1="6.7" x2="18.7" y2="5.3" />
+              </g>
+              <path
+                class="moon-star"
+                d="M 16 2 Q 16 4 18 4 Q 16 4 16 6 Q 16 4 14 4 Q 16 4 16 2"
+                fill="currentColor"
+              />
+              <path
+                class="moon-star-2"
+                d="M 21.5 8 Q 21.5 9 22.5 9 Q 21.5 9 21.5 10 Q 21.5 9 20.5 9 Q 21.5 9 21.5 8"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <div class="click-areas">
+            <button onclick="setTheme('light')" aria-label="Set Light Theme" title="Light"></button>
+            <button
+              onclick="setTheme('system')"
+              aria-label="Set System Theme"
+              title="System Auto"
+            ></button>
+            <button onclick="setTheme('dark')" aria-label="Set Dark Theme" title="Dark"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="search-overlay">
+      <input
+        type="text"
+        id="search-input"
+        placeholder="Search in this directory..."
+        oninput="filterItems(this.value)"
+      />
+    </div>
+
+    <div class="window">
+      <aside>
+        <div class="sidebar-label">Places</div>
+        <div class="sidebar-item active" onclick="location.href = '/'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+          </svg>
+          <span class="sidebar-text">Root</span>
+        </div>
+        <div class="sidebar-item" id="parent-dir-link" style="display: none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+          </svg>
+          <span class="sidebar-text">Parent Directory</span>
+        </div>
+        <div class="sidebar-label">Recent</div>
+        <div id="recent-paths">
+          <!-- Injected by JS -->
+        </div>
+      </aside>
+
+      <main
+        id="drop-zone"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)"
+      >
+        <div class="view-pane" id="view-pane" onmousedown="startLasso(event)">
+          <!-- List View -->
+          <div id="list-view">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 60%">Name</th>
+                  <th style="width: 15%">Size</th>
+                  <th style="width: 25%">Modified</th>
+                </tr>
+              </thead>
+              <tbody id="file-tbody">
+                {{
+                  range.Entries
+                }}
+                <tr
+                  class="file-row file-item"
+                  data-name="{{ .Leaf }}"
+                  data-size="{{ .Size }}"
+                  data-date="{{ .ModTime }}"
+                  data-isdir="{{ .IsDir }}"
+                  data-url="{{ .URL }}"
+                  draggable="true"
+                  ondragstart="handleDragStart(event)"
+                  ondragover="handleDragOver(event)"
+                  ondragleave="handleDragLeave(event)"
+                  ondrop="handleDrop(event)"
+                  onclick="selectItem(event, this)"
+                  ondblclick="handleAction('open')"
+                  oncontextmenu="showContextMenu(event, this)"
+                >
+                  <td>
+                    <div class="name-cell">
+                      {{ if .IsDir }}
+                      <svg class="icon icon-folder" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                          d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"
+                        />
+                      </svg>
+                      {{ else }}
+                      <svg class="icon icon-file" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                          d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"
+                        />
+                      </svg>
+                      {{ end }}
+                      <a
+                        href="{{ .URL }}"
+                        class="file-link"
+                        onclick="event.preventDefault()"
+                        >{{ .Leaf }}</a
+                      >
+                    </div>
+                  </td>
+                  <td>
+                    <span class="size-val">{{ if .IsDir }}—{{ else }}{{ .Size }}{{ end }}</span>
+                  </td>
+                  <td>
+                    <span class="date-val" data-raw="{{ .ModTime }}">{{ .ModTime }}</span>
+                  </td>
+                </tr>
+                {{
+                  end
+                }}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Grid View -->
+          <div id="grid-view" class="hidden">
+            <div class="grid-view">
+              {{ range.Entries }}
+              <div
+                class="grid-item file-item"
+                data-name="{{ .Leaf }}"
+                data-size="{{ .Size }}"
+                data-date="{{ .ModTime }}"
+                data-isdir="{{ .IsDir }}"
+                data-url="{{ .URL }}"
+                draggable="true"
+                ondragstart="handleDragStart(event)"
+                ondragover="handleDragOver(event)"
+                ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event)"
+                onclick="selectItem(event, this)"
+                ondblclick="handleAction('open')"
+                oncontextmenu="showContextMenu(event, this)"
+              >
+                {{ if .IsDir }}
+                <svg class="grid-icon icon-folder" viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"
+                  />
+                </svg>
+                {{ else }}
+                <svg class="grid-icon icon-file" viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"
+                  />
+                </svg>
+                {{ end }}
+                <div class="grid-name">{{ .Leaf }}</div>
+              </div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <input
+      type="file"
+      id="upload-input"
+      multiple
+      style="display: none"
+      onchange="performUpload(this.files)"
+    />
+
+    <!-- Context Menu -->
+    <div id="context-menu">
+      <div class="menu-item" onclick="handleAction('open')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
+        </svg>
+        Open
+      </div>
+      <div class="menu-item" onclick="handleAction('download')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download
+      </div>
+      <div class="menu-item" onclick="handleAction('refresh')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Refresh
+      </div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" onclick="handleAction('cut')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="6" cy="6" r="3"></circle>
+          <circle cx="6" cy="18" r="3"></circle>
+          <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+          <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+          <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+        </svg>
+        Cut
+      </div>
+      <div class="menu-item" onclick="handleAction('copy')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy
+      </div>
+      <div class="menu-item" id="menu-paste" onclick="handleAction('paste')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+        </svg>
+        Paste
+      </div>
+      <div class="menu-item" onclick="handleAction('rename')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+        </svg>
+        Rename
+      </div>
+      <div class="menu-sep"></div>
+      <div class="menu-item" onclick="handleAction('delete')" style="color: var(--gnome-red-2)">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path
+            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+          ></path>
+        </svg>
+        Delete
+      </div>
+      <div class="menu-sep empty-only"></div>
+      <div class="menu-item empty-only" onclick="handleAction('new-folder')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+          ></path>
+          <line x1="12" y1="11" x2="12" y2="17"></line>
+          <line x1="9" y1="14" x2="15" y2="14"></line>
+        </svg>
+        New Folder
+      </div>
+      <div class="menu-item empty-only" onclick="handleAction('upload')">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        Upload Files
+      </div>
+    </div>
+
+    <script>
+      // --- State ---
+      let currentView = localStorage.getItem('rclone_view') || 'list';
+      let currentTheme = localStorage.getItem('rclone_theme') || 'system';
+      let isSidebarCollapsed = localStorage.getItem('rclone_sidebar_collapsed') === 'true';
+      let clipboard = JSON.parse(localStorage.getItem('rclone_clipboard') || 'null');
+      let contextItem = null;
+
+      // --- Theme & Sidebar ---
+      function getSystemTheme() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+
+      function updateTheme() {
+        const track = document.getElementById('theme-track');
+        track.classList.remove('light', 'system', 'dark');
+        track.classList.add(currentTheme);
+
+        const effectiveTheme = currentTheme === 'system' ? getSystemTheme() : currentTheme;
+        document.documentElement.setAttribute('data-theme', effectiveTheme);
+      }
+
+      function setTheme(theme) {
+        currentTheme = theme;
+        localStorage.setItem('rclone_theme', currentTheme);
+        updateTheme();
+      }
+
+      function toggleTheme() {
+        if (currentTheme === 'system') setTheme('light');
+        else if (currentTheme === 'light') setTheme('dark');
+        else setTheme('system');
+      }
+
+      // Listen for system theme changes
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (currentTheme === 'system') updateTheme();
+      });
+
+      function updateSidebar() {
+        const aside = document.querySelector('aside');
+        aside.classList.toggle('collapsed', isSidebarCollapsed);
+      }
+
+      function toggleSidebar() {
+        isSidebarCollapsed = !isSidebarCollapsed;
+        localStorage.setItem('rclone_sidebar_collapsed', isSidebarCollapsed);
+        updateSidebar();
+      }
+
+      // --- View Logic ---
+      function updateView() {
+        const list = document.getElementById('list-view');
+        const grid = document.getElementById('grid-view');
+        const iconList = document.getElementById('view-icon-list');
+        const iconGrid = document.getElementById('view-icon-grid');
+
+        if (currentView === 'list') {
+          list.classList.remove('hidden');
+          grid.classList.add('hidden');
+          iconList.classList.remove('hidden');
+          iconGrid.classList.add('hidden');
+        } else {
+          list.classList.add('hidden');
+          grid.classList.remove('hidden');
+          iconList.classList.add('hidden');
+          iconGrid.classList.remove('hidden');
+        }
+      }
+
+      function toggleView() {
+        currentView = currentView === 'list' ? 'grid' : 'list';
+        localStorage.setItem('rclone_view', currentView);
+        updateView();
+      }
+
+      function selectItem(e, el) {
+        if (e) e.stopPropagation();
+        const isMulti = e && (e.ctrlKey || e.metaKey || e.shiftKey);
+
+        if (!isMulti) {
+          document
+            .querySelectorAll('.file-item')
+            .forEach(item => item.classList.remove('selected'));
+        }
+
+        el.classList.add('selected');
+        contextItem = el;
+      }
+
+      // --- Lasso Selection ---
+      let lassoStart = null;
+      function startLasso(e) {
+        // Only left click on the background
+        if (
+          e.button !== 0 ||
+          e.target.closest('.file-item') ||
+          e.target.closest('.header-bar') ||
+          e.target.closest('aside')
+        )
+          return;
+
+        lassoStart = { x: e.clientX, y: e.clientY };
+        const rect = document.getElementById('selection-rect');
+        rect.style.left = e.clientX + 'px';
+        rect.style.top = e.clientY + 'px';
+        rect.style.width = '0';
+        rect.style.height = '0';
+        rect.style.display = 'block';
+
+        if (!e.ctrlKey && !e.metaKey) {
+          document
+            .querySelectorAll('.file-item')
+            .forEach(item => item.classList.remove('selected'));
+        }
+
+        window.addEventListener('mousemove', moveLasso);
+        window.addEventListener('mouseup', endLasso);
+      }
+
+      function moveLasso(e) {
+        if (!lassoStart) return;
+        const rect = document.getElementById('selection-rect');
+        const x1 = Math.min(e.clientX, lassoStart.x);
+        const y1 = Math.min(e.clientY, lassoStart.y);
+        const x2 = Math.max(e.clientX, lassoStart.x);
+        const y2 = Math.max(e.clientY, lassoStart.y);
+
+        rect.style.left = x1 + 'px';
+        rect.style.top = y1 + 'px';
+        rect.style.width = x2 - x1 + 'px';
+        rect.style.height = y2 - y1 + 'px';
+
+        // Check intersection
+        const lassoBox = { left: x1, top: y1, right: x2, bottom: y2 };
+        document.querySelectorAll('.file-item').forEach(el => {
+          const elRect = el.getBoundingClientRect();
+          const intersects = !(
+            elRect.left > lassoBox.right ||
+            elRect.right < lassoBox.left ||
+            elRect.top > lassoBox.bottom ||
+            elRect.bottom < lassoBox.top
+          );
+          if (intersects) el.classList.add('selected');
+          else if (!e.ctrlKey && !e.metaKey) el.classList.remove('selected');
+        });
+      }
+
+      function endLasso() {
+        lassoStart = null;
+        document.getElementById('selection-rect').style.display = 'none';
+        window.removeEventListener('mousemove', moveLasso);
+        window.removeEventListener('mouseup', endLasso);
+      }
+
+      // --- Drag & Drop ---
+      let draggedItems = [];
+
+      function handleDragStart(e) {
+        const item = e.target.closest('.file-item');
+        if (!item.classList.contains('selected')) {
+          document.querySelectorAll('.file-item').forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+        }
+        draggedItems = Array.from(document.querySelectorAll('.file-item.selected'));
+        e.dataTransfer.setData(
+          'text/plain',
+          draggedItems.map(i => i.getAttribute('data-url')).join('\n')
+        );
+        e.dataTransfer.effectAllowed = 'move';
+      }
+
+      function handleDragOver(e) {
+        e.preventDefault();
+        const item = e.target.closest('.file-item');
+        if (item && item.getAttribute('data-isdir') === 'true') {
+          item.classList.add('drop-target');
+          e.dataTransfer.dropEffect = 'move';
+        } else {
+          const dropZone = document.getElementById('drop-zone');
+          dropZone.classList.add('drag-over');
+          e.dataTransfer.dropEffect = 'copy';
+        }
+      }
+
+      function handleDragLeave(e) {
+        const item = e.target.closest('.file-item');
+        if (item) item.classList.remove('drop-target');
+        const dropZone = document.getElementById('drop-zone');
+        if (!e.relatedTarget || !dropZone.contains(e.relatedTarget)) {
+          dropZone.classList.remove('drag-over');
+        }
+      }
+
+      function handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.remove('drag-over');
+        document.querySelectorAll('.file-item').forEach(i => i.classList.remove('drop-target'));
+
+        const item = e.target.closest('.file-item');
+        const targetDir =
+          item && item.getAttribute('data-isdir') === 'true'
+            ? item.getAttribute('data-url')
+            : window.location.pathname;
+
+        if (e.dataTransfer.files.length > 0) {
+          // External upload
+          performUpload(e.dataTransfer.files, targetDir);
+        } else if (draggedItems.length > 0) {
+          // Internal move
+          draggedItems.forEach(dragged => {
+            const srcUrl = dragged.getAttribute('data-url');
+            const name = dragged.getAttribute('data-name');
+            const destUrl = targetDir.endsWith('/') ? targetDir + name : targetDir + '/' + name;
+            if (srcUrl !== destUrl) {
+              apiPost(srcUrl, { move: destUrl });
+            }
+          });
+          draggedItems = [];
+        }
+      }
+
+      // Update performUpload to use sequential PUT (more compatible with rclone backends)
+      async function performUpload(files, targetDir = window.location.pathname) {
+        if (!files.length) return;
+
+        const uploadUrl = new URL(targetDir, window.location.origin).href;
+        console.log(`Starting upload to ${uploadUrl} (${files.length} files)`);
+
+        try {
+          for (let file of files) {
+            const fileUrl = uploadUrl.endsWith('/')
+              ? uploadUrl + encodeURIComponent(file.name)
+              : uploadUrl + '/' + encodeURIComponent(file.name);
+            console.log(`Uploading ${file.name} to ${fileUrl}`);
+
+            let resp = await fetch(fileUrl, { method: 'PUT', body: file });
+
+            // If PUT fails, try POST as fallback
+            if (!resp.ok) {
+              console.log('PUT failed, trying POST fallback...');
+              const formData = new FormData();
+              formData.append('file', file);
+              resp = await fetch(uploadUrl, { method: 'POST', body: formData });
+            }
+
+            if (!resp.ok) {
+              const text = await resp.text();
+              throw new Error(`Server responded with ${resp.status}: ${text}`);
+            }
+          }
+          location.reload();
+        } catch (e) {
+          console.error('Upload Error:', e);
+          alert(`Upload failed: ${e.message}`);
+        }
+      }
+
+      function toggleSearch() {
+        const overlay = document.getElementById('search-overlay');
+        const isVisible = overlay.style.display === 'block';
+        overlay.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) document.getElementById('search-input').focus();
+      }
+
+      // --- Navigation ---
+      function initPathBar() {
+        const path = window.location.pathname;
+        const segments = path.split('/').filter(s => s);
+        const container = document.getElementById('path-bar');
+        container.innerHTML =
+          '<span class="path-segment" onclick="location.href=\'/\'">Root</span>';
+
+        let currentPath = '';
+        segments.forEach(seg => {
+          currentPath += '/' + seg;
+          container.innerHTML += '<span class="path-sep">/</span>';
+          const el = document.createElement('span');
+          el.className = 'path-segment';
+          el.textContent = decodeURIComponent(seg);
+          const capturedPath = currentPath;
+          el.onclick = () => (location.href = capturedPath);
+          container.appendChild(el);
+        });
+
+        // Handle Parent Directory link in sidebar
+        const parentLink = document.getElementById('parent-dir-link');
+        if (segments.length > 0) {
+          const parentPath = '/' + segments.slice(0, -1).join('/');
+          parentLink.style.display = 'flex';
+          parentLink.onclick = () => (location.href = parentPath);
+        } else {
+          parentLink.style.display = 'none';
+        }
+
+        // Update Recent Paths
+        updateRecentPaths(path);
+      }
+
+      function updateRecentPaths(currentPath) {
+        let recents = JSON.parse(localStorage.getItem('rclone_recents') || '[]');
+        if (currentPath !== '/') {
+          recents = recents.filter(p => p !== currentPath);
+          recents.unshift(currentPath);
+          recents = recents.slice(0, 5);
+          localStorage.setItem('rclone_recents', JSON.stringify(recents));
+        }
+
+        const container = document.getElementById('recent-paths');
+        container.innerHTML = '';
+        recents.forEach(path => {
+          const name = path.split('/').pop() || 'Root';
+          const el = document.createElement('div');
+          el.className = 'sidebar-item';
+          el.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg><span class="sidebar-text">${decodeURIComponent(name)}</span>`;
+          el.title = path;
+          el.onclick = () => (location.href = path);
+          container.appendChild(el);
+        });
+      }
+
+      // --- File Operations ---
+      async function apiPost(url, params = {}) {
+        const sourceUrl = new URL(url, window.location.href).href;
+        console.log('API Request:', sourceUrl, params);
+        const isMoveOrCopy = params.move || params.copy;
+
+        try {
+          let resp;
+
+          // If it's a move/copy, go straight to WebDAV methods
+          if (isMoveOrCopy) {
+            const method = params.move ? 'MOVE' : 'COPY';
+            const destUrl = params.move || params.copy;
+            const destFullUrl = new URL(destUrl, window.location.origin).href;
+            console.log(`Performing WebDAV ${method} from ${sourceUrl} to ${destFullUrl}`);
+            resp = await fetch(sourceUrl, {
+              method: method,
+              headers: { Destination: destFullUrl },
+            });
+          } else {
+            const searchParams = new URLSearchParams(params);
+            const targetUrl =
+              sourceUrl + (sourceUrl.includes('?') ? '&' : '?') + searchParams.toString();
+            resp = await fetch(targetUrl, { method: 'POST' });
+          }
+
+          // Fallback for WebDAV methods if POST failed or for other actions
+          // Adding 403 as some servers return it when a method is disabled
+          if (
+            !resp.ok &&
+            (resp.status === 405 ||
+              resp.status === 401 ||
+              resp.status === 404 ||
+              resp.status === 403)
+          ) {
+            console.log(`Request failed with ${resp.status}, trying fallback methods...`);
+            if (params.mkdir) {
+              const newUrl = sourceUrl.endsWith('/')
+                ? sourceUrl + params.mkdir
+                : sourceUrl + '/' + params.mkdir;
+              resp = await fetch(newUrl, { method: 'MKCOL' });
+            } else if (params.delete) {
+              resp = await fetch(sourceUrl, { method: 'DELETE' });
+            } else if (params.rename) {
+              const parentUrl = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
+              const destUrl = parentUrl + params.rename;
+              resp = await fetch(sourceUrl, {
+                method: 'MOVE',
+                headers: { Destination: new URL(destUrl, window.location.origin).href },
+              });
+            } else if (isMoveOrCopy) {
+              console.log('WebDAV MOVE/COPY failed/forbidden, trying POST fallback...');
+              const searchParams = new URLSearchParams(params);
+              const targetUrl =
+                sourceUrl + (sourceUrl.includes('?') ? '&' : '?') + searchParams.toString();
+              resp = await fetch(targetUrl, { method: 'POST' });
+            }
+          }
+
+          if (resp.ok || resp.status === 201 || resp.status === 204) {
+            location.reload();
+          } else {
+            const text = await resp.text();
+            console.error('API Error Response:', text);
+            alert(`Error: ${resp.status} ${resp.statusText}\n${text}`);
+          }
+        } catch (e) {
+          console.error('API Network Error:', e);
+          alert(`Network error: ${e.message}`);
+        }
+      }
+
+      async function performUpload(files) {
+        if (!files.length) return;
+
+        // Try multipart POST first
+        const formData = new FormData();
+        for (let file of files) {
+          formData.append('file', file);
+        }
+
+        try {
+          let resp = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+          });
+
+          // If POST is not allowed, try WebDAV PUT for each file
+          if (resp.status === 405) {
+            for (let file of files) {
+              const baseUrl = window.location.href.split('?')[0];
+              const fileUrl = baseUrl.endsWith('/')
+                ? baseUrl + file.name
+                : baseUrl + '/' + file.name;
+              resp = await fetch(fileUrl, {
+                method: 'PUT',
+                body: file,
+              });
+              if (!resp.ok) break;
+            }
+          }
+
+          if (resp.ok) {
+            location.reload();
+          } else {
+            alert(`Upload failed: ${resp.statusText}`);
+          }
+        } catch (e) {
+          alert(`Upload error: ${e.message}`);
+        }
+      }
+
+      function handleAction(action) {
+        const selectedItems = Array.from(document.querySelectorAll('.file-item.selected'));
+        const items = selectedItems.length > 0 ? selectedItems : contextItem ? [contextItem] : [];
+
+        if (items.length === 0) return;
+
+        const firstItem = items[0];
+        const name = firstItem.getAttribute('data-name');
+        const url = firstItem.getAttribute('data-url');
+
+        switch (action) {
+          case 'open':
+            location.href = url;
+            break;
+          case 'refresh':
+            location.reload();
+            break;
+          case 'download':
+            items.forEach(item => {
+              const fileUrl = item.getAttribute('data-url');
+              const fileName = item.getAttribute('data-name');
+              const a = document.createElement('a');
+              // Add ?download=true to force download if supported by server
+              a.href = fileUrl + (fileUrl.includes('?') ? '&' : '?') + 'download=true';
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            });
+            break;
+          case 'cut':
+            clipboard = { url, name, mode: 'move' };
+            localStorage.setItem('rclone_clipboard', JSON.stringify(clipboard));
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('cut'));
+            firstItem.classList.add('cut');
+            break;
+          case 'copy':
+            clipboard = { url, name, mode: 'copy' };
+            localStorage.setItem('rclone_clipboard', JSON.stringify(clipboard));
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('cut'));
+            navigator.clipboard.writeText(new URL(url, window.location.origin).href);
+            break;
+          case 'paste':
+            if (clipboard) {
+              const destPath = window.location.pathname;
+              const destUrl = destPath.endsWith('/')
+                ? destPath + clipboard.name
+                : destPath + '/' + clipboard.name;
+              apiPost(clipboard.url, { [clipboard.mode]: destUrl });
+              localStorage.removeItem('rclone_clipboard');
+              clipboard = null;
+            }
+            break;
+          case 'delete':
+            const confirmMsg =
+              items.length > 1
+                ? `Are you sure you want to delete ${items.length} items?`
+                : `Are you sure you want to delete "${name}"?`;
+            if (confirm(confirmMsg)) {
+              items.forEach(item => apiPost(item.getAttribute('data-url'), { delete: 'true' }));
+            }
+            break;
+          case 'rename':
+            if (items.length > 1) return;
+            const newName = prompt(`Rename "${name}" to:`, name);
+            if (newName && newName !== name) {
+              apiPost(url, { rename: newName });
+            }
+            break;
+          case 'new-folder':
+            const folderName = prompt('Enter folder name:');
+            if (folderName) {
+              apiPost(window.location.href, { mkdir: folderName });
+            }
+            break;
+          case 'upload':
+            document.getElementById('upload-input').click();
+            break;
+        }
+      }
+
+      // --- Formatting ---
+      function formatSize(bytes) {
+        if (!bytes || bytes === '-1') return '—';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        return d.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+
+      // --- Context Menu ---
+      function showContextMenu(e, el) {
+        e.preventDefault();
+
+        // If right-clicking an unselected item, select only it
+        if (el && !el.classList.contains('selected')) {
+          document
+            .querySelectorAll('.file-item')
+            .forEach(item => item.classList.remove('selected'));
+          el.classList.add('selected');
+        }
+        contextItem = el;
+
+        const menu = document.getElementById('context-menu');
+        menu.style.display = 'block';
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+
+        const isEmpty = !el;
+        const hasClipboard = !!clipboard;
+        const selectedCount = document.querySelectorAll('.file-item.selected').length;
+
+        document
+          .querySelectorAll('.empty-only')
+          .forEach(i => (i.style.display = isEmpty ? 'flex' : 'none'));
+        document
+          .querySelectorAll('.menu-item:not(.empty-only):not(#menu-paste)')
+          .forEach(i => (i.style.display = isEmpty ? 'none' : 'flex'));
+        document
+          .querySelectorAll('.menu-sep:not(.empty-only)')
+          .forEach(i => (i.style.display = isEmpty ? 'none' : 'block'));
+
+        // Paste is special: show if we have something in clipboard and either on empty area or on folder
+        const isPasteTarget = isEmpty || (el && el.getAttribute('data-isdir') === 'true');
+        document.getElementById('menu-paste').style.display =
+          hasClipboard && isPasteTarget ? 'flex' : 'none';
+
+        // Disable rename if multiple items selected
+        document.querySelector('[onclick="handleAction(\'rename\')"]').style.opacity =
+          selectedCount > 1 ? '0.5' : '1';
+        document.querySelector('[onclick="handleAction(\'rename\')"]').style.pointerEvents =
+          selectedCount > 1 ? 'none' : 'auto';
+
+        document.addEventListener('click', hideContextMenu, { once: true });
+      }
+
+      function hideContextMenu() {
+        document.getElementById('context-menu').style.display = 'none';
+      }
+
+      function filterItems(query) {
+        const q = query.toLowerCase();
+        document.querySelectorAll('.file-item').forEach(item => {
+          const name = item.getAttribute('data-name').toLowerCase();
+          item.style.display = name.includes(q) ? '' : 'none';
+        });
+      }
+
+      // --- Init ---
+      document.addEventListener('DOMContentLoaded', () => {
+        updateTheme();
+        updateSidebar();
+        initPathBar();
+        updateView();
+
+        // Apply cut class if item is in clipboard with move mode
+        if (clipboard && clipboard.mode === 'move') {
+          document.querySelectorAll('.file-item').forEach(el => {
+            if (el.getAttribute('data-url') === clipboard.url) el.classList.add('cut');
+          });
+        }
+        document.querySelectorAll('.size-val').forEach(el => {
+          const val = el.textContent;
+          if (val !== '—') el.textContent = formatSize(val);
+        });
+        document.querySelectorAll('.date-val').forEach(el => {
+          el.textContent = formatDate(el.getAttribute('data-raw'));
+        });
+
+        document.getElementById('view-pane').oncontextmenu = e => {
+          if (e.target.closest('.file-item')) return;
+          showContextMenu(e, null);
+        };
+      });
+    </script>
+    <div id="selection-rect"></div>
+  </body>
+</html>

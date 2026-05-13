@@ -31,7 +31,9 @@
     "type": "Type",
     "context": "Context",
     "all": "All",
-    "description": "Description"
+    "description": "Description",
+    "password": "Password",
+    "username": "Username"
   },
   "validators": {
     "integer": "Must be a valid integer",
@@ -301,7 +303,11 @@
       "profileFilterHint": "Monitor events only for specific profiles.",
       "autoAcknowledge": "Auto Acknowledge",
       "autoAcknowledgeHint": "Automatically mark alerts as acknowledged. Ideal for alerts that already trigger system notifications.",
-      "actions": "Actions to Trigger"
+      "actions": "Actions to Trigger",
+      "actionRequired": "At least one action is required.",
+      "noActionsHint": "You need to create an alert action first before you can assign it to a rule.",
+      "filtersEmptyHint": "Leave empty to match all events.",
+      "scopeFilters": "Scope Filters"
     },
     "events": {
       "job": "Jobs & File Operations",
@@ -313,6 +319,10 @@
       "system": "System Events"
     },
     "action": {
+      "basicInfo": "Basic Information",
+      "configuration": "Configuration",
+      "noActionsCreated": "No alert actions have been created yet.",
+      "noHeaders": "No custom headers configured.",
       "kind": "Action Type",
       "os_toast": "OS Notification",
       "webhook": "Webhook (HTTP/S)",
@@ -822,6 +832,7 @@
       "date": "Date",
       "time": "Time",
       "typeNotImplemented": "Type: {{type}} (not implemented)",
+      "others": "others",
       "aria": {
         "item": "{{name}} item {{index}}",
         "removeItem": "Remove {{name}} item",
@@ -1075,6 +1086,8 @@
       "selectMountType": "Select mount type",
       "serveType": "Type",
       "loadingServeOptions": "Loading {{type}} options...",
+      "usePremiumUi": "Use Premium UI",
+      "usePremiumUiDesc": "Enhances the web interface with a modern Nautilus-like design. Note: Interactive features (Upload, Delete, Rename) require the WebDAV protocol.",
       "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
       "operationDescription": "Configure source, destination, and auto-start options for this operation.",
       "hideCommandOptions": "Hide Command Options",
@@ -1303,6 +1316,10 @@
       "rcloneConfig": {
         "title": "RClone Configuration",
         "description": "Complete rclone.conf file"
+      },
+      "remoteConfig": {
+        "title": "Remote Configuration",
+        "defaultPrefix": "Default:"
       },
       "remoteConfigs": {
         "title": "Remote Configurations"
@@ -1718,7 +1735,7 @@
         "type": "Job Type",
         "id": "Job ID",
         "profile": "Profile",
-        "status": "Status",
+        "status": "Job Status",
         "started": "Started",
         "finished": "Finished",
         "duration": "Duration",
@@ -1874,6 +1891,9 @@
       "cacheClearFailed": "Failed to clear cache"
     },
     "logs": {
+      "title": "Application Logs",
+      "fetchError": "Failed to fetch application logs.",
+      "clearError": "Failed to clear application logs.",
       "clearAll": "Clear All Logs",
       "scrollTop": "Scroll Top",
       "scrollBottom": "Scroll Bottom",
@@ -2412,7 +2432,8 @@
       "openFileFailed": "Cannot open file: missing remote server context",
       "minSelection": "Please select at least {{min}} item{{s}}.",
       "copyUrlFailed": "Failed to download from URL: {{error}}",
-      "archiveCreateFailed": "Failed to create archive: {{error}}"
+      "archiveCreateFailed": "Failed to create archive: {{error}}",
+      "externalDropFailed": "Failed to process external file drop."
     },
     "contextMenu": {
       "open": "Open",
@@ -2463,6 +2484,10 @@
     },
     "notifications": {
       "undo": "Undo",
+      "mkdirFailed": "Failed to create directory: {{path}}",
+      "uploadStarted": "Starting upload of {{count}} files...",
+      "uploadSuccess": "Successfully uploaded {{count}} files.",
+      "uploadFailed": "Failed to upload {{count}} files.",
       "trashEmptied": "Cleanup operation completed",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
@@ -2488,6 +2513,9 @@
     "mountDestinationError": "Mount destination must be a local folder."
   },
   "home": {
+    "errors": {
+      "generic": "An unexpected error occurred. Please check the logs for more details."
+    },
     "emptyState": {
       "title": "RClone Manager",
       "description": "Easily manage your RClone remotes. If you're new to RClone, use \"Add Quick Remote\" for a fast and simple setup.",
@@ -2717,7 +2745,16 @@
       "mountHelperError": "Mount helper error: {{error}}",
       "configEncryptedLong": "Rclone config is encrypted. Please unlock it first.",
       "executionFailed": "Failed to execute rclone: {{error}}",
-      "notFound": "Rclone binary not found at {{path}}"
+      "notFound": "Rclone binary not found at {{path}}",
+      "spawnFailed": "Failed to start rclone process: {{error}}",
+      "invalidPath": "Invalid rclone path specified",
+      "killFailed": "Failed to terminate rclone process: {{error}}",
+      "portCleanupFailed": "Failed to clean up rclone ports: {{error}}",
+      "configValidationFailed": "Rclone configuration validation failed: {{error}}",
+      "lockFailed": "Failed to acquire rclone configuration lock: {{error}}",
+      "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
+      "invalidFlags": "Invalid rclone flags detected: {{error}}",
+      "updateRemoteUnsupported": "Remote update is not supported for this rclone version"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",
@@ -2739,14 +2776,25 @@
       "encryptedPasswordRequired": "This backup is encrypted. Password required.",
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "unsupportedCompression": "Unsupported compression: {{ext}}",
-      "unknownFile": "Unknown file: {{fileName}}"
+      "unknownFile": "Unknown file: {{fileName}}",
+      "invalidArchive": "Invalid backup archive format",
+      "manifestParseFailed": "Failed to parse backup manifest: {{error}}",
+      "missingManifest": "Backup manifest is missing from the archive",
+      "openFailed": "Failed to open backup archive: {{error}}",
+      "restoreFailed": "Backup restore failed: {{error}}",
+      "secretRequirePassword": "This backup is protected by a secret and requires a password"
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
       "cannotAddLocal": "Cannot add a backend named 'Local'",
       "cannotRemoveLocal": "Cannot remove the Local backend",
       "cannotRemoveActive": "Cannot remove the active backend",
-      "connectionFailed": "Cannot connect to '{{name}}': {{error}}"
+      "connectionFailed": "Cannot connect to '{{name}}': {{error}}",
+      "alreadyExists": "A backend with this name already exists",
+      "notFound": "Backend '{{name}}' not found"
+    },
+    "system": {
+      "themeSetFailed": "Failed to set application theme: {{error}}"
     },
     "job": {
       "notFound": "JobInfo not found",

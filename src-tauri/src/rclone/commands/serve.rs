@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    core::paths::AppPaths,
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
@@ -148,7 +149,29 @@ pub async fn start_serve(
         Some(log_context),
     );
 
-    let payload = params.to_rclone_body();
+    let mut payload = params.to_rclone_body();
+
+    // Auto-inject our custom template for web-based protocols if not already specified
+    let serve_type_str = serve_type.as_str().unwrap_or("");
+    if serve_type_str == "http" || serve_type_str == "webdav" {
+        let app_paths = app.state::<AppPaths>();
+        let template_path = app_paths.serve_template_path();
+
+        if template_path.exists()
+            && let Some(obj) = payload.as_object_mut()
+            && !obj.contains_key("template")
+        {
+            obj.insert(
+                "template".to_string(),
+                json!(template_path.to_string_lossy()),
+            );
+            debug!(
+                "🎨 Injected custom serve template: {}",
+                template_path.display()
+            );
+        }
+    }
+
     debug!("📦 Serve request payload: {payload:#?}");
 
     let backend_name_for_err = backend_manager.get_active_name().await;

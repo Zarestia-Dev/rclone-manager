@@ -35,7 +35,7 @@ export interface StatsPanelConfig {
 
 // ── Path Display ────────────────────────────────────────────────────────────
 export interface PathDisplayConfig {
-  source: string;
+  source: string | string[];
   destination: string;
   sourceLabel?: string;
   destinationLabel?: string;

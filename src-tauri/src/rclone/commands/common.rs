@@ -118,7 +118,7 @@ pub trait FromConfig: Sized {
 
 /// Common resolved parameters used by mount, sync, copy, etc.
 pub struct CommonConfigParams {
-    pub sources: Vec<String>,
+    pub source: Vec<String>,
     pub dest: String,
     pub options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
@@ -130,7 +130,7 @@ pub struct CommonConfigParams {
 
 impl CommonConfigParams {
     pub fn first_source(&self) -> String {
-        self.sources.first().cloned().unwrap_or_default()
+        self.source.first().cloned().unwrap_or_default()
     }
 }
 
@@ -244,8 +244,8 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
 pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let config = &interpolate_value(config);
 
-    let get_paths = |key: &str, alt: &str| -> Vec<String> {
-        match config.get(key).or_else(|| config.get(alt)) {
+    let get_paths = |key: &str| -> Vec<String> {
+        match config.get(key) {
             Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
             Some(Value::Array(arr)) => arr
                 .iter()
@@ -256,22 +256,19 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
         }
     };
 
-    let sources = get_paths("sources", "source");
-    if sources.is_empty() {
+    let source = get_paths("source");
+    if source.is_empty() {
         return None;
     }
 
-    let dest = get_paths("dests", "dest")
-        .into_iter()
-        .next()
-        .unwrap_or_default();
+    let dest = get_paths("dest").into_iter().next().unwrap_or_default();
 
     let get_opts = |key: &str, section: &str| {
         resolve_profile_options(settings, config.get(key).and_then(|v| v.as_str()), section)
     };
 
     Some(CommonConfigParams {
-        sources,
+        source,
         dest,
         options: json_to_hashmap(config.get("options")),
         vfs_options: get_opts("vfsProfile", "vfsConfigs"),

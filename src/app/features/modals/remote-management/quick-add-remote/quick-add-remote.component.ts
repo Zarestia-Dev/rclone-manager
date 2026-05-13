@@ -297,12 +297,12 @@ export class QuickAddRemoteComponent {
       });
     }
 
-    // Sync, Copy, Move: Multiple sources, multiple destinations
+    // Sync, Copy, Move: Multiple sources, single destination
     if (opType === 'sync' || opType === 'copy' || opType === 'move') {
       return this.fb.group({
         ...baseGroup,
-        sources: this.fb.array([this.createOperationPathGroup('currentRemote')]),
-        dests: this.fb.array([this.createOperationPathGroup('local')]),
+        source: this.fb.array([this.createOperationPathGroup('currentRemote')]),
+        dest: this.createOperationPathGroup('local'),
       });
     }
 
@@ -367,8 +367,8 @@ export class QuickAddRemoteComponent {
           return null;
         };
 
-        const sourceG = getGroup('source') || getGroup('sources');
-        const destG = getGroup('dest') || getGroup('dests');
+        const sourceG = getGroup('source');
+        const destG = getGroup('dest');
 
         const sourcePath = sourceG?.get('path');
         const destPath = destG?.get('path');
@@ -420,13 +420,11 @@ export class QuickAddRemoteComponent {
         const opGroup = this.quickAddForm.get(`operations.${opName}`);
         if (!opGroup) return null;
 
-        if (opGroup.get(pathType)) {
+        const ctrl = opGroup.get(pathType);
+        if (ctrl instanceof FormGroup) {
           return `operations.${opName}.${pathType}.path`;
-        } else {
-          const pluralKey = pathType === 'source' ? 'sources' : 'dests';
-          if (opGroup.get(pluralKey)) {
-            return `operations.${opName}.${pluralKey}.0.path`;
-          }
+        } else if (ctrl instanceof FormArray && ctrl.length > 0) {
+          return `operations.${opName}.${pathType}.0.path`;
         }
         return null;
       };
@@ -490,7 +488,7 @@ export class QuickAddRemoteComponent {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createBaseOpConfig = (op: any) => {
+    const createBaseOpConfig = (op: any, isMultiSource = false) => {
       const config: any = {
         autoStart: op.autoStart ?? false,
         cronEnabled: op.cronEnabled ?? false,
@@ -505,17 +503,16 @@ export class QuickAddRemoteComponent {
       };
 
       // Handle singular or plural
-      if (op.sources) {
-        config.sources = buildPathStrings(op.sources, remoteName);
-      } else if (op.source) {
-        config.source = getPathValue(op.source);
+      if (op.source) {
+        if (isMultiSource) {
+          config.source = buildPathStrings(op.source, remoteName);
+        } else {
+          const first = Array.isArray(op.source) ? op.source[0] : op.source;
+          config.source = getPathValue(first);
+        }
       }
 
-      if (op.dests) {
-        const destStrings = buildPathStrings(op.dests, remoteName);
-        config.dests = destStrings;
-        if (destStrings.length > 0) config.dest = destStrings[0];
-      } else if (op.dest) {
+      if (op.dest) {
         config.dest = getPathValue(op.dest);
       }
 
@@ -525,20 +522,26 @@ export class QuickAddRemoteComponent {
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...createBaseOpConfig(operations.mount),
+          ...createBaseOpConfig(operations.mount, false),
           type: 'mount',
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
-      [REMOTE_CONFIG_KEYS.copy]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy) },
-      [REMOTE_CONFIG_KEYS.sync]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync) },
-      [REMOTE_CONFIG_KEYS.bisync]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync),
+      [REMOTE_CONFIG_KEYS.copy]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy, true),
       },
-      [REMOTE_CONFIG_KEYS.move]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move) },
+      [REMOTE_CONFIG_KEYS.sync]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync, true),
+      },
+      [REMOTE_CONFIG_KEYS.bisync]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync, false),
+      },
+      [REMOTE_CONFIG_KEYS.move]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move, true),
+      },
       [REMOTE_CONFIG_KEYS.serve]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...createBaseOpConfig(operations.serve),
+          ...createBaseOpConfig(operations.serve, false),
           type: 'http', // Default to HTTP serve type
           vfsProfile: DEFAULT_PROFILE_NAME,
         },

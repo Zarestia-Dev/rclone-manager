@@ -108,8 +108,10 @@ export function getDefaultAnswerFromQuestion(
 /**
  * Returns true for Unix absolute paths (/foo) and Windows drive paths (C:\ or C:/).
  */
-export function isLocalPath(path: string): boolean {
-  return path.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(path);
+export function isLocalPath(path: string | string[]): boolean {
+  const p = Array.isArray(path) ? path[0] : path;
+  if (!p) return false;
+  return p.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(p);
 }
 
 /**

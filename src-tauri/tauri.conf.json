@@ -38,7 +38,8 @@
   "bundle": {
     "active": true,
     "resources": {
-      "../resources/i18n": "i18n/"
+      "../resources/i18n": "i18n/",
+      "resources/serve-template.html": "serve-template.html"
     },
     "createUpdaterArtifacts": true,
     "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],

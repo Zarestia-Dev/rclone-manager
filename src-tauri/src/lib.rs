@@ -309,6 +309,7 @@ fn setup_app(
     // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
+    app.manage(app_paths);
     app.manage(backend_manager);
     app.manage(env_manager);
     app.manage(rcman_manager);

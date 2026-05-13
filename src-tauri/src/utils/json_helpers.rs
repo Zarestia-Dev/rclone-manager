@@ -48,43 +48,60 @@ pub fn get_string(json: &Value, path: &[&str]) -> String {
     current.and_then(|v| v.as_str()).unwrap_or("").to_string()
 }
 
-/// Evaluates safe macros wrapped in backticks — `` `macro` `` — replacing
-/// each one with its resolved value.
+/// Evaluates safe macros wrapped in either backticks — `` `macro` `` — or
+/// shell-style command substitution — `$(macro)` — replacing each one with
+/// its resolved value.
 ///
 /// Macros are used to provide dynamic values in paths and options without
 /// the security risks of arbitrary shell execution.
 ///
 /// Supported Macros:
-/// - `` `date` ``: Current date in YYYY-MM-DD format.
-/// - `` `date +FORMAT` ``: Current date with custom `strftime` formatting.
-/// - `` `hostname` ``: The local system hostname.
-/// - `` `whoami` `` / `` `user` ``: The current username.
-/// - `` `os` ``: The operating system name (e.g., "linux", "windows").
+/// - `date`: Current date in YYYY-MM-DD format.
+/// - `date +FORMAT`: Current date with custom `strftime` formatting.
+/// - `hostname`: The local system hostname.
+/// - `whoami` / `user`: The current username.
+/// - `os`: The operating system name (e.g., "linux", "windows").
 ///
-/// If a macro is unknown or fails to resolve, the original `` `macro` `` token
-/// is kept intact.
+/// If a macro is unknown or fails to resolve, the original token is kept intact.
 #[must_use]
 pub fn interpolate_shell_commands(s: &str) -> String {
-    if !s.contains('`') {
+    let mut result = s.to_string();
+
+    // Support both `macro` and $(macro) syntax
+    result = interpolate_pattern(&result, "`", "`");
+    result = interpolate_pattern(&result, "$(", ")");
+
+    result
+}
+
+fn interpolate_pattern(s: &str, open_delim: &str, close_delim: &str) -> String {
+    if !s.contains(open_delim) {
         return s.to_string();
     }
 
     let mut result = String::new();
     let mut remaining = s;
 
-    while let Some(open) = remaining.find('`') {
+    while let Some(open) = remaining.find(open_delim) {
         result.push_str(&remaining[..open]);
-        let after_open = &remaining[open + 1..];
+        let after_open = &remaining[open + open_delim.len()..];
 
-        let Some(close) = after_open.find('`') else {
-            // Unmatched backtick — copy the rest verbatim and stop.
+        let Some(close) = after_open.find(close_delim) else {
+            // Unmatched delimiter — copy the rest verbatim and stop.
             result.push_str(&remaining[open..]);
             return result;
         };
 
         let cmd = &after_open[..close];
-        result.push_str(&resolve_macro(cmd).unwrap_or_else(|| format!("`{cmd}`")));
-        remaining = &after_open[close + 1..];
+        if let Some(resolved) = resolve_macro(cmd) {
+            result.push_str(&resolved);
+        } else {
+            // Keep original if unresolved
+            result.push_str(open_delim);
+            result.push_str(cmd);
+            result.push_str(close_delim);
+        }
+        remaining = &after_open[close + close_delim.len()..];
     }
 
     result.push_str(remaining);
@@ -196,6 +213,27 @@ mod tests {
     #[test]
     fn test_unknown_command_left_intact() {
         let s = "prefix_`unknown_macro_123`_suffix";
+        assert_eq!(interpolate_shell_commands(s), s);
+    }
+
+    #[test]
+    fn test_dollar_paren_syntax() {
+        let result = interpolate_shell_commands("pCloud_$(date +%Y-%m-%d)");
+        assert!(!result.contains("$("));
+        assert!(result.starts_with("pCloud_20")); // Assuming 20xx
+    }
+
+    #[test]
+    fn test_mixed_syntax() {
+        let result = interpolate_shell_commands("`user`_$(date +%Y)");
+        assert!(!result.contains('`'));
+        assert!(!result.contains("$("));
+        assert!(result.contains("_20"));
+    }
+
+    #[test]
+    fn test_unmatched_dollar_paren() {
+        let s = "prefix_$(no_close";
         assert_eq!(interpolate_shell_commands(s), s);
     }
 
