@@ -168,18 +168,20 @@
           </div>
         }
         @case ('pdf') {
-          <object
-            [data]="safePdfUrl()"
-            type="application/pdf"
-            class="pdf-viewer"
-            (load)="onLoadComplete()"
-            (error)="onLoadError()"
-          >
-            <div class="unsupported-container">
-              <p>{{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}</p>
-              <p class="unsupported-subtext">{{ fileName() }}</p>
-            </div>
-          </object>
+          @if (safePdfUrl()) {
+            <object
+              [data]="safePdfUrl()"
+              type="application/pdf"
+              class="pdf-viewer"
+              (load)="onLoadComplete()"
+              (error)="onLoadError()"
+            >
+              <div class="unsupported-container">
+                <p>{{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}</p>
+                <p class="unsupported-subtext">{{ fileName() }}</p>
+              </div>
+            </object>
+          }
         }
         @case ('text') {
           @if (isMarkdownFile() && showMarkdownPreview()) {

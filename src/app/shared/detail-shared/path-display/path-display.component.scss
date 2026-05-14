@@ -16,14 +16,44 @@
 
     .path-icon-container {
       .folder-button {
+        position: relative;
+
         &.active {
-          background: color-mix(in srgb, var(--op-color, var(--accent-color)) 18%, transparent);
-          color: var(--op-color, var(--accent-color));
+          background: color-mix(
+            in srgb,
+            var(--mat-sys-primary, var(--accent-color)) 18%,
+            transparent
+          );
+          color: var(--mat-sys-primary, var(--accent-color));
         }
 
         &.inactive {
           background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
           color: var(--dim-color);
+        }
+
+        /* Subtle visual hint when the button holds multiple paths */
+        &.multi-path {
+          .path-count {
+            position: absolute;
+            bottom: -8px;
+            right: -8px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: var(--mat-sys-primary, var(--accent-color));
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--sidebar-bg-color);
+            line-height: 1;
+            pointer-events: none;
+            z-index: 1;
+          }
         }
       }
     }
@@ -68,5 +98,42 @@
   .path-section {
     flex-direction: column;
     gap: var(--space-md);
+  }
+}
+
+::ng-deep .path-dropdown-menu {
+  min-width: 250px !important;
+  max-width: 380px !important;
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: var(--radius-md) !important;
+  padding-top: 0 !important;
+
+  .menu-header {
+    padding: 4px 16px 8px;
+    font-size: var(--font-size-xs);
+    color: var(--dim-color);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mat-mdc-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+
+    mat-icon {
+      margin-right: 0;
+      color: var(--dim-color);
+    }
+
+    .menu-path-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: var(--font-size-sm);
+      color: var(--window-fg-color);
+    }
   }
 }

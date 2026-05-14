@@ -56,7 +56,7 @@ fn build_nautilus_url(remote_name: Option<&str>, path: Option<&str>) -> String {
         Some(p) => {
             let clean_path = p.trim_start_matches('/');
             let encoded_path = urlencoding::encode(clean_path);
-            format!("nautilus/{encoded_remote}/{encoded_path}")
+            format!("nautilus/{encoded_remote}?path={encoded_path}")
         }
         None => format!("nautilus/{encoded_remote}"),
     }

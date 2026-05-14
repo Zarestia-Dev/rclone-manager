@@ -20,40 +20,106 @@ pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[cfg(feature = "flatpak")]
-pub fn manage_flatpak_autostart(enable: bool) -> Result<(), String> {
-    use std::fs;
-    use std::path::PathBuf;
+pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
+    use std::collections::HashMap;
+    use zbus::zvariant::Value;
+    use zbus::{Connection, Proxy};
 
-    // Standard XDG autostart path: ~/.config/autostart/
-    // Flatpak has permission to write here (filesystem=xdg-config/autostart:create)
-    let home = std::env::var("HOME").map_err(|_| "Could not find HOME environment variable")?;
-    let home_dir = PathBuf::from(home);
-    let autostart_dir = home_dir.join(".config/autostart");
-    let desktop_file_path = autostart_dir.join("io.github.zarestia_dev.rclone-manager.desktop");
-
-    if enable {
-        if !autostart_dir.exists() {
-            fs::create_dir_all(&autostart_dir)
-                .map_err(|e| format!("Failed to create autostart directory: {e}"))?;
+    // Attempt to connect to the session DBus
+    let connection = match Connection::session().await {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("Failed to connect to session bus: {e}");
+            return Err(e.to_string());
         }
+    };
 
-        let content = r"[Desktop Entry]
-Type=Application
-Name=RClone Manager
-Comment=RClone Manager Flatpak autostart entry
-Exec=/usr/bin/flatpak run io.github.zarestia_dev.rclone-manager --tray
-Icon=io.github.zarestia_dev.rclone-manager
-Categories=Utility;Network;
-Keywords=rclone;cloud;backup;sync;storage;
-X-Flatpak=io.github.zarestia_dev.rclone-manager
-Terminal=false
-";
-        fs::write(&desktop_file_path, content)
-            .map_err(|e| format!("Failed to write autostart file: {e}"))?;
-    } else if desktop_file_path.exists() {
-        fs::remove_file(&desktop_file_path)
-            .map_err(|e| format!("Failed to remove autostart file: {e}"))?;
+    // Create a proxy to the Desktop portal Background interface
+    let proxy = match Proxy::new(
+        &connection,
+        "org.freedesktop.portal.Desktop",
+        "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.Background",
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("Failed to create Background portal proxy: {e}");
+            return Err(e.to_string());
+        }
+    };
+
+    // Prepare the options dictionary (a{sv})
+    let mut options: HashMap<&str, Value> = HashMap::new();
+    options.insert(
+        "reason",
+        Value::from("RClone Manager needs to run in the background to handle scheduled jobs and serve remotes."),
+    );
+    options.insert("autostart", Value::from(enable));
+    options.insert("dbus-activatable", Value::from(false));
+
+    let autostart_cmd: zbus::zvariant::Array = {
+        use zbus::zvariant::{Array, Signature};
+        let sig = Signature::try_from("s").expect("valid sig");
+        let mut arr = Array::new(&sig);
+        for token in &[env!("CARGO_PKG_NAME"), "--tray"] {
+            arr.append(Value::from(*token))
+                .expect("homogeneous string array");
+        }
+        arr
+    };
+    options.insert("commandline", Value::from(autostart_cmd));
+
+    // Call RequestBackground(parent_window: String, options: a{sv}) -> (ObjectPath)
+    // We pass an empty string for parent_window since we don't track the X11/Wayland window ID here.
+    match proxy
+        .call::<_, _, zbus::zvariant::OwnedObjectPath>("RequestBackground", &("", &options))
+        .await
+    {
+        Ok(path) => {
+            log::debug!(
+                "Background portal request sent successfully. Request path: {}",
+                path.as_str()
+            );
+            Ok(())
+        }
+        Err(e) => {
+            log::error!("Background portal request failed: {e}");
+            Err(e.to_string())
+        }
     }
-
-    Ok(())
 }
+
+// This one uses ashpd, same as the one above but I left it here as a comment. Maybe it will be useful for someone later.
+// #[cfg(feature = "flatpak")]
+// pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
+//     use ashpd::desktop::background::Background;
+
+//     let bin_name = env!("CARGO_PKG_NAME");
+//     let commandline = [bin_name, "--tray"];
+
+//     match Background::request()
+//         .reason("RClone Manager needs to run in the background to handle scheduled jobs and serve remotes.")
+//         .auto_start(enable)
+//         .command(&commandline)
+//         .dbus_activatable(false)
+//         .send()
+//         .await
+//     {
+//         Ok(request) => match request.response() {
+//             Ok(_) => {
+//                 log::debug!("Background portal request successful (autostart={})", enable);
+//                 Ok(())
+//             }
+//             Err(e) => {
+//                 log::error!("Background portal request denied: {e}");
+//                 Err(format!("Background portal request denied: {e}"))
+//             }
+//         }
+//         Err(e) => {
+//             log::error!("Could not communicate with Background portal: {e}");
+//             Err(format!("Could not communicate with Background portal: {e}"))
+//         }
+//     }
+// }

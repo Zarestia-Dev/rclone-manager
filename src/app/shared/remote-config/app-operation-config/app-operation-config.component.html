@@ -178,7 +178,7 @@
             <!-- Actions -->
             <div class="action-suffix">
               @if (
-                isDataOperation() && getPathTypeControl('source', item.index)?.value === 'local'
+                supportsFileSource() && getPathTypeControl('source', item.index)?.value === 'local'
               ) {
                 <button
                   matIconButton

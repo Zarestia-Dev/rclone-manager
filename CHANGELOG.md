@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
 - change rclone binary location to direct binary path.
 - Remove the batch upload limit from the Nautilus drag-and-drop feature (Headless mode only). App now upload the files on the temp folder of the remote instance after starting to upload to final destination. After the upload finishes, it will remove the files from the temp folder.
+- Fixed the background management on flatpak. It will now use the D-Bus Background portal instead of the manual method.
 
 ### Fixed
 - **Audio Cover Support**: Enhanced audio cover extraction with support for FLAC and multiple other formats. Optimized image loading by moving to a native streaming architecture that allows browsers to decode images directly, improving both performance and memory usage across Desktop and Headless modes. Maybe future I can use this for tha thumbnail view of images and any other things too.

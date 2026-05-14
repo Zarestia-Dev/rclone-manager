@@ -944,6 +944,17 @@ export class NautilusComponent implements OnInit {
       files = rawFiles;
     }
 
+    if (isPicker) {
+      if (cfg.selection === 'folders') {
+        files = files.filter(f => f.entry.IsDir);
+      } else if (cfg.selection === 'files') {
+        // In 'files' mode, we usually still show folders for navigation,
+        // but we've already handled their selectability in selection.service.
+        // If the user wants to HIDE them, we could filter here, but usually
+        // folders are kept for navigation.
+      }
+    }
+
     if (!this.settings.showHidden() && !isStarred) {
       files = files.filter(f => !f.entry.Name.startsWith('.'));
     }

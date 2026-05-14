@@ -117,15 +117,16 @@ export function isLocalPath(path: string | string[]): boolean {
 /**
  * Splits an rclone path into its remote name and relative path components.
  */
-export function splitFsPath(fullPath: string): { remote: string; path: string } {
-  if (isLocalPath(fullPath)) return { remote: '', path: fullPath };
+export function splitFsPath(fullPath: string | string[]): { remote: string; path: string } {
+  const p = Array.isArray(fullPath) ? fullPath[0] || '' : fullPath;
+  if (isLocalPath(p)) return { remote: '', path: p };
 
-  const colonIdx = fullPath.indexOf(':');
-  if (colonIdx === -1) return { remote: '', path: fullPath };
+  const colonIdx = p.indexOf(':');
+  if (colonIdx === -1) return { remote: '', path: p };
 
   return {
-    remote: fullPath.substring(0, colonIdx),
-    path: fullPath.substring(colonIdx + 1).replace(/^\/+/, ''),
+    remote: p.substring(0, colonIdx),
+    path: p.substring(colonIdx + 1).replace(/^\/+/, ''),
   };
 }
 

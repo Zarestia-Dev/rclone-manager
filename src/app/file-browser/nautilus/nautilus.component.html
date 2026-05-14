@@ -120,6 +120,7 @@
             [sortDirection]="settings.sortDirection()"
             [activePaneIndex]="tabSvc.activePaneIndex()"
             [isItemSelectable]="isItemSelectable"
+            [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
             [isMobile]="isMobile()"
             [fileMenu]="fileMenu"
             (switchPane)="tabSvc.switchPane($event)"

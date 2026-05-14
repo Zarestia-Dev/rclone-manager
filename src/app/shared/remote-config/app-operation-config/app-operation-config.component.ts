@@ -138,13 +138,13 @@ export class OperationConfigComponent {
     return false;
   });
 
-  readonly isDataOperation = computed(() => {
+  readonly supportsFileSource = computed(() => {
     const type = this.operationType();
-    return !!(type && ['sync', 'copy', 'move'].includes(type as string));
+    return !!(type && ['copy', 'move'].includes(type as string));
   });
 
   allowFiles(group: PathGroup): boolean {
-    return group === 'source' && this.isDataOperation();
+    return group === 'source' && this.supportsFileSource();
   }
 
   // Writable signals synced with form controls
@@ -341,17 +341,21 @@ export class OperationConfigComponent {
     this.pathSelectionService.resetPath(`${group}-${index}`);
   }
 
-  addPath(group: PathGroup): void {
+  addPath(group: PathGroup, initialValues?: { type: string; path: string; remote?: string }): void {
     if (group === 'dest') return; // Enforce singular destination
 
     const array = this.getFormArray(group);
     if (!array) return;
 
+    const typeValue = initialValues?.type || 'currentRemote';
+    const pathValue = initialValues?.path || '';
+    const remoteValue = initialValues?.remote || this.getRemoteNameFromValue(typeValue) || '';
+
     array.push(
       new FormGroup({
-        type: new FormControl('currentRemote'),
-        path: new FormControl('', Validators.required),
-        remote: new FormControl(''),
+        type: new FormControl(typeValue),
+        path: new FormControl(pathValue, Validators.required),
+        remote: new FormControl(remoteValue),
       })
     );
 
@@ -413,7 +417,7 @@ export class OperationConfigComponent {
 
     // Default target based on operation and group
     const defaultTarget: FilePickerSelection =
-      isSource && this.isDataOperation() ? 'both' : 'folders';
+      isSource && this.supportsFileSource() ? 'both' : 'folders';
     const finalTarget = target || defaultTarget;
 
     const pathType = this.getPathTypeControl(group, index)?.value;
@@ -469,24 +473,37 @@ export class OperationConfigComponent {
     );
 
     const selection: FilePickerSelection =
-      target ||
-      (['sync', 'copy', 'move'].includes(this.operationType() as string) ? 'both' : 'folders');
+      target || (this.supportsFileSource() ? 'both' : 'folders');
+
+    const canMulti = group === 'source' && this.canAddSource();
 
     const result = await this.fileSystemService.selectPathWithNautilus({
       mode: restrictToCurrent ? 'remote' : 'both',
       selection,
-      multi: false,
+      multi: canMulti,
       allowedRemotes: restrictToCurrent ? [this.currentRemoteName()] : undefined,
       minSelection: 1,
       initialLocation,
     });
 
     if (!result.cancelled && result.items.length > 0) {
-      this.handleFilePickerResult(group, index, result.items[0]);
+      result.items.forEach((item, i) => {
+        const data = this.getPathDataFromItem(group, item);
+        if (!data) return;
+
+        if (i === 0) {
+          this.updatePathForm(group, index, data.path, data.type);
+        } else {
+          this.addPath(group, data);
+        }
+      });
     }
   }
 
-  private handleFilePickerResult(group: PathGroup, index: number, item: FileBrowserItem): void {
+  private getPathDataFromItem(
+    group: PathGroup,
+    item: FileBrowserItem
+  ): { path: string; type: string; remote: string } | null {
     const remoteName = this.pathSelectionService.normalizeRemoteName(item.meta.remote || '');
     const isLocal = item.meta.isLocal;
     const path = item.entry.Path;
@@ -495,23 +512,34 @@ export class OperationConfigComponent {
       this.notificationService.showError(
         this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
       );
-      return;
+      return null;
     }
 
     let pathTypeValue: string;
+    let actualRemote = '';
+
     if (isLocal) {
       pathTypeValue = 'local';
     } else if (
       remoteName === this.pathSelectionService.normalizeRemoteName(this.currentRemoteName())
     ) {
       pathTypeValue = 'currentRemote';
+      actualRemote = this.currentRemoteName();
     } else if (remoteName !== '') {
       pathTypeValue = `otherRemote:${remoteName}`;
+      actualRemote = remoteName;
     } else {
       pathTypeValue = 'local';
     }
 
-    this.updatePathForm(group, index, path, pathTypeValue);
+    return { path, type: pathTypeValue, remote: actualRemote };
+  }
+
+  private handleFilePickerResult(group: PathGroup, index: number, item: FileBrowserItem): void {
+    const data = this.getPathDataFromItem(group, item);
+    if (data) {
+      this.updatePathForm(group, index, data.path, data.type);
+    }
   }
 
   private buildInitialLocation(

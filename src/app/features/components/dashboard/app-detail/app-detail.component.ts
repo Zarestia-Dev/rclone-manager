@@ -709,8 +709,9 @@ export class AppDetailComponent {
           }
         : {
             source: config.source ?? t('dashboard.appDetail.notConfigured'),
-            destination:
-              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured'),
+            destination: this.normalizeSinglePath(
+              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured')
+            ),
             showOpenButtons: true,
             isDestinationActive: type === 'mount' ? isActive : true,
             actionInProgress: (actionType as RemoteAction) ?? undefined,
@@ -745,6 +746,10 @@ export class AppDetailComponent {
     return totalBytes > 0
       ? `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`
       : this.formatFileSize.transform(bytes);
+  }
+
+  private normalizeSinglePath(path: string | string[]): string {
+    return Array.isArray(path) ? path[0] || '' : path;
   }
 }
 

@@ -8,13 +8,14 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { PathDisplayConfig } from '../../types';
-import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
+import { TranslatePipe } from '@ngx-translate/core';
+import { isLocalPath } from 'src/app/services';
 
 @Component({
   selector: 'app-path-display',
@@ -25,7 +26,8 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    TranslateModule,
+    MatMenuModule,
+    TranslatePipe,
   ],
   styleUrls: ['./path-display.component.scss'],
   template: `
@@ -33,16 +35,47 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
       <div class="path-item">
         <div class="path-icon-container">
           @if (config().showOpenButtons && config().hasSource) {
-            <button
-              matIconButton
-              class="folder-button active"
-              (click)="openPath.emit(config().source)"
-              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
-            >
-              <mat-icon
-                [svgIcon]="isLocalPath(config().source) ? 'folder' : 'folder-open'"
-              ></mat-icon>
-            </button>
+            @if (isMultiPath(config().source)) {
+              <button
+                matIconButton
+                class="folder-button active multi-path"
+                [matMenuTriggerFor]="multiSourceMenu"
+                [matTooltip]="'Click to view and open specific paths'"
+              >
+                <mat-icon svgIcon="folder"></mat-icon>
+                <span class="path-count">{{ getAsArray(config().source).length }}</span>
+              </button>
+
+              <mat-menu #multiSourceMenu="matMenu" class="path-dropdown-menu" xPosition="after">
+                <div class="menu-header">
+                  {{ config().source.length }} {{ 'Items' | translate }}
+                </div>
+                @for (p of getAsArray(config().source); track p) {
+                  <button
+                    mat-menu-item
+                    (click)="openPath.emit(p)"
+                    [matTooltip]="p"
+                    matTooltipPosition="right"
+                  >
+                    <mat-icon [svgIcon]="isLocalPath(p) ? 'folder' : 'folder-open'"></mat-icon>
+                    <span class="menu-path-text">{{ p }}</span>
+                  </button>
+                }
+              </mat-menu>
+            } @else {
+              <button
+                matIconButton
+                class="folder-button active"
+                (click)="openPath.emit(getPrimaryPath(config().source))"
+                [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
+              >
+                <mat-icon
+                  [svgIcon]="
+                    isLocalPath(getPrimaryPath(config().source)) ? 'folder' : 'folder-open'
+                  "
+                ></mat-icon>
+              </button>
+            }
           } @else {
             <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
           }
@@ -51,7 +84,9 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
           <div class="path-label">
             {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
           </div>
-          <div class="path-value">{{ formatDisplay(config().source) }}</div>
+          <div class="path-value">
+            {{ formatDisplay(config().source) }}
+          </div>
         </div>
       </div>
 
@@ -98,7 +133,7 @@ import { isLocalPath } from 'src/app/services/remote/utils/remote-config.utils';
 })
 export class PathDisplayComponent {
   readonly config = input.required<PathDisplayConfig>();
-  readonly openPath = output<string | string[]>();
+  readonly openPath = output<string>();
 
   readonly isMobile = signal(false);
 
@@ -116,6 +151,18 @@ export class PathDisplayComponent {
       observer.observe(document.body);
       this.destroyRef.onDestroy(() => observer.disconnect());
     });
+  }
+
+  isMultiPath(path: string | string[]): boolean {
+    return Array.isArray(path) && path.length > 1;
+  }
+
+  getAsArray(path: string | string[]): string[] {
+    return Array.isArray(path) ? path : [path];
+  }
+
+  getPrimaryPath(path: string | string[]): string {
+    return Array.isArray(path) ? path[0] || '' : path;
   }
 
   formatDisplay(path: string | string[]): string {

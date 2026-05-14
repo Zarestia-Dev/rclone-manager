@@ -99,27 +99,7 @@ fn handle_settings_changed(app: &AppHandle) {
             Ok(change) => match (change.category.as_str(), change.key.as_str()) {
                 ("general", "notifications") => {
                     if let Some(enabled) = change.value.as_bool() {
-                        debug!("Notifications changed to: {enabled}");
-                        tauri::async_runtime::spawn(async move {
-                            use crate::core::alerts::cache;
-                            let manager = app.state::<AppSettingsManager>();
-                            let _ = crate::core::alerts::seed::seed_defaults(&manager);
-
-                            if let Some(mut action) =
-                                cache::get_action(&manager, "default-os-toast")
-                                && action.is_enabled() != enabled
-                            {
-                                action.set_enabled(enabled);
-                                let _ = cache::upsert_action(&manager, action);
-                            }
-
-                            if let Some(mut rule) = cache::get_rule(&manager, "default-rule")
-                                && rule.enabled != enabled
-                            {
-                                rule.enabled = enabled;
-                                let _ = cache::upsert_rule(&manager, rule);
-                            }
-                        });
+                        handle_notifications_change(&app, enabled);
                     }
                 }
                 ("general", "start_on_startup") => {
@@ -183,15 +163,65 @@ fn handle_settings_changed(app: &AppHandle) {
     });
 }
 
+fn handle_notifications_change(app: &AppHandle, enabled: bool) {
+    debug!("Notifications changed to: {enabled}");
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        use crate::core::alerts::cache;
+        let manager = app.state::<AppSettingsManager>();
+        let mut updated = false;
+
+        if cache::get_action(&manager, "default-os-toast").is_none()
+            || cache::get_rule(&manager, "default-rule").is_none()
+        {
+            let _ = crate::core::alerts::seed::seed_defaults(&manager);
+            updated = true;
+        }
+
+        if let Some(mut action) = cache::get_action(&manager, "default-os-toast")
+            && action.is_enabled() != enabled
+        {
+            action.set_enabled(enabled);
+            let _ = cache::upsert_action(&manager, action);
+            updated = true;
+        }
+
+        if let Some(mut rule) = cache::get_rule(&manager, "default-rule")
+            && rule.enabled != enabled
+        {
+            rule.enabled = enabled;
+            let _ = cache::upsert_rule(&manager, rule);
+            updated = true;
+        }
+
+        if updated {
+            let alert_cache = app.state::<cache::AlertRuleCache>();
+            alert_cache.reload_actions(&manager).await;
+            alert_cache.reload_rules(&manager).await;
+
+            let _ = app.emit(
+                SYSTEM_SETTINGS_CHANGED,
+                SettingsChangeEvent {
+                    category: "alerts".to_string(),
+                    key: "*".to_string(),
+                    value: serde_json::Value::Null,
+                },
+            );
+        }
+    });
+}
+
 fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
 
     #[cfg(feature = "flatpak")]
     {
-        use crate::utils::app::platform::manage_flatpak_autostart;
-        if let Err(e) = manage_flatpak_autostart(enabled) {
-            error!("Failed to update flatpak autostart: {e}");
-        }
+        tauri::async_runtime::spawn(async move {
+            use crate::utils::app::platform::manage_flatpak_background_portal;
+            if let Err(e) = manage_flatpak_background_portal(enabled).await {
+                error!("Failed to update flatpak autostart: {e}");
+            }
+        });
     }
 
     #[cfg(all(desktop, not(feature = "flatpak")))]

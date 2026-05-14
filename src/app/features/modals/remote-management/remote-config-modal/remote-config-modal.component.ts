@@ -1014,13 +1014,23 @@ export class RemoteConfigModalComponent implements OnInit {
 
       if (sourceCtrl instanceof FormArray) {
         sourceCtrl.clear();
-        configSources.forEach(s => {
+        if (configSources.length > 0) {
+          configSources.forEach(s => {
+            sourceCtrl.push(
+              this.fb.group(
+                parseFsString(s, 'currentRemote', this.currentRemoteName(), this.existingRemotes())
+              )
+            );
+          });
+        } else {
           sourceCtrl.push(
-            this.fb.group(
-              parseFsString(s, 'currentRemote', this.currentRemoteName(), this.existingRemotes())
-            )
+            this.fb.group({
+              type: ['currentRemote'],
+              path: [''],
+              remote: [this.currentRemoteName()],
+            })
           );
-        });
+        }
       } else if (sourceCtrl instanceof FormGroup && configSources.length > 0) {
         sourceCtrl.patchValue(
           parseFsString(
