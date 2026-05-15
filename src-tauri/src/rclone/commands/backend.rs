@@ -6,6 +6,7 @@ use crate::core::settings::AppSettingsManager;
 use log::{debug, info, warn};
 use tauri::{AppHandle, Manager};
 
+use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::{
@@ -20,7 +21,7 @@ use crate::{
         rclone::endpoints::{config, core},
         types::{
             events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
-            state::{EngineState, RcloneState},
+            state::RcloneState,
         },
     },
 };
@@ -80,12 +81,8 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await?;
 
     if backend.is_local {
-        let engine_state = app.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        if !engine.running && !engine.path_error && !engine.password_error {
-            info!("🚀 Starting Local engine after switching from remote backend...");
-            crate::rclone::engine::lifecycle::start(&mut engine, &app).await;
-        }
+        info!("🚀 Starting Local engine after switching from remote backend...");
+        start_engine_if_not_running(&app).await;
     }
 
     configure_remote_backend(&app, &backend, &state.client).await;

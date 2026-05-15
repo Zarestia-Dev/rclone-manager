@@ -262,7 +262,7 @@
 
 .tag {
   background: rgba(var(--window-fg-color-rgb), 0.07);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--box-shadow);
   padding: 1px 6px;
   border-radius: 4px;
   font-family: var(--font-mono);

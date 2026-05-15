@@ -426,10 +426,7 @@ export class AboutModalComponent implements OnInit {
   // Platform / engine actions
   // ---------------------------------------------------------------------------
 
-  getUpdateInstructions(): {
-    command?: string;
-    links: { label: string; url: string; primary?: boolean }[];
-  } | null {
+  readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
 
     switch (this.buildType()) {
@@ -444,25 +441,6 @@ export class AboutModalComponent implements OnInit {
             },
           ],
         };
-      case 'arch':
-        return {
-          command: 'yay -Syu rclone-manager',
-          links: [
-            {
-              label: 'modals.about.downloadPage',
-              url: 'https://aur.archlinux.org/packages/rclone-manager',
-              primary: true,
-            },
-          ],
-        };
-      case 'deb':
-        return {
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      case 'rpm':
-        return {
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
       case 'portable':
         return {
           links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
@@ -475,7 +453,7 @@ export class AboutModalComponent implements OnInit {
       default:
         return null;
     }
-  }
+  });
 
   async quitRcloneEngine(): Promise<void> {
     try {
@@ -490,7 +468,7 @@ export class AboutModalComponent implements OnInit {
         await this.systemInfoService.quitRcloneEngine();
       }
       this.notificationService.showSuccess(this.translate.instant('modals.about.killSuccess'));
-      await this.rcloneStatusService.refresh();
+      await this.rcloneStatusService.refreshStatus();
     } catch (error) {
       console.error('Failed to quit rclone engine:', error);
       this.notificationService.showError(this.translate.instant('modals.about.killFailed'));
@@ -503,7 +481,6 @@ export class AboutModalComponent implements OnInit {
     try {
       await this.systemInfoService.runGarbageCollector();
       this.notificationService.showSuccess(this.translate.instant('modals.about.gcSuccess'));
-      await this.rcloneStatusService.refresh();
     } catch (error) {
       console.error('Failed to run garbage collector:', error);
       this.notificationService.showError(this.translate.instant('modals.about.gcFailed'));

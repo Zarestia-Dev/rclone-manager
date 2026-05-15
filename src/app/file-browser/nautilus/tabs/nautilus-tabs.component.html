@@ -58,20 +58,20 @@
 <ng-template #tabContextMenu let-tabIdx>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="detachTabAction(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.detachTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.detachTab' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="duplicateTab.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
     </button>
     <mat-divider />
     <button class="menu-item" cdkMenuItem (click)="closeTab.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="closeOtherTabs.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="closeTabsToRight.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
     </button>
   </div>
 </ng-template>

@@ -5,7 +5,8 @@
 
 use crate::core::initialization::apply_settings::apply_core_settings;
 use crate::rclone::backend::BackendManager;
-use crate::utils::types::state::{EngineState, RcloneState};
+use crate::rclone::engine::lifecycle::clear_engine_errors;
+use crate::utils::types::state::RcloneState;
 use log::{debug, error};
 use tauri::{AppHandle, Manager};
 
@@ -23,8 +24,8 @@ pub fn trigger_post_start_setup(app: AppHandle) {
             Ok(settings) => {
                 apply_core_settings(&app, &settings).await;
 
-                // Clear errors (synchronous, but fast enough to not need blocking spawn)
-                app.state::<EngineState>().lock().await.clear_errors();
+                // Clear errors
+                clear_engine_errors(&app).await;
 
                 // Refresh caches
                 refresh_caches_and_tray(&app).await;

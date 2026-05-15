@@ -17,8 +17,6 @@ use tauri::{AppHandle, Emitter, Manager};
 pub async fn initialization(app_handle: tauri::AppHandle) {
     debug!("🚀 Starting async startup tasks");
 
-    // Phase 0: Core Setup (Logging, i18n, Security, Migrations)
-    // These were moved from synchronous setup_app to prevent UI blocking
     if let Err(e) = async_core_setup(&app_handle).await {
         error!("🔥 Phase 0 Core Setup failed: {e}");
         let _ = app_handle.emit(
@@ -28,7 +26,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         return;
     }
 
-    // Phase 1: Bootstrap (State, Events, Environment, Engine, Alerts, Network)
     if let Err(e) = bootstrap::init_all(&app_handle).await {
         error!("🔥 Phase 1 Bootstrap failed: {e}");
         let _ = app_handle.emit(
@@ -38,28 +35,22 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         return;
     }
 
-    // Phase 2: Connectivity (Health check & Fallback)
     info!("🔍 Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
-    // Phase 3: Data (Cache hydration & Defaults)
     if let Err(e) = initialize_caches(&app_handle).await {
         error!("⚠️ Phase 3 Data hydration failed: {e}");
     }
 
-    // Phase 4: Services (Long-running logic)
     info!("⏰ Phase 4: Starting services...");
 
-    // Scheduler
     if let Err(e) = scheduler::initialize_scheduler(app_handle.clone()).await {
         error!("❌ Failed to initialize cron scheduler: {e}");
     }
 
-    // Auto Updater
     #[cfg(desktop)]
     crate::core::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
-    // Phase 5: Runtime Application
     info!("🎉 Phase 5: Applying runtime settings");
     let settings_manager = app_handle.state::<AppSettingsManager>();
     let cli_args = app_handle.state::<CliArgs>();
@@ -67,7 +58,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     if let Ok(settings) = settings_manager.get_all() {
         apply_settings::apply_core_settings(&app_handle, &settings).await;
 
-        // Tray Setup (Moved from lib.rs)
         #[cfg(feature = "tray")]
         {
             let force_tray = cli_args.general.tray;
@@ -79,13 +69,11 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         }
     }
 
-    // Phase 6: Post-Initialization Tasks
     info!("🚀 Phase 6: Running post-initialization tasks");
     handle_startup(app_handle.clone()).await;
 
     info!("🎉 Initialization complete");
 
-    // Enable engine health monitoring now that startup is complete
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 }
 
@@ -96,12 +84,9 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     let manager = app_handle.state::<AppSettingsManager>();
 
-    // Invalidate manager cache so it reads fresh from disk (essential after restore)
     manager.invalidate_cache();
     let settings = manager.get_all().map_err(|e| e.to_string())?;
 
-    // Re-bootstrap (Reload Backends & Security Environment)
-    // We don't call bootstrap::init_all because we don't want to re-setup event listeners
     let backend_manager = app_handle.state::<BackendManager>();
     backend_manager
         .load_from_settings(manager.inner())
@@ -113,10 +98,8 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         let _ = env_manager.init_with_stored_credentials(manager.inner());
     }
 
-    // Refresh Caches (Remote Caches & Alerts)
     initialize_caches(&app_handle).await?;
 
-    // Reload Scheduler (from remote configs)
     let remote_names = backend_manager.remote_cache.get_remotes().await;
     let all_configs = crate::core::settings::remote::manager::get_all_remote_settings_sync(
         manager.inner(),
@@ -131,17 +114,14 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         error!("⚠️ Failed to reload scheduled tasks: {e}");
     }
 
-    // Apply Core Settings (bandwidth limits, backend options, language, log level)
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
-    // Tray update
     #[cfg(feature = "tray")]
     {
         use crate::core::tray::core::update_tray_menu;
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
-    // Inform frontend to reload all settings
     app_handle
         .emit(
             SYSTEM_SETTINGS_CHANGED,
@@ -161,7 +141,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     info!("📊 Phase 3: Refreshing caches...");
 
-    // 1. Refresh Remote Caches (remotes, configs, mounts, serves)
     let backend_manager = app_handle.state::<BackendManager>();
     if let Err(e) = backend_manager
         .remote_cache
@@ -173,7 +152,6 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     }
     debug!("✅ Refreshed backend caches");
 
-    // 2. Seed default values (alerts, etc.)
     let manager = app_handle.state::<AppSettingsManager>();
     if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
         error!("⚠️ Failed to seed alert defaults: {e}");
@@ -191,7 +169,6 @@ const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::f
 async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let backend_manager = app_handle.state::<BackendManager>();
 
-    // Skip redundant check for Local backend since engine already waits for API readiness
     let active_name = backend_manager.get_active_name().await;
     let client = app_handle.state::<RcloneState>().client.clone();
 
@@ -205,20 +182,16 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
                 crate::rclone::backend::runtime::RuntimeStatus::Connected,
             )
             .await;
-    } else {
-        // For remote backends, check connectivity with automatic fallback
-        if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
-            &backend_manager,
-            &client,
-            BACKEND_CONNECTIVITY_TIMEOUT,
-        )
-        .await
-        {
-            error!("🔥 Critical startup failure: {e}");
-        }
+    } else if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
+        &backend_manager,
+        &client,
+        BACKEND_CONNECTIVITY_TIMEOUT,
+    )
+    .await
+    {
+        error!("🔥 Critical startup failure: {e}");
     }
 
-    // Spawn background task to check other backends (non-blocking)
     let app_handle_clone = app_handle.clone();
     tokio::spawn(async move {
         let backend_manager = app_handle_clone.state::<BackendManager>();
@@ -234,19 +207,15 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
     let app_paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
     let rcman_manager = app_handle.state::<AppSettingsManager>();
 
-    // 1. Run Keyring Migrations (Keyring access - SLOW)
     #[cfg(desktop)]
     {
-        debug!("🔐 Running keyring migrations...");
         crate::core::settings::migration::migrate_keyring_credentials(rcman_manager.inner());
     }
 
-    // 2. Load Settings (Disk I/O)
     let settings = rcman_manager
         .get_all()
         .map_err(|e| format!("Failed to load settings during Phase 0: {e}"))?;
 
-    // 3. Initialize Environment Manager (Keyring access - SLOW)
     use crate::core::security::SafeEnvironmentManager;
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
         debug!("🔐 Initializing environment manager credentials...");
@@ -255,12 +224,9 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
         }
     }
 
-    // 4. Initialize Backend i18n (Disk I/O)
-    debug!("🌐 Initializing i18n...");
     crate::utils::i18n::init(app_paths.resource_dir);
     crate::utils::i18n::set_language(&settings.general.language);
 
-    // 5. Initialize Logging (Disk I/O)
     debug!("📝 Initializing logging...");
     crate::utils::logging::log::init_logging(&settings.developer.log_level, app_handle.clone())
         .map_err(|e| format!("Failed to initialize logging: {e}"))?;

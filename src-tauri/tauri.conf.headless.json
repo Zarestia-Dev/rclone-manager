@@ -5,8 +5,8 @@
   "version": "0.2.5",
   "identifier": "com.rclone.manager.headless",
   "build": {
-    "beforeDevCommand": "npm run start",
-    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "",
+    "devUrl": "http://127.0.0.1:1420",
     "beforeBuildCommand": "npm run build && node scripts/ensure-tauri-empty-dir.cjs",
     "frontendDist": "empty"
   },

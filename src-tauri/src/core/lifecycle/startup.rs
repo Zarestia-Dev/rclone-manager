@@ -31,7 +31,6 @@ pub async fn handle_startup(app: AppHandle) {
         &remote_names,
     );
 
-    // settings_val is a serde_json::Value containing remote->settings mapping
     let settings_map = if let Some(map) = settings_val.as_object() {
         map
     } else {
@@ -39,7 +38,6 @@ pub async fn handle_startup(app: AppHandle) {
         return;
     };
 
-    // Profile type definitions: (config_key, op_type)
     const SYNC_PROFILE_TYPES: &[(&str, &str)] = &[
         ("syncConfigs", "sync"),
         ("copyConfigs", "copy"),
@@ -47,11 +45,9 @@ pub async fn handle_startup(app: AppHandle) {
         ("bisyncConfigs", "bisync"),
     ];
 
-    // Collect all auto-start tasks to run in parallel
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     for (remote_name, settings) in settings_map {
-        // Collect mount profiles
         collect_auto_start_tasks(
             &mut tasks,
             settings,
@@ -63,7 +59,6 @@ pub async fn handle_startup(app: AppHandle) {
             },
         );
 
-        // Collect serve profiles
         collect_auto_start_tasks(
             &mut tasks,
             settings,
@@ -75,7 +70,6 @@ pub async fn handle_startup(app: AppHandle) {
             },
         );
 
-        // Collect sync/copy/move/bisync profiles
         for (config_key, op_type) in SYNC_PROFILE_TYPES {
             let op = (*op_type).to_string();
             collect_auto_start_tasks(
@@ -96,7 +90,6 @@ pub async fn handle_startup(app: AppHandle) {
     if task_count > 0 {
         info!("Starting {task_count} auto-start profile(s) in parallel...");
 
-        // Run all tasks in parallel and wait for completion
         let _ = futures::future::join_all(tasks).await;
     }
 

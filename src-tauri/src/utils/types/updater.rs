@@ -1,6 +1,5 @@
 use crate::utils::github_client;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU64};
 use tauri_plugin_updater::Update;
 
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +32,8 @@ pub enum UpdaterError {
     Backend(String),
     #[error("update path not writable")]
     NotWritable,
+    #[error("failed to backup current rclone binary: {0}")]
+    BackupFailed(std::io::Error),
 }
 
 impl serde::Serialize for UpdaterError {
@@ -76,6 +77,9 @@ impl serde::Serialize for UpdaterError {
             Self::Io(e) => {
                 crate::localized_error!("backendErrors.updater.ioError", "error" => e)
             }
+            Self::BackupFailed(e) => {
+                crate::localized_error!("backendErrors.rclone.backupFailed", "error" => e)
+            }
             Self::Backend(e) => e.clone(),
         };
         serializer.serialize_str(&msg)
@@ -84,17 +88,26 @@ impl serde::Serialize for UpdaterError {
 
 pub type Result<T> = std::result::Result<T, UpdaterError>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdatePhase {
+    #[default]
+    Idle,
+    Checking,
+    Downloading,
+    ReadyToRestart,
+}
+
 /// Tracks the in-flight app self-update download and its staged payload.
 pub struct AppUpdaterState {
-    pub downloaded_bytes: AtomicU64,
-    pub total_bytes: AtomicU64,
-    pub is_updating: AtomicBool,
-    pub is_restart_required: AtomicBool,
     data: Mutex<AppUpdaterData>,
 }
 
 #[derive(Default)]
 pub struct AppUpdaterData {
+    pub phase: UpdatePhase,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
     pub failure_message: Option<String>,
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
@@ -111,10 +124,6 @@ impl AppUpdaterState {
 impl Default for AppUpdaterState {
     fn default() -> Self {
         Self {
-            downloaded_bytes: AtomicU64::new(0),
-            total_bytes: AtomicU64::new(0),
-            is_updating: AtomicBool::new(false),
-            is_restart_required: AtomicBool::new(false),
             data: Mutex::new(AppUpdaterData::default()),
         }
     }
@@ -182,13 +191,12 @@ pub struct UpdateResult {
 
 /// Holds the rclone update staged for activation at the next engine restart.
 pub struct RcloneUpdaterState {
-    pub is_updating: AtomicBool,
-    pub is_restart_required: AtomicBool,
     data: Mutex<RcloneUpdaterData>,
 }
 
 #[derive(Default)]
 pub struct RcloneUpdaterData {
+    pub phase: UpdatePhase,
     pub pending_update: Option<UpdateMetadata>,
 }
 
@@ -202,8 +210,6 @@ impl RcloneUpdaterState {
 impl Default for RcloneUpdaterState {
     fn default() -> Self {
         Self {
-            is_updating: AtomicBool::new(false),
-            is_restart_required: AtomicBool::new(false),
             data: Mutex::new(RcloneUpdaterData::default()),
         }
     }

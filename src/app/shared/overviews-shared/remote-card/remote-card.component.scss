@@ -41,7 +41,7 @@
   align-items: center;
   gap: var(--space-xs);
   background: var(--view-bg-color);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--box-shadow);
   border-radius: var(--radius-md);
   padding: 2px;
   box-shadow: var(--shadow-sm);

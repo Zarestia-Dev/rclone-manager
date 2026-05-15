@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 /**
  * Service for remote file system operations
@@ -248,7 +248,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     if (totalFiles !== undefined) formData.append('totalFiles', totalFiles.toString());
     formData.append('file', file, overrideName || file.name);
 
-    const uploadUrl = `${this.apiClient.getApiBaseUrl()}/upload`;
+    const uploadUrl = `${this.apiClient.getApiBase()}/upload`;
     const response = await firstValueFrom(
       this.http.post<{ success: boolean; data: string; error?: string }>(uploadUrl, formData, {
         withCredentials: true,

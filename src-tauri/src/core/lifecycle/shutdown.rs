@@ -124,6 +124,7 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
         if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
             let staged = state.with_data(|d| {
                 if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
+                    d.phase = crate::utils::types::updater::UpdatePhase::Idle;
                     Some((u, s))
                 } else {
                     None

@@ -56,7 +56,7 @@ export class TitlebarComponent implements OnInit {
   readonly alertService = inject(AlertService);
 
   // Signals for update states
-  readonly updateAvailable = this.appUpdaterService.updateAvailable;
+  readonly hasUpdates = this.appUpdaterService.hasUpdates;
   readonly rcloneUpdateAvailable = computed(
     () => this.rcloneUpdateService.updateStatus().available
   );
@@ -70,15 +70,17 @@ export class TitlebarComponent implements OnInit {
   readonly updateTooltip = computed(() => {
     const appRestart = this.readyToRestart();
     const rcloneRestart = this.rcloneRestartRequired();
+    const appUpdate = this.hasUpdates();
+    const rcloneUpdate = this.rcloneUpdateAvailable();
 
-    if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
-      return this.translateService.instant('titlebar.updates.all');
-    } else if (this.updateAvailable()) {
-      return this.translateService.instant('titlebar.updates.app');
-    } else if (this.rcloneUpdateAvailable()) {
-      return this.translateService.instant('titlebar.updates.rclone');
-    } else if (appRestart || rcloneRestart) {
+    if (appRestart || rcloneRestart) {
       return this.translateService.instant('titlebar.updates.restart');
+    } else if (appUpdate && rcloneUpdate) {
+      return this.translateService.instant('titlebar.updates.all');
+    } else if (appUpdate) {
+      return this.translateService.instant('titlebar.updates.app');
+    } else if (rcloneUpdate) {
+      return this.translateService.instant('titlebar.updates.rclone');
     }
     return '';
   });
@@ -141,9 +143,14 @@ export class TitlebarComponent implements OnInit {
   ];
 
   readonly aboutMenuBadge = computed(() => {
-    if (this.readyToRestart() || this.rcloneRestartRequired()) return '!';
-    if (this.updateAvailable() && this.rcloneUpdateAvailable()) return '2';
-    if (this.updateAvailable() || this.rcloneUpdateAvailable()) return '!';
+    const appRestart = this.readyToRestart();
+    const rcloneRestart = this.rcloneRestartRequired();
+    const appUpdate = this.hasUpdates();
+    const rcloneUpdate = this.rcloneUpdateAvailable();
+
+    if (appRestart || rcloneRestart) return '!';
+    if (appUpdate && rcloneUpdate) return '2';
+    if (appUpdate || rcloneUpdate) return '!';
     return '';
   });
 

@@ -1130,9 +1130,9 @@ mat-accordion {
   max-width: 320px;
   overflow-y: auto;
 
-  background: var(--popover-bg-color);
-  color: var(--window-fg-color);
-  border-radius: var(--radius-sm);
+  background: var(--popover-bg-color) !important;
+  color: var(--window-fg-color) !important;
+  border-radius: var(--radius-md);
   padding: 6px;
   box-shadow: var(--shadow-popover);
 
@@ -1156,7 +1156,7 @@ mat-accordion {
     font-weight: 500;
     color: var(--window-fg-color);
 
-    border-radius: 6px;
+    border-radius: var(--radius-xs);
     transition: background-color 0.1s ease;
 
     .item-label {
@@ -1207,6 +1207,14 @@ mat-accordion {
   mat-divider {
     margin: 4px 6px;
     opacity: 0.5;
+  }
+
+  .menu-group-label {
+    padding: 8px 12px;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--dim-color);
+    opacity: 0.8;
   }
 }
 

@@ -13,6 +13,7 @@ import {
   MemoryStats,
   RcloneStatus,
   RcloneInfo,
+  SystemStatusPayload,
 } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
@@ -42,8 +43,14 @@ export class RcloneStatusService {
   });
 
   constructor() {
-    this.setupListeners();
+    this.setupReconciliationTriggers();
     this.setupPollingControl();
+    this.setupStatusListeners();
+    void this.refreshStatus();
+  }
+
+  async refreshStatus(): Promise<void> {
+    await this.hydrateSystemStatus();
   }
 
   private setupPollingControl(): void {
@@ -53,7 +60,7 @@ export class RcloneStatusService {
     });
   }
 
-  private setupListeners(): void {
+  private setupStatusListeners(): void {
     toObservable(this.backendService.activeBackend)
       .pipe(
         filter(Boolean),
@@ -64,7 +71,7 @@ export class RcloneStatusService {
           this.rcloneInfo.set(null);
           this.rclonePID.set(null);
         }),
-        switchMap(() => from(this.loadBandwidthLimit())),
+        switchMap(() => from(this.hydrateSystemStatus())),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
@@ -80,55 +87,74 @@ export class RcloneStatusService {
     fromEvent(this.document, 'visibilitychange')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        this.isVisible.set(!this.document.hidden);
+        const isVisible = !this.document.hidden;
+        this.isVisible.set(isVisible);
+        if (isVisible) {
+          void this.hydrateSystemStatus();
+        }
       });
 
     this.eventListenersService
       .listenToSystemStatus()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(payload => {
-        const wasActive = this.rcloneStatus() === 'active';
-        const newStatus: RcloneStatus = payload.status;
+      .subscribe(payload => this.applySystemStatusPayload(payload));
+  }
 
-        this.rcloneStatus.set(newStatus);
-        this.rcloneInfo.set(payload.rcloneInfo);
-        this.rclonePID.set(payload.pid);
-
-        if (payload.stats) {
-          const stats = payload.stats;
-          this.jobStats.update(old => ({
-            ...stats,
-            lastError: stats.lastError || old.lastError,
-          }));
-        }
-
-        this.memoryUsage.set(payload.memory);
-
-        if (!wasActive && newStatus === 'active') void this.loadBandwidthLimit();
-
-        this.backendService.updateActiveBackendStatus(
-          newStatus === 'active'
-            ? { type: 'connected' }
-            : newStatus === 'inactive'
-              ? { type: 'inactive' }
-              : { type: 'error', message: 'Engine offline' },
-          {
-            version: payload.rcloneInfo?.version,
-            os: payload.rcloneInfo?.os,
-          }
-        );
-
-        if (this.isLoading()) this.isLoading.set(false);
+  private setupReconciliationTriggers(): void {
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.hydrateSystemStatus();
       });
   }
 
-  async refresh(): Promise<void> {
-    await this.loadBandwidthLimit();
+  private async hydrateSystemStatus(): Promise<void> {
+    try {
+      const snapshot = await this.systemInfoService.getSystemStatusSnapshot();
+      this.applySystemStatusPayload(snapshot);
+      await this.loadBandwidthLimit();
+    } catch (error) {
+      console.error('[RcloneStatusService] Failed to hydrate system status snapshot:', error);
+      if (this.isLoading()) this.isLoading.set(false);
+    }
+  }
+
+  private applySystemStatusPayload(payload: SystemStatusPayload): void {
+    const newStatus: RcloneStatus = payload.status;
+
+    this.rcloneStatus.set(newStatus);
+    this.rcloneInfo.set(payload.rcloneInfo);
+    this.rclonePID.set(payload.pid);
+
+    if (payload.stats) {
+      const stats = payload.stats;
+      this.jobStats.update(old => ({
+        ...stats,
+        lastError: stats.lastError || old.lastError,
+      }));
+    }
+
+    this.memoryUsage.set(payload.memory);
+
+    this.backendService.updateActiveBackendStatus(
+      newStatus === 'active'
+        ? { type: 'connected' }
+        : newStatus === 'inactive'
+          ? { type: 'inactive' }
+          : { type: 'error', message: 'Engine offline' },
+      {
+        version: payload.rcloneInfo?.version,
+        os: payload.rcloneInfo?.os,
+      }
+    );
+
+    if (this.isLoading()) this.isLoading.set(false);
   }
 
   async loadBandwidthLimit(): Promise<void> {
     try {
-      this.bandwidthLimit.set(await this.systemInfoService.getBandwidthLimit());
+      this.bandwidthLimit.set(await this.systemInfoService.bandwidthLimit());
     } catch (error) {
       if (this.rcloneStatus() !== 'error') {
         console.error('[RcloneStatusService] Failed to load bandwidth limit:', error);
@@ -141,17 +167,6 @@ export class RcloneStatusService {
         loading: false,
         error: `Failed: ${error}`,
       });
-    }
-  }
-
-  async setBandwidthLimit(rate?: string): Promise<BandwidthLimitResponse> {
-    try {
-      const response = await this.systemInfoService.setBandwidthLimit(rate);
-      this.bandwidthLimit.set(response);
-      return response;
-    } catch (error) {
-      console.error('[RcloneStatusService] Failed to set bandwidth limit:', error);
-      throw error;
     }
   }
 

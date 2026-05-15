@@ -2717,7 +2717,8 @@
       "mountHelperError": "挂载辅助工具错误：{{error}}",
       "configEncryptedLong": "Rclone 配置已加密，请先解锁。",
       "executionFailed": "执行 rclone 失败：{{error}}",
-      "notFound": "在 {{path}} 未找到 Rclone 可执行文件"
+      "notFound": "在 {{path}} 未找到 Rclone 可执行文件",
+      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}"
     },
     "security": {
       "passwordEmpty": "密码不能为空",

@@ -1,20 +1,39 @@
-import { Injectable, OnDestroy, inject, signal } from '@angular/core';
-import { Subject } from 'rxjs';
-import { takeUntil, filter, map } from 'rxjs/operators';
+import { Injectable, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { ModalService } from '@app/services';
 import { UpdateInfo, DownloadStatus, BackendUpdateStatus } from '@app/types';
-import { BaseUpdateService } from '../maintenance/base-update.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
+import { TauriBaseService } from '../platform/tauri-base.service';
+import { UpdateSettingsManager } from './update-settings-manager';
+
+const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
+  downloadedBytes: 0,
+  totalBytes: 0,
+  percentage: 0,
+  isComplete: false,
+  isFailed: false,
+  failureMessage: null,
+};
 
 @Injectable({ providedIn: 'root' })
-export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
+export class AppUpdaterService extends TauriBaseService {
   private readonly uiStateService = inject(UiStateService);
   private readonly modalService = inject(ModalService);
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly appSettingsService = inject(AppSettingsService);
 
-  private readonly destroy$ = new Subject<void>();
+  private readonly settings = new UpdateSettingsManager(this.appSettingsService, {
+    namespace: 'runtime',
+    skippedVersionsKey: 'app_skipped_updates',
+    updateChannelKey: 'app_update_channel',
+    autoCheckKey: 'app_auto_check_updates',
+  });
+
+  private _latestCheckId = 0;
 
   // ---------------------------------------------------------------------------
   // State signals
@@ -24,14 +43,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   private readonly _hasUpdates = signal<boolean>(false);
   private readonly _updateInProgress = signal<boolean>(false);
   private readonly _updateAvailable = signal<UpdateInfo | null>(null);
-  private readonly _downloadStatus = signal<DownloadStatus>({
-    downloadedBytes: 0,
-    totalBytes: 0,
-    percentage: 0,
-    isComplete: false,
-    isFailed: false,
-    failureMessage: null,
-  });
+  private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
   private readonly _readyToRestart = signal<boolean>(false);
   private readonly _isChecking = signal<boolean>(false);
 
@@ -44,22 +56,10 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   public readonly readyToRestart = this._readyToRestart.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
 
-  // ---------------------------------------------------------------------------
-  // BaseUpdateService keys
-  // ---------------------------------------------------------------------------
-
-  protected override get settingNamespace(): string {
-    return 'runtime';
-  }
-  protected override get skippedVersionsKey(): string {
-    return 'app_skipped_updates';
-  }
-  protected override get updateChannelKey(): string {
-    return 'app_update_channel';
-  }
-  protected override get autoCheckKey(): string {
-    return 'app_auto_check_updates';
-  }
+  // Settings surface
+  public readonly skippedVersions = this.settings.skippedVersions;
+  public readonly updateChannel = this.settings.updateChannel;
+  public readonly autoCheckEnabled = this.settings.autoCheckEnabled;
 
   constructor() {
     super();
@@ -72,11 +72,18 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    const checkId = ++this._latestCheckId;
+
     try {
       // If we're already updating, just sync and return current state.
       if (this._updateInProgress() || this._readyToRestart()) {
         this._isChecking.set(true);
-        return this._updateAvailable() ?? (await this.syncUpdateStatus());
+        const result = this._updateAvailable() ?? (await this.syncUpdateStatus());
+
+        // Even in the "already updating" branch, we should check for staleness.
+        if (checkId !== this._latestCheckId) return null;
+
+        return result;
       }
 
       this._isChecking.set(true);
@@ -84,17 +91,26 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       this.resetDownloadStatus();
 
       const result = await this.invokeCommand<UpdateInfo | null>('fetch_update', {
-        channel: this.updateChannel(),
+        channel: this.settings.updateChannel(),
       });
+
+      // Discard stale results
+      if (checkId !== this._latestCheckId) {
+        return null;
+      }
 
       this.processUpdateResult(result, { silent: false });
       return result;
     } catch (error) {
+      if (checkId !== this._latestCheckId) return null;
+
       console.error('Failed to check for updates:', error);
       this.notificationService.showError(this.translate.instant('updates.checkFailed'));
       return null;
     } finally {
-      this._isChecking.set(false);
+      if (checkId === this._latestCheckId) {
+        this._isChecking.set(false);
+      }
     }
   }
 
@@ -113,7 +129,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
         return;
       }
 
-      if (this.isVersionSkipped(result.version)) {
+      if (this.settings.isVersionSkipped(result.version)) {
         this._updateAvailable.set(null);
         this._hasUpdates.set(false);
         return;
@@ -189,20 +205,20 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     }
   }
 
-  override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version);
+  async skipVersion(version: string): Promise<void> {
+    await this.settings.skipVersion(version);
     this._updateAvailable.set(null);
     this._hasUpdates.set(false);
     this.notificationService.showInfo(this.translate.instant('updates.skipVersion', { version }));
   }
 
-  override async unskipVersion(version: string): Promise<void> {
-    await super.unskipVersion(version);
+  async unskipVersion(version: string): Promise<void> {
+    await this.settings.unskipVersion(version);
     await this.checkForUpdates();
   }
 
-  override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel);
+  async setChannel(channel: string): Promise<void> {
+    await this.settings.setChannel(channel);
     this._updateAvailable.set(null);
     this._hasUpdates.set(false);
     this._readyToRestart.set(false);
@@ -211,6 +227,10 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       this.translate.instant('updates.channelChanged', { channel })
     );
     void this.checkForUpdates();
+  }
+
+  async setAutoCheckEnabled(enabled: boolean): Promise<void> {
+    await this.settings.setAutoCheckEnabled(enabled);
   }
 
   // ---------------------------------------------------------------------------
@@ -230,7 +250,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
   private async initialize(): Promise<void> {
     try {
-      await this.initBaseSettings();
+      await this.settings.initialize();
       this._buildType.set(await this.invokeCommand<string>('get_build_type'));
 
       // Sync status from backend on init (even if autoCheck is disabled) to pick
@@ -249,14 +269,14 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     this.eventListenersService
       .listenToAppEvents()
       .pipe(
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(),
         filter(event => event.status === 'update_found' && !!event.data),
         map(event => event.data as UpdateInfo)
       )
       .subscribe(metadata => {
         const current = this._updateAvailable();
         if (current?.version === metadata.version) return;
-        if (this.isVersionSkipped(metadata.version)) return;
+        if (this.settings.isVersionSkipped(metadata.version)) return;
 
         this._updateAvailable.set(metadata);
         this._hasUpdates.set(true);
@@ -270,7 +290,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     this.eventListenersService
       .listenToAppEvents()
       .pipe(
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(),
         filter(event => event.status === 'download_progress' && !!event.data),
         map(event => event.data as DownloadStatus)
       )
@@ -293,9 +313,14 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
         if (status.isComplete) {
           this._updateInProgress.set(false);
-          this._updateAvailable.set(null);
           this._hasUpdates.set(false);
           this._readyToRestart.set(true);
+
+          // Transition the metadata to ReadyToRestart status instead of wiping it.
+          this._updateAvailable.update(current =>
+            current ? { ...current, status: BackendUpdateStatus.ReadyToRestart } : null
+          );
+
           this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
         }
       });
@@ -306,14 +331,7 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   private resetDownloadStatus(): void {
-    this._downloadStatus.set({
-      downloadedBytes: 0,
-      totalBytes: 0,
-      percentage: 0,
-      isComplete: false,
-      isFailed: false,
-      failureMessage: null,
-    });
+    this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
   }
 
   /** True when the error message indicates the staged update is no longer valid. */
@@ -324,10 +342,5 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       msg.includes('update unavailable') ||
       msg.includes('no longer available')
     );
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 }

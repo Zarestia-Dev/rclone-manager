@@ -390,7 +390,7 @@
           input[type="checkbox"] {
             background: var(--view-bg-color);
             color: var(--window-fg-color);
-            border: 1px solid var(--border-color);
+            box-shadow: var(--box-shadow);
             border-radius: var(--radius-xs);
             padding: 3px 8px;
             outline: none;
@@ -405,7 +405,7 @@
           button {
             background: var(--view-bg-color);
             color: var(--window-fg-color);
-            border: 1px solid var(--border-color);
+            box-shadow: var(--box-shadow);
             border-radius: var(--radius-xs);
             padding: 3px 10px;
             cursor: pointer;
@@ -453,7 +453,7 @@
 
         .cm-tooltip {
           background: var(--popover-bg-color);
-          border: 1px solid var(--border-color);
+          box-shadow: var(--box-shadow);
           border-radius: var(--radius-xs);
           color: var(--window-fg-color);
           box-shadow: var(--shadow-gnome);

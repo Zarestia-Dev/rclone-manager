@@ -148,27 +148,27 @@
   <div class="material-context-menu" cdkMenu>
     @if (data.type === 'remote') {
       <button class="menu-item" cdkMenuItem (click)="onSelectRemote(data.item)">
-        {{ 'nautilus.contextMenu.open' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       </button>
       <button class="menu-item" cdkMenuItem (click)="onOpenRemoteInNewTab(data.item)">
-        {{ 'nautilus.contextMenu.openNewTab' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
       </button>
       <button class="menu-item" cdkMenuItem (click)="onOpenRemoteInNewWindow(data.item)">
-        {{ 'nautilus.contextMenu.openNewWindow' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewWindow' | translate }}</span>
       </button>
     } @else if (data.type === 'bookmark') {
       <button class="menu-item" cdkMenuItem (click)="onOpenBookmark(data.item)">
-        {{ 'nautilus.contextMenu.open' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       </button>
       <button class="menu-item" cdkMenuItem (click)="onOpenBookmarkInNewTab(data.item)">
-        {{ 'nautilus.contextMenu.openNewTab' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewTab' | translate }}</span>
       </button>
       <button class="menu-item" cdkMenuItem (click)="onOpenBookmarkInNewWindow(data.item)">
-        {{ 'nautilus.contextMenu.openNewWindow' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.openNewWindow' | translate }}</span>
       </button>
     } @else if (data.type === 'starred') {
       <button class="menu-item" cdkMenuItem (click)="starredSelected.emit()">
-        {{ 'nautilus.contextMenu.open' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       </button>
     }
   </div>
@@ -182,7 +182,7 @@
       [cdkMenuTriggerFor]="openSubMenu"
       [cdkMenuTriggerData]="{ $implicit: { type: 'starred' } }"
     >
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
   </div>
@@ -191,7 +191,7 @@
 <ng-template #sidebarMainMenu>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="requestShortcuts.emit()">
-      {{ 'shortcuts.title' | translate }}
+      <span class="item-label">{{ 'shortcuts.title' | translate }}</span>
     </button>
   </div>
 </ng-template>
@@ -204,18 +204,18 @@
       [cdkMenuTriggerFor]="openSubMenu"
       [cdkMenuTriggerData]="{ $implicit: { type: 'remote', item: remote } }"
     >
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
     <mat-divider></mat-divider>
     @if (supportsCleanup(remote)) {
       <button class="menu-item danger" cdkMenuItem (click)="requestCleanup.emit(remote)">
-        {{ 'nautilus.contextMenu.emptyTrash' | translate }}
+        <span class="item-label">{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
       </button>
       <mat-divider></mat-divider>
     }
     <button class="menu-item" cdkMenuItem (click)="requestAbout.emit(remote)">
-      {{ 'nautilus.contextMenu.about' | translate }}
+      <span class="item-label">{{ 'nautilus.contextMenu.about' | translate }}</span>
     </button>
   </div>
 </ng-template>
@@ -228,16 +228,16 @@
       [cdkMenuTriggerFor]="openSubMenu"
       [cdkMenuTriggerData]="{ $implicit: { type: 'bookmark', item: bookmark } }"
     >
-      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
       <mat-icon svgIcon="chevron-right"></mat-icon>
     </button>
     <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestProperties.emit(bookmark)">
-      {{ 'nautilus.contextMenu.properties' | translate }}
+      <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
     </button>
     <mat-divider></mat-divider>
     <button class="menu-item danger" cdkMenuItem (click)="requestBookmarkRemoval.emit(bookmark)">
-      {{ 'nautilus.contextMenu.removeBookmark' | translate }}
+      <span class="item-label">{{ 'nautilus.contextMenu.removeBookmark' | translate }}</span>
     </button>
   </div>
 </ng-template>

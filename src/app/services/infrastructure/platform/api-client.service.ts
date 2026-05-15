@@ -1,121 +1,53 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { invoke } from '@tauri-apps/api/core';
 import { firstValueFrom } from 'rxjs';
 
 export const isHeadlessMode = (): boolean =>
-  typeof window === 'undefined' ||
-  !(window as unknown as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+  !(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
-/**
- * Environment detection and API communication service
- * Automatically detects whether running in Tauri (desktop) or headless (web) mode
- * and routes API calls accordingly
- */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class ApiClientService {
-  private http = inject(HttpClient);
-  private apiBaseUrl = 'http://localhost:8080/api';
+  private readonly http = inject(HttpClient);
+  private readonly apiBase = '/api';
 
-  constructor() {
-    const protocol = window.location.protocol;
-    const host = window.location.hostname;
-    const port = window.location.port;
-    const portSuffix = port ? `:${port}` : '';
-
-    const devApiPort = (window as Window & { RCLONE_MANAGER_API_PORT?: string })
-      .RCLONE_MANAGER_API_PORT;
-    if (isHeadlessMode() && (port === '1420' || devApiPort)) {
-      const apiPort = devApiPort || '8080';
-      this.apiBaseUrl = `${protocol}//${host}:${apiPort}/api`;
-      console.debug('🔧 Development mode detected - Angular dev server pointing to API server');
-    } else {
-      this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
-    }
-
-    if (isHeadlessMode()) {
-      console.debug('🌐 Running in headless web mode - using HTTP API');
-      console.debug(`📝 API Base URL: ${this.apiBaseUrl}`);
-      console.debug('🔐 Browser will handle Basic Authentication via login dialog');
-    } else {
-      console.debug('🖥️  Running in Tauri desktop mode - using Tauri commands');
-    }
-  }
-
-  /**
-   * Invoke a command - automatically routes to Tauri or HTTP API
-   */
   async invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-    if (isHeadlessMode()) {
-      return this.invokeHttp<T>(command, args);
-    } else {
-      return invoke<T>(command, args || {});
-    }
+    return isHeadlessMode() ? this.invokeHttp<T>(command, args) : invoke<T>(command, args ?? {});
   }
 
-  /**
-   * HTTP API invocation for headless mode
-   */
+  getApiBase(): string {
+    return this.apiBase;
+  }
+
   private async invokeHttp<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-    // Handle commands locally in web mode if necessary
-    if (command === 'set_theme') {
-      console.debug('🎨 Theme setting handled locally in web mode');
-      return Promise.resolve({} as T);
-    }
-
-    if (command === 'get_system_theme') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const theme = isDark ? 'dark' : 'light';
-      console.debug('🌙 System theme detected from browser:', theme);
-      return Promise.resolve(theme as T);
-    }
-
-    if (command === 'open_in_files') {
-      throw new Error('Native file manager integration not available in headless mode.');
+    // Commands that only make sense on the desktop — handle gracefully in web mode.
+    switch (command) {
+      case 'set_theme':
+        return {} as T;
+      case 'get_system_theme':
+        return (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as T;
+      case 'open_in_files':
+        throw new Error('Native file manager is not available in web mode.');
     }
 
     try {
       const response = await firstValueFrom(
         this.http.post<{ success: boolean; data: T; error?: string }>(
-          `${this.apiBaseUrl}/invoke`,
-          { command, args: args || {} },
+          `${this.apiBase}/invoke`,
+          { command, args: args ?? {} },
           { withCredentials: true }
         )
       );
 
-      if (response.success && response.data !== undefined) {
-        return response.data;
-      } else {
-        throw new Error(response.error || 'Unknown error');
+      if (response.success && response.data !== undefined) return response.data;
+      throw new Error(response.error ?? 'Unknown error');
+    } catch (err) {
+      if (err instanceof HttpErrorResponse) {
+        if (err.status === 0) throw new Error('Cannot reach the API server.', { cause: err });
+        if (err.status === 401) throw new Error('Authentication required.', { cause: err });
+        throw new Error(err.error?.error ?? err.message, { cause: err });
       }
-    } catch (error: unknown) {
-      if (error instanceof HttpErrorResponse) {
-        if (error.error?.error) {
-          throw new Error(error.error.error, { cause: error });
-        }
-        if (error.status === 0) {
-          throw new Error('API server is unreachable. Is the headless server running?', {
-            cause: error,
-          });
-        }
-        if (error.status === 401) {
-          throw new Error('Authentication required. Please enter your credentials.', {
-            cause: error,
-          });
-        }
-        throw new Error(error.message, { cause: error });
-      }
-      throw error;
+      throw err;
     }
-  }
-
-  getApiBaseUrl(): string {
-    return this.apiBaseUrl;
-  }
-
-  setApiBaseUrl(url: string): void {
-    this.apiBaseUrl = url;
   }
 }

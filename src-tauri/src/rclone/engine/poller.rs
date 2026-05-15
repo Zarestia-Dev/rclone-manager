@@ -8,13 +8,33 @@ use tokio::time;
 const BURST_TICK_COUNT: u32 = 5;
 
 use crate::rclone::backend::BackendManager;
+use crate::rclone::engine::lifecycle::{get_engine_status, start_engine_if_not_running};
 use crate::rclone::queries::parse_serves_response;
 use crate::utils::rclone::endpoints::{core, job, mount, serve};
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::SystemStatus;
 use crate::utils::types::monitoring::SystemStatusPayload;
 use crate::utils::types::remotes::MountedRemote;
-use crate::utils::types::state::{EngineState, RcloneState};
+use crate::utils::types::state::RcloneState;
+
+/// Get a deterministic system status snapshot for UI hydration.
+#[tauri::command]
+pub async fn get_system_status_snapshot(
+    app_handle: AppHandle,
+) -> Result<SystemStatusPayload, String> {
+    let (running, updating, should_exit) = get_engine_status(&app_handle).await;
+    if !running || updating || should_exit {
+        return Ok(SystemStatusPayload::inactive());
+    }
+
+    match perform_batch_poll(&app_handle).await {
+        Ok(payload) => Ok(payload),
+        Err(e) => {
+            warn!("🔄 Failed to fetch system status snapshot: {e}");
+            Ok(SystemStatusPayload::error())
+        }
+    }
+}
 
 /// Update the system poller visibility state
 #[tauri::command]
@@ -40,7 +60,6 @@ pub fn start_system_poller(app_handle: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         debug!("🔄 Starting unified system poller");
-        let mut consecutive_failures = 0;
         let mut has_active_jobs = false;
         let mut burst_ticks = BURST_TICK_COUNT; // Start with a burst on startup
         let mut prev_visible = true;
@@ -59,18 +78,11 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 break;
             }
 
-            // Skip polling if engine is not running or is updating
-            let (should_skip, should_emit_inactive) = {
-                let engine_state = app_handle.state::<EngineState>();
-                let engine = engine_state.lock().await;
-                (
-                    !engine.running || engine.updating || engine.should_exit,
-                    !engine.running,
-                )
-            };
+            let (running, updating, should_exit) = get_engine_status(&app_handle).await;
+            let (should_skip, should_emit_inactive) =
+                (!running || updating || should_exit, !running);
 
             if should_skip {
-                consecutive_failures = 0;
                 burst_ticks = BURST_TICK_COUNT; // Reset burst for when engine comes back
                 if should_emit_inactive {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
@@ -78,16 +90,13 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 continue;
             }
 
-            // Skip during initial startup sequence
             if state.initial_startup.load(Ordering::Acquire) {
                 debug!("🔄 Skipping poll during initial startup");
                 continue;
             }
 
-            // Determine visibility state for burst detection
             let is_visible = state.poller_visible.load(Ordering::SeqCst);
 
-            // Trigger burst mode when switching from hidden to visible
             if is_visible && !prev_visible {
                 debug!("🔄 Visibility restored, triggering burst mode");
                 burst_ticks = BURST_TICK_COUNT;
@@ -96,27 +105,18 @@ pub fn start_system_poller(app_handle: AppHandle) {
 
             match perform_batch_poll(&app_handle).await {
                 Ok(payload) => {
-                    consecutive_failures = 0;
                     has_active_jobs = payload.has_active_jobs;
                     burst_ticks = burst_ticks.saturating_sub(1);
                     let _ = app_handle.emit(SYSTEM_STATUS, payload);
                 }
                 Err(e) => {
-                    consecutive_failures += 1;
-                    warn!("🔄 System poller batch failed ({consecutive_failures}/3): {e}");
+                    warn!("🔄 System poller batch failed: {e}");
 
-                    if consecutive_failures >= 3 {
-                        error!(
-                            "🔄 System poller reached failure threshold, triggering engine restart"
-                        );
-                        let engine_state = app_handle.state::<EngineState>();
-                        let mut engine = engine_state.lock().await;
-                        if !engine.should_exit {
-                            crate::rclone::engine::lifecycle::start(&mut engine, &app_handle).await;
-                        }
-                        consecutive_failures = 0; // Reset after restart attempt
-                        burst_ticks = BURST_TICK_COUNT; // Reset burst for restart
-                    }
+                    error!("🔄 System poller reached failure threshold, triggering engine restart");
+                    warn!("Engine crash detected by poller, marking as dead and restarting...");
+                    crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
+                    start_engine_if_not_running(&app_handle).await;
+                    burst_ticks = BURST_TICK_COUNT; // Reset burst for restart
 
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::error());
                 }
@@ -192,12 +192,10 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         .await
         .map_err(|e| e.to_string())?;
 
-    // 1. Check for global batch error FIRST
     if let Some(error) = response.get("error") {
         return Err(error.as_str().unwrap_or("Unknown batch error").to_string());
     }
 
-    // 2. Then parse results
     let results = response["results"]
         .as_array()
         .ok_or("Invalid batch response: missing results array")?;
@@ -206,13 +204,11 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         return Err("Invalid batch response: insufficient results".to_string());
     }
 
-    // Parse results - check for errors and null values in each result
     let stats = parse_batch_result(&results[0], "stats");
     let memory = parse_batch_result(&results[1], "memstats");
     let mount_result = parse_batch_result(&results[2], "mounts");
     let serve_result = parse_batch_result(&results[3], "serves");
 
-    // Only update caches if results are valid (not null)
     if !mount_result.is_null() {
         update_mount_cache(app, &mount_result).await;
     }
@@ -221,7 +217,6 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         update_serve_cache(app, &serve_result).await;
     }
 
-    // Get cached static info
     let active_name = backend_manager.get_active_name().await;
     let runtime = backend_manager.get_runtime_info(&active_name).await;
 

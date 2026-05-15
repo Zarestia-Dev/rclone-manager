@@ -20,7 +20,6 @@ import {
   RemoteManagementService,
 } from '@app/services';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import {
   FileBrowserItem,
   CollectionType,
@@ -28,6 +27,7 @@ import {
   FilePickerResult,
   ExplorerRoot,
 } from '@app/types';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({
   providedIn: 'root',
@@ -194,7 +194,7 @@ export class NautilusService extends TauriBaseService {
   setWindowTitle(title: string): void {
     // Defer so callers don't need to worry about timing relative to Tauri state.
     setTimeout(async () => {
-      if (this.isTauriEnvironment) {
+      if (this.isTauri) {
         await this.getCurrentTauriWindow()?.setTitle(title);
       }
       this.titleService.setTitle(title);
@@ -216,7 +216,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   async newNautilusWindow(remote: string | null, path: string | null): Promise<void> {
-    if (this.isTauriEnvironment) {
+    if (this.isTauri) {
       await this.invokeCommand('new_nautilus_window', {
         remote: remote ?? null,
         path: path ?? null,
@@ -343,7 +343,9 @@ export class NautilusService extends TauriBaseService {
     pathName: string,
     hash: string
   ): { remoteName: string | null; remotePath: string | null } {
-    const fromSegments = (input: string) => {
+    const fromSegments = (
+      input: string
+    ): { remoteName: string | null; remotePath: string | null } => {
       const [first, ...rest] = input.split('/').filter(Boolean);
       return {
         remoteName: first ? decodeURIComponent(first) : null,

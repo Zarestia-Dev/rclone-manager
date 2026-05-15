@@ -106,7 +106,7 @@
                 <button
                   class="type-dropdown-btn"
                   type="button"
-                  [matMenuTriggerFor]="sourceTypeMenu"
+                  [cdkMenuTriggerFor]="sourceTypeMenu"
                   [class.local]="getPathTypeAtIndex('source', item.index) === 'local'"
                   [class.remote]="getPathTypeAtIndex('source', item.index) === 'currentRemote'"
                   [class.other]="getPathTypeAtIndex('source', item.index) === 'otherRemote'"
@@ -130,31 +130,46 @@
                   <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
                 </button>
 
-                <mat-menu #sourceTypeMenu="matMenu" class="type-selector-menu">
-                  <button mat-menu-item (click)="setType('source', item.index, 'local')">
-                    <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                    <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                  </button>
-                  <button mat-menu-item (click)="setType('source', item.index, 'currentRemote')">
-                    <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                    <span>{{ currentRemoteName() }}:</span>
-                  </button>
-                  @if (otherRemotes().length) {
-                    <mat-divider></mat-divider>
-                    <div class="menu-group-label">
-                      {{ 'wizards.appOperation.otherRemotes' | translate }}
-                    </div>
-                    @for (remote of otherRemotes(); track remote) {
-                      <button
-                        mat-menu-item
-                        (click)="setType('source', item.index, 'otherRemote:' + remote)"
-                      >
-                        <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        <span>{{ remote }}:</span>
-                      </button>
+                <ng-template #sourceTypeMenu>
+                  <div class="material-context-menu" cdkMenu>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="setType('source', item.index, 'local')"
+                    >
+                      <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                      <span class="item-label">{{
+                        'wizards.appOperation.localPath' | translate
+                      }}</span>
+                    </button>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="setType('source', item.index, 'currentRemote')"
+                    >
+                      <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                      <span class="item-label">{{ currentRemoteName() }}:</span>
+                    </button>
+                    @if (otherRemotes().length) {
+                      <mat-divider></mat-divider>
+                      <div class="menu-group-label">
+                        {{ 'wizards.appOperation.otherRemotes' | translate }}
+                      </div>
+                      @for (remote of otherRemotes(); track remote) {
+                        <button
+                          cdkMenuItem
+                          class="menu-item"
+                          (cdkMenuItemTriggered)="
+                            setType('source', item.index, 'otherRemote:' + remote)
+                          "
+                        >
+                          <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                          <span class="item-label">{{ remote }}:</span>
+                        </button>
+                      }
                     }
-                  }
-                </mat-menu>
+                  </div>
+                </ng-template>
               }
             </div>
 
@@ -183,21 +198,33 @@
                 <button
                   matIconButton
                   [disabled]="isSourcePickerDisabled()"
-                  [matMenuTriggerFor]="localPickerMenu"
+                  [cdkMenuTriggerFor]="localPickerMenu"
                   type="button"
                 >
                   <mat-icon svgIcon="folder"></mat-icon>
                 </button>
-                <mat-menu #localPickerMenu="matMenu">
-                  <button mat-menu-item (click)="selectRemotePath('source', item.index, 'folders')">
-                    <mat-icon svgIcon="folder"></mat-icon>
-                    <span>{{ 'nautilus.titles.selectFolder' | translate }}</span>
-                  </button>
-                  <button mat-menu-item (click)="selectRemotePath('source', item.index, 'files')">
-                    <mat-icon svgIcon="file"></mat-icon>
-                    <span>{{ 'nautilus.titles.selectFile' | translate }}</span>
-                  </button>
-                </mat-menu>
+                <ng-template #localPickerMenu>
+                  <div class="material-context-menu" cdkMenu>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="selectRemotePath('source', item.index, 'folders')"
+                    >
+                      <mat-icon svgIcon="folder"></mat-icon>
+                      <span class="item-label">{{
+                        'nautilus.titles.selectFolder' | translate
+                      }}</span>
+                    </button>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="selectRemotePath('source', item.index, 'files')"
+                    >
+                      <mat-icon svgIcon="file"></mat-icon>
+                      <span class="item-label">{{ 'nautilus.titles.selectFile' | translate }}</span>
+                    </button>
+                  </div>
+                </ng-template>
               } @else {
                 <button
                   matIconButton
@@ -252,7 +279,7 @@
                 <button
                   class="type-dropdown-btn"
                   type="button"
-                  [matMenuTriggerFor]="destTypeMenu"
+                  [cdkMenuTriggerFor]="destTypeMenu"
                   [class.local]="getPathTypeAtIndex('dest', item.index) === 'local'"
                   [class.remote]="getPathTypeAtIndex('dest', item.index) === 'currentRemote'"
                   [class.other]="getPathTypeAtIndex('dest', item.index) === 'otherRemote'"
@@ -276,31 +303,46 @@
                   <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
                 </button>
 
-                <mat-menu #destTypeMenu="matMenu" class="type-selector-menu">
-                  <button mat-menu-item (click)="setType('dest', item.index, 'local')">
-                    <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                    <span>{{ 'wizards.appOperation.localPath' | translate }}</span>
-                  </button>
-                  <button mat-menu-item (click)="setType('dest', item.index, 'currentRemote')">
-                    <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                    <span>{{ currentRemoteName() }}:</span>
-                  </button>
-                  @if (otherRemotes().length) {
-                    <mat-divider></mat-divider>
-                    <div class="menu-group-label">
-                      {{ 'wizards.appOperation.otherRemotes' | translate }}
-                    </div>
-                    @for (remote of otherRemotes(); track remote) {
-                      <button
-                        mat-menu-item
-                        (click)="setType('dest', item.index, 'otherRemote:' + remote)"
-                      >
-                        <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        <span>{{ remote }}:</span>
-                      </button>
+                <ng-template #destTypeMenu>
+                  <div class="material-context-menu" cdkMenu>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="setType('dest', item.index, 'local')"
+                    >
+                      <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                      <span class="item-label">{{
+                        'wizards.appOperation.localPath' | translate
+                      }}</span>
+                    </button>
+                    <button
+                      cdkMenuItem
+                      class="menu-item"
+                      (cdkMenuItemTriggered)="setType('dest', item.index, 'currentRemote')"
+                    >
+                      <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                      <span class="item-label">{{ currentRemoteName() }}:</span>
+                    </button>
+                    @if (otherRemotes().length) {
+                      <mat-divider></mat-divider>
+                      <div class="menu-group-label">
+                        {{ 'wizards.appOperation.otherRemotes' | translate }}
+                      </div>
+                      @for (remote of otherRemotes(); track remote) {
+                        <button
+                          cdkMenuItem
+                          class="menu-item"
+                          (cdkMenuItemTriggered)="
+                            setType('dest', item.index, 'otherRemote:' + remote)
+                          "
+                        >
+                          <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                          <span class="item-label">{{ remote }}:</span>
+                        </button>
+                      }
                     }
-                  }
-                </mat-menu>
+                  </div>
+                </ng-template>
               }
             </div>
 
@@ -308,12 +350,7 @@
               <input
                 matInput
                 formControlName="path"
-                [placeholder]="
-                  (isMount()
-                    ? 'wizards.appOperation.localPathPlaceholder'
-                    : 'wizards.appOperation.enterDestinationPath'
-                  ) | translate
-                "
+                [placeholder]="'wizards.appOperation.enterDestPath' | translate"
                 (input)="onInputChanged($event, 'dest', item.index)"
                 [cdkMenuTriggerFor]="isDestPickerDisabled() ? null : autocompleteMenu"
                 [cdkMenuTriggerData]="{ group: 'dest', index: item.index }"
@@ -361,32 +398,34 @@
   @if (pathStates.get(group + '-' + index)?.(); as state) {
     <div class="material-context-menu" cdkMenu>
       @if (state.isLoading) {
-        <div class="menu-item">
-          <mat-spinner diameter="24"></mat-spinner>
-          <span>{{ 'wizards.appOperation.loading' | translate }}</span>
+        <div class="menu-item disabled">
+          <mat-spinner diameter="16"></mat-spinner>
+          <span class="item-label">{{ 'wizards.appOperation.loading' | translate }}</span>
         </div>
       } @else {
         @if (state.currentPath) {
-          <button cdkMenuItem class="menu-item" (click)="goUp(group, index)">
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="goUp(group, index)">
             <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-            <span>{{ 'wizards.appOperation.upFolder' | translate }}</span>
+            <span class="item-label">{{ 'wizards.appOperation.upFolder' | translate }}</span>
           </button>
           <mat-divider></mat-divider>
         }
         @if (state.options.length === 0) {
           <div class="empty-state">
-            <span>{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
+            <span class="item-label">{{ 'wizards.appOperation.noItemsFound' | translate }}</span>
           </div>
         }
         @for (entry of state.options; track entry.Path) {
           <button
             cdkMenuItem
             class="menu-item"
-            [disabled]="!entry.IsDir && !allowFiles(group)"
-            (click)="onPathSelected(entry.Name, group, index)"
+            (cdkMenuItemTriggered)="onPathSelected(entry.Name, group, index)"
           >
-            <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-            <span class="truncate">{{ entry.Name }}</span>
+            <mat-icon
+              [svgIcon]="entry.IsDir ? 'folder' : 'file'"
+              [class]="entry.IsDir ? 'accent' : ''"
+            ></mat-icon>
+            <span class="item-label">{{ entry.Name }}</span>
           </button>
         }
       }

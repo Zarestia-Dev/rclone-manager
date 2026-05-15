@@ -12,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { PathDisplayConfig } from '../../types';
 import { TranslatePipe } from '@ngx-translate/core';
 import { isLocalPath } from 'src/app/services';
@@ -26,7 +26,7 @@ import { isLocalPath } from 'src/app/services';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    MatMenuModule,
+    CdkMenuModule,
     TranslatePipe,
   ],
   styleUrls: ['./path-display.component.scss'],
@@ -39,29 +39,28 @@ import { isLocalPath } from 'src/app/services';
               <button
                 matIconButton
                 class="folder-button active multi-path"
-                [matMenuTriggerFor]="multiSourceMenu"
-                [matTooltip]="'Click to view and open specific paths'"
+                [cdkMenuTriggerFor]="multiSourceMenu"
               >
                 <mat-icon svgIcon="folder"></mat-icon>
                 <span class="path-count">{{ getAsArray(config().source).length }}</span>
               </button>
 
-              <mat-menu #multiSourceMenu="matMenu" class="path-dropdown-menu" xPosition="after">
-                <div class="menu-header">
-                  {{ config().source.length }} {{ 'Items' | translate }}
+              <ng-template #multiSourceMenu>
+                <div class="material-context-menu" cdkMenu>
+                  @for (p of getAsArray(config().source); track p) {
+                    <button
+                      class="menu-item"
+                      cdkMenuItem
+                      (cdkMenuItemTriggered)="openPath.emit(p)"
+                      [matTooltip]="p"
+                      matTooltipPosition="right"
+                    >
+                      <mat-icon [svgIcon]="isLocalPath(p) ? 'folder' : 'folder-open'"></mat-icon>
+                      <span class="menu-path-text">{{ p }}</span>
+                    </button>
+                  }
                 </div>
-                @for (p of getAsArray(config().source); track p) {
-                  <button
-                    mat-menu-item
-                    (click)="openPath.emit(p)"
-                    [matTooltip]="p"
-                    matTooltipPosition="right"
-                  >
-                    <mat-icon [svgIcon]="isLocalPath(p) ? 'folder' : 'folder-open'"></mat-icon>
-                    <span class="menu-path-text">{{ p }}</span>
-                  </button>
-                }
-              </mat-menu>
+              </ng-template>
             } @else {
               <button
                 matIconButton

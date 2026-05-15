@@ -170,6 +170,12 @@
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
                     <h4>{{ 'modals.about.readyToRestart' | translate }}</h4>
+                    @if (appUpdateAvailable()) {
+                      <span class="new-version">
+                        {{ 'modals.about.version' | translate }}
+                        {{ appUpdateAvailable()!.version }}
+                      </span>
+                    }
                     <p class="restart-description">
                       {{ 'modals.about.restartDescription' | translate }}
                     </p>
@@ -232,7 +238,7 @@
                 }
 
                 @if (buildType()) {
-                  @let instructions = getUpdateInstructions();
+                  @let instructions = updateInstructions();
                   <div class="managed-update-notice">
                     <div class="managed-info">
                       <mat-icon svgIcon="circle-info"></mat-icon>
@@ -358,7 +364,7 @@
                 </div>
               }
 
-              @if (rcloneInfo() && !loadingRclone()) {
+              @if (rcloneInfo() && !loadingRclone() && !rcloneError()) {
                 @let info = rcloneInfo()!;
                 <div class="rclone-hero">
                   <img src="assets/rclone.svg" alt="Rclone" class="rclone-icon" />
@@ -453,6 +459,12 @@
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
                     <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
+                    @if (rcloneStatus.updateInfo) {
+                      <span class="new-version">
+                        {{ 'modals.about.version' | translate }}
+                        {{ rcloneStatus.updateInfo.version }}
+                      </span>
+                    }
                     <p class="restart-description">
                       {{ 'modals.about.rcloneRestartDescription' | translate }}
                     </p>

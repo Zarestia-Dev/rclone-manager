@@ -46,8 +46,6 @@ macro_rules! MASTER_COMMAND_LIST {
             // RCLONE OPERATIONS
             // =================================================================
             (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
-            (get_rclone_info, $crate::rclone::queries::get_rclone_info, []);
-            (get_rclone_pid, $crate::rclone::queries::get_rclone_pid, []);
             (refresh_system, $crate::core::initialization::refresh_system, []);
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
@@ -68,12 +66,11 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_hashsum, $crate::rclone::queries::get_hashsum, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_hashsum_file, $crate::rclone::queries::get_hashsum_file, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_public_link, $crate::rclone::queries::get_public_link, [remote: String, path: String, options: Option<$crate::rclone::queries::filesystem::PublicLinkParams>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_memory_stats, $crate::rclone::queries::get_memory_stats, []);
             (get_local_disk_usage, $crate::rclone::queries::system::get_local_disk_usage, [dir: Option<String>]);
             (get_remote_types, $crate::rclone::queries::get_remote_types, []);
             (get_oauth_supported_remotes, $crate::rclone::queries::get_oauth_supported_remotes, []);
             (get_rclone_config_file, $crate::rclone::queries::get_rclone_config_file, []);
-            (set_bandwidth_limit, $crate::rclone::commands::system::set_bandwidth_limit, [rate: Option<String>]);
+            (bandwidth_limit, $crate::rclone::commands::system::bandwidth_limit, [rate: Option<String>]);
 
             // =================================================================
             // SYNC OPERATIONS
@@ -136,7 +133,6 @@ macro_rules! MASTER_COMMAND_LIST {
             (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (upload_file, $crate::rclone::commands::filesystem::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (get_bandwidth_limit, $crate::rclone::queries::get_bandwidth_limit, []);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
 
             // =================================================================
@@ -280,6 +276,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);
             (force_check_serves, $crate::rclone::state::watcher::force_check_serves, []);
             (set_poller_visibility, $crate::rclone::engine::poller::set_poller_visibility, [visible: bool], [sync]);
+            (get_system_status_snapshot, $crate::rclone::engine::poller::get_system_status_snapshot, []);
 
             // =================================================================
             // APPLICATION CONTROL

@@ -20,21 +20,17 @@ use crate::utils::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
         },
-        state::{RcApiEngine, RcloneState},
+        state::{EngineState, RcApiEngine, RcloneState},
     },
 };
 
 impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
-        let app_handle = app.clone();
-
         if self.validate_config(app).await {
             start(self, app).await;
         } else {
             warn!("Engine startup aborted due to configuration validation failure");
         }
-
-        start_system_poller(app_handle);
     }
 
     pub async fn shutdown(&mut self, app: &AppHandle) {
@@ -51,7 +47,62 @@ impl RcApiEngine {
     }
 }
 
-/// Start the Rclone engine.
+// -------------------------------------------------------------------------
+// EngineState Helpers (Thread-safe Accessors)
+// -------------------------------------------------------------------------
+
+/// Sets the updating flag on the engine.
+pub async fn set_engine_updating(app: &AppHandle, updating: bool) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.set_updating(updating);
+}
+
+/// Shuts down the engine cleanly by locking its state first.
+pub async fn shutdown_engine(app: &AppHandle) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.shutdown(app).await;
+}
+
+/// Resumes the engine after an update by resetting the updating and exit flags.
+pub async fn resume_engine(app: &AppHandle) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.should_exit = false;
+    engine.set_updating(false);
+}
+
+/// Clears path and password errors from the engine state.
+pub async fn clear_engine_errors(app: &AppHandle) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.clear_errors();
+}
+
+/// Returns the current runtime status of the engine: (running, updating, should_exit).
+pub async fn get_engine_status(app: &AppHandle) -> (bool, bool, bool) {
+    let state = app.state::<EngineState>();
+    let engine = state.lock().await;
+    (engine.running, engine.updating, engine.should_exit)
+}
+
+/// Starts the engine if it's not already running or in an error state.
+pub async fn start_engine_if_not_running(app: &AppHandle) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    if !engine.running && !engine.path_error && !engine.password_error {
+        start(&mut engine, app).await;
+    }
+}
+
+/// Marks the engine as dead (e.g., after a crash is detected by the poller).
+pub async fn mark_engine_dead(app: &AppHandle) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.running = false;
+}
+
 pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     if let Some(reason) = engine.start_blocked_reason() {
         debug!("Engine cannot start: {reason}");
@@ -100,6 +151,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                     error!("Failed to emit ready event: {e}");
                 }
 
+                start_system_poller(app.clone());
                 super::post_start::trigger_post_start_setup(app.clone());
             } else {
                 error!("Failed to start Rclone API within timeout.");

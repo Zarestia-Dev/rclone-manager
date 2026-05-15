@@ -1,13 +1,19 @@
 use axum::{Router, routing::get};
 
 use super::handlers;
-use super::state::{WebServerState, auth_middleware};
+use super::state::{
+    WebServerState, auth_middleware, create_session_handler, delete_session_handler,
+};
 
 pub fn build_api_router(state: WebServerState) -> Router {
     Router::new()
-        // The single unified bridge endpoint
+        .route(
+            "/auth/session",
+            axum::routing::post(create_session_handler).delete(delete_session_handler),
+        )
+        // Unified command bridge
         .merge(crate::core::commands::generate_bridge_router())
-        // Manual routes for streaming and events
+        // Streaming and event routes
         .route("/events", get(handlers::sse_handler))
         .route(
             "/upload",

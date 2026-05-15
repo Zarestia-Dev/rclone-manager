@@ -30,16 +30,24 @@
   }
 }
 
+.paths-container {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--box-shadow);
+}
+
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-block: var(--space-lg) var(--space-xs);
+  margin-block: var(--space-sm) var(--space-xs);
 
   .section-title {
     display: flex;
     align-items: center;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--window-fg-color);
   }
 
@@ -67,8 +75,8 @@
 .path-list {
   display: flex;
   flex-direction: column;
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
+  background: var(--mat-sys-surface-variant);
+  border-radius: var(--input-border-radius);
   box-shadow: var(--box-shadow);
   overflow: hidden;
 }
@@ -244,16 +252,6 @@
   }
 }
 
-// Menu Labels
-.menu-group-label {
-  padding: 8px 16px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--dim-color);
-}
-
 @keyframes pathEntry {
   from {
     opacity: 0;
@@ -278,53 +276,5 @@
     background: rgba(var(--orange-rgb), 0.1);
     color: var(--orange);
     border: 1px solid rgba(var(--orange-rgb), 0.3);
-  }
-}
-
-// Global Context Menu
-.material-context-menu {
-  min-width: 240px;
-  background: var(--window-bg-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-popover);
-  padding: 0.5rem;
-  z-index: 1000;
-
-  .menu-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    flex-direction: row-reverse !important;
-    margin: 0;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: none;
-    background: transparent;
-    color: var(--window-fg-color);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: background 0.2s ease;
-
-    &:hover:not(:disabled) {
-      background: var(--hover-bg-color);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    mat-icon {
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
-    }
-  }
-
-  .empty-state {
-    padding: 1rem;
-    text-align: center;
-    color: var(--window-fg-color-secondary);
-    font-style: italic;
   }
 }

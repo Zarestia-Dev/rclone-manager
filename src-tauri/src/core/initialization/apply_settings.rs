@@ -1,7 +1,7 @@
 use crate::core::settings::AppSettingsManager;
 use crate::core::settings::rclone_backend::load_backend_options_sync;
 use crate::core::settings::schema::AppSettings;
-use crate::rclone::commands::system::set_bandwidth_limit;
+use crate::rclone::commands::system::bandwidth_limit;
 use crate::rclone::queries::flags::set_rclone_options_bulk;
 use log::{debug, error, info};
 use tauri::Manager;
@@ -15,7 +15,7 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
             settings.core.bandwidth_limit
         );
 
-        if let Err(e) = set_bandwidth_limit(
+        if let Err(e) = bandwidth_limit(
             app_handle.clone(),
             Some(settings.core.bandwidth_limit.clone()),
         )

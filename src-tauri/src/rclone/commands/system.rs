@@ -317,23 +317,21 @@ pub async fn quit_rclone_oauth(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn set_bandwidth_limit(
+pub async fn bandwidth_limit(
     app: AppHandle,
     rate: Option<String>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let rate_value = rate
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| "off".to_string());
-
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let payload = json!({ "rate": rate_value });
+    let payload = rate
+        .filter(|s| !s.trim().is_empty())
+        .map(|rate_value| json!({ "rate": rate_value }));
 
     let json = backend
         .post_json(
             &app.state::<RcloneState>().client,
             core::BWLIMIT,
-            Some(&payload),
+            payload.as_ref(),
         )
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;

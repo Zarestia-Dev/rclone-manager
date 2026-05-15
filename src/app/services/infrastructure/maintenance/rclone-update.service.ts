@@ -1,13 +1,25 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, map, firstValueFrom } from 'rxjs';
-import { BaseUpdateService } from '../maintenance/base-update.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { UpdateInfo, UpdateStatus, UpdateResult, BackendUpdateStatus } from '@app/types';
+import { AppSettingsService } from '../../settings/app-settings.service';
+import { TauriBaseService } from '../platform/tauri-base.service';
+import { UpdateSettingsManager } from './update-settings-manager';
 
 @Injectable({ providedIn: 'root' })
-export class RcloneUpdateService extends BaseUpdateService {
+export class RcloneUpdateService extends TauriBaseService {
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly appSettingsService = inject(AppSettingsService);
+
+  private readonly settings = new UpdateSettingsManager(this.appSettingsService, {
+    namespace: 'runtime',
+    skippedVersionsKey: 'rclone_skipped_updates',
+    updateChannelKey: 'rclone_update_channel',
+    autoCheckKey: 'rclone_auto_check_updates',
+  });
+
+  private _latestCheckId = 0;
 
   private readonly _updateStatus = signal<UpdateStatus>({
     checking: false,
@@ -21,22 +33,10 @@ export class RcloneUpdateService extends BaseUpdateService {
 
   public readonly updateStatus = this._updateStatus.asReadonly();
 
-  // ---------------------------------------------------------------------------
-  // BaseUpdateService keys
-  // ---------------------------------------------------------------------------
-
-  protected override get settingNamespace(): string {
-    return 'runtime';
-  }
-  protected override get skippedVersionsKey(): string {
-    return 'rclone_skipped_updates';
-  }
-  protected override get updateChannelKey(): string {
-    return 'rclone_update_channel';
-  }
-  protected override get autoCheckKey(): string {
-    return 'rclone_auto_check_updates';
-  }
+  // Settings surface
+  public readonly skippedVersions = this.settings.skippedVersions;
+  public readonly updateChannel = this.settings.updateChannel;
+  public readonly autoCheckEnabled = this.settings.autoCheckEnabled;
 
   constructor() {
     super();
@@ -49,10 +49,16 @@ export class RcloneUpdateService extends BaseUpdateService {
   // ---------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    const checkId = ++this._latestCheckId;
     const status = this._updateStatus();
+
     if (status.checking || status.downloading || status.readyToRestart) {
       // Already active — just sync the current info.
       const info = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
+
+      // Discard stale syncs
+      if (checkId !== this._latestCheckId) return null;
+
       if (info) this.processUpdateResult(info);
       return info;
     }
@@ -60,11 +66,19 @@ export class RcloneUpdateService extends BaseUpdateService {
     this.patchStatus({ checking: true, error: null });
     try {
       const info = await this.invokeCommand<UpdateInfo>('check_rclone_update', {
-        channel: this.updateChannel(),
+        channel: this.settings.updateChannel(),
       });
+
+      // Discard stale results
+      if (checkId !== this._latestCheckId) {
+        return null;
+      }
+
       this.processUpdateResult(info);
       return info;
     } catch (error) {
+      if (checkId !== this._latestCheckId) return null;
+
       console.error('Failed to check for rclone updates:', error);
       this.patchStatus({ checking: false, error: String(error), lastCheck: new Date() });
       return null;
@@ -76,7 +90,7 @@ export class RcloneUpdateService extends BaseUpdateService {
     try {
       const result = await this.invokeWithNotification<UpdateResult>(
         'update_rclone',
-        { channel: this.updateChannel() },
+        { channel: this.settings.updateChannel() },
         { errorKey: 'rcloneUpdate.failed', showSuccess: false }
       );
 
@@ -129,8 +143,8 @@ export class RcloneUpdateService extends BaseUpdateService {
     }
   }
 
-  override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel);
+  async setChannel(channel: string): Promise<void> {
+    await this.settings.setChannel(channel);
     this.patchStatus({ available: false, updateInfo: null, error: null, lastCheck: null });
     this.notificationService.showInfo(
       this.translate.instant('rcloneUpdate.channelChanged', { channel })
@@ -138,8 +152,8 @@ export class RcloneUpdateService extends BaseUpdateService {
     void this.checkForUpdates();
   }
 
-  override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version);
+  async skipVersion(version: string): Promise<void> {
+    await this.settings.skipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
     const info = this._updateStatus().updateInfo;
     if (info?.version === version) {
@@ -147,14 +161,14 @@ export class RcloneUpdateService extends BaseUpdateService {
     }
   }
 
-  override async unskipVersion(version: string): Promise<void> {
-    await super.unskipVersion(version);
+  async unskipVersion(version: string): Promise<void> {
+    await this.settings.unskipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.restored', { version }));
     void this.checkForUpdates();
   }
 
-  override async setAutoCheckEnabled(enabled: boolean): Promise<void> {
-    await super.setAutoCheckEnabled(enabled);
+  async setAutoCheckEnabled(enabled: boolean): Promise<void> {
+    await this.settings.setAutoCheckEnabled(enabled);
     this.notificationService.showInfo(
       this.translate.instant(
         enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
@@ -168,8 +182,8 @@ export class RcloneUpdateService extends BaseUpdateService {
 
   private async initialize(): Promise<void> {
     try {
-      await this.initBaseSettings();
-      if (this.autoCheckEnabled()) {
+      await this.settings.initialize();
+      if (this.settings.autoCheckEnabled()) {
         await this.restoreUpdateState();
       }
     } catch (error) {
@@ -233,7 +247,7 @@ export class RcloneUpdateService extends BaseUpdateService {
       return;
     }
 
-    const isSkipped = info.updateAvailable && this.isVersionSkipped(info.version);
+    const isSkipped = info.updateAvailable && this.settings.isVersionSkipped(info.version);
 
     this.patchStatus({
       checking: false,

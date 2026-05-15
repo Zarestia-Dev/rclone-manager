@@ -28,7 +28,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
@@ -63,7 +62,6 @@ type PathGroup = 'source' | 'dest';
     MatExpansionModule,
     MatDividerModule,
     CdkMenuModule,
-    MatMenuModule,
     CronInputComponent,
     MatProgressSpinner,
     MatTooltipModule,

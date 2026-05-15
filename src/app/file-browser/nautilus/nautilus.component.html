@@ -169,16 +169,12 @@
                     class="menu-item"
                     (click)="currentMenuView.set('open'); $event.stopPropagation()"
                   >
-                    <span class="item-label">
-                      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
-                    </span>
+                    <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
                     <mat-icon svgIcon="chevron-right"></mat-icon>
                   </button>
                 } @else {
                   <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
-                    <span class="item-label">
-                      <span>{{ 'nautilus.contextMenu.open' | translate }}</span>
-                    </span>
+                    <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
                     <span class="shortcut">Return</span>
                   </button>
                 }
@@ -327,20 +323,24 @@
         @if (!tabSvc.errorState()) {
           @if (!tabSvc.activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
-              <span>{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
+              <span class="item-label">{{ 'nautilus.contextMenu.newFolder' | translate }}...</span>
             </button>
 
             <mat-divider></mat-divider>
 
             <button class="menu-item" cdkMenuItem (click)="uploadFiles()">
-              <span>{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span>
+              <span class="item-label"
+                >{{ 'nautilus.contextMenu.uploadFiles' | translate }}...</span
+              >
             </button>
             <button class="menu-item" cdkMenuItem (click)="uploadFolder()">
-              <span>{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span>
+              <span class="item-label"
+                >{{ 'nautilus.contextMenu.uploadFolder' | translate }}...</span
+              >
             </button>
 
             <button class="menu-item" cdkMenuItem (click)="actions.openCopyUrlDialog()">
-              <span>{{ 'nautilus.modals.copyUrl.title' | translate }}...</span>
+              <span class="item-label">{{ 'nautilus.modals.copyUrl.title' | translate }}...</span>
             </button>
 
             <mat-divider></mat-divider>
@@ -351,19 +351,19 @@
               (click)="pasteItems()"
               [disabled]="!fileOps.hasClipboard()"
             >
-              <span>{{ 'nautilus.contextMenu.paste' | translate }}</span>
+              <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
             </button>
           }
         }
 
         <button class="menu-item" cdkMenuItem (click)="tabSvc.refresh(tabSvc.activePaneIndex())">
-          <span>{{ 'nautilus.contextMenu.reload' | translate }}</span>
+          <span class="item-label">{{ 'nautilus.contextMenu.reload' | translate }}</span>
         </button>
 
         @if (!tabSvc.errorState()) {
           @if (!tabSvc.activeStarredMode()) {
             <button class="menu-item" cdkMenuItem [appCopyToClipboard]="fullPathInput()">
-              <span>{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
+              <span class="item-label">{{ 'nautilus.contextMenu.copyLocation' | translate }}</span>
             </button>
           }
 
@@ -375,7 +375,7 @@
             (click)="selectAll()"
             [disabled]="isPickerMode() && !pickerOptions().multi"
           >
-            <span>{{ 'nautilus.contextMenu.selectAll' | translate }}</span>
+            <span class="item-label">{{ 'nautilus.contextMenu.selectAll' | translate }}</span>
           </button>
 
           @if (!tabSvc.activeStarredMode()) {
@@ -385,7 +385,7 @@
               cdkMenuItem
               (click)="setContextItem(null); actions.openPropertiesDialog('contextMenu')"
             >
-              <span>{{ 'nautilus.contextMenu.properties' | translate }}</span>
+              <span class="item-label">{{ 'nautilus.contextMenu.properties' | translate }}</span>
             </button>
           }
         }

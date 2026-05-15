@@ -7,7 +7,7 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 
 use crate::{
     core::lifecycle::shutdown::shutdown_app,
-    rclone::commands::system::set_bandwidth_limit,
+    rclone::commands::system::bandwidth_limit,
     utils::{
         logging::log::update_log_level,
         types::events::{
@@ -255,7 +255,7 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
     };
 
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = set_bandwidth_limit(app, limit).await {
+        if let Err(e) = bandwidth_limit(app, limit).await {
             error!("Failed to set bandwidth limit: {e:?}");
         }
     });

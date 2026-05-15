@@ -2754,7 +2754,8 @@
       "lockFailed": "Failed to acquire rclone configuration lock: {{error}}",
       "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
-      "updateRemoteUnsupported": "Remote update is not supported for this rclone version"
+      "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
+      "backupFailed": "Failed to backup current rclone binary: {{error}}"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",

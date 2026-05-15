@@ -1,7 +1,9 @@
 use log::{debug, error, info};
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
+use crate::utils::types::events::SYSTEM_STATUS;
+use crate::utils::types::monitoring::SystemStatusPayload;
 use crate::utils::types::rclone::ProcessKind;
 use crate::utils::types::state::RcApiEngine;
 use crate::utils::{
@@ -127,6 +129,7 @@ impl RcApiEngine {
         }
 
         self.running = false;
+        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::error());
         Ok(())
     }
 

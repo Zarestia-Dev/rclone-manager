@@ -241,20 +241,16 @@ impl BackendManager {
             ));
         }
 
-        info!("➖ Removing backend: {name}");
         state.backends.remove(index);
 
-        // Keep active_index consistent after removal
         if state.active_index > index {
             state.active_index -= 1;
         }
 
         drop(state);
 
-        // Clean up per-backend state
         self.per_backend_state.write().await.remove(name);
 
-        // Delete settings profiles
         if let Ok(remotes_sub) = manager.sub_settings("remotes")
             && let Ok(pm) = remotes_sub.profiles()
             && let Err(e) = pm.delete(name)

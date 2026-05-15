@@ -6,8 +6,8 @@ import { FileViewerModalComponent } from '../../file-browser/file-viewer/file-vi
 import { Entry } from '@app/types';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({
   providedIn: 'root',
@@ -72,7 +72,7 @@ export class FileViewerService extends TauriBaseService {
 
       if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
-        return `${this.apiClient.getApiBaseUrl()}/stream/audio-cover?path=${encodedPath}`;
+        return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}`;
       }
       return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
     } else {
@@ -80,7 +80,7 @@ export class FileViewerService extends TauriBaseService {
       if (isHeadlessMode()) {
         const encodedRemote = encodeURIComponent(remote);
         const encodedPath = encodeURIComponent(path);
-        return `${this.apiClient.getApiBaseUrl()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
+        return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
       }
       return `audio-cover://localhost/remote/${encodeURIComponent(remote)}/${encodeURIComponent(
         path
@@ -130,7 +130,7 @@ export class FileViewerService extends TauriBaseService {
 
       if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
-        return `${this.apiClient.getApiBaseUrl()}/stream?path=${encodedPath}`;
+        return `${this.apiClient.getApiBase()}/stream?path=${encodedPath}`;
       }
       // Use our own local-asset:// custom protocol instead of Tauri's asset://.
       // Linux/macOS (WebKit): local-asset://localhost/path/to/file
@@ -163,7 +163,7 @@ export class FileViewerService extends TauriBaseService {
       .join('/');
 
     if (isHeadlessMode()) {
-      return `${this.apiClient.getApiBaseUrl()}/stream/remote?remote=${encodeURIComponent(
+      return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(
         rName
       )}&path=${encodedPath}`;
     }

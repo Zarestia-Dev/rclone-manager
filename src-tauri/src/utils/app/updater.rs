@@ -3,8 +3,8 @@ pub mod app_updates {
     use crate::core::lifecycle::shutdown::shutdown_app;
     use crate::utils::app::platform::relaunch_app;
     use crate::utils::types::updater::{
-        AppUpdaterState, DownloadStatus, Result, UpdateInfo, UpdateMetadata, UpdateStatus,
-        UpdaterError as Error,
+        AppUpdaterState, DownloadStatus, Result, UpdateInfo, UpdateMetadata, UpdatePhase,
+        UpdateStatus, UpdaterError as Error,
     };
     use crate::utils::{
         app::notification::{NotificationEvent, UpdateStage, notify},
@@ -12,7 +12,6 @@ pub mod app_updates {
         types::state::RcloneState,
     };
     use log::{debug, info, warn};
-    use std::sync::atomic::Ordering;
     use tauri::{AppHandle, Emitter, Manager};
     use tauri_plugin_updater::UpdaterExt;
 
@@ -20,22 +19,16 @@ pub mod app_updates {
     pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
         let updater_state = app.state::<AppUpdaterState>();
 
-        if updater_state.is_restart_required.load(Ordering::Acquire) {
-            info!("App restart is already required for a pending update");
-            return Ok(Some(UpdateInfo {
-                metadata: UpdateMetadata {
-                    version: String::new(),
-                    current_version: app.package_info().version.to_string(),
-                    update_available: true,
-                    release_tag: None,
-                    ..Default::default()
-                },
+        let (phase, metadata) = updater_state.with_data(|d| (d.phase, d.last_metadata.clone()));
+
+        if phase == UpdatePhase::ReadyToRestart {
+            return Ok::<_, Error>(metadata.map(|m| UpdateInfo {
+                metadata: m,
                 status: UpdateStatus::ReadyToRestart,
             }));
         }
 
-        if updater_state.is_updating.load(Ordering::Acquire) {
-            info!("Update download is already in progress");
+        if phase == UpdatePhase::Downloading {
             return Ok(Some(UpdateInfo {
                 metadata: UpdateMetadata {
                     version: String::new(),
@@ -48,9 +41,10 @@ pub mod app_updates {
             }));
         }
 
-        updater_state.downloaded_bytes.store(0, Ordering::Relaxed);
-        updater_state.total_bytes.store(0, Ordering::Relaxed);
         updater_state.with_data(|d| {
+            d.phase = UpdatePhase::Checking;
+            d.downloaded_bytes = 0;
+            d.total_bytes = 0;
             d.failure_message = None;
             d.last_metadata = None;
         });
@@ -137,15 +131,27 @@ pub mod app_updates {
                 }),
             );
 
-            notify(
-                &app,
-                NotificationEvent::AppUpdate(UpdateStage::Available {
-                    version: info.metadata.version.clone(),
-                }),
-            );
+            let is_skipped = app
+                .try_state::<crate::core::settings::AppSettingsManager>()
+                .and_then(|m| m.get_all().ok())
+                .is_some_and(|c| {
+                    c.runtime
+                        .app_skipped_updates
+                        .contains(&info.metadata.version)
+                });
+
+            if !is_skipped {
+                notify(
+                    &app,
+                    NotificationEvent::AppUpdate(UpdateStage::Available {
+                        version: info.metadata.version.clone(),
+                    }),
+                );
+            }
         }
 
         updater_state.with_data(|d| {
+            d.phase = UpdatePhase::Idle;
             d.last_metadata = update_metadata;
             d.pending_action = update;
         });
@@ -173,24 +179,17 @@ pub mod app_updates {
     pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
         let updater_state = app.state::<AppUpdaterState>();
 
-        if updater_state.is_restart_required.load(Ordering::Acquire) {
-            return Ok(Some(UpdateInfo {
-                metadata: UpdateMetadata {
-                    version: String::new(),
-                    current_version: app.package_info().version.to_string(),
-                    update_available: true,
-                    release_tag: None,
-                    ..Default::default()
-                },
+        let (phase, metadata) = updater_state.with_data(|d| (d.phase, d.last_metadata.clone()));
+
+        if phase == UpdatePhase::ReadyToRestart {
+            return Ok::<_, Error>(metadata.map(|m| UpdateInfo {
+                metadata: m,
                 status: UpdateStatus::ReadyToRestart,
             }));
         }
 
-        let metadata = updater_state.with_data(|d| d.last_metadata.clone());
-        let is_updating = updater_state.is_updating.load(Ordering::Acquire);
-
         Ok(metadata.map(|metadata| {
-            let status = if is_updating {
+            let status = if phase == UpdatePhase::Downloading {
                 UpdateStatus::Downloading
             } else if metadata.update_available {
                 UpdateStatus::Available
@@ -231,10 +230,12 @@ pub mod app_updates {
             .ok_or(Error::NoPendingUpdate)?;
 
         // Reset progress and set updating flag
-        updater_state.downloaded_bytes.store(0, Ordering::Relaxed);
-        updater_state.total_bytes.store(0, Ordering::Relaxed);
-        updater_state.is_updating.store(true, Ordering::Release);
-        updater_state.with_data(|d| d.failure_message = None);
+        updater_state.with_data(|d| {
+            d.phase = UpdatePhase::Downloading;
+            d.downloaded_bytes = 0;
+            d.total_bytes = 0;
+            d.failure_message = None;
+        });
 
         info!("Downloading app update from: {}", update.download_url);
 
@@ -246,22 +247,21 @@ pub mod app_updates {
         );
 
         let download_app = app.clone();
-        let res = update
+        let res: std::result::Result<Vec<u8>, tauri_plugin_updater::Error> = update
             .download(
                 {
                     let app = download_app.clone();
                     let mut last_emit = std::time::Instant::now();
                     move |chunk_length, content_length| {
                         let st = app.state::<AppUpdaterState>();
-                        let downloaded = st
-                            .downloaded_bytes
-                            .fetch_add(chunk_length as u64, Ordering::Relaxed)
-                            + chunk_length as u64;
-                        if let Some(total) = content_length {
-                            st.total_bytes.store(total, Ordering::Relaxed);
-                        }
+                        let (downloaded, total) = st.with_data(|d| {
+                            d.downloaded_bytes += chunk_length as u64;
+                            if let Some(total) = content_length {
+                                d.total_bytes = total;
+                            }
+                            (d.downloaded_bytes, d.total_bytes)
+                        });
 
-                        let total = st.total_bytes.load(Ordering::Relaxed);
                         let percentage = if total > 0 {
                             (downloaded as f64 / total as f64) * 100.0
                         } else {
@@ -296,13 +296,11 @@ pub mod app_updates {
 
         match res {
             Ok(signature) => {
-                updater_state.is_updating.store(false, Ordering::Release);
-                updater_state
-                    .is_restart_required
-                    .store(true, Ordering::Release);
-                updater_state.with_data(|d| {
+                let (downloaded, total) = updater_state.with_data(|d| {
+                    d.phase = UpdatePhase::ReadyToRestart;
                     d.signature = Some(signature);
                     d.pending_action = Some(update.clone());
+                    (d.downloaded_bytes, d.total_bytes)
                 });
 
                 notify(
@@ -312,15 +310,13 @@ pub mod app_updates {
                     }),
                 );
 
-                // Emit final progress
-                let st = app.state::<AppUpdaterState>();
                 let _ = app.emit(
                     crate::utils::types::events::APP_EVENT,
                     serde_json::json!({
                         "status": "download_progress",
                         "data": DownloadStatus {
-                            downloaded_bytes: st.downloaded_bytes.load(Ordering::Relaxed),
-                            total_bytes: st.total_bytes.load(Ordering::Relaxed),
+                            downloaded_bytes: downloaded,
+                            total_bytes: total,
                             percentage: 100.0,
                             is_complete: true,
                             is_failed: false,
@@ -332,10 +328,11 @@ pub mod app_updates {
             }
             Err(e) => {
                 warn!("App update download failed: {e}");
-                updater_state.is_updating.store(false, Ordering::Release);
-                updater_state.with_data(|d| {
+                let (downloaded, total) = updater_state.with_data(|d| {
+                    d.phase = UpdatePhase::Idle;
                     d.failure_message = Some(e.to_string());
                     d.pending_action = Some(update.clone());
+                    (d.downloaded_bytes, d.total_bytes)
                 });
 
                 notify(
@@ -345,14 +342,13 @@ pub mod app_updates {
                     }),
                 );
 
-                let st = app.state::<AppUpdaterState>();
                 let _ = app.emit(
                     crate::utils::types::events::APP_EVENT,
                     serde_json::json!({
                         "status": "download_progress",
                         "data": DownloadStatus {
-                            downloaded_bytes: st.downloaded_bytes.load(Ordering::Relaxed),
-                            total_bytes: st.total_bytes.load(Ordering::Relaxed),
+                            downloaded_bytes: downloaded,
+                            total_bytes: total,
                             percentage: 0.0,
                             is_complete: false,
                             is_failed: true,
@@ -372,19 +368,18 @@ pub mod app_updates {
 
         let (update, signature) = updater_state
             .with_data(|d| match (d.pending_action.take(), d.signature.take()) {
-                (Some(u), Some(s)) => Some((u, s)),
+                (Some(u), Some(s)) => {
+                    d.phase = UpdatePhase::Downloading;
+                    Some((u, s))
+                }
                 _ => None,
             })
             .ok_or(Error::NoPendingUpdate)?;
 
         info!("Applying app update and relaunching...");
-        updater_state.is_updating.store(true, Ordering::Release);
 
         if let Err(e) = update.install(signature) {
-            updater_state.is_updating.store(false, Ordering::Release);
-            updater_state
-                .is_restart_required
-                .store(false, Ordering::Release);
+            updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
             return Err(Error::Tauri(e));
         }
 
@@ -395,7 +390,7 @@ pub mod app_updates {
             }),
         );
 
-        updater_state.is_updating.store(false, Ordering::Release);
+        updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
         relaunch_app(app).await.map_err(Error::Relaunch)?;
         Ok(())
     }
