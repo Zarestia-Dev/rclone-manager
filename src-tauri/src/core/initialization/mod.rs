@@ -3,7 +3,6 @@ pub mod apply_settings;
 pub mod bootstrap;
 pub mod scheduler;
 
-use crate::core::cli::CliArgs;
 use crate::core::lifecycle::startup::handle_startup;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
@@ -53,13 +52,13 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     info!("🎉 Phase 5: Applying runtime settings");
     let settings_manager = app_handle.state::<AppSettingsManager>();
-    let cli_args = app_handle.state::<CliArgs>();
 
     if let Ok(settings) = settings_manager.get_all() {
         apply_settings::apply_core_settings(&app_handle, &settings).await;
 
         #[cfg(feature = "tray")]
         {
+            let cli_args = app_handle.state::<crate::core::cli::CliArgs>();
             let force_tray = cli_args.general.tray;
             if (settings.general.tray_enabled || force_tray)
                 && let Err(e) = crate::utils::app::builder::setup_tray(app_handle.clone()).await

@@ -32,7 +32,6 @@ use crate::{
         alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
         scheduler::engine::CronScheduler,
     },
-    rclone::commands::common::OperationContext,
     utils::types::{
         logs::LogCache,
         state::{RcApiEngine, RcloneState},
@@ -480,7 +479,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = rclone::commands::mount::unmount_all_remotes(
                     app_clone.clone(),
-                    OperationContext::Normal,
+                    rclone::commands::common::OperationContext::Normal,
                 )
                 .await
                 {
@@ -494,7 +493,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = rclone::commands::serve::stop_all_serves(
                     app_clone.clone(),
-                    OperationContext::Normal,
+                    rclone::commands::common::OperationContext::Normal,
                 )
                 .await
                 {
