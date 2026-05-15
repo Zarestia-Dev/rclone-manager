@@ -28,6 +28,11 @@ export class ApiClientService {
         return (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as T;
       case 'open_in_files':
         throw new Error('Native file manager is not available in web mode.');
+      case 'auth_session':
+        await firstValueFrom(
+          this.http.post(`${this.apiBase}/auth/session`, {}, { withCredentials: true })
+        );
+        return {} as T;
     }
 
     try {

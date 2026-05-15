@@ -481,6 +481,7 @@ export class AboutModalComponent implements OnInit {
     try {
       await this.systemInfoService.runGarbageCollector();
       this.notificationService.showSuccess(this.translate.instant('modals.about.gcSuccess'));
+      await this.rcloneStatusService.refreshStatus();
     } catch (error) {
       console.error('Failed to run garbage collector:', error);
       this.notificationService.showError(this.translate.instant('modals.about.gcFailed'));

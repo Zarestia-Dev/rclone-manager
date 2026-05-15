@@ -34,7 +34,11 @@ export class SseClientService {
 
   async connect(): Promise<void> {
     if (this.source) return;
-    await this.apiClient.invoke('auth_session', {});
+    try {
+      await this.apiClient.invoke('auth_session', {});
+    } catch {
+      console.log('Auth session failed');
+    }
     this.openSource(`${this.apiClient.getApiBase()}/events`);
   }
 

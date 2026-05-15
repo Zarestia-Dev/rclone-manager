@@ -78,11 +78,12 @@ export class RcloneStatusService {
 
     this.eventListenersService
       .listenToBandwidthLimitChanged()
-      .pipe(
-        switchMap(() => from(this.loadBandwidthLimit())),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(data => {
+        if (data) {
+          this.bandwidthLimit.set(data as BandwidthLimitResponse);
+        }
+      });
 
     fromEvent(this.document, 'visibilitychange')
       .pipe(takeUntilDestroyed(this.destroyRef))
