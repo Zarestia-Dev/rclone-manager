@@ -5227,7 +5227,9 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.1.7"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "620e64f6c3304f8a552380b3e91d49324fa60f9dc98eb45572254656239a1899"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -5252,7 +5254,9 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.1.7"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8a4b885994f4a8c308957f4dd45ea1b63fee5f460dfd325ba9112240fee69aa"
 dependencies = [
  "proc-macro2",
  "quote",

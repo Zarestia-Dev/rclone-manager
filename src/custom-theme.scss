@@ -1140,7 +1140,7 @@ mat-accordion {
     all: unset;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: start;
     gap: var(--space-sm);
     box-sizing: border-box;
     overflow: hidden;
@@ -1158,6 +1158,10 @@ mat-accordion {
 
     border-radius: var(--radius-xs);
     transition: background-color 0.1s ease;
+
+    &.space-between {
+      justify-content: space-between;
+    }
 
     .item-label {
       display: flex;

@@ -71,6 +71,7 @@
 
                   <div
                     class="status-dot sync-operations"
+                    [class.active]="statusService.getSyncProfileCount(remote) > 0"
                     [class.sync]="statusService.getActiveSyncOperationType(remote) === 'sync'"
                     [class.copy]="statusService.getActiveSyncOperationType(remote) === 'copy'"
                     [class.move]="statusService.getActiveSyncOperationType(remote) === 'move'"

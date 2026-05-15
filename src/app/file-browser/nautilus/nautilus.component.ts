@@ -45,6 +45,7 @@ import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
+import { SlideMenuController } from './slide-menu';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -156,8 +157,7 @@ export class NautilusComponent implements OnInit {
   protected readonly isEditingPath = signal(false);
   protected readonly isSearchMode = signal(false);
   protected readonly searchFilter = signal('');
-  protected readonly currentMenuView = signal<'main' | 'open'>('main');
-  protected readonly contextMenuHeight = signal<number | null>(null);
+  protected readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
   private readonly initialLocationApplied = signal(false);
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
@@ -337,18 +337,6 @@ export class NautilusComponent implements OnInit {
     // Sync sidenav open state with screen size.
     effect(() => {
       this.isSidenavOpen.set(!this.isMobile());
-    });
-
-    // Track context menu page height for the sliding animation.
-    effect(() => {
-      this.currentMenuView();
-      // setTimeout defers the DOM read until after the next render cycle.
-      setTimeout(() => {
-        const activePage = document.querySelector('.menu-page.active-page');
-        if (activePage) {
-          this.contextMenuHeight.set((activePage as HTMLElement).offsetHeight);
-        }
-      }, 0);
     });
 
     // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
@@ -655,7 +643,7 @@ export class NautilusComponent implements OnInit {
   }
 
   setContextItem(item: FileBrowserItem | null, paneIndex?: 0 | 1): void {
-    this.currentMenuView.set('main');
+    this.menuCtrl.reset();
     const pIdx = paneIndex ?? this.tabSvc.activePaneIndex();
     const files = pIdx === 0 ? this.files() : this.filesRight();
     this.selectionSvc.handleContextItem(item, pIdx, files);

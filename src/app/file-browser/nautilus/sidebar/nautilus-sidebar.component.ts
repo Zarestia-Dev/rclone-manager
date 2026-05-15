@@ -8,8 +8,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
+import { SlideMenuController } from '../slide-menu';
 
 @Component({
   selector: 'app-nautilus-sidebar',
@@ -69,6 +70,9 @@ export class NautilusSidebarComponent {
   readonly droppedToLocal = output<DragEvent>();
   readonly droppedToBookmark = output<{ event: DragEvent; target: FileBrowserItem }>();
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
+
+  // Context menu sliding controller
+  protected readonly menuCtrl = new SlideMenuController('.sidebar-sliding-container');
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {

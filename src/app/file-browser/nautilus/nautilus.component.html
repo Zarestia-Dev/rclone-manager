@@ -155,19 +155,19 @@
 
     <ng-template #fileMenu let-item>
       <div
-        class="material-context-menu sliding-container"
+        class="material-context-menu sliding-container nautilus-sliding-container"
         cdkMenu
-        [style.height.px]="contextMenuHeight()"
+        [style.height.px]="menuCtrl.contextMenuHeight()"
       >
-        <div class="menu-pages-track" [class.show-submenu]="currentMenuView() === 'open'">
+        <div class="menu-pages-track" [class.show-submenu]="menuCtrl.currentMenuView() === 'open'">
           <!-- Main Page -->
-          <div class="menu-page" [class.active-page]="currentMenuView() === 'main'">
+          <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
             @if (!tabSvc.errorState()) {
               @if (item) {
                 @if (item.entry.IsDir) {
                   <button
-                    class="menu-item"
-                    (click)="currentMenuView.set('open'); $event.stopPropagation()"
+                    class="menu-item space-between"
+                    (click)="menuCtrl.openSubmenu(); $event.stopPropagation()"
                   >
                     <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
                     <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -282,10 +282,10 @@
           </div>
 
           <!-- Open Submenu Page -->
-          <div class="menu-page" [class.active-page]="currentMenuView() === 'open'">
+          <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'open'">
             <button
               class="menu-item centered-item"
-              (click)="currentMenuView.set('main'); $event.stopPropagation()"
+              (click)="menuCtrl.goBack(); $event.stopPropagation()"
             >
               <span class="item-label">{{ 'common.back' | translate }}</span>
             </button>

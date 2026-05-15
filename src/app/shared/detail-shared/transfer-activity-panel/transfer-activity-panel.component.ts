@@ -30,7 +30,7 @@ import { TransferActivityPanelConfig } from '../../types';
           <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           <div class="transfer-summary">
-            <span class="app-pill running">
+            <span class="app-pill p-accent">
               {{ 'shared.transferActivity.active' | translate }}
               {{ config().activeTransfers.length }}
             </span>
