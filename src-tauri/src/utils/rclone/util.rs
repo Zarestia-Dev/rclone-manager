@@ -110,11 +110,23 @@ pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(),
 }
 
 pub fn compute_sha256<P: AsRef<Path>>(path: P) -> Result<String, String> {
+    use std::io::Read;
     let mut file = File::open(&path).map_err(|e| format!("Failed to open file: {e}"))?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Hashing failed: {e}"))?;
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Hashing failed: {e}"))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
     let result = hasher.finalize();
-    Ok(format!("{result:x}"))
+    Ok(result.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// Verifies the downloaded rclone zip against its official SHA256 hash.

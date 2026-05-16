@@ -110,11 +110,28 @@ pub struct MetadataInfo {
 /// Calculates SHA-256 hash and file size
 fn calculate_file_hash(path: &Path) -> Result<(String, u64), String> {
     use sha2::{Digest, Sha256};
+    use std::io::Read;
     let mut file = File::open(path).map_err(|e| format!("Failed to open file: {e}"))?;
     let mut hasher = Sha256::new();
-    let bytes_copied =
-        std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file: {e}"))?;
-    let hash = format!("{:x}", hasher.finalize());
+    let mut buffer = [0u8; 8192];
+    let mut bytes_copied = 0u64;
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read file: {e}"))?;
+        if bytes_read == 0 {
+            break;
+        }
+        bytes_copied += bytes_read as u64;
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let hash = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
     Ok((hash, bytes_copied))
 }
 
