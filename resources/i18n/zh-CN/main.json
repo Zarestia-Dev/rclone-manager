@@ -20,10 +20,18 @@
     "move": "移动",
     "retry": "重试",
     "default": "默认",
-    "copyErrorFailed": "复制错误信息失败",
-    "errorCopied": "错误信息已复制到剪贴板",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "复制到剪贴板失败",
     "required": "此字段为必填项",
-    "clear": "清除"
+    "clear": "清除",
+    "name": "名称",
+    "status": "状态",
+    "time": "时间",
+    "message": "消息",
+    "type": "类型",
+    "context": "上下文",
+    "all": "全部",
+    "description": "描述"
   },
   "validators": {
     "integer": "必须为有效的整数",
@@ -223,7 +231,143 @@
     "restoreFailed": "恢复 Rclone 失败：{{error}}",
     "autoCheckEnabled": "已启用 Rclone 自动检查更新",
     "autoCheckDisabled": "已禁用 Rclone 自动检查更新",
-    "settingsSaveFailed": "保存 Rclone 更新设置失败：{{error}}"
+    "settingsSaveFailed": "保存 Rclone 更新设置失败：{{error}}",
+    "manualRestartRequired": "Rclone 已在远程服务器上更新。请手动重启远程 rclone 服务以应用新版本。"
+  },
+
+  "alerts": {
+    "title": "警报与通知",
+    "history": "历史记录",
+    "rules": "规则",
+    "actions": "操作",
+    "defaultActionName": "系统通知",
+    "defaultRuleName": "默认规则",
+    "unacknowledged": "未确认",
+    "acknowledgeAll": "全部确认",
+    "clearHistory": "清除历史记录",
+    "clearHistoryConfirm": "您确定要清除所有警报历史记录吗？此操作无法撤销。",
+    "deleteRuleConfirm": "您确定要删除此警报规则吗？",
+    "deleteActionConfirm": "您确定要删除此操作吗？",
+    "severity": "严重程度",
+    "ruleLabel": "规则",
+    "noHistory": "无警报历史",
+    "noHistoryDesc": "您过去的所有通知和事件都将列在此处。",
+    "noRules": "无警报规则",
+    "noActions": "无警报操作",
+    "createRule": "创建规则",
+    "editRule": "编辑规则",
+    "ruleName": "规则名称",
+    "lastFired": "最后触发",
+    "enabled": "已启用",
+    "createAction": "创建操作",
+    "editAction": "编辑操作",
+    "testAction": "测试操作",
+    "testActionSuccess": "警报操作测试成功完成。",
+    "testActionFailed": "警报操作测试失败：{{error}}",
+    "testActionError": "测试警报操作时出错：{{error}}",
+    "severityLevels": {
+      "info": "信息",
+      "warning": "警告",
+      "average": "一般",
+      "high": "高",
+      "critical": "严重"
+    },
+    "origins": {
+      "title": "来源",
+      "dashboard": "仪表板",
+      "scheduler": "调度器",
+      "filemanager": "文件管理器",
+      "startup": "启动",
+      "update": "更新",
+      "internal": "内部"
+    },
+    "rule": {
+      "filters": "过滤器",
+      "placeholderName": "输入规则名称",
+      "severityMin": "最低严重程度",
+      "cooldown": "冷却时间（秒）",
+      "eventFilter": "事件类型过滤",
+      "eventFilterHint": "留空以匹配所有事件类型。",
+      "remoteFilter": "远程过滤",
+      "remoteFilterHint": "留空以匹配所有远程。",
+      "originFilterHint": "留空以匹配任何来源。",
+      "backendFilter": "后端过滤",
+      "backendFilterPlaceholder": "例如：Local, Seedbox",
+      "backendFilterHint": "仅监控特定后端上的事件。",
+      "profileFilter": "配置过滤",
+      "profileFilterPlaceholder": "例如：GDrive-Sync",
+      "profileFilterHint": "仅监控特定配置文件的事件。",
+      "autoAcknowledge": "自动确认",
+      "autoAcknowledgeHint": "自动将警报标记为已确认。适用于已触发系统通知的警报。",
+      "actions": "触发操作"
+    },
+    "events": {
+      "job_completed": "作业已完成",
+      "job_started": "作业已开始",
+      "job_failed": "作业失败",
+      "job_stopped": "作业已停止",
+      "serve_started": "服务已开始",
+      "serve_failed": "服务失败",
+      "serve_stopped": "服务已停止",
+      "all_serves_stopped": "所有服务已停止",
+      "mount_succeeded": "挂载成功",
+      "mount_failed": "挂载失败",
+      "unmount_succeeded": "卸载成功",
+      "all_unmounted": "全部已卸载",
+      "engine_password_required": "需要引擎密码",
+      "engine_binary_not_found": "未找到引擎二进制文件",
+      "engine_connection_failed": "引擎连接失败",
+      "engine_restarted": "引擎已重启",
+      "engine_restart_failed": "引擎重启失败",
+      "app_update_available": "应用更新可用",
+      "app_update_started": "应用更新已开始",
+      "app_update_complete": "应用更新完成",
+      "app_update_failed": "应用更新失败",
+      "app_update_installed": "应用更新已安装",
+      "rclone_update_available": "Rclone 更新可用",
+      "rclone_update_started": "Rclone 更新已开始",
+      "rclone_update_complete": "Rclone 更新完成",
+      "rclone_update_failed": "Rclone 更新失败",
+      "rclone_update_installed": "Rclone 更新已安装",
+      "scheduled_task_started": "计划任务已开始",
+      "scheduled_task_completed": "计划任务已完成",
+      "scheduled_task_failed": "计划任务失败",
+      "already_running": "已经在运行",
+      "all_jobs_stopped": "所有作业已停止"
+    },
+    "action": {
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "电子邮件",
+      "placeholderName": "输入操作名称",
+      "url": "Webhook URL",
+      "method": "HTTP/S 方法",
+      "timeout": "超时时间（秒）",
+      "bodyTemplate": "正文模板 (JSON)",
+      "bodyTemplateHint": "支持 Handlebars 变量",
+      "tlsVerify": "TLS 验证",
+      "retryCount": "重试次数",
+      "command": "脚本命令 / 路径",
+      "args": "脚本参数",
+      "argsHint": "（以空格分隔）",
+      "scriptContextHint": "作为环境变量注入",
+      "os_toast_info": "操作系统原生通知不需要额外配置。它将使用标准的系统通知子系统。",
+      "botToken": "机器人令牌 (Bot Token)",
+      "chatId": "会话 ID (Chat ID)",
+      "messageTemplate": "消息模板",
+      "messageTemplateHint": "支持 Handlebars 变量",
+      "telegram_info": "您可以从 @BotFather 获取机器人令牌，从 @userinfobot 获取您的会话 ID。",
+      "brokerUrl": "代理服务器 URL (Broker URL)",
+      "topic": "主题 (Topic)",
+      "qos": "服务质量 (QoS)",
+      "retain": "保留消息 (Retain)",
+      "smtpServer": "SMTP 服务器",
+      "smtpPort": "SMTP 端口",
+      "from": "发件人地址",
+      "to": "收件人地址",
+      "encryption": "加密方式",
+      "subjectTemplate": "主题模板"
+    }
   },
   "settings": {
     "resetToDefault": "恢复默认",
@@ -266,7 +410,7 @@
         "label": "网络检测地址",
         "description": "用于验证网络连接的 URL 列表，应用会定期检查"
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone 可执行文件路径",
         "description": "rclone 程序或目录路径，留空则自动检测"
       },
@@ -286,10 +430,6 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
-      },
-      "max_upload_batch_size": {
-        "label": "最大上传批次大小 (MB)",
-        "description": "从本地计算机一次上传的文件批次的最大大小。"
       }
     },
     "developer": {
@@ -715,8 +855,6 @@
         "copyId": "点击复制 ID"
       },
       "messages": {
-        "urlCopied": "URL 已复制！",
-        "idCopied": "ID 已复制！",
         "noOptions": "无额外选项"
       },
       "labels": {
@@ -995,12 +1133,18 @@
       "notConfigured": "未配置",
       "clearSchedule": "清除计划",
       "sourcePath": "源路径",
+      "sourcePaths": "源路径列表",
       "destPath": "目标路径",
+      "destinationPath": "目标路径",
       "localPath": "本地路径",
       "remotePathServe": "要提供服务的远程路径",
+      "addSource": "添加源",
+      "removePath": "移除路径",
       "rootFolderOptional": "根文件夹（可选）",
       "rootFolderSpecific": "根文件夹或特定路径",
       "selectRemoteSource": "选择远程源文件夹",
+      "remotePath": "远程路径",
+      "enterPath": "输入路径...",
       "changeSourceType": "更改源路径类型",
       "enterSourcePath": "输入源路径...",
       "otherRemotes": "其他远程存储",
@@ -1227,7 +1371,7 @@
     },
     "restored": "已恢复版本 {{version}}",
     "restoreFailed": "恢复更新失败",
-    "channelChanged": "更新通道已切换为 {{channel}}，请检查更新以应用",
+    "channelChanged": "更新通道已切换为 {{channel}}.",
     "channelChangeFailed": "切换更新通道失败"
   },
   "fileBrowser": {
@@ -1341,22 +1485,26 @@
         "startTime": "开始时间",
         "speed": "速度",
         "eta": "预计剩余时间",
-        "transfers": "传输"
+        "transfers": "传输",
+        "uploadedFiles": "已上传文件",
+        "deletedFiles": "已删除文件",
+        "movedFiles": "已移动文件",
+        "copiedFiles": "已复制文件",
+        "syncedFiles": "已同步文件",
+        "processedFiles": "已处理文件"
       },
       "types": {
-        "delete_file": "删除文件",
-        "purge": "清理",
+        "delete": "删除",
         "cleanup": "整理",
         "rmdirs": "删除空文件夹",
         "copy": "复制",
-        "copy_file": "复制文件",
         "copy_url": "复制链接",
         "move": "移动",
-        "move_file": "移动文件",
-        "rename_file": "重命名文件",
-        "rename_dir": "重命名文件夹",
+        "rename": "重命名",
         "sync": "同步",
-        "bisync": "双向同步"
+        "bisync": "双向同步",
+        "compress": "压缩",
+        "extract": "解压"
       }
     },
     "fileViewer": {
@@ -1378,6 +1526,13 @@
       "errorUnexpected": "发生未知错误",
       "errorLoadFile": "加载 {{name}} 失败",
       "downloading": "正在下载 {{name}}",
+      "archiveContents": "归档内容",
+      "shortcutTargets": "快捷方式目标",
+      "errorListArchive": "列出归档内容失败",
+      "extract": "解压",
+      "extracting": "正在解压 \"{{name}}\"...",
+      "extractSuccess": "\"{{name}}\" 解压成功",
+      "errorExtract": "解压归档失败",
       "save": "保存",
       "edit": "编辑",
       "cancel": "取消",
@@ -1614,7 +1769,7 @@
       "reportIssues": "报告问题",
       "rcloneWebsite": "Rclone 官网",
       "currentVersion": "当前版本",
-      "restartRequired": "需要重启",
+      "readyToRestart": "需要重启",
       "restartDescription": "已安装更新，请重启应用以生效。",
       "rcloneRestartRequired": "需要重启 Rclone",
       "rcloneRestartDescription": "已安装 Rclone 更新，请重启引擎以生效。",
@@ -1738,7 +1893,6 @@
       "adjustFilters": "尝试调整过滤器",
       "terminalOutput": "终端输出",
       "logContext": "日志上下文",
-      "copiedToClipboard": "日志已复制到剪贴板",
       "logLevel": "日志等级",
       "allLevels": "所有等级",
       "searchPlaceholder": "搜索日志..."
@@ -1750,8 +1904,8 @@
       "resetAll": "重置所有设置",
       "noSettingsFound": "未找到匹配的设置",
       "trySearching": "尝试搜索：",
-      "restartRequiredHeader": "需要重启生效的设置",
-      "restartRequiredDesc": "以下修改需要重启引擎才能生效：",
+      "readyToRestartHeader": "需要重启生效的设置",
+      "readyToRestartDesc": "以下修改需要重启引擎才能生效：",
       "discarding": "正在放弃...",
       "discardChanges": "放弃更改",
       "saveAndRestart": "保存并重启引擎",
@@ -1817,6 +1971,8 @@
       "passwordLabel": "加密密码",
       "passwordPlaceholder": "输入密码",
       "passwordHint": "恢复备份时需要使用此密码。",
+      "includeSecrets": "包含密钥",
+      "includeSecretsHint": "在备份中包含敏感凭据。需要加密。",
       "exportNow": "立即导出",
       "exporting": "正在导出...",
       "fullBackup": "完整备份",
@@ -1843,7 +1999,11 @@
         },
         "remotes": {
           "label": "远程存储",
-          "description": "Rclone 远程配置数据"
+          "description": "Rclone 远程存储配置数据"
+        },
+        "alerts": {
+          "label": "告警",
+          "description": "告警规则和操作配置"
         }
       }
     },
@@ -2217,6 +2377,23 @@
         "title": "删除空文件夹",
         "message": "确定要删除 \"{{name}}\" 下所有空文件夹吗？",
         "confirm": "删除"
+      },
+      "copyUrl": {
+        "title": "从 URL 下载",
+        "urlLabel": "URL",
+        "fileLabel": "文件名（可选）",
+        "filePlaceholder": "留空以使用自动命名",
+        "confirm": "下载"
+      },
+      "archiveCreate": {
+        "title": "创建归档",
+        "filenameLabel": "归档文件名",
+        "formatLabel": "归档格式",
+        "prefixLabel": "前缀路径",
+        "prefixHint": "如果设置，将覆盖完整路径",
+        "fullPathLabel": "包含完整源路径",
+        "fullPathHint": "保留从根目录开始的目录结构",
+        "compress": "压缩"
       }
     },
     "errors": {
@@ -2235,13 +2412,17 @@
       "renameFailed": "重命名 '{{name}}' 失败：{{error}}",
       "emptyTrashFailed": "清空 {{remote}} 回收站失败：{{error}}",
       "openFileFailed": "无法打开文件：缺少远程服务器上下文",
-      "minSelection": "请至少选择 {{min}} 项。"
+      "minSelection": "请至少选择 {{min}} 项。",
+      "copyUrlFailed": "从 URL 下载失败: {{error}}",
+      "archiveCreateFailed": "创建归档失败: {{error}}"
     },
     "contextMenu": {
       "open": "打开",
       "openNewTab": "在新标签页打开",
       "copyPath": "复制路径",
       "newFolder": "新建文件夹",
+      "uploadFiles": "上传文件",
+      "uploadFolder": "上传文件夹",
       "refresh": "刷新",
       "properties": "属性",
       "reload": "重新加载",
@@ -2283,7 +2464,6 @@
     "notifications": {
       "undo": "撤销",
       "trashEmptied": "清理操作完成",
-      "locationCopied": "位置已复制到剪贴板",
       "rmdirsStarted": "正在删除 \"{{name}}\" 中的空文件夹...",
       "deleteStarted": "正在删除 {{count}} 项...",
       "copyStarted": "正在复制 {{count}} 项...",
@@ -2292,7 +2472,10 @@
       "pasteComplete": "粘贴操作完成",
       "renameStarted": "重命名操作已开始",
       "undoComplete": "撤销成功",
-      "redoComplete": "重做成功"
+      "redoComplete": "重做成功",
+      "copyUrlStarted": "正在从 URL 下载...",
+      "archiveCreateStarted": "已开始创建归档操作",
+      "archiveCreateComplete": "归档创建成功"
     }
   },
   "overview": {
@@ -2379,7 +2562,8 @@
       "save": "保存布局",
       "reset": "重置布局",
       "resetSuccess": "布局已恢复默认",
-      "toggleTaskFailed": "切换计划任务状态失败"
+      "toggleTaskFailed": "切换计划任务状态失败",
+      "settings": "布局设置"
     },
     "bandwidth": {
       "aria": {
@@ -2498,7 +2682,6 @@
     "serve": {
       "failed": "{{operation}} 失败：{{error}}",
       "parseFailed": "解析响应失败：{{error}}",
-      "stopSuccess": "已成功停止服务 {{serverId}}",
       "remoteEmpty": "远程存储名称不能为空",
       "typeRequired": "必须指定服务类型",
       "portInUse": "端口 {{port}} 已被占用"
@@ -2510,7 +2693,7 @@
       "failed": "请求失败：{{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}：{{body}}"
+      "error": "HTTP/S {{status}}：{{body}}"
     },
     "file": {
       "driveRoot": "不能选择磁盘根目录（如 D:\\）作为挂载点，请选择或创建子文件夹。",
@@ -2534,7 +2717,8 @@
       "mountHelperError": "挂载辅助工具错误：{{error}}",
       "configEncryptedLong": "Rclone 配置已加密，请先解锁。",
       "executionFailed": "执行 rclone 失败：{{error}}",
-      "notFound": "在 {{path}} 未找到 Rclone 可执行文件"
+      "notFound": "在 {{path}} 未找到 Rclone 可执行文件",
+      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -2595,12 +2779,12 @@
       "quitFailed": "退出 rclone 引擎失败：{{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}：{{body}}",
+      "httpError": "HTTP/S {{status}}：{{body}}",
       "configFailed": "配置远程存储失败：{{error}}",
       "deleteFailed": "删除远程存储失败：{{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}：{{body}}",
+      "httpError": "HTTP/S {{status}}：{{body}}",
       "notFound": "文件不存在"
     },
     "updater": {
@@ -2608,7 +2792,12 @@
       "invalidUrl": "URL 无效：{{error}}",
       "github": "GitHub API 错误：{{error}}",
       "mutex": "内部错误：{{error}}",
-      "updateFailed": "更新失败：{{error}}"
+      "updateFailed": "更新失败：{{error}}",
+      "updateUnavailable": "更新文件不再可用：{{error}}",
+      "relaunchFailed": "重新启动失败：{{error}}",
+      "restartFailed": "重启失败：{{error}}",
+      "notWritable": "更新路径不可写",
+      "ioError": "IO 错误：{{error}}"
     },
     "settings": {
       "loadFailed": "加载设置失败：{{error}}",
@@ -2629,6 +2818,7 @@
     },
     "serve": {
       "started": "服务已在端口 {{port}} 启动",
+      "stopSuccess": "已成功停止服务 {{serverId}}",
       "stopped": "服务已停止"
     },
     "sync": {
@@ -2774,100 +2964,76 @@
   },
   "notification": {
     "title": {
-      "mountSuccess": "挂载成功",
-      "mountFailed": "挂载失败: {{error}}",
-      "unmountSuccess": "卸载成功",
-      "unmountFailed": "卸载失败: {{error}}",
-      "syncStarted": "同步已开始",
-      "syncComplete": "同步完成",
-      "syncFailed": "同步失败: {{error}}",
-      "syncStopped": "同步已停止",
-      "copyStarted": "复制已开始",
-      "copyComplete": "复制完成",
-      "copyFailed": "复制失败: {{error}}",
-      "copyStopped": "复制已停止",
-      "moveStarted": "移动已开始",
-      "moveComplete": "移动完成",
-      "moveFailed": "移动失败: {{error}}",
-      "moveStopped": "移动已停止",
-      "nothingToDo": "无操作可执行",
-      "bisyncStarted": "双向同步已开始",
-      "bisyncComplete": "双向同步完成",
-      "bisyncFailed": "双向同步失败: {{error}}",
-      "bisyncStopped": "双向同步已停止",
-      "serveStarted": "服务已启动",
-      "serveFailed": "服务启动失败: {{error}}",
-      "serveStopped": "服务已停止",
-      "stopServeFailed": "停止服务失败: {{error}}",
+      "mountSucceeded": "挂载成功",
+      "mountFailed": "挂载错误",
+      "unmountSucceeded": "已断开连接",
+      "jobStarted": "{{type}} 进程已启动",
+      "jobCompleted": "{{type}} 已完成",
+      "jobFailed": "{{type}} 失败",
+      "jobStopped": "{{type}} 已停止",
+      "serveStarted": "服务器已上线",
+      "serveFailed": "服务器错误",
+      "serveStopped": "服务器已停止",
+      "scheduledTaskStarted": "{{type}} 计划任务已启动",
+      "scheduledTaskCompleted": "{{type}} 计划任务已完成",
+      "scheduledTaskFailed": "{{type}} 计划任务错误",
       "allJobsStopped": "所有任务已停止",
-      "allServesStopped": "所有服务已停止",
-      "stopAllServesFailed": "停止所有服务失败: {{error}}",
-      "operationFailed": "{{operation}} 失败: {{error}}",
-      "operationComplete": "{{operation}} 完成",
-      "operationStarted": "{{operation}} 已开始",
-      "operationStopped": "{{operation}} 已停止",
-      "updateComplete": "更新完成",
-      "updateFailed": "更新失败: {{error}}",
-      "updateFound": "发现更新",
+      "allServesStopped": "所有服务器已停止",
+      "allUnmounted": "所有远程连接已断开",
+      "updateFound": "发现新版本",
       "updateStarted": "更新已开始",
-      "engineError": "引擎错误",
-      "engineRestarted": "引擎已重启",
-      "enginePathError": "引擎路径错误",
-      "enginePasswordError": "引擎密码错误",
-      "engineRestartedSuccess": "引擎重启成功",
-      "engineRestartedFailed": "引擎重启失败",
-      "alreadyRunning": "应用已在运行",
+      "updateDownloaded": "更新已下载",
+      "updateComplete": "更新已完成",
+      "updateInstalled": "更新已安装",
+      "updateFailed": "更新错误",
       "rcloneUpdateFound": "发现 Rclone 更新",
       "rcloneUpdateStarted": "Rclone 更新已开始",
-      "rcloneUpdateComplete": "Rclone 更新已下载",
-      "rcloneUpdateFailed": "Rclone 更新失败: {{error}}",
-      "rcloneUpdateInstalled": "Rclone 更新已安装",
-      "scheduledTaskCompleted": "计划任务已完成",
-      "scheduledTaskFailed": "计划任务失败",
-      "updateInstalled": "更新已安装"
+      "rcloneUpdateDownloaded": "Rclone 更新已下载",
+      "rcloneUpdateComplete": "Rclone 更新已就绪",
+      "rcloneUpdateInstalled": "Rclone 已更新",
+      "rcloneUpdateFailed": "Rclone 更新错误",
+      "engineRestarted": "引擎已重启",
+      "engineRestartFailed": "引擎重启失败",
+      "engineConnectionFailed": "引擎连接错误",
+      "engineBinaryNotFound": "未找到 Rclone",
+      "enginePasswordRequired": "需要密码",
+      "alreadyRunning": "应用已在运行"
     },
     "body": {
-      "mounted": "已挂载 {{remote}} 配置 '{{profile}}' 到 {{mountPoint}}",
-      "mountFailed": "挂载到 {{mountPoint}} 失败: {{error}}",
-      "unmounted": "已卸载 {{remote}} 配置 '{{profile}}'",
-      "unmountFailed": "失败：{{error}}",
-      "profileNotFound": "未找到配置 '{{profile}}'",
-      "alreadyRunning": "检测到应用已在运行。为优化内存，窗口已关闭。可使用托盘图标重新打开窗口。",
-      "allRemotesUnmounted": "所有远程存储已成功卸载",
-      "started": "已为 {{remote}} 配置 '{{profile}}' 启动 {{operation}}",
-      "startFailed": "失败：{{error}}",
-      "stopped": "已为 {{remote}} 配置 '{{profile}}' 停止 {{operation}}",
-      "stopFailed": "停止 {{remote}} 配置 '{{profile}}' 的 {{operation}} 失败：{{error}}",
-      "noActiveJob": "未找到 {{remote}} 配置 '{{profile}}' 的活动 {{operation}} 任务",
-      "serveStarted": "已为 {{remote}} 配置 '{{profile}}' 在 {{addr}} 启动服务",
-      "serveFailed": "为 {{remote}} 配置 '{{profile}}' 启动服务失败：{{error}}",
-      "serveStopped": "已停止 {{remote}}（{{profile}}）的服务",
-      "stopServeFailed": "停止 {{remote}}（{{profile}}）的服务失败：{{error}}",
-      "allJobsStopped": "已停止 {{count}} 个活动任务",
-      "nothingToDoJobs": "未找到活动任务，无需停止。",
-      "nothingToDoServes": "未找到活动服务，无需停止。",
-      "nothingToDoMounts": "未找到已挂载远程存储，无需卸载。",
-      "allServesStopped": "所有服务已停止",
-      "stopAllServesFailed": "停止服务失败：{{error}}",
-      "complete": "{{remote}} 的 {{operation}} 完成（{{profile}}）",
-      "failed": "{{remote}} 的 {{operation}} 失败（{{profile}}）：{{error}}",
-      "updateComplete": "更新安装成功，需要重启。",
-      "updateFailed": "更新失败：{{error}}",
-      "updateFound": "新版本 {{version}} 已发布，立即更新！",
-      "updateStarted": "正在下载并安装版本 {{version}}…",
-      "rcloneUpdateFound": "Rclone 新版本 {{version}} 可用",
-      "rcloneUpdateStarted": "正在更新 Rclone 到版本 {{version}}…",
-      "rcloneUpdateComplete": "Rclone 版本 {{version}} 已下载",
-      "rcloneUpdateFailed": "Rclone 更新失败：{{error}}",
-      "rcloneUpdateInstalled": "Rclone 已更新到 {{version}}",
-      "enginePathError": "未找到 rclone 可执行文件",
-      "enginePasswordError": "rclone 配置受密码保护",
-      "engineRestartedSuccess": "因 {{reason}} 变更，引擎已重启成功",
-      "engineRestartedFailed": "因 {{reason}} 变更，引擎重启失败",
-      "connectionFailed": "连接 rclone 引擎失败: {{reason}}",
-      "scheduledTaskCompleted": "计划任务 '{{task}}' 已成功完成。",
-      "scheduledTaskFailed": "计划任务 '{{task}}' 失败: {{error}}",
-      "updateInstalled": "更新安装成功，需要重启。"
+      "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
+      "mountFailed": "无法挂载 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}'：{{error}}",
+      "unmountSucceeded": "已断开 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 的连接。",
+      "jobStarted": "已在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动了 {{type}}。",
+      "jobCompleted": "已成功完成 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}}。",
+      "jobFailed": "{{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}} 失败：{{error}}",
+      "jobStopped": "已停止 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的 {{type}}。",
+      "serveStarted": "已在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动了服务。",
+      "serveFailed": "无法在 {{backend}} 上为远程存储 {{remote}} 的配置 '{{profile}}' 启动服务：{{error}}",
+      "serveStopped": "已停止 {{backend}} 上远程存储 {{remote}} 配置 '{{profile}}' 的服务。",
+      "allJobsStopped": "已成功终止所有活动任务。",
+      "allServesStopped": "已成功关闭所有活动服务器。",
+      "allUnmounted": "已成功断开所有远程挂载。",
+      "scheduledTaskStarted": "{{type}} 计划任务 '{{task}}' 正在 {{backend}} 上运行。",
+      "scheduledTaskCompleted": "{{type}} 计划任务 '{{task}}' 已成功完成。",
+      "scheduledTaskFailed": "{{type}} 计划任务 '{{task}}' 遇到错误：{{error}}",
+      "updateFound": "RClone Manager 的新版本 {{version}} 已发布。",
+      "updateStarted": "正在下载并安装版本 {{version}}...",
+      "updateDownloaded": "RClone Manager 的 {{version}} 版本已下载，准备安装。",
+      "updateComplete": "更新已成功下载。应用程序将重新启动。",
+      "updateInstalled": "新版本已成功安装。",
+      "updateFailed": "更新过程中发生错误：{{error}}",
+      "rcloneUpdateFound": "新的 Rclone 版本 {{version}} 已发布。",
+      "rcloneUpdateStarted": "正在更新 Rclone 到版本 {{version}}...",
+      "rcloneUpdateDownloaded": "Rclone 的 {{version}} 版本已下载，准备安装。",
+      "rcloneUpdateComplete": "Rclone 更新已就绪。",
+      "rcloneUpdateInstalled": "Rclone {{version}} 已成功安装。",
+      "rcloneUpdateFailed": "更新 Rclone 时发生错误：{{error}}",
+      "engineRestarted": "引擎设置已成功更新。",
+      "engineRestartFailed": "重启引擎时发生错误：{{error}}",
+      "engineConnectionFailed": "无法连接到 rclone 引擎：{{error}}",
+      "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
+      "enginePasswordRequired": "访问配置文件需要密码。",
+      "alreadyRunning": "应用的另一个实例已经在运行。"
     }
   },
   "repairSheet": {

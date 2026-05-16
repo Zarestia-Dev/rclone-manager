@@ -1,5 +1,12 @@
-import { NgClass, DecimalPipe, TitleCasePipe } from '@angular/common';
-import { Component, OnInit, inject, input, signal, computed, output } from '@angular/core';
+import { NgClass, DecimalPipe } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+  computed,
+  output,
+} from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,15 +23,18 @@ import {
   JobInfo,
   PrimaryActionType,
   Remote,
-  RemoteActionProgress,
   ScheduledTask,
   ServeListItem,
   CardDisplayMode,
 } from '@app/types';
 
-import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
-import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
-import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
+import {
+  FormatTimePipe,
+  FormatEtaPipe,
+  FormatMemoryUsagePipe,
+  FormatRateValuePipe,
+  FormatBytes,
+} from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
@@ -34,21 +44,15 @@ import {
   RcloneStatusService,
   AppSettingsService,
   BackendService,
+  RemoteFacadeService,
   IconService,
-  getRemoteNameFromFs,
+  PathService,
 } from '@app/services';
-import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
-import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
+import { CopyToClipboardDirective } from '@app/directives';
 
-// Module-level constants
 const SCROLL_DELAY_MS = 60;
 
-const TASK_META: Record<string, { icon: string; colorClass: string }> = {
-  sync: { icon: 'sync', colorClass: 'sync-color' },
-  copy: { icon: 'copy', colorClass: 'copy-color' },
-  move: { icon: 'move', colorClass: 'move-color' },
-  bisync: { icon: 'right-left', colorClass: 'bisync-color' },
-};
+import { ScheduledTaskCardComponent } from '../../../../shared/detail-shared';
 
 const JOB_ICON_MAP: Record<string, string> = {
   sync: 'refresh',
@@ -56,31 +60,11 @@ const JOB_ICON_MAP: Record<string, string> = {
   move: 'move',
   bisync: 'right-left',
   copy_url: 'copy',
-  copy_file: 'copy',
-  move_file: 'move',
-  rename_file: 'pen',
-  rename_dir: 'pen',
-  delete_file: 'trash',
-  purge: 'trash',
+  delete: 'trash',
+  rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',
   upload: 'file-arrow-up',
-};
-
-const TOGGLE_ICON: Record<string, string> = {
-  enabled: 'pause',
-  running: 'pause',
-  disabled: 'play',
-  failed: 'play',
-  stopping: 'stop',
-};
-
-const TOGGLE_KEY: Record<string, string> = {
-  enabled: 'disable',
-  running: 'disable',
-  disabled: 'enable',
-  failed: 'enable',
-  stopping: 'stopping',
 };
 
 export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
@@ -119,10 +103,10 @@ const ALL_PANELS: PanelConfig[] = [
 @Component({
   selector: 'app-general-overview',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
     DecimalPipe,
-    TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -142,11 +126,13 @@ const ALL_PANELS: PanelConfig[] = [
     FormatBytes,
     OverviewHeaderComponent,
     TranslateModule,
+    CopyToClipboardDirective,
+    ScheduledTaskCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
 })
-export class GeneralOverviewComponent implements OnInit {
+export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly schedulerService = inject(SchedulerService);
   private readonly uiStateService = inject(UiStateService);
@@ -156,11 +142,8 @@ export class GeneralOverviewComponent implements OnInit {
 
   readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
-
-  // --- Inputs ---
-  readonly remotes = input<Remote[]>([]);
-  readonly jobs = input<JobInfo[]>([]);
-  readonly actionInProgress = input<RemoteActionProgress>({});
+  readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly pathService = inject(PathService);
 
   // --- Outputs ---
   readonly selectRemote = output<Remote>();
@@ -204,13 +187,15 @@ export class GeneralOverviewComponent implements OnInit {
   readonly uptime = this.rcloneStatusService.uptime;
 
   // --- Computed ---
-  readonly totalRemotes = computed(() => this.remotes().length);
-
-  readonly activeJobsCount = computed(() => this.jobs().filter(j => j.status === 'Running').length);
-  readonly runningJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
-
+  readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
+  readonly activeJobsCount = computed(
+    () => this.remoteFacade.jobs().filter(j => j.status === 'Running').length
+  );
+  readonly runningJobs = computed(() =>
+    this.remoteFacade.jobs().filter(j => j.status === 'Running')
+  );
   readonly allRunningServes = computed(() =>
-    this.remotes().flatMap(r => r.status.serve?.serves ?? [])
+    this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
   );
 
   readonly jobCompletionPercentage = computed(() => {
@@ -252,7 +237,7 @@ export class GeneralOverviewComponent implements OnInit {
     ];
   });
 
-  ngOnInit(): void {
+  constructor() {
     void this.loadLayoutSettings();
     void this.loadScheduledTasks();
   }
@@ -269,10 +254,19 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   resetLayout(): void {
-    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', []);
-    this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
+    void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', {
+      order: [],
+      hidden: [],
+    });
+    void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
     this.cardDisplayMode.set('compact');
+    void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
+    this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
+  }
+
+  resetRemoteLayout(): void {
+    void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
 
@@ -305,11 +299,12 @@ export class GeneralOverviewComponent implements OnInit {
   }
 
   private persistLayout(): void {
-    const ids = this.dashboardPanels()
-      .filter(p => p.visible)
+    const order = this.dashboardPanels().map(p => p.id);
+    const hidden = this.dashboardPanels()
+      .filter(p => !p.visible)
       .map(p => p.id);
-    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', ids);
-    this.appSettingsService.saveSetting(
+    void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', { order, hidden });
+    void this.appSettingsService.saveSetting(
       'runtime',
       'dashboard_card_variant',
       this.cardDisplayMode()
@@ -319,14 +314,14 @@ export class GeneralOverviewComponent implements OnInit {
   // --- Serve actions ---
 
   stopServe(serve: ServeListItem): void {
-    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (!remoteName) return;
-    const remote = this.remotes().find(r => r.name === remoteName);
+    const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
     if (remote) {
       this.uiStateService.setTab('serve');
       this.uiStateService.setSelectedRemote(remote);
@@ -345,60 +340,17 @@ export class GeneralOverviewComponent implements OnInit {
     }
   }
 
-  /** Handles the toggle button inside a task card — stops the card's own click handler. */
-  onToggleTaskClick(taskId: string, event: Event): void {
-    event.stopPropagation();
-    void this.toggleScheduledTask(taskId);
-  }
-
   onTaskClick(task: ScheduledTask): void {
-    const remoteName = task.args['remote_name'];
+    const remoteName = task.args.remoteName;
     if (remoteName) {
-      const remote = this.remotes().find(r => r.name === remoteName);
+      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
       if (remote) this.selectRemote.emit(remote);
     }
   }
 
-  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.onTaskClick(task);
-    }
-  }
-
-  copyError(error: string): void {
-    void navigator.clipboard
-      .writeText(error)
-      .then(() => this.showSnackbar(this.translate.instant('common.errorCopied')))
-      .catch(() => this.showSnackbar(this.translate.instant('common.copyErrorFailed')));
-  }
-
-  // --- Task display utilities ---
-
-  getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') return this.translate.instant('task.nextRun.disabled');
-    if (task.status === 'stopping') return this.translate.instant('task.nextRun.stopping');
-    return task.nextRun
-      ? new Date(task.nextRun).toLocaleString()
-      : this.translate.instant('task.nextRun.notScheduled');
-  }
-
-  getFormattedLastRun(task: ScheduledTask): string {
-    return task.lastRun
-      ? new Date(task.lastRun).toLocaleString()
-      : this.translate.instant('task.lastRun.never');
-  }
-
-  getTaskMeta(taskType: string): { icon: string; colorClass: string } {
-    return TASK_META[taskType] ?? { icon: 'circle-info', colorClass: '' };
-  }
-
-  getToggleKey(status: string): string {
-    return TOGGLE_KEY[status] ?? 'enable';
-  }
-
-  getToggleIcon(status: string): string {
-    return TOGGLE_ICON[status] ?? 'help';
+  onOpenTaskInFiles(path: string): void {
+    const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
+    void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 
   getJobTypeIcon(job: JobInfo): string {
@@ -415,22 +367,37 @@ export class GeneralOverviewComponent implements OnInit {
 
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const [savedIds, savedVariant] = await Promise.all([
-        this.appSettingsService.getSettingValue<string[]>('runtime.dashboard_layout'),
+      const [savedLayout, savedVariant] = await Promise.all([
+        this.appSettingsService.getSettingValue<{ order: string[]; hidden: string[] } | string[]>(
+          'runtime.dashboard_layout'
+        ),
         this.appSettingsService.getSettingValue<CardDisplayMode>('runtime.dashboard_card_variant'),
       ]);
 
-      if (savedIds && savedIds.length > 0) {
-        const visibleIds = new Set(savedIds);
-        const ordered = savedIds
-          .map(id => ALL_PANELS.find(p => p.id === id))
-          .filter((p): p is PanelConfig => !!p)
-          .map(p => ({ ...p, visible: true }));
-        const hidden = ALL_PANELS.filter(p => !visibleIds.has(p.id)).map(p => ({
-          ...p,
-          visible: false,
-        }));
-        this.dashboardPanels.set([...ordered, ...hidden]);
+      if (savedLayout) {
+        // Support both the new {order, hidden} shape and the legacy string[] shape
+        const order: string[] = Array.isArray(savedLayout)
+          ? savedLayout
+          : (savedLayout.order ?? []);
+        const hiddenIds = new Set<string>(
+          Array.isArray(savedLayout) ? [] : (savedLayout.hidden ?? [])
+        );
+
+        if (order.length > 0) {
+          const ordered = order
+            .map(id => ALL_PANELS.find(p => p.id === id))
+            .filter((p): p is PanelConfig => !!p)
+            .map(p => ({ ...p, visible: !hiddenIds.has(p.id) }));
+
+          // Append any panels not present in the saved order (e.g. newly added panels)
+          const seenIds = new Set(order);
+          const appended = ALL_PANELS.filter(p => !seenIds.has(p.id)).map(p => ({
+            ...p,
+            visible: p.defaultVisible,
+          }));
+
+          this.dashboardPanels.set([...ordered, ...appended]);
+        }
       }
 
       if (savedVariant) this.cardDisplayMode.set(savedVariant);

@@ -7,3 +7,4 @@ export * from './job-info-panel/job-info-panel.component';
 export * from './disk-usage-panel/disk-usage-panel.component';
 export * from './jobs-panel/jobs-panel.component';
 export * from './transfer-activity-panel';
+export * from './scheduled-task-card/scheduled-task-card.component';

@@ -1,13 +1,25 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs/operators';
-import { BaseUpdateService } from '../maintenance/base-update.service';
+import { filter, map, firstValueFrom } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
-import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
+import { UpdateInfo, UpdateStatus, UpdateResult, BackendUpdateStatus } from '@app/types';
+import { AppSettingsService } from '../../settings/app-settings.service';
+import { TauriBaseService } from '../platform/tauri-base.service';
+import { UpdateSettingsManager } from './update-settings-manager';
 
 @Injectable({ providedIn: 'root' })
-export class RcloneUpdateService extends BaseUpdateService {
-  private eventListenersService = inject(EventListenersService);
+export class RcloneUpdateService extends TauriBaseService {
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly appSettingsService = inject(AppSettingsService);
+
+  private readonly settings = new UpdateSettingsManager(this.appSettingsService, {
+    namespace: 'runtime',
+    skippedVersionsKey: 'rclone_skipped_updates',
+    updateChannelKey: 'rclone_update_channel',
+    autoCheckKey: 'rclone_auto_check_updates',
+  });
+
+  private _latestCheckId = 0;
 
   private readonly _updateStatus = signal<UpdateStatus>({
     checking: false,
@@ -19,74 +31,92 @@ export class RcloneUpdateService extends BaseUpdateService {
     updateInfo: null,
   });
 
-  readonly updateStatus = this._updateStatus.asReadonly();
+  public readonly updateStatus = this._updateStatus.asReadonly();
 
-  protected override get settingNamespace(): string {
-    return 'runtime';
-  }
-  protected override get skippedVersionsKey(): string {
-    return 'rclone_skipped_updates';
-  }
-  protected override get updateChannelKey(): string {
-    return 'rclone_update_channel';
-  }
-  protected override get autoCheckKey(): string {
-    return 'rclone_auto_check_updates';
-  }
+  // Settings surface
+  public readonly skippedVersions = this.settings.skippedVersions;
+  public readonly updateChannel = this.settings.updateChannel;
+  public readonly autoCheckEnabled = this.settings.autoCheckEnabled;
 
   constructor() {
     super();
     this.setupEventListeners();
-    void this.initBaseSettings().then(() => {
-      if (this.autoCheckEnabled()) {
-        void this.restoreUpdateState();
-      }
-    });
+    void this.initialize();
   }
 
-  async checkForUpdates(): Promise<RcloneUpdateInfo | null> {
-    this.patchUpdateStatus({ checking: true, error: null });
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+
+  async checkForUpdates(): Promise<UpdateInfo | null> {
+    const checkId = ++this._latestCheckId;
+    const status = this._updateStatus();
+
+    if (status.checking || status.downloading || status.readyToRestart) {
+      // Already active — just sync the current info.
+      const info = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
+
+      // Discard stale syncs
+      if (checkId !== this._latestCheckId) return null;
+
+      if (info) this.processUpdateResult(info);
+      return info;
+    }
+
+    this.patchStatus({ checking: true, error: null });
     try {
-      const updateInfo = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update', {
-        channel: this.updateChannel(),
+      const info = await this.invokeCommand<UpdateInfo>('check_rclone_update', {
+        channel: this.settings.updateChannel(),
       });
-      this.processUpdateResult(updateInfo);
-      return updateInfo;
+
+      // Discard stale results
+      if (checkId !== this._latestCheckId) {
+        return null;
+      }
+
+      this.processUpdateResult(info);
+      return info;
     } catch (error) {
-      console.error('Failed to check for updates:', error);
-      this.patchUpdateStatus({
-        checking: false,
-        error: String(error),
-        lastCheck: new Date(),
-      });
+      if (checkId !== this._latestCheckId) return null;
+
+      console.error('Failed to check for rclone updates:', error);
+      this.patchStatus({ checking: false, error: String(error), lastCheck: new Date() });
       return null;
     }
   }
 
   async performUpdate(): Promise<boolean> {
-    this.patchUpdateStatus({ downloading: true, error: null });
+    this.patchStatus({ downloading: true, error: null });
     try {
       const result = await this.invokeWithNotification<UpdateResult>(
         'update_rclone',
-        {
-          channel: this.updateChannel(),
-        },
-        {
-          errorKey: 'rcloneUpdate.failed',
-          showSuccess: false,
-        }
+        { channel: this.settings.updateChannel() },
+        { errorKey: 'rcloneUpdate.failed', showSuccess: false }
       );
 
       if (result.success) {
-        this.patchUpdateStatus({ downloading: false, available: false, readyToRestart: true });
+        if (result.manual) {
+          // Binary swapped on a remote host — user must restart it manually.
+          this.patchStatus({
+            downloading: false,
+            available: false,
+            readyToRestart: true,
+            updateInfo: null,
+          });
+          this.notificationService.showWarning(
+            this.translate.instant('rcloneUpdate.manualRestartRequired')
+          );
+        } else {
+          this.patchStatus({ downloading: false, available: false, readyToRestart: true });
+        }
         return true;
       }
 
-      this.patchUpdateStatus({ downloading: false, error: result.message });
+      this.patchStatus({ downloading: false, error: result.message });
       return false;
     } catch (error) {
       console.error('Failed to update rclone:', error);
-      this.patchUpdateStatus({ downloading: false, error: String(error) });
+      this.patchStatus({ downloading: false, error: String(error) });
       return false;
     }
   }
@@ -97,43 +127,48 @@ export class RcloneUpdateService extends BaseUpdateService {
         errorKey: 'rcloneUpdate.failed',
         showSuccess: false,
       });
-      this.patchUpdateStatus({ readyToRestart: false, updateInfo: null });
+
+      await firstValueFrom(
+        this.eventListenersService
+          .listenToEngineRestarted()
+          .pipe(filter(event => event.reason === 'rclone_update'))
+      );
+
+      this.patchStatus({ readyToRestart: false, updateInfo: null });
       return true;
     } catch (error) {
       console.error('Failed to apply rclone update:', error);
-      this.patchUpdateStatus({ readyToRestart: false });
+      this.patchStatus({ readyToRestart: false });
       return false;
     }
   }
 
-  override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel);
-    this.patchUpdateStatus({ available: false, updateInfo: null, error: null, lastCheck: null });
+  async setChannel(channel: string): Promise<void> {
+    await this.settings.setChannel(channel);
+    this.patchStatus({ available: false, updateInfo: null, error: null, lastCheck: null });
     this.notificationService.showInfo(
       this.translate.instant('rcloneUpdate.channelChanged', { channel })
     );
+    void this.checkForUpdates();
   }
 
-  override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version);
+  async skipVersion(version: string): Promise<void> {
+    await this.settings.skipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
     const info = this._updateStatus().updateInfo;
-    if (info?.latest_version === version || info?.latest_version_clean === version) {
-      this.patchUpdateStatus({
-        available: false,
-        updateInfo: { ...info, update_available: false },
-      });
+    if (info?.version === version) {
+      this.patchStatus({ available: false, updateInfo: { ...info, updateAvailable: false } });
     }
   }
 
-  override async unskipVersion(version: string): Promise<void> {
-    await super.unskipVersion(version);
-    void this.checkForUpdates();
+  async unskipVersion(version: string): Promise<void> {
+    await this.settings.unskipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.restored', { version }));
+    void this.checkForUpdates();
   }
 
-  override async setAutoCheckEnabled(enabled: boolean): Promise<void> {
-    await super.setAutoCheckEnabled(enabled);
+  async setAutoCheckEnabled(enabled: boolean): Promise<void> {
+    await this.settings.setAutoCheckEnabled(enabled);
     this.notificationService.showInfo(
       this.translate.instant(
         enabled ? 'rcloneUpdate.autoCheckEnabled' : 'rcloneUpdate.autoCheckDisabled'
@@ -141,18 +176,33 @@ export class RcloneUpdateService extends BaseUpdateService {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  private async initialize(): Promise<void> {
+    try {
+      await this.settings.initialize();
+      if (this.settings.autoCheckEnabled()) {
+        await this.restoreUpdateState();
+      }
+    } catch (error) {
+      console.error('Failed to initialize rclone updater service:', error);
+    }
+  }
+
   private setupEventListeners(): void {
     this.eventListenersService
       .listenToRcloneEngineUpdating()
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.patchUpdateStatus({ downloading: true }));
+      .subscribe(() => this.patchStatus({ downloading: true }));
 
     this.eventListenersService
       .listenToEngineRestarted()
       .pipe(takeUntilDestroyed())
       .subscribe(event => {
         if (event.reason === 'rclone_update') {
-          this.patchUpdateStatus({ downloading: false });
+          this.patchStatus({ downloading: false });
           void this.checkForUpdates();
         }
       });
@@ -162,44 +212,52 @@ export class RcloneUpdateService extends BaseUpdateService {
       .pipe(
         takeUntilDestroyed(),
         filter(event => event.status === 'rclone_update_found' && !!event.data),
-        map(event => event.data as unknown as RcloneUpdateInfo)
+        map(event => event.data as unknown as UpdateInfo)
       )
       .subscribe(data => this.processUpdateResult(data));
   }
 
   private async restoreUpdateState(): Promise<void> {
     try {
-      const cached = await this.invokeCommand<RcloneUpdateInfo | null>('get_rclone_update_info');
+      const cached = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
       if (cached) this.processUpdateResult(cached);
     } catch (error) {
       console.error('Failed to restore rclone update state:', error);
     }
   }
 
-  private processUpdateResult(updateInfo: RcloneUpdateInfo): void {
-    if (updateInfo.ready_to_restart) {
-      this.patchUpdateStatus({
+  private processUpdateResult(info: UpdateInfo): void {
+    if (info.status === BackendUpdateStatus.ReadyToRestart) {
+      this.patchStatus({
         available: false,
         readyToRestart: true,
-        updateInfo,
+        updateInfo: info,
         lastCheck: new Date(),
       });
       return;
     }
 
-    const isSkipped =
-      updateInfo.update_available &&
-      this.isVersionSkipped(updateInfo.latest_version_clean ?? updateInfo.latest_version);
+    if (info.status === BackendUpdateStatus.Downloading) {
+      this.patchStatus({
+        checking: false,
+        downloading: true,
+        available: true,
+        updateInfo: info,
+      });
+      return;
+    }
 
-    this.patchUpdateStatus({
+    const isSkipped = info.updateAvailable && this.settings.isVersionSkipped(info.version);
+
+    this.patchStatus({
       checking: false,
-      available: updateInfo.update_available && !isSkipped,
+      available: info.updateAvailable && !isSkipped,
       lastCheck: new Date(),
-      updateInfo: isSkipped ? { ...updateInfo, update_available: false } : updateInfo,
+      updateInfo: isSkipped ? { ...info, updateAvailable: false } : info,
     });
   }
 
-  private patchUpdateStatus(update: Partial<UpdateStatus>): void {
+  private patchStatus(update: Partial<UpdateStatus>): void {
     this._updateStatus.update(current => ({ ...current, ...update }));
   }
 }

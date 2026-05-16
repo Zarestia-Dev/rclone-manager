@@ -53,3 +53,78 @@
     padding: var(--space-sm);
   }
 }
+
+// =============================================
+// LAYOUT ACTIONS BLOSSOM (Speed Dial style)
+// =============================================
+
+.layout-actions-blossom {
+  position: fixed;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs);
+
+  .blossom-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: bottom center;
+  }
+
+  .blossom-item {
+    box-shadow: var(--shadow-popover);
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: scale(1.15) !important;
+    }
+  }
+
+  .blossom-trigger {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    mat-icon {
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+  }
+
+  // ── HOVER STATE ────────────────────────────────────────────────────────────
+
+  &:hover {
+    .blossom-panel {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .blossom-trigger {
+      transform: scale(1.05);
+      background: var(--mode-primary-color) !important;
+
+      mat-icon {
+        transform: rotate(90deg);
+      }
+    }
+  }
+}
+
+// =============================================
+// RESPONSIVE ADJUSTMENTS
+// =============================================
+
+@media (max-width: 768px) {
+  .layout-actions-blossom {
+    bottom: var(--space-sm);
+    right: var(--space-sm);
+  }
+}

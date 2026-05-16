@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -26,10 +25,6 @@ pub struct RemoteCache {
     pub configs: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
     pub serves: RwLock<Vec<ServeInstance>>,
-    /// Tracks mount_point → profile mapping (since rclone API doesn't return profile)
-    pub mount_profiles: RwLock<HashMap<String, String>>,
-    /// Tracks serve_id → profile mapping (since rclone API doesn't return profile)
-    pub serve_profiles: RwLock<HashMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,10 +33,11 @@ pub struct ListOptions {
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileParams {
     pub remote_name: String,
     pub profile_name: String,
-    pub source: Option<String>,
+    pub source: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
 }

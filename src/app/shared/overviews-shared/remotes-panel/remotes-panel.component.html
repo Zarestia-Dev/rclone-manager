@@ -1,8 +1,12 @@
-<section class="remotes-panel" [ngClass]="panelClass()" [attr.aria-label]="title()">
+<section
+  class="remotes-panel"
+  [class.active-remotes-panel]="isActive()"
+  [attr.aria-label]="title()"
+>
   <!-- Panel Header -->
   <div class="panel-header">
     <div class="panel-title">
-      <mat-icon [svgIcon]="icon()" [ngClass]="iconClass()" aria-hidden="true"></mat-icon>
+      <mat-icon [svgIcon]="icon()" [class.active-icon]="isActive()" aria-hidden="true"></mat-icon>
       <span class="title-text">{{ title() }}</span>
     </div>
     <span class="panel-count" aria-label="{{ count() }} remotes">{{ count() }}</span>
@@ -10,22 +14,37 @@
 
   <!-- Remotes Grid -->
   <div class="remotes-grid-wrap">
-    <div class="remotes-grid">
-      @for (remote of remotes(); track remote.name) {
+    <div
+      class="remotes-grid"
+      cdkDropList
+      cdkDropListOrientation="mixed"
+      (cdkDropListDropped)="onDrop($event)"
+      [cdkDropListDisabled]="!isEditingLayout()"
+    >
+      @for (remote of displayRemotes(); track remote.name) {
+        @let isHidden = hiddenSet().has(remote.name);
         <app-remote-card
+          cdkDrag
+          [cdkDragDisabled]="!isEditingLayout()"
           [remote]="remote"
           [mode]="mode()"
           [displayMode]="displayMode()"
-          [actionState]="getActionState(remote.name)"
-          [actionStates]="getActionStates(remote.name)"
           [primaryActionLabel]="primaryActionLabel()"
           [activeIcon]="activeIcon()"
-          [primaryActions]="remote.primaryActions || []"
+          [primaryActions]="remote.primaryActions"
+          [isEditingLayout]="isEditingLayout()"
+          [isHidden]="isHidden"
           (remoteClick)="remoteSelected.emit($event)"
           (openInFiles)="openInFiles.emit($event)"
           (startJob)="startJob.emit($event)"
           (stopJob)="stopJob.emit($event)"
-        ></app-remote-card>
+          (toggleHidden)="toggleHidden.emit($event)"
+        >
+          <!-- Custom placeholder shown in the grid when a card is being dragged -->
+          <div class="remote-drag-placeholder" *cdkDragPlaceholder>
+            <mat-icon svgIcon="plus" class="placeholder-icon"></mat-icon>
+          </div>
+        </app-remote-card>
       }
     </div>
   </div>

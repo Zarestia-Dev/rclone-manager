@@ -16,14 +16,44 @@
 
     .path-icon-container {
       .folder-button {
+        position: relative;
+
         &.active {
-          background: color-mix(in srgb, var(--op-color, var(--accent-color)) 18%, transparent);
-          color: var(--op-color, var(--accent-color));
+          background: color-mix(
+            in srgb,
+            var(--mat-sys-primary, var(--accent-color)) 18%,
+            transparent
+          );
+          color: var(--mat-sys-primary, var(--accent-color));
         }
 
         &.inactive {
           background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
           color: var(--dim-color);
+        }
+
+        /* Subtle visual hint when the button holds multiple paths */
+        &.multi-path {
+          .path-count {
+            position: absolute;
+            bottom: -8px;
+            right: -8px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: var(--mat-sys-primary, var(--accent-color));
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--sidebar-bg-color);
+            line-height: 1;
+            pointer-events: none;
+            z-index: 1;
+          }
         }
       }
     }

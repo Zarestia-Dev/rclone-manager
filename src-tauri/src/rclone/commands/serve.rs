@@ -3,28 +3,27 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::origin::Origin;
 use crate::{
+    core::paths::AppPaths,
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
-        app::notification::{NotificationEvent, notify},
-        json_helpers::{
-            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
-        },
+        app::notification::{NotificationEvent, ServeStage, notify},
+        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::serve,
-        types::{core::RcloneState, logs::LogLevel, remotes::ProfileParams},
+        types::{logs::LogLevel, remotes::ProfileParams, state::RcloneState},
     },
 };
 
 use super::common::{
-    fs_value_with_runtime_overrides, redact_sensitive_values, resolve_runtime_remote_options,
+    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
 };
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ServeParams {
     pub remote_name: String,
+    pub source: String,
     pub serve_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
@@ -47,62 +46,57 @@ struct RcloneServeBody {
 }
 
 impl ServeParams {
-    /// Create ServeParams from a profile config and settings
+    /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
-        let source = get_string(config, &["source"]);
-
-        // Valid if either source is set or fs is in options
-        let has_source = !source.is_empty();
-        let has_fs = config
-            .get("options")
-            .and_then(|opts| opts.get("fs"))
-            .and_then(|v| v.as_str())
-            .map(|s| !s.is_empty())
-            .unwrap_or(false);
-
-        if !has_source && !has_fs {
-            return None;
-        }
-
-        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
-        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
-
-        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
-        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
-        let runtime_remote_options =
-            resolve_runtime_remote_options(config, settings, &remote_name, "runtimeRemotes");
+        let common = parse_common_config(config, settings)?;
 
         Some(Self {
             remote_name,
-            serve_options: json_to_hashmap(config.get("options")),
-            backend_options,
-            filter_options,
-            vfs_options,
-            runtime_remote_options,
-            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
+            source: common.first_source(),
+            serve_options: common.options,
+            backend_options: common.backend_options,
+            filter_options: common.filter_options,
+            vfs_options: common.vfs_options,
+            runtime_remote_options: common.runtime_remote_options,
+            profile: common.profile,
         })
     }
 
     pub fn to_rclone_body(&self) -> Value {
         // Pre-process serve options to handle "addr" array issue
-        let processed_serve_opts = self.serve_options.clone().map(|mut opts| {
-            if let Some(addr_val) = opts.get("addr") {
-                let final_val = match addr_val {
-                    Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                    _ => addr_val.clone(),
-                };
-                opts.insert("addr".to_string(), final_val);
-            }
-            if let Some(fs_val) = opts.get("fs").and_then(|value| value.as_str()) {
+        let processed_serve_opts = self
+            .serve_options
+            .clone()
+            .map(|mut opts| {
+                if let Some(addr_val) = opts.get("addr") {
+                    let final_val = match addr_val {
+                        Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
+                        _ => addr_val.clone(),
+                    };
+                    opts.insert("addr".to_string(), final_val);
+                }
+                // Use the explicit source as 'fs'
                 opts.insert(
                     "fs".to_string(),
-                    fs_value_with_runtime_overrides(fs_val, self.runtime_remote_options.as_ref()),
+                    fs_value_with_runtime_overrides(
+                        &self.source,
+                        self.runtime_remote_options.as_ref(),
+                    ),
                 );
-            }
-            opts
-        });
+                opts
+            })
+            .or_else(|| {
+                // If no serve_options, create one with at least 'fs'
+                let mut opts = HashMap::new();
+                opts.insert(
+                    "fs".to_string(),
+                    fs_value_with_runtime_overrides(
+                        &self.source,
+                        self.runtime_remote_options.as_ref(),
+                    ),
+                );
+                Some(opts)
+            });
 
         let body = RcloneServeBody {
             serve_options: processed_serve_opts,
@@ -151,12 +145,36 @@ pub async fn start_serve(
         LogLevel::Info,
         Some(params.remote_name.clone()),
         Some("Start serve".to_string()),
-        format!("Attempting to start {} serve", serve_type),
+        format!("Attempting to start {serve_type} serve"),
         Some(log_context),
     );
 
-    let payload = params.to_rclone_body();
+    let mut payload = params.to_rclone_body();
+
+    // Auto-inject our custom template for web-based protocols if not already specified
+    let serve_type_str = serve_type.as_str().unwrap_or("");
+    if serve_type_str == "http" || serve_type_str == "webdav" {
+        let app_paths = app.state::<AppPaths>();
+        let template_path = app_paths.serve_template_path();
+
+        if template_path.exists()
+            && let Some(obj) = payload.as_object_mut()
+            && !obj.contains_key("template")
+        {
+            obj.insert(
+                "template".to_string(),
+                json!(template_path.to_string_lossy()),
+            );
+            debug!(
+                "🎨 Injected custom serve template: {}",
+                template_path.display()
+            );
+        }
+    }
+
     debug!("📦 Serve request payload: {payload:#?}");
+
+    let backend_name_for_err = backend_manager.get_active_name().await;
 
     // Call serve/start directly
     let response_json = backend
@@ -173,12 +191,13 @@ pub async fn start_serve(
             );
             notify(
                 &app,
-                NotificationEvent::ServeFailed {
+                NotificationEvent::Serve(ServeStage::Failed {
+                    backend: backend_name_for_err.clone(),
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
-                    error: e.to_string(),
-                    origin: Origin::Ui,
-                },
+                    protocol: serve_type.as_str().unwrap_or("unknown").to_string(),
+                    error: e.clone(),
+                }),
             );
             error
         })?;
@@ -212,27 +231,28 @@ pub async fn start_serve(
         Some(json!({ "id": serve_response.id, "addr": serve_response.addr })),
     );
 
-    // Store state and refresh
-    let cache = &backend_manager.remote_cache;
-    cache
-        .store_serve_profile(&serve_id, params.profile.clone())
-        .await;
+    // Refresh first so the entry exists in cache, then attach the profile to it.
     if let Err(e) = force_check_serves(app.clone()).await {
         warn!("Failed to refresh serves: {e}");
     }
+    backend_manager
+        .remote_cache
+        .store_serve_profile(&serve_id, params.profile.clone())
+        .await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
     );
 
+    let backend_name = backend_manager.get_active_name().await;
     notify(
         &app,
-        NotificationEvent::ServeStarted {
+        NotificationEvent::Serve(ServeStage::Started {
+            backend: backend_name,
             remote: params.remote_name.clone(),
             profile: params.profile.clone(),
-            addr: serve_response.addr.clone(),
-            origin: Origin::Ui,
-        },
+            protocol: addr.clone(), // Or extracted protocol
+        }),
     );
 
     Ok(serve_response)
@@ -257,12 +277,19 @@ pub async fn stop_serve(
     let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
 
-    // Get profile from cache before stopping
-    let profile = backend_manager
+    // Get serve details from cache before stopping
+    let serve_info = backend_manager
         .remote_cache
-        .get_serve_profile(&server_id)
-        .await
-        .unwrap_or_default();
+        .get_serve_by_id(&server_id)
+        .await;
+    let profile = serve_info.as_ref().and_then(|s| s.profile.clone());
+    let protocol = serve_info
+        .as_ref()
+        .and_then(|s| s.params.get("type").and_then(|v| v.as_str()))
+        .unwrap_or("unknown")
+        .to_string();
+
+    let backend_name_for_err = backend_manager.get_active_name().await;
 
     let _ = backend
         .post_json(
@@ -282,12 +309,13 @@ pub async fn stop_serve(
             );
             notify(
                 &app,
-                NotificationEvent::ServeFailed {
+                NotificationEvent::Serve(ServeStage::Failed {
+                    backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
-                    profile: Some(profile.clone()),
-                    error: e.to_string(),
-                    origin: Origin::Ui,
-                },
+                    profile: profile.clone(),
+                    protocol: protocol.clone(),
+                    error: e.clone(),
+                }),
             );
             error
         })?;
@@ -305,51 +333,49 @@ pub async fn stop_serve(
     }
     info!("✅ Serve {server_id} stopped successfully");
 
+    let backend_name = backend_manager.get_active_name().await;
     notify(
         &app,
-        NotificationEvent::ServeStopped {
+        NotificationEvent::Serve(ServeStage::Stopped {
+            backend: backend_name,
             remote: remote_name.clone(),
-            profile: Some(profile),
-            origin: Origin::Ui,
-        },
+            profile,
+            protocol: protocol.clone(),
+        }),
     );
 
-    Ok(crate::localized_success!("backendErrors.serve.stopSuccess", "serverId" => &server_id))
+    Ok(crate::localized_success!("backendSuccess.serve.stopSuccess", "serverId" => &server_id))
 }
 
 /// Stop all running serve instances
 #[tauri::command]
-pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, String> {
+pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    // If there are no active serves, use helper for the no-op policy
+    // If there are no active serves, skip the API call.
     let serves = backend_manager.remote_cache.get_serves().await;
-    if !should_emit_stop_all_serves_notification(serves.len(), &context) {
+    if serves.is_empty() || context.is_shutdown() {
         debug!("No active serves to stop — skipping STOPALL");
-        if context != "shutdown" {
-            if let Err(e) = force_check_serves(app.clone()).await {
-                warn!("Failed to refresh serves: {e}");
-            }
-            notify(&app, NotificationEvent::NothingToDoServes);
+        if !context.is_shutdown()
+            && let Err(e) = force_check_serves(app.clone()).await
+        {
+            warn!("Failed to refresh serves: {e}");
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
     }
 
-    let _ = backend
+    if let Err(e) = backend
         .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
         .await
-        .map_err(|e| {
-            let error = format!("Failed to stop all serves: {e}");
-             let localized = crate::localized_error!("backendErrors.serve.failed", "operation" => "stop all", "error" => &error);
-             notify(&app, NotificationEvent::StopAllServesFailed { error: e.to_string() });
-            localized
-        })?;
+    {
+        warn!("Failed to stop all serves: {e}");
+    }
 
-    if context != "shutdown"
+    if !context.is_shutdown()
         && let Err(e) = force_check_serves(app.clone()).await
     {
         warn!("Failed to refresh serves: {e}");
@@ -357,29 +383,9 @@ pub async fn stop_all_serves(app: AppHandle, context: String) -> Result<String, 
 
     info!("✅ All serves stopped successfully");
 
-    notify(&app, NotificationEvent::AllServesStopped);
+    notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
-}
-
-// Small helper to encapsulate the no-op policy for stopping all serves.
-fn should_emit_stop_all_serves_notification(serves_count: usize, context: &str) -> bool {
-    serves_count > 0 && context != "shutdown"
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_emit_stop_all_serves_notification;
-
-    #[test]
-    fn test_should_emit_stop_all_serves_notification() {
-        // No serves -> silent
-        assert!(!should_emit_stop_all_serves_notification(0, "menu"));
-        // Active serves -> notify
-        assert!(should_emit_stop_all_serves_notification(2, "menu"));
-        // Shutdown -> never notify
-        assert!(!should_emit_stop_all_serves_notification(2, "shutdown"));
-    }
 }
 
 /// Start a serve using a named profile

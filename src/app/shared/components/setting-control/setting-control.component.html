@@ -117,6 +117,9 @@
             (selectionChange)="commitValue()"
             panelClass="settings-select-panel"
           >
+            <mat-select-trigger>
+              {{ getSelectedLabel(control()?.value, opt.Examples) }}
+            </mat-select-trigger>
             @for (example of opt.Examples; track example.Value) {
               <mat-option [value]="example.Value" class="multi-line-option">
                 <div class="option-content">
@@ -148,6 +151,17 @@
             (selectionChange)="commitValue()"
             panelClass="settings-select-panel"
           >
+            <mat-select-trigger>
+              @if (control()?.value?.length) {
+                {{ getSelectedLabel(control()?.value[0], optionsList) }}
+                @if (control()?.value.length > 1) {
+                  <span class="additional-selection">
+                    (+{{ control()?.value.length - 1 }}
+                    {{ 'shared.settingControl.others' | translate }})
+                  </span>
+                }
+              }
+            </mat-select-trigger>
             @for (item of optionsList; track item.Value || item) {
               <mat-option [value]="item.Value || item" class="multi-line-option">
                 <div class="option-content">

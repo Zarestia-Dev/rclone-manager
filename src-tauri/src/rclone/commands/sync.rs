@@ -1,27 +1,24 @@
-use log::debug;
-use serde_json::{Map, Value, json};
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::utils::types::origin::Origin;
-use crate::{
-    rclone::backend::BackendManager,
-    utils::{
-        json_helpers::unwrap_nested_options,
-        logging::log::log_operation,
-        rclone::endpoints::sync,
-        types::{core::RcloneState, jobs::JobType, logs::LogLevel, remotes::ProfileParams},
-    },
+use crate::utils::{
+    json_helpers::unwrap_nested_options,
+    rclone::endpoints::sync,
+    types::{jobs::JobType, remotes::ProfileParams},
 };
 
-use super::common::{fs_value_with_runtime_overrides, parse_common_config};
-use super::job::{JobMetadata, submit_job};
+use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
+use super::job::JobMetadata;
+use crate::utils::rclone::endpoints::operations;
+use futures::future::join_all;
 
 // ============================================================================
 // SHARED TYPES
 // ============================================================================
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum TransferType {
     Sync,
     Copy,
@@ -30,24 +27,6 @@ pub enum TransferType {
 }
 
 impl TransferType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransferType::Sync => "sync",
-            TransferType::Copy => "copy",
-            TransferType::Move => "move",
-            TransferType::Bisync => "bisync",
-        }
-    }
-
-    pub fn operation_name(&self) -> &'static str {
-        match self {
-            TransferType::Sync => "Sync operation",
-            TransferType::Copy => "Copy operation",
-            TransferType::Move => "Move operation",
-            TransferType::Bisync => "Bisync operation",
-        }
-    }
-
     pub fn endpoint(&self) -> &'static str {
         match self {
             TransferType::Sync => sync::SYNC,
@@ -70,28 +49,95 @@ impl TransferType {
 /// Unified parameter structure for all transfer operations
 #[derive(Debug, Clone)]
 pub struct GenericTransferParams {
-    pub remote_name: String,
     pub source: String,
     pub dest: String,
     pub options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
-    pub profile: Option<String>,
     pub transfer_type: TransferType,
-    pub origin: Option<crate::utils::types::origin::Origin>,
-    pub no_cache: Option<bool>,
+    pub is_dir: bool,
 }
 
 impl GenericTransferParams {
-    pub fn to_rclone_body(&self) -> Value {
+    pub fn to_rclone_body(&self) -> Result<Value, String> {
         let mut body = Map::new();
+
+        if !self.is_dir && matches!(self.transfer_type, TransferType::Copy | TransferType::Move) {
+            self.build_file_transfer_body(&mut body)?;
+        } else {
+            self.build_directory_transfer_body(&mut body);
+        }
+
+        let mut opts = self.options.clone().unwrap_or_default();
+        self.process_top_level_options(&mut body, &mut opts);
+
+        if !opts.is_empty() || self.backend_options.is_some() {
+            let config = merge_options(Some(opts), self.backend_options.clone());
+            if !config.is_empty() {
+                body.insert(
+                    "_config".to_string(),
+                    Value::Object(config.into_iter().collect()),
+                );
+            }
+        }
+
+        if let Some(filters) = self.filter_options.clone() {
+            body.insert(
+                "_filter".to_string(),
+                Value::Object(unwrap_nested_options(filters).into_iter().collect()),
+            );
+        }
+
+        Ok(Value::Object(body))
+    }
+
+    fn build_file_transfer_body(&self, body: &mut Map<String, Value>) -> Result<(), String> {
+        let endpoint = if self.transfer_type == TransferType::Copy {
+            operations::COPYFILE
+        } else {
+            operations::MOVEFILE
+        };
+        let src_parsed = parse_fs(&self.source);
+        let dst_parsed = parse_fs(&self.dest);
+
+        if let (Some((src_fs, src_remote)), Some((dst_fs, dst_root))) = (src_parsed, dst_parsed) {
+            let filename = src_remote
+                .split(['/', '\\'])
+                .next_back()
+                .unwrap_or(&src_remote);
+            let dst_remote = if dst_root.is_empty() {
+                filename.to_string()
+            } else {
+                format!("{}/{}", dst_root.trim_end_matches(['/', '\\']), filename)
+            };
+
+            body.insert(
+                "srcFs".to_string(),
+                fs_value_with_runtime_overrides(&src_fs, self.runtime_remote_options.as_ref()),
+            );
+            body.insert("srcRemote".to_string(), Value::String(src_remote));
+            body.insert(
+                "dstFs".to_string(),
+                fs_value_with_runtime_overrides(&dst_fs, self.runtime_remote_options.as_ref()),
+            );
+            body.insert("dstRemote".to_string(), Value::String(dst_remote));
+            body.insert("_path".to_string(), Value::String(endpoint.to_string()));
+            Ok(())
+        } else {
+            Err(format!(
+                "Could not parse source '{}' or destination '{}' as a file path. Ensure the format is 'remote:path/to/file' or a local path.",
+                self.source, self.dest
+            ))
+        }
+    }
+
+    fn build_directory_transfer_body(&self, body: &mut Map<String, Value>) {
         let src_fs =
             fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref());
         let dst_fs =
             fs_value_with_runtime_overrides(&self.dest, self.runtime_remote_options.as_ref());
 
-        // Bisync uses path1/path2, others use srcFs/dstFs
         if self.transfer_type == TransferType::Bisync {
             body.insert("path1".to_string(), src_fs);
             body.insert("path2".to_string(), dst_fs);
@@ -99,15 +145,20 @@ impl GenericTransferParams {
             body.insert("srcFs".to_string(), src_fs);
             body.insert("dstFs".to_string(), dst_fs);
         }
-        body.insert("_async".to_string(), Value::Bool(true));
+        body.insert(
+            "_path".to_string(),
+            Value::String(self.transfer_type.endpoint().to_string()),
+        );
+    }
 
-        let mut opts = self.options.clone().unwrap_or_default();
-
-        // Handle Special Top-Level Parameters
-        let top_level_keys = [
-            "createEmptySrcDirs", // sync, copy, move, bisync
-            "deleteEmptySrcDirs", // move
-            // bisync specific:
+    fn process_top_level_options(
+        &self,
+        body: &mut Map<String, Value>,
+        opts: &mut HashMap<String, Value>,
+    ) {
+        const TOP_LEVEL_KEYS: &[&str] = &[
+            "createEmptySrcDirs",
+            "deleteEmptySrcDirs",
             "resync",
             "checkAccess",
             "checkFilename",
@@ -125,40 +176,14 @@ impl GenericTransferParams {
             "dryRun",
         ];
 
-        for key in top_level_keys {
-            if let Some(val) = opts.remove(key) {
-                match val {
-                    Value::Bool(b) => {
-                        if b {
-                            body.insert(key.to_string(), Value::Bool(true));
-                        }
-                    }
-                    _ => {
-                        body.insert(key.to_string(), val);
-                    }
-                }
+        for key in TOP_LEVEL_KEYS {
+            if let Some(val) = opts.remove(*key)
+                && !val.is_null()
+                && (val != Value::Bool(false))
+            {
+                body.insert((*key).to_string(), val);
             }
         }
-
-        // Merge Remaining Options into _config
-        let config_map = merge_options(Some(opts), self.backend_options.clone());
-        if !config_map.is_empty() {
-            body.insert(
-                "_config".to_string(),
-                Value::Object(config_map.into_iter().collect()),
-            );
-        }
-
-        // Add Filters
-        if let Some(filters) = self.filter_options.clone() {
-            let unwrapped_filters = unwrap_nested_options(filters);
-            body.insert(
-                "_filter".to_string(),
-                Value::Object(unwrapped_filters.into_iter().collect()),
-            );
-        }
-
-        Value::Object(body)
     }
 }
 
@@ -185,183 +210,133 @@ fn merge_options(
     }
 }
 
-/// Generic function to perform any transfer operation
-async fn perform_transfer(app: AppHandle, params: GenericTransferParams) -> Result<u64, String> {
-    let client = app.state::<RcloneState>().client.clone();
-    debug!(
-        "Starting {} with params: {:#?}",
-        params.transfer_type.as_str(),
-        params
-    );
-
-    let op_name = params.transfer_type.operation_name();
-
-    // 1. Log Operation Start
-    log_operation(
-        LogLevel::Info,
-        Some(params.remote_name.clone()),
-        Some(op_name.to_string()),
-        format!(
-            "Starting {} from {} to {}",
-            params.transfer_type.as_str(),
-            params.source,
-            params.dest
-        ),
-        Some(json!({
-            "source": params.source,
-            "destination": params.dest,
-            "options": params.options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
-            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>()),
-            "runtime_remote_options": params.runtime_remote_options.as_ref().map(|r| r.keys().collect::<Vec<_>>())
-        })),
-    );
-
-    // 2. Build Request Body
-    let body = params.to_rclone_body();
-
-    // 4. Check for duplicates (Concurrency Control)
-    let backend_manager = app.state::<BackendManager>();
-    if backend_manager
-        .job_cache
-        .is_job_running(
-            &params.remote_name,
-            params.transfer_type.as_job_type(),
-            params.profile.as_deref(),
-        )
-        .await
-    {
-        let profile_msg = params
-            .profile
-            .clone()
-            .map(|p| format!(" (Profile: '{}')", p))
-            .unwrap_or_default();
-
-        let msg = format!(
-            "Job '{}' is already running for '{}'{}",
-            params.transfer_type.as_str(),
-            params.remote_name,
-            profile_msg
-        );
-        log::warn!("🚫 {}", msg);
-        return Err(msg);
-    }
-
-    // 5. Submit Job
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(params.transfer_type.endpoint());
-
-    let request = backend.inject_auth(client.post(&url));
-
-    let (jobid, _, _) = submit_job(
-        app,
-        client.clone(),
-        request,
-        body,
-        JobMetadata {
-            remote_name: params.remote_name,
-            job_type: params.transfer_type.as_job_type(),
-            operation_name: op_name.to_string(),
-            source: params.source,
-            destination: params.dest,
-            profile: params.profile,
-            origin: params.origin,
-            group: None, // Auto-generate from job_type/remote_name
-            no_cache: params.no_cache.unwrap_or(false),
-        },
-    )
-    .await?;
-
-    Ok(jobid)
-}
-
 // ============================================================================
 // PROFILE COMMANDS
 // ============================================================================
 
-/// Generic helper to load profile and run transfer
-async fn load_profile_and_run(
+#[tauri::command]
+pub async fn start_profile_batch(
     app: AppHandle,
-    params: ProfileParams,
-    config_key: &str,
     transfer_type: TransferType,
-) -> Result<u64, String> {
+    params: ProfileParams,
+) -> Result<String, String> {
+    let config_key = match transfer_type {
+        TransferType::Sync => "syncConfigs",
+        TransferType::Copy => "copyConfigs",
+        TransferType::Move => "moveConfigs",
+        TransferType::Bisync => "bisyncConfigs",
+    };
+
     let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
         &app,
         &params.remote_name,
         &params.profile_name,
         config_key,
     )
-    .await?;
+    .await
+    .map_err(|e| format!("Profile error: {e}"))?;
 
-    let common = parse_common_config(&config, &settings, &params.remote_name).ok_or_else(|| {
-        crate::localized_error!(
-            "backendErrors.sync.configIncomplete",
-            "profile" => &params.profile_name
+    let common = parse_common_config(&config, &settings).ok_or_else(|| {
+        format!(
+            "Profile {} configuration is incomplete",
+            params.profile_name
         )
     })?;
 
-    let transfer_params = GenericTransferParams {
-        remote_name: params.remote_name.clone(),
-        source: common.source,
-        dest: common.dest,
-        options: common.options,
-        filter_options: common.filter_options,
-        backend_options: common.backend_options,
-        runtime_remote_options: common.runtime_remote_options,
-        profile: Some(params.profile_name.clone()),
-        transfer_type,
-        origin: params.source.as_deref().map(Origin::parse),
-        no_cache: params.no_cache,
+    let mut inputs = Vec::new();
+    let is_copy_move = matches!(transfer_type, TransferType::Copy | TransferType::Move);
+
+    let dest = common.dest.clone();
+    if dest.is_empty() {
+        return Err("No destination specified".to_string());
+    }
+
+    let mut tasks = Vec::new();
+    for source in &common.source {
+        let app = app.clone();
+        let source = source.clone();
+        let runtime_remote_options = common.runtime_remote_options.clone();
+        tasks.push(async move {
+            let is_dir = if is_copy_move {
+                is_directory(&app, &source, runtime_remote_options.as_ref())
+                    .await
+                    .unwrap_or(true)
+            } else {
+                true
+            };
+            (source, is_dir)
+        });
+    }
+
+    let results = join_all(tasks).await;
+
+    for (source, is_dir) in results {
+        let body = GenericTransferParams {
+            source,
+            dest: dest.clone(),
+            options: common.options.clone(),
+            filter_options: common.filter_options.clone(),
+            backend_options: common.backend_options.clone(),
+            runtime_remote_options: common.runtime_remote_options.clone(),
+            transfer_type,
+            is_dir,
+        }
+        .to_rclone_body()
+        .map_err(|e| format!("Body generation error: {e}"))?;
+
+        inputs.push(body);
+    }
+
+    if inputs.is_empty() {
+        return Err("No valid jobs generated".to_string());
+    }
+
+    let job_source = if common.source.len() > 1 {
+        format!("{} (+...)", common.source[0])
+    } else {
+        common.source[0].clone()
     };
 
-    perform_transfer(app, transfer_params).await
-}
-
-#[tauri::command]
-pub async fn start_sync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run(app, params, "syncConfigs", TransferType::Sync).await
-}
-
-#[tauri::command]
-pub async fn start_copy_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run(app, params, "copyConfigs", TransferType::Copy).await
-}
-
-#[tauri::command]
-pub async fn start_move_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run(app, params, "moveConfigs", TransferType::Move).await
-}
-
-#[tauri::command]
-pub async fn start_bisync_profile(app: AppHandle, params: ProfileParams) -> Result<u64, String> {
-    load_profile_and_run(app, params, "bisyncConfigs", TransferType::Bisync).await
+    crate::rclone::commands::job::submit_batch_job(
+        app,
+        inputs,
+        JobMetadata {
+            remote_name: params.remote_name.clone(),
+            job_type: transfer_type.as_job_type(),
+            source: job_source,
+            destination: common.dest.clone(),
+            profile: Some(params.profile_name.clone()),
+            origin: params.source,
+            group: None,
+            no_cache: params.no_cache.unwrap_or(false),
+        },
+    )
+    .await
 }
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]
     fn test_sync_body_generation() {
         let params = GenericTransferParams {
-            remote_name: "test".to_string(),
             source: "src:".to_string(),
             dest: "dst:".to_string(),
             options: Some(HashMap::from([
-                ("dryRun".to_string(), Value::Bool(true)),
-                ("transfers".to_string(), Value::Number(4.into())),
+                ("dryRun".to_string(), json!(true)),
+                ("transfers".to_string(), json!(4)),
             ])),
             filter_options: None,
             backend_options: None,
             runtime_remote_options: None,
-            profile: Some("prof".to_string()),
             transfer_type: TransferType::Sync,
-            origin: None,
-            no_cache: None,
+            is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("srcFs").unwrap(), "src:");
@@ -375,20 +350,17 @@ mod tests {
     #[test]
     fn test_bisync_body_generation() {
         let params = GenericTransferParams {
-            remote_name: "test".to_string(),
             source: "path1".to_string(),
             dest: "path2".to_string(),
-            options: Some(HashMap::from([("resync".to_string(), Value::Bool(true))])),
+            options: Some(HashMap::from([("resync".to_string(), json!(true))])),
             filter_options: None,
             backend_options: None,
             runtime_remote_options: None,
-            profile: Some("prof".to_string()),
             transfer_type: TransferType::Bisync,
-            origin: None,
-            no_cache: None,
+            is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         assert_eq!(obj.get("path1").unwrap(), "path1");
@@ -399,7 +371,6 @@ mod tests {
     #[test]
     fn test_sync_body_generation_with_runtime_remote_overrides() {
         let params = GenericTransferParams {
-            remote_name: "test".to_string(),
             source: "srcRemote:bucket/a".to_string(),
             dest: "dstRemote:bucket/b".to_string(),
             options: None,
@@ -415,13 +386,11 @@ mod tests {
                     json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
                 ),
             ])),
-            profile: Some("prof".to_string()),
             transfer_type: TransferType::Sync,
-            origin: None,
-            no_cache: None,
+            is_dir: true,
         };
 
-        let body = params.to_rclone_body();
+        let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
         let src_fs = obj.get("srcFs").unwrap().as_object().unwrap();
@@ -433,5 +402,50 @@ mod tests {
         assert_eq!(dst_fs.get("_name").unwrap(), "dstRemote");
         assert_eq!(dst_fs.get("_root").unwrap(), "bucket/b");
         assert_eq!(dst_fs.get("provider").unwrap(), "AWS");
+    }
+
+    #[test]
+    fn test_file_copy_body_generation() {
+        let params = GenericTransferParams {
+            source: "src:file.txt".to_string(),
+            dest: "dst:backup/".to_string(),
+            options: None,
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: None,
+            transfer_type: TransferType::Copy,
+            is_dir: false,
+        };
+
+        let body = params.to_rclone_body().unwrap();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("srcFs").unwrap(), "src:");
+        assert_eq!(obj.get("srcRemote").unwrap(), "file.txt");
+        assert_eq!(obj.get("dstFs").unwrap(), "dst:");
+        assert_eq!(obj.get("dstRemote").unwrap(), "backup/file.txt");
+        assert_eq!(obj.get("_path").unwrap(), operations::COPYFILE);
+    }
+
+    #[test]
+    fn test_file_copy_body_generation_failure() {
+        let params = GenericTransferParams {
+            source: "::invalid".to_string(),
+            dest: "dst:".to_string(),
+            options: None,
+            filter_options: None,
+            backend_options: None,
+            runtime_remote_options: None,
+            transfer_type: TransferType::Copy,
+            is_dir: false,
+        };
+
+        let result = params.to_rclone_body();
+        assert!(result.is_err());
+        assert!(
+            result.unwrap_err().contains(
+                "Could not parse source '::invalid' or destination 'dst:' as a file path"
+            )
+        );
     }
 }

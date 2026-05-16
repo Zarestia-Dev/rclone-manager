@@ -6,9 +6,9 @@ import {
   computed,
   effect,
   input,
-  untracked,
   model,
   output,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
@@ -18,10 +18,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
 import {
-  ActionState,
   CompletedTransfer,
   GlobalStats,
   DEFAULT_JOB_STATS,
@@ -31,7 +29,6 @@ import {
   OperationControlConfig,
   PathDisplayConfig,
   PrimaryActionType,
-  Remote,
   RemoteStatus,
   RemoteOperationState,
   RemoteServeState,
@@ -56,7 +53,13 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
-import { IconService, JobManagementService, RawTransfer, mapRawTransfer } from '@app/services';
+import {
+  IconService,
+  JobManagementService,
+  RawTransfer,
+  mapRawTransfer,
+  RemoteFacadeService,
+} from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
@@ -72,23 +75,7 @@ interface ProfileConfig {
   options?: { type?: string; addr?: string; [key: string]: unknown };
 }
 
-const ANIMATION_CLASS: Partial<Record<PrimaryActionType, string>> = {
-  sync: 'animate-spin',
-  copy: 'animate-breathing',
-  move: 'animate-move',
-  bisync: 'animate-breathing',
-  serve: 'animate-breathing',
-  mount: 'animate-breathing',
-};
-
-const OPERATION_COLOR_VAR: Record<OperationColor, string> = {
-  primary: 'var(--primary-color)',
-  accent: 'var(--accent-color)',
-  yellow: 'var(--yellow)',
-  orange: 'var(--orange)',
-  purple: 'var(--purple)',
-  warn: 'var(--warn-color)',
-};
+import { ACTION_ANIMATION_CLASS, OPERATION_COLOR_VAR } from '@app/types';
 
 @Component({
   selector: 'app-app-detail',
@@ -119,9 +106,7 @@ export class AppDetailComponent {
   // --- Inputs ---
   readonly mainOperationType = input<PrimaryActionType>('mount');
   readonly selectedSyncOperation = model<SyncOperationType>('sync');
-  readonly selectedRemote = input.required<Remote>();
   readonly remoteSettings = input<RemoteSettings>({});
-  readonly actionInProgress = input<ActionState[] | null | undefined>(null);
 
   // --- Outputs ---
   readonly openRemoteConfigModal = output<{
@@ -146,6 +131,7 @@ export class AppDetailComponent {
   }>();
 
   // --- Services ---
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly jobService = inject(JobManagementService);
   readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
@@ -155,7 +141,30 @@ export class AppDetailComponent {
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  readonly selectedProfile = signal<string | null>(null);
+  private readonly _selectedProfiles = signal<Record<string, string>>({});
+
+  readonly selectedProfile = computed(() => {
+    const op = this.currentOpType();
+    const profiles = this.profiles();
+    const current = this._selectedProfiles()[op];
+
+    // If we have a saved selection that's still valid, use it
+    if (current && profiles.some(p => p.name === current)) {
+      return current;
+    }
+
+    // Fallback to the first available profile (or 'default' if empty)
+    return profiles[0]?.name ?? 'default';
+  });
+  protected readonly selectedRemote = computed(() => {
+    const remote = this.remoteFacade.selectedRemote();
+    if (!remote) throw new Error('[AppDetail] Selected remote is required');
+    return remote;
+  });
+
+  readonly actionInProgress = computed(
+    () => this.remoteFacade.actionInProgress()[this.selectedRemote().name] ?? []
+  );
 
   // --- Derived: Operation Type ---
   readonly isSyncType = computed(() => this.mainOperationType() === 'sync');
@@ -177,7 +186,7 @@ export class AppDetailComponent {
   );
 
   readonly iconAnimationClass = computed(() =>
-    this.operationActiveState() ? (ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
+    this.operationActiveState() ? (ACTION_ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
   );
 
   // --- Derived: Sync Operations ---
@@ -331,14 +340,15 @@ export class AppDetailComponent {
       .filter(([, cfg]) => cfg?.cronEnabled && cfg?.cronExpression)
       .map(([profileName, cfg]) => {
         let humanReadable = 'Invalid schedule';
+        const cronExpression = cfg.cronExpression ?? '';
         try {
-          humanReadable = cronstrue(cfg.cronExpression!, {
+          humanReadable = cronstrue(cronExpression, {
             locale: getCronstrueLocale(this.translate.getCurrentLang()),
           });
         } catch {
-          console.warn(`Invalid cron expression for profile ${profileName}: ${cfg.cronExpression}`);
+          console.warn(`Invalid cron expression for profile ${profileName}: ${cronExpression}`);
         }
-        return { profileName, cronExpression: cfg.cronExpression!, humanReadable };
+        return { profileName, cronExpression, humanReadable };
       });
   });
 
@@ -415,7 +425,12 @@ export class AppDetailComponent {
   });
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    return this.settingsPanelConfigMap().get(section.key)!;
+    const config = this.settingsPanelConfigMap().get(section.key);
+    if (!config) {
+      // Fallback to empty settings if section not found in map (should not happen)
+      return { section, settings: {} };
+    }
+    return config;
   }
 
   // --- Derived: Control Configs ---
@@ -463,7 +478,7 @@ export class AppDetailComponent {
     const progress = s.totalBytes > 0 ? Math.min(100, (s.bytes / s.totalBytes) * 100) : 0;
     const etaProgress =
       s.elapsedTime && s.eta ? (s.elapsedTime / (s.elapsedTime + s.eta)) * 100 : 0;
-    const t = (key: string, params?: object) => this.translate.instant(key, params);
+    const t = (key: string, params?: object): string => this.translate.instant(key, params);
 
     return {
       title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
@@ -513,13 +528,15 @@ export class AppDetailComponent {
   }));
 
   constructor() {
-    // Auto-select first valid profile when the list changes.
+    // Load persistent preferences when the remote or its settings change
     effect(() => {
-      const profiles = this.profiles();
-      const current = this.selectedProfile();
+      const settings = this.remoteSettings();
       untracked(() => {
-        if (profiles.length > 0 && (!current || !profiles.some(p => p.name === current))) {
-          this.selectedProfile.set(profiles[0].name);
+        if (settings['selectedSyncOperation']) {
+          this.selectedSyncOperation.set(settings['selectedSyncOperation'] as SyncOperationType);
+        }
+        if (settings['selectedProfiles']) {
+          this._selectedProfiles.set(settings['selectedProfiles'] as Record<string, string>);
         }
       });
     });
@@ -534,6 +551,24 @@ export class AppDetailComponent {
   }
 
   // --- Public Methods ---
+
+  async onProfileSelect(name: string): Promise<void> {
+    const op = this.currentOpType();
+    const updatedMap = { ...this._selectedProfiles(), [op]: name };
+    this._selectedProfiles.set(updatedMap);
+
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      selectedProfiles: updatedMap,
+    });
+  }
+
+  async onSyncOpSelect(type: SyncOperationType): Promise<void> {
+    this.selectedSyncOperation.set(type);
+
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      selectedSyncOperation: type,
+    });
+  }
 
   onAddProfile(): void {
     this.openRemoteConfigModal.emit({
@@ -656,7 +691,7 @@ export class AppDetailComponent {
     );
     const actionType = actionMatch?.type;
     const isLoading = !!actionType;
-    const t = (key: string, params?: object) => this.translate.instant(key, params);
+    const t = (key: string, params?: object): string => this.translate.instant(key, params);
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
@@ -674,8 +709,9 @@ export class AppDetailComponent {
           }
         : {
             source: config.source ?? t('dashboard.appDetail.notConfigured'),
-            destination:
-              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured'),
+            destination: this.normalizeSinglePath(
+              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured')
+            ),
             showOpenButtons: true,
             isDestinationActive: type === 'mount' ? isActive : true,
             actionInProgress: (actionType as RemoteAction) ?? undefined,
@@ -710,6 +746,10 @@ export class AppDetailComponent {
     return totalBytes > 0
       ? `${this.formatFileSize.transform(bytes)} / ${this.formatFileSize.transform(totalBytes)}`
       : this.formatFileSize.transform(bytes);
+  }
+
+  private normalizeSinglePath(path: string | string[]): string {
+    return Array.isArray(path) ? path[0] || '' : path;
   }
 }
 

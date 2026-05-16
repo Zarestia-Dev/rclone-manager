@@ -12,6 +12,14 @@
   gap: var(--space-md);
 }
 
+mat-form-field {
+  margin-top: var(--space-md);
+
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+}
+
 // ============================================================================
 // JSON / FORM MODE TOGGLE HEADER
 // ============================================================================
@@ -21,7 +29,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
+  margin-block: var(--space-xs);
 
   .fields-count {
     font-size: var(--font-size-xs);

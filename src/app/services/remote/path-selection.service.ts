@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
+import { PathService } from '../infrastructure/platform/path.service';
 import { Entry } from '@app/types';
 
 export interface PathSelectionState {
@@ -16,6 +17,7 @@ export interface PathSelectionState {
 })
 export class PathSelectionService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
+  private readonly pathService = inject(PathService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
 
@@ -85,15 +87,17 @@ export class PathSelectionService {
     if (!state) return;
 
     const selectedEntry = state.options.find(e => e.Name === entryName);
-    if (!selectedEntry || !selectedEntry.IsDir) return; // Only navigate into directories
+    if (!selectedEntry) return;
 
-    const newPath = this.joinPath(state.currentPath, entryName);
+    const newPath = this.pathService.joinPath(state.currentPath, entryName);
 
     if (formControl) {
       formControl.setValue(newPath);
     }
 
-    this.fetchEntries(fieldId, state.remoteName, newPath);
+    if (selectedEntry.IsDir) {
+      this.fetchEntries(fieldId, state.remoteName, newPath);
+    }
   }
 
   /**
@@ -103,7 +107,7 @@ export class PathSelectionService {
     const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
-    const parentPath = this.getParentPath(state.currentPath);
+    const parentPath = this.pathService.getParentPath(state.currentPath);
 
     if (formControl) {
       formControl.setValue(parentPath);
@@ -126,8 +130,14 @@ export class PathSelectionService {
     try {
       // For local paths (empty remoteName), use '/' as the filesystem root
       // For remote paths, normalize with colon suffix
-      const normalizedRemote = remoteName === '' ? '/' : this.normalizeRemoteForRclone(remoteName);
-      const response = await this.remoteOps.getRemotePaths(normalizedRemote, path || '', {}, 'ui');
+      const normalizedRemote =
+        remoteName === '' ? '/' : this.pathService.normalizeRemoteForRclone(remoteName);
+      const response = await this.remoteOps.getRemotePaths(
+        normalizedRemote,
+        path || '',
+        {},
+        'filemanager'
+      );
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
       stateSignal.update(s => ({ ...s, options: entries, isLoading: false }));
@@ -137,53 +147,11 @@ export class PathSelectionService {
     }
   }
 
-  /**
-   * Normalize remote name for rclone backend calls.
-   * - Empty or `Local` should be treated as local filesystem (send empty string)
-   * - If the remote already ends with ':' return as-is
-   * - Otherwise append ':' so rclone receives `remote:` format
-   */
-  public normalizeRemoteForRclone(remoteName?: string): string {
-    if (!remoteName) return '';
-    if (remoteName.startsWith('/')) return remoteName;
-    if (/^[A-Za-z]:[\\/]/.test(remoteName)) return remoteName;
-    return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
-  }
-
-  /**
-   * Normalize remote name for internal lookups / display keys.
-   * Removes a trailing ':' if present and returns the plain remote identifier.
-   */
-  public normalizeRemoteName(remoteName?: string, isLocal = false): string {
-    if (!remoteName) return '';
-    // If it's a local Windows drive, we MUST preserve the colon
-    if (isLocal && /^[a-zA-Z]:$/.test(remoteName)) return remoteName;
-    // For remotes, we strip the colon even if it's named 'C:'
-    return remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
-  }
-
   public resetPath(fieldId: string): void {
     const state = this.pathStates.get(fieldId)?.();
     if (!state) return;
 
     // Fetch entries for the root directory of the current remote
     this.fetchEntries(fieldId, state.remoteName, '');
-  }
-
-  private getParentPath(path: string): string {
-    if (!path || path === '/') return '';
-
-    const preserveLeadingSlash = path.startsWith('/');
-    const parts = path.split('/').filter(p => p);
-    parts.pop();
-
-    const joined = parts.join('/');
-    return preserveLeadingSlash ? '/' + joined : joined;
-  }
-
-  private joinPath(base: string, part: string): string {
-    if (!base) return part;
-    if (base === '/') return '/' + part;
-    return `${base}/${part}`;
   }
 }

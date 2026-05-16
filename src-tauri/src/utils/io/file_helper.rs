@@ -118,3 +118,20 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
 
     Ok(file_location)
 }
+
+#[command]
+pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    debug!("Opening multi-file picker dialog...");
+
+    let file_locations = window.dialog().file().blocking_pick_files().map(|paths| {
+        paths
+            .into_iter()
+            .map(|path| path.to_string())
+            .collect::<Vec<_>>()
+    });
+
+    debug!("File locations: {file_locations:?}");
+
+    Ok(file_locations)
+}

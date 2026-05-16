@@ -20,10 +20,18 @@
     "move": "Taşı",
     "retry": "Yeniden Dene",
     "default": "Varsayılan",
-    "copyErrorFailed": "Hata kopyalanamadı",
-    "errorCopied": "Hata panoya kopyalandı",
+    "copied": "Panoya kopyalandı",
+    "copyFailed": "Panoya kopyalanamadı",
     "required": "Bu alan zorunludur.",
-    "clear": "Temizle"
+    "clear": "Temizle",
+    "name": "Ad",
+    "status": "Durum",
+    "time": "Zaman",
+    "message": "Mesaj",
+    "type": "Tür",
+    "context": "Bağlam",
+    "all": "Tümü",
+    "description": "Açıklama"
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
@@ -223,7 +231,129 @@
     "restoreFailed": "Rclone güncellemesi geri yüklenemedi: {{error}}",
     "autoCheckEnabled": "Rclone otomatik güncelleme kontrolü etkinleştirildi",
     "autoCheckDisabled": "Rclone otomatik güncelleme kontrolü devre dışı bırakıldı",
-    "settingsSaveFailed": "Rclone güncelleme ayarları kaydedilemedi: {{error}}"
+    "settingsSaveFailed": "Rclone güncelleme ayarları kaydedilemedi: {{error}}",
+    "manualRestartRequired": "Rclone uzak sunucuda güncellendi. Yeni sürümü uygulamak için lütfen uzak rclone servisini manuel olarak yeniden başlatın."
+  },
+  "alerts": {
+    "title": "Uyarılar ve Bildirimler",
+    "history": "Geçmiş",
+    "rules": "Kurallar",
+    "actions": "Eylemler",
+    "defaultActionName": "Sistem Bildirimi",
+    "defaultRuleName": "Varsayılan Kural",
+    "unacknowledged": "Onaylanmamış",
+    "acknowledgeAll": "Tümünü Onayla",
+    "clearHistory": "Geçmişi Temizle",
+    "clearHistoryConfirm": "Tüm uyarı geçmişini temizlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "deleteRuleConfirm": "Bu uyarı kuralını silmek istediğinizden emin misiniz?",
+    "deleteActionConfirm": "Bu eylemi silmek istediğinizden emin misiniz?",
+    "severity": "Önem Derecesi",
+    "ruleLabel": "Kural",
+    "noHistory": "Uyarı geçmişi yok",
+    "noHistoryDesc": "Tüm geçmiş bildirimleriniz ve olaylarınız burada listelenecektir.",
+    "noRules": "Uyarı kuralı yok",
+    "noActions": "Uyarı eylemi yok",
+    "createRule": "Kural Oluştur",
+    "editRule": "Kuralı Düzenle",
+    "ruleName": "Kural Adı",
+    "lastFired": "Son Çalışma",
+    "enabled": "Etkin",
+    "createAction": "Eylem Oluştur",
+    "editAction": "Eylemi Düzenle",
+    "testAction": "Eylemi Test Et",
+    "testActionSuccess": "Uyarı eylemi testi başarıyla tamamlandı.",
+    "testActionFailed": "Uyarı eylemi testi başarısız oldu: {{error}}",
+    "testActionError": "Uyarı eylemi test edilirken bir hata oluştu: {{error}}",
+    "severityLevels": {
+      "info": "Bilgi",
+      "warning": "Uyarı",
+      "average": "Orta",
+      "high": "Yüksek",
+      "critical": "Kritik"
+    },
+    "origins": {
+      "title": "Kaynaklar",
+      "dashboard": "Panel",
+      "scheduler": "Zamanlayıcı",
+      "filemanager": "Dosya Yöneticisi",
+      "startup": "Başlangıç",
+      "update": "Güncelleme",
+      "internal": "Dahili"
+    },
+    "rule": {
+      "filters": "Filtreler",
+      "placeholderName": "Kural adını girin",
+      "severityMin": "Minimum Önem Derecesi",
+      "cooldown": "Bekleme Süresi (Saniye)",
+      "eventFilter": "Olay Tipi Filtresi",
+      "eventFilterHint": "Tüm olay türlerini eşleştirmek için boş bırakın.",
+      "remoteFilter": "Uzak Sunucu Filtresi",
+      "remoteFilterHint": "Tüm uzak sunucuları eşleştirmek için boş bırakın.",
+      "originFilterHint": "Herhangi bir kaynak kaynağını eşleştirmek için boş bırakın.",
+      "backendFilter": "Altyapı (Backend) Filtresi",
+      "backendFilterPlaceholder": "Örn: Local, Seedbox",
+      "backendFilterHint": "Sadece belirli altyapılardaki olayları izlemek için.",
+      "profileFilter": "Profil Filtresi",
+      "profileFilterPlaceholder": "Örn: GDrive-Sync",
+      "profileFilterHint": "Sadece belirli profillerdeki olayları izlemek için.",
+      "autoAcknowledge": "Otomatik Onayla",
+      "autoAcknowledgeHint": "Oluşan uyarıları otomatik olarak onaylandı olarak işaretle. Sistem bildirimi tetikleyen uyarılar için idealdir.",
+      "actions": "Tetiklenecek Eylemler"
+    },
+    "events": {
+      "job": "İşler ve Dosya İşlemleri",
+      "serve": "Arka Plan Sunucuları",
+      "mount": "Sürücü Bağlantıları",
+      "engine": "Altyapı ve Motor",
+      "update": "Yazılım Güncellemeleri",
+      "scheduled_task": "Zamanlanmış Görevler",
+      "system": "Sistem Olayları"
+    },
+    "action": {
+      "kind": "Eylem Tipi",
+      "os_toast": "Sistem Bildirimi",
+      "webhook": "Webhook (HTTP/S)",
+      "script": "Özel Betik",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "E-posta",
+      "placeholderName": "Eylem adını girin",
+      "url": "Webhook URL",
+      "method": "HTTP/S Metodu",
+      "timeout": "Zaman Aşımı (Saniye)",
+      "bodyTemplate": "Gövde Şablonu (JSON)",
+      "bodyTemplateHint": "Handlebars değişkenlerini destekler",
+      "tlsVerify": "TLS Doğrulaması",
+      "retryCount": "Yeniden Deneme Sayısı",
+      "command": "Betik Komutu / Yolu",
+      "args": "Betik Argümanları",
+      "argsHint": "(Boşlukla ayrılmış)",
+      "scriptContextHint": "Ortam değişkenleri olarak enjekte edilir",
+      "os_toast_info": "İşletim Sistemi Bildirimleri için ek yapılandırma gerekmez. Standart sistem bildirim alt sistemini kullanacaktır.",
+      "botToken": "Bot Token",
+      "chatId": "Sohbet Kimliği (Chat ID)",
+      "messageTemplate": "Mesaj Şablonu",
+      "messageTemplateHint": "Handlebars değişkenlerini destekler",
+      "telegram_info": "Bot Token'ınızı @BotFather'dan, Sohbet Kimliğinizi (Chat ID) @userinfobot'tan bulabilirsiniz.",
+      "host": "Sunucu (Host)",
+      "port": "Bağlantı Noktası (Port)",
+      "useTls": "TLS Kullan",
+      "topic": "Konu (Topic)",
+      "qos": "QoS",
+      "retain": "Kalıcı (Retain)",
+      "smtpServer": "SMTP Sunucusu",
+      "smtpPort": "SMTP Portu",
+      "from": "Gönderen Adresi",
+      "to": "Alıcı Adresi",
+      "encryption": "Şifreleme",
+      "subjectTemplate": "Konu Şablonu",
+      "headers": "HTTP/S Üstbilgileri (Headers)",
+      "presets": "Hazır Ayarlar (Presets)",
+      "discord": "Discord",
+      "slack": "Slack",
+      "headerKey": "Başlık Adı",
+      "headerValue": "Değer"
+    }
   },
   "settings": {
     "resetToDefault": "Varsayılana sıfırla",
@@ -266,9 +396,9 @@
         "label": "Bağlantı Kontrol URL'leri",
         "description": "İnternet bağlantısını doğrulamak için kullanılan URL listesi. Uygulama bu URL'leri periyodik olarak kontrol eder."
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone İkili Dosya Yolu",
-        "description": "Rclone ikili dosyası veya dizininin yolu. Otomatik algılama için boş bırakın."
+        "description": "Rclone ikili dosyası. Otomatik algılama için boş bırakın."
       },
       "rclone_flags": {
         "label": "Ek Rclone Bayrakları",
@@ -286,10 +416,6 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
-      },
-      "max_upload_batch_size": {
-        "label": "Maksimum Yükleme Paketi Boyutu (MB)",
-        "description": "Yerel bilgisayardan bir seferde yüklenecek maksimum dosya paketi boyutu."
       }
     },
     "developer": {
@@ -715,8 +841,6 @@
         "copyId": "Kimliği kopyalamak için tıkla"
       },
       "messages": {
-        "urlCopied": "URL Kopyalandı!",
-        "idCopied": "Kimlik Kopyalandı!",
         "noOptions": "Ek seçenek yok"
       },
       "labels": {
@@ -995,12 +1119,18 @@
       "notConfigured": "Yapılandırılmadı",
       "clearSchedule": "Zamanlamayı temizle",
       "sourcePath": "Kaynak Yol",
+      "sourcePaths": "Kaynak Yolları",
       "destPath": "Hedef Yol",
+      "destinationPath": "Hedef Yolu",
       "localPath": "Yerel Yol",
       "remotePathServe": "Sunulacak Uzak Yol",
+      "addSource": "Kaynak Ekle",
+      "removePath": "Yolu Kaldır",
       "rootFolderOptional": "Kök klasör (isteğe bağlı)",
       "rootFolderSpecific": "Kök klasör veya belirli yol",
       "selectRemoteSource": "Uzak kaynak klasörü seç",
+      "remotePath": "Uzak Yol",
+      "enterPath": "Yol girin...",
       "changeSourceType": "Kaynak yol türünü değiştir",
       "enterSourcePath": "Kaynak yolunu girin...",
       "otherRemotes": "Diğer Uzak Bağlantılar",
@@ -1227,7 +1357,7 @@
     },
     "restored": "Güncelleme {{version}} geri yüklendi",
     "restoreFailed": "Güncelleme geri yüklenemedi",
-    "channelChanged": "Güncelleme kanalı {{channel}} olarak değiştirildi. Uygulamak için güncellemeleri kontrol edin.",
+    "channelChanged": "Güncelleme kanalı {{channel}} olarak değiştirildi.",
     "channelChangeFailed": "Güncelleme kanalı değiştirilemedi"
   },
   "fileBrowser": {
@@ -1341,20 +1471,26 @@
         "startTime": "Başlangıç Zamanı",
         "speed": "Hız",
         "eta": "Tahmini Süre",
-        "transfers": "Transferler"
+        "transfers": "Transferler",
+        "uploadedFiles": "Yüklenen dosyalar",
+        "deletedFiles": "Silinen dosyalar",
+        "movedFiles": "Taşınan dosyalar",
+        "copiedFiles": "Kopyalanan dosyalar",
+        "syncedFiles": "Senkronize edilen dosyalar",
+        "processedFiles": "İşlenen dosyalar"
       },
       "types": {
-        "delete_file": "Dosya Silme",
-        "purge": "Temizleme",
+        "delete": "Sil",
         "cleanup": "Temizlik",
         "rmdirs": "Boş Klasörleri Sil",
         "copy": "Kopyala",
-        "copy_file": "Dosya Kopyala",
         "copy_url": "URL Kopyala",
         "move": "Taşı",
-        "move_file": "Dosya Taşı",
+        "rename": "Yeniden Adlandır",
         "sync": "Senkronize",
-        "bisync": "Çift Yönlü Senkronize"
+        "bisync": "Çift Yönlü Senkronize",
+        "compress": "Sıkıştır",
+        "extract": "Çıkar"
       }
     },
     "fileViewer": {
@@ -1380,7 +1516,14 @@
       "edit": "Düzenle",
       "cancel": "İptal",
       "saveSuccess": "Dosya başarıyla kaydedildi",
-      "saveError": "Dosya kaydedilemedi"
+      "saveError": "Dosya kaydedilemedi",
+      "archiveContents": "Arşiv İçeriği",
+      "shortcutTargets": "Kısayol Hedefleri",
+      "extract": "Çıkart",
+      "extracting": "{{name}} çıkartılıyor...",
+      "extractSuccess": "{{name}} başarıyla çıkartıldı",
+      "errorExtract": "Arşiv çıkartılamadı",
+      "errorListArchive": "Arşiv içeriği listelenemedi"
     }
   },
   "dashboard": {
@@ -1612,7 +1755,7 @@
       "reportIssues": "Hata Bildir",
       "rcloneWebsite": "Rclone Web Sitesi",
       "currentVersion": "Mevcut Sürüm",
-      "restartRequired": "Yeniden Başlatma Gerekli",
+      "readyToRestart": "Yeniden Başlatma Gerekli",
       "restartDescription": "Bir güncelleme yüklendi. Değişiklikleri uygulamak için lütfen uygulamayı yeniden başlatın.",
       "rcloneRestartRequired": "Rclone Yeniden Başlatma Gerekli",
       "rcloneRestartDescription": "Bir Rclone güncellemesi yüklendi. Değişiklikleri uygulamak için lütfen motoru yeniden başlatın.",
@@ -1736,7 +1879,6 @@
       "adjustFilters": "Filtrelerinizi ayarlamayı deneyin",
       "terminalOutput": "Terminal Çıktısı",
       "logContext": "Günlük Bağlamı",
-      "copiedToClipboard": "Günlük panoya kopyalandı",
       "logLevel": "Günlük Seviyesi",
       "allLevels": "Tüm Seviyeler",
       "searchPlaceholder": "Günlüklerde ara..."
@@ -1748,8 +1890,8 @@
       "resetAll": "Tüm Ayarları Sıfırla",
       "noSettingsFound": "Eşleşen ayar bulunamadı",
       "trySearching": "Şunu aramayı deneyin:",
-      "restartRequiredHeader": "Yeniden Başlatma Gerektiren Ayarlar",
-      "restartRequiredDesc": "Aşağıdaki değişikliklerin etkili olması için motorun yeniden başlatılması gerekir:",
+      "readyToRestartHeader": "Yeniden Başlatma Gerektiren Ayarlar",
+      "readyToRestartDesc": "Aşağıdaki değişikliklerin etkili olması için motorun yeniden başlatılması gerekir:",
       "discarding": "İptal ediliyor...",
       "discardChanges": "Değişiklikleri İptal Et",
       "saveAndRestart": "Kaydet ve Motoru Yeniden Başlat",
@@ -1815,6 +1957,8 @@
       "passwordLabel": "Şifreleme Parolası",
       "passwordPlaceholder": "Parolayı girin",
       "passwordHint": "Bu parola yedeği geri yüklemek için gerekli olacaktır.",
+      "includeSecrets": "Gizli anahtarları dahil et",
+      "includeSecretsHint": "Hassas kimlik bilgilerini yedeğe dahil et. Şifreleme gereklidir.",
       "exportNow": "Şimdi Dışa Aktar",
       "exporting": "Dışa aktarılıyor...",
       "fullBackup": "Tam Yedekleme",
@@ -1842,6 +1986,10 @@
         "remotes": {
           "label": "Uzak Bağlantılar",
           "description": "Rclone uzak bağlantı yapılandırma verileri"
+        },
+        "alerts": {
+          "label": "Alarmlar",
+          "description": "Alarm kuralları ve eylemleri yapılandırması"
         }
       }
     },
@@ -2215,6 +2363,23 @@
         "title": "Boş Klasörleri Kaldır",
         "message": "\"{{name}}\" içindeki tüm boş klasörleri kaldırmak istediğinizden emin misiniz?",
         "confirm": "Kaldır"
+      },
+      "copyUrl": {
+        "title": "URL'den İndir",
+        "urlLabel": "URL",
+        "fileLabel": "Dosya Adı (Opsiyonel)",
+        "filePlaceholder": "Otomatik adlandırmak için boş bırakın",
+        "confirm": "İndir"
+      },
+      "archiveCreate": {
+        "title": "Arşiv Oluştur",
+        "filenameLabel": "Arşiv Dosya Adı",
+        "formatLabel": "Arşiv Formatı",
+        "prefixLabel": "Önek Yolu",
+        "prefixHint": "Ayarlandığında tam yolları geçersiz kılar",
+        "fullPathLabel": "Tam kaynak yollarını dahil et",
+        "fullPathHint": "Dizin yapısını kökten itibaren korur",
+        "compress": "Sıkıştır"
       }
     },
     "errors": {
@@ -2232,7 +2397,9 @@
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
-      "minSelection": "Lütfen en az {{min}} öge seçin."
+      "minSelection": "Lütfen en az {{min}} öge seçin.",
+      "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
+      "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
@@ -2240,6 +2407,8 @@
       "openNewWindow": "Yeni Pencerede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
+      "uploadFiles": "Dosyaları Yükle",
+      "uploadFolder": "Klasörü Yükle",
       "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",
@@ -2255,6 +2424,7 @@
       "emptyTrash": "Çöpü Boşalt",
       "removeEmptyDirs": "Boş klasörleri kaldır",
       "delete": "Sil",
+      "compress": "Sıkıştır",
       "copy": "Kopyala",
       "cut": "Kes",
       "paste": "Yapıştır",
@@ -2281,13 +2451,15 @@
     "notifications": {
       "undo": "Geri Al",
       "trashEmptied": "Temizlik işlemi başlatıldı",
-      "locationCopied": "Konum panoya kopyalandı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
       "pasteComplete": "Yapıştırma işlemi tamamlandı",
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
-      "redoComplete": "Yineleme başarılı"
+      "redoComplete": "Yineleme başarılı",
+      "copyUrlStarted": "URL'den indiriliyor...",
+      "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
+      "archiveCreateComplete": "Arşiv başarıyla oluşturuldu"
     }
   },
   "overview": {
@@ -2374,7 +2546,8 @@
       "resetSuccess": "Düzen varsayılana sıfırlandı",
       "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi",
       "showDetailed": "Ayrıntılı Kartları Göster",
-      "showCompact": "Kompakt Kartları Göster"
+      "showCompact": "Kompakt Kartları Göster",
+      "settings": "Düzen Ayarları"
     },
     "bandwidth": {
       "aria": {
@@ -2493,7 +2666,6 @@
     "serve": {
       "failed": "{{operation}} başarısız: {{error}}",
       "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
-      "stopSuccess": "{{serverId}} sunucusu başarıyla durduruldu",
       "remoteEmpty": "Uzak bağlantı adı boş olamaz",
       "typeRequired": "Sunucu tipi belirtilmelidir",
       "portInUse": "{{port}} portu zaten kullanımda"
@@ -2505,7 +2677,7 @@
       "failed": "İstek başarısız: {{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}: {{body}}"
+      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "Sürücü kökü (örn. D:\\) bağlama noktası olarak seçilemez. Lütfen bir alt klasör seçin veya oluşturun.",
@@ -2590,12 +2762,12 @@
       "quitFailed": "Rclone motoru kapatılamadı: {{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}",
       "deleteFailed": "Uzak bağlantı silinemedi: {{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "notFound": "Dosya bulunamadı"
     },
     "updater": {
@@ -2603,7 +2775,12 @@
       "invalidUrl": "Geçersiz URL: {{error}}",
       "github": "GitHub API hatası: {{error}}",
       "mutex": "Dahili hata: {{error}}",
-      "updateFailed": "Güncelleme başarısız: {{error}}"
+      "updateFailed": "Güncelleme başarısız: {{error}}",
+      "updateUnavailable": "Güncelleme dosyası artık mevcut değil: {{error}}",
+      "relaunchFailed": "Yeniden başlatma başarısız: {{error}}",
+      "restartFailed": "Yeniden başlatma başarısız: {{error}}",
+      "notWritable": "Güncelleme yolu yazılabilir değil",
+      "ioError": "Giriş/Çıkış hatası: {{error}}"
     },
     "settings": {
       "loadFailed": "Ayarlar yüklenemedi: {{error}}",
@@ -2624,6 +2801,7 @@
     },
     "serve": {
       "started": "Sunucu {{port}} portunda başlatıldı",
+      "stopSuccess": "{{serverId}} sunucusu başarıyla durduruldu",
       "stopped": "Sunucu durduruldu"
     },
     "sync": {
@@ -2672,8 +2850,7 @@
       "optionsReset": "RClone arka uç seçenekleri başarıyla sıfırlandı"
     },
     "scheduler": {
-      "reloaded": "Planlanmış görevler başarıyla yenilendi",
-      "cleared": "Tüm planlanmış görevler başarıyla temizlendi"
+      "reloaded": "Planlanmış görevler başarıyla yenilendi"
     },
     "security": {
       "passwordRemoved": "Parola başarıyla kaldırıldı",
@@ -2769,100 +2946,76 @@
   },
   "notification": {
     "title": {
-      "mountSuccess": "Bağlama Başarılı",
-      "mountFailed": "Bağlama Başarısız: {{error}}",
-      "unmountSuccess": "Ayırma Başarılı",
-      "unmountFailed": "Ayırma Başarısız: {{error}}",
-      "syncStarted": "Senkronizasyon Başlatıldı",
-      "syncComplete": "Senkronizasyon Tamamlandı",
-      "syncFailed": "Senkronizasyon Başarısız: {{error}}",
-      "syncStopped": "Senkronizasyon Durduruldu",
-      "copyStarted": "Kopyalama Başlatıldı",
-      "copyComplete": "Kopyalama Tamamlandı",
-      "copyFailed": "Kopyalama Başarısız: {{error}}",
-      "copyStopped": "Kopyalama Durduruldu",
-      "moveStarted": "Taşıma Başlatıldı",
-      "moveComplete": "Taşıma Tamamlandı",
-      "moveFailed": "Taşıma Başarısız: {{error}}",
-      "moveStopped": "Taşıma Durduruldu",
-      "nothingToDo": "Yapılacak bir şey yok",
-      "bisyncStarted": "Çift Yönlü Senkronizasyon Başlatıldı",
-      "bisyncComplete": "Çift Yönlü Senkronizasyon Tamamlandı",
-      "bisyncFailed": "Çift Yönlü Senkronizasyon Başarısız: {{error}}",
-      "bisyncStopped": "Çift Yönlü Senkronizasyon Durduruldu",
-      "serveStarted": "Sunucu Başlatıldı",
-      "serveFailed": "Sunucu Başlatılamadı: {{error}}",
+      "mountSucceeded": "Bağlantı Başarılı",
+      "mountFailed": "Bağlantı Hatası",
+      "unmountSucceeded": "Bağlantı Kesildi",
+      "jobStarted": "{{type}} İşlemi Başlatıldı",
+      "jobCompleted": "{{type}} Tamamlandı",
+      "jobFailed": "{{type}} Başarısız Oldu",
+      "jobStopped": "{{type}} Durduruldu",
+      "serveStarted": "Sunucu Yayında",
+      "serveFailed": "Sunucu Hatası",
       "serveStopped": "Sunucu Durduruldu",
-      "stopServeFailed": "Sunucu Durdurulamadı: {{error}}",
+      "scheduledTaskStarted": "Zamanlanmış {{type}} Görevi Başladı",
+      "scheduledTaskCompleted": "Zamanlanmış {{type}} Görevi Tamamlandı",
+      "scheduledTaskFailed": "Zamanlanmış {{type}} Görevi Hatası",
       "allJobsStopped": "Tüm İşler Durduruldu",
       "allServesStopped": "Tüm Sunucular Durduruldu",
-      "stopAllServesFailed": "Sunucular Durdurulamadı: {{error}}",
-      "operationFailed": "{{operation}} Başarısız: {{error}}",
-      "operationComplete": "{{operation}} Tamamlandı",
-      "operationStarted": "{{operation}} Başlatıldı",
-      "operationStopped": "{{operation}} Durduruldu",
-      "updateComplete": "Güncelleme Tamamlandı",
-      "updateFailed": "Güncelleme Başarısız: {{error}}",
-      "updateFound": "Yeni Sürüm Bulundu",
+      "allUnmounted": "Tüm Bağlantılar Kesildi",
+      "updateFound": "Yeni Sürüm Mevcut",
       "updateStarted": "Güncelleme Başlatıldı",
-      "engineError": "Motor Hatası",
-      "engineRestarted": "Motor Yeniden Başlatıldı",
-      "enginePathError": "Motor Yol Hatası",
-      "enginePasswordError": "Motor Şifre Hatası",
-      "engineRestartedSuccess": "Motor Başarıyla Yeniden Başlatıldı",
-      "engineRestartedFailed": "Motor Yeniden Başlatılamadı",
-      "alreadyRunning": "Uygulama Zaten Çalışıyor",
+      "updateDownloaded": "Güncelleme İndirildi",
+      "updateComplete": "Güncelleme Tamamlandı",
+      "updateInstalled": "Güncelleme Kuruldu",
+      "updateFailed": "Güncelleme Hatası",
       "rcloneUpdateFound": "Rclone Güncellemesi Bulundu",
-      "rcloneUpdateStarted": "Rclone Güncellemesi Başlatıldı",
-      "rcloneUpdateComplete": "Rclone Güncellemesi İndirildi",
-      "rcloneUpdateFailed": "Rclone Güncellemesi Başarısız: {{error}}",
-      "rcloneUpdateInstalled": "Rclone Güncellemesi Yüklendi",
-      "scheduledTaskCompleted": "Zamanlanmış Görev Tamamlandı",
-      "scheduledTaskFailed": "Zamanlanmış Görev Başarısız",
-      "updateInstalled": "Güncelleme Kuruldu"
+      "rcloneUpdateStarted": "Rclone Güncellemesi Başladı",
+      "rcloneUpdateDownloaded": "Rclone Güncellemesi İndirildi",
+      "rcloneUpdateComplete": "Rclone Güncellemesi Hazır",
+      "rcloneUpdateInstalled": "Rclone Güncellendi",
+      "rcloneUpdateFailed": "Rclone Güncelleme Hatası",
+      "engineRestarted": "Motor Yeniden Başlatıldı",
+      "engineRestartFailed": "Motor Başlatılamadı",
+      "engineConnectionFailed": "Motor Bağlantı Hatası",
+      "engineBinaryNotFound": "Rclone Bulunamadı",
+      "enginePasswordRequired": "Şifre Gerekli",
+      "alreadyRunning": "Uygulama Zaten Çalışıyor"
     },
     "body": {
-      "mounted": "{{remote}} profili '{{profile}}' {{mountPoint}} adresine bağlandı",
-      "mountFailed": "{{mountPoint}} adresine bağlama başarısız: {{error}}",
-      "unmounted": "{{remote}} profili '{{profile}}' ayrıldı",
-      "unmountFailed": "Başarısız: {{error}}",
-      "profileNotFound": "'{{profile}}' profili bulunamadı",
-      "alreadyRunning": "Uygulamanın başka bir örneği algılandı. Bellek optimizasyonu aktif olduğu için pencere kapatılmıştı. Lütfen tepsiyi kullanarak pencereyi açın.",
-      "allRemotesUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı",
-      "started": "{{remote}} profili '{{profile}}' için {{operation}} başlatıldı",
-      "startFailed": "Başarısız: {{error}}",
-      "stopped": "{{remote}} profili '{{profile}}' için {{operation}} durduruldu",
-      "stopFailed": "{{remote}} profili '{{profile}}' için {{operation}} durdurulamadı: {{error}}",
-      "noActiveJob": "{{remote}} profili '{{profile}}' için aktif {{operation}} işi bulunamadı",
-      "serveStarted": "{{remote}} profili '{{profile}}' için sunucu {{addr}} adresinde başlatıldı",
-      "serveFailed": "{{remote}} profili '{{profile}}' için sunucu başlatılamadı: {{error}}",
-      "serveStopped": "{{remote}} için sunucu durduruldu",
-      "stopServeFailed": "{{remote}} için sunucu durdurulamadı: {{error}}",
-      "allJobsStopped": "{{count}} aktif iş durduruldu",
-      "nothingToDoJobs": "Aktif iş bulunamadı - durdurulacak bir şey yok.",
-      "nothingToDoServes": "Aktif sunum bulunamadı - durdurulacak bir şey yok.",
-      "nothingToDoMounts": "Bağlı uzak bağlantı bulunamadı - ayrılacak bir şey yok.",
-      "allServesStopped": "Tüm sunucular durduruldu",
-      "stopAllServesFailed": "Sunucular durdurulamadı: {{error}}",
-      "complete": "{{remote}} üzerinde {{operation}} başarıyla tamamlandı",
-      "failed": "{{remote}} üzerinde {{operation}} başarısız: {{error}}",
-      "updateComplete": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli.",
-      "updateFailed": "Güncelleme başarısız: {{error}}",
-      "updateFound": "Rclone Manager'ın yeni bir {{version}} sürümü mevcut.",
+      "mountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}', {{mountPoint}} adresine bağlandı.",
+      "mountFailed": "{{backend}} sistemindeki {{remote}} profili '{{profile}}' bağlanamadı: {{error}}",
+      "unmountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}' ayrıldı.",
+      "jobStarted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başlatıldı.",
+      "jobCompleted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarıyla tamamlandı.",
+      "jobFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} başarısız oldu: {{error}}",
+      "jobStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için {{type}} durduruldu.",
+      "serveStarted": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatıldı.",
+      "serveFailed": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu başlatılamadı: {{error}}",
+      "serveStopped": "{{backend}} üzerindeki {{remote}} profili '{{profile}}' için sunucu durduruldu.",
+      "allJobsStopped": "Tüm aktif işler başarıyla sonlandırıldı.",
+      "allServesStopped": "Tüm aktif sunucular başarıyla kapatıldı.",
+      "allUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı.",
+      "scheduledTaskStarted": "'{{task}}' zamanlanmış {{type}} görevi {{backend}} üzerinde yürütülüyor.",
+      "scheduledTaskCompleted": "'{{task}}' zamanlanmış {{type}} görevi başarıyla sonuçlandı.",
+      "scheduledTaskFailed": "'{{task}}' zamanlanmış {{type}} görevi hatayla karşılaştı: {{error}}",
+      "updateFound": "RClone Manager'ın yeni bir {{version}} sürümü mevcut.",
       "updateStarted": "{{version}} sürümü indiriliyor ve kuruluyor...",
-      "rcloneUpdateFound": "Yeni Rclone sürümü {{version}} mevcut",
+      "updateDownloaded": "RClone Manager'ın {{version}} sürümü indirildi ve kuruluma hazır.",
+      "updateComplete": "Güncelleme başarıyla indirildi. Uygulama yeniden başlatılacak.",
+      "updateInstalled": "Yeni sürüm başarıyla yüklendi.",
+      "updateFailed": "Güncelleme sırasında bir hata oluştu: {{error}}",
+      "rcloneUpdateFound": "Yeni Rclone sürümü {{version}} mevcut.",
       "rcloneUpdateStarted": "Rclone {{version}} sürümüne güncelleniyor...",
-      "rcloneUpdateComplete": "Rclone {{version}} sürümüne ait güncelleme indirildi",
-      "rcloneUpdateFailed": "Rclone güncellemesi başarısız: {{error}}",
-      "rcloneUpdateInstalled": "Rclone {{version}} sürümüne güncellendi",
-      "enginePathError": "rclone ikili dosyası bulunamadı",
-      "enginePasswordError": "rclone yapılandırması şifre korumalı",
-      "engineRestartedSuccess": "Motor {{reason}} değişikliği nedeniyle başarıyla yeniden başlatıldı",
-      "engineRestartedFailed": "Motor {{reason}} değişikliği nedeniyle yeniden başlatılamadı",
-      "connectionFailed": "Rclone motoruna bağlanılamadı: {{reason}}",
-      "scheduledTaskCompleted": "'{{task}}' zamanlanmış görevi başarıyla tamamlandı.",
-      "scheduledTaskFailed": "'{{task}}' zamanlanmış görevi başarısız oldu: {{error}}",
-      "updateInstalled": "Güncelleme başarıyla kuruldu. Yeniden başlatma gerekli."
+      "rcloneUpdateDownloaded": "Rclone'un {{version}} sürümü indirildi ve kuruluma hazır.",
+      "rcloneUpdateComplete": "Rclone güncellemesi hazır.",
+      "rcloneUpdateInstalled": "Rclone {{version}} başarıyla yüklendi.",
+      "rcloneUpdateFailed": "Rclone güncellenirken bir hata oluştu: {{error}}",
+      "engineRestarted": "Motor ayarları başarıyla güncellendi.",
+      "engineRestartFailed": "Motor yeniden başlatılırken hata oluştu: {{error}}",
+      "engineConnectionFailed": "Rclone motoruna bağlanılamadı: {{error}}",
+      "engineBinaryNotFound": "Rclone ikili dosyası bulunamadı, lütfen ayarları kontrol edin.",
+      "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir.",
+      "alreadyRunning": "Uygulamanın başka bir örneği zaten çalışıyor."
     }
   },
   "repairSheet": {

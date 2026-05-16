@@ -237,10 +237,10 @@ export class ValidatorRegistryService {
       }
 
       const autoStart = opGroup.get('autoStart')?.value;
-      const pathType = pathGroup.get('pathType')?.value;
+      const type = pathGroup.get('type')?.value;
 
       // The field is required if autoStart is on, the path type is local, and there's no value.
-      if (autoStart && pathType === 'local' && !control.value) {
+      if (autoStart && type === 'local' && !control.value) {
         return { required: true };
       }
 

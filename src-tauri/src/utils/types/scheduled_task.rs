@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::utils::types::jobs::JobType;
+use crate::utils::types::remotes::ProfileParams;
 
 /// Type of scheduled task
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -14,7 +14,19 @@ pub enum TaskType {
     Bisync,
 }
 
+impl std::fmt::Display for TaskType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TaskType::Copy => write!(f, "Copy"),
+            TaskType::Sync => write!(f, "Sync"),
+            TaskType::Move => write!(f, "Move"),
+            TaskType::Bisync => write!(f, "Bisync"),
+        }
+    }
+}
+
 impl TaskType {
+    #[must_use]
     pub fn as_job_type(&self) -> JobType {
         match self {
             TaskType::Copy => JobType::Copy,
@@ -36,6 +48,32 @@ pub enum TaskStatus {
     Stopping,
 }
 
+/// Arguments for a scheduled task
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduledTaskArgs {
+    /// Core parameters for the profile operation
+    #[serde(flatten)]
+    pub params: ProfileParams,
+
+    /// All source paths from the profile (can be 1 or many)
+    pub src_paths: Vec<String>,
+
+    /// All destination paths from the profile (can be 1 or many)
+    pub dst_paths: Vec<String>,
+}
+
+impl ScheduledTaskArgs {
+    /// Returns a display string for the source paths (comma-joined).
+    pub fn src_display(&self) -> String {
+        self.src_paths.join(", ")
+    }
+    /// Returns a display string for the dest paths (comma-joined).
+    pub fn dst_display(&self) -> String {
+        self.dst_paths.join(", ")
+    }
+}
+
 /// Represents a scheduled task with cron configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,11 +81,14 @@ pub struct ScheduledTask {
     /// Unique identifier for the task
     pub id: String,
 
-    /// Human-readable name for the task
-    pub name: String,
-
     /// Type of rclone operation
     pub task_type: TaskType,
+
+    /// Remote name this task is associated with
+    pub remote_name: String,
+
+    /// Profile name within the remote
+    pub profile_name: String,
 
     /// Cron expression (e.g., "0 0 * * *" for daily at midnight)
     pub cron_expression: String,
@@ -56,7 +97,7 @@ pub struct ScheduledTask {
     pub status: TaskStatus,
 
     /// Task arguments (source, destination, options, etc.)
-    pub args: Value,
+    pub args: ScheduledTaskArgs,
 
     /// Backend this task belongs to (e.g., "Local", "NAS")
     /// Tasks only execute when their assigned backend is active
@@ -75,8 +116,8 @@ pub struct ScheduledTask {
     /// Last error message if task failed
     pub last_error: Option<String>,
 
-    /// Current rclone job ID if task is running
-    pub current_job_id: Option<u64>,
+    /// Current rclone job ID or batch ID if task is running
+    pub current_job_id: Option<String>,
 
     /// Scheduler job UUID (used to unschedule the task)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -94,6 +135,10 @@ pub struct ScheduledTask {
 
 // In scheduled_task.rs
 impl ScheduledTask {
+    pub fn display_name(&self) -> String {
+        format!("{} ({})", self.profile_name, self.backend_name)
+    }
+
     /// Validate and transition task state
     pub fn transition_to(&mut self, new_status: TaskStatus) -> Result<(), String> {
         let valid_transition = match (&self.status, &new_status) {
@@ -138,12 +183,14 @@ impl ScheduledTask {
         self.current_job_id = None;
         self.success_count += 1;
 
-        // Clear transition: Running -> Enabled or Stopping -> Disabled
-        self.status = if self.status == TaskStatus::Stopping {
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
             TaskStatus::Enabled
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_success: unexpected state transition failure: {e}");
+        }
     }
 
     /// Update the task after a failed run
@@ -153,11 +200,14 @@ impl ScheduledTask {
         self.current_job_id = None;
         self.failure_count += 1;
 
-        self.status = if self.status == TaskStatus::Stopping {
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
-            TaskStatus::Enabled
+            TaskStatus::Failed
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_failure: unexpected state transition failure: {e}");
+        }
     }
 
     /// Mark task as starting execution
@@ -167,30 +217,39 @@ impl ScheduledTask {
         }
 
         self.transition_to(TaskStatus::Running)?;
-        self.last_run = Some(Utc::now());
         self.current_job_id = None;
+        self.last_run = Some(Utc::now());
         self.run_count += 1;
         Ok(())
     }
 
-    /// Mark task as running with job ID (after operation starts)
-    pub fn mark_running(&mut self, job_id: u64) {
+    /// Mark task as running with job ID or batch ID (after operation starts)
+    pub fn mark_running(&mut self, job_id: String) {
+        debug_assert_eq!(
+            self.status,
+            TaskStatus::Running,
+            "mark_running called from unexpected state {:?}",
+            self.status
+        );
         self.current_job_id = Some(job_id);
-        self.status = TaskStatus::Running;
     }
 
-    /// Mark task as stopped/cancelled (job was manually stopped)
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
-        self.status = if self.status == TaskStatus::Stopping {
+
+        let next = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
             TaskStatus::Enabled
         };
+        if let Err(e) = self.transition_to(next) {
+            log::warn!("mark_stopped: unexpected state transition failure: {e}");
+        }
     }
 
     /// Check if task can transition to running
+    #[must_use]
     pub fn can_run(&self) -> bool {
         self.status == TaskStatus::Enabled && self.current_job_id.is_none()
     }
@@ -221,16 +280,26 @@ pub struct ScheduledTaskStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    use crate::utils::types::jobs::JobType;
 
     fn create_test_task() -> ScheduledTask {
         ScheduledTask {
             id: "test-id".to_string(),
-            name: "Test Task".to_string(),
             task_type: TaskType::Sync,
+            remote_name: "remote".to_string(),
+            profile_name: "profile".to_string(),
             cron_expression: "0 0 * * *".to_string(),
             status: TaskStatus::Enabled,
-            args: json!({}),
+            args: ScheduledTaskArgs {
+                params: ProfileParams {
+                    remote_name: "remote".to_string(),
+                    profile_name: "profile".to_string(),
+                    source: None,
+                    no_cache: None,
+                },
+                src_paths: vec![],
+                dst_paths: vec![],
+            },
             backend_name: "Local".to_string(),
             created_at: Utc::now(),
             last_run: None,
@@ -301,8 +370,8 @@ mod tests {
         assert_eq!(task.run_count, 1);
         assert!(task.last_run.is_some());
 
-        task.mark_running(12345);
-        assert_eq!(task.current_job_id, Some(12345));
+        task.mark_running("12345".to_string());
+        assert_eq!(task.current_job_id, Some("12345".to_string()));
         assert!(!task.can_run());
     }
 
@@ -317,12 +386,15 @@ mod tests {
         assert_eq!(task.success_count, 1);
         assert!(task.last_run.is_some());
 
-        // Failure path
+        // Failure path — task must land on Failed, not Enabled
         task.status = TaskStatus::Running;
         task.mark_failure("error".to_string());
-        assert_eq!(task.status, TaskStatus::Enabled);
+        assert_eq!(task.status, TaskStatus::Failed);
         assert_eq!(task.failure_count, 1);
         assert_eq!(task.last_error, Some("error".to_string()));
+
+        assert!(task.transition_to(TaskStatus::Enabled).is_ok());
+        assert_eq!(task.status, TaskStatus::Enabled);
     }
 
     #[test]
@@ -330,7 +402,7 @@ mod tests {
         let mut task = create_test_task();
 
         task.status = TaskStatus::Running;
-        task.current_job_id = Some(123);
+        task.current_job_id = Some("123".to_string());
         task.mark_stopped();
 
         assert_eq!(task.status, TaskStatus::Enabled);

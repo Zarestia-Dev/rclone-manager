@@ -61,9 +61,7 @@ import { ModalService, JobManagementService } from '@app/services';
                 {{ 'detailShared.jobs.columns.type' | translate }}
               </th>
               <td class="type-column" mat-cell *matCellDef="let job">
-                <div class="job-type-info">
-                  <span class="job-type-text">{{ job.job_type | titlecase }}</span>
-                </div>
+                <span class="job-type-text">{{ job.job_type | titlecase }}</span>
               </td>
             </ng-container>
 
@@ -84,10 +82,9 @@ import { ModalService, JobManagementService } from '@app/services';
               </th>
               <td mat-cell *matCellDef="let job">
                 @let status = getJobStatus(job);
-                <div class="status-chip" [ngClass]="status">
-                  <div class="status-dot"></div>
-                  <span>{{ 'detailShared.jobs.status.' + status | translate }}</span>
-                </div>
+                <span class="app-pill" [ngClass]="status">
+                  {{ 'detailShared.jobs.status.' + status | translate }}
+                </span>
               </td>
             </ng-container>
 

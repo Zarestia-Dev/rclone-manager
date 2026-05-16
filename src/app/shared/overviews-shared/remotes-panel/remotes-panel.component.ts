@@ -1,88 +1,61 @@
-import { NgClass } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
-import {
-  ActionState,
-  AppTab,
-  PrimaryActionType,
-  Remote,
-  RemoteAction,
-  RemoteActionProgress,
-  CardDisplayMode,
-} from '@app/types';
+import { AppTab, PrimaryActionType, Remote, CardDisplayMode } from '@app/types';
 
 @Component({
   selector: 'app-remotes-panel',
-  imports: [NgClass, MatCardModule, MatIconModule, RemoteCardComponent],
+  imports: [
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    TranslateModule,
+    DragDropModule,
+    RemoteCardComponent,
+  ],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
 })
 export class RemotesPanelComponent {
   title = input('');
   icon = input('');
+  isActive = input(false);
   remotes = input<Remote[]>([]);
+  allRemotes = input<Remote[]>([]);
+  hiddenRemoteNames = input<string[]>([]);
+  isEditingLayout = input(false);
   mode = input<AppTab>('general');
   displayMode = input<CardDisplayMode>('compact');
-  actionInProgress = input<RemoteActionProgress>({});
   primaryActionLabel = input('Start');
   activeIcon = input('circle-check');
 
   remoteSelected = output<Remote>();
   openInFiles = output<{ remoteName: string; path?: string }>();
   startJob = output<{ type: PrimaryActionType; remoteName: string; profileName?: string }>();
-  stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
+  stopJob = output<{ type: PrimaryActionType; remoteName: string; profileName?: string }>();
+  layoutChanged = output<string[]>();
+  toggleHidden = output<string>();
 
-  readonly count = computed(() => this.remotes().length);
-
-  readonly hasActiveRemotes = computed(() =>
-    this.remotes().some(remote => this.isRemoteActiveInCurrentMode(remote))
+  // Shows all remotes in edit mode, only visible ones otherwise
+  readonly displayRemotes = computed(() =>
+    this.isEditingLayout() ? this.allRemotes() : this.remotes()
   );
 
-  readonly panelClass = computed(() => ({
-    'active-remotes-panel': this.hasActiveRemotes() || this.mode() === 'general',
-  }));
+  // Always shows the visible count, not the edit-mode count
+  readonly count = computed(() => this.remotes().length);
 
-  readonly iconClass = computed(() => (this.hasActiveRemotes() ? 'active-icon' : ''));
+  readonly hiddenSet = computed(() => new Set(this.hiddenRemoteNames()));
 
-  getActionState(remoteName: string): RemoteAction | null {
-    const actions = this.actionInProgress()[remoteName];
-    return Array.isArray(actions) && actions.length > 0 ? actions[0].type : null;
-  }
-
-  getActionStates(remoteName: string): ActionState[] {
-    const actions = this.actionInProgress()[remoteName];
-    return Array.isArray(actions) ? actions : [];
-  }
-
-  private isRemoteActiveInCurrentMode(remote: Remote): boolean {
-    switch (this.mode()) {
-      case 'mount':
-        return remote.status.mount.active;
-      case 'sync':
-        return (
-          remote.status.sync.active ||
-          remote.status.copy.active ||
-          remote.status.move.active ||
-          remote.status.bisync.active
-        );
-      case 'serve':
-        return remote.status.serve.active;
-      case 'general':
-      default:
-        return (
-          remote.status.mount.active ||
-          remote.status.sync.active ||
-          remote.status.copy.active ||
-          remote.status.move.active ||
-          remote.status.bisync.active ||
-          remote.status.serve.active
-        );
-    }
+  onDrop(event: CdkDragDrop<Remote[]>): void {
+    if (!this.isEditingLayout()) return;
+    const names = this.displayRemotes().map(r => r.name);
+    moveItemInArray(names, event.previousIndex, event.currentIndex);
+    this.layoutChanged.emit(names);
   }
 }

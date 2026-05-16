@@ -71,9 +71,6 @@
       @switch (currentTab()) {
         @case ('general') {
           <app-general-overview
-            [remotes]="remotes()"
-            [jobs]="jobs()"
-            [actionInProgress]="actionInProgress()"
             (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
             (browseRemote)="openRemoteInFiles($event.remoteName, $event.path ?? 'mount')"
@@ -85,9 +82,6 @@
         @default {
           <app-app-overview
             [mode]="mainOperationType()"
-            [remotes]="remotes()"
-            [runningServes]="runningServes()"
-            [actionInProgress]="actionInProgress()"
             (remoteSelected)="selectRemote($event)"
             (openInFiles)="openRemoteInFiles($event.remoteName, $event.path ?? currentTab())"
             (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
@@ -104,8 +98,6 @@
       @switch (currentTab()) {
         @case ('general') {
           <app-general-detail
-            [jobs]="getJobsForRemote(remote.name)"
-            [selectedRemote]="remote"
             (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
             (openRemoteConfigModal)="
               openRemoteConfigModal($event.editTarget, $event.existingConfig)
@@ -120,9 +112,7 @@
           <app-app-detail
             [mainOperationType]="mainOperationType()"
             [selectedSyncOperation]="selectedSyncOperation()"
-            [selectedRemote]="remote"
             [remoteSettings]="selectedRemoteSettings()"
-            [actionInProgress]="actionInProgress()[remote.name]"
             (selectedSyncOperationChange)="onSyncOperationChange($event)"
             (openRemoteConfigModal)="
               openRemoteConfigModal(

@@ -229,6 +229,31 @@
         font-size: var(--icon-size-xs);
       }
     }
+
+    .secrets-checkbox {
+      margin-top: var(--space-lg);
+      padding-top: var(--space-md);
+      border-top: 1px dashed rgba(var(--yellow-rgb), 0.3);
+      width: 100%;
+
+      .checkbox-label-content {
+        display: flex;
+        flex-direction: column;
+        margin-left: var(--space-xs);
+
+        .label-text {
+          font-weight: 600;
+          font-size: var(--font-size-md);
+          color: var(--window-fg-color);
+        }
+
+        .hint-text {
+          font-size: var(--font-size-xs);
+          color: var(--dim-color);
+          margin-top: 2px;
+        }
+      }
+    }
   }
 }
 

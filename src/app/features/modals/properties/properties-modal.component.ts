@@ -23,14 +23,14 @@ import {
   NautilusService,
   RemoteFacadeService,
   ModalService,
-  NotificationService,
   IconService,
   RemoteMetadataService,
-  PathSelectionService,
+  PathService,
   JobManagementService,
 } from '@app/services';
+import { CopyToClipboardDirective } from '@app/directives';
 import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ExpiryOption {
@@ -55,6 +55,7 @@ interface ExpiryOption {
     MatFormFieldModule,
     FormatFileSizePipe,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './properties-modal.component.html',
   styleUrls: ['./properties-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -79,31 +80,27 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  private readonly notificationService = inject(NotificationService);
   private readonly remoteMetadata = inject(RemoteMetadataService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly readJobGroup = `ui/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Derived properties (pure data derivations)
-  readonly displayLocation: string = this.data.isLocal
-    ? this.data.remoteName
-    : `${this.data.remoteName}${this.data.remoteName.endsWith(':') ? '' : ':'}${this.data.path}`;
+  readonly displayLocation: string = this.pathService.getFullDisplayPath(
+    this.data.isLocal
+      ? ({ name: this.data.remoteName, isLocal: true } as any)
+      : ({ name: this.data.remoteName, isLocal: false } as any),
+    this.data.path
+  );
 
   readonly fsRemote: string = this.data.isLocal
     ? '/'
-    : this.data.remoteName.endsWith(':')
-      ? this.data.remoteName
-      : `${this.data.remoteName}:`;
+    : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
-  readonly hashPath: string = (() => {
+  readonly hashPath: string = ((): string => {
     const { remoteName, path, isLocal, item } = this.data;
     if (isLocal) {
-      const candidatePath = path || item?.Path || item?.Name || '';
-      if (candidatePath.startsWith('/')) return candidatePath;
-      if (!remoteName || remoteName === '/') return candidatePath ? `/${candidatePath}` : '/';
-      const base = remoteName.endsWith('/') ? remoteName.slice(0, -1) : remoteName;
-      return candidatePath ? `${base}/${candidatePath}` : base;
+      return this.pathService.joinPath(remoteName, path || item?.Path || item?.Name || '');
     }
     return path;
   })();
@@ -185,7 +182,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
     if (targetIsDir) {
       this.loadingSize.set(true);
       this.remoteOps
-        .getSize(remoteName, path, 'ui', this.readJobGroup)
+        .getSize(remoteName, path, 'filemanager', this.readJobGroup)
         .then(size => {
           this.size.set(size);
           this.loadingSize.set(false);
@@ -220,7 +217,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
-          'ui',
+          'filemanager',
           this.readJobGroup
         );
 
@@ -240,19 +237,14 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       let diskUsagePath = path;
 
       if (isLocal && !(item && item.IsDir)) {
-        const lastSlashIndex = remoteName.lastIndexOf('/');
-        if (lastSlashIndex === 0) {
-          diskUsageRemote = '/';
-        } else if (lastSlashIndex > 0) {
-          diskUsageRemote = remoteName.substring(0, lastSlashIndex);
-        }
+        diskUsageRemote = this.pathService.getParentPath(remoteName) || '/';
         diskUsagePath = '';
       }
 
       const diskUsage = await this.remoteOps.getDiskUsage(
         diskUsageRemote,
         diskUsagePath,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
       this.diskUsage.set(diskUsage);
@@ -274,12 +266,12 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
 
     try {
       let features = this.data.features;
-      const baseName = this.pathSelectionService.normalizeRemoteName(remoteName);
+      const baseName = this.pathService.normalizeRemoteName(remoteName);
 
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
       if (!features || !features.hashes || features.hashes.length === 0) {
         this.remoteMetadata.clearCache(baseName); // Clear cache to ensure fresh fetch
-        features = await this.remoteMetadata.getFeatures(baseName, 'ui');
+        features = await this.remoteMetadata.getFeatures(baseName, 'filemanager');
       }
 
       // Update supported hashes
@@ -332,7 +324,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.fsRemote,
         this.hashPath,
         hashType,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 
@@ -347,24 +339,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         newSet.delete(hashType);
         return newSet;
       });
-    }
-  }
-
-  /**
-   * Copy hash value to clipboard
-   */
-  async copyHash(hashType: string): Promise<void> {
-    const hash = this.fileHashes()[hashType];
-    if (!hash) return;
-
-    try {
-      await navigator.clipboard.writeText(hash);
-      this.copiedHash.set(hashType);
-      this.startCopyReset(() => {
-        if (this.copiedHash() === hashType) this.copiedHash.set(null);
-      });
-    } catch (err) {
-      console.error('Failed to copy hash:', err);
     }
   }
 
@@ -390,7 +364,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.data.path,
         false,
         this.selectedExpiry() || undefined,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 
@@ -423,7 +397,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         this.data.path,
         true,
         undefined,
-        'ui',
+        'filemanager',
         this.readJobGroup
       ); // unlink = true
       this.publicLinkUrl.set(null);
@@ -437,24 +411,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       );
     } finally {
       this.loadingPublicLink.set(false);
-    }
-  }
-
-  /**
-   * Copy the public link to clipboard
-   */
-  async copyPublicLink(): Promise<void> {
-    const url = this.publicLinkUrl();
-    if (!url) return;
-
-    try {
-      await navigator.clipboard.writeText(url);
-      this.copiedLink.set(true);
-      this.startCopyReset(() => this.copiedLink.set(false));
-    } catch {
-      // Clipboard failed - log to console
-      console.log('Public link:', url);
-      this.publicLinkError.set(this.translate.instant('fileBrowser.properties.failCopyLink'));
     }
   }
 
@@ -474,7 +430,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private getEffectiveItem(): Entry {
     return (
       this.item() ?? {
-        Name: this.data.path.split('/').pop() || this.data.remoteName,
+        Name: this.pathService.extractName(this.data.path, this.data.remoteName),
         Path: this.data.path,
         IsDir: true,
         Size: 0,
@@ -526,13 +482,10 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       // and send it as 'fs' (remote), leaving 'path' empty.
       // This avoids backend string concatenation issues (e.g. missing slashes or double slashes)
       if (this.data.isLocal) {
-        // If hashPath is absolute (starts with /), use it directly
-        // Otherwise, join remoteName (base) and hashPath
-        fsRemote = hashPath.startsWith('/')
+        fsRemote = this.pathService.isLocalPath(hashPath)
           ? hashPath
-          : `${this.data.remoteName.endsWith('/') ? this.data.remoteName : this.data.remoteName + '/'}${hashPath}`;
+          : this.pathService.joinPath(this.data.remoteName, hashPath);
 
-        // Clear hashPath so backend doesn't append it
         hashPath = '';
       }
 
@@ -541,7 +494,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
         fsRemote,
         hashPath,
         hashType,
-        'ui',
+        'filemanager',
         this.readJobGroup
       );
 
@@ -556,24 +509,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       this.bulkHashError.set(`${this.translate.instant('common.error')}: ${errorMessage}`);
     } finally {
       this.calculatingBulkHash.set(false);
-    }
-  }
-
-  /**
-   * Copy the generated bulk hashsum to clipboard
-   */
-  async copyBulkHash(): Promise<void> {
-    const result = this.bulkHashResult();
-    if (!result) return;
-
-    try {
-      await navigator.clipboard.writeText(result);
-      this.copiedBulkHash.set(true);
-
-      this.startCopyReset(() => this.copiedBulkHash.set(false));
-    } catch (err) {
-      console.error('Failed to copy bulk hash:', err);
-      this.notificationService.showError(this.translate.instant('common.error'));
     }
   }
 }

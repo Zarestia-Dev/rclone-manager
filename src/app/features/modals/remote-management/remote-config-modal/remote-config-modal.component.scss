@@ -257,10 +257,10 @@
         justify-content: space-between;
         gap: var(--space-md);
         padding: var(--space-md);
-        margin-bottom: var(--space-xl);
+        margin-bottom: var(--space-md);
         background: rgba(var(--accent-color-rgb), 0.03);
         border-radius: var(--radius-md);
-        box-shadow: var(--box-shadow);
+        box-shadow: var(--shadow-gnome);
 
         .profile-select,
         .profile-input {
@@ -279,8 +279,6 @@
       }
 
       .linked-profiles-panel {
-        margin-bottom: var(--space-xl);
-
         .profile-count {
           font-size: 11px;
           font-weight: 700;

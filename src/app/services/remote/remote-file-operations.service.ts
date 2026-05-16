@@ -1,37 +1,17 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { Entry, FsInfo, Origin } from '@app/types';
-
-export interface LocalDropUploadResult {
-  uploaded: number;
-  failed: string[];
-}
-
-export interface LocalDropUploadFile {
-  relativePath: string;
-  filename: string;
-  content: number[];
-}
-
-export interface LocalDropUploadEntry {
-  relativePath: string;
-  filename: string;
-  size: number;
-  content?: number[];
-  localPath?: string | null;
-}
 
 /**
  * Service for remote file system operations
  * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
-  /**
-   * Get filesystem info for a remote
-   */
+  private readonly http = inject(HttpClient);
+
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     try {
       return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
@@ -41,40 +21,24 @@ export class RemoteFileOperationsService extends TauriBaseService {
     }
   }
 
-  /**
-   * Get disk usage for a remote
-   */
   async getDiskUsage(
     remote: string,
     path?: string,
     source?: Origin,
     group?: string
-  ): Promise<{
-    total: number;
-    used: number;
-    free: number;
-  }> {
+  ): Promise<{ total: number; used: number; free: number }> {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get size for a remote
-   */
   async getSize(
     remote: string,
     path?: string,
     source?: Origin,
     group?: string
-  ): Promise<{
-    count: number;
-    bytes: number;
-  }> {
+  ): Promise<{ count: number; bytes: number }> {
     return this.invokeCommand('get_size', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get stats for a single path
-   */
   async getStat(
     remote: string,
     path: string,
@@ -84,9 +48,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_stat', { remote, path, origin: source, group });
   }
 
-  /**
-   * Get hashsum for a file
-   */
   async getHashsum(
     remote: string,
     path: string,
@@ -97,9 +58,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     return this.invokeCommand('get_hashsum', { remote, path, hashType, origin: source, group });
   }
 
-  /**
-   * Get hashsum for a single file
-   */
   async getHashsumFile(
     remote: string,
     path: string,
@@ -116,9 +74,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Get or create a public link for a file or folder
-   */
   async getPublicLink(
     remote: string,
     path: string,
@@ -137,9 +92,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Get remote paths (directory listing)
-   */
   async getRemotePaths(
     remote: string,
     path: string,
@@ -156,284 +108,290 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  /**
-   * Delete a single file
-   */
-  async deleteFile(remote: string, path: string, source?: Origin, group?: string): Promise<void> {
-    return this.invokeCommand<void>('delete_file', {
-      remote,
-      path,
-      source,
-      group,
-    });
-  }
-
-  /**
-   * Purge a directory (recursive delete)
-   */
-  async purgeDirectory(
-    remote: string,
-    path: string,
+  async transferItems(
+    items: { remote: string; path: string; name: string; isDir: boolean }[],
+    dstRemote: string,
+    dstPath: string,
+    mode: 'copy' | 'move',
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('purge_directory', {
-      remote,
-      path,
-      source,
+  ): Promise<string> {
+    return this.invokeCommand<string>('transfer', {
+      items,
+      dstRemote,
+      dstPath,
+      mode,
+      origin: source,
       group,
     });
   }
 
-  /**
-   * Remove all empty directories within a path
-   */
+  async deleteItems(
+    items: { remote: string; path: string; isDir: boolean }[],
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('delete', { items, origin: source, group });
+  }
+
   async removeEmptyDirs(
     remote: string,
     path: string,
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('remove_empty_dirs', {
+  ): Promise<string> {
+    return this.invokeCommand<string>('remove_empty_dirs', {
       remote,
       path,
-      source,
+      origin: source,
       group,
     });
   }
 
-  /**
-   * Copy a single file
-   */
-  async copyFile(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('copy_file', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Move a single file
-   */
-  async moveFile(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('move_file', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Rename a single file
-   */
-  async renameFile(
+  async rename(
     remote: string,
     srcPath: string,
     dstPath: string,
+    isDir: boolean,
     source?: Origin,
     group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('rename_file', {
+  ): Promise<string> {
+    return this.invokeCommand<string>('rename', {
       remote,
       srcPath,
       dstPath,
-      source,
+      isDir,
+      origin: source,
       group,
     });
   }
 
-  /**
-   * Rename a directory
-   */
-  async renameDir(
-    remote: string,
-    srcPath: string,
-    dstPath: string,
-    source?: Origin,
-    group?: string
-  ): Promise<void> {
-    return this.invokeCommand<void>('rename_dir', {
-      remote,
-      srcPath,
-      dstPath,
-      source,
-      group,
-    });
-  }
-
-  /**
-   * Upload a file content string to a remote file
-   */
-  async uploadFile(
-    remote: string,
-    path: string,
-    filename: string,
-    content: string,
-    source?: Origin
-  ): Promise<string> {
-    return this.invokeCommand<string>('upload_file', {
-      remote,
-      path,
-      filename,
-      content,
-      source,
-    });
-  }
-
-  /**
-   * Upload raw file bytes to a remote file.
-   */
-  async uploadFileBytes(
-    remote: string,
-    path: string,
-    filename: string,
-    content: Uint8Array,
-    source?: Origin
-  ): Promise<string> {
-    return this.invokeCommand<string>('upload_file_bytes', {
-      remote,
-      path,
-      filename,
-      content: Array.from(content),
-      source,
-    });
-  }
-
-  /**
-   * Upload local filesystem paths (desktop native drag-drop) to target remote path.
-   */
-  async uploadLocalDropPaths(
-    remote: string,
-    path: string,
-    localPaths: string[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_paths', {
-      remote,
-      path,
-      localPaths,
-      source,
-    });
-  }
-
-  /**
-   * Upload browser-dropped files to a remote path as one tracked batch.
-   */
-  async uploadLocalDropFiles(
-    remote: string,
-    path: string,
-    files: LocalDropUploadFile[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_files', {
-      remote,
-      path,
-      files,
-      source,
-    });
-  }
-
-  /**
-   * Upload browser-dropped entries (files and directories) to a remote path.
-   */
-  async uploadLocalDropEntries(
-    remote: string,
-    path: string,
-    entries: LocalDropUploadEntry[],
-    source?: Origin
-  ): Promise<LocalDropUploadResult> {
-    return this.invokeCommand<LocalDropUploadResult>('upload_local_drop_entries', {
-      remote,
-      path,
-      entries,
-      source,
-    });
-  }
-
-  /**
-   * Copy a directory
-   */
-  async copyDirectory(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('copy_dir', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Move a directory
-   */
-  async moveDirectory(
-    srcRemote: string,
-    srcPath: string,
-    dstRemote: string,
-    dstPath: string,
-    source?: Origin,
-    noCache?: boolean
-  ): Promise<number> {
-    return this.invokeCommand<number>('move_dir', {
-      srcRemote,
-      srcPath,
-      dstRemote,
-      dstPath,
-      source,
-      noCache,
-    });
-  }
-
-  /**
-   * Create a directory on the remote via backend `mkdir` command
-   */
   async makeDirectory(
     remote: string,
     path: string,
     source?: Origin,
     group?: string
   ): Promise<void> {
-    return this.invokeCommand<void>('mkdir', {
+    return this.invokeCommand<void>('mkdir', { remote, path, origin: source, group });
+  }
+
+  async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
+    return this.invokeCommand<void>('cleanup', { remote, path, origin: source, group });
+  }
+
+  async copyUrl(
+    remote: string,
+    path: string,
+    urlToCopy: string,
+    autoFilename: boolean,
+    source?: Origin,
+    group?: string
+  ): Promise<void> {
+    return this.invokeCommand<void>('copy_url', {
       remote,
       path,
-      source,
+      urlToCopy,
+      autoFilename,
+      origin: source,
       group,
     });
   }
 
-  /**
-   * Cleanup trashed files on the remote (optional path)
-   */
-  async cleanup(remote: string, path?: string, source?: Origin, group?: string): Promise<void> {
-    return this.invokeCommand<void>('cleanup', { remote, path, source, group });
+  async uploadLocalDropPaths(
+    remote: string,
+    path: string,
+    localPaths: string[],
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('upload_local_drop_paths', {
+      remote,
+      path,
+      localPaths,
+      origin: source,
+      group,
+    });
+  }
+
+  async uploadFileSimple(
+    remote: string,
+    path: string,
+    name: string,
+    content: Uint8Array
+  ): Promise<string> {
+    return this.invokeCommand<string>('upload_file', {
+      remote,
+      path,
+      name,
+      content: Array.from(content),
+    });
+  }
+
+  async uploadFileStream(
+    remote: string,
+    path: string,
+    file: File,
+    source?: Origin,
+    overrideName?: string,
+    batchId?: string,
+    fileIndex?: number,
+    totalFiles?: number,
+    jobId?: number
+  ): Promise<string> {
+    const formData = new FormData();
+    formData.append('remote', remote);
+    formData.append('path', path);
+    if (source) formData.append('origin', JSON.stringify(source));
+    if (batchId) formData.append('batchId', batchId);
+    if (jobId !== undefined) formData.append('jobId', jobId.toString());
+    if (fileIndex !== undefined) formData.append('fileIndex', fileIndex.toString());
+    if (totalFiles !== undefined) formData.append('totalFiles', totalFiles.toString());
+    formData.append('file', file, overrideName || file.name);
+
+    const uploadUrl = `${this.apiClient.getApiBase()}/upload`;
+    const response = await firstValueFrom(
+      this.http.post<{ success: boolean; data: string; error?: string }>(uploadUrl, formData, {
+        withCredentials: true,
+      })
+    );
+
+    if (response.success) return response.data;
+    throw new Error(response.error || 'Upload failed');
+  }
+
+  async uploadWebFilesBatch(
+    remote: string,
+    path: string,
+    files: { file: File; relativePath: string }[],
+    source?: Origin
+  ): Promise<{ successCount: number; failedPaths: string[] }> {
+    const batchId = Date.now().toString();
+    const jobId = Date.now();
+    const totalFiles = files.length;
+    const totalBytes = files.reduce((sum, f) => sum + f.file.size, 0);
+
+    await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
+
+    let uploadedBytes = 0;
+    const completedItems: unknown[] = [];
+    const failedPaths: string[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < totalFiles; i++) {
+      const { file, relativePath } = files[i];
+      try {
+        await this.uploadFileStream(
+          remote,
+          path,
+          file,
+          source,
+          relativePath,
+          batchId,
+          i,
+          totalFiles,
+          jobId
+        );
+        successCount++;
+        uploadedBytes += file.size;
+        completedItems.push({
+          name: relativePath,
+          size: file.size,
+          bytes: file.size,
+          completed_at: new Date().toISOString(),
+        });
+
+        await this.updateJobStats(jobId, {
+          totalBytes,
+          bytes: uploadedBytes,
+          transfers: successCount,
+          totalTransfers: totalFiles,
+          completed: completedItems,
+          transferring: [],
+          preparing: true,
+        });
+      } catch (err) {
+        console.error(`Upload failed for ${relativePath}:`, err);
+        failedPaths.push(relativePath);
+      }
+    }
+
+    return { successCount, failedPaths };
+  }
+
+  async registerPreparingJob(
+    jobId: number,
+    remote: string,
+    destination: string,
+    totalFiles: number,
+    totalBytes: number,
+    origin?: Origin
+  ): Promise<void> {
+    return this.apiClient.invoke('register_preparing_job', {
+      jobid: jobId,
+      remote,
+      destination,
+      totalFiles,
+      totalBytes,
+      origin,
+    });
+  }
+
+  async updateJobStats(jobId: number, stats: unknown): Promise<void> {
+    return this.apiClient.invoke('update_job_stats', { jobid: jobId, stats });
+  }
+
+  async submitBatchJob(
+    inputs: Record<string, unknown>[],
+    jobType: JobActionType,
+    source?: Origin,
+    group?: string
+  ): Promise<string> {
+    return this.invokeCommand<string>('submit_batch_job', {
+      inputs,
+      job_type: jobType,
+      origin: source,
+      group,
+    });
+  }
+
+  async archiveCreate(
+    source: string,
+    destination: string,
+    format?: string,
+    prefix?: string,
+    fullPath?: boolean,
+    include?: string[]
+  ): Promise<unknown> {
+    return this.invokeCommand('archive_create', {
+      source,
+      destination,
+      format,
+      prefix,
+      fullPath,
+      include,
+    });
+  }
+
+  async archiveExtract(source: string, destination: string): Promise<unknown> {
+    return this.invokeCommand('archive_extract', { source, destination });
+  }
+
+  async archiveList(
+    source: string,
+    long?: boolean,
+    plain?: boolean,
+    filesOnly?: boolean,
+    dirsOnly?: boolean
+  ): Promise<{
+    success: boolean;
+    items: { size: number; date: string; time: string; path: string; isDir: boolean }[];
+  }> {
+    return this.invokeCommand('archive_list', {
+      source,
+      long,
+      plain,
+      files_only: filesOnly,
+      dirs_only: dirsOnly,
+    });
   }
 }

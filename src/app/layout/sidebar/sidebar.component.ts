@@ -20,6 +20,7 @@ import { Remote } from '@app/types';
 import { IconService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { RemoteStatusService } from '@app/services';
+import { RemoteFacadeService } from '../../services/facade/remote-facade.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -41,7 +42,9 @@ export class SidebarComponent {
   readonly iconService = inject(IconService);
   private readonly uiStateService = inject(UiStateService);
   readonly statusService = inject(RemoteStatusService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
 
+  readonly hiddenRemotes = this.remoteFacade.hiddenRemoteNames;
   selectedRemote = this.uiStateService.selectedRemote;
 
   searchTerm = signal('');

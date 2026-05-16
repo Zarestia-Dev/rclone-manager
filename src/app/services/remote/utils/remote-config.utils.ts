@@ -21,7 +21,7 @@ export function isInteractiveContinueDisabled(
 ): boolean {
   if (isAuthCancelled || state.isProcessing) return true;
   if (!state.question?.Option?.Required) return false;
-  const answer = state.answer;
+  const { answer } = state;
   return (
     answer === null || answer === undefined || (typeof answer === 'string' && answer.trim() === '')
   );
@@ -36,7 +36,7 @@ export function convertBoolAnswerToString(answer: unknown): string {
 }
 
 /**
- * Updates the interactive flow state with a new answer value.
+ * Returns a new state object with the given answer applied.
  */
 export function updateInteractiveAnswer(
   state: InteractiveFlowState,
@@ -46,37 +46,7 @@ export function updateInteractiveAnswer(
 }
 
 /**
- * Builds a path string (e.g., "myRemote:path") from a form path group object.
- * Handles various path types: local, currentRemote, otherRemote.
- */
-export function buildPathString(pathGroup: any, currentRemoteName: string): string {
-  if (pathGroup === null || pathGroup === undefined) return '';
-
-  // Handle simple string path (e.g., mount dest which is always local)
-  if (typeof pathGroup === 'string') return pathGroup;
-
-  const { pathType, path, otherRemoteName } = pathGroup;
-  const p = path || '';
-
-  // Handle "otherRemote:remoteName" format
-  if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
-    const remote = otherRemoteName || pathType.split(':')[1];
-    return `${remote}:${p}`;
-  }
-
-  switch (pathType) {
-    case 'local':
-      return p;
-    case 'currentRemote':
-      return `${currentRemoteName}:${p}`;
-    default:
-      return '';
-  }
-}
-
-/**
  * Extracts the default answer from an interactive config question response.
- * Handles boolean, string, and numeric types.
  */
 export function getDefaultAnswerFromQuestion(
   q: RcConfigQuestionResponse
@@ -97,101 +67,8 @@ export function getDefaultAnswerFromQuestion(
 }
 
 /**
- * Checks if a given path is a local filesystem path.
- * Recognizes Unix-style absolute paths (starting with '/') and Windows-style paths (e.g., 'C:\', 'C:/' or 'C:').
- */
-export function isLocalPath(path: string): boolean {
-  return path.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(path);
-}
-
-/**
- * Splits an absolute local path into its root (remote) and remainder (path).
- * Example: "/home/hakan" -> { remote: "/", remainder: "home/hakan" }
- * Example: "C:\Users\hakan" -> { remote: "C:\", remainder: "Users\hakan" }
- */
-export function splitLocalPath(path: string): { remote: string; remainder: string } {
-  if (path.startsWith('/')) {
-    return { remote: '/', remainder: path.substring(1) };
-  }
-  const windowsMatch = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
-  if (windowsMatch) {
-    const drive = windowsMatch[1];
-    const slash = windowsMatch[2] || '\\';
-    return { remote: drive + slash, remainder: windowsMatch[3] };
-  }
-  return { remote: path, remainder: '' };
-}
-
-/**
- * Normalizes an rclone fs value to a string.
- * Handles both plain strings and object formats (e.g. from backend serve list).
- */
-export function normalizeFs(fs: unknown): string {
-  if (typeof fs === 'string') return fs;
-  if (!fs || typeof fs !== 'object') return '';
-
-  const fsObj = fs as Record<string, unknown>;
-  const root = typeof fsObj['_root'] === 'string' ? fsObj['_root'] : '';
-
-  if (typeof fsObj['_name'] === 'string') return `${fsObj['_name']}:${root}`;
-  if (typeof fsObj['type'] === 'string') return `:${fsObj['type']}:${root}`;
-
-  return '';
-}
-
-/**
- * Removes runtime backend instance suffixes from remote names.
- * Example: Mega{Gyju7} -> Mega
- */
-export function normalizeRemoteName(remote: string): string {
-  return remote
-    .trim()
-    .replace(/:$/, '')
-    .replace(/\{[A-Za-z0-9_-]+\}$/, '');
-}
-
-/**
- * Safely extracts the remote name from an rclone fs value.
- * Handles local paths, Windows drive letters, and object formats.
- */
-export function getRemoteNameFromFs(fs: unknown): string {
-  const normalized = normalizeFs(fs);
-  if (!normalized) return '';
-  if (isLocalPath(normalized)) return 'local';
-  return normalizeRemoteName(normalized.split(':')[0]);
-}
-
-/**
- * Parses an rclone fs string into its components for UI configuration.
- * Identifies if the path is local, on the current remote, or another remote.
- */
-export function parseFsString(
-  fullPath: string,
-  defaultType: string,
-  currentRemoteName: string,
-  existingRemotes: string[] = []
-): { pathType: string; path: string; otherRemoteName?: string } {
-  if (!fullPath) return { pathType: defaultType, path: '' };
-
-  const colonIdx = fullPath.indexOf(':');
-  const isLocal = colonIdx === -1 || colonIdx === 1 || fullPath.startsWith('/');
-
-  if (isLocal) return { pathType: 'local', path: fullPath };
-
-  const remote = fullPath.substring(0, colonIdx);
-  const path = fullPath.substring(colonIdx + 1);
-
-  if (remote === currentRemoteName) return { pathType: 'currentRemote', path };
-  if (existingRemotes.includes(remote)) {
-    return { pathType: `otherRemote:${remote}`, path, otherRemoteName: remote };
-  }
-
-  return { pathType: defaultType, path: fullPath };
-}
-
-/**
- * Normalizes an rclone configuration key/flag for flexible searching.
- * Converts to lowercase and replaces hyphens and spaces with underscores.
+ * Normalizes an rclone config key for flexible searching
+ * (lowercase, hyphens/spaces → underscores).
  */
 export function normalizeRcloneKey(val: string | undefined | null): string {
   if (!val) return '';
@@ -199,8 +76,7 @@ export function normalizeRcloneKey(val: string | undefined | null): string {
 }
 
 /**
- * Checks if a configuration field matches a given search query.
- * Performs both raw substring matching and flexible matching (hyphens/spaces as underscores).
+ * Returns true if a config field name or help text matches the given search query.
  */
 export function matchesConfigSearch(field: RcConfigOption, query: string): boolean {
   if (!query) return true;
@@ -208,18 +84,28 @@ export function matchesConfigSearch(field: RcConfigOption, query: string): boole
   const trimmedQuery = query.toLowerCase().trim();
   const flexibleQuery = normalizeRcloneKey(trimmedQuery);
 
-  const name = field.Name?.toLowerCase() ?? '';
-  const fieldName = field.FieldName?.toLowerCase() ?? '';
-  const help = field.Help?.toLowerCase() ?? '';
-
-  const flexibleName = normalizeRcloneKey(field.Name);
-  const flexibleFieldName = normalizeRcloneKey(field.FieldName);
-
   return (
-    name.includes(trimmedQuery) ||
-    fieldName.includes(trimmedQuery) ||
-    help.includes(trimmedQuery) ||
-    flexibleName.includes(flexibleQuery) ||
-    flexibleFieldName.includes(flexibleQuery)
+    (field.Name?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    (field.FieldName?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    (field.Help?.toLowerCase() ?? '').includes(trimmedQuery) ||
+    normalizeRcloneKey(field.Name).includes(flexibleQuery) ||
+    normalizeRcloneKey(field.FieldName).includes(flexibleQuery)
+  );
+}
+
+/**
+ * Groups an array of items by a derived key.
+ */
+export function groupBy<T, K extends PropertyKey>(
+  array: T[],
+  keyGetter: (item: T) => K
+): Record<K, T[]> {
+  return array.reduce(
+    (acc, item) => {
+      const key = keyGetter(item);
+      (acc[key] ??= []).push(item);
+      return acc;
+    },
+    {} as Record<K, T[]>
   );
 }

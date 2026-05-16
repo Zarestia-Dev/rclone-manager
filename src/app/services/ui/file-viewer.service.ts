@@ -6,9 +6,8 @@ import { FileViewerModalComponent } from '../../file-browser/file-viewer/file-vi
 import { Entry } from '@app/types';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { HttpClient } from '@angular/common/http';
+import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +16,6 @@ export class FileViewerService extends TauriBaseService {
   private overlay = inject(Overlay);
   private iconService = inject(IconService);
   private pathService = inject(PathService);
-  private http = inject(HttpClient);
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
@@ -65,36 +63,27 @@ export class FileViewerService extends TauriBaseService {
   }
 
   async getAudioCover(item: Entry, remoteName: string, isLocal: boolean): Promise<string | null> {
-    if (this.apiClient.isHeadless()) {
-      try {
-        const response = await firstValueFrom(
-          this.http.get<{ data: string | null }>(
-            `${this.apiClient.getApiBaseUrl()}/fs/audio/cover`,
-            {
-              params: {
-                remote: remoteName,
-                path: item.Path,
-                is_local: String(isLocal),
-              },
-            }
-          )
-        );
-        return response?.data ?? null;
-      } catch (e) {
-        console.warn('[FileViewerService] Failed to fetch audio cover:', e);
-        return null;
+    const remote = remoteName;
+    const path = item.Path;
+
+    if (isLocal) {
+      const fullPath = this.pathService.joinPath(remote, path);
+
+      if (isHeadlessMode()) {
+        const encodedPath = encodeURIComponent(fullPath);
+        return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}`;
       }
+      return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
     } else {
-      try {
-        return await this.invokeCommand<string | null>('get_audio_cover', {
-          remote: remoteName,
-          path: item.Path,
-          isLocal: isLocal,
-        });
-      } catch (e) {
-        console.warn('[FileViewerService] Failed to invoke get_audio_cover:', e);
-        return null;
+      // Remote
+      if (isHeadlessMode()) {
+        const encodedRemote = encodeURIComponent(remote);
+        const encodedPath = encodeURIComponent(path);
+        return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
       }
+      return `audio-cover://localhost/remote/${encodeURIComponent(remote)}/${encodeURIComponent(
+        path
+      )}`;
     }
   }
 
@@ -113,12 +102,10 @@ export class FileViewerService extends TauriBaseService {
 
     try {
       // 1. Determine the directory of the base file
-      const lastSlash = baseItem.Path.lastIndexOf('/');
-      const fileDir = lastSlash === -1 ? '' : baseItem.Path.substring(0, lastSlash);
+      const fileDir = this.pathService.getDirname(baseItem.Path);
 
       // 2. Construct full target path relative to remote/local root
-      // If fileDir is "docs", relative is "../img.png" -> target is "img.png"
-      const combined = fileDir ? `${fileDir}/${relativePath}` : relativePath;
+      const combined = this.pathService.joinPath(fileDir, relativePath);
       const normalizedPath = this.pathService.normalizePath(combined);
 
       // 3. Generate URL for this new path
@@ -135,30 +122,23 @@ export class FileViewerService extends TauriBaseService {
     isLocal: boolean
   ): Promise<string> {
     if (isLocal) {
-      const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
-      const fullPath = `${remoteName}${separator}${path}`;
+      const fullPath = this.pathService.joinPath(remoteName, path);
 
-      if (this.apiClient.isHeadless()) {
+      if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
-        return `${this.apiClient.getApiBaseUrl()}/fs/stream?path=${encodedPath}`;
+        return `${this.apiClient.getApiBase()}/stream?path=${encodedPath}`;
       }
       // Use our own local-asset:// custom protocol instead of Tauri's asset://.
       // Linux/macOS (WebKit): local-asset://localhost/path/to/file
       // Windows   (WebView2): http://local-asset.localhost/Z%3A/path/to/file
-      let normalizedPath = fullPath.replace(/\\/g, '/');
-      // Fix missing drive colon: "Z/path" → "Z:/path"
-      if (/^[A-Za-z]\//.test(normalizedPath)) {
-        normalizedPath = `${normalizedPath[0]}:${normalizedPath.slice(1)}`;
-      }
       // Encode each segment individually (preserves '/' separators)
-      const encodedSegments = normalizedPath
-        .split('/')
-        .map((seg, i) => (i === 0 && /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
-        .join('/');
+      const encodedSegments = this.pathService.encodePath(fullPath, true, {
+        platform: platform(),
+        protocol: platform() === 'windows' ? 'http' : 'local-asset',
+      });
+
       if (platform() === 'windows') {
-        // Drive colon is invalid in a URL host/path without encoding
-        const winPath = encodedSegments.replace(/^([A-Za-z]):/, '$1%3A');
-        return `http://local-asset.localhost/${winPath}`;
+        return `http://local-asset.localhost/${encodedSegments}`;
       }
 
       const pathWithSlash = encodedSegments.startsWith('/')
@@ -167,13 +147,10 @@ export class FileViewerService extends TauriBaseService {
       return `local-asset://localhost${pathWithSlash}`;
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
-    const encodedPath = path
-      .split('/')
-      .map(p => encodeURIComponent(p))
-      .join('/');
+    const encodedPath = this.pathService.encodePath(path, false);
 
-    if (this.apiClient.isHeadless()) {
-      return `${this.apiClient.getApiBaseUrl()}/fs/stream/remote?remote=${encodeURIComponent(
+    if (isHeadlessMode()) {
+      return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(
         rName
       )}&path=${encodedPath}`;
     }

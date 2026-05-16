@@ -1,128 +1,282 @@
-// ============================================================================
-// HEADER SECTION (Auto-start & Cron Scheduling)
-// ============================================================================
-
 .header-section {
-  margin-bottom: var(--space-md);
-  padding: var(--space-sm);
-  box-shadow: var(--shadow-gnome);
-  border-radius: var(--radius-md);
+  padding: var(--space-md);
   background: var(--view-bg-color);
-
-  .operation-enable,
-  .cron-enable {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-weight: 500;
-  }
+  border-radius: var(--radius-md);
+  margin-top: var(--space-md);
+  box-shadow: var(--box-shadow);
 
   .section-description {
-    font-size: var(--font-size-sm);
-    color: var(--window-fg-color-secondary);
-    margin: var(--space-xs) 0 0;
+    color: var(--dim-color);
+    font-size: var(--font-size-md);
     line-height: 1.5;
-
-    strong {
-      color: var(--window-fg-color);
-    }
+    margin-bottom: 0;
   }
 }
 
 .cron-panel {
-  margin-bottom: var(--space-md);
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+
+  .no-schedule {
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .clear-schedule-btn {
+    margin-left: 0.5rem;
+    color: var(--red);
+  }
 }
 
-// ============================================================================
-// PATH SECTIONS
-// ============================================================================
+.paths-container {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--box-shadow);
+}
 
-.path-section {
+.section-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-xxs);
-}
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
 
-.path-prefix {
-  // Mount variants (locked, no dropdown)
-  &.mount-local,
-  &.mount-remote,
-  mat-select-trigger {
+  &:not(:first-child) {
+    margin-top: var(--space-md);
+  }
+
+  .section-title {
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
-    padding: 19.4px;
+    font-weight: 600;
+    color: var(--window-fg-color);
   }
 
-  ::ng-deep .mat-mdc-select-arrow-wrapper {
-    display: none;
-  }
-
-  &.mount-local,
-  &.local mat-select-trigger {
-    background: rgba(var(--purple-rgb), 0.1);
-    color: var(--purple);
-  }
-  &.mount-remote,
-  &.remote mat-select-trigger {
-    background: rgba(var(--primary-color-rgb), 0.1);
+  .add-path-btn {
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--primary-color);
-  }
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-radius: 20px;
+    padding: 0 1.25rem;
+    height: 32px;
+    transition: var(--transition-fast);
 
-  &.other mat-select-trigger {
-    background: rgba(var(--accent-color-rgb), 0.1);
-    color: var(--accent-color);
-  }
+    mat-icon {
+      margin-right: 4px;
+      transform: scale(0.9);
+    }
 
-  mat-icon {
-    height: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.2);
+    }
   }
 }
 
-.material-context-menu {
-  max-height: 300px;
+.path-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--mat-sys-surface-variant);
+  border-radius: var(--input-border-radius);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
 }
 
-// ============================================================================
-// MESSAGES
-// ============================================================================
+.path-item-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 56px;
+  background: transparent;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s ease;
+  animation: pathEntry 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  // Focus effect for the entire row mimicking GNOME behavior
+  &:focus-within {
+    background: var(--hover-bg-color);
+  }
+
+  // --- Type Selector (Prefix area) ---
+  .path-type-selector {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem 0 0.75rem;
+    border-right: 1px solid var(--border-color);
+
+    .static-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      color: var(--dim-color);
+
+      &.local {
+        color: var(--purple);
+      }
+      &.mount-remote {
+        color: var(--primary-color);
+      }
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+    }
+
+    // New custom dropdown button replacing mat-select
+    .type-dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--button-border-radius);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--selected-bg-color);
+      }
+      &:active {
+        background: var(--active-bg-color);
+      }
+
+      &.local {
+        color: var(--purple);
+      }
+      &.remote {
+        color: var(--primary-color);
+      }
+      &.other {
+        color: var(--accent-color);
+      }
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+
+      .dropdown-arrow {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        margin-left: 0.25rem;
+        color: var(--dim-color);
+        opacity: 0.7;
+      }
+    }
+  }
+
+  // --- Input Area (Stripped mat-form-field) ---
+  mat-form-field.path-input-field {
+    flex: 1;
+    width: auto;
+
+    // Aggressively strip MDC structural elements so it blends into the row
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 1rem !important;
+        box-shadow: none !important;
+        height: 100%;
+      }
+      .mat-mdc-form-field-flex {
+        height: 100%;
+        align-items: center;
+      }
+      .mat-mdc-form-field-infix {
+        padding: 0 !important;
+        min-height: auto !important;
+      }
+      .mdc-line-ripple {
+        display: none !important; // Hide underline
+      }
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none !important; // Hide error/hint area spacing
+      }
+    }
+
+    input {
+      font-size: var(--font-size-lg);
+      color: var(--window-fg-color);
+
+      &::placeholder {
+        color: var(--text-muted);
+        opacity: 0.6;
+      }
+    }
+  }
+
+  // --- Actions Suffix ---
+  .action-suffix {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding-right: 0.75rem;
+
+    button {
+      width: 36px;
+      height: 36px;
+      padding: 6px;
+      border-radius: var(--button-border-radius);
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--hover-bg-color);
+      }
+    }
+
+    .remove-btn {
+      .destructive-icon {
+        color: var(--destructive-color);
+      }
+      &:hover {
+        background: rgba(var(--destructive-color-rgb), 0.1);
+      }
+    }
+  }
+}
+
+@keyframes pathEntry {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .message {
   display: flex;
   align-items: center;
-  gap: var(--space-xxs);
-  padding: var(--space-xs);
+  gap: var(--space-xs);
+  padding: var(--space-sm);
   border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--space-md);
-
-  mat-icon {
-    height: var(--icon-size-sm);
-    width: var(--icon-size-sm);
-    font-size: var(--icon-size-sm);
-  }
+  font-size: var(--font-size-md);
+  margin-block: var(--space-md);
 
   &.warning {
-    color: var(--orange);
     background: rgba(var(--orange-rgb), 0.1);
-    box-shadow: 0 0 0 1px var(--orange);
-  }
-}
-
-@media (max-width: 640px) {
-  .header-section {
-    .operation-enable,
-    .cron-enable {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--space-sm);
-    }
-  }
-
-  .cron-panel {
-    margin-bottom: var(--space-sm);
+    color: var(--orange);
+    border: 1px solid rgba(var(--orange-rgb), 0.3);
   }
 }

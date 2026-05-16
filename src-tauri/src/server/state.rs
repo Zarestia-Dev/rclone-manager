@@ -1,16 +1,19 @@
-use crate::core::settings::AppSettingsManager;
 use axum::{
-    body::Body,
-    extract::{DefaultBodyLimit, State},
-    http::{Request, StatusCode, header::AUTHORIZATION},
+    extract::State,
+    http::{
+        StatusCode,
+        header::{AUTHORIZATION, COOKIE, SET_COOKIE},
+    },
     middleware::Next,
     response::{IntoResponse, Json},
 };
 use log::error;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use tauri::AppHandle;
-use tokio::sync::broadcast;
+use tokio::sync::{RwLock, broadcast};
+
+pub type SessionStore = Arc<RwLock<HashSet<String>>>;
 
 /// Shared state for web server handlers
 #[derive(Clone)]
@@ -18,6 +21,7 @@ pub struct WebServerState {
     pub app_handle: AppHandle,
     pub event_tx: Arc<broadcast::Sender<TauriEvent>>,
     pub auth_credentials: Option<(String, String)>,
+    pub sessions: SessionStore,
 }
 
 /// Event message for SSE
@@ -62,10 +66,7 @@ pub enum AppError {
     NotFound(String),
 }
 
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
+impl<E: Into<anyhow::Error>> From<E> for AppError {
     fn from(err: E) -> Self {
         Self::InternalServerError(err.into())
     }
@@ -77,27 +78,45 @@ impl IntoResponse for AppError {
             AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e.to_string()),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::InternalServerError(e) => {
-                error!("API Error: {:#}", e);
+                error!("API Error: {e:#}");
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
         };
-
         (status, Json(ApiResponse::<()>::error(message))).into_response()
     }
 }
 
-/// Authentication middleware for API endpoints
+pub async fn create_session_handler(State(state): State<WebServerState>) -> impl IntoResponse {
+    let token = uuid::Uuid::new_v4().simple().to_string();
+    state.sessions.write().await.insert(token.clone());
+
+    let cookie = format!("session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400");
+
+    ([(SET_COOKIE, cookie)], Json(ApiResponse::<()>::success(())))
+}
+
+/// Deletes the session cookie, effectively logging the user out.
+pub async fn delete_session_handler(
+    State(state): State<WebServerState>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    if let Some(token) = extract_session_cookie(&headers) {
+        state.sessions.write().await.remove(token);
+    }
+
+    let expire = "session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0";
+    ([(SET_COOKIE, expire)], Json(ApiResponse::<()>::success(())))
+}
+
 pub async fn auth_middleware(
     State(state): State<WebServerState>,
     request: axum::http::Request<axum::body::Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
-    // No credentials configured — allow all requests through.
     let Some((_, expected_creds)) = &state.auth_credentials else {
         return Ok(next.run(request).await);
     };
 
-    // Check Authorization header (Basic Auth)
     if let Some(auth_header) = request.headers().get(AUTHORIZATION)
         && let Ok(auth_str) = auth_header.to_str()
         && let Some(creds) = auth_str.strip_prefix("Basic ")
@@ -106,18 +125,10 @@ pub async fn auth_middleware(
         return Ok(next.run(request).await);
     }
 
-    // Check query parameter as fallback
-    if let Some(query_string) = request.uri().query()
-        && let Ok(decoded) = urlencoding::decode(query_string)
+    if let Some(token) = extract_session_cookie(request.headers())
+        && state.sessions.read().await.contains(token)
     {
-        for param in decoded.split('&') {
-            if let Some((key, value)) = param.split_once('=')
-                && key == "auth"
-                && value == expected_creds.as_str()
-            {
-                return Ok(next.run(request).await);
-            }
-        }
+        return Ok(next.run(request).await);
     }
 
     Ok(axum::http::Response::builder()
@@ -127,26 +138,9 @@ pub async fn auth_middleware(
         .unwrap())
 }
 
-/// Dynamic body limit middleware that reads settings from state
-pub async fn dynamic_body_limit_middleware(
-    State(state): State<WebServerState>,
-    mut request: Request<Body>,
-    next: Next,
-) -> axum::response::Response {
-    use tauri::Manager;
-    let limit_mb = state
-        .app_handle
-        .state::<AppSettingsManager>()
-        .get_all()
-        .map(|s| s.core.max_upload_batch_size)
-        .unwrap_or(500);
-
-    let limit_bytes = limit_mb * 1024 * 1024;
-
-    // Inject the limit into the request extensions for extractors
-    request
-        .extensions_mut()
-        .insert(DefaultBodyLimit::max(limit_bytes));
-
-    next.run(request).await
+fn extract_session_cookie(headers: &axum::http::HeaderMap) -> Option<&str> {
+    let cookie_str = headers.get(COOKIE)?.to_str().ok()?;
+    cookie_str
+        .split(';')
+        .find_map(|part| part.trim().strip_prefix("session="))
 }

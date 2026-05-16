@@ -64,7 +64,7 @@ impl RotatingFileWriter {
             .base_path
             .parent()
             .unwrap_or_else(|| Path::new("."))
-            .join(format!("{}-{}.log", file_stem, timestamp));
+            .join(format!("{file_stem}-{timestamp}.log"));
 
         // Rename current log to timestamped backup
         if self.base_path.exists() {
@@ -87,7 +87,7 @@ impl RotatingFileWriter {
         Ok(())
     }
 
-    /// Remove old backup files, keeping only MAX_BACKUP_FILES
+    /// Remove old backup files, keeping only `MAX_BACKUP_FILES`
     fn cleanup_old_backups(&self) -> io::Result<()> {
         let log_dir = self.base_path.parent().unwrap_or_else(|| Path::new("."));
         let file_stem = self
@@ -98,15 +98,14 @@ impl RotatingFileWriter {
 
         // Get all backup files and sort by modification time
         let mut backups: Vec<PathBuf> = fs::read_dir(log_dir)?
-            .filter_map(|entry| entry.ok())
+            .filter_map(std::result::Result::ok)
             .map(|entry| entry.path())
             .filter(|path| {
                 path.file_name()
                     .and_then(|name| name.to_str())
-                    .map(|name| {
+                    .is_some_and(|name| {
                         name.starts_with(file_stem) && name.contains('-') && name.ends_with(".log")
                     })
-                    .unwrap_or(false)
                     && path != &self.base_path // Don't delete the current log
             })
             .collect();

@@ -1,6 +1,6 @@
 export interface RepairData {
   type:
-    | 'rclone_path'
+    | 'rclone_binary'
     | 'mount_plugin'
     | 'config_corrupt'
     | 'backend_unreachable'
@@ -10,15 +10,4 @@ export interface RepairData {
   requiresPassword?: boolean;
   showStoreOption?: boolean;
   passwordDescription?: string;
-}
-
-export interface UpdateMetadata {
-  version: string;
-  currentVersion: string;
-  releaseTag: string;
-  releaseNotes?: string;
-  releaseDate?: string;
-  releaseUrl?: string;
-  updateInProgress?: boolean;
-  restartRequired?: boolean;
 }

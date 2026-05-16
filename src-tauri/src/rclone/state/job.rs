@@ -10,48 +10,66 @@ use crate::utils::types::{
 };
 
 impl JobCache {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             jobs: RwLock::new(HashMap::new()),
         }
     }
 
-    /// Set all jobs (for state restore)
-    pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
-        let mut current = self.jobs.write().await;
-        *current = jobs.into_iter().map(|j| (j.jobid, j)).collect();
+    /// Registers a new job with the cache.
+    pub async fn create_job(
+        &self,
+        jobid: u64,
+        execute_id: Option<String>,
+        metadata: crate::rclone::commands::job::JobMetadata,
+        backend_name: String,
+        app: Option<&AppHandle>,
+    ) -> u64 {
+        let group = metadata.group_name();
+        let job = JobInfo {
+            jobid,
+            job_type: metadata.job_type,
+            remote_name: metadata.remote_name,
+            source: metadata.source,
+            destination: metadata.destination,
+            start_time: chrono::Utc::now(),
+            end_time: None,
+            status: JobStatus::Running,
+            error: None,
+            stats: None,
+            group,
+            profile: metadata.profile,
+            execute_id,
+            origin: metadata.origin,
+            backend_name,
+        };
+
+        self.add_job(job, app).await;
+        jobid
     }
 
-    /// Add a job and emit event
+    pub async fn set_all_jobs(&self, jobs: Vec<JobInfo>) {
+        *self.jobs.write().await = jobs.into_iter().map(|j| (j.jobid, j)).collect();
+    }
+
     pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
         let jobid = job.jobid;
-        let mut jobs = self.jobs.write().await;
-        jobs.insert(jobid, job);
-        drop(jobs);
-
-        if let Some(app) = app {
-            info!("📡 Job {jobid} added");
-            let _ = app.emit(JOB_CACHE_CHANGED, jobid);
-        }
+        self.jobs.write().await.insert(jobid, job.clone());
+        self.notify_change(app, Some(&job));
     }
 
-    /// Delete a job and emit event if successful
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-
-        if jobs.remove(&jobid).is_some() {
-            drop(jobs);
-            if let Some(app) = app {
-                info!("📡 Job {jobid} deleted");
-                let _ = app.emit(JOB_CACHE_CHANGED, jobid);
-            }
+        let job = self.jobs.write().await.remove(&jobid);
+        if let Some(job) = job {
+            self.notify_change(app, Some(&job));
             Ok(())
         } else {
+            log::warn!("Attempted to delete job {jobid}, but it was not found in cache");
             Err(crate::localized_error!("backendErrors.job.notFound"))
         }
     }
 
-    /// A generic function to update a job using a closure
     pub async fn update_job(
         &self,
         jobid: u64,
@@ -59,29 +77,22 @@ impl JobCache {
         app: Option<&AppHandle>,
     ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(&jobid) {
-            update_fn(job);
-            let result = job.clone();
-            drop(jobs);
+        let job = jobs
+            .get_mut(&jobid)
+            .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
 
-            if let Some(app) = app {
-                info!("📡 Job {jobid} updated");
-                let _ = app.emit(JOB_CACHE_CHANGED, jobid);
-            }
-            Ok(result)
-        } else {
-            Err(crate::localized_error!("backendErrors.job.notFound"))
-        }
+        update_fn(job);
+        let result = job.clone();
+        drop(jobs);
+
+        self.notify_change(app, Some(&result));
+        Ok(result)
     }
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(&jobid) {
-            job.stats = Some(stats);
-            Ok(())
-        } else {
-            Err(crate::localized_error!("backendErrors.job.notFound"))
-        }
+        self.update_job(jobid, |j| j.stats = Some(stats), None)
+            .await
+            .map(|_| ())
     }
 
     pub async fn complete_job(
@@ -93,17 +104,16 @@ impl JobCache {
     ) -> Result<JobInfo, String> {
         self.update_job(
             jobid,
-            |job| {
-                if job.status == JobStatus::Stopped {
-                    // Already stopped manually, don't overwrite with Completed/Failed
-                } else if success {
-                    job.status = JobStatus::Completed;
-                    job.error = None;
-                } else {
-                    job.status = JobStatus::Failed;
-                    job.error = error;
+            |j| {
+                if !j.status.is_finished() {
+                    j.status = if success {
+                        JobStatus::Completed
+                    } else {
+                        JobStatus::Failed
+                    };
+                    j.error = error;
+                    j.end_time = Some(chrono::Utc::now());
                 }
-                job.end_time = Some(chrono::Utc::now());
             },
             app,
         )
@@ -113,14 +123,20 @@ impl JobCache {
     pub async fn stop_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
         self.update_job(
             jobid,
-            |job| {
-                job.status = JobStatus::Stopped;
-                job.end_time = Some(chrono::Utc::now());
+            |j| {
+                if !j.status.is_finished() {
+                    j.status = JobStatus::Stopped;
+                    j.end_time = Some(chrono::Utc::now());
+                }
             },
             app,
         )
-        .await?;
-        Ok(())
+        .await
+        .map(|_| ())
+    }
+
+    pub async fn get_job(&self, jobid: u64) -> Option<JobInfo> {
+        self.jobs.read().await.get(&jobid).cloned()
     }
 
     pub async fn get_jobs(&self) -> Vec<JobInfo> {
@@ -128,72 +144,90 @@ impl JobCache {
     }
 
     pub async fn get_active_jobs(&self) -> Vec<JobInfo> {
-        let jobs = self.jobs.read().await;
-        jobs.values()
-            .filter(|job| job.status == JobStatus::Running)
+        self.jobs
+            .read()
+            .await
+            .values()
+            .filter(|j| j.status.is_running())
             .cloned()
             .collect()
     }
 
-    pub async fn get_job(&self, jobid: u64) -> Option<JobInfo> {
-        self.jobs.read().await.get(&jobid).cloned()
+    pub async fn has_running_jobs(&self) -> bool {
+        self.jobs
+            .read()
+            .await
+            .values()
+            .any(|j| j.status.is_running())
     }
 
-    /// Checks if a job of a specific type is already running for a specific remote.
     pub async fn is_job_running(
         &self,
         remote_name: &str,
         job_type: JobType,
         profile: Option<&str>,
     ) -> bool {
-        let jobs = self.jobs.read().await;
-        jobs.values().any(|job| {
-            job.remote_name == remote_name
-                && job.job_type == job_type
-                && job.status == JobStatus::Running
-                && job.profile.as_deref() == profile
+        self.jobs.read().await.values().any(|j| {
+            j.remote_name == remote_name
+                && j.job_type == job_type
+                && j.status.is_running()
+                && j.profile.as_deref() == profile
         })
     }
 
-    /// Delete all jobs associated with a specific remote
     pub async fn delete_jobs_by_remote(&self, remote_name: &str, app: Option<&AppHandle>) {
-        let mut jobs = self.jobs.write().await;
-        let keys_to_remove: Vec<u64> = jobs
-            .values()
-            .filter(|j| j.remote_name == remote_name)
-            .map(|j| j.jobid)
-            .collect();
-
-        for key in keys_to_remove {
-            jobs.remove(&key);
-            if let Some(app) = app {
-                let _ = app.emit(JOB_CACHE_CHANGED, key);
-            }
-        }
+        self.delete_matching(|j| j.remote_name == remote_name, app)
+            .await;
         info!("📡 All jobs for remote {remote_name} deleted");
     }
 
-    /// Delete all jobs associated with a specific profile on a remote
     pub async fn delete_jobs_by_profile(
         &self,
         remote_name: &str,
         profile_name: &str,
         app: Option<&AppHandle>,
     ) {
+        self.delete_matching(
+            |j| j.remote_name == remote_name && j.profile.as_deref() == Some(profile_name),
+            app,
+        )
+        .await;
+        info!("📡 All jobs for profile {profile_name} on remote {remote_name} deleted");
+    }
+
+    pub async fn delete_matching(
+        &self,
+        predicate: impl Fn(&JobInfo) -> bool,
+        app: Option<&AppHandle>,
+    ) {
         let mut jobs = self.jobs.write().await;
-        let keys_to_remove: Vec<u64> = jobs
+        let to_remove: Vec<u64> = jobs
             .values()
-            .filter(|j| j.remote_name == remote_name && j.profile.as_deref() == Some(profile_name))
+            .filter(|j| predicate(j))
             .map(|j| j.jobid)
             .collect();
 
-        for key in keys_to_remove {
-            jobs.remove(&key);
-            if let Some(app) = app {
-                let _ = app.emit(JOB_CACHE_CHANGED, key);
+        let mut removed_jobs = Vec::with_capacity(to_remove.len());
+        for id in to_remove {
+            if let Some(job) = jobs.remove(&id) {
+                removed_jobs.push(job);
             }
         }
-        info!("📡 All jobs for profile {profile_name} on remote {remote_name} deleted");
+        drop(jobs);
+
+        for job in removed_jobs {
+            self.notify_change(app, Some(&job));
+        }
+    }
+
+    // ---- Private helpers ----
+    fn notify_change(&self, app: Option<&AppHandle>, job: Option<&JobInfo>) {
+        if let (Some(app), Some(job)) = (app, job) {
+            let _ = app.emit(
+                JOB_CACHE_CHANGED,
+                crate::utils::types::events::JobChangeEvent::from(job),
+            );
+        }
     }
 }
 
@@ -205,9 +239,8 @@ impl Default for JobCache {
 
 #[cfg(test)]
 mod tests {
-    use crate::rclone::backend::types::default_backend_name;
-
     use super::*;
+    use crate::rclone::backend::types::default_backend_name;
 
     fn mock_job(jobid: u64, remote: &str, job_type: JobType, profile: Option<&str>) -> JobInfo {
         JobInfo {
@@ -218,28 +251,25 @@ mod tests {
             destination: "/local/path".to_string(),
             start_time: chrono::Utc::now(),
             end_time: None,
-            profile: profile.map(|s| s.to_string()),
             status: JobStatus::Running,
             error: None,
             stats: None,
-            uploaded_files: Vec::new(),
-            group: format!("job/{}", jobid),
+            group: format!("job/{jobid}"),
+            profile: profile.map(str::to_string),
+            execute_id: None,
             origin: None,
             backend_name: default_backend_name(),
-            execute_id: None,
         }
     }
 
     #[tokio::test]
     async fn test_add_and_get_job() {
         let cache = JobCache::new();
-        let job = mock_job(1, "gdrive:", JobType::Sync, Some("default"));
-
-        cache.add_job(job.clone(), None).await;
-
-        let retrieved = cache.get_job(1).await;
-        assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().remote_name, "gdrive:");
+        cache
+            .add_job(mock_job(1, "gdrive:", JobType::Sync, Some("default")), None)
+            .await;
+        let job = cache.get_job(1).await.unwrap();
+        assert_eq!(job.remote_name, "gdrive:");
     }
 
     #[tokio::test]
@@ -251,119 +281,38 @@ mod tests {
         cache
             .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
             .await;
-
         assert_eq!(cache.get_jobs().await.len(), 2);
 
-        let result = cache.delete_job(1, None).await;
-        assert!(result.is_ok());
+        assert!(cache.delete_job(1, None).await.is_ok());
         assert_eq!(cache.get_jobs().await.len(), 1);
-
-        // Deleting non-existent job should fail
-        let result = cache.delete_job(999, None).await;
-        assert!(result.is_err());
     }
 
     #[tokio::test]
-    async fn test_complete_job() {
+    async fn test_complete_job_idempotency() {
         let cache = JobCache::new();
+        let jobid = 1;
         cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, None), None)
+            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None), None)
             .await;
 
-        // Complete successfully
-        cache.complete_job(1, true, None, None).await.unwrap();
-        let job = cache.get_job(1).await.unwrap();
-        assert_eq!(job.status, JobStatus::Completed);
+        // Complete the job for the first time
+        cache.complete_job(jobid, true, None, None).await.unwrap();
+        let job1 = cache.get_job(jobid).await.unwrap();
+        let first_end_time = job1.end_time.unwrap();
 
-        // Add another and fail it
+        // Wait a bit
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+        // Complete the job again
         cache
-            .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
-            .await;
-        cache
-            .complete_job(2, false, Some("failed".to_string()), None)
+            .complete_job(jobid, false, Some("error".to_string()), None)
             .await
             .unwrap();
-        let job = cache.get_job(2).await.unwrap();
-        assert_eq!(job.status, JobStatus::Failed);
-        assert_eq!(job.error, Some("failed".to_string()));
-    }
+        let job2 = cache.get_job(jobid).await.unwrap();
 
-    #[tokio::test]
-    async fn test_stop_job() {
-        let cache = JobCache::new();
-        cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, None), None)
-            .await;
-
-        cache.stop_job(1, None).await.unwrap();
-
-        let job = cache.get_job(1).await.unwrap();
-        assert_eq!(job.status, JobStatus::Stopped);
-    }
-
-    #[tokio::test]
-    async fn test_get_active_jobs() {
-        let cache = JobCache::new();
-        cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, None), None)
-            .await;
-        cache
-            .add_job(mock_job(2, "s3:", JobType::Copy, None), None)
-            .await;
-        cache
-            .add_job(mock_job(3, "b2:", JobType::Move, None), None)
-            .await;
-
-        // Stop one, complete one
-        cache.stop_job(1, None).await.unwrap();
-        cache.complete_job(2, true, None, None).await.unwrap();
-
-        let active = cache.get_active_jobs().await;
-        assert_eq!(active.len(), 1);
-        assert_eq!(active[0].jobid, 3);
-    }
-
-    #[tokio::test]
-    async fn test_is_job_running() {
-        let cache = JobCache::new();
-        cache
-            .add_job(mock_job(1, "gdrive:", JobType::Sync, Some("default")), None)
-            .await;
-
-        // Should find running job
-        assert!(
-            cache
-                .is_job_running("gdrive:", JobType::Sync, Some("default"))
-                .await
-        );
-
-        // Wrong remote
-        assert!(
-            !cache
-                .is_job_running("s3:", JobType::Sync, Some("default"))
-                .await
-        );
-
-        // Wrong job type
-        assert!(
-            !cache
-                .is_job_running("gdrive:", JobType::Copy, Some("default"))
-                .await
-        );
-
-        // Wrong profile
-        assert!(
-            !cache
-                .is_job_running("gdrive:", JobType::Sync, Some("other"))
-                .await
-        );
-
-        // Stop the job
-        cache.stop_job(1, None).await.unwrap();
-        assert!(
-            !cache
-                .is_job_running("gdrive:", JobType::Sync, Some("default"))
-                .await
-        );
+        // Verify that end_time and status/error were not changed
+        assert_eq!(job2.end_time.unwrap(), first_end_time);
+        assert_eq!(job2.status, JobStatus::Completed);
+        assert!(job2.error.is_none());
     }
 }

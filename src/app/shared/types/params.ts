@@ -18,6 +18,6 @@ export type ServeOptions = FlagOptions;
 // Profile-based params - used by frontend services to start operations
 // The backend resolves all options from cached settings
 export interface ProfileParams {
-  remote_name: string;
-  profile_name: string;
+  remoteName: string;
+  profileName: string;
 }

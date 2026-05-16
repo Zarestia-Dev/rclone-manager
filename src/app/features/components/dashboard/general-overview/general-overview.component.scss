@@ -256,14 +256,15 @@
 
     .error-section {
       margin-top: 8px;
+      border-radius: var(--radius-xs);
       padding: 12px;
       @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
-      border-radius: 8px;
 
       .error-message {
         display: flex;
         align-items: flex-start;
         gap: 8px;
+        border-radius: var(--radius-xs);
         margin-top: 8px;
 
         .error-text-content {
@@ -288,267 +289,12 @@
 // SCHEDULED TASKS PANEL
 // =============================================
 
+.serves-panel,
 .scheduled-tasks-panel {
-  .tasks-grid {
+  .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-  }
-
-  .task-card {
-    position: relative;
-    transition: var(--transition-standard);
-    border-radius: var(--card-border-radius);
-    background: var(--window-bg-color);
-    box-shadow: var(--box-shadow);
-    animation: fadeIn 0.6s ease-out;
-
-    &:hover {
-      background: var(--hover-bg-color);
-    }
-
-    &.disabled {
-      opacity: 0.5;
-    }
-
-    &.stopping {
-      border-color: var(--orange);
-      background-color: rgba(var(--orange-rgb), 0.1);
-    }
-
-    .task-header {
-      .task-info-section {
-        display: flex;
-        gap: var(--space-xs);
-        flex: 1;
-        min-width: 0;
-
-        .task-icon-wrapper {
-          @include flex-center;
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-          background: rgba(var(--primary-color-rgb), 0.15);
-          flex-shrink: 0;
-
-          @each $type, $color in ("sync", primary-color), ("copy", yellow), ("move", orange),
-            ("bisync", purple)
-          {
-            &.#{$type}-color {
-              background: rgba(var(--#{$color}-rgb), 0.1);
-
-              mat-icon {
-                color: var(--#{$color});
-              }
-            }
-          }
-        }
-
-        .task-title-section {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          min-width: 0;
-
-          .task-name-row {
-            display: flex;
-            align-items: center;
-            gap: var(--space-xs);
-            flex-wrap: wrap;
-          }
-
-          .task-name {
-            font-weight: 600;
-            font-size: 15px;
-            color: var(--window-fg-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .task-remote-name {
-            font-size: 12px;
-            color: var(--dim-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .task-status-badge {
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-
-            @each $status, $color in ("enabled", primary-color), ("disabled", dim-color),
-              ("running", accent-color), ("failed", warn-color), ("stopping", orange)
-            {
-              &.#{$status} {
-                background: rgba(var(--#{$color}-rgb), 0.2);
-                color: var(--#{$color});
-              }
-            }
-          }
-        }
-      }
-
-      .task-toggle-btn {
-        // Only animate the property that actually changes — not 'all'
-        transition: transform 0.2s ease;
-
-        &:hover {
-          transform: scale(1.1);
-        }
-      }
-    }
-
-    .task-footer {
-      flex: 1;
-      display: flex;
-      gap: var(--space-xxs);
-      flex-direction: column;
-      padding: var(--space-md);
-
-      .task-stats {
-        display: flex;
-        align-items: center;
-        justify-content: space-evenly;
-        padding: var(--space-xs);
-        background: rgba(var(--dim-color-rgb), 0.5);
-        border-radius: 8px;
-
-        .stat-item {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-
-          .stat-icon {
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-
-            &.success {
-              color: var(--primary-color);
-            }
-
-            &.error {
-              color: var(--warn-color);
-            }
-          }
-
-          .stat-value {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--window-fg-color);
-          }
-        }
-      }
-
-      .task-schedule {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-
-        .schedule-item {
-          display: flex;
-          justify-content: space-between;
-          font-size: 12px;
-
-          .schedule-label {
-            color: var(--dim-color);
-            font-weight: 500;
-          }
-
-          .schedule-value {
-            color: var(--window-fg-color);
-            text-align: right;
-          }
-        }
-      }
-
-      .task-cron {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: rgba(var(--dim-color-rgb), 0.5);
-        border-radius: 6px;
-
-        .cron-icon {
-          width: var(--icon-size-sm);
-          height: var(--icon-size-sm);
-        }
-
-        .cron-expression {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          color: var(--window-fg-color);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-      }
-    }
-  }
-
-  .task-error {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 12px;
-    @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.3));
-    border-radius: 6px;
-
-    .error-icon {
-      width: var(--icon-size-sm);
-      height: var(--icon-size-sm);
-      color: var(--warn-color);
-      margin-top: 2px;
-    }
-
-    .error-text {
-      font-size: 11px;
-      color: var(--warn-color);
-      line-height: 1.4;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-  }
-
-  .task-running-badge {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    @include status-container(
-      rgba(var(--accent-color-rgb), 0.2),
-      rgba(var(--accent-color-rgb), 0.3)
-    );
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--accent-color);
-
-    .running-icon {
-      width: var(--icon-size-xs);
-      height: var(--icon-size-xs);
-    }
-  }
-}
-
-// =============================================
-// RUNNING SERVES PANEL
-// =============================================
-
-.serves-panel {
-  .serves-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-md);
+    grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));
+    gap: var(--space-sm);
   }
 }
 
@@ -762,32 +508,6 @@
   font-weight: 500;
 }
 
-.active-jobs-indicator,
-.active-tasks-indicator,
-.active-serves-indicator {
-  display: flex;
-  align-items: center;
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), var(--active-opacity));
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.disabled-jobs-indicator,
-.disabled-tasks-indicator,
-.disabled-serves-indicator {
-  display: flex;
-  align-items: center;
-  color: var(--dim-color);
-  background: rgba(var(--dim-color-rgb), var(--active-opacity));
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
 .empty-state-message {
   @include flex-center;
   gap: 12px;
@@ -817,11 +537,6 @@
   .general-overview {
     padding: var(--panel-padding-mobile, 16px);
     gap: var(--section-gap-mobile, 12px);
-  }
-
-  .scheduled-tasks-panel .tasks-grid,
-  .serves-panel .serves-grid {
-    grid-template-columns: 1fr;
   }
 }
 

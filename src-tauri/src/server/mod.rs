@@ -8,13 +8,13 @@ pub use state::*;
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
 use log::info;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Listener, Manager};
-use tokio::sync::broadcast;
+use tokio::sync::{RwLock, broadcast};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use crate::utils::types::events::*;
+use crate::utils::types::events::SSE_FORWARD_EVENTS;
 
 pub async fn start_web_server(
     app_handle: AppHandle,
@@ -24,7 +24,7 @@ pub async fn start_web_server(
     tls_cert: Option<std::path::PathBuf>,
     tls_key: Option<std::path::PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    info!("🌐 Starting web server on {}:{}", host, port);
+    info!("🌐 Starting web server on {host}:{port}");
 
     #[cfg(debug_assertions)]
     {
@@ -33,43 +33,31 @@ pub async fn start_web_server(
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(1420);
         info!("🔧 Development mode detected!");
-        info!(
-            "   → Angular dev server: http://localhost:{} (with hot reload)",
-            dev_port
-        );
-        info!("   → API server: http://localhost:{}/api", port);
-        info!("   → Use Angular dev server for faster development with hot reload");
+        info!("   → Angular dev server: http://localhost:{dev_port} (with hot reload)");
+        info!("   → API server: http://localhost:{port}/api");
     }
 
     let (event_tx, _) = broadcast::channel::<TauriEvent>(100);
     let event_tx = Arc::new(event_tx);
 
-    // Auto-forward all events to SSE clients, except desktop-only events
-    // This ensures new events are automatically available to headless clients
     for &event_name in SSE_FORWARD_EVENTS {
         let event_tx_for_listener = event_tx.clone();
         let event_name_owned = event_name.to_string();
         app_handle.listen(event_name, move |event| {
             let payload_str = event.payload();
-            let payload_val: serde_json::Value = match serde_json::from_str(payload_str) {
-                Ok(v) => v,
-                Err(_) => serde_json::Value::String(payload_str.to_string()),
-            };
+            let payload_val: serde_json::Value = serde_json::from_str(payload_str)
+                .unwrap_or_else(|_| serde_json::Value::String(payload_str.to_string()));
 
-            let tauri_event = TauriEvent {
+            let _ = event_tx_for_listener.send(TauriEvent {
                 event: event_name_owned.clone(),
                 payload: payload_val,
-            };
-
-            let _ = event_tx_for_listener.send(tauri_event);
+            });
         });
     }
 
-    // Encode credentials for Basic Authentication
     let encoded_auth = auth_credentials.map(|(username, password)| {
         use base64::{Engine as _, engine::general_purpose::STANDARD};
-        let credentials = format!("{}:{}", username, password);
-        let encoded = STANDARD.encode(credentials.as_bytes());
+        let encoded = STANDARD.encode(format!("{username}:{password}").as_bytes());
         (username, encoded)
     });
 
@@ -77,37 +65,25 @@ pub async fn start_web_server(
         app_handle: app_handle.clone(),
         event_tx,
         auth_credentials: encoded_auth,
+        sessions: Arc::new(RwLock::new(HashSet::new())),
     };
 
-    // Determine static files path
     let static_dir = find_static_dir(&app_handle);
-
-    // Build the application router
     let app = build_app(state.clone(), static_dir, &host, port);
+    let addr: std::net::SocketAddr = format!("{host}:{port}").parse()?;
 
-    let addr: std::net::SocketAddr = format!("{}:{}", host, port).parse()?;
-
-    // Start server with or without TLS
     if let (Some(cert), Some(key)) = (tls_cert, tls_key) {
-        info!("🔒 SSL/TLS Enabled");
-        info!("📜 Certificate: {:?}", cert);
-        info!("🔑 Key: {:?}", key);
-        info!("🌍 Secure Server listening on https://{}", addr);
-
-        // Install the ring crypto provider for rustls
+        info!("🔒 TLS enabled — https://{addr}");
         let _ = rustls::crypto::ring::default_provider().install_default();
-
         let config = RustlsConfig::from_pem_file(cert, key)
             .await
-            .map_err(|e| format!("Failed to load TLS config: {}", e))?;
-
+            .map_err(|e| format!("Failed to load TLS config: {e}"))?;
         axum_server::bind_rustls(addr, config)
             .serve(app.into_make_service())
             .await?;
     } else {
-        info!("⚠️  TLS keys not provided - Running in INSECURE HTTP mode");
-        info!("🌍 Server listening on http://{}", addr);
-
+        info!("⚠️  No TLS — running over plain HTTP. Credentials are not encrypted in transit.");
+        info!("🌍 Listening on http://{addr}");
         axum_server::bind(addr)
             .serve(app.into_make_service())
             .await?;
@@ -120,48 +96,33 @@ fn find_static_dir(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
     let resource_path = app_handle
         .path()
         .resolve("browser", BaseDirectory::Resource);
-    info!("Looking for static files in resources: {:?}", resource_path);
 
     if let Ok(path) = resource_path
         && path.exists()
     {
-        info!("✅ Found static files in resources: {}", path.display());
         return Some(path);
     }
 
-    let docker_path = std::path::PathBuf::from("/usr/lib/rclone-manager-headless/browser");
-    if docker_path.exists() {
-        info!(
-            "✅ Found static files in Docker path: {}",
-            docker_path.display()
-        );
-        return Some(docker_path);
-    }
+    let candidates = [
+        std::path::PathBuf::from("/usr/lib/rclone-manager-headless/browser"),
+        std::path::PathBuf::from("dist/rclone-manager/browser"),
+    ];
 
-    let local_dist = std::path::PathBuf::from("dist/rclone-manager/browser");
-    if local_dist.exists() {
-        info!(
-            "✅ Found static files in current directory: {}",
-            local_dist.display()
-        );
-        return Some(local_dist);
+    for path in &candidates {
+        if path.exists() {
+            info!("📁 Static files: {}", path.display());
+            return Some(path.clone());
+        }
     }
 
     std::env::current_exe()
         .ok()
-        .and_then(|exe_path| exe_path.parent().map(|p| p.to_path_buf()))
-        .and_then(|exe_dir| {
-            let dist_path = exe_dir.join("../../../dist/rclone-manager/browser");
-            if dist_path.exists() {
-                info!(
-                    "✅ Found static files relative to executable: {}",
-                    dist_path.display()
-                );
-                Some(dist_path)
-            } else {
-                None
-            }
+        .and_then(|exe| {
+            exe.parent()
+                .map(|p| p.join("../../../dist/rclone-manager/browser"))
         })
+        .filter(|p| p.exists())
+        .inspect(|p| info!("📁 Static files: {}", p.display()))
 }
 
 fn build_app(
@@ -170,26 +131,19 @@ fn build_app(
     host: &str,
     port: u16,
 ) -> Router {
-    use axum::{extract::DefaultBodyLimit, http::Method, routing::get};
+    use axum::{http::Method, routing::get};
 
-    let api_router = build_api_router(state.clone())
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            dynamic_body_limit_middleware,
-        ))
-        .layer(DefaultBodyLimit::disable());
+    let api_router = build_api_router(state.clone());
 
-    // Configure CORS
     let mut allowed_origins = vec![
-        format!("http://localhost:{}", port).parse().unwrap(),
-        format!("http://127.0.0.1:{}", port).parse().unwrap(),
+        format!("http://localhost:{port}").parse().unwrap(),
+        format!("http://127.0.0.1:{port}").parse().unwrap(),
     ];
-    if host != "0.0.0.0"
-        && host != "127.0.0.1"
-        && host != "localhost"
-        && let Ok(origin) = format!("http://{}:{}", host, port).parse()
-    {
-        allowed_origins.push(origin);
+
+    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost") {
+        if let Ok(origin) = format!("http://{host}:{port}").parse() {
+            allowed_origins.push(origin);
+        }
     }
 
     #[cfg(debug_assertions)]
@@ -198,12 +152,8 @@ fn build_app(
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(1420);
-        info!(
-            "🔧 Development mode: allowing Angular dev server on port {}",
-            dev_port
-        );
-        allowed_origins.push(format!("http://localhost:{}", dev_port).parse().unwrap());
-        allowed_origins.push(format!("http://127.0.0.1:{}", dev_port).parse().unwrap());
+        allowed_origins.push(format!("http://localhost:{dev_port}").parse().unwrap());
+        allowed_origins.push(format!("http://127.0.0.1:{dev_port}").parse().unwrap());
     }
 
     let cors = CorsLayer::new()
@@ -219,6 +169,7 @@ fn build_app(
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
             axum::http::header::ACCEPT,
+            axum::http::header::COOKIE,
         ])
         .expose_headers([axum::http::header::WWW_AUTHENTICATE])
         .allow_credentials(true);
@@ -229,15 +180,19 @@ fn build_app(
         .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
-    if let Some(static_path) = static_dir {
-        info!("📁 Serving static files from: {}", static_path.display());
-        use tower_http::services::{ServeDir, ServeFile};
-        let index_path = static_path.join("index.html");
-        let serve_dir = ServeDir::new(static_path).not_found_service(ServeFile::new(index_path));
-        app = app.fallback_service(serve_dir);
-    } else {
-        info!("⚠️  No static files found. Build Angular app with: npm run build:headless");
-        app = app.route("/", get(handlers::root_handler));
+    match static_dir {
+        Some(static_path) => {
+            use tower_http::services::{ServeDir, ServeFile};
+            let index_path = static_path.join("index.html");
+            let serve_dir =
+                ServeDir::new(&static_path).not_found_service(ServeFile::new(index_path));
+            info!("📁 Serving static files from: {}", static_path.display());
+            app = app.fallback_service(serve_dir);
+        }
+        None => {
+            info!("⚠️  No static files found. Build with: npm run build:headless");
+            app = app.route("/", get(handlers::root_handler));
+        }
     }
 
     app

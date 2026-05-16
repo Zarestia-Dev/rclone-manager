@@ -2,34 +2,37 @@ use crate::core::scheduler::engine::{CronScheduler, get_next_run, validate_cron_
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask, TaskStatus};
 use log::{error, info, warn};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
 /// Toggle task scheduling state.
-///
-/// If the task is currently running, it transitions to `Stopping` and will be
-/// disabled after the current run completes.
 #[tauri::command]
 pub async fn toggle_scheduled_task(
-    cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
-    task_id: String,
     app: AppHandle,
+    task_id: String,
 ) -> Result<ScheduledTask, String> {
-    info!("🔄 Toggling scheduled task: {}", task_id);
+    info!("Toggling scheduled task: {task_id}");
+
+    let cache = app.state::<ScheduledTasksCache>();
+    let scheduler = app.state::<CronScheduler>();
 
     let task = cache.toggle_task_status(&task_id, Some(&app)).await?;
 
     if let Err(e) = scheduler.reschedule_task(&task, cache.clone()).await {
-        error!("⚠️  Failed to reload tasks after toggle: {}", e);
+        error!("Failed to reload tasks after toggle: {e}");
     } else {
+        let task_name = format!(
+            "{}: {}-{}.{}",
+            task.backend_name, task.remote_name, task.profile_name, task.id
+        );
+
         info!(
-            "✅ Task {} {}",
+            "Task {} {}",
             match task.status {
                 TaskStatus::Enabled => "enabled and scheduled",
                 TaskStatus::Stopping => "disabling after current run",
                 _ => "disabled and unscheduled",
             },
-            task.name
+            task_name
         );
     }
 
@@ -40,7 +43,7 @@ pub async fn toggle_scheduled_task(
 #[tauri::command]
 pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResponse, String> {
     match validate_cron_expression(&cron_expression) {
-        Ok(_) => {
+        Ok(()) => {
             let next_run = get_next_run(&cron_expression).ok();
 
             Ok(CronValidationResponse {
@@ -57,28 +60,25 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
     }
 }
 
-/// Reload all scheduled tasks (useful after app restart or manual intervention)
+/// Reload all scheduled tasks
 #[tauri::command]
-pub async fn reload_scheduled_tasks(
-    cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
-) -> Result<(), String> {
-    info!("🔄 Reloading all scheduled tasks");
+pub async fn reload_scheduled_tasks(app: AppHandle) -> Result<(), String> {
+    info!("Reloading all scheduled tasks");
+    let scheduler = app.state::<CronScheduler>();
 
-    scheduler.reload_tasks(cache).await?;
+    scheduler.reload_tasks(app.clone()).await?;
 
-    info!("✅ Scheduled tasks reloaded");
+    info!("Scheduled tasks reloaded");
     Ok(())
 }
 
-/// Clear all scheduled tasks (dangerous!)
+/// Clear all scheduled tasks
 #[tauri::command]
-pub async fn clear_all_scheduled_tasks(
-    cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
-    app: AppHandle,
-) -> Result<(), String> {
-    info!("⚠️  Clearing all scheduled tasks");
+pub async fn clear_all_scheduled_tasks(app: AppHandle) -> Result<(), String> {
+    info!("Clearing all scheduled tasks");
+
+    let cache = app.state::<ScheduledTasksCache>();
+    let scheduler = app.state::<CronScheduler>();
 
     let tasks = cache.get_all_tasks().await;
 
@@ -87,26 +87,26 @@ pub async fn clear_all_scheduled_tasks(
             && let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str)
             && let Err(e) = scheduler.unschedule_task(job_id).await
         {
-            warn!("Failed to unschedule job {}: {}", job_id, e);
+            warn!("Failed to unschedule job {job_id}: {e}");
         }
     }
 
     cache.clear_all_tasks(Some(&app)).await?;
 
-    info!("✅ All scheduled tasks cleared");
+    info!("All scheduled tasks cleared");
     Ok(())
 }
 
-/// Reload scheduled tasks from remote configs, rescheduling only what changed.
+/// Reload scheduled tasks from remote configs
 #[tauri::command]
 pub async fn reload_scheduled_tasks_from_configs(
-    cache: State<'_, ScheduledTasksCache>,
-    scheduler: State<'_, CronScheduler>,
-    all_settings: serde_json::Value,
     app: AppHandle,
+    all_settings: serde_json::Value,
 ) -> Result<usize, String> {
-    info!("🔄 Reloading scheduled tasks from configs...");
+    info!("Reloading scheduled tasks from configs...");
 
+    let cache = app.state::<ScheduledTasksCache>();
+    let scheduler = app.state::<CronScheduler>();
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
     let backend_name = backend_manager.get_active_name().await;
 
@@ -120,10 +120,10 @@ pub async fn reload_scheduled_tasks_from_configs(
         result.removed.len(),
     );
 
-    scheduler.apply_cache_result(&result, cache.clone()).await?;
+    scheduler.apply_cache_result(&result, cache).await?;
 
     info!(
-        "📅 Reload complete: {} added, {} updated, {} removed",
+        "Reload complete: {} added, {} updated, {} removed",
         counts.0, counts.1, counts.2,
     );
 

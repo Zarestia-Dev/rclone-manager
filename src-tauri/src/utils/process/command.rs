@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::process::Stdio;
 
 /// A wrapper around `tokio::process::Command` that mimics `tauri_plugin_shell`'s API
-/// but allows us to safely set platform-specific flags (like CREATE_NO_WINDOW)
+/// but allows us to safely set platform-specific flags (like `CREATE_NO_WINDOW`)
 /// without declaring them everywhere.
 #[derive(Debug)]
 pub struct Command {

@@ -4,13 +4,14 @@ import {
   inject,
   input,
   computed,
-  signal,
   effect,
   DestroyRef,
   WritableSignal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { startWith, switchMap } from 'rxjs';
+import { NgTemplateOutlet } from '@angular/common';
+import { FormGroup, ReactiveFormsModule, FormArray, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -23,24 +24,40 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Subscription } from 'rxjs';
-import { CronValidationResponse, EditTarget, FileBrowserItem } from '@app/types';
+import {
+  CronValidationResponse,
+  EditTarget,
+  FileBrowserItem,
+  FilePickerSelection,
+} from '@app/types';
 import {
   FileSystemService,
   NotificationService,
   PathSelectionService,
   PathSelectionState,
+  PathService,
 } from '@app/services';
 import { CronInputComponent } from '@app/shared/components';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
 
+interface PathItem {
+  control: FormGroup;
+  index: number;
+  group: PathGroup;
+  type: PathType;
+  remoteName: string;
+  pathControl: FormControl;
+  typeControl: FormControl;
+}
+
 @Component({
   selector: 'app-operation-config',
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    NgTemplateOutlet,
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
@@ -71,6 +88,7 @@ export class OperationConfigComponent {
 
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -82,265 +100,219 @@ export class OperationConfigComponent {
     this.existingRemotes().filter(r => r !== this.currentRemoteName())
   );
 
-  // Writable State Signals
-  readonly sourcePathType = signal<PathType>('currentRemote');
-  readonly destPathType = signal<PathType>('local');
+  // Form State Signals
+  private readonly formValue = toSignal(
+    toObservable(this.opFormGroup).pipe(
+      switchMap(form => form.valueChanges.pipe(startWith(form.value)))
+    )
+  );
 
-  // Inline autocomplete state
-  sourcePathState: WritableSignal<PathSelectionState> | null = null;
-  destPathState: WritableSignal<PathSelectionState> | null = null;
+  readonly cronExpression = computed(() => this.formValue()?.cronExpression);
+  readonly isCronEnabled = computed(() => !!this.formValue()?.cronEnabled);
 
-  // Search helper
-  private readonly matchesSearch = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    if (!query) return (_: string) => true;
-    return (keywords: string) => {
-      const keywordList = keywords.toLowerCase();
-      return (
-        keywordList.includes(query) || query.split(' ').some(term => keywordList.includes(term))
-      );
-    };
+  // Path Item Lists (Computed from Form State)
+  readonly sourceItems = computed(() => {
+    this.formValue(); // Track changes
+    return this.getPathItems('source');
+  });
+  readonly destItem = computed(() => {
+    this.formValue(); // Track changes
+    return this.getPathItems('dest')[0] || null;
   });
 
-  // Computed Visibility flags
-  readonly showAutoStart = computed(() => this.matchesSearch()('auto start enable automatic'));
-  readonly showCronSection = computed(() =>
-    this.matchesSearch()('cron schedule task scheduled timing')
-  );
-  readonly showSourcePath = computed(() => this.matchesSearch()('source path input from origin'));
-  readonly showDestPath = computed(() => this.matchesSearch()('destination dest output target'));
+  // Autocomplete state
+  pathStates = new Map<string, WritableSignal<PathSelectionState>>();
 
-  // Writable signals synced with form controls
-  readonly cronExpression = signal<string | null>(null);
-  readonly isCronEnabled = signal<boolean>(false);
+  // Visibility logic
+  private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
+  private readonly showSection = (keywords: string[]) => {
+    const terms = this.searchTerms();
+    if (terms.length === 1 && !terms[0]) return true;
+    return keywords.some(k => terms.some(t => k.includes(t)));
+  };
+
+  readonly showAutoStart = computed(() => this.showSection(['auto', 'start', 'enable']));
+  readonly showCronSection = computed(() => this.showSection(['cron', 'schedule', 'task']));
+  readonly showSourcePath = computed(() => this.showSection(['source', 'path', 'origin']));
+  readonly showDestPath = computed(() =>
+    this.isServe() ? false : this.showSection(['dest', 'output', 'target'])
+  );
+
+  readonly canAddSource = computed(() =>
+    ['sync', 'copy', 'move'].includes(this.operationType() as string)
+  );
+  readonly supportsFileSource = computed(() =>
+    ['copy', 'move'].includes(this.operationType() as string)
+  );
 
   readonly isSourcePickerDisabled = computed(
-    () => this.isNewRemote() && this.sourcePathType() === 'currentRemote'
+    () =>
+      this.isNewRemote() &&
+      this.sourceItems().some(i => i.type === 'currentRemote' && !i.pathControl.value)
   );
   readonly isDestPickerDisabled = computed(
-    () => this.isNewRemote() && this.destPathType() === 'currentRemote'
+    () =>
+      this.isNewRemote() &&
+      this.destItem()?.type === 'currentRemote' &&
+      !this.destItem()?.pathControl.value
   );
-
-  // Keep subscriptions idempotent across effect re-runs
-  private readonly controlSyncSubs = new Map<string, Subscription>();
-  private readonly pathTypeSubs = new Map<PathGroup, Subscription>();
 
   constructor() {
     effect(() => {
-      if (!this.isNewRemote()) {
-        this.initializeInlineAutocomplete();
-      } else {
-        this.pathSelectionService.unregisterField('source');
-        this.pathSelectionService.unregisterField('dest');
-        this.sourcePathState = null;
-        this.destPathState = null;
+      if (this.isNewRemote()) {
+        this.clearAutocomplete();
+        return;
       }
+
+      const items = [...this.sourceItems(), ...(this.destItem() ? [this.destItem()!] : [])];
+      this.syncAutocomplete(items);
     });
 
-    effect(() => {
-      const formGroup = this.opFormGroup();
-      if (!formGroup) return;
-
-      this.syncControlToSignal('cronExpression', this.cronExpression);
-      this.syncControlToSignal('cronEnabled', this.isCronEnabled);
-
-      this.watchPathType('source');
-      if (!this.isMount() && !this.isServe()) {
-        this.watchPathType('dest');
-      }
-    });
-
-    this.destroyRef.onDestroy(() => {
-      this.controlSyncSubs.forEach(sub => sub.unsubscribe());
-      this.pathTypeSubs.forEach(sub => sub.unsubscribe());
-      this.pathSelectionService.unregisterField('source');
-      this.pathSelectionService.unregisterField('dest');
-    });
+    this.destroyRef.onDestroy(() => this.clearAutocomplete());
   }
 
-  private syncControlToSignal<T>(controlName: string, signalToUpdate: WritableSignal<T>): void {
-    const control = this.opFormGroup().get(controlName);
-    if (!control) return;
+  private getPathItems(group: PathGroup): PathItem[] {
+    const ctrl = this.opFormGroup().get(group);
+    const controls = ctrl instanceof FormArray ? ctrl.controls : [ctrl];
 
-    signalToUpdate.set(control.value);
+    return (controls as FormGroup[])
+      .filter(c => !!c)
+      .map((control, index) => {
+        const typeValue = control.get('type')?.value || 'local';
+        const type = this.pathService.parsePathType(typeValue);
+        const remoteName =
+          this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName()) || '';
 
-    this.controlSyncSubs.get(controlName)?.unsubscribe();
-    const sub = control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
-      signalToUpdate.set(val);
-    });
-    this.controlSyncSubs.set(controlName, sub);
+        return {
+          control,
+          index,
+          group,
+          type,
+          remoteName,
+          pathControl: control.get('path') as FormControl,
+          typeControl: control.get('type') as FormControl,
+        };
+      });
   }
 
-  private initializeInlineAutocomplete(): void {
-    this.pathSelectionService.unregisterField('source');
-    this.pathSelectionService.unregisterField('dest');
-    this.sourcePathState = null;
-    this.destPathState = null;
+  // ===================================
+  // Path Actions
+  // ===================================
 
-    this.sourcePathState = this.registerAutocomplete('source');
+  setType(item: PathItem, typeValue: string): void {
+    if (item.typeControl.value === typeValue) return;
 
-    if (!this.isMount() && !this.isServe()) {
-      this.destPathState = this.registerAutocomplete('dest');
-    } else if (this.isMount()) {
-      this.destPathState = this.pathSelectionService.registerField(
-        'dest',
-        '',
-        this.getPathControl('dest')?.value || ''
-      );
+    item.typeControl.setValue(typeValue);
+    item.pathControl.setValue('', { emitEvent: false });
+
+    const remoteName = this.pathService.getRemoteNameFromValue(typeValue, this.currentRemoteName());
+    if (typeValue.startsWith('otherRemote:')) {
+      item.control.get('remote')?.setValue(remoteName, { emitEvent: false });
     }
+
+    this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
   }
 
-  private registerAutocomplete(group: PathGroup): WritableSignal<PathSelectionState> {
-    return this.pathSelectionService.registerField(
-      group,
-      this.currentRemoteName(),
-      this.getPathControl(group)?.value || ''
+  addPath(group: PathGroup, initial?: { type: string; path: string; remote?: string }): void {
+    if (group === 'dest') return;
+    const array = this.opFormGroup().get(group) as FormArray;
+    if (!array) return;
+
+    array.push(
+      new FormGroup({
+        type: new FormControl(initial?.type || 'currentRemote'),
+        path: new FormControl(initial?.path || '', Validators.required),
+        remote: new FormControl(initial?.remote || ''),
+      })
     );
   }
 
-  // ===================================
-  // Path Type Handling
-  // ===================================
+  removePath(group: PathGroup, index: number): void {
+    const array = this.opFormGroup().get(group) as FormArray;
+    if (!array || (group === 'source' && array.length <= 1)) return;
 
-  private watchPathType(group: PathGroup): void {
-    const control = this.getFormGroup(group)?.get('pathType');
-    if (!control) return;
-
-    this.handlePathTypeChange(group, control.value);
-
-    this.pathTypeSubs.get(group)?.unsubscribe();
-    const sub = control.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(value => this.handlePathTypeChange(group, value));
-    this.pathTypeSubs.set(group, sub);
+    array.removeAt(index);
+    this.pathSelectionService.unregisterField(`${group}-${index}`);
+    this.pathStates.delete(`${group}-${index}`);
   }
 
-  private handlePathTypeChange(group: PathGroup, value: string): void {
-    const pathType = this.parsePathType(value);
-    const remoteName = this.getRemoteNameFromValue(value);
+  // ===================================
+  // Path Selection
+  // ===================================
 
-    if (group === 'source') {
-      this.sourcePathType.set(pathType);
+  async selectPath(item: PathItem): Promise<void> {
+    const isSource = item.group === 'source';
+    const isDisabled = isSource ? this.isSourcePickerDisabled() : this.isDestPickerDisabled();
+    if (isDisabled) return;
+
+    const target: FilePickerSelection = isSource && this.supportsFileSource() ? 'both' : 'folders';
+    const isMountDest = this.isMount() && item.group === 'dest';
+
+    if (isSource || (!isMountDest && item.type !== 'local')) {
+      await this.selectNautilus(item, target);
     } else {
-      this.destPathType.set(pathType);
-    }
-
-    if (pathType === 'otherRemote') {
-      this.getFormGroup(group)
-        ?.get('otherRemoteName')
-        ?.patchValue(remoteName || '', { emitEvent: false });
-    }
-
-    if (!this.isNewRemote()) {
-      this.updateAutocompleteRegistration(group, pathType, remoteName);
+      await this.selectLocal(item, target);
     }
   }
 
-  private updateAutocompleteRegistration(
-    group: PathGroup,
-    pathType: PathType,
-    explicitRemoteName: string | null
-  ): void {
-    const currentPath = this.getPathControl(group)?.value || '';
-    let effectiveRemoteName = '';
-
-    if (pathType === 'currentRemote') {
-      effectiveRemoteName = this.currentRemoteName();
-    } else if (pathType === 'otherRemote' && explicitRemoteName) {
-      effectiveRemoteName = explicitRemoteName;
-    }
-    // else local -> empty string
-
-    this.pathSelectionService.unregisterField(group);
-    const state = this.pathSelectionService.registerField(group, effectiveRemoteName, currentPath);
-
-    if (group === 'source') this.sourcePathState = state;
-    else this.destPathState = state;
-  }
-
-  clearPathOnTypeChange(group: PathGroup): void {
-    this.getFormGroup(group)?.get('path')?.setValue('', { emitEvent: false });
-    this.pathSelectionService.resetPath(group);
-  }
-
-  // ===================================
-  // Inline Autocomplete Handlers
-  // ===================================
-
-  onInputChanged(event: Event, group: PathGroup): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.pathSelectionService.updateInput(group, value);
-  }
-
-  onPathSelected(entryName: string, group: PathGroup): void {
-    this.pathSelectionService.selectEntry(group, entryName, this.getPathControl(group));
-  }
-
-  goUp(group: PathGroup): void {
-    this.pathSelectionService.navigateUp(group, this.getPathControl(group));
-  }
-
-  // ===================================
-  // Path Selection (Dialogs)
-  // ===================================
-
-  async selectRemotePath(group: PathGroup): Promise<void> {
-    if (group === 'source' ? this.isSourcePickerDisabled() : this.isDestPickerDisabled()) return;
-
-    const formGroup = this.getFormGroup(group);
-    const pathType = formGroup?.get('pathType')?.value;
-    const isMountDest = this.isMount() && group === 'dest';
-
-    if (isMountDest || pathType === 'local') {
-      await this.selectLocalPath(group);
-    } else {
-      await this.selectNautilusPath(group);
-    }
-  }
-
-  private async selectLocalPath(group: PathGroup): Promise<void> {
+  private async selectLocal(item: PathItem, target: FilePickerSelection): Promise<void> {
     const allowNonEmpty = this.opFormGroup().get('options.mount---allow_non_empty')?.value;
-    const requireEmpty = this.isMount() && group === 'dest' && !allowNonEmpty;
-    const currentPath = this.getPathControl(group)?.value || '';
+    const requireEmpty = this.isMount() && item.group === 'dest' && !allowNonEmpty;
 
     try {
-      const selectedPath = await this.fileSystemService.selectFolder(requireEmpty, currentPath);
-      if (selectedPath) {
-        this.updatePathForm(group, selectedPath, 'local');
+      const selected =
+        target === 'files'
+          ? await this.fileSystemService.selectFile(item.pathControl.value)
+          : await this.fileSystemService.selectFolder(requireEmpty, item.pathControl.value);
+
+      if (selected) {
+        item.pathControl.setValue(selected);
+        item.typeControl.setValue('local');
       }
-    } catch (error) {
-      console.error('Error selecting local folder:', error);
+    } catch (e) {
+      console.error('Local picker error:', e);
     }
   }
 
-  private async selectNautilusPath(group: PathGroup): Promise<void> {
-    const restrictToCurrent = (this.isMount() || this.isServe()) && group === 'source';
-    const formGroup = this.getFormGroup(group);
-    const currentPathType = formGroup?.get('pathType')?.value;
-    const currentPath = this.getPathControl(group)?.value || '';
-
-    const initialLocation = this.buildInitialLocation(
-      currentPathType,
-      currentPath,
-      restrictToCurrent
-    );
+  private async selectNautilus(item: PathItem, target: FilePickerSelection): Promise<void> {
+    const restrict = (this.isMount() || this.isServe()) && item.group === 'source';
+    const initialLocation = this.buildInitialLocation(item, restrict);
 
     const result = await this.fileSystemService.selectPathWithNautilus({
-      mode: restrictToCurrent ? 'remote' : 'both',
-      selection: 'folders',
-      multi: false,
-      allowedRemotes: restrictToCurrent ? [this.currentRemoteName()] : undefined,
-      minSelection: 1,
+      mode: restrict ? 'remote' : 'both',
+      selection: target,
+      multi: item.group === 'source' && this.canAddSource(),
+      allowedRemotes: restrict ? [this.currentRemoteName()] : undefined,
       initialLocation,
     });
 
     if (!result.cancelled && result.items.length > 0) {
-      this.handleFilePickerResult(group, result.items[0]);
+      result.items.forEach((res, i) => {
+        const data = this.getPathData(res, item.group);
+        if (!data) return;
+
+        if (i === 0) {
+          item.pathControl.setValue(data.path);
+          item.typeControl.setValue(data.type);
+        } else {
+          this.addPath(item.group, data);
+        }
+      });
     }
   }
 
-  private handleFilePickerResult(group: PathGroup, item: FileBrowserItem): void {
-    const remoteName = this.pathSelectionService.normalizeRemoteName(item.meta.remote || '');
+  private buildInitialLocation(item: PathItem, restrict: boolean): string | undefined {
+    if (item.type === 'local') return item.pathControl.value || undefined;
+    const remote = restrict ? this.currentRemoteName() : item.remoteName;
+    if (!remote) return undefined;
+
+    return item.pathControl.value
+      ? this.pathService.joinPath(`${remote}:`, item.pathControl.value)
+      : `${remote}:`;
+  }
+
+  private getPathData(item: FileBrowserItem, group: PathGroup) {
+    const remote = this.pathService.normalizeRemoteName(item.meta.remote || '');
     const isLocal = item.meta.isLocal;
     const path = item.entry.Path;
 
@@ -348,56 +320,73 @@ export class OperationConfigComponent {
       this.notificationService.showError(
         this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
       );
-      return;
+      return null;
     }
 
-    let pathTypeValue: string;
-    if (isLocal) {
-      pathTypeValue = 'local';
-    } else if (
-      remoteName === this.pathSelectionService.normalizeRemoteName(this.currentRemoteName())
-    ) {
-      pathTypeValue = 'currentRemote';
-    } else if (remoteName !== '') {
-      pathTypeValue = `otherRemote:${remoteName}`;
-    } else {
-      pathTypeValue = 'local';
-    }
-
-    this.updatePathForm(group, path, pathTypeValue);
-  }
-
-  private buildInitialLocation(
-    pathType: string | null,
-    path: string,
-    restrictToCurrent: boolean
-  ): string | undefined {
-    if (pathType === 'local') return path || undefined;
-
-    let prefix = '';
-    if (pathType === 'currentRemote' || restrictToCurrent) {
-      prefix = `${this.currentRemoteName()}:`;
-    } else if (pathType?.startsWith('otherRemote:')) {
-      const remote = pathType.substring('otherRemote:'.length);
-      if (remote) prefix = `${remote}:`;
-    }
-
-    if (!prefix) return undefined;
-    return path ? `${prefix}${path}` : prefix;
-  }
-
-  private updatePathForm(group: PathGroup, path: string, pathTypeValue: string): void {
-    this.getPathControl(group)?.setValue(path);
-    this.getPathControl(group)?.markAsDirty();
-    this.getFormGroup(group)?.get('pathType')?.setValue(pathTypeValue);
+    const type = isLocal
+      ? 'local'
+      : remote === this.pathService.normalizeRemoteName(this.currentRemoteName())
+        ? 'currentRemote'
+        : `otherRemote:${remote}`;
+    return { path, type, remote: isLocal ? '' : remote };
   }
 
   // ===================================
-  // Cron & UI Helpers
+  // Autocomplete & Cron
   // ===================================
+
+  private syncAutocomplete(items: PathItem[]): void {
+    const currentIds = new Set(items.map(i => `${i.group}-${i.index}`));
+
+    // Unregister removed
+    for (const id of this.pathStates.keys()) {
+      if (!currentIds.has(id)) {
+        this.pathSelectionService.unregisterField(id);
+        this.pathStates.delete(id);
+      }
+    }
+
+    // Register/Update new
+    items.forEach(item => {
+      const id = `${item.group}-${item.index}`;
+      const existing = this.pathStates.get(id);
+
+      if (!existing || existing().remoteName !== item.remoteName) {
+        if (existing) this.pathSelectionService.unregisterField(id);
+        this.pathStates.set(
+          id,
+          this.pathSelectionService.registerField(id, item.remoteName, item.pathControl.value)
+        );
+      }
+    });
+  }
+
+  private clearAutocomplete(): void {
+    this.pathStates.forEach((_, id) => this.pathSelectionService.unregisterField(id));
+    this.pathStates.clear();
+  }
+
+  onInputChanged(event: Event, item: PathItem): void {
+    this.pathSelectionService.updateInput(
+      `${item.group}-${item.index}`,
+      (event.target as HTMLInputElement).value
+    );
+  }
+
+  onPathSelected(entryName: string, item: PathItem): void {
+    this.pathSelectionService.selectEntry(
+      `${item.group}-${item.index}`,
+      entryName,
+      item.pathControl
+    );
+  }
+
+  goUp(item: PathItem): void {
+    this.pathSelectionService.navigateUp(`${item.group}-${item.index}`, item.pathControl);
+  }
 
   onCronChange(cron: string | null): void {
-    this.updateControlAndSignal('cronExpression', cron, this.cronExpression);
+    this.opFormGroup().get('cronExpression')?.setValue(cron);
   }
 
   onCronValidationChange(result: CronValidationResponse): void {
@@ -406,52 +395,7 @@ export class OperationConfigComponent {
 
   clearSchedule(event: Event): void {
     event.stopPropagation();
-    this.updateControlAndSignal('cronExpression', null, this.cronExpression);
+    this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
-  }
-
-  private updateControlAndSignal<T>(
-    controlName: string,
-    value: T,
-    signalToUpdate: WritableSignal<T | null>
-  ): void {
-    const control = this.opFormGroup().get(controlName);
-    if (!control) return;
-
-    if (control.value !== value) {
-      control.setValue(value, { emitEvent: false });
-    }
-    signalToUpdate.set(value);
-  }
-
-  private parsePathType(value: string): PathType {
-    if (value === 'local') return 'local';
-    if (value === 'currentRemote') return 'currentRemote';
-    if (value?.startsWith('otherRemote:')) return 'otherRemote';
-    return 'local';
-  }
-
-  private getRemoteNameFromValue(value: string): string | null {
-    if (value?.startsWith('otherRemote:')) {
-      return value.substring('otherRemote:'.length) || null;
-    }
-    return value === 'currentRemote' ? this.currentRemoteName() : null;
-  }
-
-  getOtherRemoteName(group: PathGroup): string {
-    return this.getFormGroup(group)?.get('otherRemoteName')?.value || '';
-  }
-
-  hasRequiredError(controlPath: string): boolean {
-    return this.opFormGroup().get(controlPath)?.hasError('required') === true;
-  }
-
-  private getFormGroup(group: PathGroup): FormGroup | null {
-    return this.opFormGroup().get(group) as FormGroup | null;
-  }
-
-  private getPathControl(group: PathGroup): AbstractControl | null {
-    const basePath = group === 'source' ? 'source.path' : this.isMount() ? 'dest' : 'dest.path';
-    return this.opFormGroup().get(basePath);
   }
 }

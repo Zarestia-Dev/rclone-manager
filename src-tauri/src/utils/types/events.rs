@@ -28,6 +28,7 @@ pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 pub const MOUNT_STATE_CHANGED: &str = "mount_state_changed";
 pub const SERVE_STATE_CHANGED: &str = "serve_state_changed";
+pub const SYSTEM_STATUS: &str = "system_status";
 
 // Plugin and installation events
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -38,6 +39,9 @@ pub const NETWORK_STATUS_CHANGED: &str = "network_status_changed";
 
 // Scheduled task events
 pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
+
+// Alert events
+pub const ALERT_FIRED: &str = "alert_fired";
 
 // Application events
 pub const APP_EVENT: &str = "app_event";
@@ -69,6 +73,8 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     SCHEDULED_TASKS_CACHE_CHANGED,
     APP_EVENT,
     BROWSE,
+    ALERT_FIRED,
+    SYSTEM_STATUS,
 ];
 
 /// Strongly typed payload for settings change events
@@ -77,6 +83,29 @@ pub struct SettingsChangeEvent {
     pub category: String,
     pub key: String,
     pub value: serde_json::Value,
+}
+
+/// Strongly typed payload for job cache change events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct JobChangeEvent {
+    pub job_id: String,
+    pub status: crate::utils::types::jobs::JobStatus,
+    pub remote: Option<String>,
+    pub source: Option<String>,
+    pub destination: Option<String>,
+}
+
+impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
+    fn from(job: &crate::utils::types::jobs::JobInfo) -> Self {
+        Self {
+            job_id: job.jobid.to_string(),
+            status: job.status.clone(),
+            remote: Some(job.remote_name.clone()),
+            source: Some(job.source.clone()),
+            destination: Some(job.destination.clone()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -89,11 +118,11 @@ mod tests {
         let event = SettingsChangeEvent {
             category: "general".to_string(),
             key: "language".to_string(),
-            value: json!("en"),
+            value: json!("en-US"),
         };
 
         let serialized = serde_json::to_string(&event).unwrap();
-        let expected = r#"{"category":"general","key":"language","value":"en"}"#;
+        let expected = r#"{"category":"general","key":"language","value":"en-US"}"#;
         assert_eq!(serialized, expected);
 
         let deserialized: SettingsChangeEvent = serde_json::from_str(&serialized).unwrap();

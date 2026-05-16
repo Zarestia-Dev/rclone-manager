@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.2.5] - 2026-05-16
+
+### Added
+- **Snapcraft Support**: Added Snap package configuration for Linux systems. The application is now available via the Snap Store with classic confinement for full filesystem access.
+- **Unified Command Registry**: Implemented a master command registry macro that automatically synchronizes Tauri IPC commands and headless HTTP endpoints. This simplifies adding new features and ensures parity between desktop and web modes.
+- **Alert & Actions**: Added a new tab to the Alerts section for managing alert actions. Users can now define custom actions (OS Toast, Webhook, Script) that can be triggered when an alert rule matches.
+- Download URL support for nautilus file browser. You can directly download file from url on selected path. Access via right vertical ellipsis menu on path bar.
+- Add option to upload files or folder to right click context menu in nautilus file browser. Separate buttons for files and folder.
+- **UI**: Implemented a Layout Editor for arranging and hiding dashboard and remote cards. Users can now customize their view by dragging cards to reorder them and using toggle buttons to hide unwanted items.
+- **Shell Command Interpolation (Secure Macros)**: Path and option fields now support dynamic macro substitution using both backticks (`` `date` ``) and POSIX shell-style syntax (`$(date)`). Instead of insecure shell execution, the app now uses a safe, internal engine to expand macros like `date`, `hostname`, `user`, and `os`. The `date` macro supports full `strftime` formatting (e.g., `$(date +%Y-%m-%d %H:%M:%S)`), providing flexible and secure path generation across all platforms. Arbitrary shell command execution has been removed for security.
+- Jottacloud provider added into the non-interactive remotes. 
+- Nautilus drag-and-drop lasso selection. Hold left mouse button and drag to select multiple items.
+- **Local Disk Identification**: Improved local disk identification and labeling. Fetches volume labels (Linux) and intelligently identifies user folders (Home, Downloads, etc.) across all platforms. **Note**: This feature relies on the `core/disks` command (introduced in Rclone v1.74) and requires an updated Rclone binary to function correctly.
+- **Rclone Archive Integration**: Full support for `rclone archive` operations within the Nautilus file browser.
+  - **Archive Creation**: Dedicated modal for creating archives with support for all Rclone-compatible formats (`zip`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, `tar.br`, `tar.sz`, `tar.mz`, `tar.lz`, `tar.lz4`).
+  - **Archive Listing**: Structured tabular view of archive contents with size, date, and folder/file icons.
+  - **Archive Extraction**: One-click extraction support for remote and local archives.
+- **Rclone Cat Fallback**: Implemented a robust fallback mechanism for file viewing. If direct filesystem access fails (due to permissions or platform limitations), the app now uses `rclone cat` via the RC API to retrieve content. Supports both `local-asset://` and headless `/stream` endpoints.
+- While exporing the settings If backup encryption is enabled, show toggle for incluse the secret keys like rclone config passwords, or other secrets you've added.
+- Implemented a offline page and PWA support for headless mode.
+- Serve web template added (Beta). Needs some tweeks and polish.
+
+### Changed
+- **Unified Monitoring System**: Replaced multiple independent background monitors with a single, smarter polling system. The app now uses significantly fewer resources while providing faster and more responsive status updates.
+  - System status, mount state, serve state, and engine health are now all checked in a single request instead of four separate ones.
+  - Static information like rclone version and process ID is cached once at startup instead of being re-fetched continuously.
+  - Polling speed automatically adapts: faster updates when jobs are running, slower when idle, and pauses when the app is hidden.
+  - Job progress monitoring is also batched into fewer requests for better performance during transfers.
+- Allow update support for remote rclone instances. Manual restart needed on remote rclone instance.
+- change rclone binary location to direct binary path.
+- Remove the batch upload limit from the Nautilus drag-and-drop feature (Headless mode only). App now upload the files on the temp folder of the remote instance after starting to upload to final destination. After the upload finishes, it will remove the files from the temp folder.
+- Fixed the background management on flatpak. It will now use the D-Bus Background portal instead of the manual method. Reported Tauri bug: https://github.com/tauri-apps/plugins-workspace/issues/3166
+
+### Fixed
+- **Audio Cover Support**: Enhanced audio cover extraction with support for FLAC and multiple other formats. Optimized image loading by moving to a native streaming architecture that allows browsers to decode images directly, improving both performance and memory usage across Desktop and Headless modes. Maybe future I can use this for tha thumbnail view of images and any other things too.
+- **Detailed Error Reporting**: The file viewer now displays actual rclone error messages (e.g., "File is being used by another process") instead of a generic "Not Found" error, providing better diagnostic information to the user.
+- **Drag and Drop**: Fix internal and external drag and drop problems in nautilus both windows and macOS.
+
 ## [v0.2.4] - 2026-04-14
 ### Added
 - Detailed Remote Card variant added. Its can be enabled from layout editor.

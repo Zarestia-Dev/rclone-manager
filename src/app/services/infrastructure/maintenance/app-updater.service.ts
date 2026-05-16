@@ -1,125 +1,153 @@
-import { Injectable, OnDestroy, inject, signal } from '@angular/core';
-import { interval, Subject, Subscription, firstValueFrom } from 'rxjs';
-import { map, takeWhile, filter, takeUntil } from 'rxjs/operators';
+import { Injectable, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
-import { DebugService } from '@app/services';
-import { UpdateMetadata } from '@app/types';
-import { BaseUpdateService } from '../maintenance/base-update.service';
-import { MatDialog } from '@angular/material/dialog';
-import { ConfirmModalComponent } from '../../../shared/modals/confirm-modal/confirm-modal.component';
+import { ModalService } from '@app/services';
+import { UpdateInfo, DownloadStatus, BackendUpdateStatus } from '@app/types';
+import { AppSettingsService } from '../../settings/app-settings.service';
+import { TauriBaseService } from '../platform/tauri-base.service';
+import { UpdateSettingsManager } from './update-settings-manager';
 
-export interface DownloadStatus {
-  downloadedBytes: number;
-  totalBytes: number;
-  percentage: number;
-  isComplete: boolean;
-  isFailed?: boolean;
-  failureMessage?: string | null;
-}
+const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
+  downloadedBytes: 0,
+  totalBytes: 0,
+  percentage: 0,
+  isComplete: false,
+  isFailed: false,
+  failureMessage: null,
+};
 
-export interface UpdateState {
-  isSupported: boolean;
-  buildType: string | null;
-  hasUpdates: boolean;
-  isUpdateInProgress: boolean;
-}
+@Injectable({ providedIn: 'root' })
+export class AppUpdaterService extends TauriBaseService {
+  private readonly uiStateService = inject(UiStateService);
+  private readonly modalService = inject(ModalService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly appSettingsService = inject(AppSettingsService);
 
-@Injectable({
-  providedIn: 'root',
-})
-export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
-  private uiStateService = inject(UiStateService);
-  private dialog = inject(MatDialog);
-  private eventListenersService = inject(EventListenersService);
-  private debugService = inject(DebugService);
+  private readonly settings = new UpdateSettingsManager(this.appSettingsService, {
+    namespace: 'runtime',
+    skippedVersionsKey: 'app_skipped_updates',
+    updateChannelKey: 'app_update_channel',
+    autoCheckKey: 'app_auto_check_updates',
+  });
 
-  private destroy$ = new Subject<void>();
+  private _latestCheckId = 0;
 
-  // Update state signals
+  // ---------------------------------------------------------------------------
+  // State signals
+  // ---------------------------------------------------------------------------
+
   private readonly _buildType = signal<string | null>(null);
   private readonly _hasUpdates = signal<boolean>(false);
   private readonly _updateInProgress = signal<boolean>(false);
+  private readonly _updateAvailable = signal<UpdateInfo | null>(null);
+  private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
+  private readonly _readyToRestart = signal<boolean>(false);
+  private readonly _isChecking = signal<boolean>(false);
 
-  private readonly _updateAvailable = signal<UpdateMetadata | null>(null);
-  private readonly _downloadStatus = signal<DownloadStatus>({
-    downloadedBytes: 0,
-    totalBytes: 0,
-    percentage: 0,
-    isComplete: false,
-  });
-  private readonly _restartRequired = signal<boolean>(false);
-
-  // Public readonly signals
+  // Public readonly surface
   public readonly buildType = this._buildType.asReadonly();
   public readonly hasUpdates = this._hasUpdates.asReadonly();
   public readonly updateInProgress = this._updateInProgress.asReadonly();
   public readonly updateAvailable = this._updateAvailable.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
-  public readonly restartRequired = this._restartRequired.asReadonly();
+  public readonly readyToRestart = this._readyToRestart.asReadonly();
+  public readonly isChecking = this._isChecking.asReadonly();
 
-  protected override get settingNamespace(): string {
-    return 'runtime';
-  }
-  protected override get skippedVersionsKey(): string {
-    return 'app_skipped_updates';
-  }
-  protected override get updateChannelKey(): string {
-    return 'app_update_channel';
-  }
-  protected override get autoCheckKey(): string {
-    return 'app_auto_check_updates';
+  // Settings surface
+  public readonly skippedVersions = this.settings.skippedVersions;
+  public readonly updateChannel = this.settings.updateChannel;
+  public readonly autoCheckEnabled = this.settings.autoCheckEnabled;
+
+  constructor() {
+    super();
+    this.setupEventListeners();
+    void this.initialize();
   }
 
-  private statusPollingInterval = 500;
-  private pollingSubscription: Subscription | null = null;
-  async checkForUpdates(): Promise<UpdateMetadata | null> {
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+
+  async checkForUpdates(): Promise<UpdateInfo | null> {
+    const checkId = ++this._latestCheckId;
+
     try {
-      console.debug('Checking for updates on channel:', this.updateChannel());
+      // If we're already updating, just sync and return current state.
+      if (this._updateInProgress() || this._readyToRestart()) {
+        this._isChecking.set(true);
+        const result = this._updateAvailable() ?? (await this.syncUpdateStatus());
 
+        // Even in the "already updating" branch, we should check for staleness.
+        if (checkId !== this._latestCheckId) return null;
+
+        return result;
+      }
+
+      this._isChecking.set(true);
       this._updateInProgress.set(false);
       this.resetDownloadStatus();
 
-      const result = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
-        channel: this.updateChannel(),
+      const result = await this.invokeCommand<UpdateInfo | null>('fetch_update', {
+        channel: this.settings.updateChannel(),
       });
 
-      if (result) {
-        console.debug('Update available:', result.version);
+      // Discard stale results
+      if (checkId !== this._latestCheckId) {
+        return null;
+      }
 
-        if (result.restartRequired) {
-          this._restartRequired.set(true);
-          return null;
-        }
+      this.processUpdateResult(result, { silent: false });
+      return result;
+    } catch (error) {
+      if (checkId !== this._latestCheckId) return null;
 
-        if (result.updateInProgress) {
-          this._updateAvailable.set(result);
-          this._updateInProgress.set(true);
-          this._hasUpdates.set(true);
-          this.startStatusPolling();
-          return result;
-        }
+      console.error('Failed to check for updates:', error);
+      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
+      return null;
+    } finally {
+      if (checkId === this._latestCheckId) {
+        this._isChecking.set(false);
+      }
+    }
+  }
 
-        if (this.isVersionSkipped(result.version)) {
-          return null;
-        }
-
+  private processUpdateResult(result: UpdateInfo | null, options: { silent: boolean }): void {
+    if (result) {
+      if (result.status === BackendUpdateStatus.ReadyToRestart) {
+        this._readyToRestart.set(true);
         this._updateAvailable.set(result);
+        return;
+      }
+
+      if (result.status === BackendUpdateStatus.Downloading) {
+        this._updateAvailable.set(result);
+        this._updateInProgress.set(true);
         this._hasUpdates.set(true);
+        return;
+      }
+
+      if (this.settings.isVersionSkipped(result.version)) {
+        this._updateAvailable.set(null);
+        this._hasUpdates.set(false);
+        return;
+      }
+
+      this._updateAvailable.set(result);
+      this._hasUpdates.set(true);
+
+      if (!options.silent) {
         this.notificationService.showInfo(
           this.translate.instant('updates.availableNotification', { version: result.version }),
           this.translate.instant('common.ok'),
           10000
         );
-      } else {
-        this._updateAvailable.set(null);
       }
-
-      return result;
-    } catch (error) {
-      console.error('Failed to check for updates:', error);
-      this.notificationService.showError(this.translate.instant('updates.checkFailed'));
-      return null;
+    } else {
+      this._updateAvailable.set(null);
+      this._hasUpdates.set(false);
     }
   }
 
@@ -132,24 +160,21 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
 
     try {
       if (this.uiStateService.platform === 'windows') {
-        const dialogRef = this.dialog.open(ConfirmModalComponent, {
-          data: {
-            title: this.translate.instant('updates.confirmInstall.title'),
-            message: this.translate.instant('updates.confirmInstall.message'),
-            confirmText: this.translate.instant('updates.confirmInstall.confirm'),
-            cancelText: this.translate.instant('updates.confirmInstall.cancel'),
-            hideCancel: false,
-          },
-          disableClose: true,
-        });
-
-        const confirmed = await firstValueFrom(dialogRef.afterClosed());
+        const confirmed = await firstValueFrom(
+          this.modalService
+            .openConfirm({
+              title: this.translate.instant('updates.confirmInstall.title'),
+              message: this.translate.instant('updates.confirmInstall.message'),
+              confirmText: this.translate.instant('updates.confirmInstall.confirm'),
+              cancelText: this.translate.instant('updates.confirmInstall.cancel'),
+            })
+            .afterClosed()
+        );
         if (!confirmed) return;
       }
 
       this._updateInProgress.set(true);
       this.resetDownloadStatus();
-      this.startStatusPolling();
 
       await this.invokeWithNotification('install_update', undefined, {
         errorKey: 'updates.installFailed',
@@ -157,12 +182,10 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
       });
     } catch (error) {
       console.error('Failed to install update:', error);
-      this.stopStatusPolling();
       this._updateInProgress.set(false);
       this.resetDownloadStatus();
 
-      const errorMessage = String(error);
-      if (this.isStaleUpdateError(errorMessage)) {
+      if (this.isStaleUpdateError(String(error))) {
         this._updateAvailable.set(null);
         this._hasUpdates.set(false);
         await this.checkForUpdates();
@@ -170,215 +193,154 @@ export class AppUpdaterService extends BaseUpdateService implements OnDestroy {
     }
   }
 
-  private startStatusPolling(): void {
-    this.stopStatusPolling();
-
-    this.pollingSubscription = interval(this.statusPollingInterval)
-      .pipe(takeWhile(() => this.isUpdateInProgress()))
-      .subscribe(async () => {
-        try {
-          const status = await this.invokeCommand<DownloadStatus>('get_download_status');
-          this._downloadStatus.set(status);
-
-          // If backend reported a failure, stop polling and notify
-          if (status.isFailed) {
-            const msg = status.failureMessage || this.translate.instant('updates.installFailed');
-            this.notificationService.showError(msg);
-            this._updateInProgress.set(false);
-            // Keep update metadata available so user can retry immediately
-            this.stopStatusPolling();
-            this.resetDownloadStatus();
-
-            if (this.isStaleUpdateError(msg)) {
-              this._updateAvailable.set(null);
-              this._hasUpdates.set(false);
-              await this.checkForUpdates();
-            }
-            return;
-          }
-
-          if (status.isComplete) {
-            this.handleUpdateComplete();
-          }
-        } catch (error) {
-          console.error('Error polling download status:', error);
-          this.stopStatusPolling();
-          this._updateInProgress.set(false);
-          this.resetDownloadStatus();
-        }
-      });
-  }
-
-  private stopStatusPolling(): void {
-    if (this.pollingSubscription) {
-      this.pollingSubscription.unsubscribe();
-      this.pollingSubscription = null;
-    }
-  }
-
-  private handleUpdateComplete(): void {
-    this._updateInProgress.set(false);
-    this._updateAvailable.set(null);
-    this._hasUpdates.set(false);
-    this.stopStatusPolling();
-
-    this._restartRequired.set(true);
-    this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
-  }
-
+  /** Restarts the app and applies the staged update. */
   async finishUpdate(): Promise<void> {
     try {
-      if (this._restartRequired()) {
-        await this.invokeWithNotification('apply_app_update', undefined, {
-          errorKey: 'updates.restartFailed',
-          showSuccess: false,
-        });
-      } else {
-        await this.debugService.restartApp();
-      }
+      await this.invokeWithNotification('apply_app_update', undefined, {
+        errorKey: 'updates.restartFailed',
+        showSuccess: false,
+      });
     } catch (error) {
-      console.error('Failed to relaunch:', error);
+      console.error('Failed to apply update and restart:', error);
     }
   }
 
-  private resetDownloadStatus(): void {
-    this._downloadStatus.set({
-      downloadedBytes: 0,
-      totalBytes: 0,
-      percentage: 0,
-      isComplete: false,
-      isFailed: false,
-      failureMessage: null,
-    });
-  }
-
-  private isStaleUpdateError(message: string): boolean {
-    const normalized = message.toLowerCase();
-    return (
-      normalized.includes('bekleyen güncelleme yok') ||
-      normalized.includes('no pending update') ||
-      normalized.includes('update unavailable') ||
-      normalized.includes('no longer available')
-    );
-  }
-
-  getUpdateAvailable(): UpdateMetadata | null {
-    return this._updateAvailable();
-  }
-
-  isUpdateInProgress(): boolean {
-    return this._updateInProgress();
-  }
-
-  override async skipVersion(version: string): Promise<void> {
-    await super.skipVersion(version);
+  async skipVersion(version: string): Promise<void> {
+    await this.settings.skipVersion(version);
     this._updateAvailable.set(null);
+    this._hasUpdates.set(false);
     this.notificationService.showInfo(this.translate.instant('updates.skipVersion', { version }));
   }
 
-  override async unskipVersion(version: string): Promise<void> {
-    await super.unskipVersion(version);
+  async unskipVersion(version: string): Promise<void> {
+    await this.settings.unskipVersion(version);
     await this.checkForUpdates();
   }
 
-  getCurrentChannel(): string {
-    return this.updateChannel();
-  }
-
-  override async setChannel(channel: string): Promise<void> {
-    await super.setChannel(channel);
+  async setChannel(channel: string): Promise<void> {
+    await this.settings.setChannel(channel);
+    this._updateAvailable.set(null);
+    this._hasUpdates.set(false);
+    this._readyToRestart.set(false);
+    this.resetDownloadStatus();
     this.notificationService.showInfo(
       this.translate.instant('updates.channelChanged', { channel })
     );
-
-    // Clear update status when channel is changed
-    this._updateAvailable.set(null);
-    this._hasUpdates.set(false);
-    this.resetDownloadStatus();
+    void this.checkForUpdates();
   }
 
-  constructor() {
-    super();
-    this.setupEventListeners();
-    void this.initialize();
+  async setAutoCheckEnabled(enabled: boolean): Promise<void> {
+    await this.settings.setAutoCheckEnabled(enabled);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Initialization & Sync
+  // ---------------------------------------------------------------------------
+
+  private async syncUpdateStatus(): Promise<UpdateInfo | null> {
+    try {
+      const info = await this.invokeCommand<UpdateInfo | null>('get_app_update_info');
+      this.processUpdateResult(info, { silent: true });
+      return info;
+    } catch (error) {
+      console.error('Failed to sync app update status:', error);
+      return null;
+    }
   }
 
   private async initialize(): Promise<void> {
     try {
-      await this.initBaseSettings();
+      await this.settings.initialize();
+      this._buildType.set(await this.invokeCommand<string>('get_build_type'));
 
-      this._buildType.set(await this.getBuildType());
-
-      if (this.autoCheckEnabled()) {
-        const cachedUpdate = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
-          channel: this.updateChannel(),
-        });
-        if (cachedUpdate && !this.isVersionSkipped(cachedUpdate.version)) {
-          if (cachedUpdate.restartRequired) {
-            this._restartRequired.set(true);
-          } else {
-            this._updateAvailable.set(cachedUpdate);
-            this._hasUpdates.set(true);
-            if (cachedUpdate.updateInProgress) {
-              this._updateInProgress.set(true);
-              this.startStatusPolling();
-            }
-          }
-        }
-      }
+      // Sync status from backend on init (even if autoCheck is disabled) to pick
+      // up any updates found by the backend startup check. Always silent here.
+      await this.syncUpdateStatus();
     } catch (error) {
       console.error('Failed to initialize updater service:', error);
-      this._skippedVersions.set([]);
-      this._updateChannel.set('stable');
-      this._buildType.set(null);
     }
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.stopStatusPolling();
-  }
+  // ---------------------------------------------------------------------------
+  // Event listeners
+  // ---------------------------------------------------------------------------
 
   private setupEventListeners(): void {
     this.eventListenersService
       .listenToAppEvents()
       .pipe(
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(),
         filter(event => event.status === 'update_found' && !!event.data),
-        map(event => event.data as UpdateMetadata)
+        map(event => event.data as UpdateInfo)
       )
       .subscribe(metadata => {
-        console.debug('Received update found event:', metadata);
-        // Only trigger if we haven't already processed this update
         const current = this._updateAvailable();
-        if (!current || current.version !== metadata.version) {
-          // Check if skipped
-          if (this.isVersionSkipped(metadata.version)) {
-            console.debug(`Skipping update ${metadata.version} as requested by user.`);
-            return;
+        if (current?.version === metadata.version) return;
+        if (this.settings.isVersionSkipped(metadata.version)) return;
+
+        this._updateAvailable.set(metadata);
+        this._hasUpdates.set(true);
+        this.notificationService.showInfo(
+          this.translate.instant('updates.availableNotification', { version: metadata.version }),
+          this.translate.instant('common.ok'),
+          10000
+        );
+      });
+
+    this.eventListenersService
+      .listenToAppEvents()
+      .pipe(
+        takeUntilDestroyed(),
+        filter(event => event.status === 'download_progress' && !!event.data),
+        map(event => event.data as DownloadStatus)
+      )
+      .subscribe(status => {
+        this._downloadStatus.set(status);
+
+        if (status.isFailed) {
+          const msg = status.failureMessage ?? this.translate.instant('updates.installFailed');
+          this.notificationService.showError(msg);
+          this._updateInProgress.set(false);
+          this.resetDownloadStatus();
+
+          if (this.isStaleUpdateError(msg)) {
+            this._updateAvailable.set(null);
+            this._hasUpdates.set(false);
+            void this.checkForUpdates();
           }
+          return;
+        }
 
-          this._updateAvailable.set(metadata);
-          this._hasUpdates.set(true);
+        if (status.isComplete) {
+          this._updateInProgress.set(false);
+          this._hasUpdates.set(false);
+          this._readyToRestart.set(true);
 
-          // Show notification if not already shown
-          this.notificationService.showInfo(
-            this.translate.instant('updates.availableNotification', {
-              version: metadata.version,
-            }),
-            this.translate.instant('common.ok'),
-            10000
+          // Transition the metadata to ReadyToRestart status instead of wiping it.
+          this._updateAvailable.update(current =>
+            current ? { ...current, status: BackendUpdateStatus.ReadyToRestart } : null
           );
+
+          this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
         }
       });
   }
 
-  public async getBuildType(): Promise<string> {
-    const currentBuildType = this._buildType();
-    if (currentBuildType) {
-      return currentBuildType;
-    }
-    return this.invokeCommand<string>('get_build_type');
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private resetDownloadStatus(): void {
+    this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
+  }
+
+  /** True when the error message indicates the staged update is no longer valid. */
+  private isStaleUpdateError(message: string): boolean {
+    const msg = message.toLowerCase();
+    return (
+      msg.includes('no pending update') ||
+      msg.includes('update unavailable') ||
+      msg.includes('no longer available')
+    );
   }
 }

@@ -1,0 +1,61 @@
+use crate::core::alerts::{
+    dispatch::run_with_retry, template::TemplateContext, types::WebhookAction,
+};
+
+/// Fire an HTTP webhook request with the rendered body template.
+///
+/// Respects the `tls_verify` setting by using the appropriate pooled client.
+/// Retries up to `action.retry_count` times on failure using shared logic.
+pub async fn dispatch(
+    action: &WebhookAction,
+    ctx: &TemplateContext,
+    client: &reqwest::Client,
+) -> Result<(), String> {
+    let body = ctx.render(&action.body_template);
+    let url = ctx.render(&action.url);
+
+    let rendered_headers: Vec<(String, String)> = action
+        .headers
+        .iter()
+        .map(|(k, v)| (k.clone(), ctx.render(v)))
+        .collect();
+
+    let method = reqwest::Method::from_bytes(action.method.to_uppercase().as_bytes())
+        .map_err(|e| format!("Invalid HTTP method '{}': {e}", action.method))?;
+
+    run_with_retry(
+        &format!("Webhook '{}'", action.common.name),
+        action.retry_count,
+        || {
+            let method = method.clone();
+            let url = url.clone();
+            let body = body.clone();
+            let headers = rendered_headers.clone();
+
+            async move {
+                let mut req_builder = client.request(method, &url).body(body);
+
+                for (k, v) in headers {
+                    req_builder = req_builder.header(k, v);
+                }
+
+                let resp = req_builder
+                    .send()
+                    .await
+                    .map_err(|e| format!("Request error: {e}"))?;
+
+                let status = resp.status();
+                if status.is_success() {
+                    return Ok(());
+                }
+
+                Err(format!(
+                    "HTTP {}: {}",
+                    status.as_u16(),
+                    resp.text().await.unwrap_or_default()
+                ))
+            }
+        },
+    )
+    .await
+}

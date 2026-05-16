@@ -249,7 +249,11 @@
           {{ 'modals.jobDetail.sections.errors' | translate }}
         </h3>
         <div class="error-log">
-          <div class="error-entry">
+          <div
+            class="error-entry"
+            [appCopyToClipboard]="lastError || jobData().error"
+            [matTooltip]="'common.copy' | translate"
+          >
             <mat-icon svgIcon="circle-xmark"></mat-icon>
             <div class="error-content">
               <span class="error-message">{{ lastError || jobData().error }}</span>

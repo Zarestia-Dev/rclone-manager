@@ -2,8 +2,10 @@ import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
-import { splitLocalPath } from '../remote/utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
+import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { BackendService } from '../infrastructure/system/backend.service';
 
 /**
  * Service for file system operations
@@ -14,6 +16,16 @@ import { filter, firstValueFrom } from 'rxjs';
 })
 export class FileSystemService extends TauriBaseService {
   private nautilusService = inject(NautilusService);
+  private backendService = inject(BackendService);
+  private pathService = inject(PathService);
+
+  /**
+   * Returns true if the internal Nautilus browser should be used instead of native system dialogs.
+   * This is true in headless mode or when a remote rclone backend is active.
+   */
+  private isInternalBrowserPreferred(): boolean {
+    return isHeadlessMode() || this.backendService.activeBackend() !== 'Local';
+  }
 
   /**
    * Select a folder with optional empty requirement
@@ -21,8 +33,8 @@ export class FileSystemService extends TauriBaseService {
    * @param initialPath - Optional initial path to open the picker to
    */
   async selectFolder(requireEmpty?: boolean, initialPath?: string): Promise<string> {
-    // In headless mode, use Nautilus file browser
-    if (this.apiClient.isHeadless()) {
+    // If internal browser is preferred (headless or remote backend), use Nautilus
+    if (this.isInternalBrowserPreferred()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'folders',
@@ -77,8 +89,8 @@ export class FileSystemService extends TauriBaseService {
    * @param initialPath - Optional initial path to open the picker to
    */
   async selectFile(initialPath?: string): Promise<string> {
-    // In headless mode, use Nautilus file browser
-    if (this.apiClient.isHeadless()) {
+    // If internal browser is preferred (headless or remote backend), use Nautilus
+    if (this.isInternalBrowserPreferred()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'files',
@@ -114,8 +126,8 @@ export class FileSystemService extends TauriBaseService {
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
-    if (this.apiClient.isHeadless()) {
-      const { remote, remainder } = splitLocalPath(path);
+    if (this.isInternalBrowserPreferred()) {
+      const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }
     return this.invokeCommand('open_in_files', { path });

@@ -3,7 +3,7 @@ import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
+import { ShortcutHandlerDirective } from '@app/directives';
 import { BannerComponent } from './layout/banners/banner.component';
 import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
 
@@ -17,7 +17,7 @@ import {
   DebugService,
   GlobalLoadingService,
 } from '@app/services';
-import { ApiClientService } from './services/infrastructure/platform/api-client.service';
+import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 
 @Component({
@@ -43,7 +43,6 @@ export class AppComponent implements OnInit {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly onboardingStateService = inject(OnboardingStateService);
   private readonly backendService = inject(BackendService);
-  private readonly apiClient = inject(ApiClientService);
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
 
@@ -81,7 +80,7 @@ export class AppComponent implements OnInit {
   }
 
   private connectSseIfHeadless(): void {
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       this.sseClient.connect();
     }
   }

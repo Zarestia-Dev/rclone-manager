@@ -1,73 +1,138 @@
-use log::info;
-use tauri::{AppHandle, Manager};
+use log::{error, info};
+use tauri::{AppHandle, Runtime};
 
+use super::TraySnapshot;
 use super::menu::create_tray_menu;
-use crate::rclone::backend::BackendManager;
 
-pub async fn update_tray_menu(app: AppHandle) -> tauri::Result<()> {
-    let new_menu = create_tray_menu(&app).await?;
+pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()> {
+    let snapshot = TraySnapshot::fetch(&app).await?;
+    let app_clone = app.clone();
 
-    // Check if there are active jobs/mounts/serves
-    let backend_manager = app.state::<BackendManager>();
-    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
-    let active_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
-    let active_serves = backend_manager.remote_cache.get_serves().await;
-
-    let is_active = !active_jobs.is_empty();
-
-    if let Some(tray) = app.tray_by_id("main-tray") {
-        tray.set_menu(Some(new_menu))?;
-
-        if let Ok(image) = super::icon::get_icon(is_active) {
-            let _ = tray.set_icon(Some(image));
-        }
-
-        // Build composite tooltip
-        let tooltip = {
-            let mut parts = Vec::new();
-
-            if !active_jobs.is_empty() {
-                let count = active_jobs.len().to_string();
-                parts.push(if active_jobs.len() > 1 {
-                    crate::t!("tray.tooltipTasks", "count" => &count)
-                } else {
-                    crate::t!("tray.tooltipTask")
-                });
-            }
-
-            if !active_mounts.is_empty() {
-                let count = active_mounts.len().to_string();
-                parts.push(if active_mounts.len() > 1 {
-                    crate::t!("tray.tooltipMounts", "count" => &count)
-                } else {
-                    crate::t!("tray.tooltipMount")
-                });
-            }
-
-            if !active_serves.is_empty() {
-                let count = active_serves.len().to_string();
-                parts.push(if active_serves.len() > 1 {
-                    crate::t!("tray.tooltipServes", "count" => &count)
-                } else {
-                    crate::t!("tray.tooltipServe")
-                });
-            }
-
-            if parts.is_empty() {
-                crate::t!("tray.tooltipDefault")
-            } else {
-                format!(
-                    "{} — {}",
-                    crate::t!("tray.tooltipDefault"),
-                    parts.join(" · ")
-                )
+    app.run_on_main_thread(move || {
+        let new_menu = match create_tray_menu(&app_clone, &snapshot) {
+            Ok(m) => m,
+            Err(e) => {
+                error!("Failed to create tray menu: {e}");
+                return;
             }
         };
-        let _ = tray.set_tooltip(Some(tooltip));
 
-        info!("✅ Tray menu and icon updated");
-    } else {
-        info!("⚠️ Tray menu update failed: Tray not found");
-    }
+        let is_active = !snapshot.active_jobs.is_empty();
+
+        if let Some(tray) = app_clone.tray_by_id("main-tray") {
+            if let Err(e) = tray.set_menu(Some(new_menu)) {
+                error!("Failed to set tray menu: {e}");
+                return;
+            }
+
+            if let Ok(image) = super::icon::get_icon(is_active) {
+                let _ = tray.set_icon(Some(image));
+            }
+
+            // Build composite tooltip
+            let tooltip = {
+                let mut parts = Vec::new();
+
+                if !snapshot.active_jobs.is_empty() {
+                    let count = snapshot.active_jobs.len().to_string();
+                    parts.push(if snapshot.active_jobs.len() > 1 {
+                        crate::t!("tray.tooltipTasks", "count" => &count)
+                    } else {
+                        crate::t!("tray.tooltipTask")
+                    });
+                }
+
+                if !snapshot.mounted_remotes.is_empty() {
+                    let count = snapshot.mounted_remotes.len().to_string();
+                    parts.push(if snapshot.mounted_remotes.len() > 1 {
+                        crate::t!("tray.tooltipMounts", "count" => &count)
+                    } else {
+                        crate::t!("tray.tooltipMount")
+                    });
+                }
+
+                if !snapshot.active_serves.is_empty() {
+                    let count = snapshot.active_serves.len().to_string();
+                    parts.push(if snapshot.active_serves.len() > 1 {
+                        crate::t!("tray.tooltipServes", "count" => &count)
+                    } else {
+                        crate::t!("tray.tooltipServe")
+                    });
+                }
+
+                if parts.is_empty() {
+                    crate::t!("tray.tooltipDefault")
+                } else {
+                    format!(
+                        "{} — {}",
+                        crate::t!("tray.tooltipDefault"),
+                        parts.join(" · ")
+                    )
+                }
+            };
+            let _ = tray.set_tooltip(Some(tooltip));
+
+            info!("Tray menu and icon updated on main thread");
+        } else {
+            info!("Tray menu update failed: Tray not found");
+        }
+    })?;
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri::test::mock_builder;
+
+    #[tokio::test]
+    async fn test_tray_update_concurrency_safety() {
+        use crate::core::settings::schema::AppSettings;
+
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config = rcman::SettingsConfig::builder("test-app", "1.0.0")
+            .with_config_dir(temp_dir.path())
+            .with_schema::<AppSettings>()
+            .build();
+        let settings_manager = rcman::SettingsManager::new(config).unwrap();
+        settings_manager
+            .register_sub_settings(rcman::SubSettingsConfig::singlefile("remotes"))
+            .unwrap();
+
+        // Use a mock builder to create a test app context
+        let app = mock_builder()
+            .manage(crate::rclone::backend::BackendManager::new())
+            .manage(settings_manager)
+            .build(tauri::generate_context!())
+            .unwrap();
+        let handle = app.handle();
+
+        // Fire 50 concurrent updates from background threads.
+        // If our Rc safety logic (run_on_main_thread) is broken,
+        // this will likely trigger a panic during the test execution.
+        let mut tasks = vec![];
+        for _ in 0..50 {
+            let h = handle.clone();
+            tasks.push(tokio::spawn(async move { update_tray_menu(h).await }));
+        }
+
+        let results = futures::future::join_all(tasks).await;
+        for (i, res) in results.into_iter().enumerate() {
+            let task_res = res.unwrap_or_else(|e| {
+                if e.is_panic() {
+                    panic!("Task {} panicked!", i);
+                } else {
+                    panic!("Task {} failed to join: {:?}", i, e);
+                }
+            });
+
+            assert!(
+                task_res.is_ok(),
+                "Task {} returned error: {:?}",
+                i,
+                task_res.err()
+            );
+        }
+    }
 }

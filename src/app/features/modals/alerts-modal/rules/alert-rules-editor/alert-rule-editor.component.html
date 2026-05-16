@@ -1,0 +1,217 @@
+<header class="modal-header" data-tauri-drag-region>
+  <button>
+    <mat-icon svgIcon="bell"></mat-icon>
+  </button>
+  <p>
+    {{ (data ? 'alerts.editRule' : 'alerts.createRule') | translate }}
+  </p>
+  <button mat-icon-button (click)="cancel()" [attr.aria-label]="'common.close' | translate">
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<mat-dialog-content>
+  <form [formGroup]="form" (ngSubmit)="save()" class="editor-form">
+    <section class="form-section">
+      <div class="section-label">
+        <mat-icon svgIcon="info"></mat-icon>
+        {{ 'alerts.action.basicInfo' | translate }}
+      </div>
+
+      <div class="panel">
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'alerts.ruleName' | translate }}</mat-label>
+          <input
+            matInput
+            formControlName="name"
+            [placeholder]="'alerts.rule.placeholderName' | translate"
+          />
+          @if (form.controls.name.hasError('required')) {
+            <mat-error>{{ 'common.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="toggle-row">
+          <mat-slide-toggle formControlName="enabled">
+            {{ 'alerts.enabled' | translate }}
+          </mat-slide-toggle>
+
+          <mat-slide-toggle
+            formControlName="auto_acknowledge"
+            [matTooltip]="'alerts.rule.autoAcknowledgeHint' | translate"
+          >
+            {{ 'alerts.rule.autoAcknowledge' | translate }}
+          </mat-slide-toggle>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-label">
+        <mat-icon svgIcon="bell"></mat-icon>
+        {{ 'alerts.rule.actions' | translate }}
+      </div>
+
+      <div class="panel">
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'alerts.actions' | translate }}</mat-label>
+          <mat-select formControlName="action_ids" multiple>
+            @for (a of actions(); track a.id) {
+              <mat-option [value]="a.id">
+                <div class="action-option">
+                  <span class="action-name">{{ a.name }}</span>
+                  <span class="action-kind">
+                    {{ 'alerts.action.' + a.kind | translate }}
+                  </span>
+                </div>
+              </mat-option>
+            }
+            @if (!actions().length) {
+              <mat-option disabled>
+                {{ 'alerts.action.noActionsCreated' | translate }}
+              </mat-option>
+            }
+          </mat-select>
+          @if (
+            form.controls.action_ids.hasError('required') ||
+            form.controls.action_ids.hasError('minlength')
+          ) {
+            <mat-error>{{ 'alerts.rule.actionRequired' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        @if (!actions().length) {
+          <div class="info-box accent">
+            <mat-icon svgIcon="info"></mat-icon>
+            <span>{{ 'alerts.rule.noActionsHint' | translate }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-label">
+        <mat-icon svgIcon="filter"></mat-icon>
+        {{ 'alerts.rule.filters' | translate }}
+      </div>
+
+      <div class="panel no-subscript">
+        <div class="form-row two-col">
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.severityMin' | translate }}</mat-label>
+            <mat-select formControlName="severity_min">
+              @for (s of severities; track s) {
+                <mat-option [value]="s">
+                  <div class="severity-option">
+                    <span class="severity-dot" [style.background]="severityColors[s]"></span>
+                    {{ 'alerts.severityLevels.' + s | translate }}
+                  </div>
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.cooldown' | translate }}</mat-label>
+            <input matInput type="number" formControlName="cooldown_secs" min="0" />
+            <span matSuffix class="field-suffix">sec</span>
+          </mat-form-field>
+        </div>
+
+        <div class="filter-divider">
+          <span>{{ 'alerts.rule.scopeFilters' | translate }}</span>
+        </div>
+
+        <div class="form-row two-col">
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.eventFilter' | translate }}</mat-label>
+            <mat-icon
+              matPrefix
+              svgIcon="circle-info"
+              [matTooltip]="'alerts.rule.eventFilterHint' | translate"
+            ></mat-icon>
+            <mat-select formControlName="event_filter" multiple>
+              @for (e of eventKinds; track e) {
+                <mat-option [value]="e">{{ 'alerts.events.' + e | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.remoteFilter' | translate }}</mat-label>
+            <mat-icon
+              matPrefix
+              svgIcon="circle-info"
+              [matTooltip]="'alerts.rule.remoteFilterHint' | translate"
+            ></mat-icon>
+            <mat-select formControlName="remote_filter" multiple>
+              @for (r of remotes(); track r.name) {
+                <mat-option [value]="r.name">{{ r.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row two-col">
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.backendFilter' | translate }}</mat-label>
+            <mat-icon
+              matPrefix
+              svgIcon="circle-info"
+              [matTooltip]="'alerts.rule.backendFilterHint' | translate"
+            ></mat-icon>
+            <mat-select formControlName="backend_filter" multiple>
+              @for (b of backends(); track b.name) {
+                <mat-option [value]="b.name">{{ b.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.rule.profileFilter' | translate }}</mat-label>
+            <mat-icon
+              matPrefix
+              svgIcon="circle-info"
+              [matTooltip]="'alerts.rule.profileFilterHint' | translate"
+            ></mat-icon>
+            <mat-select formControlName="profile_filter" multiple>
+              @for (p of allProfiles(); track p) {
+                <mat-option [value]="p">{{ p }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'alerts.origins.title' | translate }}</mat-label>
+          <mat-icon
+            matPrefix
+            svgIcon="circle-info"
+            [matTooltip]="'alerts.rule.originFilterHint' | translate"
+          ></mat-icon>
+          <mat-select formControlName="origin_filter" multiple>
+            @for (o of origins; track o) {
+              <mat-option [value]="o">{{ 'alerts.origins.' + o | translate }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="info-box">
+          <mat-icon svgIcon="info"></mat-icon>
+          <span>{{ 'alerts.rule.filtersEmptyHint' | translate }}</span>
+        </div>
+      </div>
+    </section>
+
+    <button type="submit" style="display: none"></button>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button mat-flat-button [disabled]="form.invalid" (click)="save()">
+    {{ 'common.save' | translate }}
+  </button>
+</mat-dialog-actions>

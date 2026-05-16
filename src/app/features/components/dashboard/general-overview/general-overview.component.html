@@ -25,11 +25,21 @@
                   animate.leave="expand-height-leave"
                 >
                   <div>
-                    <mat-icon svgIcon="menu-bar"></mat-icon>
+                    <mat-icon svgIcon="drag-indicator"></mat-icon>
                   </div>
                   <span class="panel-label">{{ panel.title | translate }}</span>
 
                   @if (panel.id === 'remotes') {
+                    <button
+                      matIconButton
+                      class="card-layout-toggle"
+                      (click)="resetRemoteLayout()"
+                      [matTooltip]="'shared.actions.reset' | translate"
+                      matTooltipPosition="left"
+                      matTooltipShowDelay="500"
+                    >
+                      <mat-icon svgIcon="rotate-right"></mat-icon>
+                    </button>
                     <button
                       matIconButton
                       class="card-layout-toggle"
@@ -72,28 +82,25 @@
                     <app-remotes-panel
                       [title]="'generalOverview.panels.remotes' | translate"
                       [icon]="'cloud'"
-                      [remotes]="remotes()"
+                      [isActive]="true"
+                      [remotes]="remoteFacade.orderedVisibleRemotes()"
+                      [allRemotes]="remoteFacade.allRemotesForEditor()"
+                      [hiddenRemoteNames]="remoteFacade.hiddenRemoteNames()"
+                      [isEditingLayout]="isEditingLayout()"
                       [mode]="'general'"
                       [displayMode]="cardDisplayMode()"
-                      [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'actions.mount' | translate"
                       [activeIcon]="'mount'"
                       (remoteSelected)="selectRemote.emit($event)"
                       (openInFiles)="browseRemote.emit($event)"
-                      (startJob)="
-                        startJob.emit({
-                          type: $event.type,
-                          remoteName: $event.remoteName,
-                          profileName: $event.profileName,
-                        })
+                      (layoutChanged)="
+                        remoteFacade.saveCurrentLayout(backendService.activeBackend(), $event)
                       "
-                      (stopJob)="
-                        stopJob.emit({
-                          type: $event.type,
-                          remoteName: $event.remoteName,
-                          profileName: $event.profileName,
-                        })
+                      (toggleHidden)="
+                        remoteFacade.toggleRemoteVisibility(backendService.activeBackend(), $event)
                       "
+                      (startJob)="startJob.emit($event)"
+                      (stopJob)="stopJob.emit($event)"
                       role="region"
                       [attr.aria-label]="'generalOverview.panels.remotes' | translate"
                     >
@@ -288,9 +295,9 @@
                         <mat-panel-description>
                           @let activeJobs = activeJobsCount();
                           <span
-                            [ngClass]="
-                              activeJobs > 0 ? 'active-jobs-indicator' : 'disabled-jobs-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="activeJobs > 0"
+                            [class.p-dim]="activeJobs === 0"
                           >
                             {{
                               activeJobs > 0
@@ -369,20 +376,17 @@
                               <div class="label">
                                 {{ 'generalOverview.jobs.lastError' | translate }}
                               </div>
-                              <div class="error-message">
+                              <div
+                                class="error-message"
+                                matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
+                                [appCopyToClipboard]="stats.lastError"
+                              >
                                 <mat-icon
                                   svgIcon="circle-exclamation"
                                   class="error-icon warn"
                                   aria-hidden="true"
                                 ></mat-icon>
-                                <span
-                                  matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
-                                  (click)="copyError(stats.lastError)"
-                                  tabindex="0"
-                                  role="button"
-                                  class="error-text-content"
-                                  >{{ stats.lastError }}</span
-                                >
+                                <span class="error-text-content">{{ stats.lastError }}</span>
                               </div>
                             </div>
                           }
@@ -485,11 +489,9 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="
-                              activeScheduledTasksCount() > 0
-                                ? 'active-tasks-indicator'
-                                : 'disabled-tasks-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="activeScheduledTasksCount() > 0"
+                            [class.p-dim]="activeScheduledTasksCount() === 0"
                           >
                             {{
                               totalScheduledTasksCount() > 0
@@ -514,142 +516,24 @@
                           <span>{{ 'generalOverview.tasks.loading' | translate }}</span>
                         </div>
                       } @else {
-                        <div class="scheduled-tasks-content">
-                          @if (totalScheduledTasksCount() === 0) {
-                            <div class="no-tasks-message empty-state-message" role="status">
-                              <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                              <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
-                            </div>
-                          } @else {
-                            <div class="tasks-grid">
-                              @for (task of scheduledTasks(); track task.id) {
-                                @let meta = getTaskMeta(task.taskType);
-                                <mat-card
-                                  class="task-card"
-                                  [class.disabled]="task.status === 'disabled'"
-                                  [class.stopping]="task.status === 'stopping'"
-                                  (click)="onTaskClick(task)"
-                                  (keydown)="onTaskKeydown($event, task)"
-                                  role="button"
-                                  tabindex="0"
-                                  [attr.aria-label]="
-                                    'generalOverview.tasks.ariaLabel'
-                                      | translate
-                                        : {
-                                            type: (task.taskType | titlecase),
-                                            remote: task.args['remoteName'],
-                                            status: (task.status | titlecase),
-                                          }
-                                  "
-                                >
-                                  <mat-card-header class="task-header">
-                                    <div class="task-info-section">
-                                      <div class="task-icon-wrapper" [class]="meta.colorClass">
-                                        <mat-icon [svgIcon]="meta.icon"></mat-icon>
-                                      </div>
-                                      <div class="task-title-section">
-                                        <div class="task-name-row">
-                                          <span class="task-name">{{ task.name }}</span>
-                                          <span
-                                            class="task-status-badge"
-                                            [ngClass]="task.status"
-                                            [matTooltip]="'task.status.' + task.status | translate"
-                                          >
-                                            {{ 'task.status.' + task.status | translate }}
-                                          </span>
-                                          @if (task.currentJobId) {
-                                            <div class="task-running-badge">
-                                              <mat-icon
-                                                svgIcon="play"
-                                                class="running-icon"
-                                              ></mat-icon>
-                                              <span>{{
-                                                'generalOverview.tasks.running' | translate
-                                              }}</span>
-                                            </div>
-                                          }
-                                        </div>
-                                        <span class="task-remote-name">{{
-                                          task.args['remoteName']
-                                        }}</span>
-                                      </div>
-                                    </div>
-                                    <button
-                                      matIconButton
-                                      (click)="onToggleTaskClick(task.id, $event)"
-                                      [matTooltip]="
-                                        'task.toggle.' + getToggleKey(task.status) | translate
-                                      "
-                                      class="task-toggle-btn"
-                                      [disabled]="task.status === 'stopping'"
-                                    >
-                                      <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
-                                    </button>
-                                  </mat-card-header>
-
-                                  <mat-card-footer class="task-footer">
-                                    <div class="task-stats">
-                                      <div class="stat-item">
-                                        <mat-icon
-                                          svgIcon="circle-check"
-                                          class="stat-icon success"
-                                        ></mat-icon>
-                                        <span class="stat-value">{{ task.successCount }}</span>
-                                      </div>
-                                      <div class="stat-item">
-                                        <mat-icon
-                                          svgIcon="circle-exclamation"
-                                          class="stat-icon error"
-                                        ></mat-icon>
-                                        <span class="stat-value">{{ task.failureCount }}</span>
-                                      </div>
-                                      <div class="stat-item">
-                                        <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
-                                        <span class="stat-value">{{ task.runCount }}</span>
-                                      </div>
-                                    </div>
-
-                                    <div class="task-schedule">
-                                      <div class="schedule-item">
-                                        <span class="schedule-label">{{
-                                          'generalOverview.tasks.nextRun' | translate
-                                        }}</span>
-                                        <span class="schedule-value">{{
-                                          getFormattedNextRun(task)
-                                        }}</span>
-                                      </div>
-                                      @if (task.lastRun) {
-                                        <div class="schedule-item">
-                                          <span class="schedule-label">{{
-                                            'generalOverview.tasks.lastRun' | translate
-                                          }}</span>
-                                          <span class="schedule-value">{{
-                                            getFormattedLastRun(task)
-                                          }}</span>
-                                        </div>
-                                      }
-                                    </div>
-
-                                    <div class="task-cron">
-                                      <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
-                                      <code class="cron-expression">{{ task.cronExpression }}</code>
-                                    </div>
-
-                                    @if (task.lastError) {
-                                      <div class="task-error">
-                                        <mat-icon
-                                          svgIcon="circle-exclamation"
-                                          class="error-icon"
-                                        ></mat-icon>
-                                        <span class="error-text">{{ task.lastError }}</span>
-                                      </div>
-                                    }
-                                  </mat-card-footer>
-                                </mat-card>
-                              }
-                            </div>
-                          }
-                        </div>
+                        @if (totalScheduledTasksCount() === 0) {
+                          <div class="no-tasks-message empty-state-message" role="status">
+                            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                            <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
+                          </div>
+                        } @else {
+                          <div class="grid">
+                            @for (task of scheduledTasks(); track task.id) {
+                              <app-scheduled-task-card
+                                [task]="task"
+                                variant="compact"
+                                (click)="onTaskClick(task)"
+                                (toggled)="toggleScheduledTask($event)"
+                                (openInFiles)="onOpenTaskInFiles($event)"
+                              ></app-scheduled-task-card>
+                            }
+                          </div>
+                        }
                       }
                     </mat-expansion-panel>
                   }
@@ -674,11 +558,9 @@
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
-                            [ngClass]="
-                              serves.length > 0
-                                ? 'active-serves-indicator'
-                                : 'disabled-serves-indicator'
-                            "
+                            class="app-pill"
+                            [class.p-primary]="serves.length > 0"
+                            [class.p-dim]="serves.length === 0"
                           >
                             {{
                               serves.length > 0
@@ -700,7 +582,7 @@
                           <span>{{ 'generalOverview.serves.noRunning' | translate }}</span>
                         </div>
                       } @else {
-                        <div class="serves-grid">
+                        <div class="grid">
                           @for (serve of serves; track serve.id) {
                             <app-serve-card
                               [serve]="serve"

@@ -56,46 +56,45 @@ pub mod core {
     /// "bytesPerSecond" is returned as a number.
     pub const BWLIMIT: &str = "core/bwlimit";
 
-    // /// Run a rclone terminal command over rc.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - command - a string with the command name.
-    // /// - arg - a list of arguments for the backend command.
-    // /// - opt - a map of string to string of options.
-    // /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
-    // ///     - Defaults to "COMBINED_OUTPUT" if not set.
-    // ///     - The STREAM returnTypes will write the output to the body of the HTTP message.
-    // ///     - The COMBINED_OUTPUT will write the output to the "result" parameter.
-    // ///
-    // /// Returns:
-    // ///
-    // /// - result - result from the backend command.
-    // ///     - Only set when using returnType "COMBINED_OUTPUT".
-    // /// - error     - set if rclone exits with an error code.
-    // /// - returnType - one of ("COMBINED_OUTPUT", "STREAM", "STREAM_ONLY_STDOUT", "STREAM_ONLY_STDERR").
-    // ///
-    // /// Example:
-    // ///
-    // ///     rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
-    // ///     rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
-    // ///
-    // /// Returns:
-    // ///
-    // /// ```
-    // /// {
-    // ///     "error": false,
-    // ///     "result": "<Raw command line output>"
-    // /// }
-    // ///
-    // /// OR
-    // /// {
-    // ///     "error": true,
-    // ///     "result": "<Raw command line output>"
-    // /// }
-    // ///
-    // /// ```
-    // pub const COMMAND: &str = "core/command";
+    /// Run a rclone terminal command over rc.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - command - a string with the command name.
+    /// - arg - a list of arguments for the backend command.
+    /// - opt - a map of string to string of options.
+    /// - returnType - one of ("`COMBINED_OUTPUT`", "STREAM", "`STREAM_ONLY_STDOUT`", "`STREAM_ONLY_STDERR`").
+    ///     - Defaults to "`COMBINED_OUTPUT`" if not set.
+    ///     - The STREAM returnTypes will write the output to the body of the HTTP message.
+    ///     - The `COMBINED_OUTPUT` will write the output to the "result" parameter.
+    ///
+    /// Returns:
+    ///
+    /// - result - result from the backend command.
+    ///     - Only set when using returnType "`COMBINED_OUTPUT`".
+    /// - error     - set if rclone exits with an error code.
+    /// - returnType - one of ("`COMBINED_OUTPUT`", "STREAM", "`STREAM_ONLY_STDOUT`", "`STREAM_ONLY_STDERR`").
+    ///
+    /// Example:
+    /// ```sh
+    /// rclone rc core/command command=ls -a mydrive:/ -o max-depth=1
+    /// rclone rc core/command -a ls -a mydrive:/ -o max-depth=1
+    /// ```
+    /// Returns:
+    ///
+    /// ```json
+    /// {
+    ///     "error": false,
+    ///     "result": "<Raw command line output>"
+    /// }
+    ///
+    /// OR
+    /// {
+    ///     "error": true,
+    ///     "result": "<Raw command line output>"
+    /// }
+    /// ```
+    pub const COMMAND: &str = "core/command";
 
     /// Returns disk usage of a locally attached disk.
     ///
@@ -119,6 +118,22 @@ pub mod core {
     /// }
     /// ```
     pub const DU: &str = "core/du";
+
+    /// List the local disks.
+    ///
+    /// This does not take any parameters.
+    ///
+    /// This call is for rclone GUI programs to enumerate local disks and
+    /// important directories for doing transfers to and from. The list
+    /// returned will include the root directory and the user's home directory
+    /// and any mounted disks. The returned items should be usable directly as
+    /// remotes.
+    ///
+    /// Returns:
+    ///
+    /// - disks
+    ///     - This is an array of strings of local disk names
+    pub const DISKS: &str = "core/disks";
 
     /// Runs a garbage collection.
     ///
@@ -146,12 +161,12 @@ pub mod core {
     /// Returns the memory statistics.
     ///
     /// This returns the memory statistics of the running program. What the values mean
-    /// are explained in the go docs: https://golang.org/pkg/runtime/#MemStats
+    /// are explained in the go docs: <https://golang.org/pkg/runtime/#MemStats>
     ///
     /// The most interesting values for most people are:
     ///
-    /// - HeapAlloc - this is the amount of memory rclone is actually using
-    /// - HeapSys - this is the amount of memory rclone has obtained from the OS
+    /// - `HeapAlloc` - this is the amount of memory rclone is actually using
+    /// - `HeapSys` - this is the amount of memory rclone has obtained from the OS
     /// - Sys - this is the total amount of memory requested from the OS
     ///    - It is virtual memory so may include unused memory
     pub const MEMSTATS: &str = "core/memstats";
@@ -198,6 +213,7 @@ pub mod core {
     /// "bytes": total transferred bytes since the start of the group,
     /// "checks": number of files checked,
     /// "deletes" : number of files deleted,
+    /// "deletedDirs": number of directories deleted,
     /// "elapsedTime": time in floating point seconds since rclone was started,
     /// "errors": number of errors,
     /// "eta": estimated time in seconds until the group completes,
@@ -348,14 +364,14 @@ pub mod config {
     /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
     pub const DUMP: &str = "config/dump";
 
-    /// Get a remote in the config file.
-    ///
-    /// Parameters:
-    ///
-    /// - name - name of remote to get
-    ///
-    /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
-    pub const GET: &str = "config/get";
+    // /// Get a remote in the config file.
+    // ///
+    // /// Parameters:
+    // ///
+    // /// - name - name of remote to get
+    // ///
+    // /// See the [config dump](/commands/rclone_config_dump/) command for more information on the above.
+    // pub const GET: &str = "config/get";
 
     /// Lists the remotes in the config file and defined in environment variables.
     ///
@@ -423,9 +439,9 @@ pub mod config {
     ///
     /// Parameters:
     ///
-    /// - 'config_password' - password to unlock the config file
+    /// - '`config_password`' - password to unlock the config file
     ///
-    /// A good idea is to disable AskPassword before making this call
+    /// A good idea is to disable `AskPassword` before making this call
     pub const UNLOCK: &str = "config/unlock";
 
     /// Update the config for a remote.
@@ -451,27 +467,27 @@ pub mod config {
 
 /// Job management endpoints
 pub mod job {
-    // /// Run a batch of rclone rc commands concurrently.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - concurrency - int - do this many commands concurrently. Defaults to `--transfers` if not set.
-    // /// - inputs - an list of inputs to the commands with an extra `_path` parameter
-    // ///
-    // /// ```json
-    // /// {
-    // ///     "_path": "rc/path",
-    // ///     "param1": "parameter for the path as documented",
-    // ///     "param2": "parameter for the path as documented, etc",
-    // /// }
-    // /// ```
-    // ///
-    // /// The inputs may use `_async`, `_group`, `_config` and `_filter` as normal when using the rc.
-    // ///
-    // /// Returns:
-    // ///
-    // /// - results - a list of results from the commands with one entry for each in inputs.
-    // pub const BATCH: &str = "job/batch";
+    /// Run a batch of rclone rc commands concurrently.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - concurrency - int - do this many commands concurrently. Defaults to `--transfers` if not set.
+    /// - inputs - an list of inputs to the commands with an extra `_path` parameter
+    ///
+    /// ```json
+    /// {
+    ///     "_path": "rc/path",
+    ///     "param1": "parameter for the path as documented",
+    ///     "param2": "parameter for the path as documented, etc",
+    /// }
+    /// ```
+    ///
+    /// The inputs may use `_async`, `_group`, `_config` and `_filter` as normal when using the rc.
+    ///
+    /// Returns:
+    ///
+    /// - results - a list of results from the commands with one entry for each in inputs.
+    pub const BATCH: &str = "job/batch";
 
     // /// Lists the IDs of the running jobs.
     // ///
@@ -1064,8 +1080,8 @@ pub mod sync {
     /// - path2 - a remote directory string e.g. `drive:path2`
     /// - dryRun - dry-run mode
     /// - resync - performs the resync run
-    /// - checkAccess - abort if RCLONE_TEST files are not found on both filesystems
-    /// - checkFilename - file name for checkAccess (default: RCLONE_TEST)
+    /// - checkAccess - abort if `RCLONE_TEST` files are not found on both filesystems
+    /// - checkFilename - file name for checkAccess (default: `RCLONE_TEST`)
     /// - maxDelete - abort sync if percentage of deleted files is above
     ///   this threshold (default: 50)
     /// - force - Bypass maxDelete safety check and run the sync

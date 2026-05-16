@@ -2,9 +2,11 @@
   <div
     class="tabs-scroll-container hide-scrollbar"
     #tabsScrollContainer
-    [class.show-left-shadow]="_showLeftShadow()"
-    [class.show-right-shadow]="_showRightShadow()"
-    (scroll)="onScroll()"
+    appScrollShadow
+    [class.show-left-shadow]="showLeft()"
+    [class.show-right-shadow]="showRight()"
+    (leftShadow)="showLeft.set($event)"
+    (rightShadow)="showRight.set($event)"
   >
     <div
       class="tabs-bar"
@@ -39,7 +41,7 @@
           [matTooltip]="getTabTooltip(t)"
           [matTooltipShowDelay]="800"
         >
-          <span class="tab-title">{{ t.title | translate }}</span>
+          <span class="tab-title">{{ t.title }}</span>
           <button
             class="close-tab"
             [attr.aria-label]="'common.close' | translate"
@@ -56,20 +58,20 @@
 <ng-template #tabContextMenu let-tabIdx>
   <div class="material-context-menu" cdkMenu>
     <button class="menu-item" cdkMenuItem (click)="detachTabAction(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.detachTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.detachTab' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="duplicateTab.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.duplicateTab' | translate }}</span>
     </button>
     <mat-divider />
     <button class="menu-item" cdkMenuItem (click)="closeTab.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeTab' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="closeOtherTabs.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeOtherTabs' | translate }}</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="closeTabsToRight.emit(tabIdx)">
-      <span>{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
+      <span class="item-label">{{ 'nautilus.contextMenu.closeTabsToRight' | translate }}</span>
     </button>
   </div>
 </ng-template>

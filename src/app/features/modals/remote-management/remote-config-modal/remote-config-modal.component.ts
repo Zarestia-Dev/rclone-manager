@@ -23,6 +23,7 @@ import {
   FormsModule,
   ReactiveFormsModule,
   AbstractControl,
+  FormArray,
 } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -56,6 +57,7 @@ import {
   ModalService,
   NotificationService,
   IconService,
+  PathService,
 } from '@app/services';
 import {
   RcConfigOption,
@@ -81,13 +83,12 @@ import {
   CommandOption,
 } from '@app/types';
 import {
-  buildPathString,
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   convertBoolAnswerToString,
-  parseFsString,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { CopyToClipboardDirective } from '@app/directives';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
     FlagConfigStepComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
+    CopyToClipboardDirective,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -190,6 +192,7 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Static config ─────────────────────────────────────────────────────────────
@@ -675,7 +678,7 @@ export class RemoteConfigModalComponent implements OnInit {
       group[`${flag}Config`] =
         flag === 'serve'
           ? this.createServeConfigGroup()
-          : this.createConfigGroup(this.getFieldsForFlagType(flag));
+          : this.createConfigGroup(flag, this.getFieldsForFlagType(flag));
     });
     group['runtimeRemoteConfig'] = this.createRuntimeRemoteConfigGroup();
 
@@ -688,12 +691,47 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
+  private getRuntimeRemoteOptions(
+    remoteName: string,
+    config: Record<string, unknown>
+  ): Record<string, unknown> {
+    const options = (config['options'] as Record<string, unknown>) ?? {};
+    const remoteOptions = options[remoteName];
+
+    if (remoteOptions && typeof remoteOptions === 'object' && !Array.isArray(remoteOptions)) {
+      return remoteOptions as Record<string, unknown>;
+    }
+
+    return options;
+  }
+
+  private buildRuntimeRemoteOptions(
+    remoteName: string,
+    configData: Record<string, unknown>
+  ): Record<string, unknown> {
+    const options = this.dynamicRuntimeRemoteFields().reduce(
+      (acc, field) => {
+        if (!Object.prototype.hasOwnProperty.call(configData, field.Name)) return acc;
+        const value = configData[field.Name];
+        if (!this.isDefaultValue(value, field)) acc[field.FieldName || field.Name] = value;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
+
+    return { [remoteName]: options };
+  }
+
   private createServeConfigGroup(): FormGroup {
     return this.fb.group({
       autoStart: [false],
       cronEnabled: [false],
       cronExpression: [null],
-      source: this.fb.group({ pathType: ['currentRemote'], path: [''], otherRemoteName: [''] }),
+      source: this.fb.group({
+        type: ['currentRemote'],
+        path: [''],
+        remote: [''],
+      }),
       type: ['http', Validators.required],
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
@@ -703,23 +741,27 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
-  private createConfigGroup(fields: string[], includeProfiles = true): FormGroup {
+  private createConfigGroup(flagType: string, fields: string[], includeProfiles = true): FormGroup {
     const group: Record<string, unknown> = {};
     fields.forEach(field => {
       group[field] = field === 'autoStart' || field === 'cronEnabled' ? [false] : [''];
     });
 
     if (fields.includes('source')) {
-      group['source'] = this.fb.group({
-        pathType: ['currentRemote'],
+      const sourceGroup = this.fb.group({
+        type: ['currentRemote'],
         path: [''],
-        otherRemoteName: [''],
+        remote: [''],
       });
+      if (flagType === 'mount' || flagType === 'serve' || flagType === 'bisync') {
+        group['source'] = sourceGroup;
+      } else {
+        group['source'] = this.fb.array([sourceGroup]);
+      }
     }
-    if (fields.includes('dest') && !fields.includes('type')) {
-      group['dest'] = this.fb.group({ pathType: ['local'], path: [''], otherRemoteName: [''] });
-    } else if (fields.includes('dest') && fields.includes('type')) {
-      group['dest'] = [''];
+    if (fields.includes('dest')) {
+      const destGroup = this.fb.group({ type: ['local'], path: [''], remote: [''] });
+      group['dest'] = destGroup;
     }
     if (fields.includes('autoStart') && !fields.includes('type')) {
       group['cronExpression'] = [null];
@@ -780,31 +822,28 @@ export class RemoteConfigModalComponent implements OnInit {
               destCtrl?.updateValueAndValidity();
             });
         } else {
-          const sourcePathCtrl = opGroup.get('source.path');
-          const destPathCtrl = opGroup.get('dest.path');
+          const sourceControl = opGroup.get('source');
+          const destControl = opGroup.get('dest');
           const autoStartCtrl = opGroup.get('autoStart');
-          const sourcePathTypeCtrl = opGroup.get('source.pathType');
-          const destPathTypeCtrl = opGroup.get('dest.pathType');
           const cronEnabledCtrl = opGroup.get('cronEnabled');
           const cronExpressionCtrl = opGroup.get('cronExpression');
 
-          sourcePathCtrl?.setValidators(this.validatorRegistry.requiredIfLocal());
-          destPathCtrl?.setValidators(this.validatorRegistry.requiredIfLocal());
           cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
 
           autoStartCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            sourcePathCtrl?.updateValueAndValidity();
-            destPathCtrl?.updateValueAndValidity();
+            if (sourceControl instanceof FormArray) {
+              sourceControl.controls.forEach(c => c.get('path')?.updateValueAndValidity());
+            } else if (sourceControl instanceof FormGroup) {
+              sourceControl.get('path')?.updateValueAndValidity();
+            }
+
+            if (destControl instanceof FormGroup) {
+              destControl.get('path')?.updateValueAndValidity();
+            }
           });
           cronEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
             cronExpressionCtrl?.updateValueAndValidity();
           });
-          sourcePathTypeCtrl?.valueChanges
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(() => sourcePathCtrl?.updateValueAndValidity());
-          destPathTypeCtrl?.valueChanges
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(() => destPathCtrl?.updateValueAndValidity());
         }
       });
     }
@@ -918,7 +957,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
       group.patchValue({
         autoStart: config['autoStart'] ?? false,
-        source: parseFsString(
+        source: this.pathService.parseFsString(
           (config['source'] as string) ?? '',
           'currentRemote',
           this.currentRemoteName(),
@@ -940,7 +979,7 @@ export class RemoteConfigModalComponent implements OnInit {
         });
       }
     } else if (type === 'runtimeRemote') {
-      const options = (config['options'] as Record<string, unknown>) ?? {};
+      const options = this.getRuntimeRemoteOptions(this.currentRemoteName(), config);
       const runtimeType =
         String(this.remoteForm.get('type')?.value ?? '').trim() ||
         (options['type'] as string) ||
@@ -969,24 +1008,69 @@ export class RemoteConfigModalComponent implements OnInit {
 
       if (flagType === 'mount' && config['type'] !== undefined) patchData['type'] = config['type'];
 
-      if (config['source'] !== undefined) {
-        patchData['source'] = parseFsString(
-          config['source'] as string,
-          'currentRemote',
-          this.currentRemoteName(),
-          this.existingRemotes()
+      // ── Handle Source(s) ──
+      const sourceVal = config['source'];
+      const configSources = (
+        Array.isArray(sourceVal) ? sourceVal : sourceVal ? [sourceVal] : []
+      ) as string[];
+
+      const sourceCtrl = group.get('source');
+
+      if (sourceCtrl instanceof FormArray) {
+        sourceCtrl.clear();
+        if (configSources.length > 0) {
+          configSources.forEach(s => {
+            sourceCtrl.push(
+              this.fb.group(
+                this.pathService.parseFsString(
+                  s,
+                  'currentRemote',
+                  this.currentRemoteName(),
+                  this.existingRemotes()
+                )
+              )
+            );
+          });
+        } else {
+          sourceCtrl.push(
+            this.fb.group({
+              type: ['currentRemote'],
+              path: [''],
+              remote: [this.currentRemoteName()],
+            })
+          );
+        }
+      } else if (sourceCtrl instanceof FormGroup && configSources.length > 0) {
+        sourceCtrl.patchValue(
+          this.pathService.parseFsString(
+            configSources[0],
+            'currentRemote',
+            this.currentRemoteName(),
+            this.existingRemotes()
+          )
         );
       }
-      if (config['dest'] !== undefined) {
-        patchData['dest'] =
-          flagType === 'mount'
-            ? config['dest']
-            : parseFsString(
-                config['dest'] as string,
-                'local',
-                this.currentRemoteName(),
-                this.existingRemotes()
-              );
+
+      // ── Handle Dest ──
+      const destVal = config['dest'];
+      const configDests = (Array.isArray(destVal) ? destVal : destVal ? [destVal] : []) as string[];
+
+      const destCtrl = group.get('dest');
+
+      if (destCtrl instanceof FormGroup && configDests.length > 0) {
+        const d = configDests[0];
+        if (flagType === 'mount') {
+          destCtrl.patchValue({ type: 'local', path: d, remote: '' });
+        } else {
+          destCtrl.patchValue(
+            this.pathService.parseFsString(
+              d,
+              'local',
+              this.currentRemoteName(),
+              this.existingRemotes()
+            )
+          );
+        }
       }
 
       group.patchValue(patchData);
@@ -1124,23 +1208,6 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
-  handleSourceFolderSelect(flagType: FlagType): void {
-    this.fileSystemService
-      .selectFolder(false)
-      .then(path => this.remoteConfigForm.get(`${flagType}Config.source.path`)?.setValue(path));
-  }
-
-  handleDestFolderSelect(flagType: FlagType): void {
-    const formPath = flagType === 'mount' ? 'mountConfig.dest' : `${flagType}Config.dest.path`;
-    const requireEmpty =
-      flagType === 'mount'
-        ? !this.remoteConfigForm.get('mountConfig.options')?.value?.['mount---allow_non_empty']
-        : false;
-    this.fileSystemService
-      .selectFolder(requireEmpty)
-      .then(path => this.remoteConfigForm.get(formPath)?.setValue(path));
-  }
-
   onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
     if (this.isPopulatingForm()) return;
     // In edit mode track every field so existing values aren't silently dropped on save.
@@ -1169,6 +1236,17 @@ export class RemoteConfigModalComponent implements OnInit {
       if (result.success && !this.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
+      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+
+      let errorMessage = this.translate.instant(
+        'modals.remoteConfig.errors.interactiveProcessingFailed'
+      );
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      this.notificationService.showError(errorMessage);
     } finally {
       if (!this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
@@ -1542,7 +1620,11 @@ export class RemoteConfigModalComponent implements OnInit {
     configData: Record<string, unknown>
   ): Record<string, unknown> {
     if (type === 'serve') {
-      const fs = buildPathString(configData['source'], remoteName);
+      const sourcePaths = this.pathService.buildPathStrings(
+        configData['source'] as any[],
+        remoteName
+      );
+      const fs = sourcePaths.length > 0 ? sourcePaths[0] : '';
       const serveOptions = this.cleanServeOptions(
         (configData['options'] as Record<string, unknown>) ?? {}
       );
@@ -1560,25 +1642,23 @@ export class RemoteConfigModalComponent implements OnInit {
     }
 
     if (type === 'runtimeRemote') {
-      const options = this.dynamicRuntimeRemoteFields().reduce(
-        (acc, field) => {
-          if (!Object.prototype.hasOwnProperty.call(configData, field.Name)) return acc;
-          const value = configData[field.Name];
-          if (!this.isDefaultValue(value, field)) acc[field.FieldName || field.Name] = value;
-          return acc;
-        },
-        {} as Record<string, unknown>
-      );
-      return { options };
+      return { options: this.buildRuntimeRemoteOptions(remoteName, configData) };
     }
 
     // Flag types
     const result: Record<string, unknown> = {};
     for (const key in configData) {
-      result[key] =
-        key === 'source' || key === 'dest'
-          ? buildPathString(configData[key], remoteName)
-          : configData[key];
+      if (key === 'source') {
+        if (Array.isArray(configData[key])) {
+          result[key] = this.pathService.buildPathStrings(configData[key] as any[], remoteName);
+        } else {
+          result[key] = this.pathService.buildPathString(configData[key], remoteName);
+        }
+      } else if (key === 'dest') {
+        result[key] = this.pathService.buildPathString(configData[key], remoteName);
+      } else {
+        result[key] = configData[key];
+      }
     }
 
     const isMainOp = LINKED_PROFILE_TYPES.has(type as FlagType);
@@ -1698,25 +1778,31 @@ export class RemoteConfigModalComponent implements OnInit {
       answer: '',
     });
     const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-      name,
-      type ?? '',
-      paramRest,
-      this.remoteManagementService.buildOpt(this.commandOptions())
-    );
 
-    if (!startResp || startResp.State === '') {
-      await this.finalizeRemoteCreation();
-      return { success: true };
+    try {
+      const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
+        name,
+        type ?? '',
+        paramRest,
+        this.remoteManagementService.buildOpt(this.commandOptions())
+      );
+
+      if (!startResp || startResp.State === '') {
+        await this.finalizeRemoteCreation();
+        return { success: true };
+      }
+
+      this.interactiveFlowState.set({
+        isActive: true,
+        question: startResp,
+        answer: getDefaultAnswerFromQuestion(startResp),
+        isProcessing: false,
+      });
+      return { success: false };
+    } catch (error) {
+      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+      throw error;
     }
-
-    this.interactiveFlowState.set({
-      isActive: true,
-      question: startResp,
-      answer: getDefaultAnswerFromQuestion(startResp),
-      isProcessing: false,
-    });
-    return { success: false };
   }
 
   private async processInteractiveResponse(answer: string): Promise<void> {
@@ -1795,10 +1881,26 @@ export class RemoteConfigModalComponent implements OnInit {
     }
 
     const jobStarters: Record<string, (remote: string, profile: string) => Promise<number>> = {
-      copy: this.jobManagementService.startCopyProfile.bind(this.jobManagementService),
-      sync: this.jobManagementService.startSyncProfile.bind(this.jobManagementService),
-      bisync: this.jobManagementService.startBisyncProfile.bind(this.jobManagementService),
-      move: this.jobManagementService.startMoveProfile.bind(this.jobManagementService),
+      copy: (remote, profile) =>
+        this.jobManagementService.startProfileBatch('Copy', {
+          remoteName: remote,
+          profileName: profile,
+        }),
+      sync: (remote, profile) =>
+        this.jobManagementService.startProfileBatch('Sync', {
+          remoteName: remote,
+          profileName: profile,
+        }),
+      bisync: (remote, profile) =>
+        this.jobManagementService.startProfileBatch('Bisync', {
+          remoteName: remote,
+          profileName: profile,
+        }),
+      move: (remote, profile) =>
+        this.jobManagementService.startProfileBatch('Move', {
+          remoteName: remote,
+          profileName: profile,
+        }),
     };
 
     for (const [jobType, starter] of Object.entries(jobStarters)) {
@@ -1826,10 +1928,6 @@ export class RemoteConfigModalComponent implements OnInit {
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
-  }
-
-  async copyOAuthUrl(): Promise<void> {
-    await this.authStateService.copyOAuthUrl();
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────────

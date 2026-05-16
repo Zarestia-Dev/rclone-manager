@@ -7,4 +7,5 @@ pub mod json_helpers;
 pub mod logging;
 pub mod process;
 pub mod rclone;
+pub mod security;
 pub mod types;

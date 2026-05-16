@@ -36,10 +36,11 @@
       <div
         class="path-scroll-view hide-scrollbar"
         #pathScrollView
-        [class.show-left-shadow]="_showLeftShadow()"
-        [class.show-right-shadow]="_showRightShadow()"
-        (scroll)="onScrollViewScroll()"
-        (wheel)="onPathScroll($event)"
+        appScrollShadow
+        [class.show-left-shadow]="showLeft()"
+        [class.show-right-shadow]="showRight()"
+        (leftShadow)="showLeft.set($event)"
+        (rightShadow)="showRight.set($event)"
       >
         <button
           class="path-segment"

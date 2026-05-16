@@ -19,6 +19,7 @@ import {
   WindowService,
   ModalService,
   ConnectionService,
+  AlertService,
 } from '@app/services';
 import { Theme } from '@app/types';
 import { WindowControlsComponent } from '@app/shared/components';
@@ -52,31 +53,34 @@ export class TitlebarComponent implements OnInit {
 
   readonly uiStateService = inject(UiStateService);
   readonly connectionService = inject(ConnectionService);
+  readonly alertService = inject(AlertService);
 
   // Signals for update states
-  readonly updateAvailable = this.appUpdaterService.updateAvailable;
+  readonly hasUpdates = this.appUpdaterService.hasUpdates;
   readonly rcloneUpdateAvailable = computed(
     () => this.rcloneUpdateService.updateStatus().available
   );
   readonly rcloneRestartRequired = computed(
     () => this.rcloneUpdateService.updateStatus().readyToRestart
   );
-  readonly restartRequired = this.appUpdaterService.restartRequired;
+  readonly readyToRestart = this.appUpdaterService.readyToRestart;
 
   readonly currentTheme = this.windowService.theme;
 
   readonly updateTooltip = computed(() => {
-    const appRestart = this.restartRequired();
+    const appRestart = this.readyToRestart();
     const rcloneRestart = this.rcloneRestartRequired();
+    const appUpdate = this.hasUpdates();
+    const rcloneUpdate = this.rcloneUpdateAvailable();
 
-    if (this.updateAvailable() && this.rcloneUpdateAvailable()) {
-      return this.translateService.instant('titlebar.updates.all');
-    } else if (this.updateAvailable()) {
-      return this.translateService.instant('titlebar.updates.app');
-    } else if (this.rcloneUpdateAvailable()) {
-      return this.translateService.instant('titlebar.updates.rclone');
-    } else if (appRestart || rcloneRestart) {
+    if (appRestart || rcloneRestart) {
       return this.translateService.instant('titlebar.updates.restart');
+    } else if (appUpdate && rcloneUpdate) {
+      return this.translateService.instant('titlebar.updates.all');
+    } else if (appUpdate) {
+      return this.translateService.instant('titlebar.updates.app');
+    } else if (rcloneUpdate) {
+      return this.translateService.instant('titlebar.updates.rclone');
     }
     return '';
   });
@@ -139,9 +143,14 @@ export class TitlebarComponent implements OnInit {
   ];
 
   readonly aboutMenuBadge = computed(() => {
-    if (this.restartRequired() || this.rcloneRestartRequired()) return '!';
-    if (this.updateAvailable() && this.rcloneUpdateAvailable()) return '2';
-    if (this.updateAvailable() || this.rcloneUpdateAvailable()) return '!';
+    const appRestart = this.readyToRestart();
+    const rcloneRestart = this.rcloneRestartRequired();
+    const appUpdate = this.hasUpdates();
+    const rcloneUpdate = this.rcloneUpdateAvailable();
+
+    if (appRestart || rcloneRestart) return '!';
+    if (appUpdate && rcloneUpdate) return '2';
+    if (appUpdate || rcloneUpdate) return '!';
     return '';
   });
 
@@ -188,6 +197,10 @@ export class TitlebarComponent implements OnInit {
 
   openAboutModal(): void {
     this.modalService.openAbout();
+  }
+
+  openAlertsModal(): void {
+    this.modalService.openAlerts();
   }
 
   // Other Methods

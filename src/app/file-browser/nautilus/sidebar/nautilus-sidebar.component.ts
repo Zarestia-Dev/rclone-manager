@@ -4,11 +4,13 @@ import { TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService, PathSelectionService, RemoteFacadeService } from '@app/services';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { IconService, PathService, RemoteFacadeService } from '@app/services';
+import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
+import { SlideMenuController } from '../slide-menu';
 
 @Component({
   selector: 'app-nautilus-sidebar',
@@ -20,6 +22,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
+    MatTooltipModule,
     CdkMenuModule,
     OperationsPanelComponent,
   ],
@@ -28,7 +31,7 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 })
 export class NautilusSidebarComponent {
   readonly iconService = inject(IconService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
 
   // Inputs
@@ -67,6 +70,9 @@ export class NautilusSidebarComponent {
   readonly droppedToLocal = output<DragEvent>();
   readonly droppedToBookmark = output<{ event: DragEvent; target: FileBrowserItem }>();
   readonly droppedToRemote = output<{ event: DragEvent; target: ExplorerRoot }>();
+
+  // Context menu sliding controller
+  protected readonly menuCtrl = new SlideMenuController('.sidebar-sliding-container');
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {
@@ -124,11 +130,15 @@ export class NautilusSidebarComponent {
   }
 
   private _bookmarkKey(bm: FileBrowserItem): string {
-    const remote = this.pathSelectionService.normalizeRemoteName(
-      bm.meta.remote ?? '',
-      bm.meta.isLocal
-    );
+    const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '', bm.meta.isLocal);
     return `${remote}::${bm.entry.Path}`;
+  }
+
+  getDriveTooltip(drive: ExplorerRoot): string {
+    const pathInfo = drive.name ? `${drive.name}\n` : '';
+    if (drive.totalSpace === undefined || drive.totalSpace === 0) return pathInfo;
+    const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
+    return `${pathInfo}${fs}`;
   }
 
   private _closeSidenavOnMobile(): void {

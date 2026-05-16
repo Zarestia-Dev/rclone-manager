@@ -88,6 +88,11 @@
             <mat-icon svgIcon="left-arrow"></mat-icon>
             {{ 'onboarding.actions.back' | translate }}
           </button>
+        } @else {
+          <button mat-stroked-button (click)="importSettings()">
+            <mat-icon svgIcon="file-arrow-up"></mat-icon>
+            {{ 'titlebar.menu.import' | translate }}
+          </button>
         }
       </div>
       <div>

@@ -23,7 +23,11 @@ export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 
-export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set(['onedrive', 'iclouddrive']);
+export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
+  'onedrive',
+  'iclouddrive',
+  'jottacloud',
+]);
 
 // ─── Command Option types ───────────────────────────────────────────────────
 
@@ -189,13 +193,9 @@ export interface RemoteConfigStepVisibility {
   commands?: boolean;
 }
 
-// Base interface for operation configs (shared by copy, sync, move)
-interface BaseOperationConfig {
+// Shared fields for all rclone operations
+interface RcloneBaseConfig {
   autoStart: boolean;
-  cronEnabled?: boolean;
-  source: string;
-  dest: string;
-  cronExpression?: string | null;
   options?: any;
   name?: string;
   filterProfile?: string;
@@ -204,24 +204,32 @@ interface BaseOperationConfig {
   [key: string]: any;
 }
 
-export interface MountConfig {
-  autoStart: boolean;
-  dest: string;
-  source: string;
-  type: string;
-  options?: any;
-  vfsProfile?: string;
-  filterProfile?: string;
-  backendProfile?: string;
-  runtimeRemoteProfile?: string;
-  [key: string]: any;
+// For operations that support multiple sources (Sync, Copy, Move)
+export interface MultiSourceConfig extends RcloneBaseConfig {
+  cronEnabled?: boolean;
+  cronExpression?: string | null;
+  source?: string[];
+  dest?: string;
 }
 
-export interface CopyConfig extends BaseOperationConfig {
+// For operations that are strictly 1:1 (Mount, Bisync)
+export interface SingleSourceConfig extends RcloneBaseConfig {
+  cronEnabled?: boolean;
+  cronExpression?: string | null;
+  source?: string;
+  dest?: string;
+}
+
+export interface MountConfig extends SingleSourceConfig {
+  type: string;
+  vfsProfile?: string;
+}
+
+export interface CopyConfig extends MultiSourceConfig {
   createEmptySrcDirs?: boolean;
 }
 
-export interface SyncConfig extends BaseOperationConfig {
+export interface SyncConfig extends MultiSourceConfig {
   createEmptySrcDirs?: boolean;
 }
 
@@ -240,16 +248,12 @@ export interface BackendConfig {
   [key: string]: any;
 }
 
-export interface MoveConfig extends BaseOperationConfig {
+export interface MoveConfig extends MultiSourceConfig {
   createEmptySrcDirs?: boolean;
   deleteEmptySrcDirs?: boolean;
 }
 
-export interface BisyncConfig {
-  autoStart: boolean;
-  cronEnabled?: boolean;
-  source: string;
-  dest: string;
+export interface BisyncConfig extends SingleSourceConfig {
   dryRun?: boolean;
   resync?: boolean;
   checkAccess?: boolean;
@@ -266,13 +270,6 @@ export interface BisyncConfig {
   backupdir1?: string;
   backupdir2?: string;
   noCleanup?: boolean;
-  cronExpression?: string | null;
-  options?: any;
-  name?: string;
-  filterProfile?: string;
-  backendProfile?: string;
-  runtimeRemoteProfile?: string;
-  [key: string]: any;
 }
 
 export interface RuntimeRemoteConfig {
@@ -280,18 +277,9 @@ export interface RuntimeRemoteConfig {
   [key: string]: any;
 }
 
-export interface ServeConfig {
-  autoStart: boolean;
+export interface ServeConfig extends SingleSourceConfig {
   type: string;
-  source: string; // or object, but usually string in the config object
-  options?: any;
-
-  name?: string;
   vfsProfile?: string;
-  filterProfile?: string;
-  backendProfile?: string;
-  runtimeRemoteProfile?: string;
-  [key: string]: any;
 }
 
 // A single remote's settings broken into sections used by the UI
@@ -371,9 +359,15 @@ export interface Entry {
 }
 
 export interface LocalDrive {
-  name: string; // "C:" or "/" or "/home/user"
-  label: string; // "Local Disk" or "File System"
+  id: string;
+  name: string; // The path used for rclone
+  label: string;
   show_name: boolean;
+  total_space: number;
+  available_space: number;
+  file_system: string;
+  is_removable: boolean;
+  mount_point: string;
 }
 
 export interface ExplorerRoot {
@@ -382,4 +376,8 @@ export interface ExplorerRoot {
   type: string; // Icon name
   isLocal: boolean;
   showName?: boolean;
+  totalSpace?: number;
+  availableSpace?: number;
+  fileSystem?: string;
+  isRemovable?: boolean;
 }

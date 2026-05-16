@@ -34,7 +34,6 @@ import {
   VfsService,
   VfsStats,
 } from 'src/app/services/operations/vfs.service';
-import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import {
@@ -89,7 +88,6 @@ export class VfsControlPanelComponent {
   private readonly vfsService = inject(VfsService);
   private readonly notification = inject(NotificationService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly pathSelectionService = inject(PathSelectionService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);

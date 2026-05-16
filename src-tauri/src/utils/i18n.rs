@@ -9,10 +9,11 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use tauri::{AppHandle, Emitter};
 
 /// Directory where backend translation files are stored (relative to executable)
 const I18N_DIR: &str = "i18n";
-const DEFAULT_LANG: &str = "en-US";
+pub const DEFAULT_LANG: &str = "en-US";
 
 /// Global translations state
 static TRANSLATIONS: Lazy<Translations> = Lazy::new(Translations::new);
@@ -35,10 +36,13 @@ impl Translations {
     /// Initialize the translations with the base path to the i18n directory
     fn init(&self, resource_dir: PathBuf) {
         let i18n_path = resource_dir.join(I18N_DIR);
-        if let Ok(mut path) = self.base_path.write() {
-            *path = Some(i18n_path.clone());
+        match self.base_path.write() {
+            Ok(mut path) => {
+                *path = Some(i18n_path.clone());
+            }
+            Err(_) => log::error!("❌ i18n base_path lock poisoned in init"),
         }
-        log::info!("🌐 Backend i18n initialized with path: {:?}", i18n_path);
+        log::info!("🌐 Backend i18n initialized with path: {i18n_path:?}");
 
         // Pre-load default language
         self.load_language(DEFAULT_LANG);
@@ -46,7 +50,13 @@ impl Translations {
 
     /// Load a language directory into the cache
     fn load_language(&self, lang: &str) -> bool {
-        let base_path = self.base_path.read().ok().and_then(|p| p.clone());
+        let base_path = match self.base_path.read() {
+            Ok(p) => p.clone(),
+            Err(_) => {
+                log::error!("❌ i18n base_path lock poisoned in load_language");
+                None
+            }
+        };
 
         if let Some(path) = base_path {
             let lang_dir = path.join(lang);
@@ -63,29 +73,34 @@ impl Translations {
                                         merged_translations.extend(map);
                                     }
                                     Ok(_) => {
-                                        log::warn!("Skipping non-object JSON file: {:?}", path);
+                                        log::warn!("Skipping non-object JSON file: {path:?}");
                                     }
                                     Err(e) => {
-                                        log::warn!("Failed to parse {:?}: {}", path, e);
+                                        log::warn!("Failed to parse {path:?}: {e}");
                                     }
                                 },
                                 Err(e) => {
-                                    log::warn!("Failed to read {:?}: {}", path, e);
+                                    log::warn!("Failed to read {path:?}: {e}");
                                 }
                             }
                         }
                     }
                 }
             } else {
-                log::warn!("Language directory not found: {:?}", lang_dir);
+                log::warn!("Language directory not found: {lang_dir:?}");
             }
 
-            if !merged_translations.is_empty()
-                && let Ok(mut cache) = self.cache.write()
-            {
-                cache.insert(lang.to_string(), Value::Object(merged_translations));
-                log::info!("🌐 Loaded translations for: {}", lang);
-                return true;
+            if !merged_translations.is_empty() {
+                match self.cache.write() {
+                    Ok(mut cache) => {
+                        cache.insert(lang.to_string(), Value::Object(merged_translations));
+                        log::info!("🌐 Loaded translations for: {lang}");
+                        return true;
+                    }
+                    Err(_) => {
+                        log::error!("❌ i18n cache lock poisoned in load_language for {lang}");
+                    }
+                }
             }
         } else {
             log::warn!("i18n base path not initialized yet");
@@ -95,60 +110,77 @@ impl Translations {
 
     fn get_dict(&self, lang: &str) -> Option<Value> {
         // Try to get from cache
-        if let Ok(cache) = self.cache.read()
-            && let Some(dict) = cache.get(lang)
-        {
-            return Some(dict.clone());
+        match self.cache.read() {
+            Ok(cache) => {
+                if let Some(dict) = cache.get(lang) {
+                    return Some(dict.clone());
+                }
+            }
+            Err(_) => log::error!("❌ i18n cache lock poisoned in get_dict (initial read)"),
         }
 
         // Not in cache, try to load
-        if self.load_language(lang)
-            && let Ok(cache) = self.cache.read()
-        {
-            return cache.get(lang).cloned();
+        if self.load_language(lang) {
+            match self.cache.read() {
+                Ok(cache) => {
+                    return cache.get(lang).cloned();
+                }
+                Err(_) => log::error!("❌ i18n cache lock poisoned in get_dict (read after load)"),
+            }
         }
 
         // Fallback to default language
-        if lang != DEFAULT_LANG
-            && let Ok(cache) = self.cache.read()
-        {
-            return cache.get(DEFAULT_LANG).cloned();
+        if lang != DEFAULT_LANG {
+            match self.cache.read() {
+                Ok(cache) => {
+                    return cache.get(DEFAULT_LANG).cloned();
+                }
+                Err(_) => {
+                    log::error!("❌ i18n cache lock poisoned in get_dict (fallback read)");
+                }
+            }
         }
 
         None
     }
 
     fn resolve(&self, key: &str) -> String {
-        let lang = self
-            .current_lang
-            .read()
-            .map(|l| l.clone())
-            .unwrap_or_else(|_| DEFAULT_LANG.to_string());
+        let lang = match self.current_lang.read() {
+            Ok(l) => l.clone(),
+            Err(_) => {
+                log::error!("❌ i18n current_lang lock poisoned in resolve");
+                DEFAULT_LANG.to_string()
+            }
+        };
 
-        let dict = match self.get_dict(&lang) {
+        let cache = match self.cache.read() {
+            Ok(c) => c,
+            Err(_) => {
+                log::error!("❌ i18n cache lock poisoned in resolve");
+                return key.to_string();
+            }
+        };
+
+        let dict = match cache.get(&lang).or_else(|| cache.get(DEFAULT_LANG)) {
             Some(d) => d,
             None => return key.to_string(),
         };
 
-        // Navigate nested keys like "tray.showApp"
-        let mut current = &dict;
+        let mut current = dict;
         for part in key.split('.') {
             match current.get(part) {
                 Some(v) => current = v,
-                None => return key.to_string(), // Fallback to key
+                None => return key.to_string(),
             }
         }
 
-        match current.as_str() {
-            Some(s) => s.to_string(),
-            None => key.to_string(),
-        }
+        current.as_str().unwrap_or(key).to_string()
     }
 
     fn resolve_with_params(&self, key: &str, params: &[(&str, &str)]) -> String {
         let mut result = self.resolve(key);
         for (param_key, param_value) in params {
-            let placeholder = format!("{{{{{}}}}}", param_key);
+            let placeholder = format!("{{{{{param_key}}}}}");
             result = result.replace(&placeholder, param_value);
         }
         result
@@ -163,12 +195,40 @@ pub fn init(resource_dir: PathBuf) {
 
 /// Set the current language for backend translations
 pub fn set_language(lang: &str) {
-    if let Ok(mut current) = TRANSLATIONS.current_lang.write() {
-        *current = lang.to_string();
-        log::info!("🌐 Backend language set to: {}", lang);
+    match TRANSLATIONS.current_lang.write() {
+        Ok(mut current) => {
+            *current = lang.to_string();
+            log::info!("🌐 Backend language set to: {lang}");
+        }
+        Err(_) => log::error!("❌ i18n current_lang lock poisoned in set_language"),
     }
     // Pre-load the language if not cached
     TRANSLATIONS.load_language(lang);
+}
+
+/// Apply a language change across the application (backend, frontend event, and tray)
+pub fn apply_language_change(app: &AppHandle, lang: &str) {
+    log::debug!("🌐 Applying language change to: {lang}");
+    set_language(lang);
+
+    // Notify frontend
+    if let Err(e) = app.emit(
+        crate::utils::types::events::APP_EVENT,
+        serde_json::json!({ "status": "language_changed", "language": lang }),
+    ) {
+        log::error!("Failed to emit language change event: {e}");
+    }
+
+    // Update tray menu
+    #[cfg(feature = "tray")]
+    {
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app_handle).await {
+                log::error!("Failed to update tray menu: {e}");
+            }
+        });
+    }
 }
 
 /// Translate a key to the current language
@@ -275,5 +335,30 @@ mod tests {
         // Without init, should fall back to key
         let result = t!("nonexistent.key");
         assert_eq!(result, "nonexistent.key");
+    }
+
+    #[test]
+    fn test_nested_resolution() {
+        use serde_json::json;
+        let mut cache = super::TRANSLATIONS.cache.write().unwrap();
+        cache.insert(
+            super::DEFAULT_LANG.to_string(),
+            json!({
+                "tray": {
+                    "showApp": "Show Application",
+                    "nested": {
+                        "key": "Value"
+                    }
+                }
+            }),
+        );
+        drop(cache);
+
+        assert_eq!(super::t("tray.showApp"), "Show Application");
+        assert_eq!(super::t("tray.nested.key"), "Value");
+        assert_eq!(super::t("tray.nonexistent"), "tray.nonexistent");
+
+        // Cleanup
+        super::TRANSLATIONS.cache.write().unwrap().clear();
     }
 }

@@ -69,24 +69,40 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--space-xs);
+      gap: var(--space-sm);
 
-      .job-name {
+      .job-content {
         flex: 1;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--window-fg-color);
-        white-space: nowrap;
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
-        text-overflow: ellipsis;
+
+        .job-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--window-fg-color);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .job-subname {
+          font-size: 11px;
+          color: var(--dim-color);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-top: -2px;
+        }
       }
 
       .job-type-icon {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        font-size: var(--icon-size-xs);
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
         flex-shrink: 0;
         color: var(--dim-color);
+        margin-top: 2px;
       }
 
       .action-btn {
@@ -96,6 +112,7 @@
         flex-shrink: 0;
         opacity: 0.4;
         transition: opacity 0.15s ease;
+        margin-top: 2px;
 
         &:hover {
           opacity: 1;

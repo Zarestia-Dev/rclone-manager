@@ -56,6 +56,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
 }
 
 /// Check if a process with the given PID is still running
+#[must_use]
 pub fn is_process_alive(pid: u32) -> bool {
     #[cfg(unix)]
     unsafe {

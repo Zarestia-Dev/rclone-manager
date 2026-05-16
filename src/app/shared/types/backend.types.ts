@@ -1,6 +1,12 @@
 // Backend management types
 // These match the Rust backend types for type safety
 
+export type RuntimeStatus =
+  | { type: 'unknown' }
+  | { type: 'connected' }
+  | { type: 'inactive' }
+  | { type: 'error'; message: string };
+
 export interface BackendInfo {
   name: string;
   isLocal: boolean;
@@ -15,7 +21,7 @@ export interface BackendInfo {
   password?: string;
   version?: string;
   os?: string;
-  status?: string;
+  status?: RuntimeStatus;
   configPath?: string;
   /** Actual config path being used by rclone (fetched at runtime) */
   runtimeConfigPath?: string;
@@ -51,7 +57,7 @@ export interface SettingOption {
 }
 
 export interface BackendSettingMetadata {
-  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list';
+  setting_type: 'toggle' | 'text' | 'number' | 'select' | 'info' | 'list' | 'object';
   default: unknown;
   value?: unknown;
   constraints: {

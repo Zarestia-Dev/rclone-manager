@@ -19,7 +19,7 @@ interface RepairDetailItem {
 })
 export class RepairService extends TauriBaseService {
   private readonly repairUi = {
-    rclone_path: {
+    rclone_binary: {
       titleKey: 'repairSheet.titles.missingRclone',
       messageKey: 'repairSheet.messages.missingRclone',
       progressKey: 'repairSheet.progress.installingRclone',
@@ -162,7 +162,7 @@ export class RepairService extends TauriBaseService {
    */
   async executeRepair(repairData: RepairData): Promise<string | void> {
     switch (repairData.type) {
-      case 'rclone_path':
+      case 'rclone_binary':
         return this.repairRclonePath();
       case 'mount_plugin':
         return this.repairMountPlugin();

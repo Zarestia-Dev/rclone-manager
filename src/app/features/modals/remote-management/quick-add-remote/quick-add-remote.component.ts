@@ -10,13 +10,14 @@ import {
   FormBuilder,
   FormControl,
   FormGroup,
+  FormArray,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { fromEvent, merge, startWith } from 'rxjs';
+import { fromEvent, merge, startWith, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -34,7 +35,9 @@ import {
   ModalService,
   ValidatorRegistryService,
   IconService,
+  PathService,
 } from '@app/services';
+import { CopyToClipboardDirective } from '@app/directives';
 import {
   RemoteType,
   RemoteConfigSections,
@@ -50,7 +53,6 @@ import {
   INITIAL_COMMAND_OPTIONS,
 } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import {
-  buildPathString,
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   isInteractiveContinueDisabled,
@@ -60,7 +62,7 @@ import {
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
-type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
+type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -76,6 +78,7 @@ type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move';
     OperationConfigComponent,
     TranslateModule,
     MatTooltipModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -95,6 +98,7 @@ export class QuickAddRemoteComponent {
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
   private readonly modalService = inject(ModalService);
+  private readonly pathService = inject(PathService);
 
   readonly operationTabs = [
     {
@@ -121,6 +125,11 @@ export class QuickAddRemoteComponent {
       type: 'move' as OperationType,
       label: 'modals.quickAdd.operations.move.label',
       description: 'modals.quickAdd.operations.move.description',
+    },
+    {
+      type: 'serve' as OperationType,
+      label: 'modals.quickAdd.operations.serve.label',
+      description: 'modals.quickAdd.operations.serve.description',
     },
   ] as const;
 
@@ -252,9 +261,9 @@ export class QuickAddRemoteComponent {
     defaultType: 'local' | 'currentRemote' | 'otherRemote'
   ): FormGroup {
     return this.fb.group({
-      pathType: new FormControl(defaultType),
+      type: new FormControl(defaultType),
       path: new FormControl(''),
-      otherRemoteName: new FormControl(''),
+      remote: new FormControl(''),
     });
   }
 
@@ -263,13 +272,43 @@ export class QuickAddRemoteComponent {
       return this.fb.group({
         autoStart: new FormControl(false),
         source: this.createOperationPathGroup('currentRemote'),
-        dest: new FormControl(''),
+        dest: this.createOperationPathGroup('local'),
       });
     }
-    return this.fb.group({
+
+    if (opType === 'serve') {
+      return this.fb.group({
+        autoStart: new FormControl(false),
+        source: this.createOperationPathGroup('currentRemote'),
+      });
+    }
+
+    const baseGroup = {
       autoStart: new FormControl(false),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(''),
+    };
+
+    if (opType === 'bisync') {
+      return this.fb.group({
+        ...baseGroup,
+        source: this.createOperationPathGroup('currentRemote'),
+        dest: this.createOperationPathGroup('local'),
+      });
+    }
+
+    // Sync, Copy, Move: Multiple sources, single destination
+    if (opType === 'sync' || opType === 'copy' || opType === 'move') {
+      return this.fb.group({
+        ...baseGroup,
+        source: this.fb.array([this.createOperationPathGroup('currentRemote')]),
+        dest: this.createOperationPathGroup('local'),
+      });
+    }
+
+    // Fallback (should not be reached if all types handled above)
+    return this.fb.group({
+      ...baseGroup,
       source: this.createOperationPathGroup('currentRemote'),
       dest: this.createOperationPathGroup('local'),
     });
@@ -321,21 +360,31 @@ export class QuickAddRemoteComponent {
             destControl?.updateValueAndValidity();
           });
       } else if (QuickAddRemoteComponent.SOURCE_DEST_OP_TYPES.has(opName)) {
-        const sourcePathControl = opGroup.get('source.path');
-        const destPathControl = opGroup.get('dest.path');
+        const getGroup = (path: string) => {
+          const ctrl = opGroup.get(path);
+          if (ctrl instanceof FormGroup) return ctrl;
+          if (ctrl instanceof FormArray && ctrl.length > 0) return ctrl.at(0) as FormGroup;
+          return null;
+        };
 
-        sourcePathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
-        destPathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
+        const sourceG = getGroup('source');
+        const destG = getGroup('dest');
 
-        merge(
-          opGroup.get('autoStart')!.valueChanges,
-          opGroup.get('source.pathType')!.valueChanges,
-          opGroup.get('dest.pathType')!.valueChanges
-        )
+        const sourcePath = sourceG?.get('path');
+        const destPath = destG?.get('path');
+
+        sourcePath?.setValidators(this.validatorRegistry.requiredIfLocal());
+        destPath?.setValidators(this.validatorRegistry.requiredIfLocal());
+
+        const watch$: Observable<any>[] = [opGroup.get('autoStart')!.valueChanges];
+        if (sourceG) watch$.push(sourceG.get('type')!.valueChanges);
+        if (destG) watch$.push(destG.get('type')!.valueChanges);
+
+        merge(...watch$)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe(() => {
-            sourcePathControl?.updateValueAndValidity();
-            destPathControl?.updateValueAndValidity();
+            sourcePath?.updateValueAndValidity();
+            destPath?.updateValueAndValidity();
           });
       }
     }
@@ -365,11 +414,25 @@ export class QuickAddRemoteComponent {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (!selectedPath) return;
 
-      const controlPath =
-        opName === 'mount' && pathType === 'dest'
-          ? 'operations.mount.dest'
-          : `operations.${opName}.${pathType}.path`;
-      this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
+      const getControlPath = () => {
+        if (opName === 'mount' && pathType === 'dest') return 'operations.mount.dest.path';
+
+        const opGroup = this.quickAddForm.get(`operations.${opName}`);
+        if (!opGroup) return null;
+
+        const ctrl = opGroup.get(pathType);
+        if (ctrl instanceof FormGroup) {
+          return `operations.${opName}.${pathType}.path`;
+        } else if (ctrl instanceof FormArray && ctrl.length > 0) {
+          return `operations.${opName}.${pathType}.0.path`;
+        }
+        return null;
+      };
+
+      const controlPath = getControlPath();
+      if (controlPath) {
+        this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
+      }
     } catch (error) {
       console.error('Error selecting folder:', error);
     }
@@ -425,30 +488,64 @@ export class QuickAddRemoteComponent {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createBaseOpConfig = (op: any) => ({
-      source: buildPathString(op.source, remoteName),
-      dest: buildPathString(op.dest, remoteName),
-      autoStart: op.autoStart ?? false,
-      cronEnabled: op.cronEnabled ?? false,
-      cronExpression: op.cronExpression ?? null,
-      filterProfile: DEFAULT_PROFILE_NAME,
-      backendProfile: DEFAULT_PROFILE_NAME,
-    });
+    const createBaseOpConfig = (op: any, isMultiSource = false) => {
+      const config: any = {
+        autoStart: op.autoStart ?? false,
+        cronEnabled: op.cronEnabled ?? false,
+        cronExpression: op.cronExpression ?? null,
+        filterProfile: DEFAULT_PROFILE_NAME,
+        backendProfile: DEFAULT_PROFILE_NAME,
+      };
+
+      const getPathValue = (p: any) => {
+        if (!p) return null;
+        return typeof p === 'string' ? p : this.pathService.buildPathString(p, remoteName);
+      };
+
+      // Handle singular or plural
+      if (op.source) {
+        if (isMultiSource) {
+          config.source = this.pathService.buildPathStrings(op.source, remoteName);
+        } else {
+          const first = Array.isArray(op.source) ? op.source[0] : op.source;
+          config.source = getPathValue(first);
+        }
+      }
+
+      if (op.dest) {
+        config.dest = getPathValue(op.dest);
+      }
+
+      return config;
+    };
 
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...createBaseOpConfig(operations.mount),
+          ...createBaseOpConfig(operations.mount, false),
           type: 'mount',
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
-      [REMOTE_CONFIG_KEYS.copy]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy) },
-      [REMOTE_CONFIG_KEYS.sync]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync) },
-      [REMOTE_CONFIG_KEYS.bisync]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync),
+      [REMOTE_CONFIG_KEYS.copy]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy, true),
       },
-      [REMOTE_CONFIG_KEYS.move]: { [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move) },
+      [REMOTE_CONFIG_KEYS.sync]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync, true),
+      },
+      [REMOTE_CONFIG_KEYS.bisync]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync, false),
+      },
+      [REMOTE_CONFIG_KEYS.move]: {
+        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move, true),
+      },
+      [REMOTE_CONFIG_KEYS.serve]: {
+        [DEFAULT_PROFILE_NAME]: {
+          ...createBaseOpConfig(operations.serve, false),
+          type: 'http', // Default to HTTP serve type
+          vfsProfile: DEFAULT_PROFILE_NAME,
+        },
+      },
       [REMOTE_CONFIG_KEYS.filter]: { [DEFAULT_PROFILE_NAME]: {} },
       [REMOTE_CONFIG_KEYS.vfs]: {
         [DEFAULT_PROFILE_NAME]: {
@@ -559,29 +656,49 @@ export class QuickAddRemoteComponent {
   ): Promise<void> {
     const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui');
+      void this.mountManagementService.mountRemoteProfile(
+        remoteName,
+        DEFAULT_PROFILE_NAME,
+        'dashboard'
+      );
     }
 
     const jobOps = [
       {
         key: REMOTE_CONFIG_KEYS.copy,
         start: (): Promise<number> =>
-          this.jobManagementService.startCopyProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startProfileBatch('Copy', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.sync,
         start: (): Promise<number> =>
-          this.jobManagementService.startSyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startProfileBatch('Sync', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.bisync,
         start: (): Promise<number> =>
-          this.jobManagementService.startBisyncProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startProfileBatch('Bisync', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
       {
         key: REMOTE_CONFIG_KEYS.move,
         start: (): Promise<number> =>
-          this.jobManagementService.startMoveProfile(remoteName, DEFAULT_PROFILE_NAME, 'ui'),
+          this.jobManagementService.startProfileBatch('Move', {
+            remoteName: remoteName,
+            profileName: DEFAULT_PROFILE_NAME,
+            source: 'dashboard',
+          }),
       },
     ] as const;
 
@@ -597,10 +714,6 @@ export class QuickAddRemoteComponent {
     await this.authStateService.cancelAuth();
     this.currentStep.set('operations');
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
-  }
-
-  async copyOAuthUrl(): Promise<void> {
-    await this.authStateService.copyOAuthUrl();
   }
 
   close(): void {

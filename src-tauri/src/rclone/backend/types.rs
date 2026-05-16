@@ -2,6 +2,9 @@
 //
 // Simplified flat structure - no nested types.
 
+use crate::utils::rclone::endpoints::core;
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 fn default_oauth_port() -> u16 {
@@ -67,7 +70,7 @@ pub struct Backend {
 
     /// Config file path (for remote backends mostly) - optional
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
 }
 
 impl Default for Backend {
@@ -237,17 +240,18 @@ impl Backend {
         timeout: std::time::Duration,
     ) -> crate::rclone::backend::runtime::RuntimeInfo {
         use crate::rclone::backend::runtime::RuntimeInfo;
-        use crate::rclone::queries::system::{fetch_config_path, fetch_version_info};
+        use crate::rclone::queries::system::fetch_version_info;
 
         let mut info = RuntimeInfo::new();
 
         match tokio::time::timeout(timeout, fetch_version_info(self, client)).await {
             Ok(Ok(version_data)) => {
                 log::debug!("Fetched version info for backend: {}", self.name);
-                info.version = Some(version_data.version);
-                info.os = Some(version_data.os);
-                info.arch = Some(version_data.arch);
-                info.go_version = Some(version_data.go_version);
+                info.version = Some(version_data.version.clone());
+                info.os = Some(version_data.os.clone());
+                info.arch = Some(version_data.arch.clone());
+                info.go_version = Some(version_data.go_version.clone());
+                info.core_version = Some(version_data);
             }
             Ok(Err(e)) => {
                 log::warn!("Failed to fetch version for backend {}: {e}", self.name);
@@ -259,8 +263,21 @@ impl Backend {
             }
         }
 
+        // Fetch PID — also critical for some operations but we allow it to be None if it fails
+        match tokio::time::timeout(timeout, self.post_json(client, core::PID, None)).await {
+            Ok(Ok(json)) => {
+                info.pid = json
+                    .get("pid")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|v| v as u32);
+            }
+            _ => {
+                log::debug!("Could not fetch PID for backend {}", self.name);
+            }
+        }
+
         // Config path is non-critical — log and continue on failure.
-        match tokio::time::timeout(timeout, fetch_config_path(self, client)).await {
+        match tokio::time::timeout(timeout, self.fetch_config_path(client)).await {
             Ok(Ok(path)) => {
                 log::debug!("Fetched config path for backend: {}", self.name);
                 info.config_path = Some(path);
@@ -279,7 +296,7 @@ impl Backend {
             }
         }
 
-        info.set_status("connected");
+        info.set_status(crate::rclone::backend::runtime::RuntimeStatus::Connected);
         info
     }
 
@@ -340,6 +357,71 @@ impl Backend {
             .map_err(|e| format!("Failed to fetch remote file: {e}"))
     }
 
+    /// Fetch a file's content using the `core/command` endpoint with `cat`.
+    ///
+    /// This is used as a fallback for remote backends where the standard serve
+    /// endpoint might not support local files or specific remote configurations.
+    pub async fn fetch_file_via_cat(
+        &self,
+        client: &reqwest::Client,
+        remote: &str,
+        path: &str,
+        offset: Option<i64>,
+        count: Option<i64>,
+        os: Option<String>,
+    ) -> Result<Vec<u8>, String> {
+        // Construct the full path argument.
+        // If remote is empty or ":", we use it as a local path.
+        let full_path = if remote.is_empty() || remote == ":" {
+            path.to_string()
+        } else {
+            let r_name = if remote.ends_with(':') {
+                remote.to_string()
+            } else {
+                format!("{remote}:")
+            };
+            // Ensure path doesn't have double slashes if it starts with one
+            let separator = if path.starts_with('/') { "" } else { "/" };
+            format!("{}{}{}", r_name, separator, path)
+        };
+
+        let mut args = vec![full_path];
+        if let Some(o) = offset {
+            args.push(format!("--offset={}", o));
+        }
+        if let Some(c) = count {
+            args.push(format!("--count={}", c));
+        }
+
+        let payload = self.build_core_command_payload("cat", args, false, os);
+        let response = self
+            .post_json(client, core::COMMAND, Some(&payload))
+            .await?;
+
+        // Check if the command itself reported an error (rclone core/command returns {error: true, result: "..."})
+        if response
+            .get("error")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            let err_msg = response
+                .get("result")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown rclone error");
+            return Err(err_msg.to_string());
+        }
+
+        let result = response
+            .get("result")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "No result in cat response".to_string())?;
+
+        // Note: rclone returns the output as a string. If it's binary data,
+        // it might be escaped or potentially corrupted if not valid UTF-8,
+        // but for 'cat' it's the best we can do via RC without a serve endpoint.
+        Ok(result.as_bytes().to_vec())
+    }
+
     /// Helper for POST requests expecting a JSON response.
     pub async fn post_json(
         &self,
@@ -356,6 +438,70 @@ impl Backend {
             .await
             .map_err(|e| format!("Failed to parse response: {e}"))
     }
+
+    /// Internal helper to fetch the config path from this backend's RC API.
+    async fn fetch_config_path(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
+        use crate::utils::rclone::endpoints::config;
+        let paths = self
+            .post_json(client, config::PATHS, Some(&serde_json::json!({})))
+            .await?;
+
+        let config_path = paths
+            .get("config")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "No config path in response".to_string())?;
+
+        Ok(PathBuf::from(config_path))
+    }
+
+    /// Build a payload for the `core/command` RC endpoint.
+    ///
+    /// This automatically:
+    /// 1. Disables interactive password prompts (`--ask-password=false`).
+    /// 2. Injects the configuration password via `--password-command` if available.
+    pub fn build_core_command_payload(
+        &self,
+        command: &str,
+        mut args: Vec<String>,
+        async_job: bool,
+        os: Option<String>,
+    ) -> serde_json::Value {
+        args.push("--ask-password=false".to_string());
+
+        // Handle password command
+        if let Some(pass) = &self.config_password {
+            let is_windows = os
+                .as_ref()
+                .is_some_and(|os| os.to_lowercase().contains("windows"));
+
+            if is_windows {
+                let escaped_pass = pass
+                    .replace('^', "^^")
+                    .replace('&', "^&")
+                    .replace('|', "^|")
+                    .replace('<', "^<")
+                    .replace('>', "^>");
+                args.push(format!("--password-command=cmd /C echo {}", escaped_pass));
+            } else {
+                let escaped_pass = pass.replace('\'', "'\\''");
+                args.push(format!(
+                    "--password-command=sh -c \"printf '%s' '{}'\"",
+                    escaped_pass
+                ));
+            }
+        }
+
+        let mut payload = serde_json::json!({
+            "command": command,
+            "arg": args,
+        });
+
+        if async_job && let Some(obj) = payload.as_object_mut() {
+            obj.insert("_async".to_string(), serde_json::json!(true));
+        }
+
+        payload
+    }
 }
 
 /// Frontend-friendly backend info (for list display)
@@ -370,7 +516,7 @@ pub struct BackendInfo {
     pub has_auth: bool,
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: u16,
     pub oauth_host: String,
     // Include auth fields for edit form
@@ -383,12 +529,12 @@ pub struct BackendInfo {
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os: Option<String>,
-    /// Connection status: "connected", "error:message", or empty
+    /// Connection status
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<crate::rclone::backend::runtime::RuntimeStatus>,
     /// Actual config path being used by rclone (fetched at runtime)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub runtime_config_path: Option<String>,
+    pub runtime_config_path: Option<PathBuf>,
 }
 
 impl BackendInfo {
@@ -413,13 +559,13 @@ impl BackendInfo {
         }
     }
 
-    /// Merge runtime info (version, os, status, runtime_config_path) into BackendInfo
+    /// Merge runtime info (version, os, status, `runtime_config_path`) into `BackendInfo`
     pub fn with_runtime_info(
         mut self,
         version: Option<String>,
         os: Option<String>,
-        status: Option<String>,
-        runtime_config_path: Option<String>,
+        status: Option<crate::rclone::backend::runtime::RuntimeStatus>,
+        runtime_config_path: Option<PathBuf>,
     ) -> Self {
         self.version = version;
         self.os = os;

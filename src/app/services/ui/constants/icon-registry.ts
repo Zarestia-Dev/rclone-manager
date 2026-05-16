@@ -78,7 +78,9 @@ export const BASE_ICONS: Record<string, string> = {
   broom: 'assets/icons/actions/broom.svg',
   'floppy-disk': 'assets/icons/actions/floppy-disk.svg',
   compress: 'assets/icons/actions/compress.svg',
+  unarchive: 'assets/icons/actions/unarchive.svg',
   detailed: 'assets/icons/actions/detailed.svg',
+  'drag-indicator': 'assets/icons/actions/drag-indicator.svg',
 
   // ------------------- Device Icons -------------------
   'hard-drive': 'assets/icons/devices/hard-drive.svg',
@@ -97,6 +99,9 @@ export const BASE_ICONS: Record<string, string> = {
 
   // ------------------- General Icons -------------------
   home: 'assets/icons/general/home.svg',
+  bell: 'assets/icons/general/bell.svg',
+  'check-list': 'assets/icons/general/check-list.svg',
+  'done-all': 'assets/icons/general/done-all.svg',
   gear: 'assets/icons/general/gear.svg',
   tune: 'assets/icons/general/tune.svg',
   info: 'assets/icons/general/info.svg',
@@ -106,6 +111,12 @@ export const BASE_ICONS: Record<string, string> = {
   jobs: 'assets/icons/general/jobs.svg',
   terminal: 'assets/icons/general/terminal.svg',
   wrench: 'assets/icons/general/wrench.svg',
+  settings: 'assets/icons/general/gear.svg',
+  desktop: 'assets/icons/general/desktop.svg',
+  telegram: 'assets/icons/general/telegram.svg',
+  message: 'assets/icons/general/message.svg',
+  envelope: 'assets/icons/general/envelope.svg',
+  link: 'assets/icons/general/link.svg',
   list: 'assets/icons/general/list.svg',
   grid: 'assets/icons/general/grid.svg',
   comment: 'assets/icons/general/comment.svg',
@@ -165,4 +176,6 @@ export const BASE_ICONS: Record<string, string> = {
   swift: 'assets/icons/remotes/swift.svg',
   crypt: 'assets/icons/remotes/crypt.svg',
   sharefile: 'assets/icons/remotes/sharefile.svg',
+  discord: 'assets/icons/remotes/discord.svg',
+  slack: 'assets/icons/remotes/slack.svg',
 };

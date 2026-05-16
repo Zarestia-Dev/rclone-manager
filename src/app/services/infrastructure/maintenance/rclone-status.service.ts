@@ -1,8 +1,8 @@
-import { computed, inject, Injectable, signal, DestroyRef } from '@angular/core';
+import { computed, inject, Injectable, signal, DestroyRef, effect } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DOCUMENT } from '@angular/common';
 import { fromEvent, from } from 'rxjs';
-import { filter, switchMap } from 'rxjs/operators';
+import { filter, switchMap, tap } from 'rxjs/operators';
 import { SystemInfoService } from '../system/system-info.service';
 import { BackendService } from '../system/backend.service';
 import { EventListenersService } from '../system/event-listeners.service';
@@ -13,18 +13,14 @@ import {
   MemoryStats,
   RcloneStatus,
   RcloneInfo,
+  SystemStatusPayload,
 } from '@app/types';
-
-const NORMAL_POLL_INTERVAL = 1000;
-const ERROR_POLL_INTERVAL = 5000;
-const PAUSED_CHECK_INTERVAL = 2000;
 
 @Injectable({ providedIn: 'root' })
 export class RcloneStatusService {
   private systemInfoService = inject(SystemInfoService);
   private backendService = inject(BackendService);
   private eventListenersService = inject(EventListenersService);
-  // private rcloneUpdateService = inject(RcloneUpdateService);
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
@@ -36,131 +32,130 @@ export class RcloneStatusService {
   readonly rclonePID = signal<number | null>(null);
   readonly jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
   readonly memoryUsage = signal<MemoryStats | null>(null);
-  readonly isLoading = signal(false);
+  readonly isLoading = signal(true);
   readonly uptime = computed(() => this.jobStats().elapsedTime || 0);
 
   private isManuallyPaused = signal(false);
   private isVisible = signal(!this.document.hidden);
-  private pollingTimerId?: ReturnType<typeof setTimeout>;
 
   readonly isPollingActive = computed(() => {
     return !this.isManuallyPaused() && this.isVisible();
   });
 
   constructor() {
-    this.setupListeners();
-    this.triggerNextPoll(0);
-    this.destroyRef.onDestroy(() => clearTimeout(this.pollingTimerId));
+    this.setupReconciliationTriggers();
+    this.setupPollingControl();
+    this.setupStatusListeners();
+    void this.refreshStatus();
   }
 
-  private setupListeners(): void {
+  async refreshStatus(): Promise<void> {
+    await this.hydrateSystemStatus();
+  }
+
+  private setupPollingControl(): void {
+    effect(() => {
+      const active = this.isPollingActive();
+      void this.systemInfoService.setPollerVisibility(active);
+    });
+  }
+
+  private setupStatusListeners(): void {
     toObservable(this.backendService.activeBackend)
       .pipe(
         filter(Boolean),
-        switchMap(() => from(this.loadBandwidthLimit())),
+        filter(() => !this.isLoading()),
+        tap(() => {
+          this.isLoading.set(true);
+          this.rcloneStatus.set('inactive');
+          this.rcloneInfo.set(null);
+          this.rclonePID.set(null);
+        }),
+        switchMap(() => from(this.hydrateSystemStatus())),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
 
     this.eventListenersService
       .listenToBandwidthLimitChanged()
-      .pipe(
-        switchMap(() => from(this.loadBandwidthLimit())),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(data => {
+        if (data) {
+          this.bandwidthLimit.set(data as BandwidthLimitResponse);
+        }
+      });
 
     fromEvent(this.document, 'visibilitychange')
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.isVisible.set(!this.document.hidden));
+      .subscribe(() => {
+        const isVisible = !this.document.hidden;
+        this.isVisible.set(isVisible);
+        if (isVisible) {
+          void this.hydrateSystemStatus();
+        }
+      });
 
     this.eventListenersService
-      .listenToEngineRestarted()
+      .listenToSystemStatus()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.triggerNextPoll(0));
+      .subscribe(payload => this.applySystemStatusPayload(payload));
   }
 
-  private triggerNextPoll(delay: number): void {
-    clearTimeout(this.pollingTimerId);
-    this.pollingTimerId = setTimeout(() => this.executePoll(), delay);
-  }
-
-  private async executePoll(): Promise<void> {
-    if (!this.isPollingActive()) {
-      this.triggerNextPoll(PAUSED_CHECK_INTERVAL);
-      return;
-    }
-    await Promise.all([this.checkRcloneStatus(), this.loadSystemStats()]);
-    this.triggerNextPoll(
-      this.rcloneStatus() === 'error' ? ERROR_POLL_INTERVAL : NORMAL_POLL_INTERVAL
-    );
-  }
-
-  private async checkRcloneStatus(): Promise<void> {
-    try {
-      const [rcloneInfo, pid] = await Promise.all([
-        this.systemInfoService.getRcloneInfo(),
-        this.systemInfoService.getRclonePID(),
-      ]);
-      const isActive = !!rcloneInfo;
-      const newStatus: RcloneStatus = isActive ? 'active' : 'inactive';
-      const wasActive = this.rcloneStatus() === 'active';
-
-      this.rcloneStatus.set(newStatus);
-      this.rcloneInfo.set(rcloneInfo);
-      this.rclonePID.set(pid);
-
-      if (!wasActive && newStatus === 'active') void this.loadBandwidthLimit();
-
-      this.backendService.updateActiveBackendStatus(isActive ? 'connected' : 'error', {
-        version: rcloneInfo?.version,
-        os: rcloneInfo?.os,
+  private setupReconciliationTriggers(): void {
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.hydrateSystemStatus();
       });
-    } catch (error) {
-      const wasError = this.rcloneStatus() === 'error';
-      if (!wasError) {
-        console.error('[RcloneStatusService] Failed to check rclone status:', error);
-        void this.loadBandwidthLimit();
-      }
-      this.rcloneStatus.set('error');
-      this.rcloneInfo.set(null);
-      this.rclonePID.set(null);
-      this.backendService.updateActiveBackendStatus('error');
-    }
   }
 
-  private async loadSystemStats(): Promise<void> {
-    const hasData = this.uptime() > 0 || this.memoryUsage() !== null;
-    if (!hasData) this.isLoading.set(true);
-
+  private async hydrateSystemStatus(): Promise<void> {
     try {
-      const [memoryStats, coreStats] = await Promise.all([
-        this.systemInfoService.getMemoryStats().catch(() => null),
-        this.systemInfoService.getStats().catch(() => null),
-      ]);
-      this.jobStats.set(coreStats ?? { ...DEFAULT_JOB_STATS });
-      this.memoryUsage.set(memoryStats);
+      const snapshot = await this.systemInfoService.getSystemStatusSnapshot();
+      this.applySystemStatusPayload(snapshot);
+      await this.loadBandwidthLimit();
     } catch (error) {
-      if (this.rcloneStatus() !== 'error') {
-        console.error('[RcloneStatusService] Error loading system stats:', error);
-      }
-      if (!hasData) this.jobStats.set({ ...DEFAULT_JOB_STATS });
-    } finally {
+      console.error('[RcloneStatusService] Failed to hydrate system status snapshot:', error);
       if (this.isLoading()) this.isLoading.set(false);
     }
   }
 
-  async refresh(): Promise<void> {
-    await Promise.all([
-      this.checkRcloneStatus(),
-      this.loadSystemStats(),
-      this.loadBandwidthLimit(),
-    ]);
+  private applySystemStatusPayload(payload: SystemStatusPayload): void {
+    const newStatus: RcloneStatus = payload.status;
+
+    this.rcloneStatus.set(newStatus);
+    this.rcloneInfo.set(payload.rcloneInfo);
+    this.rclonePID.set(payload.pid);
+
+    if (payload.stats) {
+      const stats = payload.stats;
+      this.jobStats.update(old => ({
+        ...stats,
+        lastError: stats.lastError || old.lastError,
+      }));
+    }
+
+    this.memoryUsage.set(payload.memory);
+
+    this.backendService.updateActiveBackendStatus(
+      newStatus === 'active'
+        ? { type: 'connected' }
+        : newStatus === 'inactive'
+          ? { type: 'inactive' }
+          : { type: 'error', message: 'Engine offline' },
+      {
+        version: payload.rcloneInfo?.version,
+        os: payload.rcloneInfo?.os,
+      }
+    );
+
+    if (this.isLoading()) this.isLoading.set(false);
   }
 
   async loadBandwidthLimit(): Promise<void> {
     try {
-      this.bandwidthLimit.set(await this.systemInfoService.getBandwidthLimit());
+      this.bandwidthLimit.set(await this.systemInfoService.bandwidthLimit());
     } catch (error) {
       if (this.rcloneStatus() !== 'error') {
         console.error('[RcloneStatusService] Failed to load bandwidth limit:', error);
@@ -173,17 +168,6 @@ export class RcloneStatusService {
         loading: false,
         error: `Failed: ${error}`,
       });
-    }
-  }
-
-  async setBandwidthLimit(rate?: string): Promise<BandwidthLimitResponse> {
-    try {
-      const response = await this.systemInfoService.setBandwidthLimit(rate);
-      this.bandwidthLimit.set(response);
-      return response;
-    } catch (error) {
-      console.error('[RcloneStatusService] Failed to set bandwidth limit:', error);
-      throw error;
     }
   }
 

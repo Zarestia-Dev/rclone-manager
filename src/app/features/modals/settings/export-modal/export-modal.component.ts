@@ -39,6 +39,7 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
   connections: 'globe',
   remotes: 'cloud',
   external: 'file-export',
+  alerts: 'bell',
 };
 
 // Maps specific category IDs to their translation key roots
@@ -47,6 +48,7 @@ const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
   backend: 'modals.export.categories.backend',
   connections: 'modals.export.categories.connections',
   remotes: 'modals.export.categories.remotes',
+  alerts: 'modals.export.categories.alerts',
 };
 
 // Maps ExportType string values to option IDs used in the UI
@@ -100,6 +102,7 @@ export class ExportModalComponent implements OnInit {
   readonly isExporting = signal(false);
   readonly userNote = signal('');
   readonly exportOptions = signal<ExportOption[]>([]);
+  readonly includeSecrets = signal(false);
 
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
@@ -164,7 +167,23 @@ export class ExportModalComponent implements OnInit {
       },
     ];
 
+    // Group alerts
+    const hasAlerts = categories.some(c => c.id.startsWith('alerts/'));
+    if (hasAlerts) {
+      const translationRoot = CATEGORY_TRANSLATION_MAP['alerts'];
+      options.push({
+        id: 'alerts',
+        label: translationRoot ? `${translationRoot}.label` : 'Alerts',
+        description: translationRoot ? `${translationRoot}.description` : 'Alert rules and actions',
+        icon: CATEGORY_ICON_MAP['alerts'] || 'bell',
+        categoryType: 'subsettings',
+        isTranslationKey: !!translationRoot,
+      });
+    }
+
     for (const cat of categories) {
+      if (cat.id.startsWith('alerts/')) continue;
+
       const translationRoot = CATEGORY_TRANSLATION_MAP[cat.id];
       const hasTranslation = !!translationRoot;
 
@@ -276,7 +295,8 @@ export class ExportModalComponent implements OnInit {
         this.withPassword() ? this.password().trim() : null,
         selectedId === 'specific_remote' ? this.selectedRemoteName().trim() : '',
         this.userNote().trim() || null,
-        this.selectedProfiles()
+        this.selectedProfiles(),
+        this.includeSecrets()
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -308,6 +328,9 @@ export class ExportModalComponent implements OnInit {
     if (!enabled) {
       this.password.set('');
       this.showPassword.set(false);
+      this.includeSecrets.set(false);
+    } else {
+      this.includeSecrets.set(true);
     }
   }
 

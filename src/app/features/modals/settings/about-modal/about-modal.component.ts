@@ -19,7 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -36,6 +36,7 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
+import { CopyToClipboardDirective } from '@app/directives';
 
 // Configure renderer once at module level
 const renderer = new Renderer();
@@ -76,6 +77,7 @@ export interface OverlayView {
     FormatFileSizePipe,
     TranslateModule,
     NgTemplateOutlet,
+    CopyToClipboardDirective,
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -121,8 +123,9 @@ export class AboutModalComponent implements OnInit {
   readonly appUpdateInProgress = this.appUpdaterService.updateInProgress;
   readonly appUpdateChannel = this.appUpdaterService.updateChannel;
   readonly appSkippedVersions = this.appUpdaterService.skippedVersions;
-  readonly appRestartRequired = this.appUpdaterService.restartRequired;
+  readonly appReadyToRestart = this.appUpdaterService.readyToRestart;
   readonly appDownloadStatus = this.appUpdaterService.downloadStatus;
+  readonly appIsChecking = this.appUpdaterService.isChecking;
 
   readonly appUpdateReleaseChannel = computed(() => {
     const tag = this.appUpdateAvailable()?.releaseTag;
@@ -149,7 +152,6 @@ export class AboutModalComponent implements OnInit {
 
   readonly restartingApp = signal(false);
   readonly restartingRcloneEngine = signal(false);
-  readonly checkingForUpdates = signal(false);
 
   // ---------------------------------------------------------------------------
   // Rclone info
@@ -206,7 +208,7 @@ export class AboutModalComponent implements OnInit {
   );
 
   readonly formattedRcloneReleaseNotes = computed(() =>
-    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.release_notes)
+    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.releaseNotes)
   );
 
   // ---------------------------------------------------------------------------
@@ -304,13 +306,8 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   async checkForUpdates(): Promise<void> {
-    if (this.checkingForUpdates()) return;
-    this.checkingForUpdates.set(true);
-    try {
-      await this.appUpdaterService.checkForUpdates();
-    } finally {
-      this.checkingForUpdates.set(false);
-    }
+    if (this.appIsChecking()) return;
+    await this.appUpdaterService.checkForUpdates();
   }
 
   async installUpdate(): Promise<void> {
@@ -403,7 +400,7 @@ export class AboutModalComponent implements OnInit {
   async skipRcloneUpdate(): Promise<void> {
     const info = this.rcloneUpdateStatus().updateInfo;
     if (!info) return;
-    await this.rcloneUpdateService.skipVersion(info.latest_version_clean ?? info.latest_version);
+    await this.rcloneUpdateService.skipVersion(info.version);
   }
 
   async unskipRcloneVersion(version: string): Promise<void> {
@@ -429,10 +426,7 @@ export class AboutModalComponent implements OnInit {
   // Platform / engine actions
   // ---------------------------------------------------------------------------
 
-  getUpdateInstructions(): {
-    command?: string;
-    links: { label: string; url: string; primary?: boolean }[];
-  } | null {
+  readonly updateInstructions = computed(() => {
     const website = 'https://hakanismail.info/zarestia/rclone-manager/downloads';
 
     switch (this.buildType()) {
@@ -447,25 +441,6 @@ export class AboutModalComponent implements OnInit {
             },
           ],
         };
-      case 'arch':
-        return {
-          command: 'yay -Syu rclone-manager',
-          links: [
-            {
-              label: 'modals.about.downloadPage',
-              url: 'https://aur.archlinux.org/packages/rclone-manager',
-              primary: true,
-            },
-          ],
-        };
-      case 'deb':
-        return {
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
-      case 'rpm':
-        return {
-          links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
-        };
       case 'portable':
         return {
           links: [{ label: 'modals.about.downloadPage', url: website, primary: true }],
@@ -478,7 +453,7 @@ export class AboutModalComponent implements OnInit {
       default:
         return null;
     }
-  }
+  });
 
   async quitRcloneEngine(): Promise<void> {
     try {
@@ -493,7 +468,7 @@ export class AboutModalComponent implements OnInit {
         await this.systemInfoService.quitRcloneEngine();
       }
       this.notificationService.showSuccess(this.translate.instant('modals.about.killSuccess'));
-      await this.rcloneStatusService.refresh();
+      await this.rcloneStatusService.refreshStatus();
     } catch (error) {
       console.error('Failed to quit rclone engine:', error);
       this.notificationService.showError(this.translate.instant('modals.about.killFailed'));
@@ -506,7 +481,7 @@ export class AboutModalComponent implements OnInit {
     try {
       await this.systemInfoService.runGarbageCollector();
       this.notificationService.showSuccess(this.translate.instant('modals.about.gcSuccess'));
-      await this.rcloneStatusService.refresh();
+      await this.rcloneStatusService.refreshStatus();
     } catch (error) {
       console.error('Failed to run garbage collector:', error);
       this.notificationService.showError(this.translate.instant('modals.about.gcFailed'));
@@ -580,16 +555,6 @@ export class AboutModalComponent implements OnInit {
 
   async openDevTools(): Promise<void> {
     await this.debugService.openDevTools();
-  }
-
-  copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text).then(
-      () => this.notificationService.showInfo(this.translate.instant('modals.about.copied')),
-      err => {
-        console.error('Failed to copy to clipboard:', err);
-        this.notificationService.showError(this.translate.instant('modals.about.copyFailed'));
-      }
-    );
   }
 
   formatReleaseDate(dateString: string): string {

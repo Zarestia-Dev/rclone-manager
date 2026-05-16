@@ -5,7 +5,7 @@
 // =============================================================================
 // STANDARD LIBRARY & EXTERNAL CRATES
 // =============================================================================
-use crate::core::settings::schema::AppSettings;
+
 use std::sync::atomic::AtomicBool;
 use tauri::Manager;
 
@@ -27,12 +27,14 @@ mod server;
 // SHARED IMPORTS (Both modes)
 // =============================================================================
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::logging::log::init_logging;
 use crate::{
-    core::{initialization::initialization, paths::AppPaths, scheduler::engine::CronScheduler},
+    core::{
+        alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
+        scheduler::engine::CronScheduler,
+    },
     utils::types::{
-        core::{RcApiEngine, RcloneState},
         logs::LogCache,
+        state::{RcApiEngine, RcloneState},
         updater::{AppUpdaterState, RcloneUpdaterState},
     },
 };
@@ -45,17 +47,11 @@ use crate::core::tray::actions::handle_browse_remote;
 #[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
     actions::{
-        handle_bisync_profile, handle_copy_profile, handle_mount_profile, handle_move_profile,
-        handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
-        handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
-        handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
-        handle_unmount_profile,
+        handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
+        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
-
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use crate::utils::io::network::monitor_network_changes;
 
 // =============================================================================
 // MAIN ENTRY POINT
@@ -69,7 +65,7 @@ pub fn run() {
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
-                eprintln!("❌ Invalid CLI arguments: {}", e);
+                eprintln!("❌ Invalid CLI arguments: {e}");
                 std::process::exit(1);
             }
             args
@@ -102,7 +98,11 @@ pub fn run() {
         let si_builder = tauri_plugin_single_instance::Builder::new();
 
         #[cfg(target_os = "linux")]
-        let si_builder = si_builder.dbus_id("io.github.zarestia_dev.rclone-manager");
+        let si_builder = si_builder.dbus_id(if cfg!(debug_assertions) {
+            "io.github.zarestia_dev.rclone-manager-dev"
+        } else {
+            "io.github.zarestia_dev.rclone-manager"
+        });
 
         builder = builder.plugin(
             si_builder
@@ -123,7 +123,9 @@ pub fn run() {
                             );
                             crate::utils::app::notification::notify(
                                 _app,
-                                crate::utils::app::notification::NotificationEvent::AlreadyRunning,
+                                crate::utils::app::notification::NotificationEvent::System(
+                                    crate::utils::app::notification::SystemStage::AlreadyRunning,
+                                ),
                             );
                         }
                     }
@@ -238,7 +240,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, feature = "tray"))]
     {
-        builder = builder.on_menu_event(handle_tray_menu_event);
+        builder = builder.on_menu_event(|app, event| handle_tray_menu_event(app, &event));
     }
 
     // -------------------------------------------------------------------------
@@ -246,7 +248,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     #[cfg(not(feature = "web-server"))]
     {
-        builder = builder.invoke_handler(generate_invoke_handler!());
+        builder = builder.invoke_handler(crate::core::commands::dispatch_invoke);
     }
 
     // -------------------------------------------------------------------------
@@ -291,230 +293,59 @@ fn setup_app(
     cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
+
     let app_paths = AppPaths::setup(app_handle)?;
-    let config_dir = app_paths.config_dir;
 
     let rcman_manager =
-        rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-            .with_config_dir(&config_dir)
-            .with_env_credentials()
-            .with_schema::<AppSettings>()
-            .with_migrator(|mut value: serde_json::Value| {
-                if let Some(root) = value.as_object_mut()
-                    && let Some(app_settings) = root.remove("app_settings")
-                {
-                    log::info!("found legacy app_settings, flattening to root");
-                    if let Some(app_settings_obj) = app_settings.as_object() {
-                        for (k, v) in app_settings_obj {
-                            if !root.contains_key(k) {
-                                root.insert(k.clone(), v.clone());
-                            }
-                        }
-                    }
-                }
-                value
-            })
-            .with_sub_settings(
-                rcman::SubSettingsConfig::new("remotes")
-                    .with_profiles()
-                    .with_migrator(
-                        crate::core::settings::remote::manager::migrate_to_multi_profile,
-                    ),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("backend")
-                    .with_profiles()
-                    .with_migrator(|mut value: serde_json::Value| {
-                        if let Some(root) = value.as_object_mut()
-                            && let Some(backend_settings) = root.remove("backend")
-                        {
-                            log::info!("found legacy backend settings, flattening to root");
-                            if let Some(backend_obj) = backend_settings.as_object() {
-                                for (k, v) in backend_obj {
-                                    if !root.contains_key(k) {
-                                        root.insert(k.clone(), v.clone());
-                                    }
-                                }
-                            }
-                        }
-                        value
-                    }),
-            )
-            .with_sub_settings(
-                rcman::SubSettingsConfig::singlefile("connections")
-                    .with_schema::<crate::rclone::backend::schema::BackendConnectionSchema>()
-                    .with_migrator(|value: serde_json::Value| {
-                        // Secret Migration: Move keys from `backend:{name}:password`
-                        // to `sub.connections.{name}.password`
-                        #[cfg(desktop)]
-                        {
-                            use rcman::CredentialManager;
-                            let service_name = env!("CARGO_PKG_NAME");
-                            let creds = CredentialManager::new(service_name);
-
-                            if let Some(connections) = value.as_object() {
-                                for (name, _) in connections {
-                                    // Password field
-                                    let legacy_pass_key = format!("backend:{}:password", name);
-                                    let new_pass_key = format!("sub.connections.{}.password", name);
-
-                                    if creds.exists(&legacy_pass_key) {
-                                        if !creds.exists(&new_pass_key) {
-                                            if let Ok(Some(secret)) = creds.get(&legacy_pass_key) {
-                                                log::info!(
-                                                    "🔐 Migrating legacy password for '{}'",
-                                                    name
-                                                );
-                                                if let Err(e) = creds.store(&new_pass_key, &secret)
-                                                {
-                                                    log::error!(
-                                                        "Failed to migrate password for '{}': {}",
-                                                        name,
-                                                        e
-                                                    );
-                                                } else {
-                                                    let _ = creds.remove(&legacy_pass_key);
-                                                }
-                                            }
-                                        } else {
-                                            log::debug!(
-                                                "Cleaning up legacy password for '{}' \
-                                                 (already migrated)",
-                                                name
-                                            );
-                                            let _ = creds.remove(&legacy_pass_key);
-                                        }
-                                    }
-
-                                    // Config Password field
-                                    let legacy_conf_key =
-                                        format!("backend:{}:config_password", name);
-                                    let new_conf_key =
-                                        format!("sub.connections.{}.config_password", name);
-
-                                    if creds.exists(&legacy_conf_key) {
-                                        if !creds.exists(&new_conf_key) {
-                                            if let Ok(Some(secret)) = creds.get(&legacy_conf_key) {
-                                                log::info!(
-                                                    "🔐 Migrating legacy config_password for '{}'",
-                                                    name
-                                                );
-                                                if let Err(e) = creds.store(&new_conf_key, &secret)
-                                                {
-                                                    log::error!(
-                                                        "Failed to migrate config_password \
-                                                         for '{}': {}",
-                                                        name,
-                                                        e
-                                                    );
-                                                } else {
-                                                    let _ = creds.remove(&legacy_conf_key);
-                                                }
-                                            }
-                                        } else {
-                                            log::debug!(
-                                                "Cleaning up legacy config_password for '{}' \
-                                                 (already migrated)",
-                                                name
-                                            );
-                                            let _ = creds.remove(&legacy_conf_key);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        value
-                    }),
-            )
-            .build()
-            .map_err(|e| format!("Failed to create rcman settings manager: {e}"))?;
-
-    // -------------------------------------------------------------------------
-    // Initialize Backend Manager (Core Dependency)
-    // -------------------------------------------------------------------------
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = BackendManager::new();
-    app.manage(backend_manager);
-
-    // -------------------------------------------------------------------------
-    // Load Settings & Initialize State
-    // -------------------------------------------------------------------------
-    app.manage(cli_args.clone());
-
-    let settings = rcman_manager
-        .get_all()
-        .map_err(|e: rcman::Error| format!("Failed to load startup settings: {e}"))?;
+        crate::core::settings::manager::create_settings_manager(&app_paths.config_dir)?;
 
     use crate::core::security::SafeEnvironmentManager;
     let env_manager = SafeEnvironmentManager::new();
 
-    if let Err(e) = env_manager.init_with_stored_credentials(&rcman_manager) {
-        log::error!("Failed to initialize environment manager with stored credentials: {e}");
-    }
-
-    // -------------------------------------------------------------------------
-    // Initialize Backend i18n (before managing rcman_manager)
-    // -------------------------------------------------------------------------
-    crate::utils::i18n::init(app_paths.resource_dir);
-
-    if let Ok(lang) = rcman_manager.get::<String>("general.language") {
-        crate::utils::i18n::set_language(&lang);
-    }
+    use crate::rclone::backend::BackendManager;
+    let backend_manager = BackendManager::new();
 
     // -------------------------------------------------------------------------
     // Manage App State
     // -------------------------------------------------------------------------
-    app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
-    app.manage(rcman_manager);
+    app.manage(app_paths);
+    app.manage(backend_manager);
     app.manage(env_manager);
+    app.manage(rcman_manager);
 
+    app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
     app.manage(RcloneState {
         client: reqwest::Client::new(),
         is_shutting_down: AtomicBool::new(false),
-        is_restart_required: AtomicBool::new(false),
-        is_update_in_progress: AtomicBool::new(false),
         oauth_process: tokio::sync::Mutex::new(None),
+        poller_running: AtomicBool::new(false),
+        poller_visible: AtomicBool::new(true),
+        initial_startup: AtomicBool::new(true),
+        updater_running: AtomicBool::new(false),
     });
 
     app.manage(LogCache::new(1000));
     app.manage(ScheduledTasksCache::new());
     app.manage(CronScheduler::new());
+    app.manage(core::alerts::dispatch::DispatchContext::new());
 
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
 
-    // -------------------------------------------------------------------------
-    // Initialize Logging
-    // -------------------------------------------------------------------------
-    init_logging(&settings.developer.log_level, app_handle.clone())
-        .map_err(|e| format!("Failed to initialize logging: {e}"))?;
+    let history_cache = AlertHistoryCache::new(10000);
+    app.manage(history_cache);
+
+    let alert_cache = core::alerts::cache::AlertRuleCache::new(
+        app.state::<core::settings::AppSettingsManager>().inner(),
+    );
+    app.manage(alert_cache);
 
     // -------------------------------------------------------------------------
-    // Async Initialization
+    // Async Initialization (Phased Flow)
     // -------------------------------------------------------------------------
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
-        initialization(app_handle_clone.clone()).await;
-
-        #[cfg(feature = "tray")]
-        {
-            let force_tray = cli_args.general.tray;
-            if settings.general.tray_enabled || force_tray {
-                if force_tray {
-                    log::debug!("🧊 Setting up tray (forced by --tray argument)");
-                } else {
-                    log::debug!("🧊 Setting up tray (enabled in settings)");
-                }
-                if let Err(e) = utils::app::builder::setup_tray(app_handle_clone.clone()).await {
-                    log::error!("Failed to setup tray: {e}");
-                }
-            }
-        }
-
-        core::lifecycle::startup::handle_startup(app_handle_clone.clone()).await;
-
-        #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        monitor_network_changes(app_handle_clone).await;
+        initialization(app_handle_clone).await;
     });
 
     // -------------------------------------------------------------------------
@@ -525,19 +356,13 @@ fn setup_app(
         use crate::server::start_web_server;
 
         let web_handle = app.handle().clone();
-        let args = cli_args;
+        let args = cli_args.clone();
 
         log::info!(
             "🚀 Initializing Web Server on {}:{}...",
             args.headless.host,
             args.headless.port
         );
-        if args.headless.user.is_some() {
-            log::info!("🔐 Basic authentication enabled");
-        }
-        if args.headless.tls_cert.is_some() && args.headless.tls_key.is_some() {
-            log::info!("🔒 TLS/HTTPS enabled");
-        }
 
         tauri::async_runtime::spawn(async move {
             if let Err(e) = start_web_server(
@@ -551,8 +376,6 @@ fn setup_app(
             .await
             {
                 let msg = e.to_string();
-
-                // OS error 98 = Linux (EADDRINUSE), OS error 48 = macOS (EADDRINUSE)
                 if msg.contains("address already in use")
                     || msg.contains("os error 98")
                     || msg.contains("os error 48")
@@ -565,9 +388,6 @@ fn setup_app(
                 } else {
                     log::error!("❌ Web server failed to start: {e:#}");
                 }
-
-                // In web-server mode the process is useless without the server.
-                // Exit cleanly so Tauri's shutdown hooks still run.
                 web_handle.exit(1);
             }
         });
@@ -590,121 +410,136 @@ fn setup_app(
 // =============================================================================
 
 #[cfg(all(desktop, feature = "tray"))]
-fn handle_tray_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
-    use crate::rclone::commands::mount::unmount_all_remotes;
-
+fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
     if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
-        match action {
-            TrayAction::MountProfile(remote, profile) => {
-                handle_mount_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::UnmountProfile(remote, profile) => {
-                handle_unmount_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::SyncProfile(remote, profile) => {
-                handle_sync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopSyncProfile(remote, profile) => {
-                handle_stop_sync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::CopyProfile(remote, profile) => {
-                handle_copy_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopCopyProfile(remote, profile) => {
-                handle_stop_copy_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::MoveProfile(remote, profile) => {
-                handle_move_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopMoveProfile(remote, profile) => {
-                handle_stop_move_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::BisyncProfile(remote, profile) => {
-                handle_bisync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopBisyncProfile(remote, profile) => {
-                handle_stop_bisync_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::ServeProfile(remote, profile) => {
-                handle_serve_profile(app.clone(), &remote, &profile)
-            }
-            TrayAction::StopServeProfile(remote, serve_id) => {
-                handle_stop_serve_profile(app.clone(), &remote, &serve_id)
-            }
-            TrayAction::Browse(_remote) => {
-                #[cfg(not(feature = "web-server"))]
-                handle_browse_remote(app, &_remote);
-            }
-            TrayAction::BrowseInApp(remote) => {
-                #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, Some(&remote));
-
-                #[cfg(feature = "web-server")]
-                {
-                    let url =
-                        web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
-                    use tauri_plugin_opener::OpenerExt;
-                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                        log::error!("Failed to open web UI for browsing: {}", e);
-                    }
-                }
-            }
-            TrayAction::UnmountAll => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(app_clone.clone(), "menu".to_string()).await
-                    {
-                        log::error!("Failed to unmount all remotes: {e}");
-                    }
-                });
-            }
-            TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
-            TrayAction::StopAllServes => handle_stop_all_serves(app.clone()),
-            TrayAction::OpenFileBrowser => {
-                #[cfg(not(feature = "web-server"))]
-                core::tray::actions::handle_browse_in_app(app, None);
-
-                #[cfg(feature = "web-server")]
-                {
-                    let url = web_ui_url(app, "/nautilus");
-                    use tauri_plugin_opener::OpenerExt;
-                    if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                        log::error!("Failed to open web UI for file browser: {}", e);
-                    }
-                }
-            }
-        }
-        return;
+        dispatch_tray_action(app, action);
     }
+}
 
-    match event.id.as_ref() {
-        #[cfg(not(feature = "web-server"))]
-        "show_app" => core::tray::actions::show_main_window(app.clone()),
+#[cfg(all(desktop, feature = "tray"))]
+fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+    #[cfg(feature = "web-server")]
+    use tauri_plugin_opener::OpenerExt;
 
-        #[cfg(feature = "web-server")]
-        "open_web_ui" => {
-            let url = web_ui_url(app, "");
-            use tauri_plugin_opener::OpenerExt;
-            if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                log::error!("Failed to open web UI: {}", e);
+    match action {
+        TrayAction::MountProfile(remote, profile) => {
+            handle_mount_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::UnmountProfile(remote, profile) => {
+            handle_unmount_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::SyncProfile(remote, profile) => {
+            handle_start_job_profile(app.clone(), &remote, &profile, "sync");
+        }
+        TrayAction::StopSyncProfile(remote, profile) => {
+            handle_stop_job_profile(app.clone(), &remote, &profile, "sync");
+        }
+        TrayAction::CopyProfile(remote, profile) => {
+            handle_start_job_profile(app.clone(), &remote, &profile, "copy");
+        }
+        TrayAction::StopCopyProfile(remote, profile) => {
+            handle_stop_job_profile(app.clone(), &remote, &profile, "copy");
+        }
+        TrayAction::MoveProfile(remote, profile) => {
+            handle_start_job_profile(app.clone(), &remote, &profile, "move");
+        }
+        TrayAction::StopMoveProfile(remote, profile) => {
+            handle_stop_job_profile(app.clone(), &remote, &profile, "move");
+        }
+        TrayAction::BisyncProfile(remote, profile) => {
+            handle_start_job_profile(app.clone(), &remote, &profile, "bisync");
+        }
+        TrayAction::StopBisyncProfile(remote, profile) => {
+            handle_stop_job_profile(app.clone(), &remote, &profile, "bisync");
+        }
+        TrayAction::ServeProfile(remote, profile) => {
+            handle_serve_profile(app.clone(), &remote, &profile);
+        }
+        TrayAction::StopServeProfile(_remote, serve_id) => {
+            handle_stop_serve_profile(app.clone(), &serve_id);
+        }
+        TrayAction::Browse(_remote) => {
+            #[cfg(not(feature = "web-server"))]
+            handle_browse_remote(app, &_remote);
+        }
+        TrayAction::BrowseInApp(remote) => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::handle_browse_in_app(app, Some(&remote));
+
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI for browsing: {e}");
+                }
             }
         }
+        TrayAction::UnmountAll => {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = rclone::commands::mount::unmount_all_remotes(
+                    app_clone.clone(),
+                    rclone::commands::common::OperationContext::Normal,
+                )
+                .await
+                {
+                    log::error!("Failed to unmount all remotes: {e}");
+                }
+            });
+        }
+        TrayAction::StopAllJobs => handle_stop_all_jobs(app.clone()),
+        TrayAction::StopAllServes => {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = rclone::commands::serve::stop_all_serves(
+                    app_clone.clone(),
+                    rclone::commands::common::OperationContext::Normal,
+                )
+                .await
+                {
+                    log::error!("Failed to stop all serves: {e}");
+                }
+            });
+        }
+        TrayAction::OpenFileBrowser => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::handle_browse_in_app(app, None);
 
-        "quit" => {
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, "/nautilus");
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI for file browser: {e}");
+                }
+            }
+        }
+        TrayAction::ShowApp => {
+            #[cfg(not(feature = "web-server"))]
+            core::tray::actions::show_main_window(app.clone());
+        }
+        TrayAction::OpenWebUI => {
+            #[cfg(feature = "web-server")]
+            {
+                let url = web_ui_url(app, "");
+                if let Err(e) = app.opener().open_url(&url, None::<&str>) {
+                    log::error!("Failed to open web UI: {e}");
+                }
+            }
+        }
+        TrayAction::Quit => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
                 app_clone.state::<RcloneState>().set_shutting_down();
                 let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
             });
         }
-        _ => {}
     }
 }
 
 /// Build the web UI URL for a given path, resolving 0.0.0.0 to loopback.
 ///
 /// Used by tray actions to open the web interface in the system browser.
-#[cfg(all(feature = "web-server", not(feature = "container")))]
+#[cfg(all(feature = "web-server", feature = "tray"))]
 fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();
     let host = if args.headless.host == "0.0.0.0" {

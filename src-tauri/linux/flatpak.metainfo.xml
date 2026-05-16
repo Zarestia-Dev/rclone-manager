@@ -97,6 +97,32 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.5" date="2026-05-16">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Unified Command Registry: Synchronized Tauri IPC and headless HTTP endpoints for parity between modes.</li>
+          <li>Alert &amp; Actions: Define custom actions (OS Toast, Webhook, Script) triggered by alert rules.</li>
+          <li>Layout Editor: Customize the dashboard and remote cards with drag-and-drop reordering.</li>
+          <li>Secure Macros: Secure POSIX-style shell command interpolation for paths and options.</li>
+          <li>Nautilus: Lasso selection, archive integration (create/list/extract), and context menu upload support.</li>
+          <li>PWA Support: Offline page and Progressive Web App support for headless mode.</li>
+          <li>Local Disk Identification: Improved volume labeling and intelligent user folder detection.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Unified Monitoring System: Faster, more responsive status updates with significantly lower resource usage.</li>
+          <li>Nautilus: Removed batch upload limits for drag-and-drop file transfers.</li>
+          <li>Background Management: Switched to D-Bus Background portal for improved Flatpak compatibility.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Audio Cover Support: Enhanced extraction for FLAC and optimized native streaming architecture.</li>
+          <li>Error Reporting: File viewer now displays detailed rclone-specific error messages.</li>
+          <li>Drag and Drop: Resolved various cross-platform stability issues.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.4" date="2026-04-14">
       <description>
         <p>Added</p>

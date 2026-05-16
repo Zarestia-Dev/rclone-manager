@@ -20,10 +20,20 @@
     "move": "Move",
     "retry": "Retry",
     "default": "Default",
-    "copyErrorFailed": "Failed to copy error",
-    "errorCopied": "Error copied to clipboard",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Failed to copy to clipboard",
     "required": "This field is required.",
-    "clear": "Clear"
+    "clear": "Clear",
+    "name": "Name",
+    "status": "Status",
+    "time": "Time",
+    "message": "Message",
+    "type": "Type",
+    "context": "Context",
+    "all": "All",
+    "description": "Description",
+    "password": "Password",
+    "username": "Username"
   },
   "validators": {
     "integer": "Must be a valid integer",
@@ -130,6 +140,7 @@
     "toggleSearch": "Toggle search bar",
     "remotes": "Remotes",
     "searchPlaceholder": "Search remotes...",
+    "hiddenOnDashboard": "Hidden on Dashboard",
     "searchAriaLabel": "Search remotes",
     "noRemotesFound": "No remotes found matching \"{{term}}\"",
     "noRemotesConfigured": "No remotes configured",
@@ -225,7 +236,137 @@
     "restoreFailed": "Failed to restore rclone update: {{error}}",
     "autoCheckEnabled": "Rclone auto-check updates enabled",
     "autoCheckDisabled": "Rclone auto-check updates disabled",
-    "settingsSaveFailed": "Failed to save rclone update settings: {{error}}"
+    "settingsSaveFailed": "Failed to save rclone update settings: {{error}}",
+    "manualRestartRequired": "Rclone was updated on the remote server. Please restart the remote rclone service manually to apply the new version."
+  },
+  "alerts": {
+    "title": "Alerts & Notifications",
+    "history": "History",
+    "rules": "Rules",
+    "actions": "Actions",
+    "defaultActionName": "OS Notification",
+    "defaultRuleName": "Default Rule",
+    "unacknowledged": "Unacknowledged",
+    "acknowledgeAll": "Acknowledge All",
+    "clearHistory": "Clear History",
+    "clearHistoryConfirm": "Are you sure you want to clear all alert history? This action cannot be undone.",
+    "deleteRuleConfirm": "Are you sure you want to delete this alert rule?",
+    "deleteActionConfirm": "Are you sure you want to delete this action?",
+    "severity": "Severity",
+    "ruleLabel": "Rule",
+    "noHistory": "No alert history",
+    "noHistoryDesc": "All your past notifications and events will be listed here.",
+    "noRules": "No alert rules",
+    "noActions": "No alert actions",
+    "createRule": "Create Rule",
+    "editRule": "Edit Rule",
+    "ruleName": "Rule Name",
+    "lastFired": "Last Fired",
+    "enabled": "Enabled",
+    "createAction": "Create Action",
+    "editAction": "Edit Action",
+    "testAction": "Test Action",
+    "testActionSuccess": "Alert action test completed successfully.",
+    "testActionFailed": "Alert action test failed: {{error}}",
+    "testActionError": "An error occurred while testing the alert action: {{error}}",
+    "severityLevels": {
+      "info": "Info",
+      "warning": "Warning",
+      "average": "Average",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "origins": {
+      "title": "Origins",
+      "dashboard": "Dashboard",
+      "scheduler": "Scheduler",
+      "filemanager": "File Manager",
+      "startup": "Startup",
+      "update": "Update",
+      "internal": "Internal"
+    },
+    "rule": {
+      "filters": "Filters",
+      "placeholderName": "Enter rule name",
+      "severityMin": "Minimum Severity",
+      "cooldown": "Cooldown (Seconds)",
+      "eventFilter": "Event Type Filter",
+      "eventFilterHint": "Leave empty to match all event types.",
+      "remoteFilter": "Remote Filter",
+      "remoteFilterHint": "Leave empty to match all remotes.",
+      "originFilterHint": "Leave empty to match any origin source.",
+      "backendFilter": "Backend Filter",
+      "backendFilterPlaceholder": "e.g. Local, Seedbox",
+      "backendFilterHint": "Monitor events only on specific backends.",
+      "profileFilter": "Profile Filter",
+      "profileFilterPlaceholder": "e.g. GDrive-Sync",
+      "profileFilterHint": "Monitor events only for specific profiles.",
+      "autoAcknowledge": "Auto Acknowledge",
+      "autoAcknowledgeHint": "Automatically mark alerts as acknowledged. Ideal for alerts that already trigger system notifications.",
+      "actions": "Actions to Trigger",
+      "actionRequired": "At least one action is required.",
+      "noActionsHint": "You need to create an alert action first before you can assign it to a rule.",
+      "filtersEmptyHint": "Leave empty to match all events.",
+      "scopeFilters": "Scope Filters"
+    },
+    "events": {
+      "job": "Jobs & File Operations",
+      "serve": "Background Servers",
+      "mount": "Drive Mounts",
+      "engine": "Backend Infrastructure",
+      "update": "Software Updates",
+      "scheduled_task": "Scheduled Tasks",
+      "system": "System Events"
+    },
+    "action": {
+      "basicInfo": "Basic Information",
+      "configuration": "Configuration",
+      "noActionsCreated": "No alert actions have been created yet.",
+      "noHeaders": "No custom headers configured.",
+      "kind": "Action Type",
+      "os_toast": "OS Notification",
+      "webhook": "Webhook (HTTP/S)",
+      "script": "Custom Script",
+      "telegram": "Telegram",
+      "mqtt": "MQTT",
+      "email": "Email",
+      "placeholderName": "Enter action name",
+      "url": "Webhook URL",
+      "method": "HTTP/S Method",
+      "timeout": "Timeout (Seconds)",
+      "bodyTemplate": "Body Template (JSON)",
+      "bodyTemplateHint": "Supports Handlebars variables",
+      "tlsVerify": "TLS Verification",
+      "retryCount": "Retry Count",
+      "command": "Script Command / Path",
+      "args": "Script Arguments",
+      "argsHint": "(Space separated)",
+      "scriptContextHint": "Injected as environment variables",
+      "os_toast_info": "No additional configuration required for OS Native Notifications. It will use the standard system notification subsystem.",
+      "botToken": "Bot Token",
+      "chatId": "Chat ID",
+      "messageTemplate": "Message Template",
+      "messageTemplateHint": "Supports Handlebars variables",
+      "telegram_info": "You can find your Bot Token from @BotFather and your Chat ID from @userinfobot.",
+      "host": "Host",
+      "port": "Port",
+      "useTls": "Use TLS",
+      "topic": "Topic",
+      "qos": "QoS",
+      "retain": "Retain",
+      "smtpServer": "SMTP Server",
+      "smtpPort": "SMTP Port",
+      "from": "From Address",
+      "to": "To Address",
+      "encryption": "Encryption",
+      "subjectTemplate": "Subject Template",
+      "headers": "HTTP/S Headers",
+      "presets": "Presets",
+      "discord": "Discord",
+      "slack": "Slack",
+      "headerKey": "Header Name",
+      "headerValue": "Value"
+    }
   },
   "settings": {
     "resetToDefault": "Reset to default",
@@ -268,9 +409,9 @@
         "label": "Connectivity Check URLs",
         "description": "List of URLs used to verify internet connectivity. The app checks these URLs periodically."
       },
-      "rclone_path": {
+      "rclone_binary": {
         "label": "Rclone Binary Path",
-        "description": "Path to rclone binary or directory. Leave empty for auto-detection."
+        "description": "Path to rclone binary file. Leave empty for auto-detection."
       },
       "rclone_flags": {
         "label": "Additional Rclone Flags",
@@ -288,10 +429,6 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
-      },
-      "max_upload_batch_size": {
-        "label": "Maximum Upload Batch Size (MB)",
-        "description": "The maximum size of a batch of files uploaded from the local computer in one request."
       }
     },
     "developer": {
@@ -669,6 +806,12 @@
       "forbiddenChars": "{{name}} contains forbidden characters ('/' or ':' )",
       "create": "Create"
     },
+    "actions": {
+      "hide": "Hide",
+      "show": "Show",
+      "open": "Open",
+      "reset": "Reset"
+    },
     "overviewHeader": {
       "manageBackends": "Manage Backends",
       "backendSwitchAria": "Current mode: {{title}} - Click to switch backend"
@@ -689,6 +832,7 @@
       "date": "Date",
       "time": "Time",
       "typeNotImplemented": "Type: {{type}} (not implemented)",
+      "others": "others",
       "aria": {
         "item": "{{name}} item {{index}}",
         "removeItem": "Remove {{name}} item",
@@ -717,8 +861,6 @@
         "copyId": "Click to copy ID"
       },
       "messages": {
-        "urlCopied": "URL Copied!",
-        "idCopied": "ID Copied!",
         "noOptions": "No additional options"
       },
       "labels": {
@@ -944,6 +1086,8 @@
       "selectMountType": "Select mount type",
       "serveType": "Type",
       "loadingServeOptions": "Loading {{type}} options...",
+      "usePremiumUi": "Use Premium UI",
+      "usePremiumUiDesc": "Enhances the web interface with a modern Nautilus-like design. Note: Interactive features (Upload, Delete, Rename) require the WebDAV protocol.",
       "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
       "operationDescription": "Configure source, destination, and auto-start options for this operation.",
       "hideCommandOptions": "Hide Command Options",
@@ -997,12 +1141,18 @@
       "notConfigured": "Not configured",
       "clearSchedule": "Clear schedule",
       "sourcePath": "Source Path",
+      "sourcePaths": "Source Paths",
       "destPath": "Destination Path",
+      "destinationPath": "Destination Path",
       "localPath": "Local Path",
       "remotePathServe": "Remote Path to Serve",
+      "addSource": "Add Source",
+      "removePath": "Remove Path",
       "rootFolderOptional": "Root folder (optional)",
       "rootFolderSpecific": "Root folder or specific path",
       "selectRemoteSource": "Select remote source folder",
+      "remotePath": "Remote Path",
+      "enterPath": "Enter path...",
       "changeSourceType": "Change source path type",
       "enterSourcePath": "Enter source path...",
       "otherRemotes": "Other Remotes",
@@ -1167,6 +1317,10 @@
         "title": "RClone Configuration",
         "description": "Complete rclone.conf file"
       },
+      "remoteConfig": {
+        "title": "Remote Configuration",
+        "defaultPrefix": "Default:"
+      },
       "remoteConfigs": {
         "title": "Remote Configurations"
       },
@@ -1229,7 +1383,7 @@
     },
     "restored": "Update {{version}} restored",
     "restoreFailed": "Failed to restore update",
-    "channelChanged": "Update channel changed to {{channel}}. Check for updates to apply.",
+    "channelChanged": "Update channel changed to {{channel}}.",
     "channelChangeFailed": "Failed to change update channel"
   },
   "fileBrowser": {
@@ -1322,7 +1476,6 @@
       "removingLink": "Removing link...",
       "failLoadHashes": "Failed to load checksums",
       "failGetLink": "Failed to get public link",
-      "failCopyLink": "Failed to copy - check console",
       "star": "Star",
       "unstar": "Unstar",
       "generatedChecksums": "Generated Checksums",
@@ -1343,22 +1496,26 @@
         "startTime": "Start Time",
         "speed": "Speed",
         "eta": "ETA",
-        "transfers": "Transfers"
+        "transfers": "Transfers",
+        "uploadedFiles": "Uploaded files",
+        "deletedFiles": "Deleted files",
+        "movedFiles": "Moved files",
+        "copiedFiles": "Copied files",
+        "syncedFiles": "Synced files",
+        "processedFiles": "Processed files"
       },
       "types": {
-        "delete_file": "Delete File",
-        "purge": "Purge",
+        "delete": "Delete",
         "cleanup": "Cleanup",
         "rmdirs": "Remove Empty Folders",
         "copy": "Copy",
-        "copy_file": "Copy File",
         "copy_url": "Copy URL",
         "move": "Move",
-        "move_file": "Move File",
-        "rename_file": "Rename File",
-        "rename_dir": "Rename Folder",
+        "rename": "Rename",
         "sync": "Sync",
-        "bisync": "BiSync"
+        "bisync": "BiSync",
+        "compress": "Compress",
+        "extract": "Extract"
       }
     },
     "fileViewer": {
@@ -1379,12 +1536,20 @@
       "errorLoadContent": "Failed to load file content",
       "errorUnexpected": "An unexpected error occurred",
       "errorLoadFile": "Failed to load {{name}}",
+      "errorDownload": "Error downloading file",
       "downloading": "Downloading {{name}}",
       "save": "Save",
       "edit": "Edit",
       "cancel": "Cancel",
       "saveSuccess": "File saved successfully",
-      "saveError": "Failed to save file"
+      "saveError": "Failed to save file",
+      "archiveContents": "Archive Contents",
+      "shortcutTargets": "Shortcut Targets",
+      "extract": "Extract",
+      "extracting": "Extracting {{name}}...",
+      "extractSuccess": "{{name}} extracted successfully",
+      "errorExtract": "Failed to extract archive",
+      "errorListArchive": "Failed to list archive contents"
     }
   },
   "dashboard": {
@@ -1570,7 +1735,7 @@
         "type": "Job Type",
         "id": "Job ID",
         "profile": "Profile",
-        "status": "Status",
+        "status": "Job Status",
         "started": "Started",
         "finished": "Finished",
         "duration": "Duration",
@@ -1616,7 +1781,7 @@
       "reportIssues": "Report Issues",
       "rcloneWebsite": "Rclone Website",
       "currentVersion": "Current Version",
-      "restartRequired": "Restart Required",
+      "readyToRestart": "Restart Required",
       "restartDescription": "An update has been installed. Please restart the application to apply the changes.",
       "rcloneRestartRequired": "Rclone Restart Required",
       "rcloneRestartDescription": "An Rclone update has been installed. Please restart the engine to apply the changes.",
@@ -1660,8 +1825,6 @@
       "killSuccess": "Rclone process killed successfully",
       "killFailed": "Failed to kill rclone process",
       "noProcessToKill": "No rclone process to kill",
-      "copied": "Copied to clipboard",
-      "copyFailed": "Failed to copy to clipboard",
       "autoCheckEnabled": "Auto-check updates enabled",
       "autoCheckDisabled": "Auto-check updates disabled",
       "updateSettingFailed": "Failed to update setting",
@@ -1728,6 +1891,9 @@
       "cacheClearFailed": "Failed to clear cache"
     },
     "logs": {
+      "title": "Application Logs",
+      "fetchError": "Failed to fetch application logs.",
+      "clearError": "Failed to clear application logs.",
       "clearAll": "Clear All Logs",
       "scrollTop": "Scroll Top",
       "scrollBottom": "Scroll Bottom",
@@ -1740,7 +1906,6 @@
       "adjustFilters": "Try adjusting your filters",
       "terminalOutput": "Terminal Output",
       "logContext": "Log Context",
-      "copiedToClipboard": "Log copied to clipboard",
       "logLevel": "Log Level",
       "allLevels": "All Levels",
       "searchPlaceholder": "Search logs..."
@@ -1752,8 +1917,8 @@
       "resetAll": "Reset All Settings",
       "noSettingsFound": "No settings found matching",
       "trySearching": "Try searching for:",
-      "restartRequiredHeader": "Settings Requiring Restart",
-      "restartRequiredDesc": "The following changes require an engine restart to take effect:",
+      "readyToRestartHeader": "Settings Requiring Restart",
+      "readyToRestartDesc": "The following changes require an engine restart to take effect:",
       "discarding": "Discarding...",
       "discardChanges": "Discard Changes",
       "saveAndRestart": "Save & Restart Engine",
@@ -1819,6 +1984,8 @@
       "passwordLabel": "Encryption Password",
       "passwordPlaceholder": "Enter password",
       "passwordHint": "This password will be required to restore the backup.",
+      "includeSecrets": "Include secret keys",
+      "includeSecretsHint": "Include sensitive credentials in the backup. Encryption is required.",
       "exportNow": "Export Now",
       "exporting": "Exporting...",
       "fullBackup": "Full Backup",
@@ -1846,6 +2013,10 @@
         "remotes": {
           "label": "Remotes",
           "description": "Rclone remote configuration data"
+        },
+        "alerts": {
+          "label": "Alerts",
+          "description": "Alert rules and actions configuration"
         }
       }
     },
@@ -2224,6 +2395,23 @@
         "title": "Remove Empty Folders",
         "message": "Are you sure you want to remove all empty folders in \"{{name}}\"?",
         "confirm": "Remove"
+      },
+      "copyUrl": {
+        "title": "Download from URL",
+        "urlLabel": "URL",
+        "fileLabel": "Filename (Optional)",
+        "filePlaceholder": "Leave empty to use automatic name",
+        "confirm": "Download"
+      },
+      "archiveCreate": {
+        "title": "Create Archive",
+        "filenameLabel": "Archive Filename",
+        "formatLabel": "Archive Format",
+        "prefixLabel": "Prefix Path",
+        "prefixHint": "Overrides full paths if set",
+        "fullPathLabel": "Include full source paths",
+        "fullPathHint": "Keeps the directory structure from the root",
+        "compress": "Compress"
       }
     },
     "errors": {
@@ -2242,13 +2430,18 @@
       "renameFailed": "Failed to rename '{{name}}': {{error}}",
       "emptyTrashFailed": "Failed to empty trash in {{remote}}: {{error}}",
       "openFileFailed": "Cannot open file: missing remote server context",
-      "minSelection": "Please select at least {{min}} item{{s}}."
+      "minSelection": "Please select at least {{min}} item{{s}}.",
+      "copyUrlFailed": "Failed to download from URL: {{error}}",
+      "archiveCreateFailed": "Failed to create archive: {{error}}",
+      "externalDropFailed": "Failed to process external file drop."
     },
     "contextMenu": {
       "open": "Open",
       "openNewTab": "Open in New Tab",
       "copyPath": "Copy Path",
       "newFolder": "New Folder",
+      "uploadFiles": "Upload Files",
+      "uploadFolder": "Upload Folder",
       "refresh": "Refresh",
       "properties": "Properties",
       "reload": "Reload",
@@ -2263,6 +2456,7 @@
       "emptyTrash": "Empty Trash",
       "removeEmptyDirs": "Remove empty folders",
       "delete": "Delete",
+      "compress": "Compress",
       "copy": "Copy",
       "cut": "Cut",
       "rename": "Rename",
@@ -2290,8 +2484,11 @@
     },
     "notifications": {
       "undo": "Undo",
+      "mkdirFailed": "Failed to create directory: {{path}}",
+      "uploadStarted": "Starting upload of {{count}} files...",
+      "uploadSuccess": "Successfully uploaded {{count}} files.",
+      "uploadFailed": "Failed to upload {{count}} files.",
       "trashEmptied": "Cleanup operation completed",
-      "locationCopied": "Location copied to clipboard",
       "rmdirsStarted": "Removing empty folders in \"{{name}}\"...",
       "deleteStarted": "Deleting {{count}} items...",
       "copyStarted": "Copying {{count}} items...",
@@ -2300,7 +2497,10 @@
       "pasteComplete": "Paste operation completed",
       "renameStarted": "Rename operation started",
       "undoComplete": "Undo successful",
-      "redoComplete": "Redo successful"
+      "redoComplete": "Redo successful",
+      "copyUrlStarted": "Downloading from URL...",
+      "archiveCreateStarted": "Archive creation started...",
+      "archiveCreateComplete": "Archive created successfully"
     }
   },
   "overview": {
@@ -2313,6 +2513,9 @@
     "mountDestinationError": "Mount destination must be a local folder."
   },
   "home": {
+    "errors": {
+      "generic": "An unexpected error occurred. Please check the logs for more details."
+    },
     "emptyState": {
       "title": "RClone Manager",
       "description": "Easily manage your RClone remotes. If you're new to RClone, use \"Add Quick Remote\" for a fast and simple setup.",
@@ -2387,7 +2590,8 @@
       "resetSuccess": "Layout reset to default",
       "toggleTaskFailed": "Failed to toggle scheduled task",
       "showDetailed": "Show Detailed Cards",
-      "showCompact": "Show Compact Cards"
+      "showCompact": "Show Compact Cards",
+      "settings": "Layout Settings"
     },
     "bandwidth": {
       "aria": {
@@ -2506,7 +2710,6 @@
     "serve": {
       "failed": "Failed to {{operation}}: {{error}}",
       "parseFailed": "Failed to parse response: {{error}}",
-      "stopSuccess": "Successfully stopped serve {{serverId}}",
       "remoteEmpty": "Remote name cannot be empty",
       "typeRequired": "Serve type must be specified",
       "portInUse": "Port {{port}} is already in use"
@@ -2518,7 +2721,7 @@
       "failed": "Request failed: {{error}}"
     },
     "http": {
-      "error": "HTTP {{status}}: {{body}}"
+      "error": "HTTP/S {{status}}: {{body}}"
     },
     "file": {
       "driveRoot": "Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.",
@@ -2542,7 +2745,17 @@
       "mountHelperError": "Mount helper error: {{error}}",
       "configEncryptedLong": "Rclone config is encrypted. Please unlock it first.",
       "executionFailed": "Failed to execute rclone: {{error}}",
-      "notFound": "Rclone binary not found at {{path}}"
+      "notFound": "Rclone binary not found at {{path}}",
+      "spawnFailed": "Failed to start rclone process: {{error}}",
+      "invalidPath": "Invalid rclone path specified",
+      "killFailed": "Failed to terminate rclone process: {{error}}",
+      "portCleanupFailed": "Failed to clean up rclone ports: {{error}}",
+      "configValidationFailed": "Rclone configuration validation failed: {{error}}",
+      "lockFailed": "Failed to acquire rclone configuration lock: {{error}}",
+      "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
+      "invalidFlags": "Invalid rclone flags detected: {{error}}",
+      "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
+      "backupFailed": "Failed to backup current rclone binary: {{error}}"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",
@@ -2564,14 +2777,25 @@
       "encryptedPasswordRequired": "This backup is encrypted. Password required.",
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "unsupportedCompression": "Unsupported compression: {{ext}}",
-      "unknownFile": "Unknown file: {{fileName}}"
+      "unknownFile": "Unknown file: {{fileName}}",
+      "invalidArchive": "Invalid backup archive format",
+      "manifestParseFailed": "Failed to parse backup manifest: {{error}}",
+      "missingManifest": "Backup manifest is missing from the archive",
+      "openFailed": "Failed to open backup archive: {{error}}",
+      "restoreFailed": "Backup restore failed: {{error}}",
+      "secretRequirePassword": "This backup is protected by a secret and requires a password"
     },
     "backend": {
       "nameEmpty": "Backend name cannot be empty",
       "cannotAddLocal": "Cannot add a backend named 'Local'",
       "cannotRemoveLocal": "Cannot remove the Local backend",
       "cannotRemoveActive": "Cannot remove the active backend",
-      "connectionFailed": "Cannot connect to '{{name}}': {{error}}"
+      "connectionFailed": "Cannot connect to '{{name}}': {{error}}",
+      "alreadyExists": "A backend with this name already exists",
+      "notFound": "Backend '{{name}}' not found"
+    },
+    "system": {
+      "themeSetFailed": "Failed to set application theme: {{error}}"
     },
     "job": {
       "notFound": "JobInfo not found",
@@ -2603,12 +2827,12 @@
       "quitFailed": "Failed to quit rclone engine: {{error}}"
     },
     "remote": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "configFailed": "Failed to configure remote: {{error}}",
       "deleteFailed": "Failed to delete remote: {{error}}"
     },
     "filesystem": {
-      "httpError": "HTTP {{status}}: {{body}}",
+      "httpError": "HTTP/S {{status}}: {{body}}",
       "notFound": "File not found"
     },
     "updater": {
@@ -2616,7 +2840,12 @@
       "invalidUrl": "Invalid URL: {{error}}",
       "github": "GitHub API error: {{error}}",
       "mutex": "Internal error: {{error}}",
-      "updateFailed": "Update failed: {{error}}"
+      "updateFailed": "Update failed: {{error}}",
+      "updateUnavailable": "Update artifact is no longer available: {{error}}",
+      "relaunchFailed": "Relaunch failed: {{error}}",
+      "restartFailed": "Restart failed: {{error}}",
+      "notWritable": "Update path is not writable",
+      "ioError": "IO error: {{error}}"
     },
     "settings": {
       "loadFailed": "Failed to load settings: {{error}}",
@@ -2637,6 +2866,7 @@
     },
     "serve": {
       "started": "Serve started on port {{port}}",
+      "stopSuccess": "Successfully stopped serve {{serverId}}",
       "stopped": "Serve stopped"
     },
     "sync": {
@@ -2782,98 +3012,76 @@
   },
   "notification": {
     "title": {
-      "mountSuccess": "Mount Successful",
-      "mountFailed": "Mount Failed: {{error}}",
-      "unmountSuccess": "Unmount Successful",
-      "unmountFailed": "Unmount Failed: {{error}}",
-      "syncStarted": "Sync Started",
-      "syncComplete": "Sync Complete",
-      "syncFailed": "Sync Failed: {{error}}",
-      "syncStopped": "Sync Stopped",
-      "copyStarted": "Copy Started",
-      "copyComplete": "Copy Complete",
-      "copyFailed": "Copy Failed: {{error}}",
-      "copyStopped": "Copy Stopped",
-      "moveStarted": "Move Started",
-      "moveComplete": "Move Complete",
-      "moveFailed": "Move Failed: {{error}}",
-      "moveStopped": "Move Stopped",
-      "nothingToDo": "Nothing to do",
-      "bisyncStarted": "BiSync Started",
-      "bisyncComplete": "BiSync Complete",
-      "bisyncFailed": "BiSync Failed: {{error}}",
-      "bisyncStopped": "BiSync Stopped",
-      "serveStarted": "Serve Started",
-      "serveFailed": "Serve Failed: {{error}}",
-      "serveStopped": "Serve Stopped",
-      "stopServeFailed": "Stop Serve Failed: {{error}}",
+      "mountSucceeded": "Mount Successful",
+      "mountFailed": "Mount Error",
+      "unmountSucceeded": "Disconnected",
+      "jobStarted": "{{type}} Process Started",
+      "jobCompleted": "{{type}} Completed",
+      "jobFailed": "{{type}} Failed",
+      "jobStopped": "{{type}} Stopped",
+      "serveStarted": "Server Online",
+      "serveFailed": "Server Error",
+      "serveStopped": "Server Stopped",
+      "scheduledTaskStarted": "{{type}} Task Started",
+      "scheduledTaskCompleted": "{{type}} Task Completed",
+      "scheduledTaskFailed": "{{type}} Task Error",
       "allJobsStopped": "All Jobs Stopped",
-      "allServesStopped": "All Serves Stopped",
-      "stopAllServesFailed": "Stop All Serves Failed: {{error}}",
-      "operationFailed": "{{operation}} Failed: {{error}}",
-      "operationComplete": "{{operation}} Complete",
-      "operationStarted": "{{operation}} Started",
-      "operationStopped": "{{operation}} Stopped",
-      "updateComplete": "Update Complete",
-      "updateFailed": "Update Failed: {{error}}",
-      "updateFound": "Update Found",
+      "allServesStopped": "All Servers Stopped",
+      "allUnmounted": "All Remotes Disconnected",
+      "updateFound": "New Version Available",
       "updateStarted": "Update Started",
-      "engineError": "Engine Error",
-      "engineRestarted": "Engine Restarted",
-      "enginePathError": "Engine Path Error",
-      "enginePasswordError": "Engine Password Error",
-      "engineRestartedSuccess": "Engine Restarted Successfully",
-      "engineRestartedFailed": "Engine Restarted Failed",
-      "alreadyRunning": "App Already Running",
+      "updateDownloaded": "Update Downloaded",
+      "updateComplete": "Update Completed",
+      "updateInstalled": "Update Installed",
+      "updateFailed": "Update Error",
       "rcloneUpdateFound": "Rclone Update Found",
       "rcloneUpdateStarted": "Rclone Update Started",
-      "rcloneUpdateComplete": "Rclone Update Downloaded",
-      "rcloneUpdateFailed": "Rclone Update Failed: {{error}}",
-      "rcloneUpdateInstalled": "Rclone Update Installed",
-      "scheduledTaskCompleted": "Scheduled Task Completed",
-      "scheduledTaskFailed": "Scheduled Task Failed"
+      "rcloneUpdateDownloaded": "Rclone Update Downloaded",
+      "rcloneUpdateComplete": "Rclone Update Ready",
+      "rcloneUpdateInstalled": "Rclone Updated",
+      "rcloneUpdateFailed": "Rclone Update Error",
+      "engineRestarted": "Engine Restarted",
+      "engineRestartFailed": "Engine Restart Failed",
+      "engineConnectionFailed": "Engine Connection Error",
+      "engineBinaryNotFound": "Rclone Not Found",
+      "enginePasswordRequired": "Password Required",
+      "alreadyRunning": "App Already Running"
     },
     "body": {
-      "mounted": "Mounted {{remote}} profile '{{profile}}' at {{mountPoint}}",
-      "mountFailed": "Failed to mount at {{mountPoint}}: {{error}}",
-      "unmounted": "Unmounted {{remote}} profile '{{profile}}'",
-      "unmountFailed": "Failed: {{error}}",
-      "profileNotFound": "Profile '{{profile}}' not found",
-      "alreadyRunning": "Another instance of the app was detected. The window was closed for memory optimization. Use the tray icon to reopen the window.",
-      "allRemotesUnmounted": "All remotes successfully unmounted",
-      "started": "Started {{operation}} for {{remote}} profile '{{profile}}'",
-      "startFailed": "Failed: {{error}}",
-      "stopped": "Stopped {{operation}} for {{remote}} profile '{{profile}}'",
-      "stopFailed": "Failed to stop {{operation}} for {{remote}} profile '{{profile}}': {{error}}",
-      "noActiveJob": "No active {{operation}} job found for {{remote}} profile '{{profile}}'",
-      "serveStarted": "Started serve for {{remote}} profile '{{profile}}' at {{addr}}",
-      "serveFailed": "Failed to start serve for {{remote}} profile '{{profile}}': {{error}}",
-      "serveStopped": "Stopped serve for {{remote}} ({{profile}})",
-      "stopServeFailed": "Failed to stop serve for {{remote}} ({{profile}}): {{error}}",
-      "allJobsStopped": "Stopped {{count}} active jobs",
-      "nothingToDoJobs": "No active jobs found - nothing to stop.",
-      "nothingToDoServes": "No active serves found - nothing to stop.",
-      "nothingToDoMounts": "No mounted remotes found - nothing to unmount.",
-      "allServesStopped": "All serves stopped",
-      "stopAllServesFailed": "Failed to stop serves: {{error}}",
-      "complete": "{{operation}} on {{remote}} completed successfully ({{profile}})",
-      "failed": "{{operation}} on {{remote}} failed ({{profile}}): {{error}}",
-      "updateComplete": "Update installed successfully. Restart required.",
-      "updateFailed": "Update failed: {{error}}",
-      "updateFound": "A new version {{version}} represents the future of file management. Update now!",
+      "mountSucceeded": "Successfully mounted {{remote}} profile '{{profile}}' from {{backend}} at {{mountPoint}}.",
+      "mountFailed": "Failed to mount {{remote}} profile '{{profile}}' from {{backend}}: {{error}}",
+      "unmountSucceeded": "Disconnected {{remote}} profile '{{profile}}' from {{backend}}.",
+      "jobStarted": "Started {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "jobCompleted": "Successfully completed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "jobFailed": "Failed {{type}} for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
+      "jobStopped": "Stopped {{type}} for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "serveStarted": "Started serve for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "serveFailed": "Failed to start serve for {{remote}} profile '{{profile}}' on {{backend}}: {{error}}",
+      "serveStopped": "Stopped serve for {{remote}} profile '{{profile}}' on {{backend}}.",
+      "allJobsStopped": "Successfully terminated all active jobs.",
+      "allServesStopped": "Successfully closed all active servers.",
+      "allUnmounted": "Successfully disconnected all remote mounts.",
+      "scheduledTaskStarted": "Scheduled {{type}} task '{{task}}' is running on {{backend}}.",
+      "scheduledTaskCompleted": "Scheduled {{type}} task '{{task}}' completed successfully.",
+      "scheduledTaskFailed": "Scheduled {{type}} task '{{task}}' encountered an error: {{error}}",
+      "updateFound": "A new version {{version}} of RClone Manager is available.",
       "updateStarted": "Downloading and installing version {{version}}...",
-      "rcloneUpdateFound": "New Rclone version {{version}} is available",
+      "updateDownloaded": "A new version {{version}} of RClone Manager has been downloaded and is ready to install.",
+      "updateComplete": "Update downloaded successfully. The application will restart.",
+      "updateInstalled": "New version installed successfully.",
+      "updateFailed": "An error occurred during update: {{error}}",
+      "rcloneUpdateFound": "A new Rclone version {{version}} is available.",
       "rcloneUpdateStarted": "Updating Rclone to version {{version}}...",
-      "rcloneUpdateComplete": "Rclone update for version {{version}} has been downloaded",
-      "rcloneUpdateFailed": "Rclone update failed: {{error}}",
-      "rcloneUpdateInstalled": "Rclone has been updated to {{version}}",
-      "enginePathError": "rclone binary not found",
-      "enginePasswordError": "rclone configuration is password-protected",
-      "engineRestartedSuccess": "Engine restarted successfully due to {{reason}} change",
-      "engineRestartedFailed": "Engine failed to restart due to {{reason}} change",
-      "connectionFailed": "Failed to connect to rclone engine: {{reason}}",
-      "scheduledTaskCompleted": "Scheduled task '{{task}}' completed successfully.",
-      "scheduledTaskFailed": "Scheduled task '{{task}}' failed: {{error}}"
+      "rcloneUpdateDownloaded": "Rclone version {{version}} has been downloaded and is ready to install.",
+      "rcloneUpdateComplete": "Rclone update is ready.",
+      "rcloneUpdateInstalled": "Rclone {{version}} installed successfully.",
+      "rcloneUpdateFailed": "An error occurred while updating Rclone: {{error}}",
+      "engineRestarted": "Engine settings updated successfully.",
+      "engineRestartFailed": "Error restarting engine: {{error}}",
+      "engineConnectionFailed": "Could not connect to rclone engine: {{error}}",
+      "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
+      "enginePasswordRequired": "Password is required to access the configuration file.",
+      "alreadyRunning": "Another instance of the app is already running."
     }
   },
   "repairSheet": {
@@ -2986,6 +3194,8 @@
     "refreshUi": "Refresh UI",
     "clearCache": "Clear Cache",
     "openDevTools": "Open Developer Tools",
+    "openDevToolsError": "Failed to open DevTools",
+    "openDevToolsHint": "Open DevTools for debugging",
     "clearing": "Clearing Data...",
     "cleared": "Data Cleared"
   }

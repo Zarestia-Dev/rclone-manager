@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Export types supported by the app
-/// These map to rcman's ExportType for backup creation
+/// These map to rcman's `ExportType` for backup creation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ExportType {
     All,

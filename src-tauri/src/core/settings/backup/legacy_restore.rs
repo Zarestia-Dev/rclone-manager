@@ -81,7 +81,7 @@ pub struct ContentsInfo {
     pub remote_configs: Option<RemoteConfigsInfo>,
 }
 
-/// "remote_configs" nested in "contents"
+/// "`remote_configs`" nested in "contents"
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteConfigsInfo {
@@ -110,11 +110,28 @@ pub struct MetadataInfo {
 /// Calculates SHA-256 hash and file size
 fn calculate_file_hash(path: &Path) -> Result<(String, u64), String> {
     use sha2::{Digest, Sha256};
+    use std::io::Read;
     let mut file = File::open(path).map_err(|e| format!("Failed to open file: {e}"))?;
     let mut hasher = Sha256::new();
-    let bytes_copied =
-        std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file: {e}"))?;
-    let hash = format!("{:x}", hasher.finalize());
+    let mut buffer = [0u8; 8192];
+    let mut bytes_copied = 0u64;
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read file: {e}"))?;
+        if bytes_read == 0 {
+            break;
+        }
+        bytes_copied += bytes_read as u64;
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let hash = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
     Ok((hash, bytes_copied))
 }
 
@@ -166,7 +183,7 @@ pub async fn restore_legacy_backup(
     );
     let mut inner_archive_file = archive
         .by_name(&inner_archive_filename)
-        .map_err(|_| format!("Missing data file: {}", inner_archive_filename))?;
+        .map_err(|_| format!("Missing data file: {inner_archive_filename}"))?;
 
     let inner_archive_path = temp_dir.path().join(&inner_archive_filename);
     let mut extracted_file = File::create(&inner_archive_path)
@@ -201,7 +218,7 @@ pub async fn restore_legacy_backup(
             validated_password.as_deref(),
         )?,
         "zip" => extract_zip_archive(&inner_archive_path, &extracted_data_dir)?,
-        ext => return Err(format!("Unsupported compression: {}", ext)),
+        ext => return Err(format!("Unsupported compression: {ext}")),
     }
 
     // Restore files
@@ -280,7 +297,7 @@ async fn restore_legacy_files(
     extracted_dir: &Path,
     app_handle: &AppHandle,
 ) -> Result<String, String> {
-    info!("Restoring from: {:?}", extracted_dir);
+    info!("Restoring from: {extracted_dir:?}");
 
     // Get config directory from rcman manager
     let manager = app_handle.state::<AppSettingsManager>();
@@ -299,7 +316,7 @@ async fn restore_legacy_files(
             if path.extension().and_then(|s| s.to_str()) == Some("json")
                 && let Err(e) = restore_remote_from_file(path, app_handle).await
             {
-                warn!("Failed to restore remote from {:?}: {}", path, e);
+                warn!("Failed to restore remote from {path:?}: {e}");
             }
         }
     }
@@ -325,9 +342,9 @@ async fn restore_legacy_files(
         }
 
         fs::copy(entry.path(), &dest_path)
-            .map_err(|e| format!("Failed to copy {}: {}", file_name, e))?;
+            .map_err(|e| format!("Failed to copy {file_name}: {e}"))?;
 
-        info!("Restored: {:?}", dest_path);
+        info!("Restored: {dest_path:?}");
     }
 
     // Emit events
@@ -365,9 +382,9 @@ async fn restore_remote_from_file(path: &Path, app_handle: &AppHandle) -> Result
 
     super::restore_manager::upsert_remote_from_config(&remote_name, config, app_handle)
         .await
-        .map_err(|e| format!("Failed to restore remote '{}': {}", remote_name, e))?;
+        .map_err(|e| format!("Failed to restore remote '{remote_name}': {e}"))?;
 
-    info!("Restored remote: {}", remote_name);
+    info!("Restored remote: {remote_name}");
     Ok(())
 }
 
@@ -398,8 +415,8 @@ async fn determine_restore_path(
             remotes_default_dir.join(remote_name)
         }
         _ => {
-            debug!("Skipping unknown file: {}", file_name);
-            return Err(format!("Unknown file: {}", file_name));
+            debug!("Skipping unknown file: {file_name}");
+            return Err(format!("Unknown file: {file_name}"));
         }
     };
 

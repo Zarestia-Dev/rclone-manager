@@ -42,73 +42,9 @@
     }
 
     .type-column {
-      .job-type-info {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-
-        .job-type-text {
-          font-weight: 500;
-          color: var(--window-fg-color);
-        }
-      }
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: var(--space-xxs) var(--space-sm);
-      border-radius: var(--badge-radius);
-      font-size: var(--font-size-sm);
-      font-weight: 600;
-      letter-spacing: 0.5px;
-
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-      }
-
-      &.running {
-        background: rgba(var(--primary-color-rgb), var(--active-opacity));
-        color: var(--primary-color);
-        .status-dot {
-          background: var(--primary-color);
-        }
-      }
-
-      &.completed {
-        background: rgba(var(--accent-color-rgb), var(--active-opacity));
-        color: var(--accent-color);
-        .status-dot {
-          background: var(--accent-color);
-        }
-      }
-
-      &.failed {
-        background: rgba(var(--warn-color-rgb), var(--active-opacity));
-        color: var(--warn-color);
-        .status-dot {
-          background: var(--warn-color);
-        }
-      }
-
-      &.stopped {
-        background: rgba(var(--orange-rgb), var(--active-opacity));
-        color: var(--orange);
-        .status-dot {
-          background: var(--orange);
-        }
-      }
-
-      &.unknown {
-        background: rgba(var(--window-fg-color-rgb), var(--border-opacity));
-        color: var(--dim-color);
-
-        .status-dot {
-          background: var(--dim-color);
-        }
+      .job-type-text {
+        font-weight: 600;
+        color: var(--window-fg-color);
       }
     }
 

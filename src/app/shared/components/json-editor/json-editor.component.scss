@@ -27,54 +27,6 @@
   font-style: italic;
 }
 
-.config-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  padding: 6px 10px;
-  background: var(--selected-bg-color);
-  border-radius: 20px;
-  font-weight: 600;
-  color: var(--dim-color);
-  font-size: var(--font-size-sm);
-  max-width: 220px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
-
-  .chip-key {
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
-  }
-
-  &.active {
-    background: rgba(var(--primary-color-rgb), var(--legend-opacity));
-
-    .chip-key {
-      color: var(--primary-color);
-    }
-  }
-
-  &.active.changed {
-    background: rgba(var(--accent-color-rgb), var(--legend-opacity));
-
-    .chip-key {
-      color: var(--accent-color);
-    }
-  }
-
-  &.inactive {
-    .chip-key {
-      color: var(--dim-color);
-    }
-  }
-}
-
 // ============================================================================
 // EDITOR WRAPPER
 // ============================================================================
@@ -162,14 +114,6 @@
 @media (max-width: 640px) {
   .chips-row {
     gap: var(--space-xxs);
-  }
-
-  .config-chip {
-    max-width: 160px;
-
-    .chip-key {
-      max-width: 120px;
-    }
   }
 
   .editor-container {

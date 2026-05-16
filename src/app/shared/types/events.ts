@@ -1,5 +1,8 @@
 // Event constants for emit/listen operations
 
+import { GlobalStats } from './jobs';
+import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
+
 // Core engine events
 export const ENGINE_RESTARTED = 'engine_restarted';
 
@@ -12,9 +15,11 @@ export const RCLONE_ENGINE_UPDATING = 'rclone_engine_updating';
 export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
 
 // Remote management events
-// Remote management events
 export const REMOTE_CACHE_CHANGED = 'remote_cache_changed';
 export const RCLONE_OAUTH_URL = 'rclone_oauth_url';
+
+// Alert events
+export const ALERT_FIRED = 'alert_fired';
 
 // System and settings events
 export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed';
@@ -27,6 +32,7 @@ export const UPDATE_TRAY_MENU = 'tray_menu_updated';
 export const JOB_CACHE_CHANGED = 'job_cache_changed';
 export const MOUNT_STATE_CHANGED = 'mount_state_changed';
 export const SERVE_STATE_CHANGED = 'serve_state_changed';
+export const SYSTEM_STATUS = 'system_status';
 
 // Plugin and installation events
 export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
@@ -53,4 +59,20 @@ export interface SettingsChangeEvent {
 
 export interface OAuthUrlEvent {
   url: string;
+}
+
+export interface JobChangeEvent {
+  jobId: string;
+  status: 'Running' | 'Completed' | 'Failed' | 'Stopped';
+  remote?: string;
+  source?: string;
+  destination?: string;
+}
+export interface SystemStatusPayload {
+  rcloneInfo: RcloneInfo | null;
+  pid: number | null;
+  stats: GlobalStats;
+  memory: MemoryStats | null;
+  status: RcloneStatus;
+  hasActiveJobs: boolean;
 }

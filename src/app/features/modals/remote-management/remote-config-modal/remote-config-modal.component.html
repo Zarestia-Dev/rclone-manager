@@ -229,7 +229,7 @@
 
               <button
                 mat-icon-button
-                (click)="copyOAuthUrl()"
+                [appCopyToClipboard]="oauthUrlValue"
                 [attr.aria-label]="'modals.oauth.copyLink' | translate"
                 [matTooltip]="'modals.oauth.copyLink' | translate"
               >
@@ -492,8 +492,6 @@
                     [availableServeTypes]="availableServeTypes()"
                     [isLoadingServeFields]="isLoadingServeFields()"
                     [searchQuery]="searchQuery()"
-                    (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
-                    (destFolderSelected)="handleDestFolderSelect(flagType)"
                     (serveTypeChange)="onServeTypeChange($event)"
                   />
                 </section>

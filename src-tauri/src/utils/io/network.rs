@@ -1,10 +1,8 @@
 use std::collections::HashMap;
-use tauri::Emitter;
-use tauri::command;
+use tauri::{AppHandle, Emitter, command};
 
-use crate::utils::types::core::CheckResult;
-use crate::utils::types::core::LinkChecker;
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
+use crate::utils::types::rclone::CheckResult;
 
 #[command]
 pub async fn check_links(
@@ -14,6 +12,12 @@ pub async fn check_links(
 ) -> Result<CheckResult, String> {
     let checker = LinkChecker::new(max_retries, retry_delay_secs);
     checker.check_links(&links).await.map_err(|e| e.to_string())
+}
+
+pub struct LinkChecker {
+    pub client: reqwest::Client,
+    pub max_retries: usize,
+    pub retry_delay: std::time::Duration,
 }
 
 impl LinkChecker {
@@ -61,9 +65,8 @@ impl LinkChecker {
                                 successful.lock().await.push(link.clone());
                                 retries_used.lock().await.insert(link.clone(), retries);
                                 return;
-                            } else {
-                                last_error = Some(format!("HTTP status: {}", response.status()));
                             }
+                            last_error = Some(format!("HTTP status: {}", response.status()));
                         }
                         Err(e) => {
                             last_error = Some(e.to_string());
@@ -142,7 +145,7 @@ pub fn is_metered() -> bool {
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     use log::{debug, error, info};
 
     let connection = match Connection::system().await {
@@ -172,7 +175,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        use crate::utils::types::core::NetworkStatusPayload;
+        use crate::utils::types::monitoring::NetworkStatusPayload;
         debug!("'Metered' property changed!");
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
@@ -185,6 +188,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 }
 
 #[cfg(feature = "container")]
+#[must_use]
 pub fn is_metered() -> bool {
     use log::info;
     info!(
@@ -194,8 +198,8 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(feature = "container")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    use crate::utils::types::core::NetworkStatusPayload;
+pub async fn monitor_network_changes(app_handle: AppHandle) {
+    use crate::utils::types::monitoring::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
@@ -213,17 +217,14 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(target_os = "macos")]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
-    use crate::utils::types::core::NetworkStatusPayload;
+    use crate::utils::types::monitoring::NetworkStatusPayload;
     use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
         error!("Failed to emit network status change event: {e}");
     }
-
-    // Optionally, you can skip the loop entirely, or just sleep forever.
-    // loop { tokio::time::sleep(std::time::Duration::from_secs(3600)).await; }
 }
 
 #[cfg(windows)]
@@ -247,12 +248,12 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: AppHandle) {
     use log::error;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
-        use crate::utils::types::core::NetworkStatusPayload;
+        use crate::utils::types::monitoring::NetworkStatusPayload;
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
@@ -267,17 +268,17 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     }
 }
 
-#[tauri::command]
-pub fn is_network_metered() -> bool {
+#[command]
+pub async fn is_network_metered() -> Result<bool, String> {
     #[cfg(target_os = "linux")]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(windows)]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(target_os = "macos")]
-    return is_metered();
+    return Ok(is_metered());
 
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
-    return false; // Default for unsupported platforms
+    return Ok(false); // Default for unsupported platforms
 }

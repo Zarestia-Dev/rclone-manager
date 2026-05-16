@@ -154,6 +154,18 @@
               <mat-icon svgIcon="info"></mat-icon>
               {{ 'modals.export.passwordHint' | translate }}
             </p>
+
+            <mat-checkbox
+              class="secrets-checkbox"
+              [ngModel]="includeSecrets()"
+              (ngModelChange)="includeSecrets.set($event)"
+              [disabled]="isExporting()"
+            >
+              <div class="checkbox-label-content">
+                <span class="label-text">{{ 'modals.export.includeSecrets' | translate }}</span>
+                <span class="hint-text">{{ 'modals.export.includeSecretsHint' | translate }}</span>
+              </div>
+            </mat-checkbox>
           </div>
         }
       </div>

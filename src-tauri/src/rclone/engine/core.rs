@@ -1,8 +1,10 @@
-use crate::utils::types::core::RcApiEngine;
+use crate::utils::types::state::RcApiEngine;
 use std::fmt;
 
 /// Default port for the rclone API
 pub const DEFAULT_API_PORT: u16 = 51900;
+
+pub const DEFAULT_OAUTH_PORT: u16 = 51901;
 
 /// Why the engine cannot start
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,6 +60,7 @@ impl RcApiEngine {
         self.password_error = false;
     }
 
+    #[must_use]
     pub fn start_blocked_reason(&self) -> Option<PauseReason> {
         if self.updating {
             Some(PauseReason::Updating)

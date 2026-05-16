@@ -27,7 +27,7 @@
 
     @let buildTypeVal = buildType();
     <div class="version-info">
-      <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
+      <button class="version-badge" [appCopyToClipboard]="rCloneManagerVersion">
         {{ rCloneManagerVersion }}
       </button>
       @if (buildTypeVal) {
@@ -63,7 +63,7 @@
         role="tab"
         [attr.aria-selected]="currentView().id === 'updates'"
         (click)="navigateTo('updates')"
-        [matBadge]="appUpdateAvailable() || appRestartRequired() ? '!' : null"
+        [matBadge]="appUpdateAvailable() || appReadyToRestart() ? '!' : null"
       >
         <span>{{ 'modals.about.updates' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -164,12 +164,18 @@
         }
         @case ('updates') {
           <div class="modal-content updates-page">
-            @if (appRestartRequired()) {
+            @if (appReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
-                    <h4>{{ 'modals.about.restartRequired' | translate }}</h4>
+                    <h4>{{ 'modals.about.readyToRestart' | translate }}</h4>
+                    @if (appUpdateAvailable()) {
+                      <span class="new-version">
+                        {{ 'modals.about.version' | translate }}
+                        {{ appUpdateAvailable()!.version }}
+                      </span>
+                    }
                     <p class="restart-description">
                       {{ 'modals.about.restartDescription' | translate }}
                     </p>
@@ -232,7 +238,7 @@
                 }
 
                 @if (buildType()) {
-                  @let instructions = getUpdateInstructions();
+                  @let instructions = updateInstructions();
                   <div class="managed-update-notice">
                     <div class="managed-info">
                       <mat-icon svgIcon="circle-info"></mat-icon>
@@ -241,7 +247,7 @@
                     @if (instructions?.command) {
                       <button
                         class="command-block"
-                        (click)="copyToClipboard(instructions!.command!)"
+                        [appCopyToClipboard]="instructions!.command!"
                         [matTooltip]="'common.copy' | translate"
                         matTooltipPosition="above"
                       >
@@ -305,10 +311,10 @@
             <button
               mat-stroked-button
               (click)="checkForUpdates()"
-              [disabled]="checkingForUpdates() || appDownloadInProgress() || appRestartRequired()"
+              [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
               class="check-button"
             >
-              @if (checkingForUpdates()) {
+              @if (appIsChecking()) {
                 <mat-spinner diameter="16"></mat-spinner>
                 {{ 'modals.about.checking' | translate }}
               } @else {
@@ -358,7 +364,7 @@
                 </div>
               }
 
-              @if (rcloneInfo() && !loadingRclone()) {
+              @if (rcloneInfo() && !loadingRclone() && !rcloneError()) {
                 @let info = rcloneInfo()!;
                 <div class="rclone-hero">
                   <img src="assets/rclone.svg" alt="Rclone" class="rclone-icon" />
@@ -447,146 +453,139 @@
 
             @let rcloneStatus = rcloneUpdateStatus();
 
-            @if (isLocalBackend()) {
-              @if (rcloneStatus.readyToRestart) {
-                <div class="update-card restart-required">
-                  <div class="update-header">
-                    <mat-icon svgIcon="reset-wrench"></mat-icon>
-                    <div class="update-title">
-                      <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
-                      <p class="restart-description">
-                        {{ 'modals.about.rcloneRestartDescription' | translate }}
-                      </p>
-                    </div>
-                  </div>
-                  <div class="update-buttons">
-                    <button
-                      mat-flat-button
-                      class="accent"
-                      (click)="applyRcloneUpdate()"
-                      [disabled]="restartingRcloneEngine()"
-                    >
-                      @if (restartingRcloneEngine()) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                      }
-                      <span>{{ 'modals.about.restartNow' | translate }}</span>
-                    </button>
-                  </div>
-                </div>
-              } @else if (rcloneStatus.updateInfo?.update_available) {
-                @let rcloneUpdateInfo = rcloneStatus.updateInfo!;
-                <div class="update-card available">
-                  <div class="update-header">
-                    <mat-icon svgIcon="circle-up"></mat-icon>
-                    <div class="update-title">
-                      <h4>{{ 'modals.about.rcloneUpdateAvailable' | translate }}</h4>
+            @if (rcloneStatus.readyToRestart) {
+              <div class="update-card restart-required">
+                <div class="update-header">
+                  <mat-icon svgIcon="reset-wrench"></mat-icon>
+                  <div class="update-title">
+                    <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
+                    @if (rcloneStatus.updateInfo) {
                       <span class="new-version">
                         {{ 'modals.about.version' | translate }}
-                        {{
-                          rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version
-                        }}
-                        <span class="release-badge badge-{{ rcloneUpdateChannel() }}">
-                          {{ getChannelLabel(rcloneUpdateChannel()) | translate }}
-                        </span>
+                        {{ rcloneStatus.updateInfo.version }}
                       </span>
-                    </div>
-                  </div>
-
-                  @if (rcloneUpdateInfo.release_notes) {
-                    <button
-                      mat-stroked-button
-                      class="whats-new-button"
-                      (click)="showWhatsNew('rclone')"
-                    >
-                      <mat-icon svgIcon="file-lines"></mat-icon>
-                      {{ 'modals.about.whatsNewRclone' | translate }}
-                    </button>
-                  }
-
-                  <div class="update-buttons">
-                    <button
-                      matButton="filled"
-                      (click)="installRcloneUpdate()"
-                      [disabled]="rcloneStatus.downloading"
-                    >
-                      @if (rcloneStatus.downloading) {
-                        <mat-spinner diameter="16"></mat-spinner>
-                        {{ 'modals.about.downloading' | translate }}
-                      } @else {
-                        {{ 'modals.about.updateRclone' | translate }}
-                      }
-                    </button>
-                    <button mat-button (click)="skipRcloneUpdate()">
-                      {{ 'modals.about.skipVersion' | translate }}
-                    </button>
+                    }
+                    <p class="restart-description">
+                      {{ 'modals.about.rcloneRestartDescription' | translate }}
+                    </p>
                   </div>
                 </div>
-              } @else {
-                <ng-container
-                  *ngTemplateOutlet="
-                    upToDateCard;
-                    context: { $implicit: 'modals.about.rcloneUpToDate' }
-                  "
-                ></ng-container>
-              }
+                <div class="update-buttons">
+                  <button
+                    mat-flat-button
+                    class="accent"
+                    (click)="applyRcloneUpdate()"
+                    [disabled]="restartingRcloneEngine()"
+                  >
+                    @if (restartingRcloneEngine()) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                    }
+                    <span>{{ 'modals.about.restartNow' | translate }}</span>
+                  </button>
+                </div>
+              </div>
+            } @else if (rcloneStatus.updateInfo?.updateAvailable) {
+              @let rcloneUpdateInfo = rcloneStatus.updateInfo!;
+              <div class="update-card available">
+                <div class="update-header">
+                  <mat-icon svgIcon="circle-up"></mat-icon>
+                  <div class="update-title">
+                    <h4>{{ 'modals.about.rcloneUpdateAvailable' | translate }}</h4>
+                    <span class="new-version">
+                      {{ 'modals.about.version' | translate }}
+                      {{ rcloneUpdateInfo.version }}
+                      <span class="release-badge badge-{{ rcloneUpdateChannel() }}">
+                        {{ getChannelLabel(rcloneUpdateChannel()) | translate }}
+                      </span>
+                    </span>
+                  </div>
+                </div>
 
-              <button
-                matButton="outlined"
-                (click)="checkForRcloneUpdates()"
-                [disabled]="rcloneStatus.checking"
-                class="check-button"
-              >
-                @if (rcloneStatus.checking) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                  {{ 'modals.about.checking' | translate }}
-                } @else {
-                  {{ 'modals.about.checkRcloneUpdates' | translate }}
+                @if (rcloneUpdateInfo.releaseNotes) {
+                  <button
+                    mat-stroked-button
+                    class="whats-new-button"
+                    (click)="showWhatsNew('rclone')"
+                  >
+                    <mat-icon svgIcon="file-lines"></mat-icon>
+                    {{ 'modals.about.whatsNewRclone' | translate }}
+                  </button>
                 }
-              </button>
 
-              <div class="settings-section">
-                <h4>{{ 'modals.about.rcloneUpdateSettings' | translate }}</h4>
+                <div class="update-buttons">
+                  <button
+                    matButton="filled"
+                    (click)="installRcloneUpdate()"
+                    [disabled]="rcloneStatus.downloading"
+                  >
+                    @if (rcloneStatus.downloading) {
+                      <mat-spinner diameter="16"></mat-spinner>
+                      {{ 'modals.about.downloading' | translate }}
+                    } @else {
+                      {{ 'modals.about.updateRclone' | translate }}
+                    }
+                  </button>
+                  <button
+                    mat-button
+                    (click)="skipRcloneUpdate()"
+                    [disabled]="rcloneStatus.downloading"
+                  >
+                    {{ 'modals.about.skipVersion' | translate }}
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <ng-container
+                *ngTemplateOutlet="
+                  upToDateCard;
+                  context: { $implicit: 'modals.about.rcloneUpToDate' }
+                "
+              ></ng-container>
+            }
+
+            <button
+              matButton="outlined"
+              (click)="checkForRcloneUpdates()"
+              [disabled]="
+                rcloneStatus.checking || rcloneStatus.downloading || rcloneStatus.readyToRestart
+              "
+              class="check-button"
+            >
+              @if (rcloneStatus.checking) {
+                <mat-spinner diameter="16"></mat-spinner>
+                {{ 'modals.about.checking' | translate }}
+              } @else {
+                {{ 'modals.about.checkRcloneUpdates' | translate }}
+              }
+            </button>
+
+            <div class="settings-section">
+              <h4>{{ 'modals.about.rcloneUpdateSettings' | translate }}</h4>
+              <ng-container
+                *ngTemplateOutlet="
+                  settingsControls;
+                  context: {
+                    autoCheck: rcloneAutoCheck(),
+                    channel: rcloneUpdateChannel(),
+                    channels: channels,
+                    isRclone: true,
+                  }
+                "
+              ></ng-container>
+            </div>
+
+            @if (rcloneSkippedVersions().length > 0) {
+              <div class="skipped-section">
+                <h4>{{ 'modals.about.skippedRcloneUpdates' | translate }}</h4>
                 <ng-container
                   *ngTemplateOutlet="
-                    settingsControls;
+                    skippedList;
                     context: {
-                      autoCheck: rcloneAutoCheck(),
-                      channel: rcloneUpdateChannel(),
-                      channels: channels,
+                      versions: rcloneSkippedVersions(),
                       isRclone: true,
                     }
                   "
                 ></ng-container>
-              </div>
-
-              @if (rcloneSkippedVersions().length > 0) {
-                <div class="skipped-section">
-                  <h4>{{ 'modals.about.skippedRcloneUpdates' | translate }}</h4>
-                  <ng-container
-                    *ngTemplateOutlet="
-                      skippedList;
-                      context: { versions: rcloneSkippedVersions(), isRclone: true }
-                    "
-                  ></ng-container>
-                </div>
-              }
-            } @else {
-              <!-- Remote Backend Info Card -->
-              <div class="update-card not-supported">
-                <mat-icon svgIcon="cloud"></mat-icon>
-                <div class="status-text">
-                  <h4>{{ 'modals.about.remoteBackend' | translate }}</h4>
-                  <p>
-                    {{ 'modals.about.remoteUpdateInfo' | translate }}
-                    <a
-                      href="https://github.com/rclone/rclone/issues/9120"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      #9120
-                    </a>
-                  </p>
-                </div>
               </div>
             }
           </div>
@@ -674,19 +673,18 @@
               <div class="release-header">
                 <div class="release-version">
                   <h2>
-                    Rclone
-                    {{ rcloneUpdateInfo.latest_version_clean || rcloneUpdateInfo.latest_version }}
+                    {{ rcloneUpdateInfo.version }}
                   </h2>
-                  @if (rcloneUpdateInfo.release_date) {
+                  @if (rcloneUpdateInfo.releaseDate) {
                     <span class="release-date">
-                      {{ formatReleaseDate(rcloneUpdateInfo.release_date) }}
+                      {{ formatReleaseDate(rcloneUpdateInfo.releaseDate) }}
                     </span>
                   }
                 </div>
-                @if (rcloneUpdateInfo.release_url) {
+                @if (rcloneUpdateInfo.releaseUrl) {
                   <a
                     mat-stroked-button
-                    [href]="rcloneUpdateInfo.release_url"
+                    [href]="rcloneUpdateInfo.releaseUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="whats-new-button"

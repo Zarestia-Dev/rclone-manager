@@ -37,10 +37,7 @@ import { JobInfoConfig } from '../../types';
           @if (config().status) {
             <div class="job-detail-item">
               <div class="detail-label">{{ 'detailShared.jobInfo.status' | translate }}</div>
-              <div
-                class="detail-value status-value"
-                [class]="'status-' + config().status?.toLowerCase()"
-              >
+              <div class="detail-value">
                 {{ config().status | titlecase }}
               </div>
             </div>

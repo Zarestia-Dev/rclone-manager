@@ -1,11 +1,13 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../platform/tauri-base.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 
 import {
   BackendInfo,
   TestConnectionResult,
   BackendSettingMetadata,
   addBackendArgs,
+  RuntimeStatus,
 } from 'src/app/shared/types/backend.types';
 
 @Injectable({
@@ -15,6 +17,7 @@ export class BackendService extends TauriBaseService {
   readonly backends = signal<BackendInfo[]>([]);
   readonly activeBackend = signal<string>('Local');
   readonly isLoading = signal<boolean>(false);
+  private readonly appSettingsService = inject(AppSettingsService);
 
   readonly activeConfigPath = computed(() => {
     const active = this.backends().find(b => b.name === this.activeBackend());
@@ -61,6 +64,7 @@ export class BackendService extends TauriBaseService {
         { name },
         {
           successKey: 'backendSuccess.backend.switched',
+          successParams: { name },
           errorKey: 'backendErrors.request.failed',
         }
       );
@@ -127,6 +131,7 @@ export class BackendService extends TauriBaseService {
       this.isLoading.set(true);
       await this.invokeCommand('remove_backend', { name });
       this.backends.update(current => current.filter(b => b.name !== name));
+      await this.appSettingsService.removeBackendLayout(name);
     } finally {
       this.isLoading.set(false);
     }
@@ -144,7 +149,9 @@ export class BackendService extends TauriBaseService {
             ? b
             : {
                 ...b,
-                status: result.success ? 'connected' : 'error',
+                status: result.success
+                  ? { type: 'connected' }
+                  : { type: 'error', message: result.message },
                 version: result.version,
                 os: result.os,
                 runtimeConfigPath: result.config_path,
@@ -179,14 +186,15 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  getStatusClass(status?: string): string {
+  getStatusClass(status?: RuntimeStatus): string {
     if (!status) return 'disconnected';
-    if (status === 'connected') return 'connected';
+    if (status.type === 'connected') return 'connected';
+    if (status.type === 'inactive') return 'inactive';
     return 'disconnected';
   }
 
   updateActiveBackendStatus(
-    status: 'connected' | 'error',
+    status: RuntimeStatus,
     info?: { version?: string; os?: string; configPath?: string }
   ): void {
     const activeBackend = this.activeBackend();

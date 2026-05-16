@@ -25,20 +25,6 @@
   font-size: var(--font-size-md);
   color: var(--window-fg-color);
   font-weight: 600;
-
-  // Job status colour hints
-  &.status-running {
-    color: var(--mat-sys-primary);
-  }
-  &.status-stopped {
-    color: var(--orange);
-  }
-  &.status-failed {
-    color: var(--warn-color);
-  }
-  &.status-completed {
-    color: var(--accent-color);
-  }
 }
 
 @media (max-width: 768px) {

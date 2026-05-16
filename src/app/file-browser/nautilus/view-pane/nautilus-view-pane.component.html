@@ -4,13 +4,15 @@
   [attr.data-pane-index]="paneIndex()"
   [class.focused]="activePaneIndex() === paneIndex()"
   [class.split-enabled]="isSplitEnabled()"
-  (mousedown)="switchPane.emit(paneIndex())"
+  (mousedown.self)="switchPane.emit(paneIndex())"
 >
   @if (layout() === 'grid') {
     <div
       class="nautilus-grid"
-      (click)="clearSelection.emit()"
-      (keydown.enter)="clearSelection.emit()"
+      #gridContainer
+      (mousedown)="onMouseDown($event)"
+      (click)="onContainerClick($event)"
+      (keydown.enter)="clearSelection.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -18,18 +20,26 @@
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
+      @if (lassoActive()) {
+        <div
+          class="lasso-selection"
+          [style.left.px]="lassoRect().left"
+          [style.top.px]="lassoRect().top"
+          [style.width.px]="lassoRect().width"
+          [style.height.px]="lassoRect().height"
+        ></div>
+      }
       <div class="grid" [style.gridTemplateColumns]="gridColumns()">
         @for (item of files(); track getItemKey(item)) {
           @let key = getItemKey(item);
           @let isCut = cutItemPaths().has(key);
           <div
             class="grid-item"
-            draggable="true"
             [attr.data-item-key]="key"
-            (dragstart)="onDragStart($event, item)"
-            (dragend)="onDragEnd()"
-            (click)="itemClick.emit({ item, event: $event, index: $index })"
-            (keydown.enter)="itemClick.emit({ item, event: $event, index: $index })"
+            (pointerdown)="onItemPointerDown($event, item)"
+            (pointerup)="onItemPointerUp($event)"
+            (click)="onItemClick($event, item, $index)"
+            (keydown.enter)="onItemKeydown($event, item, $index)"
             (dblclick)="navigateTo.emit(item)"
             [cdkContextMenuTriggerFor]="fileMenu()"
             [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -42,6 +52,7 @@
             [class.item-drop-target]="item.entry.IsDir"
             [class.folder-drag-over]="
               isDragging() &&
+              hoveredFolderPaneIndex() === paneIndex() &&
               hoveredFolder()?.entry?.Path === item.entry.Path &&
               _draggedItemPath() !== item.entry.Path
             "
@@ -62,11 +73,12 @@
       </div>
     </div>
   } @else {
-    <cdk-virtual-scroll-viewport
-      [itemSize]="listRowHeight()"
+    <div
+      #listContainer
       class="nautilus-list-container"
-      (click)="clearSelection.emit()"
-      (keydown.enter)="clearSelection.emit()"
+      (mousedown)="onMouseDown($event)"
+      (click)="onContainerClick($event)"
+      (keydown.enter)="clearSelection.emit(paneIndex())"
       tabindex="0"
       [cdkContextMenuTriggerFor]="fileMenu()"
       [cdkContextMenuTriggerData]="{ $implicit: null }"
@@ -74,6 +86,15 @@
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
     >
+      @if (lassoActive()) {
+        <div
+          class="lasso-selection"
+          [style.left.px]="lassoRect().left"
+          [style.top.px]="lassoRect().top"
+          [style.width.px]="lassoRect().width"
+          [style.height.px]="lassoRect().height"
+        ></div>
+      }
       <table mat-table [dataSource]="files()" class="nautilus-table">
         <ng-container matColumnDef="name">
           <th
@@ -95,7 +116,8 @@
             </div>
           </th>
           <td mat-cell *matCellDef="let item">
-            @let isCut = cutItemPaths().has(getItemKey(item));
+            @let key = getItemKey(item);
+            @let isCut = cutItemPaths().has(key);
             <div class="cell-content name-cell">
               <ng-container
                 [ngTemplateOutlet]="nameCellContent"
@@ -171,12 +193,11 @@
         <tr
           mat-row
           *matRowDef="let item; columns: displayedColumns(); let i = index"
-          draggable="true"
           [attr.data-item-key]="getItemKey(item)"
-          (dragstart)="onDragStart($event, item)"
-          (dragend)="onDragEnd()"
-          (click)="itemClick.emit({ item, event: $event, index: i })"
-          (keydown.enter)="itemClick.emit({ item, event: $event, index: i })"
+          (pointerdown)="onItemPointerDown($event, item)"
+          (pointerup)="onItemPointerUp($event)"
+          (click)="onItemClick($event, item, i)"
+          (keydown.enter)="onItemKeydown($event, item, i)"
           (dblclick)="navigateTo.emit(item)"
           [cdkContextMenuTriggerFor]="fileMenu()"
           [cdkContextMenuTriggerData]="{ $implicit: item }"
@@ -188,12 +209,13 @@
           [class.item-drop-target]="item.entry.IsDir"
           [class.folder-drag-over]="
             isDragging() &&
+            hoveredFolderPaneIndex() === paneIndex() &&
             hoveredFolder()?.entry?.Path === item.entry.Path &&
             _draggedItemPath() !== item.entry.Path
           "
         ></tr>
       </table>
-    </cdk-virtual-scroll-viewport>
+    </div>
   }
 
   @if (error()) {

@@ -92,3 +92,16 @@ export interface JobInfo {
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
   backend_name?: string;
 }
+
+export interface BatchMasterJob {
+  batch_id: string;
+  job_type: JobActionType;
+  total_jobs: number;
+  completed_jobs: number;
+  failed_jobs: number;
+  start_time: string;
+  end_time?: string;
+  status: JobStatus;
+  origin?: Origin;
+  group?: string;
+}

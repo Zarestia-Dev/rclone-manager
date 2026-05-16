@@ -53,7 +53,8 @@ export class BackupRestoreService extends TauriBaseService {
     password: string | null,
     remoteName: string,
     userNote: string | null,
-    includeProfiles?: string[]
+    includeProfiles?: string[],
+    includeSecrets?: boolean
   ): Promise<void> {
     await this.invokeWithNotification(
       'backup_settings',
@@ -64,6 +65,7 @@ export class BackupRestoreService extends TauriBaseService {
         remoteName,
         userNote,
         includeProfiles,
+        includeSecrets,
       },
       {
         successKey: 'backup.backupSuccess',

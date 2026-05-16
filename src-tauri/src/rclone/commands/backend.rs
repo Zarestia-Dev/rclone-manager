@@ -4,23 +4,31 @@
 
 use crate::core::settings::AppSettingsManager;
 use log::{debug, info, warn};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
+use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::{
     core::scheduler::engine::CronScheduler,
-    rclone::backend::{
-        BackendManager,
-        schema::BackendConnectionSchema,
-        types::{Backend, BackendInfo},
+    rclone::{
+        backend::{
+            BackendManager,
+            schema::BackendConnectionSchema,
+            types::{Backend, BackendInfo},
+        },
+        state::scheduled_tasks::ScheduledTasksCache,
     },
-    rclone::state::scheduled_tasks::ScheduledTasksCache,
     utils::{
         rclone::endpoints::{config, core},
-        types::core::RcloneState,
+        types::{
+            events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED},
+            state::RcloneState,
+        },
     },
 };
 use rcman::{SettingMetadata, SettingsSchema};
 use std::collections::HashMap;
+use std::path::PathBuf;
+use tauri::Emitter;
 
 #[tauri::command]
 pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
@@ -40,9 +48,8 @@ pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn get_backend_profiles(
-    manager: State<'_, AppSettingsManager>,
-) -> Result<Vec<String>, String> {
+pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String> {
+    let manager = app.state::<AppSettingsManager>();
     let remotes = manager
         .sub_settings("remotes")
         .map_err(|e| format!("Failed to access remotes sub-settings: {e}"))?;
@@ -74,25 +81,13 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await?;
 
     if backend.is_local {
-        use crate::utils::types::core::EngineState;
-        let engine_state = app.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        if !engine.running && !engine.path_error && !engine.password_error {
-            info!("🚀 Starting Local engine after switching from remote backend...");
-            crate::rclone::engine::lifecycle::start(&mut engine, &app).await;
-        }
+        info!("🚀 Starting Local engine after switching from remote backend...");
+        start_engine_if_not_running(&app).await;
     }
 
     configure_remote_backend(&app, &backend, &state.client).await;
 
-    refresh_and_verify_cache(
-        &app,
-        &backend_manager,
-        &settings_manager,
-        &state.client,
-        &name,
-    )
-    .await?;
+    refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await?;
 
     BackendManager::save_active_to_settings(settings_manager.inner(), &name);
 
@@ -111,7 +106,7 @@ pub struct AddBackendParams {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: Option<u16>,
     pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
@@ -192,7 +187,7 @@ pub struct UpdateBackendParams {
     pub username: Option<String>,
     pub password: Option<String>,
     pub config_password: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
     pub oauth_port: Option<u16>,
     pub oauth_host: Option<String>,
 }
@@ -250,7 +245,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     //   Some("")     → explicitly cleared
     //   Some(value)  → update
     match params.config_password.as_deref() {
-        None => { /* preserve existing.config_password already set above */ }
+        None => { /* preserve */ }
         Some(cp) if !cp.is_empty() => {
             backend.config_password = Some(cp.to_string());
         }
@@ -259,8 +254,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    // Only restart the Local engine when connection-relevant fields actually changed.
-    // Saving identical settings must be a no-op for the running process.
     let needs_engine_restart = params.name == "Local"
         && (existing.host != backend.host
             || existing.port != backend.port
@@ -290,16 +283,14 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 }
 
 #[tauri::command]
-pub async fn remove_backend(
-    app: AppHandle,
-    name: String,
-    scheduler: State<'_, CronScheduler>,
-    task_cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), String> {
+pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("➖ Removing backend: {name}");
 
+    let scheduler = app.state::<CronScheduler>();
+    let task_cache = app.state::<ScheduledTasksCache>();
     let settings_manager = app.state::<AppSettingsManager>();
     let backend_manager = app.state::<BackendManager>();
+
     backend_manager
         .remove(settings_manager.inner(), &name)
         .await?;
@@ -371,7 +362,7 @@ pub struct TestConnectionResult {
     pub message: String,
     pub version: Option<String>,
     pub os: Option<String>,
-    pub config_path: Option<String>,
+    pub config_path: Option<PathBuf>,
 }
 
 // =============================================================================
@@ -423,13 +414,19 @@ async fn test_remote_connection(
         Ok(_) => {
             info!("✅ Remote backend '{}' is reachable", backend.name);
             backend_manager
-                .set_runtime_status(&backend.name, "connected")
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Connected,
+                )
                 .await;
             Ok(())
         }
         Err(e) => {
             backend_manager
-                .set_runtime_status(&backend.name, &format!("error:{e}"))
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(e.clone()),
+                )
                 .await;
             Err(format!("Cannot connect to '{}': {e}", backend.name))
         }
@@ -443,8 +440,9 @@ async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &r
 
     if let Some(config_path) = &backend.config_path {
         info!(
-            "📝 Setting config path for remote backend '{}' to: {config_path}",
-            backend.name
+            "📝 Setting config path for remote backend '{}' to: {}",
+            backend.name,
+            config_path.display()
         );
         let params = serde_json::json!({ "path": config_path });
         if let Err(e) = backend
@@ -468,19 +466,18 @@ async fn refresh_and_verify_cache(
     app: &AppHandle,
     backend_manager: &BackendManager,
     settings_manager: &AppSettingsManager,
-    client: &reqwest::Client,
     name: &str,
 ) -> Result<(), String> {
     match tokio::time::timeout(
         std::time::Duration::from_secs(15),
-        crate::rclone::backend::cache::refresh_active_backend(backend_manager, client),
+        app.state::<BackendManager>()
+            .remote_cache
+            .refresh_all(app.clone()),
     )
     .await
     {
-        Ok(Ok(_)) => {
+        Ok(Ok(())) => {
             info!("✅ Cache refreshed for backend '{name}'");
-            use crate::utils::types::events::{BACKEND_SWITCHED, REMOTE_CACHE_CHANGED};
-            use tauri::Emitter;
             let _ = app.emit(REMOTE_CACHE_CHANGED, ());
             let _ = app.emit(BACKEND_SWITCHED, name);
             Ok(())
@@ -496,7 +493,12 @@ async fn refresh_and_verify_cache(
             warn!("⏱️ Cache refresh timed out for backend '{name}'");
             if name != "Local" {
                 backend_manager
-                    .set_runtime_status(name, "error:Connection too slow")
+                    .set_runtime_status(
+                        name,
+                        crate::rclone::backend::runtime::RuntimeStatus::Error(
+                            "Connection too slow".to_string(),
+                        ),
+                    )
                     .await;
             }
             revert_to_local(backend_manager, settings_manager, name).await;
@@ -541,7 +543,10 @@ mod tests {
         assert_eq!(params.oauth_port, Some(53682));
         assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
         assert_eq!(params.config_password.as_deref(), Some("secret"));
-        assert_eq!(params.config_path.as_deref(), Some("/config/rclone.conf"));
+        assert_eq!(
+            params.config_path.as_ref(),
+            Some(&PathBuf::from("/config/rclone.conf"))
+        );
     }
 
     #[test]

@@ -1,7 +1,8 @@
+use futures::future::join_all;
 use log::{error, info, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     core::settings::remote::manager::delete_remote_settings,
@@ -20,9 +21,9 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::config,
         types::{
-            core::RcloneState,
             events::REMOTE_CACHE_CHANGED,
             logs::{LogCache, LogLevel},
+            state::RcloneState,
         },
     },
 };
@@ -289,11 +290,8 @@ pub async fn update_remote(
 }
 
 #[tauri::command]
-pub async fn delete_remote(
-    app: AppHandle,
-    name: String,
-    cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), String> {
+pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    let cache = app.state::<ScheduledTasksCache>();
     info!("🗑️ Deleting remote: {name}");
 
     let state = app.state::<RcloneState>();
@@ -316,34 +314,51 @@ pub async fn delete_remote(
     let backend_manager = app.state::<BackendManager>();
     let remote_prefix = format!("{name}:");
 
-    // 1. Unmount all associated mounts
+    // Unmount all associated mounts
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-    for m in mounted {
-        if m.fs.starts_with(&remote_prefix) {
-            info!("  - Unmounting: {} at {}", m.fs, m.mount_point);
-            let _ = unmount_remote(app.clone(), m.mount_point, name.clone()).await;
-        }
-    }
+    join_all(
+        mounted
+            .into_iter()
+            .filter(|m| m.fs.starts_with(&remote_prefix))
+            .map(|m| {
+                let app = app.clone();
+                let name = name.clone();
+                async move {
+                    info!("  - Unmounting: {} at {}", m.fs, m.mount_point);
+                    let _ = unmount_remote(app, m.mount_point, name).await;
+                }
+            }),
+    )
+    .await;
 
-    // 2. Stop all associated serves
+    // Stop all associated serves
     let serves = backend_manager.remote_cache.get_serves().await;
-    for s in serves {
-        if let Some(fs) = s.params.get("fs").and_then(|v| v.as_str())
-            && fs.starts_with(&remote_prefix)
-        {
-            info!("  - Stopping serve: {}", s.id);
-            let _ = stop_serve(app.clone(), s.id, name.clone()).await;
+    join_all(serves.into_iter().filter_map(|s| {
+        let fs = s.params.get("fs").and_then(|v| v.as_str())?;
+        if !fs.starts_with(&remote_prefix) {
+            return None;
         }
-    }
 
-    // 3. Stop all associated active jobs
+        let app = app.clone();
+        let name = name.clone();
+        Some(async move {
+            info!("  - Stopping serve: {}", s.id);
+            let _ = stop_serve(app, s.id, name).await;
+        })
+    }))
+    .await;
+
+    // Stop all associated active jobs
     let jobs = backend_manager.job_cache.get_active_jobs().await;
-    for j in jobs {
-        if j.remote_name == name {
+    join_all(jobs.into_iter().filter(|j| j.remote_name == name).map(|j| {
+        let app = app.clone();
+        let name = name.clone();
+        async move {
             info!("  - Stopping job: {}", j.jobid);
-            let _ = stop_job(app.clone(), cache.clone(), j.jobid, name.clone()).await;
+            let _ = stop_job(app, j.jobid, name).await;
         }
-    }
+    }))
+    .await;
 
     // Clean up all associated job results for this remote
     app.state::<BackendManager>()
@@ -352,7 +367,7 @@ pub async fn delete_remote(
         .await;
 
     match delete_remote_settings(app.clone(), name.clone()).await {
-        Ok(_) => {
+        Ok(()) => {
             info!("✅ Settings for remote '{name}' deleted successfully");
         }
         Err(e) => {

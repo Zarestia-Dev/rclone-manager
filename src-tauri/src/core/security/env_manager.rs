@@ -26,7 +26,7 @@ impl SafeEnvironmentManager {
                     {
                         self.set_config_password(password.to_string());
                         info!(
-                            "✅ Initialized SafeEnvironmentManager with stored credentials from rcman"
+                            "Initialized SafeEnvironmentManager with stored credentials from rcman"
                         );
                     } else {
                         debug!("No stored credentials found during initialization");
@@ -34,12 +34,12 @@ impl SafeEnvironmentManager {
                     Ok(())
                 }
                 Err(e) => {
-                    debug!("Failed to load Local connection settings: {}", e);
+                    debug!("Failed to load Local connection settings: {e}");
                     Ok(())
                 }
             },
             Err(e) => {
-                debug!("Failed to access connections sub-settings: {}", e);
+                debug!("Failed to access connections sub-settings: {e}");
                 Ok(())
             }
         }
@@ -49,7 +49,7 @@ impl SafeEnvironmentManager {
     pub fn set_config_password(&self, password: String) {
         if let Ok(mut lock) = self.config_password.lock() {
             *lock = Some(password);
-            debug!("✅ RCLONE_CONFIG_PASS stored in safe environment manager");
+            debug!("RCLONE_CONFIG_PASS stored in safe environment manager");
         }
     }
 
@@ -57,7 +57,7 @@ impl SafeEnvironmentManager {
     pub fn clear_config_password(&self) {
         if let Ok(mut lock) = self.config_password.lock() {
             *lock = None;
-            debug!("✅ RCLONE_CONFIG_PASS removed from safe environment manager");
+            debug!("RCLONE_CONFIG_PASS removed from safe environment manager");
         }
     }
 

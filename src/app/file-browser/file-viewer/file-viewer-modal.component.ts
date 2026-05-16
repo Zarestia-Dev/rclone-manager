@@ -20,7 +20,7 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
-import { Subject, of } from 'rxjs';
+import { Subject, of, firstValueFrom } from 'rxjs';
 import { marked } from 'marked';
 
 // CodeMirror Imports
@@ -44,20 +44,20 @@ import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
 
 import {
   RemoteFileOperationsService,
-  PathSelectionService,
+  PathService,
   JobManagementService,
   FileSystemService,
-  UiStateService,
+  NautilusService,
 } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from '@app/services';
 import { NotificationService } from '@app/services';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, ORIGINS } from '@app/types';
+import { Entry, ORIGINS, FilePickerResult } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
-import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 // ── GNOME / Adwaita Light Syntax Highlighting ──
 // Colors inspired by GNOME Builder's light theme and Adwaita palette
@@ -131,12 +131,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   public iconService = inject(IconService);
   private translate = inject(TranslateService);
   private remoteOps = inject(RemoteFileOperationsService);
+  private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly uiStateService = inject(UiStateService);
-  private readonly apiClient = inject(ApiClientService);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -161,6 +160,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   isLoading = signal(true);
   isDownloading = signal(false);
   isLoadingCover = signal(false);
+  parsedArchiveItems = signal<
+    { size: number; date: string; time: string; path: string; isDir: boolean }[]
+  >([]);
+  isExtracting = signal(false);
+  archiveError = signal<string | null>(null);
+  errorMessage = signal<string | null>(null);
 
   // Editing state
   isEditing = signal(false);
@@ -335,24 +340,27 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     try {
       const fsName = this.data.isLocal
         ? this.data.remoteName
-        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
       const lastSlashIndex = item.Path.lastIndexOf('/');
       const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
       const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
 
-      await this.remoteOps.uploadFile(
-        fsName,
-        dirPath,
-        filename,
-        this.editContent(),
-        FileViewerModalComponent.FILE_OPERATION_ORIGIN
-      );
+      const content = new TextEncoder().encode(this.editContent());
+      await this.remoteOps.uploadFileSimple(fsName, dirPath, filename, content);
 
       this.textContent.set(this.editContent());
       this.isEditing.set(false);
+
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.saveSuccess')
+      );
     } catch (error) {
       console.error('Failed to save file:', error);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.saveError'),
+        error instanceof Error ? error.message : String(error)
+      );
     } finally {
       this.isSaving.set(false);
     }
@@ -490,6 +498,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoadingCover.set(false);
     this.isEditing.set(false);
     this.editContent.set('');
+    this.archiveError.set(null);
+    this.errorMessage.set(null);
 
     try {
       const [type, url] = await Promise.all([
@@ -516,13 +526,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         // If remote (not local), ensure it has the colon for the API call
         if (!this.data.isLocal) {
-          fsName = this.pathSelectionService.normalizeRemoteForRclone(fsName);
+          fsName = this.pathService.normalizeRemoteForRclone(fsName);
         }
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"
         // For remote: fsName is "gdrive:", path is "path/to/dir"
         await this.remoteOps
-          .getSize(fsName, item.Path, 'ui', this.readJobGroup)
+          .getSize(fsName, item.Path, 'filemanager', this.readJobGroup)
           .then((size: { count: number; bytes: number }) => {
             this.folderSize.set(size);
           })
@@ -555,20 +565,29 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             takeUntil(this.cancelCurrentRequest$),
             takeUntil(this.destroy$),
             catchError(err => {
-              // Failed to load - probably binary
               console.warn('Browser cannot render file:', err);
-              this.currentFileType.set('binary'); // Update signal
+              this.currentFileType.set('error');
+              const body = err.error instanceof Blob ? 'Binary data' : err.error;
+              this.errorMessage.set(body || err.message || 'Unknown error');
               return of(null);
             })
           )
           .subscribe(res => {
             if (res?.body) {
               if (this.looksLikeBinary(res.body)) {
-                this.currentFileType.set('binary'); // Update signal
+                // Special handling for LNK files to show target info even if binary
+                if (this.fileName().toLowerCase().endsWith('.lnk')) {
+                  const info = this.extractLnkInfo(res.body);
+                  this.textContent.set(info);
+                  setTimeout(() => this.initEditor(true, info), 0);
+                } else {
+                  this.currentFileType.set('binary');
+                }
               } else {
-                this.textContent.set(res.body);
+                const repaired = this.repairText(res.body);
+                this.textContent.set(repaired);
                 // Initialize CodeMirror in read-only mode
-                setTimeout(() => this.initEditor(true, res.body ?? ''), 0);
+                setTimeout(() => this.initEditor(true, repaired ?? ''), 0);
               }
             }
             this.isLoading.set(false);
@@ -591,6 +610,36 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           });
       }
 
+      if (this.currentFileType() === 'archive') {
+        const item = this.currentItem();
+        const source = this.data.isLocal
+          ? (this.data.remoteName === '/'
+              ? `/${item.Path}`
+              : `${this.data.remoteName}/${item.Path}`
+            ).replace(/\/+/g, '/')
+          : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+
+        this.remoteOps
+          .archiveList(source, true) // Use long format for more info
+          .then(res => {
+            if (res && res.success) {
+              this.parsedArchiveItems.set(res.items);
+              this.archiveError.set(null);
+            } else {
+              this.archiveError.set('Unknown error');
+              this.parsedArchiveItems.set([]);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to list archive:', err);
+            this.archiveError.set(err.toString());
+            this.parsedArchiveItems.set([]);
+          })
+          .finally(() => {
+            this.isLoading.set(false);
+          });
+        return;
+      }
       const mediaTypes = ['image', 'video', 'audio', 'pdf'];
       if (mediaTypes.includes(this.currentFileType())) {
         this.currentUrl.set(this.rawUrl());
@@ -612,22 +661,102 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
    * Uses NULL byte detection and non-printable character ratio.
    */
   private looksLikeBinary(content: string): boolean {
-    // Quick check: NULL byte is definitive binary indicator
-    if (content.includes('\0')) return true;
+    if (!content) return false;
 
-    // Count non-printable characters (excluding whitespace)
+    // Check for common BOMs (Byte Order Marks) which often indicate UTF-16/32 text
+    // UTF-16 LE: FF FE, UTF-16 BE: FE FF, UTF-8: EF BB BF
+    const firstTwo = content.substring(0, 2);
+    if (firstTwo === '\xFF\xFE' || firstTwo === '\xFE\xFF' || content.startsWith('\xEF\xBB\xBF')) {
+      return false; // Definitely text
+    }
+
+    // NULL byte detection with UTF-16 heuristic:
+    // If NULL bytes are frequent but alternating with printable chars, it's likely UTF-16.
+    let nullCount = 0;
+    const maxCheck = Math.min(content.length, 1024);
+    for (let i = 0; i < maxCheck; i++) {
+      if (content.charCodeAt(i) === 0) nullCount++;
+    }
+
+    // If more than 10% are NULL but content is large, or if any NULL in first few bytes of non-UTF-16
+    // But let's be more practical: if NULL count is extremely high (> 40%), it's probably binary.
+    // If NULLs are present but the ratio is exactly around 50%, it's likely UTF-16 text.
+    const nullRatio = nullCount / maxCheck;
+    if (nullRatio > 0.1 && (nullRatio < 0.4 || nullRatio > 0.6)) return true;
+
+    // Count non-printable characters (excluding whitespace and common text control chars)
     let nonPrintable = 0;
-    const maxCheck = Math.min(content.length, 1024); // Only check first 1KB for performance
-
     for (let i = 0; i < maxCheck; i++) {
       const code = content.charCodeAt(i);
+      if (code === 0) continue; // Handled by nullRatio
       if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
         nonPrintable++;
       }
     }
 
-    // If >30% non-printable, likely binary
-    return nonPrintable / maxCheck > 0.3;
+    // Windows Shortcut (LNK) magic bytes: 4C 00 00 00
+    if (maxCheck >= 4 && content.startsWith('L\0\0\0')) {
+      return true;
+    }
+
+    // If >30% non-printable (excluding NULLs), likely binary
+    return nonPrintable / (maxCheck - nullCount) > 0.3;
+  }
+
+  /**
+   * Extremely basic LNK (Windows Shortcut) parser.
+   * Scans the binary content for likely target paths or descriptions.
+   */
+  private extractLnkInfo(content: string): string {
+    // Look for Windows-style paths (e.g. C:\...) or environment variables
+    const pathRegex = /[a-zA-Z]:\\[^ \ufffd\0\r\n\t]+(?:\.exe|\.dll|\.lnk|\.bat|\.cmd)/gi;
+    const envRegex = /%[a-zA-Z0-9_]+%\\[^ \ufffd\0\r\n\t]+/gi;
+
+    const paths = new Set<string>();
+    let match;
+
+    while ((match = pathRegex.exec(content)) !== null) {
+      paths.add(match[0]);
+    }
+    while ((match = envRegex.exec(content)) !== null) {
+      paths.add(match[0]);
+    }
+
+    if (paths.size > 0) {
+      let result = this.translate.instant('fileBrowser.fileViewer.shortcutTargets') + ':\n\n';
+      paths.forEach(p => (result += `- ${p}\n`));
+      return result;
+    }
+
+    return content;
+  }
+
+  /**
+   * Detects and repairs mangled UTF-16 text.
+   * Rclone cat returns raw bytes which can be misinterpreted as UTF-8 strings
+   * with embedded NULL bytes for UTF-16 encoded files (like Windows desktop.ini).
+   */
+  private repairText(content: string): string {
+    if (!content) return content;
+
+    let nullCount = 0;
+    const maxCheck = Math.min(content.length, 1024);
+    for (let i = 0; i < maxCheck; i++) {
+      if (content.charCodeAt(i) === 0) nullCount++;
+    }
+
+    const nullRatio = nullCount / maxCheck;
+
+    // If it's around 50% NULLs, it's almost certainly mangled UTF-16 text
+    if (nullRatio > 0.4 && nullRatio < 0.6) {
+      console.debug('Repairing mangled UTF-16 text...');
+      // 1. Remove the mangled BOM (replacement characters) if present
+      const repaired = content.replace(/^\ufffd\ufffd/, '');
+      // 2. Strip all NULL bytes - for ASCII range in UTF-16 this restores the text
+      return repaired.replace(/\0/g, '');
+    }
+
+    return content;
   }
 
   // Fired by Image/Video/Audio/Iframe onload events
@@ -637,9 +766,26 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   onLoadError(): void {
     this.isLoading.set(false);
-    this.notificationService.showError(
+    this.currentFileType.set('error');
+
+    // Default generic message
+    this.errorMessage.set(
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
+
+    // Try to fetch the specific error message from the protocol handler (e.g. Locked, Permission Denied)
+    this.http
+      .get(this.rawUrl(), { responseType: 'text' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        error: err => {
+          const body = err.error instanceof Blob ? 'Binary data' : err.error;
+          if (body && typeof body === 'string' && body.length < 500) {
+            this.errorMessage.set(body);
+          }
+        },
+      });
+
     console.error('Failed to load file:', this.fileName());
   }
 
@@ -658,13 +804,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Download the current file to a selected destination using copyUrl
+   * Download the current file to a selected destination using copyFile
    * Opens a folder picker to let user choose where to save
    */
   async download(): Promise<void> {
     if (this.isDownloading()) return;
 
-    if (this.apiClient.isHeadless()) {
+    if (isHeadlessMode()) {
       try {
         const url = new URL(this.rawUrl());
         url.searchParams.set('download', 'true');
@@ -697,13 +843,20 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Start the copy job
       const fsName = this.data.isLocal
         ? this.data.remoteName
-        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
-      await this.remoteOps.copyFile(
-        fsName,
-        this.currentItem().Path,
+      await this.remoteOps.transferItems(
+        [
+          {
+            remote: fsName,
+            path: this.currentItem().Path,
+            name: this.fileName(),
+            isDir: false,
+          },
+        ],
         selectedPath,
-        this.fileName(),
+        '',
+        'copy',
         ORIGINS.FILEMANAGER
       );
 
@@ -714,6 +867,47 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       console.error('Failed to start download:', err);
     } finally {
       this.isDownloading.set(false);
+    }
+  }
+
+  async extractArchive(): Promise<void> {
+    if (this.isExtracting()) return;
+
+    const item = this.currentItem();
+
+    // Use internal Nautilus picker for folder selection
+    this.nautilusService.openFilePicker({
+      selection: 'folders',
+      mode: 'both', // Allow picking both local and remote folders
+      multi: false,
+    });
+
+    try {
+      const result: FilePickerResult = await firstValueFrom(this.nautilusService.filePickerResult$);
+      if (result.cancelled || !result.paths.length) return;
+
+      this.isExtracting.set(true);
+      const selectedPath = result.paths[0];
+
+      const source = this.data.isLocal
+        ? (this.data.remoteName === '/'
+            ? `/${item.Path}`
+            : `${this.data.remoteName}/${item.Path}`
+          ).replace(/\/+/g, '/')
+        : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.extracting', { name: this.fileName() })
+      );
+
+      await this.remoteOps.archiveExtract(source, selectedPath);
+    } catch (err) {
+      console.error('Failed to extract archive:', err);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.errorExtract')
+      );
+    } finally {
+      this.isExtracting.set(false);
     }
   }
 }

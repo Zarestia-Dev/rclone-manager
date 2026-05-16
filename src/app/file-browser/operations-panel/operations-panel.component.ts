@@ -7,7 +7,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { JobManagementService, UiStateService, NotificationService } from '@app/services';
+import { JobManagementService, UiStateService } from '@app/services';
+import { CopyToClipboardDirective } from '@app/directives';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
@@ -31,6 +32,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     FormatEtaPipe,
     FormatRateValuePipe,
     TranslateModule,
+    CopyToClipboardDirective,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
@@ -38,7 +40,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 export class OperationsPanelComponent implements OnInit, OnDestroy {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
-  private notificationService = inject(NotificationService);
   private translate = inject(TranslateService);
   private destroy$ = new Subject<void>();
 
@@ -60,9 +61,17 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     interval(1000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
+        const active = this.activeJobs();
         // Only poll if there are active running jobs
-        if (this.activeJobs().length > 0) {
+        if (active.length > 0) {
           this.jobManagementService.refreshJobs();
+
+          // Also ensure we're watching the groups of these jobs to get transfer details
+          active.forEach(job => {
+            if (job.group) {
+              this.jobManagementService.watchGroup(job.group);
+            }
+          });
         }
       });
 
@@ -98,38 +107,41 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   getFileName(job: JobInfo): string {
-    if (job.job_type === 'upload') {
-      return this.getJobTypeLabel(job);
-    }
+    return this.getJobTypeLabel(job);
+  }
 
+  getActualFileName(job: JobInfo): string {
+    if (job.source === 'multiple items' && job.stats && job.stats.totalTransfers > 0) {
+      return `${job.stats.totalTransfers} files`;
+    }
     const path = job.destination || job.source || '';
-    return this.uiStateService.extractFilename(path);
+    return this.uiStateService.extractFilename(path) || job.source || job.destination;
   }
 
   /** Get icon for the job's operation type */
   getJobTypeIcon(job: JobInfo): string {
     switch (job.job_type) {
-      case 'delete_file':
-      case 'purge':
+      case 'delete':
       case 'cleanup':
         return 'trash';
       case 'rmdirs':
         return 'broom';
       case 'copy':
-      case 'copy_file':
       case 'copy_url':
         return 'copy';
       case 'upload':
         return 'file-arrow-up';
       case 'move':
-      case 'move_file':
         return 'move';
-      case 'rename_file':
-      case 'rename_dir':
+      case 'rename':
         return 'pen';
       case 'sync':
       case 'bisync':
         return 'refresh';
+      case 'archivecreate':
+        return 'box-archive';
+      case 'archiveextract':
+        return 'unarchive';
       default:
         return 'folder';
     }
@@ -137,12 +149,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
 
   /** Whether this job is a delete-type operation (no byte progress) */
   isDeleteOperation(job: JobInfo): boolean {
-    return (
-      job.job_type === 'delete_file' ||
-      job.job_type === 'purge' ||
-      job.job_type === 'cleanup' ||
-      job.job_type === 'rmdirs'
-    );
+    return job.job_type === 'delete' || job.job_type === 'cleanup' || job.job_type === 'rmdirs';
   }
 
   getStatusIcon(job: JobInfo): string {
@@ -180,16 +187,53 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     }
   }
 
-  async copyError(errors: string | string[] | undefined): Promise<void> {
-    if (!errors) return;
-    const text = Array.isArray(errors) ? errors.join('\n') : errors;
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      this.notificationService.showSuccess(this.translate.instant('common.errorCopied'));
-    } catch (err) {
-      console.error('Failed to copy error:', err);
-      this.notificationService.showError(this.translate.instant('common.error'));
+  getFormattedJobError(errors: string | string[] | undefined): string | null {
+    if (!errors) return null;
+    return Array.isArray(errors) ? errors.join('\n') : errors;
+  }
+
+  /** Get list of transferred files for a job, prioritizing groupTransfersMap */
+  getTransferredFiles(job: JobInfo): string[] {
+    // 1. Try group transfers map (live data)
+    const filesFromGroup = job.group
+      ? (this.jobManagementService.groupTransfersMap().get(job.group) || []).map(t => t.name)
+      : [];
+
+    if (filesFromGroup.length > 0) return filesFromGroup;
+
+    // 2. Try final stats completion list (for finished jobs)
+    const stats = job.stats as any;
+    if (stats?.completed && Array.isArray(stats.completed)) {
+      return stats.completed.map((t: any) => t.name || t.path || 'Unknown file');
+    }
+
+    // 3. Fallback to legacy uploaded_files
+    return job.uploaded_files || [];
+  }
+
+  /** Get appropriate label for the list of transferred items */
+  getTransferredLabel(job: JobInfo): string {
+    switch (job.job_type) {
+      case 'delete':
+      case 'cleanup':
+      case 'rmdirs':
+        return 'fileBrowser.operations.details.deletedFiles';
+      case 'move':
+      case 'rename':
+        return 'fileBrowser.operations.details.movedFiles';
+      case 'copy':
+      case 'copy_url':
+        return 'fileBrowser.operations.details.copiedFiles';
+      case 'sync':
+      case 'bisync':
+        return 'fileBrowser.operations.details.syncedFiles';
+      case 'upload':
+        return 'fileBrowser.operations.details.uploadedFiles';
+      case 'archivecreate':
+      case 'archiveextract':
+        return 'fileBrowser.operations.details.processedFiles';
+      default:
+        return 'fileBrowser.operations.details.processedFiles';
     }
   }
 }

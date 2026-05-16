@@ -1,7 +1,7 @@
-//! rcman-compatible settings schema for RClone Manager
+//! rcman-compatible settings schema for `RClone` Manager
 //!
-//! This module provides the SettingsSchema implementation for the existing
-//! AppSettings types, using the derive macro for simplified definition.
+//! This module provides the `SettingsSchema` implementation for the existing
+//! `AppSettings` types, using the derive macro for simplified definition.
 
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
@@ -99,11 +99,11 @@ pub struct CoreSettings {
     pub connection_check_urls: Vec<String>,
 
     #[setting(
-        label = "settings.core.rclone_path.label",
-        description = "settings.core.rclone_path.description",
+        label = "settings.core.rclone_binary.label",
+        description = "settings.core.rclone_binary.description",
         engine_restart = true
     )]
-    pub rclone_path: String,
+    pub rclone_binary: String,
 
     #[setting(
         label = "settings.core.rclone_flags.label",
@@ -145,16 +145,6 @@ pub struct CoreSettings {
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
-
-    #[setting(
-        label = "settings.core.max_upload_batch_size.label",
-        description = "settings.core.max_upload_batch_size.description",
-        min = 10,
-        max = 5120,
-        step = 10
-    )]
-    #[cfg(feature = "web-server")]
-    pub max_upload_batch_size: usize,
 }
 
 impl Default for CoreSettings {
@@ -168,12 +158,10 @@ impl Default for CoreSettings {
                 "https://onedrive.live.com".to_string(),
             ],
             bandwidth_limit: String::new(),
-            rclone_path: String::new(),
+            rclone_binary: String::new(),
             rclone_additional_flags: vec![],
             rclone_env_vars: vec![],
             completed_onboarding: false,
-            #[cfg(feature = "web-server")]
-            max_upload_batch_size: 500,
         }
     }
 }
@@ -256,7 +244,13 @@ pub struct RuntimeSettings {
         label = "settings.runtime.dashboard_layout.label",
         description = "settings.runtime.dashboard_layout.description"
     )]
-    pub dashboard_layout: Vec<String>,
+    pub dashboard_layout: Value,
+
+    #[setting(
+        label = "settings.runtime.remote_layouts.label",
+        description = "settings.runtime.remote_layouts.description"
+    )]
+    pub remote_layouts: Value,
 
     #[setting(
         label = "settings.runtime.dashboard_card_variant.label",
@@ -277,7 +271,8 @@ impl Default for RuntimeSettings {
             rclone_skipped_updates: vec![],
             rclone_update_channel: "stable".to_string(),
             flatpak_warn: true,
-            dashboard_layout: vec![],
+            dashboard_layout: Value::Object(Default::default()),
+            remote_layouts: Value::Object(Default::default()),
             dashboard_card_variant: "compact".to_string(),
         }
     }

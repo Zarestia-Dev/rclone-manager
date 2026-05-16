@@ -15,12 +15,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { CompletedTransfer, JobInfo } from '@app/types';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
-import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-import { FormatEtaPipe } from 'src/app/shared/pipes/format-eta.pipe';
+import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
 import { TransferActivityPanelComponent } from '../../../shared/detail-shared';
 import { TransferActivityPanelConfig } from '@app/types';
 import { IconService, JobManagementService, mapRawTransfer, ModalService } from '@app/services';
+import { CopyToClipboardDirective } from '@app/directives';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -41,6 +40,7 @@ import { IconService, JobManagementService, mapRawTransfer, ModalService } from 
     DatePipe,
     TitleCasePipe,
     TransferActivityPanelComponent,
+    CopyToClipboardDirective,
   ],
   templateUrl: './job-detail-modal.component.html',
   styleUrls: ['./job-detail-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -69,9 +69,7 @@ export class JobDetailModalComponent {
     } else {
       // Once finished or if no group, use the job stats completion list
       const fromJobStats = ((stats as any)?.completed ?? []) as any[];
-      completedTransfers = fromJobStats.map(item =>
-        mapRawTransfer({ ...item, src_fs: item.srcFs, dst_fs: item.dstFs })
-      );
+      completedTransfers = fromJobStats.map(mapRawTransfer);
     }
 
     // Sort by completion time (latest first)

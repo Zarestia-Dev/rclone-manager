@@ -26,53 +26,59 @@ pub enum TrayAction {
     StopAllJobs,
     StopAllServes,
     OpenFileBrowser,
+    ShowApp,
+    OpenWebUI,
+    Quit,
 }
 
 impl TrayAction {
     /// Converts a tray action into its unique string ID.
-    /// Example: TrayAction::MountProfile("myRemote", "profile1") -> "mount_profile-myRemote-profile1"
+    /// Example: `TrayAction::MountProfile("myRemote", "profile1") -> "mount_profile-myRemote-profile1"
     pub fn to_id(&self) -> String {
         match self {
             Self::MountProfile(remote, profile) => {
-                format!("mount_profile__{}__{}", remote, profile)
+                format!("mount_profile__{remote}__{profile}")
             }
             Self::UnmountProfile(remote, profile) => {
-                format!("unmount_profile__{}__{}", remote, profile)
+                format!("unmount_profile__{remote}__{profile}")
             }
-            Self::SyncProfile(remote, profile) => format!("sync_profile__{}__{}", remote, profile),
+            Self::SyncProfile(remote, profile) => format!("sync_profile__{remote}__{profile}"),
             Self::StopSyncProfile(remote, profile) => {
-                format!("stop_sync_profile__{}__{}", remote, profile)
+                format!("stop_sync_profile__{remote}__{profile}")
             }
-            Self::CopyProfile(remote, profile) => format!("copy_profile__{}__{}", remote, profile),
+            Self::CopyProfile(remote, profile) => format!("copy_profile__{remote}__{profile}"),
             Self::StopCopyProfile(remote, profile) => {
-                format!("stop_copy_profile__{}__{}", remote, profile)
+                format!("stop_copy_profile__{remote}__{profile}")
             }
-            Self::MoveProfile(remote, profile) => format!("move_profile__{}__{}", remote, profile),
+            Self::MoveProfile(remote, profile) => format!("move_profile__{remote}__{profile}"),
             Self::StopMoveProfile(remote, profile) => {
-                format!("stop_move_profile__{}__{}", remote, profile)
+                format!("stop_move_profile__{remote}__{profile}")
             }
             Self::BisyncProfile(remote, profile) => {
-                format!("bisync_profile__{}__{}", remote, profile)
+                format!("bisync_profile__{remote}__{profile}")
             }
             Self::StopBisyncProfile(remote, profile) => {
-                format!("stop_bisync_profile__{}__{}", remote, profile)
+                format!("stop_bisync_profile__{remote}__{profile}")
             }
             Self::ServeProfile(remote, profile) => {
-                format!("serve_profile__{}__{}", remote, profile)
+                format!("serve_profile__{remote}__{profile}")
             }
             Self::StopServeProfile(remote, profile) => {
-                format!("stop_serve_profile__{}__{}", remote, profile)
+                format!("stop_serve_profile__{remote}__{profile}")
             }
-            Self::Browse(remote) => format!("browse-__{}", remote),
-            Self::BrowseInApp(remote) => format!("browse_in_app__{}", remote),
+            Self::Browse(remote) => format!("browse_remote__{remote}"),
+            Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
             Self::StopAllServes => "stop_all_serves".to_string(),
             Self::OpenFileBrowser => "open_file_browser".to_string(),
+            Self::ShowApp => "show_app".to_string(),
+            Self::OpenWebUI => "open_web_ui".to_string(),
+            Self::Quit => "quit".to_string(),
         }
     }
 
-    /// Parses a unique string ID back into a TrayAction.
+    /// Parses a unique string ID back into a `TrayAction`.
     /// Example: "mount_profile__myRemote__profile1" -> Some(TrayAction::MountProfile("myRemote", "profile1"))
     pub fn from_id(id: &str) -> Option<Self> {
         // Check for global actions first (single word, no separators)
@@ -81,24 +87,26 @@ impl TrayAction {
             "stop_all_jobs" => return Some(Self::StopAllJobs),
             "stop_all_serves" => return Some(Self::StopAllServes),
             "open_file_browser" => return Some(Self::OpenFileBrowser),
-            "show_app" | "open_web_ui" | "quit" => return None, // Handled separately in lib.rs
+            "show_app" => return Some(Self::ShowApp),
+            "open_web_ui" => return Some(Self::OpenWebUI),
+            "quit" => return Some(Self::Quit),
             _ => {}
         }
 
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {
-            // Old-style action without profile (browse only)
+            // Action without profile (browse or global)
             let (prefix, remote) = (parts[0], parts[1]);
             match prefix {
-                "browse-" => return Some(Self::Browse(remote.to_string())),
+                "browse_remote" => return Some(Self::Browse(remote.to_string())),
                 "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
                 _ => return None,
             }
         }
 
         if parts.len() != 3 {
-            warn!("Invalid tray menu ID format: {}", id);
+            warn!("Invalid tray menu ID format: {id}");
             return None;
         }
 
@@ -118,9 +126,44 @@ impl TrayAction {
             "serve_profile" => Some(Self::ServeProfile(remote, profile)),
             "stop_serve_profile" => Some(Self::StopServeProfile(remote, profile)),
             _ => {
-                warn!("Unhandled tray menu ID prefix: {}", prefix);
+                warn!("Unhandled tray menu ID prefix: {prefix}");
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tray_action_id_roundtrip() {
+        let actions = vec![
+            TrayAction::MountProfile("myRemote".to_string(), "profile1".to_string()),
+            TrayAction::UnmountProfile("myRemote".to_string(), "profile1".to_string()),
+            TrayAction::SyncProfile("remote".to_string(), "p".to_string()),
+            TrayAction::Browse("remote".to_string()),
+            TrayAction::BrowseInApp("remote".to_string()),
+            TrayAction::UnmountAll,
+            TrayAction::OpenFileBrowser,
+            TrayAction::ShowApp,
+            TrayAction::OpenWebUI,
+            TrayAction::Quit,
+        ];
+
+        for action in actions {
+            let id = action.to_id();
+            let parsed = TrayAction::from_id(&id).expect(&format!("Should parse back: {id}"));
+            assert_eq!(action, parsed);
+        }
+    }
+
+    #[test]
+    fn test_legacy_browse_id() {
+        // Ensure we don't break if someone still has an old ID (optional, but good for stability)
+        let id = "browse_remote__myRemote";
+        let parsed = TrayAction::from_id(id).unwrap();
+        assert_eq!(parsed, TrayAction::Browse("myRemote".to_string()));
     }
 }

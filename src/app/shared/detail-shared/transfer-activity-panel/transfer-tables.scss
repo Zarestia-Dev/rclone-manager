@@ -78,7 +78,7 @@
       display: flex;
       align-items: center;
       gap: var(--space-sm);
-      max-width: 300px; // Prevent file names from taking over
+      max-width: 400px; // Increased to accommodate relative paths
 
       .file-icon {
         width: 20px;
@@ -135,7 +135,7 @@
       gap: var(--space-sm);
 
       .speed-value {
-        font-family: var(--mono-font-family);
+        font-family: var(--font-mono);
         font-weight: 500;
       }
 
@@ -191,45 +191,6 @@
       }
     }
 
-    // 5. Status Chips (Completed)
-    .status-chip {
-      height: 22px;
-      padding: 0 8px;
-      border-radius: var(--radius-xs);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-
-      .chip-icon {
-        width: 12px;
-        height: 12px;
-      }
-
-      span {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xxs);
-      }
-
-      &.success {
-        background: rgba(var(--accent-color-rgb), 0.15);
-        color: var(--accent-color);
-      }
-      &.error {
-        background: rgba(var(--warn-color-rgb), 0.15);
-        color: var(--warn-color);
-      }
-      &.checked {
-        background: rgba(var(--dim-color-rgb), 0.15);
-        color: var(--dim-color);
-      }
-      &.partial {
-        background: rgba(var(--orange-rgb), 0.15);
-        color: var(--orange);
-      }
-    }
-
     // 6. Path Column
     .path-cell .path-info {
       display: flex;
@@ -243,11 +204,12 @@
         background: rgba(var(--window-fg-color-rgb), 0.05);
         padding: 2px 6px;
         border-radius: 4px;
-        max-width: 120px;
+        max-width: 150px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-family: var(--mono-font-family);
+        font-family: var(--font-mono);
+        cursor: help;
       }
 
       .arrow-icon {
@@ -269,16 +231,18 @@
 
     // Hide non-essential columns on mobile
     .eta-cell,
-    .size-cell {
+    .size-cell,
+    .path-cell {
       display: none;
     }
     .mat-column-eta,
-    .mat-column-size {
+    .mat-column-size,
+    .mat-column-path {
       display: none;
     }
 
     .name-cell .file-info {
-      max-width: 150px;
+      max-width: 200px;
     }
   }
 }

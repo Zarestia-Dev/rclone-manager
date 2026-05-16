@@ -713,7 +713,7 @@
     box-sizing: border-box;
 
     code {
-      font-family: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
+      font-family: var(--font-mono);
       font-size: 0.78rem;
       color: var(--accent-color);
       white-space: nowrap;

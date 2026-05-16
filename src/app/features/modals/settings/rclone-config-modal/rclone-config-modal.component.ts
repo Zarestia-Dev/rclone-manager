@@ -10,7 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { MatDialogRef, MatDialog } from '@angular/material/dialog';
+import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -29,7 +29,6 @@ import {
 import { RcConfigOption } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent, JsonEditorComponent } from 'src/app/shared/components';
-import { ConfirmModalComponent } from 'src/app/shared/modals/confirm-modal/confirm-modal.component';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -190,7 +189,6 @@ export class RcloneConfigModalComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
-  private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
@@ -571,13 +569,11 @@ export class RcloneConfigModalComponent implements OnInit {
   }
 
   async resetAllOptions(): Promise<void> {
-    const dialogRef = this.dialog.open(ConfirmModalComponent, {
-      data: {
-        title: this.translate.instant('modals.rcloneConfig.reset.title'),
-        message: this.translate.instant('modals.rcloneConfig.reset.message'),
-        confirmText: this.translate.instant('modals.rcloneConfig.reset.confirm'),
-        cancelText: this.translate.instant('common.cancel'),
-      },
+    const dialogRef = this.modalService.openConfirm({
+      title: this.translate.instant('modals.rcloneConfig.reset.title'),
+      message: this.translate.instant('modals.rcloneConfig.reset.message'),
+      confirmText: this.translate.instant('modals.rcloneConfig.reset.confirm'),
+      cancelText: this.translate.instant('common.cancel'),
     });
 
     const confirmed = await firstValueFrom(dialogRef.afterClosed());

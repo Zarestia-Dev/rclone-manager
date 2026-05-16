@@ -5,37 +5,86 @@
 //! - **In-Place**: Updates rclone directly when write permissions allow
 //! - **Download-to-Local**: Downloads to app data directory when in-place isn't possible
 
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
+use crate::core::check_binaries::read_rclone_binary;
 use crate::core::settings::operations::core::save_setting;
-use crate::rclone::queries::get_rclone_info;
-use crate::utils::app::notification::{NotificationEvent, notify};
+use crate::rclone::backend::BackendManager;
+use crate::rclone::engine::lifecycle::{resume_engine, set_engine_updating, shutdown_engine};
+use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
-use crate::utils::types::core::EngineState;
+use crate::utils::rclone::endpoints::core;
+use crate::utils::types::events::APP_EVENT;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
-use crate::utils::types::updater::RcloneUpdateMetadata;
+use crate::utils::types::state::RcloneState;
+use crate::utils::types::updater::{
+    RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdatePhase, UpdateResult,
+    UpdateStatus, UpdaterError as Error,
+};
+
+struct RcloneVersionInfo {
+    current: String,
+    stable: String,
+    beta: String,
+}
+
+impl RcloneVersionInfo {
+    fn parse(output: &str) -> std::result::Result<Self, String> {
+        let mut info = Self {
+            current: String::new(),
+            stable: String::new(),
+            beta: String::new(),
+        };
+
+        for line in output.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
+            match parts[0] {
+                "yours:" => info.current = parts[1].to_string(),
+                "latest:" => info.stable = parts[1].to_string(),
+                "beta:" => info.beta = parts[1].to_string(),
+                _ => {}
+            }
+        }
+
+        if info.current.is_empty() || info.stable.is_empty() {
+            return Err(
+                "Failed to parse rclone version info: missing current or stable version"
+                    .to_string(),
+            );
+        }
+
+        Ok(info)
+    }
+}
 
 // ============================================================================
 // Types
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-enum UpdateChannel {
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Deserialize)]
+pub enum UpdateChannel {
     #[default]
     Stable,
     Beta,
 }
 
-impl UpdateChannel {
-    fn as_str(&self) -> &'static str {
-        match self {
-            UpdateChannel::Stable => "stable",
-            UpdateChannel::Beta => "beta",
-        }
+impl std::fmt::Display for UpdateChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                UpdateChannel::Stable => "stable",
+                UpdateChannel::Beta => "beta",
+            }
+        )
     }
 }
 
@@ -48,20 +97,6 @@ impl From<Option<String>> for UpdateChannel {
     }
 }
 
-#[derive(Debug, Clone)]
-enum UpdateStrategy {
-    /// Update in place; the path is the exact binary file to be written.
-    InPlace(PathBuf),
-    /// Download to this full file path (directory + binary name).
-    DownloadToLocal(PathBuf),
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct UpdateCheckResult {
-    update_available: bool,
-    latest_version: String,
-}
-
 // ============================================================================
 // Public API Commands
 // ============================================================================
@@ -70,139 +105,158 @@ struct UpdateCheckResult {
 pub async fn check_rclone_update(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
-) -> Result<RcloneUpdateMetadata, String> {
-    let current_version = get_rclone_info(app_handle.clone())
+) -> Result<UpdateInfo> {
+    let result_meta = perform_check_rclone_update(app_handle.clone(), channel).await?;
+
+    if result_meta.metadata.update_available {
+        if let Err(e) = app_handle.emit(
+            APP_EVENT,
+            json!({ "status": "rclone_update_found", "data": &result_meta }),
+        ) {
+            log::warn!("Failed to emit rclone update event: {e}");
+        }
+
+        let is_skipped = app_handle
+            .try_state::<crate::core::settings::AppSettingsManager>()
+            .and_then(|m| m.get_all().ok())
+            .is_some_and(|c| {
+                c.runtime
+                    .rclone_skipped_updates
+                    .contains(&result_meta.metadata.version)
+            });
+
+        if !is_skipped {
+            notify(
+                &app_handle,
+                NotificationEvent::RcloneUpdate(UpdateStage::Available {
+                    version: result_meta.metadata.version.clone(),
+                }),
+            );
+        }
+    }
+
+    Ok(result_meta)
+}
+
+pub async fn perform_check_rclone_update(
+    app_handle: tauri::AppHandle,
+    channel: Option<String>,
+) -> Result<UpdateInfo> {
+    let current_version = get_cached_rclone_version(&app_handle)
         .await
-        .map(|info| info.version)
-        .map_err(
-            |e| crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e),
-        )?;
+        .unwrap_or_else(|| "unknown".to_string());
 
     let channel: UpdateChannel = channel.into();
-    let result = check_rclone_selfupdate(&app_handle, &channel)
-        .await
-        .map_err(|e| e.to_string())?;
 
-    let (release_notes, release_date, release_url) = if result.update_available {
-        fetch_rclone_release_info(&result.latest_version, &channel)
+    app_handle.state::<RcloneUpdaterState>().with_data(|d| {
+        d.phase = UpdatePhase::Checking;
+        d.pending_update = None;
+    });
+
+    let (update_available, latest_version) = check_rclone_selfupdate(&app_handle, &channel).await?;
+
+    let (release_notes, release_date, release_url) = if update_available {
+        fetch_rclone_release_info(&latest_version, &channel)
             .await
             .unwrap_or((None, None, None))
     } else {
         (None, None, None)
     };
 
-    let result_meta = RcloneUpdateMetadata {
+    let metadata = UpdateMetadata {
         current_version: current_version.clone(),
-        latest_version: result.latest_version.clone(),
-        update_available: result.update_available,
-        current_version_clean: clean_version(&current_version),
-        latest_version_clean: clean_version(&result.latest_version),
-        channel: channel.as_str().to_string(),
+        version: latest_version,
+        update_available,
+        channel: Some(channel.to_string()),
         release_notes,
         release_date,
         release_url,
-        update_in_progress: false,
-        ready_to_restart: false,
+        ..Default::default()
     };
 
-    if result.update_available {
-        use crate::utils::types::updater::RcloneUpdaterState;
-        if let Ok(mut pending) = app_handle
+    if update_available {
+        app_handle.state::<RcloneUpdaterState>().with_data(|d| {
+            d.phase = UpdatePhase::Idle;
+            d.pending_update = Some(metadata.clone());
+        });
+    } else {
+        app_handle
             .state::<RcloneUpdaterState>()
-            .pending_update
-            .lock()
-        {
-            *pending = Some(result_meta.clone());
-        }
-
-        if let Err(e) = app_handle.emit(
-            crate::utils::types::events::APP_EVENT,
-            json!({ "status": "rclone_update_found", "data": result_meta }),
-        ) {
-            log::warn!("Failed to emit rclone update event: {}", e);
-        }
-
-        notify(
-            &app_handle,
-            NotificationEvent::RcloneUpdateAvailable {
-                version: result.latest_version.clone(),
-            },
-        );
+            .with_data(|d| d.phase = UpdatePhase::Idle);
     }
 
-    Ok(result_meta)
+    let status = if metadata.update_available {
+        UpdateStatus::Available
+    } else {
+        UpdateStatus::Idle
+    };
+
+    Ok(UpdateInfo { metadata, status })
 }
 
 #[tauri::command]
-pub async fn get_rclone_update_info(
-    app_handle: tauri::AppHandle,
-) -> Result<Option<RcloneUpdateMetadata>, String> {
-    use crate::utils::types::updater::RcloneUpdaterState;
-
-    // Check the same candidate paths that activate_pending_rclone_update uses.
+pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Option<UpdateInfo>> {
     let has_pending_new = find_pending_new_binary(&app_handle).is_some();
-
     let updater_state = app_handle.state::<RcloneUpdaterState>();
-    if let Ok(pending) = updater_state.pending_update.lock()
-        && let Some(meta) = &*pending
+    let (phase, pending_metadata) =
+        updater_state.with_data(|d| (d.phase, d.pending_update.clone()));
+
+    // If no metadata and no binary, there's nothing to report
+    if pending_metadata.is_none() && !has_pending_new {
+        return Ok(None);
+    }
+
+    let status = if has_pending_new || phase == UpdatePhase::ReadyToRestart {
+        UpdateStatus::ReadyToRestart
+    } else if phase == UpdatePhase::Downloading {
+        UpdateStatus::Downloading
+    } else if pending_metadata
+        .as_ref()
+        .is_some_and(|m| m.update_available)
     {
-        let mut meta = meta.clone();
-        if has_pending_new {
-            meta.ready_to_restart = true;
-            meta.update_available = false; // It's already downloaded
+        UpdateStatus::Available
+    } else {
+        UpdateStatus::Idle
+    };
+
+    let mut metadata = match pending_metadata {
+        Some(m) => m,
+        None => {
+            let current_version = get_cached_rclone_version(&app_handle)
+                .await
+                .unwrap_or_else(|| "unknown".to_string());
+
+            let version = if let Some((_, new_path)) = find_pending_new_binary(&app_handle) {
+                get_binary_version(&new_path)
+                    .await
+                    .unwrap_or_else(|| "unknown".to_string())
+            } else {
+                "unknown".to_string()
+            };
+
+            UpdateMetadata {
+                current_version,
+                version,
+                update_available: false,
+                channel: Some("stable".into()),
+                ..Default::default()
+            }
         }
-        return Ok(Some(meta));
+    };
+
+    if status == UpdateStatus::ReadyToRestart {
+        metadata.update_available = false;
     }
 
-    if has_pending_new {
-        // If we have a pending binary but no metadata (lost state),
-        // we return a minimal meta object.
-        return Ok(Some(RcloneUpdateMetadata {
-            current_version: "unknown".to_string(),
-            latest_version: "unknown".to_string(),
-            update_available: false,
-            current_version_clean: "unknown".to_string(),
-            latest_version_clean: "unknown".to_string(),
-            channel: "stable".to_string(),
-            release_notes: None,
-            release_date: None,
-            release_url: None,
-            update_in_progress: false,
-            ready_to_restart: true,
-        }));
-    }
-
-    Ok(None)
+    Ok(Some(UpdateInfo { metadata, status }))
 }
 
-/// Returns the (active, .new) path pair for the first candidate that has a
-/// staged `.new` binary, or `None` if no pending binary exists.
-///
-/// Mirrors the candidate resolution logic in `activate_pending_rclone_update`
-/// so that both functions always agree on where the binary is.
 fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)> {
-    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
-    let configured_base: PathBuf = manager
-        .inner()
-        .get::<String>("core.rclone_path")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("system"));
+    let current_runtime = read_rclone_binary(app_handle);
+    let local_target = get_local_rclone_binary(app_handle).ok()?;
 
-    let current_runtime = read_rclone_path(app_handle);
-    let bin_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    let local_target = get_local_rclone_path(app_handle).ok()?.join(bin_name);
-
-    let configured_target = (!matches!(configured_base.to_string_lossy().as_ref(), "" | "system"))
-        .then(|| get_rclone_binary_path(&configured_base));
-
-    configured_target
+    [current_runtime, local_target]
         .into_iter()
-        .chain([current_runtime, local_target])
         .map(|p| {
             let new = PathBuf::from(format!("{}.new", p.display()));
             (p, new)
@@ -214,80 +268,131 @@ fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)>
 pub async fn update_rclone(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
-) -> Result<serde_json::Value, String> {
-    debug!("🔍 Starting rclone download/update process");
+) -> Result<UpdateResult> {
+    debug!("Starting rclone download/update process");
 
-    let channel: UpdateChannel = channel.into();
-    let update_check =
-        check_rclone_update(app_handle.clone(), Some(channel.as_str().to_string())).await?;
+    let channel_enum: UpdateChannel = channel.clone().into();
 
-    let update_available = update_check.update_available;
+    let updater_state = app_handle.state::<RcloneUpdaterState>();
+    let cached_update = updater_state.with_data(|d| d.pending_update.clone());
 
-    if !update_available {
-        return Ok(json!({
-            "success": false,
-            "message": "No update available",
-            "current_version": update_check.current_version
-        }));
+    let update_check = match cached_update {
+        Some(metadata) if metadata.update_available => UpdateInfo {
+            metadata,
+            status: UpdateStatus::Available,
+        },
+        _ => perform_check_rclone_update(app_handle.clone(), channel).await?,
+    };
+
+    if !update_check.metadata.update_available {
+        return Ok(UpdateResult {
+            success: false,
+            message: Some("No update available".to_string()),
+            channel: Some(channel_enum.to_string()),
+            ..Default::default()
+        });
     }
 
-    let latest_version = &update_check.latest_version;
+    let latest_version = &update_check.metadata.version;
 
-    // Resolve binary path, falling back to system rclone
-    let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
-    let base_path: PathBuf = manager
-        .inner()
-        .get::<String>("core.rclone_path")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("system"));
-    let mut current_path = get_rclone_binary_path(&base_path);
+    {
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        if !backend.is_local {
+            notify(
+                &app_handle,
+                NotificationEvent::RcloneUpdate(UpdateStage::Started {
+                    version: latest_version.clone(),
+                }),
+            );
 
-    if !current_path.exists() {
-        let system_path = read_rclone_path(&app_handle);
-        if system_path.exists() {
-            current_path = system_path;
-        } else {
-            return Err(crate::localized_error!(
-                "backendErrors.rclone.binaryNotFound"
-            ));
+            let result = perform_rclone_selfupdate(&app_handle, None, channel_enum.clone()).await;
+
+            return match result {
+                Ok(res) => {
+                    notify(
+                        &app_handle,
+                        NotificationEvent::RcloneUpdate(UpdateStage::Complete {
+                            version: latest_version.clone(),
+                        }),
+                    );
+                    Ok(UpdateResult {
+                        success: true,
+                        manual: true,
+                        message: Some(
+                            "Rclone update completed. Please restart it manually.".to_string(),
+                        ),
+                        channel: Some(channel_enum.to_string()),
+                        output: res.output,
+                    })
+                }
+                Err(e) => {
+                    notify(
+                        &app_handle,
+                        NotificationEvent::RcloneUpdate(UpdateStage::Failed {
+                            error: e.to_string(),
+                        }),
+                    );
+                    Err(e)
+                }
+            };
         }
     }
 
-    app_handle
-        .emit(RCLONE_ENGINE_UPDATING, ())
-        .map_err(|e| format!("Failed to emit update event: {e}"))?;
+    let current_path = read_rclone_binary(&app_handle);
+    if !current_path.exists() {
+        return Err(Error::BinaryNotFound);
+    }
+
+    set_engine_updating(&app_handle, true).await;
+    if let Err(e) = app_handle.emit(RCLONE_ENGINE_UPDATING, ()) {
+        set_engine_updating(&app_handle, false).await;
+        return Err(Error::Backend(format!("Failed to emit update event: {e}")));
+    }
 
     notify(
         &app_handle,
-        NotificationEvent::RcloneUpdateStarted {
-            version: latest_version.to_string(),
-        },
+        NotificationEvent::RcloneUpdate(UpdateStage::Started {
+            version: latest_version.clone(),
+        }),
     );
 
-    let update_result = match determine_update_strategy(&current_path, &app_handle).await {
-        Ok(strategy) => execute_update_strategy(strategy, &app_handle, channel).await,
-        Err(e) => Err(e),
+    let target_path = match resolve_update_target_path(&current_path, &app_handle) {
+        Ok(path) => path,
+        Err(e) => {
+            set_engine_updating(&app_handle, false).await;
+            return Err(e);
+        }
     };
+    let new_path = PathBuf::from(format!("{}.new", target_path.display()));
 
-    if let Ok(res) = &update_result {
-        if res["success"].as_bool().unwrap_or(false) {
+    updater_state.with_data(|d| d.phase = UpdatePhase::Downloading);
+    info!("Downloading update to: {new_path:?}");
+    let update_result = perform_rclone_selfupdate(&app_handle, Some(&new_path), channel_enum).await;
+
+    updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
+
+    match &update_result {
+        Ok(res) => {
+            if res.success {
+                updater_state.with_data(|d| d.phase = UpdatePhase::ReadyToRestart);
+                notify(
+                    &app_handle,
+                    NotificationEvent::RcloneUpdate(UpdateStage::Downloaded {
+                        version: latest_version.clone(),
+                    }),
+                );
+            }
+        }
+        Err(e) => {
+            set_engine_updating(&app_handle, false).await;
             notify(
                 &app_handle,
-                NotificationEvent::RcloneUpdateComplete {
-                    version: latest_version.to_string(),
-                },
+                NotificationEvent::RcloneUpdate(UpdateStage::Failed {
+                    error: e.to_string(),
+                }),
             );
-            // The pending_update state is already filled by `check_rclone_update` above;
-            // the actual binary swap will occur when the frontend calls `apply_rclone_update`.
         }
-    } else if let Err(error_msg) = &update_result {
-        notify(
-            &app_handle,
-            NotificationEvent::RcloneUpdateFailed {
-                error: error_msg.clone(),
-            },
-        );
     }
 
     update_result
@@ -295,16 +400,25 @@ pub async fn update_rclone(
 
 /// Apply a previously downloaded rclone update and restart the engine.
 #[tauri::command]
-pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), String> {
-    debug!("🎯 Applying previously downloaded rclone update");
+pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
+    debug!("Applying previously downloaded rclone update");
+
+    {
+        let backend_manager = app_handle.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+        if !backend.is_local {
+            return Err(Error::Backend(crate::localized_error!(
+                "backendErrors.rclone.updateRemoteUnsupported"
+            )));
+        }
+    }
     let pending_version = activate_pending_rclone_update(&app_handle).await?;
 
-    // send a notification that the update has actually been installed
     notify(
         &app_handle,
-        NotificationEvent::RcloneUpdateInstalled {
-            version: pending_version.to_string(),
-        },
+        NotificationEvent::RcloneUpdate(UpdateStage::Installed {
+            version: pending_version.clone(),
+        }),
     );
 
     crate::rclone::engine::lifecycle::restart_for_config_change(
@@ -313,218 +427,212 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<(), Str
         "unknown",
         &pending_version,
     )
-    .map_err(|e| format!("Binary swapped but engine restart failed: {}", e))
+    .map_err(|e| Error::Restart(e.to_string()))
 }
 
 /// Swaps the pending `.new` binary into the active location.
 /// Does NOT restart the engine — returns the activated version string.
-pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<String, String> {
-    use std::fs;
-
-    debug!("🚀 Activating rclone update (swapping binaries)");
-
-    let (current_path, new_path) = find_pending_new_binary(app_handle).ok_or_else(|| {
-        use crate::utils::types::updater::RcloneUpdaterState;
-        if let Ok(mut pending) = app_handle
-            .state::<RcloneUpdaterState>()
-            .pending_update
-            .lock()
-        {
-            *pending = None;
+pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<String> {
+    debug!("Activating rclone update (native binary swap)");
+    let (current_path, new_path) = match find_pending_new_binary(app_handle) {
+        Some(paths) => paths,
+        None => {
+            app_handle
+                .state::<RcloneUpdaterState>()
+                .with_data(|d| d.pending_update = None);
+            return Err(Error::BinaryNotFound);
         }
-        "The downloaded .new binary was missing or deleted. Please check for updates again."
-            .to_string()
-    })?;
+    };
 
-    // Kill the engine so the binary is unlocked (critical on Windows)
-    {
-        let engine_state = app_handle.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        engine.set_updating(true);
-        let _ = engine.kill_process(app_handle).await;
-    }
-
-    if let Some(parent) = current_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create destination directory: {e}"))?;
-    }
-
-    // Atomic-ish rename with copy+remove fallback for cross-device moves
-    fn rename_or_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
-        fs::rename(src, dst).or_else(|_| {
-            fs::copy(src, dst)?;
-            fs::remove_file(src)
-        })
-    }
+    info!("Stopping rclone engine for binary swap...");
+    shutdown_engine(app_handle).await;
 
     let old_path = PathBuf::from(format!("{}.old", current_path.display()));
-
-    let swap_result: Result<(), String> = (|| {
-        if current_path.exists() {
-            let _ = fs::remove_file(&old_path);
-
-            rename_or_copy(&current_path, &old_path)
-                .map_err(|e| format!("Failed to backup current rclone binary: {e}"))?;
-
-            if let Err(e) = rename_or_copy(&new_path, &current_path) {
-                // Rollback
-                rename_or_copy(&old_path, &current_path).map_err(|re| {
-                    format!("CRITICAL: Promoted binary failed and rollback failed: {re}")
-                })?;
-                return Err(format!(
-                    "Failed to activate new binary, rollback successful: {e}"
-                ));
-            }
-        } else {
-            rename_or_copy(&new_path, &current_path)
-                .map_err(|e| format!("Failed to activate new binary: {e}"))?;
-        }
-        Ok(())
-    })();
-
-    {
-        let engine_state = app_handle.state::<EngineState>();
-        let mut engine = engine_state.lock().await;
-        engine.set_updating(false);
+    if current_path.exists() {
+        debug!(
+            "Backing up current binary: {} -> {}",
+            current_path.display(),
+            old_path.display()
+        );
+        std::fs::rename(&current_path, &old_path).map_err(Error::BackupFailed)?;
     }
 
-    swap_result?;
-    info!("✅ Binary successfully swapped from .new -> active");
+    info!(
+        "Promoting new binary: {} -> {}",
+        new_path.display(),
+        current_path.display()
+    );
+    std::fs::rename(&new_path, &current_path).map_err(Error::Io)?;
 
-    // Only persist the path when it has actually changed. If the value is
-    // already correct the settings store skips the write but still fires the
-    // change event, which would trigger a redundant engine restart on top of
-    // the one apply_rclone_update is about to do explicitly.
-    if let Some(new_parent) = current_path.parent() {
+    resume_engine(app_handle).await;
+
+    {
         let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
         let current_setting: PathBuf = manager
             .inner()
-            .get::<String>("core.rclone_path")
+            .get::<String>("core.rclone_binary")
             .ok()
             .map(PathBuf::from)
             .unwrap_or_default();
 
-        if current_setting != new_parent {
-            update_rclone_path_in_settings(app_handle, new_parent).await;
+        if current_setting != current_path
+            && let Err(e) = update_rclone_binary_in_settings(app_handle, &current_path).await
+        {
+            warn!("Failed to update rclone binary path in settings: {e}");
         }
     }
 
-    use crate::utils::types::updater::RcloneUpdaterState;
-    let updater_state = app_handle.state::<RcloneUpdaterState>();
-    let mut pending = updater_state
-        .pending_update
-        .lock()
-        .map_err(|e| format!("Failed to lock pending rclone version: {e}"))?;
+    let updater = app_handle.state::<RcloneUpdaterState>();
+    let meta = updater.with_data(|d| {
+        d.phase = UpdatePhase::Idle;
+        d.pending_update.take()
+    });
 
-    let meta = pending
-        .take()
-        .ok_or_else(|| "No pending update metadata".to_string())?;
-    Ok(meta.latest_version)
-}
-
-// ============================================================================
-// Update Strategy
-// ============================================================================
-
-async fn determine_update_strategy(
-    current_path: &Path,
-    app_handle: &AppHandle,
-) -> Result<UpdateStrategy, String> {
-    if current_path.parent().is_some_and(is_writable_dir) {
-        log::info!("Can update rclone in place at: {current_path:?}");
-        return Ok(UpdateStrategy::InPlace(current_path.to_path_buf()));
-    }
-
-    let local_dir = get_local_rclone_path(app_handle)?;
-    if let Some(parent) = local_dir.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create local rclone directory: {e}"))?;
-    }
-
-    let bin_name = if cfg!(windows) {
-        "rclone.exe"
+    if let Some(metadata) = meta {
+        Ok(metadata.version)
     } else {
-        "rclone"
-    };
-    let full_path = local_dir.join(bin_name);
-    log::info!("Will download rclone to local path: {full_path:?}");
-    Ok(UpdateStrategy::DownloadToLocal(full_path))
+        log::warn!("Rclone binary swap completed but no update metadata was found (state lost?)");
+        // We just promoted new_path to current_path, so current_path is now the new version.
+        Ok(get_binary_version(&current_path)
+            .await
+            .unwrap_or_else(|| "unknown".to_string()))
+    }
 }
 
-async fn execute_update_strategy(
-    strategy: UpdateStrategy,
-    app_handle: &AppHandle,
-    channel: UpdateChannel,
-) -> Result<serde_json::Value, String> {
-    match strategy {
-        UpdateStrategy::InPlace(target_file) => {
-            let new_path = PathBuf::from(format!("{}.new", target_file.display()));
-            info!("Downloading update in-place to: {:?}", new_path);
-            perform_rclone_selfupdate(app_handle, Some(&new_path), channel).await
-        }
+/// Helper to get the version of a specific rclone binary.
+async fn get_binary_version(path: &Path) -> Option<String> {
+    let output = crate::utils::process::command::Command::new(path)
+        .arg("version")
+        .output()
+        .await
+        .ok()?;
 
-        UpdateStrategy::DownloadToLocal(full_path) => {
-            let new_path = PathBuf::from(format!("{}.new", full_path.display()));
-            info!("Downloading update to local path: {:?}", new_path);
-            // Do NOT save settings here — that would trigger the rclone_path event
-            // listener and restart the engine before the binary is promoted.
-            // The path is saved in activate_pending_rclone_update after the swap.
-            perform_rclone_selfupdate(app_handle, Some(&new_path), channel).await
-        }
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // rclone v1.66.0
+        // ...
+        stdout.lines().next().and_then(|line| {
+            line.split_whitespace()
+                .nth(1)
+                .map(clean_version)
+                .map(String::from)
+        })
+    } else {
+        None
     }
+}
+
+async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
+    let backend_manager = app_handle.state::<BackendManager>();
+    let active_name = backend_manager.get_active_name().await;
+    let runtime = backend_manager.get_runtime_info(&active_name).await?;
+
+    runtime
+        .core_version
+        .as_ref()
+        .map(|version_info| version_info.version.clone())
+        .or(runtime.version)
+}
+
+/// Global function to check for and apply any staged rclone updates.
+///
+/// This checks both the in-memory state and the filesystem for `.new` binaries.
+/// Should be called during shutdown, restart, and startup.
+pub async fn apply_rclone_update_if_staged(app_handle: &AppHandle) -> Result<bool> {
+    if find_pending_new_binary(app_handle).is_some() {
+        info!("Applying staged rclone update...");
+        activate_pending_rclone_update(app_handle).await?;
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn resolve_update_target_path(current_path: &Path, app_handle: &AppHandle) -> Result<PathBuf> {
+    if current_path.parent().is_some_and(is_writable_dir) {
+        return Ok(current_path.to_path_buf());
+    }
+
+    let local_path = get_local_rclone_binary(app_handle)?;
+    if let Some(parent) = local_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    Ok(local_path)
 }
 
 // ============================================================================
 // Helpers
 // ============================================================================
 
-fn clean_version(version: &str) -> String {
-    version.trim_start_matches('v').to_string()
+fn clean_version(version: &str) -> &str {
+    version.trim_start_matches('v')
 }
 
 fn is_writable_dir(path: &Path) -> bool {
     let test_file = path.join(".rclone_manager_write_test");
     if std::fs::write(&test_file, "test").is_ok() {
-        let _ = std::fs::remove_file(&test_file);
+        if let Err(e) = std::fs::remove_file(&test_file) {
+            warn!(
+                "Failed to remove write-test file {}: {e}",
+                test_file.display()
+            );
+        }
         true
     } else {
         false
     }
 }
 
-fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf> {
     let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
     let configured: PathBuf = manager
         .inner()
-        .get::<String>("core.rclone_path")
+        .get::<String>("core.rclone_binary")
         .ok()
         .map(PathBuf::from)
         .unwrap_or_default();
 
+    let bin_name = if cfg!(windows) {
+        "rclone.exe"
+    } else {
+        "rclone"
+    };
+
     if !matches!(configured.to_string_lossy().as_ref(), "" | "system") {
-        if is_writable_dir(&configured) {
-            log::info!("Using configured rclone install path: {configured:?}");
-            return Ok(configured);
+        let dir = if configured.is_dir() {
+            configured.clone()
+        } else {
+            configured
+                .parent()
+                .map(std::path::Path::to_path_buf)
+                .unwrap_or_default()
+        };
+
+        if !dir.as_os_str().is_empty() && is_writable_dir(&dir) {
+            log::info!("Using configured rclone install directory: {dir:?}");
+            return Ok(dir.join(bin_name));
         }
         log::warn!("Configured path {configured:?} is not writable, falling back to app data dir");
     }
 
-    Ok(crate::core::paths::AppPaths::from_app_handle(app_handle)?.config_dir)
+    let app_dir = crate::core::paths::AppPaths::from_app_handle(app_handle)
+        .map_err(Error::Backend)?
+        .config_dir;
+    Ok(app_dir.join(bin_name))
 }
 
-async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
-    match save_setting(
-        "core".to_string(),
-        "rclone_path".to_string(),
-        json!(new_path.display().to_string()),
-        app_handle.state(),
+pub async fn update_rclone_binary_in_settings(
+    app_handle: &tauri::AppHandle,
+    new_path: &Path,
+) -> std::result::Result<(), Error> {
+    save_setting(
         app_handle.clone(),
+        "core".to_string(),
+        "rclone_binary".to_string(),
+        json!(new_path.to_string_lossy()),
     )
     .await
-    {
-        Ok(_) => info!("Updated rclone path in settings to: {:?}", new_path),
-        Err(e) => log::error!("Failed to save rclone path to settings: {e}"),
-    }
+    .map_err(Error::Backend)
 }
 
 // ============================================================================
@@ -534,68 +642,44 @@ async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path)
 async fn check_rclone_selfupdate(
     app_handle: &AppHandle,
     channel: &UpdateChannel,
-) -> Result<UpdateCheckResult, String> {
-    let output = build_rclone_command(app_handle, None, None, None)
-        .arg("selfupdate")
-        .arg("--check")
-        .output()
+) -> Result<(bool, String)> {
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let client = &app_handle.state::<RcloneState>().client;
+
+    // Call `rclone selfupdate --check` through the running RC daemon.
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let payload =
+        backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
+
+    let response = backend
+        .post_json(client, core::COMMAND, Some(&payload))
         .await
-        .map_err(|e: std::io::Error| {
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
-        })?;
+        .map_err(Error::RcloneVersionCheck)?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
-        );
-    }
+    // core/command returns { "result": "<combined stdout+stderr>", "error": bool }
+    let output = response
+        .get("result")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
-    // Example stdout:
-    //   yours:  1.71.1
-    //   latest: 1.71.1   (released 2025-09-24)
-    //   beta:   1.72.0-beta.9155.2bc155a96  (released 2025-10-05)
-    let mut current_version = String::new();
-    let mut latest_stable = String::new();
-    let mut latest_beta = String::new();
-
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let line = line.trim();
-        let version_field = || line.split_whitespace().nth(1).unwrap_or("").to_string();
-        if line.starts_with("yours:") {
-            current_version = version_field();
-        } else if line.starts_with("latest:") {
-            latest_stable = version_field();
-        } else if line.starts_with("beta:") {
-            latest_beta = version_field();
-        }
-    }
+    let info = RcloneVersionInfo::parse(output).map_err(Error::RcloneVersionCheck)?;
 
     let target_version = match channel {
-        UpdateChannel::Beta if !latest_beta.is_empty() => latest_beta,
-        _ => latest_stable,
+        UpdateChannel::Beta if !info.beta.is_empty() => info.beta,
+        _ => info.stable,
     };
 
-    if target_version.is_empty() {
-        return Err(crate::localized_error!(
-            "backendErrors.rclone.versionCheckFailed",
-            "error" => "Parse error"
-        ));
-    }
+    let update_available =
+        !info.current.is_empty() && clean_version(&info.current) != clean_version(&target_version);
 
-    let update_available = !current_version.is_empty()
-        && clean_version(&current_version) != clean_version(&target_version);
-
-    Ok(UpdateCheckResult {
-        update_available,
-        latest_version: target_version,
-    })
+    Ok((update_available, target_version))
 }
 
-async fn fetch_rclone_release_info(
+pub async fn fetch_rclone_release_info(
     version: &str,
     channel: &UpdateChannel,
-) -> Result<(Option<String>, Option<String>, Option<String>), github_client::Error> {
+) -> std::result::Result<(Option<String>, Option<String>, Option<String>), github_client::Error> {
     let tag = format!("v{}", clean_version(version));
 
     let release = match github_client::get_release_by_tag("rclone", "rclone", &tag).await {
@@ -610,7 +694,7 @@ async fn fetch_rclone_release_info(
         return Ok((release.body, release.published_at, Some(release.html_url)));
     }
 
-    match fetch_stable_changelog(version, &release.published_at, &release.html_url).await {
+    match fetch_stable_changelog(version, &release.html_url).await {
         Ok(changelog) => Ok((
             Some(changelog),
             release.published_at,
@@ -625,9 +709,8 @@ async fn fetch_rclone_release_info(
 
 async fn fetch_stable_changelog(
     version: &str,
-    release_date: &Option<String>,
     release_url: &str,
-) -> Result<String, github_client::Error> {
+) -> std::result::Result<String, github_client::Error> {
     let tag = format!("v{}", clean_version(version));
 
     match github_client::get_raw_file_content("rclone", "rclone", &tag, "docs/content/changelog.md")
@@ -639,13 +722,7 @@ async fn fetch_stable_changelog(
                 format!("## Rclone {version}\n\n[View full changelog]({release_url})")
             }),
         ),
-        Err(e) => {
-            log::debug!("Failed to fetch changelog.md: {e}");
-            Ok(format!(
-                "## Rclone {version}\n\nReleased: {}\n\n[View full changelog]({release_url})",
-                release_date.as_deref().unwrap_or("N/A"),
-            ))
-        }
+        Err(e) => Err(e),
     }
 }
 
@@ -655,8 +732,7 @@ fn extract_version_changelog(changelog: &str, version: &str) -> Option<String> {
     let after_header = &changelog[start..];
     let end = after_header[header.len()..]
         .find("\n## ")
-        .map(|i| header.len() + i)
-        .unwrap_or(after_header.len());
+        .map_or(after_header.len(), |i| header.len() + i);
     Some(after_header[..end].trim().to_string())
 }
 
@@ -664,55 +740,54 @@ async fn perform_rclone_selfupdate(
     app_handle: &AppHandle,
     output_path: Option<&Path>,
     channel: UpdateChannel,
-) -> Result<serde_json::Value, String> {
-    let mut cmd = build_rclone_command(app_handle, None, None, None);
-    cmd = cmd.arg("selfupdate");
+) -> Result<UpdateResult> {
+    let backend_manager = app_handle.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let client = &app_handle.state::<RcloneState>().client;
 
+    let mut args = vec![];
     if let Some(output) = output_path {
-        cmd = cmd.args(["--output", &output.display().to_string()]);
-        info!("Updating rclone with output to: {output:?}");
+        args.push("--output".to_string());
+        args.push(output.to_string_lossy().to_string());
     }
 
     match channel {
-        UpdateChannel::Beta => {
-            cmd = cmd.arg("--beta");
-        }
-        UpdateChannel::Stable => {
-            cmd = cmd.arg("--stable");
-        }
+        UpdateChannel::Beta => args.push("--beta".to_string()),
+        UpdateChannel::Stable => args.push("--stable".to_string()),
     }
 
-    info!("Using {} channel", channel.as_str());
-    debug!("Executing rclone selfupdate");
+    info!("Executing rclone selfupdate via RC ({} channel)", channel);
 
-    let output = cmd.output().await.map_err(|e: std::io::Error| {
-        crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => e)
-    })?;
+    let os = backend_manager.get_runtime_os(&backend.name).await;
+    let payload = backend.build_core_command_payload("selfupdate", args, false, os);
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(
-            crate::localized_error!("backendErrors.rclone.selfupdateFailed", "error" => stderr),
-        );
+    let response = backend
+        .post_json(client, core::COMMAND, Some(&payload))
+        .await
+        .map_err(Error::RcloneSelfUpdate)?;
+
+    let error = response
+        .get("error")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+    let result = response
+        .get("result")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if error {
+        return Err(Error::RcloneSelfUpdate(result.to_string()));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    if !String::from_utf8_lossy(&output.stderr).is_empty() {
-        debug!("Update stderr: {}", String::from_utf8_lossy(&output.stderr));
-    }
-
-    info!("Rclone selfupdate finished (binary downloaded)");
-    Ok(json!({
-        "success": true,
-        "message": "Rclone update downloaded successfully",
-        "output": stdout.trim(),
-        "channel": channel.as_str()
-    }))
+    info!("Rclone selfupdate finished via RC (binary downloaded)");
+    Ok(UpdateResult {
+        success: true,
+        message: Some("Rclone update downloaded successfully".to_string()),
+        output: Some(result.trim().to_string()),
+        channel: Some(channel.to_string()),
+        manual: false,
+    })
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -771,32 +846,34 @@ Major release notes here.
 
     #[test]
     fn test_update_channel_from_option() {
+        assert_eq!(UpdateChannel::from(None), UpdateChannel::Stable);
+        assert_eq!(
+            UpdateChannel::from(Some("stable".to_string())),
+            UpdateChannel::Stable
+        );
         assert_eq!(
             UpdateChannel::from(Some("beta".to_string())),
             UpdateChannel::Beta
         );
         assert_eq!(
-            UpdateChannel::from(Some("stable".to_string())),
-            UpdateChannel::Stable
-        );
-        assert_eq!(UpdateChannel::from(None::<String>), UpdateChannel::Stable);
-        assert_eq!(
-            UpdateChannel::from(Some("anything".to_string())),
+            UpdateChannel::from(Some("unknown".to_string())),
             UpdateChannel::Stable
         );
     }
 
     #[test]
-    fn test_update_channel_as_str() {
-        assert_eq!(UpdateChannel::Stable.as_str(), "stable");
-        assert_eq!(UpdateChannel::Beta.as_str(), "beta");
+    fn test_update_channel_display() {
+        assert_eq!(UpdateChannel::Stable.to_string(), "stable");
+        assert_eq!(UpdateChannel::Beta.to_string(), "beta");
     }
 
     #[test]
     fn test_is_writable_dir() {
-        let temp_dir = std::env::temp_dir().join("rclone_manager_test_writable");
-        std::fs::create_dir_all(&temp_dir).unwrap();
-        assert!(is_writable_dir(&temp_dir));
-        std::fs::remove_dir_all(&temp_dir).ok();
+        let temp_dir = tempfile::tempdir().unwrap();
+        assert!(is_writable_dir(temp_dir.path()));
+
+        let file_path = temp_dir.path().join("file.txt");
+        std::fs::write(&file_path, "not a dir").unwrap();
+        assert!(!is_writable_dir(&file_path));
     }
 }

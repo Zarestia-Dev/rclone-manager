@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -12,11 +12,26 @@ import { RcloneConfigModalComponent } from '../../features/modals/settings/rclon
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
+import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
+import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
+import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
+import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor/alert-action-editor.component';
+import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rules-editor/alert-rule-editor.component';
 import {
+  InputModalComponent,
+  InputModalData,
+} from '../../shared/modals/input-modal/input-modal.component';
+import { ArchiveCreateModalComponent } from '../../shared/modals/archive-create-modal/archive-create-modal.component';
+import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
+import {
+  AlertAction,
+  AlertRule,
   RemoteSettings,
+  RemoteFeatures,
   STANDARD_MODAL_SIZE,
   CONFIG_MODAL_SIZE,
   ABOUT_MODAL_SIZE,
+  ConfirmDialogData,
 } from '@app/types';
 import { JobInfo } from '../../shared/types/jobs';
 import { BackupAnalysis } from '../settings/backup-restore.service';
@@ -35,6 +50,25 @@ export interface RemoteConfigModalOptions {
 export interface ExportModalOptions {
   remoteName?: string;
   defaultExportType?: 'FullBackup' | 'AllConfigs' | 'SpecificRemote';
+}
+
+export interface PropertiesModalOptions {
+  remoteName?: string;
+  path?: string;
+  isLocal?: boolean;
+  item?: any;
+  remoteType?: string;
+  features?: RemoteFeatures;
+  height?: string;
+  maxHeight?: string;
+  width?: string;
+  maxWidth?: string;
+}
+
+export interface RemoteAboutModalOptions {
+  displayName: string;
+  normalizedName: string;
+  type: string;
 }
 
 export interface RestorePreviewOptions {
@@ -138,10 +172,44 @@ export class ModalService {
     });
   }
 
-  openKeyboardShortcuts(): MatDialogRef<KeyboardShortcutsModalComponent> {
+  openProperties(options: PropertiesModalOptions): MatDialogRef<PropertiesModalComponent> {
+    return this.dialog.open(PropertiesModalComponent, {
+      data: {
+        remoteName: options.remoteName,
+        path: options.path,
+        isLocal: options.isLocal,
+        item: options.item,
+        remoteType: options.remoteType,
+        features: options.features,
+      },
+      height: options.height ?? '60vh',
+      maxHeight: options.maxHeight ?? '800px',
+      width: options.width ?? '60vw',
+      maxWidth: options.maxWidth ?? '400px',
+    });
+  }
+
+  openRemoteAbout(options: RemoteAboutModalOptions): MatDialogRef<RemoteAboutModalComponent> {
+    return this.dialog.open(RemoteAboutModalComponent, {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: {
+        remote: {
+          displayName: options.displayName,
+          normalizedName: options.normalizedName,
+          type: options.type,
+        },
+      },
+    });
+  }
+
+  openKeyboardShortcuts(data?: {
+    nautilus?: boolean;
+  }): MatDialogRef<KeyboardShortcutsModalComponent> {
     return this.dialog.open(KeyboardShortcutsModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
+      data,
     });
   }
 
@@ -160,6 +228,77 @@ export class ModalService {
         backupPath: options.backupPath,
         analysis: options.analysis,
       },
+    });
+  }
+
+  openAlerts(): MatDialogRef<AlertsModalComponent> {
+    return this.dialog.open(AlertsModalComponent, {
+      width: '90vw',
+      maxWidth: '1200px',
+      height: '85vh',
+      disableClose: false,
+      panelClass: 'alerts-modal-panel',
+    });
+  }
+
+  openAlertActionEditor(data?: AlertAction): MatDialogRef<AlertActionEditorComponent, AlertAction> {
+    return this.dialog.open(AlertActionEditorComponent, {
+      width: '600px',
+      disableClose: false,
+      data,
+    });
+  }
+
+  openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
+    return this.dialog.open(AlertRuleEditorComponent, {
+      width: '600px',
+      disableClose: true,
+      data,
+    });
+  }
+
+  openArchiveCreate(data: {
+    items: any[];
+    defaultName: string;
+  }): MatDialogRef<ArchiveCreateModalComponent> {
+    return this.dialog.open(ArchiveCreateModalComponent, {
+      width: '450px',
+      disableClose: true,
+      data,
+    });
+  }
+
+  // ============================================================================
+  // Shared / Generic Modals
+  // ============================================================================
+
+  /**
+   * Open a generic confirm dialog with a message and confirm/cancel buttons.
+   */
+  openConfirm(
+    data: ConfirmDialogData,
+    config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
+  ): MatDialogRef<ConfirmModalComponent, boolean> {
+    return this.dialog.open(ConfirmModalComponent, {
+      maxWidth: '480px',
+      disableClose: true,
+      data,
+      ...config,
+    });
+  }
+
+  /**
+   * Open a generic input dialog for single or multiple text inputs.
+   */
+  openInput<T = any>(
+    data: InputModalData,
+    config: Partial<MatDialogConfig<InputModalData>> = {}
+  ): MatDialogRef<InputModalComponent, T> {
+    return this.dialog.open(InputModalComponent, {
+      minWidth: '362px',
+      disableClose: true,
+      data,
+      ...config,
     });
   }
 
@@ -184,9 +323,7 @@ export class ModalService {
     const isMobile = window.innerWidth <= 450;
 
     if (isMobile) {
-      // Find the dialog container and add closing class
-      const overlayPane = document.querySelector('.cdk-overlay-pane.mat-mdc-dialog-panel');
-      const dialogContainer = overlayPane?.querySelector('mat-dialog-container');
+      const dialogContainer = document.getElementById(dialogRef.id);
 
       if (dialogContainer) {
         dialogContainer.classList.add('closing');

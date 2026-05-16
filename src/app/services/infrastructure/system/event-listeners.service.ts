@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { fromEvent } from 'rxjs';
-import { TauriBaseService } from '../platform/tauri-base.service';
 import {
   AppEventPayloadType,
   ENGINE_RESTARTED,
@@ -13,6 +12,7 @@ import {
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
   SERVE_STATE_CHANGED,
+  SYSTEM_STATUS,
   RCLONE_ENGINE_READY,
   RCLONE_ENGINE_ERROR,
   RCLONE_ENGINE_PASSWORD_ERROR,
@@ -26,7 +26,10 @@ import {
   SettingsChangeEvent,
   RCLONE_OAUTH_URL,
   OAuthUrlEvent,
+  JobChangeEvent,
+  SystemStatusPayload,
 } from '@app/types';
+import { TauriBaseService } from '../platform/tauri-base.service';
 /**
  * Service for listening to backend events and exposing them as observables
  */
@@ -40,7 +43,7 @@ export class EventListenersService extends TauriBaseService {
   listenToWindowResize(): Observable<unknown> {
     // In the web/headless mode Tauri window events don't exist, so fall back to
     // native window resize events when not running as Tauri runtime.
-    if (!this.isTauriEnvironment) {
+    if (!this.isTauri) {
       return fromEvent(window, 'resize');
     }
 
@@ -77,8 +80,8 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to job cache changed events
    */
-  listenToJobCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(JOB_CACHE_CHANGED);
+  listenToJobCacheChanged(): Observable<JobChangeEvent> {
+    return this.listenToEvent<JobChangeEvent>(JOB_CACHE_CHANGED);
   }
   /**
    * Listen to mount plugin installation events
@@ -183,5 +186,12 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToOAuthUrl(): Observable<OAuthUrlEvent> {
     return this.listenToEvent<OAuthUrlEvent>(RCLONE_OAUTH_URL);
+  }
+
+  /**
+   * Listen to consolidated system status updates
+   */
+  listenToSystemStatus(): Observable<SystemStatusPayload> {
+    return this.listenToEvent<SystemStatusPayload>(SYSTEM_STATUS);
   }
 }

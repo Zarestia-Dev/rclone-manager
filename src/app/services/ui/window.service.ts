@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({
   providedIn: 'root',
@@ -34,7 +34,7 @@ export class WindowService extends TauriBaseService {
   }
 
   private async initWindowListeners(): Promise<void> {
-    if (this.isTauriEnvironment) {
+    if (this.isTauri) {
       this.checkMaximizedState();
       this.listenToEvent('tauri://resize').subscribe(() => {
         this.checkMaximizedState();

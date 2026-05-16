@@ -1,12 +1,6 @@
 import { Injectable } from '@angular/core';
+import { BandwidthLimitResponse, LocalDiskUsage, SystemStatusPayload } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import {
-  RcloneInfo,
-  MemoryStats,
-  GlobalStats,
-  BandwidthLimitResponse,
-  LocalDiskUsage,
-} from '@app/types';
 
 /**
  * Service for system information and rclone engine management
@@ -17,29 +11,10 @@ import {
 })
 export class SystemInfoService extends TauriBaseService {
   /**
-   * Get the build type (flatpak, deb, rpm, arch) or null for source builds
-   */
-  async getBuildType(): Promise<string | null> {
-    return this.invokeCommand<string | null>('get_build_type');
-  }
-  /**
    * Check if network is metered
    */
   async isNetworkMetered(): Promise<boolean> {
     return this.invokeCommand<boolean>('is_network_metered');
-  }
-  /**
-   * Get rclone information
-   */
-  async getRcloneInfo(): Promise<RcloneInfo | null> {
-    return this.invokeCommand<RcloneInfo>('get_rclone_info');
-  }
-
-  /**
-   * Get rclone process ID
-   */
-  async getRclonePID(): Promise<number | null> {
-    return this.invokeCommand<number>('get_rclone_pid');
   }
 
   /**
@@ -59,31 +34,26 @@ export class SystemInfoService extends TauriBaseService {
   }
 
   /**
-   * Get memory statistics
+   * Stop rclone: if `pid` provided, kill that PID; otherwise request graceful quit via RC.
    */
-  async getMemoryStats(): Promise<MemoryStats> {
-    return this.invokeCommand<MemoryStats>('get_memory_stats');
+  async stopRclone(pid?: number): Promise<void> {
+    return this.invokeCommand('stop_rclone', { pid });
   }
 
   /**
-   * Get core statistics
+   * Get consolidated system status snapshot.
+   * Use this for deterministic state hydration before relying on event stream.
    */
-  async getStats(groupName?: string): Promise<GlobalStats> {
-    return this.invokeCommand('get_stats', { group: groupName });
+  async getSystemStatusSnapshot(): Promise<SystemStatusPayload> {
+    return this.invokeCommand<SystemStatusPayload>('get_system_status_snapshot');
   }
 
   /**
-   * Get bandwidth limit
+   * Get or set bandwidth limit.
+   * Without a rate, this queries the current RC value.
    */
-  async getBandwidthLimit(): Promise<BandwidthLimitResponse> {
-    return this.invokeCommand('get_bandwidth_limit');
-  }
-
-  /**
-   * Set bandwidth limit
-   */
-  async setBandwidthLimit(rate?: string): Promise<BandwidthLimitResponse> {
-    return this.invokeCommand('set_bandwidth_limit', { rate });
+  async bandwidthLimit(rate?: string): Promise<BandwidthLimitResponse> {
+    return this.invokeCommand('bandwidth_limit', { rate });
   }
 
   /**
@@ -121,5 +91,12 @@ export class SystemInfoService extends TauriBaseService {
    */
   async getLocalDiskUsage(dir?: string): Promise<LocalDiskUsage> {
     return this.invokeCommand<LocalDiskUsage>('get_local_disk_usage', { dir });
+  }
+
+  /**
+   * Set the system poller visibility state
+   */
+  async setPollerVisibility(visible: boolean): Promise<void> {
+    return this.invokeCommand('set_poller_visibility', { visible });
   }
 }
