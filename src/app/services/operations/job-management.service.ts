@@ -17,6 +17,8 @@ export interface RawTransfer {
   completed_at?: string;
   src_fs?: string;
   dst_fs?: string;
+  srcFs?: string;
+  dstFs?: string;
 }
 
 export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
@@ -34,8 +36,8 @@ export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
     jobid: 0,
     startedAt: t.started_at,
     completedAt: t.completed_at,
-    srcFs: t.src_fs,
-    dstFs: t.dst_fs,
+    srcFs: t.srcFs ?? t.src_fs,
+    dstFs: t.dstFs ?? t.dst_fs,
     group: t.group,
     status,
   };

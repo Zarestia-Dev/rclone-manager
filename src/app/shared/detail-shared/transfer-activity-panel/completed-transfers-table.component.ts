@@ -31,9 +31,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
                 <mat-icon svgIcon="file" class="file-icon" [matTooltip]="transfer.name"></mat-icon>
-                <span class="file-name" [title]="transfer.name">{{
-                  getFileName(transfer.name)
-                }}</span>
+                <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
               </div>
             </td>
           </ng-container>
@@ -102,22 +100,17 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
             </th>
             <td mat-cell *matCellDef="let transfer" class="path-cell">
               <div class="path-info">
-                @if (transfer.srcFs && transfer.dstFs) {
+                @if (transfer.srcFs || transfer.dstFs) {
                   <span
                     class="src"
-                    [matTooltip]="
-                      'shared.transferActivity.table.source' | translate: { path: transfer.srcFs }
-                    "
-                    >{{ transfer.srcFs }}</span
+                    [matTooltip]="pathService.joinFsPath(transfer.srcFs, transfer.name)"
+                    >{{ transfer.srcFs || '?' }}</span
                   >
                   <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
                   <span
                     class="dst"
-                    [matTooltip]="
-                      'shared.transferActivity.table.destination'
-                        | translate: { path: transfer.dstFs }
-                    "
-                    >{{ transfer.dstFs }}</span
+                    [matTooltip]="pathService.joinFsPath(transfer.dstFs, transfer.name)"
+                    >{{ transfer.dstFs || '?' }}</span
                   >
                 } @else {
                   <span class="no-path">-</span>
@@ -175,14 +168,10 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 export class CompletedTransfersTableComponent {
   readonly transfers = input.required<CompletedTransfer[]>();
 
-  private readonly pathService = inject(PathService);
+  protected readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
 
   readonly displayedColumns = ['name', 'status', 'size', 'path', 'time'];
-
-  getFileName(path: string): string {
-    return this.pathService.getFilename(path);
-  }
 
   getRelativeTime(timestamp: string): string {
     const diff = Date.now() - new Date(timestamp).getTime();

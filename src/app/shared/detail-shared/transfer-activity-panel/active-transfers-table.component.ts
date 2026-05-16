@@ -36,9 +36,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
                 <mat-icon svgIcon="file" class="file-icon" [matTooltip]="transfer.name"></mat-icon>
-                <span class="file-name" [title]="transfer.name">{{
-                  getFileName(transfer.name)
-                }}</span>
+                <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
                 @if (transfer.isError) {
                   <mat-icon
                     svgIcon="circle-exclamation"
@@ -106,6 +104,31 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="path">
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'shared.transferActivity.table.path' | translate }}
+            </th>
+            <td mat-cell *matCellDef="let transfer" class="path-cell">
+              <div class="path-info">
+                @if (transfer.srcFs || transfer.dstFs) {
+                  <span
+                    class="src"
+                    [matTooltip]="pathService.joinFsPath(transfer.srcFs, transfer.name)"
+                    >{{ transfer.srcFs || '?' }}</span
+                  >
+                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                  <span
+                    class="dst"
+                    [matTooltip]="pathService.joinFsPath(transfer.dstFs, transfer.name)"
+                    >{{ transfer.dstFs || '?' }}</span
+                  >
+                } @else {
+                  <span class="no-path">-</span>
+                }
+              </div>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
           <tr
             mat-row
@@ -130,20 +153,15 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
   styleUrls: ['./transfer-tables.scss'],
 })
 export class ActiveTransfersTableComponent {
-  private readonly pathService = inject(PathService);
+  protected readonly pathService = inject(PathService);
 
   readonly transfers = input.required<TransferFile[]>();
 
-  readonly displayedColumns = ['name', 'progress', 'speed', 'eta'];
+  readonly displayedColumns = ['name', 'path', 'progress', 'speed', 'eta'];
 
   trackByName(_index: number, transfer: TransferFile): string {
     return transfer.name;
   }
-
-  getFileName(path: string): string {
-    return this.pathService.getFilename(path);
-  }
-
   getSpeedClass(speed: number): string {
     if (speed > 10 * 1024 * 1024) return 'speed-fast';
     if (speed > 1 * 1024 * 1024) return 'speed-medium';

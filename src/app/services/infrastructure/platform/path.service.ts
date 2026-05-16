@@ -212,6 +212,17 @@ export class PathService {
   }
 
   /**
+   * Robustly joins an rclone filesystem root and a relative path.
+   */
+  joinFsPath(fs: string | undefined, path: string): string {
+    if (!fs) return path;
+    if (fs.endsWith(':') || fs.endsWith('/') || fs.endsWith('\\')) {
+      return `${fs}${path}`;
+    }
+    return `${fs}/${path}`;
+  }
+
+  /**
    * Builds an array of rclone path strings from one or more form path groups.
    */
   buildPathStrings(pathGroups: any | any[], currentRemoteName: string): string[] {

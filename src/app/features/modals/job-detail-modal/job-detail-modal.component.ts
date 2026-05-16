@@ -69,9 +69,7 @@ export class JobDetailModalComponent {
     } else {
       // Once finished or if no group, use the job stats completion list
       const fromJobStats = ((stats as any)?.completed ?? []) as any[];
-      completedTransfers = fromJobStats.map(item =>
-        mapRawTransfer({ ...item, src_fs: item.srcFs, dst_fs: item.dstFs })
-      );
+      completedTransfers = fromJobStats.map(mapRawTransfer);
     }
 
     // Sort by completion time (latest first)
