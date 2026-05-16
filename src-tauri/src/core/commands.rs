@@ -201,7 +201,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // MOUNT PLUGIN
             // =================================================================
             (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [no_app]);
-            (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, [], [no_app]);
+            (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
 
             // =================================================================
             // CACHE
