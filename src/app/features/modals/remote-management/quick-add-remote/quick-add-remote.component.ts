@@ -35,6 +35,7 @@ import {
   ModalService,
   ValidatorRegistryService,
   IconService,
+  PathService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 import {
@@ -52,8 +53,6 @@ import {
   INITIAL_COMMAND_OPTIONS,
 } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import {
-  buildPathString,
-  buildPathStrings,
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   isInteractiveContinueDisabled,
@@ -99,6 +98,7 @@ export class QuickAddRemoteComponent {
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
   private readonly modalService = inject(ModalService);
+  private readonly pathService = inject(PathService);
 
   readonly operationTabs = [
     {
@@ -499,13 +499,13 @@ export class QuickAddRemoteComponent {
 
       const getPathValue = (p: any) => {
         if (!p) return null;
-        return typeof p === 'string' ? p : buildPathString(p, remoteName);
+        return typeof p === 'string' ? p : this.pathService.buildPathString(p, remoteName);
       };
 
       // Handle singular or plural
       if (op.source) {
         if (isMultiSource) {
-          config.source = buildPathStrings(op.source, remoteName);
+          config.source = this.pathService.buildPathStrings(op.source, remoteName);
         } else {
           const first = Array.isArray(op.source) ? op.source[0] : op.source;
           config.source = getPathValue(first);

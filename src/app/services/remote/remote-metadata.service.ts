@@ -2,13 +2,14 @@ import { Injectable, inject, signal, computed, Signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { FsInfo, RemoteFeatures, Origin } from '@app/types';
-import { isLocalPath } from './utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RemoteMetadataService extends TauriBaseService {
   private remoteOpsService = inject(RemoteFileOperationsService);
+  private pathService = inject(PathService);
 
   private metadataCache = new Map<string, FsInfo>();
   private readonly _features = signal<Record<string, RemoteFeatures>>({});
@@ -25,10 +26,7 @@ export class RemoteMetadataService extends TauriBaseService {
 
     // Determine the proper fs name for rclone backend.
     // Local paths (starting with / or a Windows drive letter) shouldn't always have a colon appended.
-    const isLocal =
-      normalizedKey.startsWith('/') ||
-      /^[a-zA-Z]:[/\\]/.test(normalizedKey) ||
-      /^[a-zA-Z]:$/.test(normalizedKey);
+    const isLocal = this.pathService.isLocalPath(normalizedKey);
 
     const fsName = isLocal ? normalizedKey : `${normalizedKey}:`;
 
@@ -55,7 +53,7 @@ export class RemoteMetadataService extends TauriBaseService {
     return computed(() => {
       return (
         this._features()[normalizedKey] ?? {
-          isLocal: isLocalPath(normalizedKey),
+          isLocal: this.pathService.isLocalPath(normalizedKey),
           hasAbout: true,
           hasBucket: false,
           hasCleanUp: false,
@@ -84,7 +82,7 @@ export class RemoteMetadataService extends TauriBaseService {
     try {
       const info = await this.getFsInfo(remoteName, source, group);
       const features: RemoteFeatures = {
-        isLocal: isLocalPath(normalizedKey),
+        isLocal: this.pathService.isLocalPath(normalizedKey),
         hasAbout: info.Features?.['About'] !== false, // Default to true unless explicitly false
         hasBucket: info.Features?.['BucketBased'] ?? false,
         hasCleanUp: !!info.Features?.['CleanUp'],

@@ -67,8 +67,7 @@ export class FileViewerService extends TauriBaseService {
     const path = item.Path;
 
     if (isLocal) {
-      const separator = remote.endsWith('/') || remote.endsWith('\\') ? '' : '/';
-      const fullPath = `${remote}${separator}${path}`;
+      const fullPath = this.pathService.joinPath(remote, path);
 
       if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
@@ -103,12 +102,10 @@ export class FileViewerService extends TauriBaseService {
 
     try {
       // 1. Determine the directory of the base file
-      const lastSlash = baseItem.Path.lastIndexOf('/');
-      const fileDir = lastSlash === -1 ? '' : baseItem.Path.substring(0, lastSlash);
+      const fileDir = this.pathService.getDirname(baseItem.Path);
 
       // 2. Construct full target path relative to remote/local root
-      // If fileDir is "docs", relative is "../img.png" -> target is "img.png"
-      const combined = fileDir ? `${fileDir}/${relativePath}` : relativePath;
+      const combined = this.pathService.joinPath(fileDir, relativePath);
       const normalizedPath = this.pathService.normalizePath(combined);
 
       // 3. Generate URL for this new path
@@ -125,8 +122,7 @@ export class FileViewerService extends TauriBaseService {
     isLocal: boolean
   ): Promise<string> {
     if (isLocal) {
-      const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
-      const fullPath = `${remoteName}${separator}${path}`;
+      const fullPath = this.pathService.joinPath(remoteName, path);
 
       if (isHeadlessMode()) {
         const encodedPath = encodeURIComponent(fullPath);
@@ -135,20 +131,14 @@ export class FileViewerService extends TauriBaseService {
       // Use our own local-asset:// custom protocol instead of Tauri's asset://.
       // Linux/macOS (WebKit): local-asset://localhost/path/to/file
       // Windows   (WebView2): http://local-asset.localhost/Z%3A/path/to/file
-      let normalizedPath = fullPath.replace(/\\/g, '/');
-      // Fix missing drive colon: "Z/path" → "Z:/path"
-      if (/^[A-Za-z]\//.test(normalizedPath)) {
-        normalizedPath = `${normalizedPath[0]}:${normalizedPath.slice(1)}`;
-      }
       // Encode each segment individually (preserves '/' separators)
-      const encodedSegments = normalizedPath
-        .split('/')
-        .map((seg, i) => (i === 0 && /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
-        .join('/');
+      const encodedSegments = this.pathService.encodePath(fullPath, true, {
+        platform: platform(),
+        protocol: platform() === 'windows' ? 'http' : 'local-asset',
+      });
+
       if (platform() === 'windows') {
-        // Drive colon is invalid in a URL host/path without encoding
-        const winPath = encodedSegments.replace(/^([A-Za-z]):/, '$1%3A');
-        return `http://local-asset.localhost/${winPath}`;
+        return `http://local-asset.localhost/${encodedSegments}`;
       }
 
       const pathWithSlash = encodedSegments.startsWith('/')
@@ -157,10 +147,7 @@ export class FileViewerService extends TauriBaseService {
       return `local-asset://localhost${pathWithSlash}`;
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
-    const encodedPath = path
-      .split('/')
-      .map(p => encodeURIComponent(p))
-      .join('/');
+    const encodedPath = this.pathService.encodePath(path, false);
 
     if (isHeadlessMode()) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(

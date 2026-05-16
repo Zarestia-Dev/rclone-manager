@@ -23,12 +23,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import {
-  NautilusService,
-  PathSelectionService,
-  NotificationService,
-  isHeadlessMode,
-} from '@app/services';
+import { NautilusService, NotificationService, PathService, isHeadlessMode } from '@app/services';
 import { Entry, ExplorerRoot, FileBrowserItem, FilePickerConfig } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { CopyToClipboardDirective, NautilusKeyboardDirective } from '@app/directives';
@@ -97,7 +92,7 @@ export class NautilusComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
   private readonly keyboard = inject(NautilusKeyboardDirective);
 
@@ -162,28 +157,16 @@ export class NautilusComponent implements OnInit {
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
   // ── Computed path / breadcrumbs ──────────────────────────────────────────────
-  protected readonly pathSegments = computed(() => {
-    const path = this.tabSvc.activePath();
-    if (!path) return [];
-    const parts = path.split('/').filter(Boolean);
-    return parts.map((name, i) => ({
-      name,
-      path: parts.slice(0, i + 1).join('/'),
-    }));
-  });
+  protected readonly pathSegments = computed(() =>
+    this.pathService.getPathSegments(this.tabSvc.activePath())
+  );
 
   protected readonly fullPathInput = computed(() => {
     if (this.tabSvc.activeStarredMode()) return '';
-    const remote = this.tabSvc.activeRemote();
-    const path = this.tabSvc.activePath();
-    if (!remote) return path;
-    if (remote.isLocal) {
-      const sep = remote.name.endsWith('/') || remote.name.endsWith('\\') ? '' : '/';
-      return path ? `${remote.name}${sep}${path}` : remote.name;
-    }
-    const prefix = remote.name.includes(':') ? remote.name : `${remote.name}:`;
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return path ? `${prefix}${cleanPath}` : prefix;
+    return this.pathService.getFullDisplayPath(
+      this.tabSvc.activeRemote(),
+      this.tabSvc.activePath()
+    );
   });
 
   protected readonly bottomBarOffset = computed(() =>
@@ -200,7 +183,7 @@ export class NautilusComponent implements OnInit {
       if (cfg.mode === 'remote' && b.meta.isLocal) return false;
       if (cfg.allowedRemotes?.length && !b.meta.isLocal) {
         return cfg.allowedRemotes.includes(
-          this.pathSelectionService.normalizeRemoteName(b.meta.remote ?? '')
+          this.pathService.normalizeRemoteName(b.meta.remote ?? '')
         );
       }
       return true;
@@ -375,7 +358,10 @@ export class NautilusComponent implements OnInit {
       const targetPath = this.nautilusService.targetPath();
       if (targetPath) {
         untracked(() => {
-          const parsed = this.tabSvc.parseLocationToRemoteAndPath(targetPath);
+          const parsed = this.pathService.parseLocation(
+            targetPath,
+            this.nautilusService.allRemotesLookup()
+          );
           if (parsed && this.tabSvc.tabs().length > 0) {
             this._navigate(parsed.remote, parsed.path, true);
             this.nautilusService.targetPath.set(null);
@@ -421,9 +407,11 @@ export class NautilusComponent implements OnInit {
       } else if (starred) {
         segment = this.translate.instant('nautilus.titles.starred');
       } else if (remote) {
-        segment = path
-          ? (path.split('/').filter(Boolean).pop() ?? path)
-          : this.translate.instant(remote.label || remote.name);
+        segment = this.pathService.getDisplaySegment(
+          remote,
+          path,
+          this.translate.instant(remote.label || remote.name)
+        );
       } else {
         segment = this.translate.instant('nautilus.titles.files');
       }
@@ -528,13 +516,16 @@ export class NautilusComponent implements OnInit {
   navigateToPath(rawInput: string): void {
     this.isEditingPath.set(false);
 
-    const parsed = this.tabSvc.parseLocationToRemoteAndPath(rawInput);
+    const parsed = this.pathService.parseLocation(
+      rawInput,
+      this.nautilusService.allRemotesLookup()
+    );
     if (parsed) {
       this._navigate(parsed.remote, parsed.path, true);
       return;
     }
 
-    const normalized = rawInput.replace(/\\/g, '/');
+    const normalized = this.pathService.normalizePath(rawInput);
     const currentPath = this.tabSvc.activePath();
     this.updatePath(this.tabSvc.currentPath() ? `${currentPath}/${normalized}` : normalized);
   }
@@ -578,8 +569,8 @@ export class NautilusComponent implements OnInit {
   openBookmark(bookmark: FileBrowserItem): void {
     const remoteDetails = this.allRemotesLookup().find(
       r =>
-        this.pathSelectionService.normalizeRemoteName(r.name) ===
-        this.pathSelectionService.normalizeRemoteName(bookmark.meta.remote)
+        this.pathService.normalizeRemoteName(r.name) ===
+        this.pathService.normalizeRemoteName(bookmark.meta.remote)
     );
     if (!remoteDetails) {
       this.notificationService.showError(
@@ -726,12 +717,7 @@ export class NautilusComponent implements OnInit {
 
   protected getFormattedPath(item: FileBrowserItem | null): string {
     if (!item) return this.fullPathInput();
-    const remote = this.tabSvc.activeRemote();
-    if (!remote) return '';
-    const cleanRemote = remote.isLocal
-      ? remote.name
-      : this.pathSelectionService.normalizeRemoteForRclone(remote.name) + ':';
-    return `${cleanRemote}${item.entry.Path}`.replace('//', '/');
+    return this.pathService.getFullDisplayPath(this.tabSvc.activeRemote(), item.entry.Path);
   }
 
   protected openContextMenuOpen(): void {
@@ -871,7 +857,7 @@ export class NautilusComponent implements OnInit {
       (this.pickerOptions().selection === 'folders' || this.pickerOptions().selection === 'both') &&
       remote
     ) {
-      const name = currentPath.split('/').pop() || remote.name;
+      const name = this.pathService.extractName(currentPath, remote.name);
       items = [
         {
           entry: {
@@ -922,7 +908,7 @@ export class NautilusComponent implements OnInit {
           if (cfg.mode === 'remote' && i.meta.isLocal) return false;
           if (cfg.allowedRemotes?.length && !i.meta.isLocal) {
             return cfg.allowedRemotes.includes(
-              this.pathSelectionService.normalizeRemoteName(i.meta.remote ?? '')
+              this.pathService.normalizeRemoteName(i.meta.remote ?? '')
             );
           }
           return true;

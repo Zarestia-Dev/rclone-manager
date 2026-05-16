@@ -8,6 +8,8 @@ import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
 import { TransferFile } from '@app/types';
+import { inject } from '@angular/core';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-active-transfers-table',
@@ -128,6 +130,8 @@ import { TransferFile } from '@app/types';
   styleUrls: ['./transfer-tables.scss'],
 })
 export class ActiveTransfersTableComponent {
+  private readonly pathService = inject(PathService);
+
   readonly transfers = input.required<TransferFile[]>();
 
   readonly displayedColumns = ['name', 'progress', 'speed', 'eta'];
@@ -137,7 +141,7 @@ export class ActiveTransfersTableComponent {
   }
 
   getFileName(path: string): string {
-    return path.split('/').pop() ?? path;
+    return this.pathService.getFilename(path);
   }
 
   getSpeedClass(speed: number): string {

@@ -17,7 +17,7 @@ import {
   RemoteCardVariant,
   CardDisplayMode,
 } from '@app/types';
-import { IconService, isLocalPath, RemoteFacadeService } from '@app/services';
+import { IconService, PathService, RemoteFacadeService } from '@app/services';
 import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 interface OpenInFilesEvent {
@@ -126,7 +126,7 @@ export class RemoteCardComponent {
   readonly remoteFacade = inject(RemoteFacadeService);
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
-  readonly isLocalPath = isLocalPath;
+  readonly pathService = inject(PathService);
   readonly ACTION_ANIMATION_CLASS = ACTION_ANIMATION_CLASS;
 
   readonly remote = input.required<Remote>();
@@ -238,7 +238,7 @@ export class RemoteCardComponent {
       if (!activeProfiles) continue;
       for (const profile of Object.keys(activeProfiles)) {
         for (const path of this.getProfileOpenPaths(op, profile)) {
-          const local = isLocalPath(path);
+          const local = this.pathService.isLocalPath(path);
           const profileSuffix = profile === 'default' ? '' : ` · ${profile}`;
           folders.push({
             operation: op,
@@ -410,7 +410,7 @@ export class RemoteCardComponent {
   }
 
   getProfileOpenTooltip(profileName: string, path: string): string {
-    return `${this.translate.instant('overviews.remoteCard.browse')} ${isLocalPath(path) ? 'Local' : 'Remote'} (${profileName})`;
+    return `${this.translate.instant('overviews.remoteCard.browse')} ${this.pathService.isLocalPath(path) ? 'Local' : 'Remote'} (${profileName})`;
   }
 
   getOperationLabelIcon(op: PrimaryActionType): string {

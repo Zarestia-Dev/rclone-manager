@@ -364,7 +364,6 @@
           background: var(--headerbar-bg-color);
           border-bottom: 1px solid var(--border-color);
           color: var(--window-fg-color);
-          font-family: inherit;
           font-size: var(--font-size-sm);
           padding: var(--space-xs) var(--space-sm);
 
@@ -382,7 +381,6 @@
 
           input,
           button {
-            font-family: inherit;
             font-size: var(--font-size-sm);
           }
 

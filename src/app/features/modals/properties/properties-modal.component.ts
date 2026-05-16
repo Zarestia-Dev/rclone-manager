@@ -25,7 +25,7 @@ import {
   ModalService,
   IconService,
   RemoteMetadataService,
-  PathSelectionService,
+  PathService,
   JobManagementService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
@@ -81,29 +81,26 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
   private readonly remoteMetadata = inject(RemoteMetadataService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Derived properties (pure data derivations)
-  readonly displayLocation: string = this.data.isLocal
-    ? this.data.remoteName
-    : `${this.data.remoteName}${this.data.remoteName.endsWith(':') ? '' : ':'}${this.data.path}`;
+  readonly displayLocation: string = this.pathService.getFullDisplayPath(
+    this.data.isLocal
+      ? ({ name: this.data.remoteName, isLocal: true } as any)
+      : ({ name: this.data.remoteName, isLocal: false } as any),
+    this.data.path
+  );
 
   readonly fsRemote: string = this.data.isLocal
     ? '/'
-    : this.data.remoteName.endsWith(':')
-      ? this.data.remoteName
-      : `${this.data.remoteName}:`;
+    : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
   readonly hashPath: string = ((): string => {
     const { remoteName, path, isLocal, item } = this.data;
     if (isLocal) {
-      const candidatePath = path || item?.Path || item?.Name || '';
-      if (candidatePath.startsWith('/')) return candidatePath;
-      if (!remoteName || remoteName === '/') return candidatePath ? `/${candidatePath}` : '/';
-      const base = remoteName.endsWith('/') ? remoteName.slice(0, -1) : remoteName;
-      return candidatePath ? `${base}/${candidatePath}` : base;
+      return this.pathService.joinPath(remoteName, path || item?.Path || item?.Name || '');
     }
     return path;
   })();
@@ -240,12 +237,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       let diskUsagePath = path;
 
       if (isLocal && !(item && item.IsDir)) {
-        const lastSlashIndex = remoteName.lastIndexOf('/');
-        if (lastSlashIndex === 0) {
-          diskUsageRemote = '/';
-        } else if (lastSlashIndex > 0) {
-          diskUsageRemote = remoteName.substring(0, lastSlashIndex);
-        }
+        diskUsageRemote = this.pathService.getParentPath(remoteName) || '/';
         diskUsagePath = '';
       }
 
@@ -274,7 +266,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
 
     try {
       let features = this.data.features;
-      const baseName = this.pathSelectionService.normalizeRemoteName(remoteName);
+      const baseName = this.pathService.normalizeRemoteName(remoteName);
 
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
       if (!features || !features.hashes || features.hashes.length === 0) {
@@ -438,7 +430,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private getEffectiveItem(): Entry {
     return (
       this.item() ?? {
-        Name: this.data.path.split('/').pop() || this.data.remoteName,
+        Name: this.pathService.extractName(this.data.path, this.data.remoteName),
         Path: this.data.path,
         IsDir: true,
         Size: 0,
@@ -490,13 +482,10 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       // and send it as 'fs' (remote), leaving 'path' empty.
       // This avoids backend string concatenation issues (e.g. missing slashes or double slashes)
       if (this.data.isLocal) {
-        // If hashPath is absolute (starts with /), use it directly
-        // Otherwise, join remoteName (base) and hashPath
-        fsRemote = hashPath.startsWith('/')
+        fsRemote = this.pathService.isLocalPath(hashPath)
           ? hashPath
-          : `${this.data.remoteName.endsWith('/') ? this.data.remoteName : this.data.remoteName + '/'}${hashPath}`;
+          : this.pathService.joinPath(this.data.remoteName, hashPath);
 
-        // Clear hashPath so backend doesn't append it
         hashPath = '';
       }
 

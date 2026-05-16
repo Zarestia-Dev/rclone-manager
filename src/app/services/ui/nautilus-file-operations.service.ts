@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   NotificationService,
-  PathSelectionService,
+  PathService,
   RemoteFileOperationsService,
   ModalService,
   ApiClientService,
@@ -31,7 +31,7 @@ export class NautilusFileOperationsService {
   private readonly modalService = inject(ModalService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
-  private readonly pathSelection = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly apiClient = inject(ApiClientService);
 
   readonly clipboardItems = signal<
@@ -104,9 +104,9 @@ export class NautilusFileOperationsService {
   ): Promise<void> {
     if (items.length === 0) return;
 
-    const normalizedDst = this.pathSelection.normalizeRemoteForRclone(dstRemote.name);
+    const normalizedDst = this.pathService.normalizeRemoteForRclone(dstRemote.name);
     const transferItems = items.map(item => ({
-      remote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+      remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
       path: item.entry.Path,
       name: item.entry.Name,
       isDir: !!item.entry.IsDir,
@@ -131,10 +131,10 @@ export class NautilusFileOperationsService {
       );
 
       const succeededItems: UndoEntry['items'] = items.map(item => ({
-        remote: this.pathSelection.normalizeRemoteForRclone(item.meta.remote ?? ''),
+        remote: this.pathService.normalizeRemoteForRclone(item.meta.remote ?? ''),
         path: item.entry.Path,
         dstRemote: normalizedDst,
-        dstFullPath: dstPath ? `${dstPath}/${item.entry.Name}` : item.entry.Name,
+        dstFullPath: this.pathService.joinPath(dstPath, item.entry.Name),
         isDir: !!item.entry.IsDir,
         name: item.entry.Name,
       }));
@@ -220,9 +220,10 @@ export class NautilusFileOperationsService {
       const newName = await firstValueFrom(ref.afterClosed());
       if (!newName || newName === item.entry.Name) return false;
 
-      const pathParts = item.entry.Path.split('/');
-      pathParts[pathParts.length - 1] = newName;
-      const newPath = pathParts.join('/');
+      const newPath = this.pathService.joinPath(
+        this.pathService.getParentPath(item.entry.Path),
+        newName
+      );
 
       await this.remoteOps.rename(
         normalizedRemote,
@@ -254,7 +255,7 @@ export class NautilusFileOperationsService {
     );
     if (!confirmed) return false;
 
-    const normalizedRemote = this.pathSelection.normalizeRemoteForRclone(remote.name);
+    const normalizedRemote = this.pathService.normalizeRemoteForRclone(remote.name);
     try {
       this.notifications.showInfo(
         this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
@@ -291,8 +292,7 @@ export class NautilusFileOperationsService {
         const groups = new Map<string, { dstRemote: string; dstPath: string; items: unknown[] }>();
 
         for (const item of entry.items) {
-          const lastSlash = item.path.lastIndexOf('/');
-          const dstParentPath = lastSlash > -1 ? item.path.substring(0, lastSlash) : '';
+          const dstParentPath = this.pathService.getParentPath(item.path);
           const key = `${item.remote}:${dstParentPath}`;
 
           if (!groups.has(key)) {
@@ -344,9 +344,7 @@ export class NautilusFileOperationsService {
 
     try {
       const firstItem = entry.items[0];
-      const lastSlashIndex = firstItem.dstFullPath.lastIndexOf('/');
-      const parentPath =
-        lastSlashIndex > -1 ? firstItem.dstFullPath.substring(0, lastSlashIndex) : '';
+      const parentPath = this.pathService.getParentPath(firstItem.dstFullPath);
 
       await this.remoteOps.transferItems(
         transferItems,
@@ -454,8 +452,7 @@ export class NautilusFileOperationsService {
       const folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return false;
 
-      const sep = remote.isLocal && (currentPath === '' || currentPath.endsWith('/')) ? '' : '/';
-      const newPath = currentPath ? `${currentPath}${sep}${folderName}` : folderName;
+      const newPath = this.pathService.joinPath(currentPath, folderName);
       await this.remoteOps.makeDirectory(normalizedRemote, newPath, ORIGINS.FILEMANAGER);
       return true;
     } catch {
@@ -497,9 +494,7 @@ export class NautilusFileOperationsService {
       const autoFilename = !filename || filename.trim() === '';
       const targetFilename = filename?.trim();
       const targetPath = !autoFilename
-        ? currentPath
-          ? `${currentPath}/${targetFilename}`
-          : targetFilename
+        ? this.pathService.joinPath(currentPath, targetFilename)
         : currentPath;
 
       this.notifications.showInfo(this.translate.instant('nautilus.notifications.copyUrlStarted'));
@@ -549,16 +544,13 @@ export class NautilusFileOperationsService {
     try {
       const sourcePath = items.length === 1 ? firstItem.entry.Path : currentPath;
       const source = isLocal
-        ? (baseName === '/' ? `/${sourcePath}` : `${baseName}/${sourcePath}`).replace(/\/+/g, '/')
-        : `${this.pathSelection.normalizeRemoteForRclone(baseName)}${sourcePath}`;
+        ? this.pathService.joinPath(baseName, sourcePath)
+        : `${this.pathService.normalizeRemoteForRclone(baseName)}${sourcePath}`;
 
-      const destinationPath = currentPath === '' ? filename : `${currentPath}/${filename}`;
+      const destinationPath = this.pathService.joinPath(currentPath, filename);
       const destination = isLocal
-        ? (baseName === '/' ? `/${destinationPath}` : `${baseName}/${destinationPath}`).replace(
-            /\/+/g,
-            '/'
-          )
-        : `${this.pathSelection.normalizeRemoteForRclone(baseName)}${destinationPath}`;
+        ? this.pathService.joinPath(baseName, destinationPath)
+        : `${this.pathService.normalizeRemoteForRclone(baseName)}${destinationPath}`;
 
       const include = items.length > 1 ? items.map(i => i.entry.Name) : undefined;
 
@@ -613,6 +605,6 @@ export class NautilusFileOperationsService {
   }
 
   private _normalizeRemote(remote: ExplorerRoot): string {
-    return remote.isLocal ? remote.name : this.pathSelection.normalizeRemoteForRclone(remote.name);
+    return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
   }
 }

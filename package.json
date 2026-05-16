@@ -12,6 +12,7 @@
     "dev:headless": "concurrently -n \"Angular,Tauri\" -c \"blue,magenta\" \"ng serve --configuration headless\" \"wait-on http://127.0.0.1:1420 && npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,tray -- --no-default-features\"",
     "build:portable": "npm run tauri build -- --features portable --no-bundle",
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
+    "build:snap": "npm run tauri build -- --bundles deb && cp src-tauri/target/release/bundle/deb/rclone-manager_*.deb ./rclone-manager.deb && snapcraft",
     "build:headless": "npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,tray -- --no-default-features",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",

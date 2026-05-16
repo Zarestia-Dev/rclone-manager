@@ -92,6 +92,10 @@
                   'fileBrowser.operations.completed' | translate
                 }}</span>
               } @else if (job.status === 'Failed') {
+                <span class="stats-text error">{{
+                  'fileBrowser.operations.failed' | translate
+                }}</span>
+              } @else if (job.status === 'Stopped') {
                 <span class="stats-text">{{ 'fileBrowser.operations.cancelled' | translate }}</span>
               }
             </div>

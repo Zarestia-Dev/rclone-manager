@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-completed-transfers-table',
@@ -174,12 +175,13 @@ import { CompletedTransfer } from '@app/types';
 export class CompletedTransfersTableComponent {
   readonly transfers = input.required<CompletedTransfer[]>();
 
+  private readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
 
   readonly displayedColumns = ['name', 'status', 'size', 'path', 'time'];
 
   getFileName(path: string): string {
-    return path.split('/').pop() ?? path;
+    return this.pathService.getFilename(path);
   }
 
   getRelativeTime(timestamp: string): string {

@@ -285,7 +285,7 @@
                             <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
                           } @else {
                             <mat-icon
-                              [svgIcon]="isLocalPath(path) ? 'folder' : 'folder-open'"
+                              [svgIcon]="pathService.isLocalPath(path) ? 'folder' : 'folder-open'"
                             ></mat-icon>
                           }
                         </button>

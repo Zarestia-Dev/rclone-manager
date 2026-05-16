@@ -1,0 +1,32 @@
+name: rclone-manager
+base: core22
+version: '0.2.5'
+summary: User-friendly GUI for Rclone
+description: |
+  RClone Manager is a modern, cross-platform GUI that makes managing Rclone remotes effortless. 
+  Whether you're syncing files across cloud storage providers, mounting remote drives, 
+  or performing complex file operations, RClone Manager provides an intuitive interface 
+  that simplifies even the most advanced Rclone features.
+grade: stable
+confinement: classic
+icon: src-tauri/icons/128x128.png
+
+apps:
+  rclone-manager:
+    command: usr/bin/rclone-manager
+    desktop: usr/share/applications/rclone-manager.desktop
+    extensions: [gnome]
+
+parts:
+  rclone-manager:
+    plugin: dump
+    source: rclone-manager.deb
+    source-type: deb
+    stage-packages:
+      - libayatana-appindicator3-1
+    override-prime: |
+      craftctl default
+      # Ensure the desktop file points to the correct binary
+      if [ -f $CRAFT_PRIME/usr/share/applications/rclone-manager.desktop ]; then
+        sed -i 's|Exec=.*|Exec=rclone-manager|g' $CRAFT_PRIME/usr/share/applications/rclone-manager.desktop
+      fi

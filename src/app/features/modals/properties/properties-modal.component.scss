@@ -159,16 +159,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-
-      mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-      }
     }
 
     .hash-value {
-      font-family: "Roboto Mono", "Consolas", var(--font-mono);
+      font-family: var(--font-mono);
       font-size: var(--font-size-xs);
       word-break: break-all;
       color: var(--window-fg-color);
@@ -297,7 +291,7 @@
       border-radius: var(--radius-sm);
       background: rgba(var(--window-fg-color-rgb), 0.03);
       color: var(--window-fg-color);
-      font-family: "Roboto Mono", "Consolas", var(--font-mono);
+      font-family: var(--font-mono);
       font-size: var(--font-size-xs);
       padding: var(--space-sm);
       line-height: 1.5;

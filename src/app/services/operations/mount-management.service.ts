@@ -4,7 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { getRemoteNameFromFs, groupBy } from '../remote/utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
+import { groupBy } from '../remote/utils/remote-config.utils';
 import { FileSystemService } from './file-system.service';
 
 /**
@@ -20,12 +21,13 @@ export class MountManagementService extends TauriBaseService {
   public readonly mountedRemotes = this._mountedRemotes.asReadonly();
 
   public readonly mountsByRemote = computed(() =>
-    groupBy(this._mountedRemotes(), m => getRemoteNameFromFs(m.fs))
+    groupBy(this._mountedRemotes(), m => this.pathService.getRemoteNameFromFs(m.fs))
   );
 
   private eventListeners = inject(EventListenersService);
   private destroyRef = inject(DestroyRef);
   private fileSystemService = inject(FileSystemService);
+  private pathService = inject(PathService);
 
   constructor() {
     super();
@@ -151,7 +153,7 @@ export class MountManagementService extends TauriBaseService {
    */
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
     return this._mountedRemotes().filter(mount => {
-      const matchesRemote = getRemoteNameFromFs(mount.fs) === remoteName;
+      const matchesRemote = this.pathService.getRemoteNameFromFs(mount.fs) === remoteName;
       if (profile) {
         return matchesRemote && mount.profile === profile;
       }

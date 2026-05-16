@@ -7,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ScheduledTask } from '@app/types';
-import { isLocalPath } from '@app/services';
+import { PathService } from '@app/services';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 
 const TASK_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
@@ -45,6 +45,7 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'task.toggle.enable' };
 })
 export class ScheduledTaskCardComponent {
   private readonly translate = inject(TranslateService);
+  private readonly pathService = inject(PathService);
 
   task = input.required<ScheduledTask>();
   variant = input<'compact' | 'detailed'>('compact');
@@ -99,8 +100,8 @@ export class ScheduledTaskCardComponent {
       dest,
       sourcePaths: srcPaths,
       destPaths: dstPaths,
-      sourceIcon: isLocalPath(source) ? 'folder' : 'folder-open',
-      destIcon: isLocalPath(dest) ? 'folder' : 'folder-open',
+      sourceIcon: this.pathService.isLocalPath(source) ? 'folder' : 'folder-open',
+      destIcon: this.pathService.isLocalPath(dest) ? 'folder' : 'folder-open',
       isMultiSource: srcPaths.length > 1,
       isMultiDest: dstPaths.length > 1,
     };

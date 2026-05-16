@@ -3,7 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import {
   isHeadlessMode,
   NotificationService,
-  PathSelectionService,
+  PathService,
   RemoteFileOperationsService,
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
@@ -92,7 +92,7 @@ const NULL_HIT: HitResult = {
 @Injectable()
 export class NautilusDragDropService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly pathSel = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly notifications = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly fileOps = inject(NautilusFileOperationsService);
@@ -361,6 +361,25 @@ export class NautilusDragDropService {
     if (!this._internalPointerDrag) return;
 
     const ctx = this._cb.getContext();
+    const resolved = this._resolveDropHit(point, ctx);
+
+    // Handle special sidebar items that aren't standard file operations
+    if (resolved.sidebarItem === 'starred') {
+      this._internalPointerDrag.items.forEach(item => {
+        if (!this._cb.isStarred(item)) this._cb.toggleStar(item);
+      });
+      this.cancelInternalPointerDrag();
+      return;
+    }
+
+    if (resolved.sidebarItem === 'bookmarks-header') {
+      this._internalPointerDrag.items.forEach(item => {
+        if (item.entry.IsDir) this._cb.toggleBookmark(item);
+      });
+      this.cancelInternalPointerDrag();
+      return;
+    }
+
     const target = this._resolveDropTargetFromPoint(point.x, point.y);
 
     if (!target.remote) {
@@ -486,8 +505,8 @@ export class NautilusDragDropService {
     const targetRemote =
       allRemotesLookup.find(
         r =>
-          this.pathSel.normalizeRemoteName(r.name) ===
-          this.pathSel.normalizeRemoteName(bookmark.meta.remote)
+          this.pathService.normalizeRemoteName(r.name) ===
+          this.pathService.normalizeRemoteName(bookmark.meta.remote)
       ) ?? null;
     const fsEntries = event.dataTransfer ? this._snapshotEntries(event.dataTransfer.items) : [];
     await this._processDrop(event, { remote: targetRemote, path: bookmark.entry.Path }, fsEntries);
@@ -664,8 +683,8 @@ export class NautilusDragDropService {
     ).replace(/\/$/, '');
 
     const isSameRemote =
-      this.pathSel.normalizeRemoteName(items[0].meta.remote ?? '') ===
-      this.pathSel.normalizeRemoteName(target.remote.name);
+      this.pathService.normalizeRemoteName(items[0].meta.remote ?? '') ===
+      this.pathService.normalizeRemoteName(target.remote.name);
 
     if (isSameRemote && sourceParentPath === target.path.replace(/\/$/, '')) return;
 
@@ -805,7 +824,9 @@ export class NautilusDragDropService {
     const folder = resolved.folder ?? this.hoveredFolder();
     const segIdx = resolved.segmentIndex ?? this.hoveredSegmentIndex();
     const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
+    const sidebarItem = resolved.sidebarItem ?? this.hoveredSidebarItem();
 
+    // 1. Tab target
     if (tabIdx !== null) {
       const tab = ctx.tabs[tabIdx];
       if (tab?.left.remote) {
@@ -813,28 +834,62 @@ export class NautilusDragDropService {
       }
     }
 
-    const pIdx = (resolved.paneIndex as 0 | 1 | null) ?? ctx.activePaneIndex;
-    const pane = ctx.panes[pIdx];
-    if (!pane.remote) return { remote: null, path: '' };
+    // 2. Sidebar target
+    if (sidebarItem) {
+      if (sidebarItem.startsWith('remote:')) {
+        const remoteName = sidebarItem.replace('remote:', '');
+        const remote = ctx.allRemotesLookup.find(r => r.name === remoteName);
+        if (remote) return { remote, path: '' };
+      }
 
-    if (folder?.entry.IsDir) {
-      const folderRemote =
-        ctx.allRemotesLookup.find(
-          r =>
-            this.pathSel.normalizeRemoteName(r.name) ===
-            this.pathSel.normalizeRemoteName(folder.meta.remote)
-        ) ?? pane.remote;
-      return { remote: folderRemote, path: folder.entry.Path };
+      if (sidebarItem.startsWith('bookmark:')) {
+        const bmPath = sidebarItem.replace('bookmark:', '');
+        const bm = ctx.bookmarks.find(b => b.entry.Path === bmPath);
+        if (bm) {
+          const remote = ctx.allRemotesLookup.find(
+            r =>
+              this.pathService.normalizeRemoteName(r.name) ===
+              this.pathService.normalizeRemoteName(bm.meta.remote ?? '')
+          );
+          if (remote) return { remote, path: bm.entry.Path };
+        }
+      }
+      // Special sidebar items (starred, etc) are handled in commitInternalPointerDrag.
+      // We return an invalid target here to avoid falling back to the current directory.
+      return { remote: null, path: '' };
     }
 
+    // 3. Pane target (folder within or the pane itself)
+    if (resolved.paneIndex !== null) {
+      const pane = ctx.panes[resolved.paneIndex as 0 | 1];
+      if (!pane.remote) return { remote: null, path: '' };
+
+      if (folder?.entry.IsDir) {
+        const folderRemote =
+          ctx.allRemotesLookup.find(
+            r =>
+              this.pathService.normalizeRemoteName(r.name) ===
+              this.pathService.normalizeRemoteName(folder.meta.remote)
+          ) ?? pane.remote;
+        return { remote: folderRemote, path: folder.entry.Path };
+      }
+
+      return { remote: pane.remote, path: pane.path };
+    }
+
+    // 4. Breadcrumb segment target
     if (segIdx !== null) {
+      // Segments belong to the active pane's remote
+      const pane = ctx.panes[ctx.activePaneIndex];
+      if (!pane.remote) return { remote: null, path: '' };
       return {
         remote: pane.remote,
         path: segIdx < 0 ? '' : (ctx.pathSegments[segIdx]?.path ?? ''),
       };
     }
 
-    return { remote: pane.remote, path: pane.path };
+    // No valid target resolved (e.g. over toolbar empty space or sidebar background)
+    return { remote: null, path: '' };
   }
 
   // ---------------------------------------------------------------------------
@@ -912,6 +967,6 @@ export class NautilusDragDropService {
   // ---------------------------------------------------------------------------
 
   private _normalizeRemote(remote: ExplorerRoot): string {
-    return remote.isLocal ? remote.name : this.pathSel.normalizeRemoteForRclone(remote.name);
+    return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
   }
 }

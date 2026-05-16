@@ -496,20 +496,60 @@ pub async fn handle_job_completion(
         .trim()
         .to_string();
 
-    // Special handling for core/command jobs where rclone reports success: true
-    // but the internal command failed (indicated by output.error: true).
-    if success
-        && let Some(output) = job_status.get("output")
-        && output
-            .get("error")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-    {
-        success = false;
-        if let Some(result) = output.get("result").and_then(|v| v.as_str())
-            && !result.trim().is_empty()
+    // Special handling for rclone jobs where rclone reports success: true
+    // but individual items failed (batch) or the command failed (core/command).
+    if success && let Some(output) = job_status.get("output") {
+        // 1. Check for operations/batch results
+        if let Some(results) = output.get("results").and_then(|v| v.as_array()) {
+            for res in results {
+                let has_error = res.get("error").is_some()
+                    || res
+                        .get("status")
+                        .and_then(|v| v.as_i64())
+                        .is_some_and(|s| s >= 400)
+                    || res.get("success").and_then(|v| v.as_bool()) == Some(false);
+
+                if has_error {
+                    success = false;
+                    let err = res
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown error");
+                    if !err.is_empty() {
+                        let item_name = res
+                            .get("input")
+                            .and_then(|i| {
+                                i.get("srcRemote")
+                                    .or_else(|| i.get("remote"))
+                                    .or_else(|| i.get("dstRemote"))
+                            })
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown item");
+
+                        let full_err = format!("{}: {}", item_name, err);
+                        if error_msg.is_empty() {
+                            error_msg = full_err;
+                        } else if !error_msg.contains(&full_err) {
+                            error_msg = format!("{}; {}", error_msg, full_err);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Check for individual command error (e.g. core/command)
+        if success
+            && output
+                .get("error")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
         {
-            error_msg = result.trim().to_string();
+            success = false;
+            if let Some(result) = output.get("result").and_then(|v| v.as_str())
+                && !result.trim().is_empty()
+            {
+                error_msg = result.trim().to_string();
+            }
         }
     }
 

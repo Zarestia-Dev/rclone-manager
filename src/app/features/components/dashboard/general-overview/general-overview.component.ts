@@ -46,8 +46,7 @@ import {
   BackendService,
   RemoteFacadeService,
   IconService,
-  getRemoteNameFromFs,
-  splitFsPath,
+  PathService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 
@@ -144,6 +143,7 @@ export class GeneralOverviewComponent {
   readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
   readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly pathService = inject(PathService);
 
   // --- Outputs ---
   readonly selectRemote = output<Remote>();
@@ -314,12 +314,12 @@ export class GeneralOverviewComponent {
   // --- Serve actions ---
 
   stopServe(serve: ServeListItem): void {
-    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = getRemoteNameFromFs(serve.params?.fs);
+    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (!remoteName) return;
     const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
     if (remote) {
@@ -349,7 +349,7 @@ export class GeneralOverviewComponent {
   }
 
   onOpenTaskInFiles(path: string): void {
-    const { remote: remoteName, path: relativePath } = splitFsPath(path);
+    const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 

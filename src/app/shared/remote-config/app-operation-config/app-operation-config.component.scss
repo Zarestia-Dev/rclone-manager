@@ -42,7 +42,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-block: var(--space-sm) var(--space-xs);
+  margin-bottom: var(--space-xs);
+
+  &:not(:first-child) {
+    margin-top: var(--space-md);
+  }
 
   .section-title {
     display: flex;
@@ -141,7 +145,6 @@
       border: none;
       cursor: pointer;
       font-size: var(--font-size-md);
-      font-family: inherit;
       font-weight: 600;
       transition: var(--transition-fast);
 
@@ -211,8 +214,7 @@
     }
 
     input {
-      font-family: var(--font-mono); // Much better for reading paths
-      font-size: 0.95rem;
+      font-size: var(--font-size-lg);
       color: var(--window-fg-color);
 
       &::placeholder {

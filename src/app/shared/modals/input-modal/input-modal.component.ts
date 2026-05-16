@@ -15,6 +15,7 @@ import {
   ValidationErrors,
 } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { PathService } from '@app/services';
 
 export interface InputFieldConfig {
   key: string;
@@ -63,6 +64,7 @@ export class InputModalComponent implements OnInit {
   public dialogRef = inject(MatDialogRef<InputModalComponent>);
   public data = inject<InputModalData>(MAT_DIALOG_DATA);
   protected readonly translate = inject(TranslateService);
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   public form = new FormGroup<any>({});
@@ -136,7 +138,7 @@ export class InputModalComponent implements OnInit {
     try {
       const parsed = new URL(url);
       const path = parsed.pathname || '';
-      const candidate = path.split('/').pop()?.trim() || '';
+      const candidate = this.pathService.getFilename(path).trim();
       const filename = candidate.split('?')[0].split('#')[0];
       if (!filename) return null;
       if (filename.includes('.') && !filename.endsWith('.')) {

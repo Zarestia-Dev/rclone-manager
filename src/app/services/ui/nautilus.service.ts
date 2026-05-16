@@ -16,7 +16,7 @@ import { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.compon
 import {
   AppSettingsService,
   EventListenersService,
-  PathSelectionService,
+  PathService,
   RemoteManagementService,
 } from '@app/services';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
@@ -36,7 +36,7 @@ export class NautilusService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
@@ -163,12 +163,9 @@ export class NautilusService extends TauriBaseService {
       if (remotePath) {
         const isLocal =
           remoteName.startsWith('/') || (remoteName.length >= 2 && remoteName[1] === ':');
-        const separator = isLocal
-          ? remoteName.endsWith('/') || remoteName.endsWith('\\')
-            ? ''
-            : '/'
-          : ':';
-        this.targetPath.set(`${remoteName}${separator}${remotePath}`);
+        this.targetPath.set(
+          this.pathService.getFullDisplayPath({ name: remoteName, isLocal } as any, remotePath)
+        );
       } else {
         this.selectedNautilusRemote.set(remoteName);
       }
@@ -208,8 +205,7 @@ export class NautilusService extends TauriBaseService {
     if (remote) {
       url += `/${encodeURIComponent(remote)}`;
       if (path) {
-        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-        url += `/${encodeURIComponent(cleanPath)}`;
+        url += `/${this.pathService.encodePath(path, false)}`;
       }
     }
     return url;
@@ -268,11 +264,10 @@ export class NautilusService extends TauriBaseService {
       cancelled: result === null,
       items,
       paths: items.map(i => {
-        const prefix = i.meta.isLocal
-          ? i.meta.remote
-          : this.pathSelectionService.normalizeRemoteForRclone(i.meta.remote ?? '');
-        const sep = prefix?.endsWith('/') ? '' : '/';
-        return i.meta.isLocal ? `${prefix}${sep}${i.entry.Path}` : `${prefix}${i.entry.Path}`;
+        return this.pathService.getFullDisplayPath(
+          { name: i.meta.remote, isLocal: i.meta.isLocal } as any,
+          i.entry.Path
+        );
       }),
       requestId,
     });
@@ -297,13 +292,13 @@ export class NautilusService extends TauriBaseService {
   // ========== COLLECTIONS ==========
 
   isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
-    const cleanRemote = this.pathSelectionService.normalizeRemoteName(remote, isLocal);
+    const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
     return this.collectionConfig[type]
       .signal()
       .some(
         i =>
-          this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
-            cleanRemote && i.entry.Path === path
+          this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) === cleanRemote &&
+          i.entry.Path === path
       );
   }
 
@@ -315,7 +310,7 @@ export class NautilusService extends TauriBaseService {
       return;
     }
 
-    const normalizedRemote = this.pathSelectionService.normalizeRemoteName(
+    const normalizedRemote = this.pathService.normalizeRemoteName(
       item.meta?.remote ?? '',
       item.meta?.isLocal
     );
@@ -326,7 +321,7 @@ export class NautilusService extends TauriBaseService {
       ? list.filter(
           i =>
             !(
-              this.pathSelectionService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
+              this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
                 normalizedRemote && i.entry.Path === item.entry.Path
             )
         )
@@ -346,10 +341,10 @@ export class NautilusService extends TauriBaseService {
     const fromSegments = (
       input: string
     ): { remoteName: string | null; remotePath: string | null } => {
-      const [first, ...rest] = input.split('/').filter(Boolean);
+      const [first, ...rest] = this.pathService.splitSegments(input);
       return {
         remoteName: first ? decodeURIComponent(first) : null,
-        remotePath: rest.length ? decodeURIComponent(rest.join('/')) : null,
+        remotePath: rest.length ? this.pathService.decodePath(rest.join('/')) : null,
       };
     };
 

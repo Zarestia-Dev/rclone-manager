@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { PathDisplayConfig } from '../../types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { isLocalPath } from 'src/app/services';
+import { PathService } from 'src/app/services';
 
 @Component({
   selector: 'app-path-display',
@@ -55,7 +55,7 @@ import { isLocalPath } from 'src/app/services';
                       [matTooltip]="p"
                       matTooltipPosition="right"
                     >
-                      <mat-icon [svgIcon]="isLocalPath(p) ? 'folder' : 'folder-open'"></mat-icon>
+                      <mat-icon [svgIcon]="isLocal(p) ? 'folder' : 'folder-open'"></mat-icon>
                       <span class="menu-path-text">{{ p }}</span>
                     </button>
                   }
@@ -69,9 +69,7 @@ import { isLocalPath } from 'src/app/services';
                 [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
               >
                 <mat-icon
-                  [svgIcon]="
-                    isLocalPath(getPrimaryPath(config().source)) ? 'folder' : 'folder-open'
-                  "
+                  [svgIcon]="isLocal(getPrimaryPath(config().source)) ? 'folder' : 'folder-open'"
                 ></mat-icon>
               </button>
             }
@@ -112,7 +110,7 @@ import { isLocalPath } from 'src/app/services';
                 <mat-spinner diameter="24"></mat-spinner>
               } @else {
                 <mat-icon
-                  [svgIcon]="isLocalPath(config().destination) ? 'folder' : 'folder-open'"
+                  [svgIcon]="isLocal(config().destination) ? 'folder' : 'folder-open'"
                 ></mat-icon>
               }
             </button>
@@ -136,9 +134,12 @@ export class PathDisplayComponent {
 
   readonly isMobile = signal(false);
 
-  readonly isLocalPath = isLocalPath;
-
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
+
+  isLocal(path: string): boolean {
+    return this.pathService.isLocalPath(path);
+  }
 
   constructor() {
     afterNextRender(() => {
@@ -153,30 +154,22 @@ export class PathDisplayComponent {
   }
 
   isMultiPath(path: string | string[]): boolean {
-    return Array.isArray(path) && path.length > 1;
+    return this.pathService.isMultiPath(path);
   }
 
   getAsArray(path: string | string[]): string[] {
-    return Array.isArray(path) ? path : [path];
+    return this.pathService.asPathArray(path);
   }
 
   getPrimaryPath(path: string | string[]): string {
-    return Array.isArray(path) ? path[0] || '' : path;
+    return this.pathService.getPrimaryPath(path);
   }
 
   formatDisplay(path: string | string[]): string {
-    if (Array.isArray(path)) {
-      if (path.length === 0) return '';
-      if (path.length === 1) return path[0];
-      return `${path[0]} (+${path.length - 1})`;
-    }
-    return path;
+    return this.pathService.formatPathDisplay(path);
   }
 
   formatTooltip(path: string | string[]): string {
-    if (Array.isArray(path)) {
-      return path.join('\n');
-    }
-    return path;
+    return this.pathService.formatPathTooltip(path);
   }
 }

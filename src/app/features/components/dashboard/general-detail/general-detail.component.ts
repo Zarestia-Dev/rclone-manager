@@ -18,7 +18,7 @@ import {
   SettingsPanelComponent,
   ScheduledTaskCardComponent,
 } from '../../../../shared/detail-shared';
-import { IconService, SchedulerService, RemoteFacadeService, splitFsPath } from '@app/services';
+import { IconService, SchedulerService, RemoteFacadeService, PathService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {
@@ -114,6 +114,7 @@ export class GeneralDetailComponent {
   private readonly schedulerService = inject(SchedulerService);
   private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly pathService = inject(PathService);
 
   // State
   protected readonly selectedRemote = computed(() => {
@@ -251,7 +252,7 @@ export class GeneralDetailComponent {
   }
 
   onOpenTaskInFiles(path: string): void {
-    const { remote: remoteName, path: relativePath } = splitFsPath(path);
+    const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 

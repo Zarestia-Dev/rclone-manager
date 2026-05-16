@@ -80,7 +80,7 @@ export class HomeComponent {
 
   readonly activeBackend = this.backendService.activeBackend;
   readonly currentTab = this.uiStateService.currentTab;
-  readonly remotes = this.remoteFacadeService.activeRemotes;
+  readonly remotes = this.remoteFacadeService.orderedRemotes;
   readonly jobs = this.remoteFacadeService.jobs;
   readonly runningServes = this.remoteFacadeService.runningServes;
 

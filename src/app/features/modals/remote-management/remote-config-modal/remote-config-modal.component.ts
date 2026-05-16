@@ -57,6 +57,7 @@ import {
   ModalService,
   NotificationService,
   IconService,
+  PathService,
 } from '@app/services';
 import {
   RcConfigOption,
@@ -82,12 +83,9 @@ import {
   CommandOption,
 } from '@app/types';
 import {
-  buildPathString,
-  buildPathStrings,
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   convertBoolAnswerToString,
-  parseFsString,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CopyToClipboardDirective } from '@app/directives';
@@ -194,6 +192,7 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Static config ─────────────────────────────────────────────────────────────
@@ -823,7 +822,7 @@ export class RemoteConfigModalComponent implements OnInit {
               destCtrl?.updateValueAndValidity();
             });
         } else {
-          const sourceArray = opGroup.get('source') as FormArray;
+          const sourceControl = opGroup.get('source');
           const destControl = opGroup.get('dest');
           const autoStartCtrl = opGroup.get('autoStart');
           const cronEnabledCtrl = opGroup.get('cronEnabled');
@@ -832,7 +831,12 @@ export class RemoteConfigModalComponent implements OnInit {
           cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
 
           autoStartCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            sourceArray.controls.forEach(c => c.get('path')?.updateValueAndValidity());
+            if (sourceControl instanceof FormArray) {
+              sourceControl.controls.forEach(c => c.get('path')?.updateValueAndValidity());
+            } else if (sourceControl instanceof FormGroup) {
+              sourceControl.get('path')?.updateValueAndValidity();
+            }
+
             if (destControl instanceof FormGroup) {
               destControl.get('path')?.updateValueAndValidity();
             }
@@ -953,7 +957,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
       group.patchValue({
         autoStart: config['autoStart'] ?? false,
-        source: parseFsString(
+        source: this.pathService.parseFsString(
           (config['source'] as string) ?? '',
           'currentRemote',
           this.currentRemoteName(),
@@ -1018,7 +1022,12 @@ export class RemoteConfigModalComponent implements OnInit {
           configSources.forEach(s => {
             sourceCtrl.push(
               this.fb.group(
-                parseFsString(s, 'currentRemote', this.currentRemoteName(), this.existingRemotes())
+                this.pathService.parseFsString(
+                  s,
+                  'currentRemote',
+                  this.currentRemoteName(),
+                  this.existingRemotes()
+                )
               )
             );
           });
@@ -1033,7 +1042,7 @@ export class RemoteConfigModalComponent implements OnInit {
         }
       } else if (sourceCtrl instanceof FormGroup && configSources.length > 0) {
         sourceCtrl.patchValue(
-          parseFsString(
+          this.pathService.parseFsString(
             configSources[0],
             'currentRemote',
             this.currentRemoteName(),
@@ -1054,7 +1063,12 @@ export class RemoteConfigModalComponent implements OnInit {
           destCtrl.patchValue({ type: 'local', path: d, remote: '' });
         } else {
           destCtrl.patchValue(
-            parseFsString(d, 'local', this.currentRemoteName(), this.existingRemotes())
+            this.pathService.parseFsString(
+              d,
+              'local',
+              this.currentRemoteName(),
+              this.existingRemotes()
+            )
           );
         }
       }
@@ -1606,7 +1620,10 @@ export class RemoteConfigModalComponent implements OnInit {
     configData: Record<string, unknown>
   ): Record<string, unknown> {
     if (type === 'serve') {
-      const sourcePaths = buildPathStrings(configData['source'] as any[], remoteName);
+      const sourcePaths = this.pathService.buildPathStrings(
+        configData['source'] as any[],
+        remoteName
+      );
       const fs = sourcePaths.length > 0 ? sourcePaths[0] : '';
       const serveOptions = this.cleanServeOptions(
         (configData['options'] as Record<string, unknown>) ?? {}
@@ -1633,12 +1650,12 @@ export class RemoteConfigModalComponent implements OnInit {
     for (const key in configData) {
       if (key === 'source') {
         if (Array.isArray(configData[key])) {
-          result[key] = buildPathStrings(configData[key] as any[], remoteName);
+          result[key] = this.pathService.buildPathStrings(configData[key] as any[], remoteName);
         } else {
-          result[key] = buildPathString(configData[key], remoteName);
+          result[key] = this.pathService.buildPathString(configData[key], remoteName);
         }
       } else if (key === 'dest') {
-        result[key] = buildPathString(configData[key], remoteName);
+        result[key] = this.pathService.buildPathString(configData[key], remoteName);
       } else {
         result[key] = configData[key];
       }

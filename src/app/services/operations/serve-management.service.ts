@@ -3,8 +3,9 @@ import { merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
-import { EventListenersService, normalizeFs } from '@app/services';
-import { getRemoteNameFromFs, groupBy } from '../remote/utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
+import { EventListenersService } from '@app/services';
+import { groupBy } from '../remote/utils/remote-config.utils';
 
 /**
  * Service for managing rclone serve instances
@@ -15,6 +16,7 @@ import { getRemoteNameFromFs, groupBy } from '../remote/utils/remote-config.util
 })
 export class ServeManagementService extends TauriBaseService {
   private readonly eventListeners = inject(EventListenersService);
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   // Observable for running serves list
@@ -22,7 +24,7 @@ export class ServeManagementService extends TauriBaseService {
   public readonly runningServes = this._runningServes.asReadonly();
 
   public readonly servesByRemote = computed(() =>
-    groupBy(this._runningServes(), s => getRemoteNameFromFs(s.params?.fs))
+    groupBy(this._runningServes(), s => this.pathService.getRemoteNameFromFs(s.params?.fs))
   );
 
   private normalizeServeItem(serve: ServeListItem): ServeListItem {
@@ -30,7 +32,7 @@ export class ServeManagementService extends TauriBaseService {
       ...serve,
       params: {
         ...serve.params,
-        fs: normalizeFs(serve.params?.fs),
+        fs: this.pathService.normalizeFs(serve.params?.fs),
       },
     };
   }
@@ -192,9 +194,9 @@ export class ServeManagementService extends TauriBaseService {
    * Get serves for a specific remote
    */
   getServesByRemote(fs: string): ServeListItem[] {
-    const targetRemote = getRemoteNameFromFs(fs);
+    const targetRemote = this.pathService.getRemoteNameFromFs(fs);
     return this._runningServes().filter(
-      serve => getRemoteNameFromFs(serve.params?.fs) === targetRemote
+      serve => this.pathService.getRemoteNameFromFs(serve.params?.fs) === targetRemote
     );
   }
 
@@ -232,7 +234,7 @@ export class ServeManagementService extends TauriBaseService {
    */
   getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
     return this._runningServes().filter(serve => {
-      const matchesRemote = getRemoteNameFromFs(serve.params?.fs) === remoteName;
+      const matchesRemote = this.pathService.getRemoteNameFromFs(serve.params?.fs) === remoteName;
       if (profile) {
         return matchesRemote && serve.profile === profile;
       }

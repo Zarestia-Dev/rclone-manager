@@ -1,18 +1,17 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
-  NotificationService,
-  PathSelectionService,
+  PathService,
   RemoteFileOperationsService,
   RemoteFacadeService,
   ModalService,
+  NotificationService,
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, ORIGINS, RemoteFeatures } from '@app/types';
 import { NautilusService } from '@app/services';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { FileViewerService } from '../ui/file-viewer.service';
-import { isLocalPath } from '../remote/utils/remote-config.utils';
 
 /**
  * Handles all context-menu and dialog-driven actions for the Nautilus file
@@ -31,7 +30,7 @@ export class NautilusActionsService {
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly pathSvc = inject(PathSelectionService);
+  private readonly pathSvc = inject(PathService);
   private readonly remoteFacadeSvc = inject(RemoteFacadeService);
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
@@ -128,7 +127,7 @@ export class NautilusActionsService {
       return;
     }
 
-    const isLocal = isLocalPath(actualRemoteName);
+    const isLocal = this.pathSvc.isLocalPath(actualRemoteName);
 
     const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
     if (idx === -1) return;

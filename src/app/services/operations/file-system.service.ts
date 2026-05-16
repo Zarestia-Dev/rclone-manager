@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
-import { splitLocalPath } from '../remote/utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
 import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
@@ -17,6 +17,7 @@ import { BackendService } from '../infrastructure/system/backend.service';
 export class FileSystemService extends TauriBaseService {
   private nautilusService = inject(NautilusService);
   private backendService = inject(BackendService);
+  private pathService = inject(PathService);
 
   /**
    * Returns true if the internal Nautilus browser should be used instead of native system dialogs.
@@ -126,7 +127,7 @@ export class FileSystemService extends TauriBaseService {
    */
   async openInFiles(path: string): Promise<void> {
     if (this.isInternalBrowserPreferred()) {
-      const { remote, remainder } = splitLocalPath(path);
+      const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }
     return this.invokeCommand('open_in_files', { path });

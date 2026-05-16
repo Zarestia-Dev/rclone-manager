@@ -22,7 +22,7 @@ import { FileSystemService } from '../operations/file-system.service';
 import { NautilusService } from '../ui/nautilus.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
-import { isLocalPath, getRemoteNameFromFs, splitFsPath } from '../remote/utils/remote-config.utils';
+import { PathService } from '../infrastructure/platform/path.service';
 import {
   Remote,
   JobInfo,
@@ -66,6 +66,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly nautilusService = inject(NautilusService);
   private readonly backendService = inject(BackendService);
   private readonly uiStateService = inject(UiStateService);
+  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly jobs = this.jobService.jobs;
@@ -103,7 +104,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly hiddenSet = computed(() => new Set(this._remoteLayout().hidden));
 
   /** All remotes in saved order, hidden ones included */
-  private readonly orderedRemotes = computed(() => {
+  readonly orderedRemotes = computed(() => {
     const { order } = this._remoteLayout();
     const activeMap = new Map(this.activeRemotes().map(r => [r.name, r]));
     const seen = new Set<string>();
@@ -529,7 +530,7 @@ export class RemoteFacadeService extends TauriBaseService {
   ): Promise<void> {
     if (type === 'serve') {
       const serves = this.runningServes().filter(
-        s => getRemoteNameFromFs(s.params?.fs) === remoteName
+        s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName
       );
       const idToStop = serveId ?? serves.find(s => s.profile === profileName)?.id ?? serves[0]?.id;
       if (!idToStop) throw new Error('Serve ID required to stop serve');
@@ -538,7 +539,9 @@ export class RemoteFacadeService extends TauriBaseService {
     }
 
     if (type === 'mount') {
-      const mounts = this.mountedRemotes().filter(m => getRemoteNameFromFs(m.fs) === remoteName);
+      const mounts = this.mountedRemotes().filter(
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+      );
       const mountPoint =
         mounts.find(m => (profileName ? m.profile === profileName : true))?.mount_point ??
         mounts[0]?.mount_point;
@@ -554,7 +557,9 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
-      const mount = this.mountedRemotes().find(m => getRemoteNameFromFs(m.fs) === remoteName);
+      const mount = this.mountedRemotes().find(
+        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+      );
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
     });
@@ -579,11 +584,11 @@ export class RemoteFacadeService extends TauriBaseService {
       path = ((profiles ? Object.values(profiles)[0]?.['dest'] : undefined) as string) ?? '';
     }
 
-    if (isLocalPath(path)) {
+    if (this.pathService.isLocalPath(path)) {
       await this.executeAction(remoteName, 'open', () => this.fileSystemService.openInFiles(path));
     } else {
       await this.executeAction(remoteName, 'open', async () => {
-        const { remote: targetRemoteName, path: relativePath } = splitFsPath(path);
+        const { remote: targetRemoteName, path: relativePath } = this.pathService.splitFsPath(path);
         const finalRemoteName = targetRemoteName || remoteName;
 
         await this.nautilusService.newNautilusWindow(finalRemoteName, relativePath);
@@ -614,7 +619,7 @@ export class RemoteFacadeService extends TauriBaseService {
         for (const profile of Object.values(profiles)) {
           if (
             typeof profile['source'] === 'string' &&
-            getRemoteNameFromFs(profile['source']) === remoteName
+            this.pathService.getRemoteNameFromFs(profile['source']) === remoteName
           ) {
             profile['source'] = (profile['source'] as string).replace(
               `${remoteName}:`,

@@ -227,6 +227,12 @@ pub async fn transfer(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<String, String> {
+    let dst_path = if dst_path == "/" {
+        "".to_string()
+    } else {
+        dst_path
+    };
+
     debug!(
         "transfer: {} items to {dst_remote}:{dst_path} (mode={mode})",
         items.len()
@@ -354,6 +360,7 @@ async fn discover_upload_entries(
     local_paths: &[String],
     remote_path: &str,
 ) -> Vec<(std::path::PathBuf, String)> {
+    let remote_path = if remote_path == "/" { "" } else { remote_path };
     let mut entries = Vec::new();
     for raw in local_paths {
         let p = std::path::PathBuf::from(raw);

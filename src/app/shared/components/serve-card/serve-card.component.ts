@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ServeListItem } from '@app/types';
-import { getRemoteNameFromFs } from '@app/services';
+import { PathService } from '@app/services';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 interface TypeInfo {
@@ -45,6 +45,7 @@ const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 })
 export class ServeCardComponent {
   private readonly translate = inject(TranslateService);
+  private readonly pathService = inject(PathService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
@@ -88,7 +89,7 @@ export class ServeCardComponent {
     return { keys, tooltip };
   });
 
-  remoteName = computed<string>(() => getRemoteNameFromFs(this.serve().params.fs));
+  remoteName = computed<string>(() => this.pathService.getRemoteNameFromFs(this.serve().params.fs));
 
   onStopServe(): void {
     this.stopServe.emit(this.serve());

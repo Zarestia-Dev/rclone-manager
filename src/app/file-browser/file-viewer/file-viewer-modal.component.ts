@@ -44,7 +44,7 @@ import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
 
 import {
   RemoteFileOperationsService,
-  PathSelectionService,
+  PathService,
   JobManagementService,
   FileSystemService,
   NautilusService,
@@ -133,7 +133,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private remoteOps = inject(RemoteFileOperationsService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -340,7 +340,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     try {
       const fsName = this.data.isLocal
         ? this.data.remoteName
-        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
       const lastSlashIndex = item.Path.lastIndexOf('/');
       const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
@@ -526,7 +526,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
         // If remote (not local), ensure it has the colon for the API call
         if (!this.data.isLocal) {
-          fsName = this.pathSelectionService.normalizeRemoteForRclone(fsName);
+          fsName = this.pathService.normalizeRemoteForRclone(fsName);
         }
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"
@@ -617,7 +617,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
               ? `/${item.Path}`
               : `${this.data.remoteName}/${item.Path}`
             ).replace(/\/+/g, '/')
-          : `${this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+          : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
 
         this.remoteOps
           .archiveList(source, true) // Use long format for more info
@@ -843,7 +843,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Start the copy job
       const fsName = this.data.isLocal
         ? this.data.remoteName
-        : this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName);
+        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
       await this.remoteOps.transferItems(
         [
@@ -894,7 +894,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
             ? `/${item.Path}`
             : `${this.data.remoteName}/${item.Path}`
           ).replace(/\/+/g, '/')
-        : `${this.pathSelectionService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
+        : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
 
       this.notificationService.showInfo(
         this.translate.instant('fileBrowser.fileViewer.extracting', { name: this.fileName() })

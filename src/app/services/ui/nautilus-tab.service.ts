@@ -6,11 +6,10 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import {
   AppSettingsService,
   NotificationService,
-  PathSelectionService,
+  PathService,
   RemoteFileOperationsService,
   JobManagementService,
   NautilusService,
-  getRemoteNameFromFs,
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS } from '@app/types';
 import { TabItem } from '../../file-browser/nautilus/tabs/nautilus-tabs.component';
@@ -62,7 +61,7 @@ export class NautilusTabService {
   private readonly notificationService = inject(NotificationService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathService = inject(PathService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly nautilusService = inject(NautilusService);
 
@@ -223,7 +222,7 @@ export class NautilusTabService {
     let initialLocationApplied = false;
 
     const tryParse = (loc: string): boolean => {
-      const parsed = this.parseLocationToRemoteAndPath(loc);
+      const parsed = this.pathService.parseLocation(loc, this.nautilusService.allRemotesLookup());
       if (parsed) {
         initialRemote = parsed.remote;
         initialPath = parsed.path;
@@ -280,75 +279,17 @@ export class NautilusTabService {
     return initialLocationApplied;
   }
 
-  /**
-   * Parses a raw path string (rclone syntax, Windows drive letter, Unix path,
-   * or bare remote name) into a resolved remote + path pair.
-   * Returns `null` if no known remote matches.
-   */
-  parseLocationToRemoteAndPath(rawInput: string): { remote: ExplorerRoot; path: string } | null {
-    let normalized = rawInput.replace(/\\/g, '/');
-    if (normalized.length > 1 && normalized.endsWith('/')) {
-      normalized = normalized.slice(0, -1);
-    }
-
-    const known = this.nautilusService.allRemotesLookup();
-
-    // Local drive match (Windows C:\ or mounted drives)
-    const driveMatch = known.find(r => {
-      if (!r.isLocal) return false;
-      const rNameNorm = r.name.replace(/\\/g, '/').toLowerCase();
-      const inputNorm = normalized.toLowerCase();
-      return (
-        inputNorm.startsWith(rNameNorm) ||
-        (rNameNorm.endsWith('/') && inputNorm === rNameNorm.slice(0, -1))
-      );
-    });
-
-    if (driveMatch) {
-      const rNameNorm = driveMatch.name.replace(/\\/g, '/');
-      const remaining = normalized.substring(rNameNorm.length);
-      return { remote: driveMatch, path: remaining.replace(/^[/:]+/, '') };
-    }
-
-    // Rclone syntax (remote:path)
-    const colonIdx = normalized.indexOf(':');
-    if (colonIdx > -1) {
-      const rName = normalized.substring(0, colonIdx);
-      const rPath = normalized.substring(colonIdx + 1);
-      const remoteMatch = known.find(r => r.name === rName);
-      const targetRemote: ExplorerRoot = remoteMatch ?? {
-        name: rName,
-        label: rName,
-        type: 'cloud',
-        isLocal: false,
-      };
-      return { remote: targetRemote, path: rPath.startsWith('/') ? rPath.substring(1) : rPath };
-    }
-
-    // Unix root
-    if (normalized.startsWith('/')) {
-      const root = known.find(r => r.name === '/');
-      if (root) return { remote: root, path: normalized.substring(1) };
-    }
-
-    // Bare remote name
-    const exactMatch = known.find(r => r.name === normalized || r.name === rawInput);
-    if (exactMatch) return { remote: exactMatch, path: '' };
-
-    return null;
-  }
-
   isLocationAllowedByConfig(loc: string, cfg: FilePickerConfig): boolean {
     const hasColon = loc.includes(':');
     if (cfg.mode === 'local' && hasColon) return false;
     if (cfg.mode === 'remote') {
       if (!hasColon) return false;
-      const remote = getRemoteNameFromFs(loc);
+      const remote = this.pathService.getRemoteNameFromFs(loc);
       if (cfg.allowedRemotes?.length) return cfg.allowedRemotes.includes(remote);
       return true;
     }
     if (hasColon && cfg.allowedRemotes?.length) {
-      return cfg.allowedRemotes.includes(getRemoteNameFromFs(loc));
+      return cfg.allowedRemotes.includes(this.pathService.getRemoteNameFromFs(loc));
     }
     return true;
   }
@@ -364,7 +305,7 @@ export class NautilusTabService {
       if (hasColon) {
         if (cloudRemotes.length === 0) return false;
         if (cfg.allowedRemotes?.length) {
-          const r = getRemoteNameFromFs(cfg.initialLocation);
+          const r = this.pathService.getRemoteNameFromFs(cfg.initialLocation);
           return cfg.allowedRemotes.includes(r) && cloudRemotes.some(x => x.name === r);
         }
         return true;
@@ -393,8 +334,8 @@ export class NautilusTabService {
    * Refreshes any pane/tab that is currently viewing the specified remote and path.
    */
   refreshPath(remoteName: string, path: string): void {
-    const normalizedTargetRemote = this.pathSelectionService.normalizeRemoteName(remoteName);
-    const normalizedTargetPath = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    const normalizedTargetRemote = this.pathService.normalizeRemoteName(remoteName);
+    const normalizedTargetPath = this.pathService.normalizePath(path).replace(/^\/+|\/+$/g, '');
 
     // 1. Refresh active pane signals if they match
     for (let i = 0; i < 2; i++) {
@@ -402,11 +343,8 @@ export class NautilusTabService {
       const remote = ref.remote();
       if (!remote) continue;
 
-      const normRemote = this.pathSelectionService.normalizeRemoteName(remote.name, remote.isLocal);
-      const normPath = ref
-        .path()
-        .replace(/\\/g, '/')
-        .replace(/^\/+|\/+$/g, '');
+      const normRemote = this.pathService.normalizeRemoteName(remote.name, remote.isLocal);
+      const normPath = this.pathService.normalizePath(ref.path()).replace(/^\/+|\/+$/g, '');
 
       if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
         this.refresh(i as 0 | 1);
@@ -418,11 +356,11 @@ export class NautilusTabService {
       tabs.map(tab => {
         const updatePane = (pane: PaneState): PaneState => {
           if (!pane.remote) return pane;
-          const normRemote = this.pathSelectionService.normalizeRemoteName(
+          const normRemote = this.pathService.normalizeRemoteName(
             pane.remote.name,
             pane.remote.isLocal
           );
-          const normPath = pane.path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+          const normPath = this.pathService.normalizePath(pane.path).replace(/^\/+|\/+$/g, '');
 
           if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
             pane.refreshTrigger.update(v => v + 1);
@@ -467,8 +405,7 @@ export class NautilusTabService {
   createTab(remote: ExplorerRoot | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
     const title =
-      path.split('/').pop() ||
-      (remote?.label ? this.translate.instant(remote.label) : null) ||
+      this.pathService.getDisplaySegment(remote, path) ||
       this.translate.instant(!remote ? 'nautilus.titles.starred' : 'nautilus.titles.files');
 
     const paneState = this.createPaneState(remote, path);
@@ -650,8 +587,7 @@ export class NautilusTabService {
     const computedTitle =
       targetStarredMode || (currentStarredMode && !remote)
         ? this.translate.instant('nautilus.titles.starred')
-        : path.split('/').pop() ||
-          (remote?.label ? this.translate.instant(remote.label) : null) ||
+        : this.pathService.getDisplaySegment(remote, path) ||
           this.translate.instant('nautilus.titles.files');
 
     this.tabs.update(tabs =>
@@ -704,24 +640,17 @@ export class NautilusTabService {
           const affected: { remote: string; path: string }[] = [];
           if (source) {
             affected.push({ remote, path: source });
-            affected.push({ remote, path: this.getParentPath(source) });
+            affected.push({ remote, path: this.pathService.getParentPath(source) });
           }
           if (destination) {
             affected.push({ remote, path: destination });
-            affected.push({ remote, path: this.getParentPath(destination) });
+            affected.push({ remote, path: this.pathService.getParentPath(destination) });
           }
           if (affected.length > 0) {
             this.refreshAffectedPaths(affected);
           }
         }
       });
-  }
-
-  private getParentPath(path: string): string {
-    const p = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-    const parts = p.split('/');
-    if (parts.length <= 1) return '';
-    return parts.slice(0, -1).join('/');
   }
 
   private _loadSplitDividerPos(): void {
@@ -755,7 +684,7 @@ export class NautilusTabService {
 
           const fsName = remote.isLocal
             ? remote.name
-            : this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+            : this.pathService.normalizeRemoteForRclone(remote.name);
           const readGroup = this.listReadGroups[paneIndex];
 
           return from(this.stopListReadGroup(readGroup)).pipe(
@@ -768,7 +697,7 @@ export class NautilusTabService {
                   ({
                     entry: f,
                     meta: {
-                      remote: this.pathSelectionService.normalizeRemoteName(fsName),
+                      remote: this.pathService.normalizeRemoteName(fsName),
                       isLocal: remote.isLocal,
                       remoteType: remote.type,
                     },

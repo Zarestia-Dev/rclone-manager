@@ -135,7 +135,7 @@
       gap: var(--space-sm);
 
       .speed-value {
-        font-family: var(--mono-font-family);
+        font-family: var(--font-mono);
         font-weight: 500;
       }
 
@@ -208,7 +208,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-family: var(--mono-font-family);
+        font-family: var(--font-mono);
       }
 
       .arrow-icon {
