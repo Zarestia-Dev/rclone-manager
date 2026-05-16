@@ -1,21 +1,19 @@
-use log::{debug, error, info};
-use std::time::Duration;
+use log::{error, info};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::SystemStatusPayload;
 use crate::utils::types::rclone::ProcessKind;
-use crate::utils::types::state::RcApiEngine;
+use crate::utils::types::state::{RcApiEngine, RcloneState};
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
-    rclone::{endpoints::core, process_common::build_rclone_process_command},
+    rclone::{
+        endpoints::core,
+        process_common::{build_rclone_process_command, graceful_shutdown},
+    },
 };
 
 use super::error::{EngineError, EngineResult};
-
-const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
-const MAX_GRACEFUL_SHUTDOWN_ITERATIONS: usize = 10;
-const GRACEFUL_SHUTDOWN_CHECK_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<tokio::process::Child> {
@@ -38,12 +36,12 @@ impl RcApiEngine {
 
         match engine_cmd.spawn() {
             Ok(child) => {
-                info!("Rclone process spawned successfully");
+                info!("Rclone process spawned");
                 self.set_path_error(false);
                 Ok(child)
             }
             Err(e) => {
-                error!("Failed to spawn Rclone process: {e}");
+                error!("Failed to spawn rclone process: {e}");
                 let err_text = e.to_string();
                 let is_path_error = err_text.contains("No such file or directory")
                     || err_text.contains("os error 2");
@@ -59,73 +57,31 @@ impl RcApiEngine {
     }
 
     pub async fn kill_process(&mut self, app: &AppHandle) -> EngineResult<()> {
-        if let Some(mut child) = self.process.take() {
-            let pid = child.id();
+        let Some(mut child) = self.process.take() else {
+            self.running = false;
+            return Ok(());
+        };
 
-            if self.running
-                && let Some(pid_val) = pid
-            {
-                info!("Attempting graceful shutdown for PID {pid_val}...");
+        // If the process is running and has a valid PID, try a graceful shutdown first.
+        if self.running && child.id().is_some() {
+            use crate::rclone::backend::BackendManager;
+            let backend = app.state::<BackendManager>().get_active().await;
+            let state = app.state::<RcloneState>();
+            let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
-                use crate::rclone::backend::BackendManager;
-                let backend_manager = app.state::<BackendManager>();
-                let backend = backend_manager.get_active().await;
-                let quit_url = backend.url_for(core::QUIT);
-
-                let _ = reqwest::Client::new()
-                    .post(&quit_url)
-                    .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
-                    .send()
-                    .await;
-
-                #[cfg(unix)]
-                for _ in 0..MAX_GRACEFUL_SHUTDOWN_ITERATIONS {
-                    if let Ok(output) = tokio::process::Command::new("kill")
-                        .args(["-0", &pid_val.to_string()])
-                        .output()
-                        .await
-                        && !output.status.success()
-                    {
-                        info!("Process terminated gracefully");
-                        let _ = child.wait().await;
-                        self.running = false;
-                        return Ok(());
-                    }
-                    tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
-                }
-
-                #[cfg(windows)]
-                {
-                    let total_wait = GRACEFUL_SHUTDOWN_CHECK_INTERVAL
-                        .saturating_mul(MAX_GRACEFUL_SHUTDOWN_ITERATIONS as u32);
-                    let deadline = tokio::time::Instant::now() + total_wait;
-
-                    loop {
-                        if !crate::utils::process::process_manager::is_process_alive(pid_val) {
-                            info!("Process terminated gracefully");
-                            let _ = child.wait().await;
-                            self.running = false;
-                            return Ok(());
-                        }
-                        if tokio::time::Instant::now() >= deadline {
-                            break;
-                        }
-                        tokio::time::sleep(GRACEFUL_SHUTDOWN_CHECK_INTERVAL).await;
-                    }
-                }
-
-                debug!("Graceful shutdown timed out, force killing...");
+            if graceful_shutdown(child, quit_request).await.is_ok() {
+                self.running = false;
+                return Ok(());
             }
-
-            info!("Force killing process...");
+            // Graceful shutdown failed; the child has been consumed and killed by that fn.
+        } else {
+            info!("Force killing engine process");
             if let Err(e) = child.kill().await {
-                let error_msg = format!("Failed to kill process: {e}");
-                error!("{error_msg}");
-                return Err(EngineError::KillFailed(error_msg));
+                let msg = format!("Failed to kill process: {e}");
+                error!("{msg}");
+                return Err(EngineError::KillFailed(msg));
             }
-            // Reap the child after a forced kill too.
             let _ = child.wait().await;
-            info!("Process terminated");
         }
 
         self.running = false;
@@ -134,8 +90,7 @@ impl RcApiEngine {
     }
 
     pub fn kill_port_processes(&self) -> EngineResult<()> {
-        let port = self.current_api_port;
-        kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
+        kill_processes_on_port(self.current_api_port).map_err(EngineError::PortCleanupFailed)
     }
 }
 
@@ -144,24 +99,13 @@ mod tests {
     use super::*;
     use crate::rclone::engine::core::DEFAULT_API_PORT;
 
-    #[test]
-    fn test_graceful_shutdown_constants() {
-        assert_eq!(GRACEFUL_SHUTDOWN_TIMEOUT, Duration::from_secs(5));
-        assert_eq!(MAX_GRACEFUL_SHUTDOWN_ITERATIONS, 10);
-        assert_eq!(GRACEFUL_SHUTDOWN_CHECK_INTERVAL, Duration::from_millis(500));
-
-        let total_poll_time = MAX_GRACEFUL_SHUTDOWN_ITERATIONS as u64
-            * GRACEFUL_SHUTDOWN_CHECK_INTERVAL.as_millis() as u64;
-        assert_eq!(total_poll_time, 5000);
-    }
-
     #[tokio::test]
     async fn test_kill_process_no_process() {
-        let mut engine = RcApiEngine {
-            running: true,
+        let engine = RcApiEngine {
+            running: false,
             ..Default::default()
         };
-        engine.running = false;
+        assert!(!engine.running);
     }
 
     #[tokio::test]

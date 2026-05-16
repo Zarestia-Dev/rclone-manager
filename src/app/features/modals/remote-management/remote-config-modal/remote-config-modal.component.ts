@@ -89,6 +89,7 @@ import {
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CopyToClipboardDirective } from '@app/directives';
+import { MatProgressBar } from '@angular/material/progress-bar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,6 +158,7 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
     MatInputModule,
     MatTooltipModule,
     MatProgressSpinner,
+    MatProgressBar,
     MatExpansionModule,
     MatListModule,
     MatDividerModule,

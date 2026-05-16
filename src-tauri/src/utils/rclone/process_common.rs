@@ -1,4 +1,5 @@
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
@@ -8,6 +9,8 @@ use crate::core::settings::schema::CoreSettings;
 use crate::utils::security::is_sensitive_field;
 use crate::utils::types::rclone::ProcessKind;
 use rcman::SettingsSchema;
+
+pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Apply environment variables to the rclone command.
 async fn apply_rclone_environment(
@@ -195,4 +198,39 @@ pub async fn build_rclone_process_command(
     );
 
     apply_rclone_environment(app, command.args(args)).await
+}
+
+/// Send a quit request and wait for the process to exit, force-killing after the timeout.
+pub async fn graceful_shutdown(
+    mut child: tokio::process::Child,
+    quit_request: reqwest::RequestBuilder,
+) -> Result<(), String> {
+    let pid = child.id();
+    info!("Attempting graceful shutdown (PID {pid:?})");
+
+    // Fire the quit request without waiting on the response — we watch the child instead.
+    tokio::spawn(async move {
+        let _ = quit_request.timeout(Duration::from_secs(2)).send().await;
+    });
+
+    match tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, child.wait()).await {
+        Ok(Ok(status)) => {
+            info!("Process (PID {pid:?}) exited: {status}");
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            error!("Error waiting for process (PID {pid:?}): {e}");
+            let _ = child.kill().await;
+            Err(e.to_string())
+        }
+        Err(_) => {
+            warn!("Graceful shutdown timed out for PID {pid:?}, force killing");
+            if let Err(e) = child.kill().await {
+                error!("Failed to force kill process (PID {pid:?}): {e}");
+                return Err(e.to_string());
+            }
+            let _ = child.wait().await;
+            Ok(())
+        }
+    }
 }

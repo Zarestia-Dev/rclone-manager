@@ -122,14 +122,15 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
     #[cfg(desktop)]
     {
         if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
-            let staged = state.with_data(|d| {
+            let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
+                let mut d = state.data.lock();
                 if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
-                    d.phase = crate::utils::types::updater::UpdatePhase::Idle;
+                    d.state = crate::utils::types::updater::UpdateState::Idle;
                     Some((u, s))
                 } else {
                     None
                 }
-            });
+            };
 
             if let Some((update, sig)) = staged {
                 info!("Applying staged app update...");

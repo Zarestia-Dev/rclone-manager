@@ -1,5 +1,5 @@
 use crate::utils::github_client;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use tauri_plugin_updater::Update;
 
 #[derive(Debug, thiserror::Error)]
@@ -12,8 +12,6 @@ pub enum UpdaterError {
     Io(#[from] std::io::Error),
     #[error("invalid URL: {0}")]
     InvalidUrl(#[from] url::ParseError),
-    #[error("mutex error: {0}")]
-    Mutex(String),
     #[error("no pending update")]
     NoPendingUpdate,
     #[error("update artifact is no longer available: {0}")]
@@ -60,9 +58,6 @@ impl serde::Serialize for UpdaterError {
             Self::Relaunch(e) => {
                 crate::localized_error!("backendErrors.updater.relaunchFailed", "error" => e)
             }
-            Self::Mutex(e) => {
-                crate::localized_error!("backendErrors.updater.mutex", "error" => e)
-            }
             Self::RcloneVersionCheck(e) => {
                 crate::localized_error!("backendErrors.rclone.versionCheckFailed", "error" => e)
             }
@@ -88,37 +83,31 @@ impl serde::Serialize for UpdaterError {
 
 pub type Result<T> = std::result::Result<T, UpdaterError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum UpdatePhase {
+pub enum UpdateState {
     #[default]
     Idle,
     Checking,
+    Available,
     Downloading,
     ReadyToRestart,
 }
 
 /// Tracks the in-flight app self-update download and its staged payload.
 pub struct AppUpdaterState {
-    data: Mutex<AppUpdaterData>,
+    pub data: Mutex<AppUpdaterData>,
 }
 
 #[derive(Default)]
 pub struct AppUpdaterData {
-    pub phase: UpdatePhase,
+    pub state: UpdateState,
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub failure_message: Option<String>,
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
-}
-
-impl AppUpdaterState {
-    pub fn with_data<R>(&self, f: impl FnOnce(&mut AppUpdaterData) -> R) -> R {
-        let mut data = self.data.lock().unwrap_or_else(|e| e.into_inner());
-        f(&mut data)
-    }
 }
 
 impl Default for AppUpdaterState {
@@ -145,27 +134,21 @@ pub struct UpdateMetadata {
     pub channel: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum UpdateStatus {
-    #[default]
-    #[serde(rename = "idle")]
-    Idle,
-    #[serde(rename = "downloading")]
-    Downloading,
-    #[serde(rename = "readyToRestart")]
-    ReadyToRestart,
-    #[serde(rename = "available")]
-    Available,
-}
-
 /// Unified update info — combines static metadata with live process state.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
     #[serde(flatten)]
     pub metadata: UpdateMetadata,
-    pub status: UpdateStatus,
+    pub status: UpdateState,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "status", content = "data")]
+pub enum DownloadState {
+    InProgress,
+    Complete,
+    Failed(String),
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -174,12 +157,10 @@ pub struct DownloadStatus {
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub percentage: f64,
-    pub is_complete: bool,
-    pub is_failed: bool,
-    pub failure_message: Option<String>,
+    pub state: DownloadState,
 }
 
-#[derive(serde::Serialize, Clone, Debug, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateResult {
     pub success: bool,
@@ -191,20 +172,13 @@ pub struct UpdateResult {
 
 /// Holds the rclone update staged for activation at the next engine restart.
 pub struct RcloneUpdaterState {
-    data: Mutex<RcloneUpdaterData>,
+    pub data: Mutex<RcloneUpdaterData>,
 }
 
 #[derive(Default)]
 pub struct RcloneUpdaterData {
-    pub phase: UpdatePhase,
+    pub state: UpdateState,
     pub pending_update: Option<UpdateMetadata>,
-}
-
-impl RcloneUpdaterState {
-    pub fn with_data<R>(&self, f: impl FnOnce(&mut RcloneUpdaterData) -> R) -> R {
-        let mut data = self.data.lock().unwrap_or_else(|e| e.into_inner());
-        f(&mut data)
-    }
 }
 
 impl Default for RcloneUpdaterState {

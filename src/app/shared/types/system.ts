@@ -92,6 +92,7 @@ export type AppEventPayloadType = AppEventPayload;
 
 export enum BackendUpdateStatus {
   Idle = 'idle',
+  Checking = 'checking',
   Downloading = 'downloading',
   ReadyToRestart = 'readyToRestart',
   Available = 'available',
@@ -110,23 +111,22 @@ export interface UpdateInfo {
   channel?: string;
 }
 
+export enum DownloadStateStatus {
+  InProgress = 'inProgress',
+  Complete = 'complete',
+  Failed = 'failed',
+}
+
+export interface DownloadState {
+  status: DownloadStateStatus;
+  data?: string;
+}
+
 export interface DownloadStatus {
   downloadedBytes: number;
   totalBytes: number;
   percentage: number;
-  isComplete: boolean;
-  isFailed: boolean;
-  failureMessage: string | null;
-}
-
-export interface UpdateStatus {
-  checking: boolean;
-  downloading: boolean;
-  available: boolean;
-  readyToRestart: boolean;
-  error: string | null;
-  lastCheck: Date | null;
-  updateInfo: UpdateInfo | null;
+  state: DownloadState;
 }
 
 export interface UpdateResult {

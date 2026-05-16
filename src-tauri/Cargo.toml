@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.2.5"
+version = "0.2.6"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -72,6 +72,7 @@ axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
 anyhow = {version = "1", optional = true}
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
+parking_lot = "0.12"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"

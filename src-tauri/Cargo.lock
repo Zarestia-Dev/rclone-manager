@@ -5260,7 +5260,7 @@ dependencies = [
 
 [[package]]
 name = "rclone-manager"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -5280,6 +5280,7 @@ dependencies = [
  "netstat2",
  "nix 0.31.3",
  "once_cell",
+ "parking_lot",
  "rcman",
  "reqwest",
  "rumqttc",

@@ -3,8 +3,8 @@ pub mod app_updates {
     use crate::core::lifecycle::shutdown::shutdown_app;
     use crate::utils::app::platform::relaunch_app;
     use crate::utils::types::updater::{
-        AppUpdaterState, DownloadStatus, Result, UpdateInfo, UpdateMetadata, UpdatePhase,
-        UpdateStatus, UpdaterError as Error,
+        AppUpdaterState, DownloadState, DownloadStatus, Result, UpdateInfo, UpdateMetadata,
+        UpdateState, UpdaterError as Error,
     };
     use crate::utils::{
         app::notification::{NotificationEvent, UpdateStage, notify},
@@ -19,35 +19,44 @@ pub mod app_updates {
     pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<UpdateInfo>> {
         let updater_state = app.state::<AppUpdaterState>();
 
-        let (phase, metadata) = updater_state.with_data(|d| (d.phase, d.last_metadata.clone()));
+        {
+            let mut data = updater_state.data.lock();
+            if data.state == UpdateState::ReadyToRestart {
+                if let Some(ref m) = data.last_metadata
+                    && m.channel.as_deref() == Some(&channel)
+                {
+                    return Ok(Some(UpdateInfo {
+                        metadata: m.clone(),
+                        status: UpdateState::ReadyToRestart,
+                    }));
+                }
+                // Channel mismatch or no metadata -> reset state
+                data.state = UpdateState::Idle;
+                data.pending_action = None;
+                data.signature = None;
+                data.last_metadata = None;
+            }
 
-        if phase == UpdatePhase::ReadyToRestart {
-            return Ok::<_, Error>(metadata.map(|m| UpdateInfo {
-                metadata: m,
-                status: UpdateStatus::ReadyToRestart,
-            }));
+            if data.state == UpdateState::Downloading {
+                return Ok(Some(UpdateInfo {
+                    metadata: UpdateMetadata {
+                        version: String::new(),
+                        current_version: app.package_info().version.to_string(),
+                        update_available: true,
+                        release_tag: None,
+                        channel: Some(channel),
+                        ..Default::default()
+                    },
+                    status: UpdateState::Downloading,
+                }));
+            }
+
+            data.state = UpdateState::Checking;
+            data.downloaded_bytes = 0;
+            data.total_bytes = 0;
+            data.failure_message = None;
+            data.last_metadata = None;
         }
-
-        if phase == UpdatePhase::Downloading {
-            return Ok(Some(UpdateInfo {
-                metadata: UpdateMetadata {
-                    version: String::new(),
-                    current_version: app.package_info().version.to_string(),
-                    update_available: true,
-                    release_tag: None,
-                    ..Default::default()
-                },
-                status: UpdateStatus::Downloading,
-            }));
-        }
-
-        updater_state.with_data(|d| {
-            d.phase = UpdatePhase::Checking;
-            d.downloaded_bytes = 0;
-            d.total_bytes = 0;
-            d.failure_message = None;
-            d.last_metadata = None;
-        });
 
         info!("Checking for app updates on channel: {channel}");
 
@@ -61,6 +70,7 @@ pub mod app_updates {
             .find(|r| is_release_for_channel(r, &channel))
         else {
             info!("No suitable release found for channel: {channel}");
+            updater_state.data.lock().state = UpdateState::Idle;
             return Ok(None);
         };
 
@@ -109,7 +119,7 @@ pub mod app_updates {
                     release_date: release.published_at,
                     release_url: Some(release.html_url),
                     update_available: true,
-                    ..Default::default()
+                    channel: Some(channel.clone()),
                 };
 
                 (Some(u), Some(metadata))
@@ -119,7 +129,7 @@ pub mod app_updates {
 
         let update_info = update_metadata.as_ref().map(|metadata| UpdateInfo {
             metadata: metadata.clone(),
-            status: UpdateStatus::Available,
+            status: UpdateState::Available,
         });
 
         if let Some(ref info) = update_info {
@@ -150,11 +160,16 @@ pub mod app_updates {
             }
         }
 
-        updater_state.with_data(|d| {
-            d.phase = UpdatePhase::Idle;
-            d.last_metadata = update_metadata;
-            d.pending_action = update;
-        });
+        {
+            let mut data = updater_state.data.lock();
+            data.state = if update_metadata.is_some() {
+                UpdateState::Available
+            } else {
+                UpdateState::Idle
+            };
+            data.last_metadata = update_metadata;
+            data.pending_action = update;
+        }
 
         Ok(update_info)
     }
@@ -178,26 +193,23 @@ pub mod app_updates {
     #[tauri::command]
     pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
         let updater_state = app.state::<AppUpdaterState>();
+        let data = updater_state.data.lock();
 
-        let (phase, metadata) = updater_state.with_data(|d| (d.phase, d.last_metadata.clone()));
-
-        if phase == UpdatePhase::ReadyToRestart {
-            return Ok::<_, Error>(metadata.map(|m| UpdateInfo {
-                metadata: m,
-                status: UpdateStatus::ReadyToRestart,
-            }));
-        }
-
-        Ok(metadata.map(|metadata| {
-            let status = if phase == UpdatePhase::Downloading {
-                UpdateStatus::Downloading
+        Ok(data.last_metadata.as_ref().map(|metadata| {
+            let status = if data.state == UpdateState::Downloading {
+                UpdateState::Downloading
+            } else if data.state == UpdateState::ReadyToRestart {
+                UpdateState::ReadyToRestart
             } else if metadata.update_available {
-                UpdateStatus::Available
+                UpdateState::Available
             } else {
-                UpdateStatus::Idle
+                UpdateState::Idle
             };
 
-            UpdateInfo { metadata, status }
+            UpdateInfo {
+                metadata: metadata.clone(),
+                status,
+            }
         }))
     }
 
@@ -226,16 +238,20 @@ pub mod app_updates {
         let updater_state = app.state::<AppUpdaterState>();
 
         let update = updater_state
-            .with_data(|d| d.pending_action.take())
+            .data
+            .lock()
+            .pending_action
+            .take()
             .ok_or(Error::NoPendingUpdate)?;
 
         // Reset progress and set updating flag
-        updater_state.with_data(|d| {
-            d.phase = UpdatePhase::Downloading;
-            d.downloaded_bytes = 0;
-            d.total_bytes = 0;
-            d.failure_message = None;
-        });
+        {
+            let mut data = updater_state.data.lock();
+            data.state = UpdateState::Downloading;
+            data.downloaded_bytes = 0;
+            data.total_bytes = 0;
+            data.failure_message = None;
+        }
 
         info!("Downloading app update from: {}", update.download_url);
 
@@ -254,13 +270,14 @@ pub mod app_updates {
                     let mut last_emit = std::time::Instant::now();
                     move |chunk_length, content_length| {
                         let st = app.state::<AppUpdaterState>();
-                        let (downloaded, total) = st.with_data(|d| {
-                            d.downloaded_bytes += chunk_length as u64;
+                        let (downloaded, total) = {
+                            let mut data = st.data.lock();
+                            data.downloaded_bytes += chunk_length as u64;
                             if let Some(total) = content_length {
-                                d.total_bytes = total;
+                                data.total_bytes = total;
                             }
-                            (d.downloaded_bytes, d.total_bytes)
-                        });
+                            (data.downloaded_bytes, data.total_bytes)
+                        };
 
                         let percentage = if total > 0 {
                             (downloaded as f64 / total as f64) * 100.0
@@ -278,9 +295,7 @@ pub mod app_updates {
                                         downloaded_bytes: downloaded,
                                         total_bytes: total,
                                         percentage,
-                                        is_complete: false,
-                                        is_failed: false,
-                                        failure_message: None,
+                                        state: DownloadState::InProgress,
                                     }
                                 }),
                             );
@@ -296,12 +311,13 @@ pub mod app_updates {
 
         match res {
             Ok(signature) => {
-                let (downloaded, total) = updater_state.with_data(|d| {
-                    d.phase = UpdatePhase::ReadyToRestart;
-                    d.signature = Some(signature);
-                    d.pending_action = Some(update.clone());
-                    (d.downloaded_bytes, d.total_bytes)
-                });
+                let (downloaded, total) = {
+                    let mut data = updater_state.data.lock();
+                    data.state = UpdateState::ReadyToRestart;
+                    data.signature = Some(signature);
+                    data.pending_action = Some(update.clone());
+                    (data.downloaded_bytes, data.total_bytes)
+                };
 
                 notify(
                     &app,
@@ -318,9 +334,7 @@ pub mod app_updates {
                             downloaded_bytes: downloaded,
                             total_bytes: total,
                             percentage: 100.0,
-                            is_complete: true,
-                            is_failed: false,
-                            failure_message: None,
+                            state: DownloadState::Complete,
                         }
                     }),
                 );
@@ -328,12 +342,13 @@ pub mod app_updates {
             }
             Err(e) => {
                 warn!("App update download failed: {e}");
-                let (downloaded, total) = updater_state.with_data(|d| {
-                    d.phase = UpdatePhase::Idle;
-                    d.failure_message = Some(e.to_string());
-                    d.pending_action = Some(update.clone());
-                    (d.downloaded_bytes, d.total_bytes)
-                });
+                let (downloaded, total) = {
+                    let mut data = updater_state.data.lock();
+                    data.state = UpdateState::Available;
+                    data.failure_message = Some(e.to_string());
+                    data.pending_action = Some(update.clone());
+                    (data.downloaded_bytes, data.total_bytes)
+                };
 
                 notify(
                     &app,
@@ -350,9 +365,7 @@ pub mod app_updates {
                             downloaded_bytes: downloaded,
                             total_bytes: total,
                             percentage: 0.0,
-                            is_complete: false,
-                            is_failed: true,
-                            failure_message: Some(e.to_string()),
+                            state: DownloadState::Failed(e.to_string()),
                         }
                     }),
                 );
@@ -366,20 +379,22 @@ pub mod app_updates {
     pub async fn apply_app_update(app: AppHandle) -> Result<()> {
         let updater_state = app.state::<AppUpdaterState>();
 
-        let (update, signature) = updater_state
-            .with_data(|d| match (d.pending_action.take(), d.signature.take()) {
+        let (update, signature) = {
+            let mut data = updater_state.data.lock();
+            match (data.pending_action.take(), data.signature.take()) {
                 (Some(u), Some(s)) => {
-                    d.phase = UpdatePhase::Downloading;
+                    data.state = UpdateState::Downloading;
                     Some((u, s))
                 }
                 _ => None,
-            })
-            .ok_or(Error::NoPendingUpdate)?;
+            }
+        }
+        .ok_or(Error::NoPendingUpdate)?;
 
         info!("Applying app update and relaunching...");
 
         if let Err(e) = update.install(signature) {
-            updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
+            updater_state.data.lock().state = UpdateState::Available;
             return Err(Error::Tauri(e));
         }
 
@@ -390,7 +405,7 @@ pub mod app_updates {
             }),
         );
 
-        updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
+        updater_state.data.lock().state = UpdateState::Idle;
         relaunch_app(app).await.map_err(Error::Relaunch)?;
         Ok(())
     }

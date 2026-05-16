@@ -57,12 +57,8 @@ export class TitlebarComponent implements OnInit {
 
   // Signals for update states
   readonly hasUpdates = this.appUpdaterService.hasUpdates;
-  readonly rcloneUpdateAvailable = computed(
-    () => this.rcloneUpdateService.updateStatus().available
-  );
-  readonly rcloneRestartRequired = computed(
-    () => this.rcloneUpdateService.updateStatus().readyToRestart
-  );
+  readonly rcloneUpdateAvailable = this.rcloneUpdateService.hasUpdates;
+  readonly rcloneRestartRequired = this.rcloneUpdateService.readyToRestart;
   readonly readyToRestart = this.appUpdaterService.readyToRestart;
 
   readonly currentTheme = this.windowService.theme;

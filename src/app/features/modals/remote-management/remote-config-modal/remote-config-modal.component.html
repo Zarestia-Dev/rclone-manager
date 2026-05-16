@@ -564,7 +564,7 @@
     @if (isAuthCancelled()) {
       <span class="cleanup-status" aria-live="polite">
         {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
-        <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+        <mat-progress-bar mode="indeterminate" aria-hidden="true" />
       </span>
     }
 

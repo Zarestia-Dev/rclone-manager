@@ -21,8 +21,8 @@ use crate::utils::types::events::APP_EVENT;
 use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
 use crate::utils::types::state::RcloneState;
 use crate::utils::types::updater::{
-    RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdatePhase, UpdateResult,
-    UpdateStatus, UpdaterError as Error,
+    RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateResult, UpdateState,
+    UpdaterError as Error,
 };
 
 struct RcloneVersionInfo {
@@ -148,10 +148,12 @@ pub async fn perform_check_rclone_update(
 
     let channel: UpdateChannel = channel.into();
 
-    app_handle.state::<RcloneUpdaterState>().with_data(|d| {
-        d.phase = UpdatePhase::Checking;
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut d = state.data.lock();
+        d.state = UpdateState::Checking;
         d.pending_update = None;
-    });
+    }
 
     let (update_available, latest_version) = check_rclone_selfupdate(&app_handle, &channel).await?;
 
@@ -175,20 +177,19 @@ pub async fn perform_check_rclone_update(
     };
 
     if update_available {
-        app_handle.state::<RcloneUpdaterState>().with_data(|d| {
-            d.phase = UpdatePhase::Idle;
-            d.pending_update = Some(metadata.clone());
-        });
+        let state = app_handle.state::<RcloneUpdaterState>();
+        let mut d = state.data.lock();
+        d.state = UpdateState::Idle;
+        d.pending_update = Some(metadata.clone());
     } else {
-        app_handle
-            .state::<RcloneUpdaterState>()
-            .with_data(|d| d.phase = UpdatePhase::Idle);
+        let state = app_handle.state::<RcloneUpdaterState>();
+        state.data.lock().state = UpdateState::Idle;
     }
 
     let status = if metadata.update_available {
-        UpdateStatus::Available
+        UpdateState::Available
     } else {
-        UpdateStatus::Idle
+        UpdateState::Idle
     };
 
     Ok(UpdateInfo { metadata, status })
@@ -198,25 +199,27 @@ pub async fn perform_check_rclone_update(
 pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Option<UpdateInfo>> {
     let has_pending_new = find_pending_new_binary(&app_handle).is_some();
     let updater_state = app_handle.state::<RcloneUpdaterState>();
-    let (phase, pending_metadata) =
-        updater_state.with_data(|d| (d.phase, d.pending_update.clone()));
+    let (state, pending_metadata) = {
+        let d = updater_state.data.lock();
+        (d.state, d.pending_update.clone())
+    };
 
     // If no metadata and no binary, there's nothing to report
     if pending_metadata.is_none() && !has_pending_new {
         return Ok(None);
     }
 
-    let status = if has_pending_new || phase == UpdatePhase::ReadyToRestart {
-        UpdateStatus::ReadyToRestart
-    } else if phase == UpdatePhase::Downloading {
-        UpdateStatus::Downloading
+    let status = if has_pending_new || state == UpdateState::ReadyToRestart {
+        UpdateState::ReadyToRestart
+    } else if state == UpdateState::Downloading {
+        UpdateState::Downloading
     } else if pending_metadata
         .as_ref()
         .is_some_and(|m| m.update_available)
     {
-        UpdateStatus::Available
+        UpdateState::Available
     } else {
-        UpdateStatus::Idle
+        UpdateState::Idle
     };
 
     let mut metadata = match pending_metadata {
@@ -244,7 +247,7 @@ pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Opti
         }
     };
 
-    if status == UpdateStatus::ReadyToRestart {
+    if status == UpdateState::ReadyToRestart {
         metadata.update_available = false;
     }
 
@@ -274,12 +277,15 @@ pub async fn update_rclone(
     let channel_enum: UpdateChannel = channel.clone().into();
 
     let updater_state = app_handle.state::<RcloneUpdaterState>();
-    let cached_update = updater_state.with_data(|d| d.pending_update.clone());
+    let cached_update = {
+        let d = updater_state.data.lock();
+        d.pending_update.clone()
+    };
 
     let update_check = match cached_update {
         Some(metadata) if metadata.update_available => UpdateInfo {
             metadata,
-            status: UpdateStatus::Available,
+            status: UpdateState::Available,
         },
         _ => perform_check_rclone_update(app_handle.clone(), channel).await?,
     };
@@ -366,16 +372,23 @@ pub async fn update_rclone(
     };
     let new_path = PathBuf::from(format!("{}.new", target_path.display()));
 
-    updater_state.with_data(|d| d.phase = UpdatePhase::Downloading);
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        state.data.lock().state = UpdateState::Downloading;
+    }
     info!("Downloading update to: {new_path:?}");
     let update_result = perform_rclone_selfupdate(&app_handle, Some(&new_path), channel_enum).await;
 
-    updater_state.with_data(|d| d.phase = UpdatePhase::Idle);
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        state.data.lock().state = UpdateState::Idle;
+    }
 
     match &update_result {
         Ok(res) => {
             if res.success {
-                updater_state.with_data(|d| d.phase = UpdatePhase::ReadyToRestart);
+                let state = app_handle.state::<RcloneUpdaterState>();
+                state.data.lock().state = UpdateState::ReadyToRestart;
                 notify(
                     &app_handle,
                     NotificationEvent::RcloneUpdate(UpdateStage::Downloaded {
@@ -437,9 +450,8 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
     let (current_path, new_path) = match find_pending_new_binary(app_handle) {
         Some(paths) => paths,
         None => {
-            app_handle
-                .state::<RcloneUpdaterState>()
-                .with_data(|d| d.pending_update = None);
+            let state = app_handle.state::<RcloneUpdaterState>();
+            state.data.lock().pending_update = None;
             return Err(Error::BinaryNotFound);
         }
     };
@@ -483,10 +495,11 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
     }
 
     let updater = app_handle.state::<RcloneUpdaterState>();
-    let meta = updater.with_data(|d| {
-        d.phase = UpdatePhase::Idle;
+    let meta = {
+        let mut d = updater.data.lock();
+        d.state = UpdateState::Idle;
         d.pending_update.take()
-    });
+    };
 
     if let Some(metadata) = meta {
         Ok(metadata.version)

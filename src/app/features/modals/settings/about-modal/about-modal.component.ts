@@ -36,6 +36,7 @@ import {
   BackendService,
   ModalService,
 } from '@app/services';
+import { DownloadStateStatus } from '@app/types';
 import { CopyToClipboardDirective } from '@app/directives';
 
 // Configure renderer once at module level
@@ -138,14 +139,22 @@ export class AboutModalComponent implements OnInit {
   readonly appDownloadPercentage = computed(() => this.appDownloadStatus()?.percentage ?? 0);
   readonly appDownloadInProgress = computed(() => {
     const status = this.appDownloadStatus();
-    return !!this.appUpdateInProgress() && !status?.isComplete && !status?.isFailed;
+    return (
+      !!this.appUpdateInProgress() &&
+      status?.state.status !== DownloadStateStatus.Complete &&
+      status?.state.status !== DownloadStateStatus.Failed
+    );
   });
 
   // ---------------------------------------------------------------------------
   // Rclone updater signals
   // ---------------------------------------------------------------------------
 
-  readonly rcloneUpdateStatus = this.rcloneUpdateService.updateStatus;
+  readonly rcloneUpdateAvailable = this.rcloneUpdateService.updateAvailable;
+  readonly rcloneHasUpdates = this.rcloneUpdateService.hasUpdates;
+  readonly rcloneUpdateInProgress = this.rcloneUpdateService.downloading;
+  readonly rcloneIsChecking = this.rcloneUpdateService.isChecking;
+  readonly rcloneReadyToRestart = this.rcloneUpdateService.readyToRestart;
   readonly rcloneUpdateChannel = this.rcloneUpdateService.updateChannel;
   readonly rcloneSkippedVersions = this.rcloneUpdateService.skippedVersions;
   readonly rcloneAutoCheck = this.rcloneUpdateService.autoCheckEnabled;
@@ -208,7 +217,7 @@ export class AboutModalComponent implements OnInit {
   );
 
   readonly formattedRcloneReleaseNotes = computed(() =>
-    this.formatReleaseNotes(this.rcloneUpdateStatus().updateInfo?.releaseNotes)
+    this.formatReleaseNotes(this.rcloneUpdateAvailable()?.releaseNotes)
   );
 
   // ---------------------------------------------------------------------------
@@ -239,8 +248,7 @@ export class AboutModalComponent implements OnInit {
   ];
 
   readonly rcloneNavBadge = computed(() => {
-    const s = this.rcloneUpdateStatus();
-    return s.available || s.readyToRestart;
+    return this.rcloneHasUpdates() || this.rcloneReadyToRestart();
   });
 
   // Static lookup — extracted to a field so getPageTitle() doesn't allocate a
@@ -378,17 +386,17 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   async checkForRcloneUpdates(): Promise<void> {
-    if (this.rcloneUpdateStatus().checking) return;
+    if (this.rcloneIsChecking()) return;
     await this.rcloneUpdateService.checkForUpdates();
   }
 
   async installRcloneUpdate(): Promise<void> {
-    if (this.rcloneUpdateStatus().downloading) return;
+    if (this.rcloneUpdateInProgress()) return;
     await this.rcloneUpdateService.performUpdate();
   }
 
   async applyRcloneUpdate(): Promise<void> {
-    if (!this.rcloneUpdateStatus().readyToRestart || this.restartingRcloneEngine()) return;
+    if (!this.rcloneReadyToRestart() || this.restartingRcloneEngine()) return;
     this.restartingRcloneEngine.set(true);
     try {
       await this.rcloneUpdateService.applyUpdate();
@@ -398,7 +406,7 @@ export class AboutModalComponent implements OnInit {
   }
 
   async skipRcloneUpdate(): Promise<void> {
-    const info = this.rcloneUpdateStatus().updateInfo;
+    const info = this.rcloneUpdateAvailable();
     if (!info) return;
     await this.rcloneUpdateService.skipVersion(info.version);
   }

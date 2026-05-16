@@ -331,7 +331,7 @@
                     autoCheck: appAutoCheckUpdates(),
                     channel: appUpdateChannel(),
                     channels: channels,
-                    disabled: appDownloadInProgress(),
+                    disabled: appIsChecking() || appDownloadInProgress() || appReadyToRestart(),
                   }
                 "
               ></ng-container>
@@ -451,18 +451,16 @@
               }
             </div>
 
-            @let rcloneStatus = rcloneUpdateStatus();
-
-            @if (rcloneStatus.readyToRestart) {
+            @if (rcloneReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">
                   <mat-icon svgIcon="reset-wrench"></mat-icon>
                   <div class="update-title">
                     <h4>{{ 'modals.about.rcloneRestartRequired' | translate }}</h4>
-                    @if (rcloneStatus.updateInfo) {
+                    @if (rcloneUpdateAvailable()) {
                       <span class="new-version">
                         {{ 'modals.about.version' | translate }}
-                        {{ rcloneStatus.updateInfo.version }}
+                        {{ rcloneUpdateAvailable()!.version }}
                       </span>
                     }
                     <p class="restart-description">
@@ -484,8 +482,8 @@
                   </button>
                 </div>
               </div>
-            } @else if (rcloneStatus.updateInfo?.updateAvailable) {
-              @let rcloneUpdateInfo = rcloneStatus.updateInfo!;
+            } @else if (rcloneHasUpdates()) {
+              @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
               <div class="update-card available">
                 <div class="update-header">
                   <mat-icon svgIcon="circle-up"></mat-icon>
@@ -516,9 +514,9 @@
                   <button
                     matButton="filled"
                     (click)="installRcloneUpdate()"
-                    [disabled]="rcloneStatus.downloading"
+                    [disabled]="rcloneUpdateInProgress()"
                   >
-                    @if (rcloneStatus.downloading) {
+                    @if (rcloneUpdateInProgress()) {
                       <mat-spinner diameter="16"></mat-spinner>
                       {{ 'modals.about.downloading' | translate }}
                     } @else {
@@ -528,7 +526,7 @@
                   <button
                     mat-button
                     (click)="skipRcloneUpdate()"
-                    [disabled]="rcloneStatus.downloading"
+                    [disabled]="rcloneUpdateInProgress()"
                   >
                     {{ 'modals.about.skipVersion' | translate }}
                   </button>
@@ -546,12 +544,10 @@
             <button
               matButton="outlined"
               (click)="checkForRcloneUpdates()"
-              [disabled]="
-                rcloneStatus.checking || rcloneStatus.downloading || rcloneStatus.readyToRestart
-              "
+              [disabled]="rcloneIsChecking() || rcloneUpdateInProgress() || rcloneReadyToRestart()"
               class="check-button"
             >
-              @if (rcloneStatus.checking) {
+              @if (rcloneIsChecking()) {
                 <mat-spinner diameter="16"></mat-spinner>
                 {{ 'modals.about.checking' | translate }}
               } @else {
@@ -569,6 +565,8 @@
                     channel: rcloneUpdateChannel(),
                     channels: channels,
                     isRclone: true,
+                    disabled:
+                      rcloneIsChecking() || rcloneUpdateInProgress() || rcloneReadyToRestart(),
                   }
                 "
               ></ng-container>
@@ -668,8 +666,8 @@
         }
         @case ('whats-new-rclone') {
           <div class="modal-content whats-new-content">
-            @if (rcloneUpdateStatus().updateInfo) {
-              @let rcloneUpdateInfo = rcloneUpdateStatus().updateInfo!;
+            @if (rcloneUpdateAvailable()) {
+              @let rcloneUpdateInfo = rcloneUpdateAvailable()!;
               <div class="release-header">
                 <div class="release-version">
                   <h2>

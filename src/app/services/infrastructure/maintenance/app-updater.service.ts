@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { ModalService } from '@app/services';
-import { UpdateInfo, DownloadStatus, BackendUpdateStatus } from '@app/types';
+import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { UpdateSettingsManager } from './update-settings-manager';
@@ -14,9 +14,9 @@ const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
   downloadedBytes: 0,
   totalBytes: 0,
   percentage: 0,
-  isComplete: false,
-  isFailed: false,
-  failureMessage: null,
+  state: {
+    status: DownloadStateStatus.InProgress,
+  },
 };
 
 @Injectable({ providedIn: 'root' })
@@ -297,8 +297,8 @@ export class AppUpdaterService extends TauriBaseService {
       .subscribe(status => {
         this._downloadStatus.set(status);
 
-        if (status.isFailed) {
-          const msg = status.failureMessage ?? this.translate.instant('updates.installFailed');
+        if (status.state.status === DownloadStateStatus.Failed) {
+          const msg = status.state.data ?? this.translate.instant('updates.installFailed');
           this.notificationService.showError(msg);
           this._updateInProgress.set(false);
           this.resetDownloadStatus();
@@ -311,7 +311,7 @@ export class AppUpdaterService extends TauriBaseService {
           return;
         }
 
-        if (status.isComplete) {
+        if (status.state.status === DownloadStateStatus.Complete) {
           this._updateInProgress.set(false);
           this._hasUpdates.set(false);
           this._readyToRestart.set(true);
