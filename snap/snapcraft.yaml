@@ -1,7 +1,13 @@
 name: rclone-manager
-base: core22
+title: RClone Manager
 version: '0.2.5'
 summary: User-friendly GUI for Rclone
+license: GPL-3.0
+contact: hakanismail53@gmail.com
+website: https://github.com/Zarestia-Dev/rclone-manager
+issues: https://github.com/Zarestia-Dev/rclone-manager/issues
+source-code: https://github.com/Zarestia-Dev/rclone-manager
+base: core22
 description: |
   RClone Manager is a modern, cross-platform GUI that makes managing Rclone remotes effortless. 
   Whether you're syncing files across cloud storage providers, mounting remote drives, 
@@ -14,19 +20,18 @@ icon: src-tauri/icons/128x128.png
 apps:
   rclone-manager:
     command: usr/bin/rclone-manager
-    desktop: usr/share/applications/rclone-manager.desktop
-    extensions: [gnome]
+    desktop: usr/share/applications/RClone Manager.desktop
 
 parts:
   rclone-manager:
     plugin: dump
-    source: rclone-manager.deb
+    source: https://github.com/Zarestia-Dev/rclone-manager/releases/download/v0.2.5/RClone.Manager_0.2.5_amd64.deb
     source-type: deb
     stage-packages:
       - libayatana-appindicator3-1
     override-prime: |
       craftctl default
       # Ensure the desktop file points to the correct binary
-      if [ -f $CRAFT_PRIME/usr/share/applications/rclone-manager.desktop ]; then
-        sed -i 's|Exec=.*|Exec=rclone-manager|g' $CRAFT_PRIME/usr/share/applications/rclone-manager.desktop
+      if [ -f "$CRAFT_PRIME/usr/share/applications/RClone Manager.desktop" ]; then
+        sed -i 's|Exec=.*|Exec=rclone-manager|g' "$CRAFT_PRIME/usr/share/applications/RClone Manager.desktop"
       fi

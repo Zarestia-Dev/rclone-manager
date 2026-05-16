@@ -6,9 +6,10 @@ import {
   signal,
   Signal,
   WritableSignal,
+  linkedSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, tap, concatMap, from, of } from 'rxjs';
+import { merge, concatMap, from, of } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
@@ -52,6 +53,17 @@ interface RemoteState {
   enriched: Signal<Remote>;
 }
 
+// Capitalize first letter for the startProfileBatch API
+const BATCH_OP_LABELS: Partial<Record<SyncOperationType, string>> = {
+  sync: 'Sync',
+  copy: 'Copy',
+  bisync: 'Bisync',
+  move: 'Move',
+};
+
+// Treated as operation-type keys in openRemoteInFiles
+const OPERATION_TYPE_KEYS = new Set(['mount', 'sync', 'copy', 'bisync', 'move', 'serve']);
+
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService extends TauriBaseService {
   private readonly jobService = inject(JobManagementService);
@@ -78,12 +90,13 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly isLoading = signal(false);
   private backgroundLoadGeneration = 0;
 
-  // Consolidated per-remote state
   private readonly remoteStates = new Map<string, RemoteState>();
 
-  // Single signal for all action states — no Map-of-signals hack needed
   private readonly _actionInProgress = signal<Record<string, ActionState[]>>({});
   readonly actionInProgress = this._actionInProgress.asReadonly();
+
+  // Memoized per-remote action signals — avoids creating a new computed on every call
+  private readonly _actionSignals = new Map<string, Signal<ActionState[]>>();
 
   readonly loading = this.isLoading.asReadonly();
 
@@ -99,11 +112,21 @@ export class RemoteFacadeService extends TauriBaseService {
   });
 
   // --- Layout ---
-  private readonly _remoteLayout = signal<RemotesLayout>({ order: [], hidden: [] });
+  private readonly _remoteLayout = linkedSignal<RemotesLayout>(() => {
+    const options = this.appSettingsService.options();
+    const backend = this.backendService.activeBackend();
+    if (!options) return { order: [], hidden: [] };
+
+    const allLayouts = (options['runtime.remote_layouts']?.value as BackendsRemotesLayout) || {};
+    let layout = allLayouts[backend] || { order: [], hidden: [] };
+
+    if (Array.isArray(layout)) layout = { order: [], hidden: [] };
+
+    return layout;
+  });
 
   private readonly hiddenSet = computed(() => new Set(this._remoteLayout().hidden));
 
-  /** All remotes in saved order, hidden ones included */
   readonly orderedRemotes = computed(() => {
     const { order } = this._remoteLayout();
     const activeMap = new Map(this.activeRemotes().map(r => [r.name, r]));
@@ -117,22 +140,18 @@ export class RemoteFacadeService extends TauriBaseService {
         seen.add(name);
       }
     }
-    // Append remotes not yet in the saved layout
     for (const remote of this.activeRemotes()) {
       if (!seen.has(remote.name)) result.push(remote);
     }
     return result;
   });
 
-  /** Ordered and filtered (visible only) remotes for general UI consumption */
   readonly orderedVisibleRemotes = computed(() =>
     this.orderedRemotes().filter(r => !this.hiddenSet().has(r.name))
   );
 
-  /** All remotes in custom order, including hidden ones (for the layout editor) */
   readonly allRemotesForEditor = this.orderedRemotes;
 
-  /** Names of remotes that are hidden in the current backend */
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
   constructor() {
@@ -140,26 +159,15 @@ export class RemoteFacadeService extends TauriBaseService {
 
     this.eventListeners
       .listenToRcloneEngineReady()
-      .pipe(
-        takeUntilDestroyed(),
-        tap(() => this.refreshAll())
-      )
-      .subscribe();
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.refreshAll());
 
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
       this.eventListeners.listenToRemoteSettingsChanged()
     )
-      .pipe(
-        takeUntilDestroyed(),
-        tap(() => this.loadRemotes())
-      )
-      .subscribe();
-
-    // Reload layout when backend switches
-    this.appSettingsService.options$.pipe(takeUntilDestroyed()).subscribe(() => {
-      this.loadRemotesLayout(this.backendService.activeBackend());
-    });
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.loadRemotes());
   }
 
   // --- Settings ---
@@ -169,8 +177,7 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
-    const current = this.getRemoteSettings(remoteName);
-    const updated = { ...current, ...updates };
+    const updated = { ...this.getRemoteSettings(remoteName), ...updates };
     await this.appSettingsService.saveRemoteSettings(remoteName, updated);
   }
 
@@ -247,7 +254,6 @@ export class RemoteFacadeService extends TauriBaseService {
       const incomingNames = Object.keys(configs);
       const currentNames = Array.from(this.remoteStates.keys());
 
-      // 1. Remove stale remotes
       for (const name of currentNames) {
         if (!configs[name]) {
           this.remoteStates.delete(name);
@@ -257,13 +263,11 @@ export class RemoteFacadeService extends TauriBaseService {
 
       let newAdded = false;
 
-      // 2. Update or Create remotes
       for (const name of incomingNames) {
         const config = { name, ...(configs[name] as Record<string, unknown>) } as RemoteConfig;
         const state = this.remoteStates.get(name);
 
         if (state) {
-          // If config changed, clear cache and reload features
           if (JSON.stringify(state.base().config) !== JSON.stringify(config)) {
             this.metadataService.clearCache(name);
             void this.metadataService.getFeatures(name);
@@ -277,8 +281,6 @@ export class RemoteFacadeService extends TauriBaseService {
 
       this.remoteNames.set(incomingNames);
       this.remoteSettings.set(settings);
-      this.loadRemotesLayout(this.backendService.activeBackend());
-
       if (newAdded) this.loadDiskUsageInBackground();
     } catch (error) {
       console.error('[RemoteFacadeService] Error loading remotes:', error);
@@ -287,52 +289,16 @@ export class RemoteFacadeService extends TauriBaseService {
 
   // --- Layout Operations ---
 
-  private async loadRemotesLayout(backendName: string): Promise<void> {
-    const allLayouts =
-      (await this.appSettingsService.getSettingValue<BackendsRemotesLayout>(
-        'runtime.remote_layouts'
-      )) || {};
-
-    let layout = allLayouts[backendName];
-
-    // Migration/Default: If it's empty or the old array format, reset to new structure
-    if (!layout || Array.isArray(layout)) {
-      layout = { order: [], hidden: [] };
-    }
-
-    // Cleanup: Remove stale entries that don't exist in rclone config anymore
-    const activeNames = new Set(this.remoteNames());
-    layout.order = layout.order.filter(name => activeNames.has(name));
-    layout.hidden = layout.hidden.filter(name => activeNames.has(name));
-
-    this._remoteLayout.set(layout);
-  }
-
   async saveCurrentLayout(backendName: string, newNames: string[]): Promise<void> {
-    const allLayouts =
-      (await this.appSettingsService.getSettingValue<BackendsRemotesLayout>(
-        'runtime.remote_layouts'
-      )) || {};
-
-    const updatedLayout: RemotesLayout = {
+    const activeNames = new Set(this.remoteNames());
+    await this.persistLayout(backendName, {
       order: newNames,
-      hidden: this._remoteLayout().hidden,
-    };
-
-    allLayouts[backendName] = updatedLayout;
-    this._remoteLayout.set(updatedLayout);
-
-    await this.appSettingsService.saveSetting('runtime', 'remote_layouts', allLayouts);
+      hidden: this._remoteLayout().hidden.filter(name => activeNames.has(name)),
+    });
   }
 
   async toggleRemoteVisibility(backendName: string, remoteName: string): Promise<void> {
-    const allLayouts =
-      (await this.appSettingsService.getSettingValue<BackendsRemotesLayout>(
-        'runtime.remote_layouts'
-      )) || {};
-
     const currentLayout = this._remoteLayout();
-    const currentOrder = this.orderedRemotes().map(r => r.name);
     const hiddenSet = new Set(currentLayout.hidden);
 
     if (hiddenSet.has(remoteName)) {
@@ -341,14 +307,18 @@ export class RemoteFacadeService extends TauriBaseService {
       hiddenSet.add(remoteName);
     }
 
-    const updatedLayout: RemotesLayout = {
-      order: currentOrder,
-      hidden: Array.from(hiddenSet),
-    };
+    const activeNames = new Set(this.remoteNames());
+    await this.persistLayout(backendName, {
+      order: this.orderedRemotes().map(r => r.name),
+      hidden: Array.from(hiddenSet).filter(name => activeNames.has(name)),
+    });
+  }
 
-    allLayouts[backendName] = updatedLayout;
-    this._remoteLayout.set(updatedLayout);
-
+  private async persistLayout(backendName: string, layout: RemotesLayout): Promise<void> {
+    const options = this.appSettingsService.options();
+    const allLayouts = (options?.['runtime.remote_layouts']?.value as BackendsRemotesLayout) || {};
+    allLayouts[backendName] = layout;
+    this._remoteLayout.set(layout);
     await this.appSettingsService.saveSetting('runtime', 'remote_layouts', allLayouts);
   }
 
@@ -370,7 +340,12 @@ export class RemoteFacadeService extends TauriBaseService {
   // --- Action State ---
 
   getActionSignal(remoteName: string): Signal<ActionState[]> {
-    return computed(() => this._actionInProgress()[remoteName] ?? []);
+    let sig = this._actionSignals.get(remoteName);
+    if (!sig) {
+      sig = computed(() => this._actionInProgress()[remoteName] ?? []);
+      this._actionSignals.set(remoteName, sig);
+    }
+    return sig;
   }
 
   diskUsageSignal(remoteName: string): Signal<DiskUsage> {
@@ -469,42 +444,25 @@ export class RemoteFacadeService extends TauriBaseService {
     source: Origin,
     noCache?: boolean
   ): Promise<unknown> {
-    switch (opType) {
-      case 'mount':
-        return this.mountService.mountRemoteProfile(remoteName, profile, source, noCache);
-      case 'serve':
-        return this.serveService.startServeProfile(remoteName, profile);
-      case 'sync':
-        return this.jobService.startProfileBatch('Sync', {
-          remoteName: remoteName,
-          profileName: profile,
-          source,
-          noCache: noCache,
-        });
-      case 'copy':
-        return this.jobService.startProfileBatch('Copy', {
-          remoteName: remoteName,
-          profileName: profile,
-          source,
-          noCache: noCache,
-        });
-      case 'bisync':
-        return this.jobService.startProfileBatch('Bisync', {
-          remoteName: remoteName,
-          profileName: profile,
-          source,
-          noCache: noCache,
-        });
-      case 'move':
-        return this.jobService.startProfileBatch('Move', {
-          remoteName: remoteName,
-          profileName: profile,
-          source,
-          noCache: noCache,
-        });
-      default:
-        throw new Error(`Unsupported operation: ${opType}`);
+    if (opType === 'mount') {
+      return this.mountService.mountRemoteProfile(remoteName, profile, source, noCache);
     }
+    if (opType === 'serve') {
+      return this.serveService.startServeProfile(remoteName, profile);
+    }
+
+    const label = BATCH_OP_LABELS[opType];
+    if (!label) throw new Error(`Unsupported operation: ${opType}`);
+
+    return this.jobService.startProfileBatch(
+      label as Parameters<typeof this.jobService.startProfileBatch>[0],
+      {
+        remoteName,
+        profileName: profile,
+        source,
+        noCache,
+      }
+    );
   }
 
   async stopJob(
@@ -577,7 +535,8 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async openRemoteInFiles(remoteName: string, pathOrOperation?: string): Promise<void> {
     let path = pathOrOperation ?? '';
-    if (['mount', 'sync', 'copy', 'bisync', 'move', 'serve'].includes(path)) {
+
+    if (OPERATION_TYPE_KEYS.has(path)) {
       const settings = this.getRemoteSettings(remoteName);
       const configKey = REMOTE_CONFIG_KEYS[path as keyof typeof REMOTE_CONFIG_KEYS];
       const profiles = settings[configKey as keyof RemoteSettings] as ProfileConfigMap | undefined;
@@ -589,9 +548,7 @@ export class RemoteFacadeService extends TauriBaseService {
     } else {
       await this.executeAction(remoteName, 'open', async () => {
         const { remote: targetRemoteName, path: relativePath } = this.pathService.splitFsPath(path);
-        const finalRemoteName = targetRemoteName || remoteName;
-
-        await this.nautilusService.newNautilusWindow(finalRemoteName, relativePath);
+        await this.nautilusService.newNautilusWindow(targetRemoteName || remoteName, relativePath);
       });
     }
   }
@@ -686,8 +643,6 @@ export class RemoteFacadeService extends TauriBaseService {
         enriched: this.createEnrichedSignal(name, baseSig),
       };
       this.remoteStates.set(name, state);
-
-      // Background load features if we just created it
       void this.metadataService.getFeatures(name);
     }
     return state;
@@ -776,8 +731,7 @@ export class RemoteFacadeService extends TauriBaseService {
     const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
     const profileNames = Object.keys(profiles);
 
-    const latest =
-      typeJobs.length > 0 ? [...typeJobs].sort((a, b) => b.jobid - a.jobid)[0] : undefined;
+    const latest = [...typeJobs].sort((a, b) => b.jobid - a.jobid).at(0);
 
     return {
       ...buildStatusEntry(

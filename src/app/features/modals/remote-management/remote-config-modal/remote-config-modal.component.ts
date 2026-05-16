@@ -1652,10 +1652,10 @@ export class RemoteConfigModalComponent implements OnInit {
         if (Array.isArray(configData[key])) {
           result[key] = this.pathService.buildPathStrings(configData[key] as any[], remoteName);
         } else {
-          result[key] = this.pathService.buildPathString(configData[key], remoteName);
+          result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
         }
       } else if (key === 'dest') {
-        result[key] = this.pathService.buildPathString(configData[key], remoteName);
+        result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
       } else {
         result[key] = configData[key];
       }

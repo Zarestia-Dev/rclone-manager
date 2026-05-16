@@ -125,17 +125,17 @@ export class OperationConfigComponent {
 
   // Visibility logic
   private readonly searchTerms = computed(() => this.searchQuery().toLowerCase().split(' '));
-  private readonly showSection = (keywords: string[]) => {
-    const terms = this.searchTerms();
-    if (terms.length === 1 && !terms[0]) return true;
-    return keywords.some(k => terms.some(t => k.includes(t)));
-  };
 
-  readonly showAutoStart = computed(() => this.showSection(['auto', 'start', 'enable']));
-  readonly showCronSection = computed(() => this.showSection(['cron', 'schedule', 'task']));
-  readonly showSourcePath = computed(() => this.showSection(['source', 'path', 'origin']));
-  readonly showDestPath = computed(() =>
-    this.isServe() ? false : this.showSection(['dest', 'output', 'target'])
+  private matchesSearch(keywords: string[]): boolean {
+    const terms = this.searchTerms();
+    return (terms.length === 1 && !terms[0]) || keywords.some(k => terms.some(t => k.includes(t)));
+  }
+
+  readonly showAutoStart = computed(() => this.matchesSearch(['auto', 'start', 'enable']));
+  readonly showCronSection = computed(() => this.matchesSearch(['cron', 'schedule', 'task']));
+  readonly showSourcePath = computed(() => this.matchesSearch(['source', 'path', 'origin']));
+  readonly showDestPath = computed(
+    () => !this.isServe() && this.matchesSearch(['dest', 'output', 'target'])
   );
 
   readonly canAddSource = computed(() =>

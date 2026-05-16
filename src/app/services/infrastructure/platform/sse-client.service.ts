@@ -9,15 +9,10 @@ export interface SseEvent {
   payload: unknown;
 }
 
-/**
- * Server-Sent Events client for headless/web mode.
- * Replaces Tauri's event system when the app runs in a browser.
- *
- * Reconnects automatically with exponential backoff on connection loss.
- */
 @Injectable({ providedIn: 'root' })
 export class SseClientService {
   private readonly apiClient = inject(ApiClientService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly events$ = new Subject<SseEvent>();
 
   private source: EventSource | null = null;
@@ -26,7 +21,7 @@ export class SseClientService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => {
+    this.destroyRef.onDestroy(() => {
       this.disconnect();
       this.events$.complete();
     });
@@ -76,13 +71,11 @@ export class SseClientService {
 
       if (this.reconnectAttempt >= this.maxReconnectAttempts) return;
 
-      const delay = 1000 * Math.pow(2, this.reconnectAttempt);
-      this.reconnectAttempt++;
+      const delay = 1000 * Math.pow(2, this.reconnectAttempt++);
       this.reconnectTimer = setTimeout(() => this.openSource(url), delay);
     };
 
-    this.source.onmessage = (event): void => {
-      const data = event.data;
+    this.source.onmessage = ({ data }): void => {
       if (data === 'keep-alive') return;
       try {
         const parsed = JSON.parse(data);
