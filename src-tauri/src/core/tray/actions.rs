@@ -36,28 +36,6 @@ pub fn show_main_window(app: AppHandle) {
     }
 }
 
-// ── Transfer jobs ────────────────────────────────────────────────────────────
-
-fn transfer_type_for(op: &str) -> Option<TransferType> {
-    match op {
-        "sync" => Some(TransferType::Sync),
-        "copy" => Some(TransferType::Copy),
-        "move" => Some(TransferType::Move),
-        "bisync" => Some(TransferType::Bisync),
-        _ => None,
-    }
-}
-
-fn job_type_for(op: &str) -> Option<JobType> {
-    match op {
-        "sync" => Some(JobType::Sync),
-        "copy" => Some(JobType::Copy),
-        "move" => Some(JobType::Move),
-        "bisync" => Some(JobType::Bisync),
-        _ => None,
-    }
-}
-
 fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     ProfileParams {
         remote_name: remote_name.to_string(),
@@ -67,33 +45,33 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     }
 }
 
-/// Start a transfer job (sync / copy / move / bisync) for a named profile.
-pub fn handle_start_job_profile(app: AppHandle, remote_name: &str, profile_name: &str, op: &str) {
-    let Some(transfer_type) = transfer_type_for(op) else {
-        error!("Unknown operation type: {op}");
-        return;
-    };
+// ── Transfer jobs ────────────────────────────────────────────────────────────
 
+pub fn handle_start_job_profile(
+    app: AppHandle,
+    remote_name: &str,
+    profile_name: &str,
+    transfer_type: TransferType,
+) {
     let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
-    let op = op.to_string();
+    let type_label = format!("{transfer_type:?}"); // move öncesi yakala
 
     tauri::async_runtime::spawn(async move {
         match start_profile_batch(app, transfer_type, params).await {
-            Ok(_) => info!("Started {op} for {remote} / {profile}"),
-            Err(e) => error!("Failed to start {op} for {remote} / {profile}: {e}"),
+            Ok(_) => info!("Started {type_label} for {remote} / {profile}"),
+            Err(e) => error!("Failed to start {type_label} for {remote} / {profile}: {e}"),
         }
     });
 }
 
-/// Stop a running transfer job (sync / copy / move / bisync) for a named profile.
-pub fn handle_stop_job_profile(app: AppHandle, remote_name: &str, profile_name: &str, op: &str) {
-    let Some(job_type) = job_type_for(op) else {
-        error!("Unknown operation type: {op}");
-        return;
-    };
-
+pub fn handle_stop_job_profile(
+    app: AppHandle,
+    remote_name: &str,
+    profile_name: &str,
+    job_type: JobType,
+) {
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
 
@@ -178,7 +156,6 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
     tauri::async_runtime::spawn(async move {
         let manager = app.state::<AppSettingsManager>();
-
         let mount_point = get_mount_dest(&manager, &remote, Some(&profile)).unwrap_or_default();
 
         match unmount_remote(app, mount_point.clone(), remote.clone()).await {

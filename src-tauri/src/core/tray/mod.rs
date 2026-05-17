@@ -10,8 +10,22 @@ use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::{MountedRemote, ServeInstance};
+use menu::MenuPlan;
 use std::collections::HashSet;
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
+
+pub struct TrayMenuState {
+    pub last_plan: Mutex<Option<MenuPlan>>,
+}
+
+impl Default for TrayMenuState {
+    fn default() -> Self {
+        Self {
+            last_plan: Mutex::new(None),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct TrayJobSummary {
@@ -58,21 +72,17 @@ impl TraySnapshot {
 
         let remotes_settings = settings_manager.inner().sub_settings("remotes").ok();
 
-        // Build O(1) lookup sets.
-        // Key: (remote_name, profile, job_type)
+        // O(1) lookup sets.
         let active_job_set: HashSet<(String, Option<String>, JobType)> = active_jobs_raw
             .iter()
             .map(|j| (j.remote_name.clone(), j.profile.clone(), j.job_type.clone()))
             .collect();
 
-        // Mount detection: keyed by (mount_point, profile) so profile-based
-        // submenu items correctly reflect active state.
         let mounted_set: HashSet<(String, Option<String>)> = mounted_remotes
             .iter()
             .map(|m| (m.mount_point.clone(), m.profile.clone()))
             .collect();
 
-        // Serve detection: keyed by (normalised_remote, profile).
         let active_serves_set: HashSet<(String, Option<String>)> = active_serves
             .iter()
             .map(|srv| {
@@ -118,7 +128,6 @@ impl TraySnapshot {
 
                 let target_remote = crate::utils::rclone::util::normalize_remote_name(&name);
 
-                // Build job-type profiles from a config key and a specific JobType.
                 let build_job_profiles = |key: &str, jtype: &JobType| -> Vec<TrayProfileSummary> {
                     s.as_ref()
                         .and_then(|v| v.get(key))
@@ -138,7 +147,6 @@ impl TraySnapshot {
                         .unwrap_or_default()
                 };
 
-                // Mount profiles: active when their specific dest+profile is mounted.
                 let mount_profiles = s
                     .as_ref()
                     .and_then(|v| v.get("mountConfigs"))

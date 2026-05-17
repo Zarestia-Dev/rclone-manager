@@ -13,7 +13,7 @@ use crate::{
             job::stop_job,
             mount::unmount_remote,
             serve::stop_serve,
-            system::{ensure_oauth_process, get_fscache_entries},
+            system::{clear_fscache, ensure_oauth_process, get_fscache_entries},
         },
         state::scheduled_tasks::ScheduledTasksCache,
     },
@@ -146,6 +146,10 @@ pub async fn continue_create_remote_interactive(
     }
 
     let value = call_config(&app, config::UPDATE, body).await?;
+
+    if let Err(e) = clear_fscache(app.clone()).await {
+        warn!("Failed to clear fscache after interactive remote update: {e}");
+    }
 
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
@@ -283,6 +287,10 @@ pub async fn update_remote(
 
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
+
+    if let Err(e) = clear_fscache(app.clone()).await {
+        warn!("Failed to clear fscache after remote update: {e}");
+    }
 
     let _ = get_fscache_entries(app).await;
 

@@ -331,6 +331,8 @@ fn setup_app(
 
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
+    #[cfg(all(desktop, feature = "tray"))]
+    app.manage(crate::core::tray::TrayMenuState::default());
 
     let history_cache = AlertHistoryCache::new(10000);
     app.manage(history_cache);
@@ -418,6 +420,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent
 
 #[cfg(all(desktop, feature = "tray"))]
 fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+    use crate::rclone::commands::sync::TransferType;
+    use crate::utils::types::jobs::JobType;
+
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
@@ -429,28 +434,28 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             handle_unmount_profile(app.clone(), &remote, &profile);
         }
         TrayAction::SyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "sync");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Sync);
         }
         TrayAction::StopSyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "sync");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Sync);
         }
         TrayAction::CopyProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "copy");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Copy);
         }
         TrayAction::StopCopyProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "copy");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Copy);
         }
         TrayAction::MoveProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "move");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Move);
         }
         TrayAction::StopMoveProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "move");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Move);
         }
         TrayAction::BisyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "bisync");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Bisync);
         }
         TrayAction::StopBisyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "bisync");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Bisync);
         }
         TrayAction::ServeProfile(remote, profile) => {
             handle_serve_profile(app.clone(), &remote, &profile);

@@ -3,23 +3,32 @@
 #[cfg(feature = "tray")]
 pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
+    use crate::core::settings::AppSettingsManager;
     use crate::core::tray::TraySnapshot;
-    let snapshot = TraySnapshot::fetch(&app_clone).await?;
-    app.run_on_main_thread(move || {
-        let tray_menu = match crate::core::tray::menu::create_tray_menu(&app_clone, &snapshot) {
-            Ok(m) => m,
-            Err(e) => {
-                log::error!("Failed to create tray menu during setup: {e}");
-                return;
-            }
-        };
+    use crate::core::tray::menu::{MenuPlan, create_tray_menu_from_plan};
+    use tauri::Manager;
 
+    let snapshot = TraySnapshot::fetch(&app_clone).await?;
+
+    // Build plan off main thread
+    let plan = {
+        let settings_manager = app_clone.state::<AppSettingsManager>();
+        let max_tray_items = settings_manager
+            .get_all()
+            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?
+            .core
+            .max_tray_items;
+        MenuPlan::build(&snapshot, max_tray_items)
+    };
+
+    let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
+    let icon = crate::core::tray::icon::get_icon(false)
+        .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0));
+
+    app.run_on_main_thread(move || {
         #[allow(unused_mut)]
         let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
-            .icon(
-                crate::core::tray::icon::get_icon(false)
-                    .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0)),
-            )
+            .icon(icon)
             .tooltip(crate::t!("tray.tooltipDefault"))
             .menu(&tray_menu);
 
