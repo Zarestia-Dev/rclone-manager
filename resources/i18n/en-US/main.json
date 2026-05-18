@@ -87,7 +87,9 @@
     "toggleSync": "Toggle Sync as Quick Action",
     "toggleCopy": "Toggle Copy as Quick Action",
     "toggleMove": "Toggle Move as Quick Action",
-    "toggleBisync": "Toggle BiSync as Quick Action"
+    "toggleBisync": "Toggle BiSync as Quick Action",
+    "successStart": "Successfully started {{type}} for {{remote}} ({{profile}})",
+    "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}"
   },
   "serve": {
     "noActive": "No active serves",
@@ -607,7 +609,7 @@
       "import": "Import",
       "export": "Export",
       "preferences": "Preferences",
-      "configuration": "Configuration",
+      "flags": "Rclone Flags",
       "fileBrowser": "File Browser",
       "shortcuts": "Keyboard Shortcuts",
       "about": "About RClone Manager",
@@ -1073,6 +1075,7 @@
       "requiredBadge": "Required",
       "nextQuestionHelp": "Answer the next question to continue.",
       "defaultValue": "Default value:",
+      "defaultPrefix": "Default:",
       "yes": "Yes",
       "no": "No",
       "chooseOption": "Choose an option",
@@ -1661,7 +1664,7 @@
       "quit": "Quit Application",
       "showShortcuts": "Show Keyboard Shortcuts",
       "openPreferences": "Open Preferences",
-      "openConfig": "Open RClone Configuration",
+      "openFlags": "Open Rclone Flags",
       "forceCheck": "Force Check Mounted Remotes",
       "newRemoteDetailed": "Create New Remote (Detailed)",
       "newRemoteQuick": "Create New Remote (Quick)",
@@ -2249,73 +2252,73 @@
         "interactiveProcessingFailed": "Failed to process interactive response"
       }
     },
-    "rcloneConfig": {
-      "title": "RClone Configuration",
+    "rcloneFlags": {
+      "title": "Rclone Flags",
       "search": {
         "toggle": "Toggle Search",
-        "label": "Search RClone settings",
-        "placeholderHome": "Search all services and settings...",
+        "label": "Search Rclone flags",
+        "placeholderHome": "Search all services and flags...",
         "placeholderPage": "Search in {{page}}...",
-        "emptyResult": "No Rclone settings found",
-        "emptySettings": "No settings found",
+        "emptyResult": "No Rclone flags found",
+        "emptySettings": "No flags found",
         "adjustTerms": "Try adjusting your search terms",
-        "showing": "Showing {{count}} of {{total}} settings"
+        "showing": "Showing {{count}} of {{total}} flags"
       },
       "pageTitle": {
-        "home": "RClone Configuration",
+        "home": "Rclone Flags",
         "category": "{{page}} - {{category}}",
-        "backend": "Backend Settings"
+        "backend": "Backend Flags"
       },
       "notifications": {
         "resetSuccess": "Reset to default: {{field}}",
         "saveSuccess": "Saved: {{field}}",
         "saveError": "Failed to save {{field}}: {{error}}",
-        "loadError": "Failed to load RClone configuration",
-        "resetAllSuccess": "All RClone backend options reset to defaults",
-        "resetAllError": "Failed to reset RClone backend options"
+        "loadError": "Failed to load Rclone flags",
+        "resetAllSuccess": "All Rclone flags reset to defaults",
+        "resetAllError": "Failed to reset Rclone flags"
       },
       "reset": {
         "button": "Reset All to Default",
-        "aria": "Reset all RClone backend options to default values",
-        "title": "Reset Backend Options",
-        "message": "This will reset all RClone backend options to their default values and restart the rclone engine. Any custom settings will be lost. Continue?",
+        "aria": "Reset all Rclone flags to default values",
+        "title": "Reset Flags",
+        "message": "This will reset all Rclone flags to their default values and restart the rclone engine. Any custom settings will be lost. Continue?",
         "confirm": "Reset & Restart"
       },
       "mainCategories": {
         "generalSettings": {
           "title": "General Settings",
-          "description": "Core RClone options and logging configuration"
+          "description": "Core Rclone options and logging flags"
         },
         "fileSystemAndStorage": {
           "title": "File System & Storage",
-          "description": "Virtual file system, mounting, filtering, and storage options"
+          "description": "Virtual file system, mounting, filtering, and storage flags"
         },
         "networkAndServers": {
           "title": "Network & Servers",
-          "description": "HTTP, FTP, SFTP, WebDAV, S3, and other network service settings"
+          "description": "HTTP, FTP, SFTP, WebDAV, S3, and other network service flags"
         }
       },
       "services": {
-        "vfs": "Virtual File System caching and performance settings",
-        "mount": "Mount-specific options and FUSE configuration",
-        "filter": "File filtering rules and patterns",
-        "main": "General RClone operation and transfer settings",
-        "log": "Logging configuration and output settings",
-        "http": "HTTP server settings",
-        "rc": "Remote control server configuration",
-        "dlna": "DLNA server settings",
-        "ftp": "FTP server configuration",
-        "nfs": "NFS server settings",
-        "proxy": "Proxy authentication settings",
-        "restic": "Restic server configuration",
-        "s3": "S3 server settings",
-        "sftp": "SFTP server configuration",
-        "webdav": "WebDAV server settings"
+        "vfs": "Virtual File System caching and performance flags",
+        "mount": "Mount-specific options and FUSE flags",
+        "filter": "File filtering rules and flags",
+        "main": "General RClone operation and transfer flags",
+        "log": "Logging flags and output settings",
+        "http": "HTTP server flags",
+        "rc": "Remote control server flags",
+        "dlna": "DLNA server flags",
+        "ftp": "FTP server flags",
+        "nfs": "NFS server flags",
+        "proxy": "Proxy authentication flags",
+        "restic": "Restic server flags",
+        "s3": "S3 server flags",
+        "sftp": "SFTP server flags",
+        "webdav": "WebDAV server flags"
       },
       "categories": {
-        "General": "General configuration options",
+        "General": "General flags",
         "Auth": "Authentication and credentials",
-        "HTTP": "HTTP-specific settings",
+        "HTTP": "HTTP-specific flags",
         "Template": "Template settings",
         "MetaRules": "Meta rule configurations",
         "RulesOpt": "Rule options",
@@ -2513,9 +2516,6 @@
     "mountDestinationError": "Mount destination must be a local folder."
   },
   "home": {
-    "errors": {
-      "generic": "An unexpected error occurred. Please check the logs for more details."
-    },
     "emptyState": {
       "title": "RClone Manager",
       "description": "Easily manage your RClone remotes. If you're new to RClone, use \"Add Quick Remote\" for a fast and simple setup.",
@@ -2544,6 +2544,7 @@
       "deleteRemoteSuccess": "Remote {{name}} deleted successfully."
     },
     "errors": {
+      "generic": "An unexpected error occurred. Please check the logs for more details.",
       "configFailed": "Failed to configure component",
       "initFailed": "Failed to initialize component",
       "initialLoadFailed": "Initial data load failed",
@@ -2794,9 +2795,6 @@
       "alreadyExists": "A backend with this name already exists",
       "notFound": "Backend '{{name}}' not found"
     },
-    "system": {
-      "themeSetFailed": "Failed to set application theme: {{error}}"
-    },
     "job": {
       "notFound": "JobInfo not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
@@ -2820,6 +2818,7 @@
       "invalidTaskArgs": "Task is invalid: {{error}}"
     },
     "system": {
+      "themeSetFailed": "Failed to set application theme: {{error}}",
       "settingsUnavailable": "Settings manager not available",
       "oauthNotConfigured": "OAuth not configured",
       "unlockFailed": "Unlock failed: {{error}}",
