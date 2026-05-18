@@ -112,22 +112,34 @@ pub fn run() {
 
                     #[cfg(not(feature = "web-server"))]
                     {
-                        if let Some(window) = _app.get_webview_window("main") {
-                            log::info!("📢 Second instance detected, showing existing window");
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        } else {
-                            log::info!(
-                                "📢 Second instance detected, but window was destroyed. \
-                                 Use tray to reopen."
-                            );
-                            crate::utils::app::notification::notify(
-                                _app,
-                                crate::utils::app::notification::NotificationEvent::System(
-                                    crate::utils::app::notification::SystemStage::AlreadyRunning,
-                                ),
-                            );
-                        }
+                        let app_clone = _app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            // Give the second instance a moment to exit and release the IPC pipe
+                            // to prevent a WebView/Windows focus deadlock.
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+                            let app_for_main = app_clone.clone();
+                            let _ = app_clone.run_on_main_thread(move || {
+                                if let Some(window) = app_for_main.get_webview_window("main") {
+                                    log::info!(
+                                        "📢 Second instance detected, showing existing window"
+                                    );
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                } else {
+                                    log::info!(
+                                        "📢 Second instance detected, but window was destroyed. \
+                                         Recreating main window."
+                                    );
+                                    crate::utils::app::builder::create_app_window(
+                                        app_for_main.clone(),
+                                    );
+                                    if let Some(window) = app_for_main.get_webview_window("main") {
+                                        let _ = window.set_focus();
+                                    }
+                                }
+                            });
+                        });
                     }
                 })
                 .build(),

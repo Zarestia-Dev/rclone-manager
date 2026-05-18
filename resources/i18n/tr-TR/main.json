@@ -2981,8 +2981,7 @@
       "engineRestartFailed": "Motor Başlatılamadı",
       "engineConnectionFailed": "Motor Bağlantı Hatası",
       "engineBinaryNotFound": "Rclone Bulunamadı",
-      "enginePasswordRequired": "Şifre Gerekli",
-      "alreadyRunning": "Uygulama Zaten Çalışıyor"
+      "enginePasswordRequired": "Şifre Gerekli"
     },
     "body": {
       "mountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}', {{mountPoint}} adresine bağlandı.",
@@ -3017,8 +3016,7 @@
       "engineRestartFailed": "Motor yeniden başlatılırken hata oluştu: {{error}}",
       "engineConnectionFailed": "Rclone motoruna bağlanılamadı: {{error}}",
       "engineBinaryNotFound": "Rclone ikili dosyası bulunamadı, lütfen ayarları kontrol edin.",
-      "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir.",
-      "alreadyRunning": "Uygulamanın başka bir örneği zaten çalışıyor."
+      "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir."
     }
   },
   "repairSheet": {

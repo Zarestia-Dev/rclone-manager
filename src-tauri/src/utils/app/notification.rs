@@ -166,7 +166,6 @@ pub enum NotificationEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "stage", content = "data", rename_all = "snake_case")]
 pub enum SystemStage {
-    AlreadyRunning,
     AllJobsStopped,
 }
 
@@ -612,11 +611,6 @@ impl NotificationEvent {
 
             // --- SYSTEM DOMAIN ---
             Self::System(stage) => match stage {
-                SystemStage::AlreadyRunning => RenderedContent {
-                    title: t("notification.title.alreadyRunning"),
-                    body: t("notification.body.alreadyRunning"),
-                    level: LogLevel::Warn,
-                },
                 SystemStage::AllJobsStopped => RenderedContent {
                     title: t("notification.title.allJobsStopped"),
                     body: t("notification.body.allJobsStopped"),

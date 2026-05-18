@@ -2999,8 +2999,7 @@
       "engineRestartFailed": "引擎重启失败",
       "engineConnectionFailed": "引擎连接错误",
       "engineBinaryNotFound": "未找到 Rclone",
-      "enginePasswordRequired": "需要密码",
-      "alreadyRunning": "应用已在运行"
+      "enginePasswordRequired": "需要密码"
     },
     "body": {
       "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
@@ -3035,8 +3034,7 @@
       "engineRestartFailed": "重启引擎时发生错误：{{error}}",
       "engineConnectionFailed": "无法连接到 rclone 引擎：{{error}}",
       "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
-      "enginePasswordRequired": "访问配置文件需要密码。",
-      "alreadyRunning": "应用的另一个实例已经在运行。"
+      "enginePasswordRequired": "访问配置文件需要密码。"
     }
   },
   "repairSheet": {

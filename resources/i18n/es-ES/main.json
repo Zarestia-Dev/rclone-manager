@@ -2933,8 +2933,7 @@
       "engineRestartFailed": "Error al reiniciar el motor",
       "engineConnectionFailed": "Error de conexión con el motor",
       "engineBinaryNotFound": "Rclone no encontrado",
-      "enginePasswordRequired": "Contraseña requerida",
-      "alreadyRunning": "Aplicación ya en ejecución"
+      "enginePasswordRequired": "Contraseña requerida"
     },
     "body": {
       "mountSucceeded": "Perfil {{remote}} '{{profile}}' de {{backend}} montado con éxito en {{mountPoint}}.",
@@ -2969,8 +2968,7 @@
       "engineRestartFailed": "Error al reiniciar el motor: {{error}}",
       "engineConnectionFailed": "No se pudo conectar con el motor rclone: {{error}}",
       "engineBinaryNotFound": "Binario de rclone no encontrado, verifique su configuración.",
-      "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración.",
-      "alreadyRunning": "Otra instancia de la aplicación ya está en ejecución."
+      "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración."
     }
   },
   "repairSheet": {

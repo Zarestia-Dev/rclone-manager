@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [unreleased]
 
+### Changed
+- Allow users the show hidden window via application shortcut. Not only via tray.
+
 ### Fixed
 - Fixed the issue on destination paths not load correctly on remote config modal.
 - UI not load the ordered remote list Fixed.
