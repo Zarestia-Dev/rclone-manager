@@ -1589,7 +1589,9 @@
       "duration": "Süre",
       "checks": "Kontroller",
       "listed": "Listelenenler",
-      "transferStatistics": "{{op}} İstatistikleri"
+      "transferStatistics": "{{op}} İstatistikleri",
+      "dryRun": "Simülasyon",
+      "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak"
     },
     "generalDetail": {
       "scheduledTasks": "Zamanlanmış Görevler",
@@ -2687,7 +2689,9 @@
       "folderNotEmpty": "Seçilen klasör boş değil",
       "pickerUnavailable": "Klasör seçici bu platformda kullanılamıyor",
       "invalidPath": "Geçersiz yol: Yol boş olamaz.",
-      "filePickerUnavailable": "Dosya seçici bu platformda kullanılamıyor"
+      "filePickerUnavailable": "Dosya seçici bu platformda kullanılamıyor",
+      "notFound": "Yol mevcut değil: {{path}}",
+      "failedToOpen": "Dosya yöneticisi açılamadı: {{error}}"
     },
     "rclone": {
       "unsupportedPlatform": "Desteklenmeyen platform",

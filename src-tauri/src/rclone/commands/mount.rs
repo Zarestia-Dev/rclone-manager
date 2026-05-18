@@ -173,6 +173,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         origin: params.origin.clone(),
         group: None,
         no_cache: params.no_cache.unwrap_or(false),
+        dry_run: false,
     };
 
     // Submit as a job and wait for completion for mount operations.

@@ -116,6 +116,8 @@
         @for (opConfig of controlConfigs(); track opConfig.profileName || opConfig.operationType) {
           <app-operation-control
             [config]="opConfig"
+            [dryRun]="isDryRun()"
+            (toggleDryRun)="toggleDryRun()"
             (startJob)="
               startJob.emit({
                 type: $event,

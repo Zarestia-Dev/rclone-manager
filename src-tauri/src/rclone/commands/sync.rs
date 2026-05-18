@@ -297,6 +297,23 @@ pub async fn start_profile_batch(
         common.source[0].clone()
     };
 
+    // Detect if DryRun was set in the resolved options
+    let dry_run = if transfer_type == TransferType::Bisync {
+        common
+            .options
+            .as_ref()
+            .and_then(|opts| opts.get("dryRun").or_else(|| opts.get("DryRun")))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    } else {
+        common
+            .backend_options
+            .as_ref()
+            .and_then(|opts| opts.get("DryRun"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    };
+
     crate::rclone::commands::job::submit_batch_job(
         app,
         inputs,
@@ -309,6 +326,7 @@ pub async fn start_profile_batch(
             origin: params.source,
             group: None,
             no_cache: params.no_cache.unwrap_or(false),
+            dry_run,
         },
     )
     .await

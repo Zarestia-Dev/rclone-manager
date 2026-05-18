@@ -1589,7 +1589,9 @@
       "duration": "Duración",
       "checks": "Comprobaciones",
       "listed": "Listados",
-      "transferStatistics": "{{op}} Estadísticas"
+      "transferStatistics": "{{op}} Estadísticas",
+      "dryRun": "Simulacro",
+      "dryRunActive": "Simulacro activo: no se realizarán cambios"
     },
     "generalDetail": {
       "scheduledTasks": "Tareas programadas",
@@ -2638,7 +2640,9 @@
       "folderNotEmpty": "La carpeta seleccionada no está vacía",
       "pickerUnavailable": "El selector de carpetas no está disponible en esta plataforma",
       "invalidPath": "Ruta inválida: la ruta no puede estar vacía.",
-      "filePickerUnavailable": "El selector de archivos no está disponible en esta plataforma"
+      "filePickerUnavailable": "El selector de archivos no está disponible en esta plataforma",
+      "notFound": "La ruta no existe: {{path}}",
+      "failedToOpen": "Error al abrir el administrador de archivos: {{error}}"
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma no soportada",

@@ -62,6 +62,11 @@ import { ModalService, JobManagementService } from '@app/services';
               </th>
               <td class="type-column" mat-cell *matCellDef="let job">
                 <span class="job-type-text">{{ job.job_type | titlecase }}</span>
+                @if (job.dry_run) {
+                  <span class="app-pill p-accent" style="margin-left: var(--space-md)">
+                    {{ 'detailShared.jobs.dryRun' | translate }}
+                  </span>
+                }
               </td>
             </ng-container>
 

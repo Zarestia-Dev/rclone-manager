@@ -621,7 +621,7 @@ export class RemoteConfigModalComponent implements OnInit {
     Object.keys(optionsGroup.controls).forEach(key => optionsGroup.removeControl(key));
     this.dynamicServeFields().forEach(field => {
       optionsGroup.addControl(
-        field.Name,
+        field.FieldName || field.Name,
         new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
       );
     });
@@ -650,7 +650,9 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   readonly getUniqueControlKey = (flagType: FlagType, field: RcConfigOption): string => {
-    return flagType === 'serve' ? field.Name : `${flagType}---${field.Name}`;
+    return flagType === 'serve'
+      ? field.FieldName || field.Name
+      : `${flagType}---${field.FieldName || field.Name}`;
   };
 
   // ── Form creation ─────────────────────────────────────────────────────────────
@@ -1688,8 +1690,9 @@ export class RemoteConfigModalComponent implements OnInit {
   private cleanServeOptions(options: Record<string, unknown>): Record<string, unknown> {
     return this.dynamicServeFields().reduce(
       (cleaned, field) => {
-        const value = options[field.Name];
-        if (value !== undefined && !this.isDefaultValue(value, field)) cleaned[field.Name] = value;
+        const key = field.FieldName || field.Name;
+        const value = options[key];
+        if (value !== undefined && !this.isDefaultValue(value, field)) cleaned[key] = value;
         return cleaned;
       },
       {} as Record<string, unknown>

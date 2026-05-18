@@ -66,6 +66,7 @@ pub async fn archive_create(
         origin: Some(Origin::FileManager),
         group: Some(group_id),
         no_cache: false,
+        dry_run: false,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
@@ -115,6 +116,7 @@ pub async fn archive_extract(
         origin: Some(Origin::FileManager),
         group: Some(group_id),
         no_cache: false,
+        dry_run: false,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(

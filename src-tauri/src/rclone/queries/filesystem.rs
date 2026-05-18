@@ -129,6 +129,7 @@ pub async fn get_fs_info(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await?;
@@ -178,6 +179,7 @@ pub async fn get_remote_paths(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -374,6 +376,7 @@ pub async fn get_about_remote(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -406,6 +409,7 @@ pub async fn get_size(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -436,6 +440,7 @@ pub async fn get_stat(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -470,6 +475,7 @@ pub async fn get_hashsum(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -502,6 +508,7 @@ pub async fn get_hashsum_file(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await
@@ -542,6 +549,7 @@ pub async fn get_public_link(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
     )
     .await

@@ -6,6 +6,11 @@
     </button>
     <p>
       {{ 'modals.jobDetail.title' | translate: { id: jobData().jobid } }}
+      @if (jobData().dry_run === true) {
+        <span class="app-pill p-accent" style="margin-left: var(--space-md)">
+          {{ 'detailShared.jobs.dryRun' | translate }}
+        </span>
+      }
     </p>
     <button mat-icon-button (click)="close()" class="close-button">
       <mat-icon svgIcon="circle-xmark"></mat-icon>

@@ -65,6 +65,7 @@ pub async fn mkdir(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -112,6 +113,7 @@ pub async fn cleanup(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -161,6 +163,7 @@ pub async fn copy_url(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -207,6 +210,7 @@ pub async fn remove_empty_dirs(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -309,6 +313,7 @@ pub async fn transfer(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await
@@ -351,6 +356,7 @@ pub async fn delete(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await
@@ -470,6 +476,7 @@ pub async fn execute_upload_batch(
         origin: origin.clone(),
         group,
         no_cache,
+        dry_run: false,
     };
 
     if existing_jobid.is_none() {
@@ -636,6 +643,7 @@ pub async fn rename(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await

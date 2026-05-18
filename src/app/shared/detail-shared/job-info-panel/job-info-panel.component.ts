@@ -17,6 +17,9 @@ import { JobInfoConfig } from '../../types';
         <mat-card-title>
           <mat-icon svgIcon="info" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'detailShared.jobInfo.title' | translate }}</span>
+          @if (config().dryRun === true) {
+            <span class="app-pill p-accent">{{ 'dashboard.appDetail.dryRun' | translate }}</span>
+          }
         </mat-card-title>
       </mat-card-header>
 

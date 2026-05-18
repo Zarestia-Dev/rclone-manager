@@ -1603,7 +1603,9 @@
       "duration": "耗时",
       "checks": "检查",
       "listed": "已列出",
-      "transferStatistics": "{{op}} 统计"
+      "transferStatistics": "{{op}} 统计",
+      "dryRun": "模拟运行",
+      "dryRunActive": "模拟运行已激活 — 不会进行任何更改"
     },
     "generalDetail": {
       "scheduledTasks": "计划任务",
@@ -2699,11 +2701,13 @@
       "error": "HTTP/S {{status}}：{{body}}"
     },
     "file": {
-      "driveRoot": "不能选择磁盘根目录（如 D:\\）作为挂载点，请选择或创建子文件夹。",
+      "driveRoot": "不能选择磁盘根目录（如 D:\\)作为挂载点，请选择或创建子文件夹。",
       "folderNotEmpty": "所选文件夹非空",
       "pickerUnavailable": "当前平台不支持文件夹选择器",
       "invalidPath": "路径无效：路径不能为空。",
-      "filePickerUnavailable": "当前平台不支持文件选择器"
+      "filePickerUnavailable": "当前平台不支持文件选择器",
+      "notFound": "路径不存在：{{path}}",
+      "failedToOpen": "打开文件管理器失败：{{error}}"
     },
     "rclone": {
       "unsupportedPlatform": "不支持的平台",

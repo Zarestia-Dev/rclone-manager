@@ -15,6 +15,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { PathDisplayComponent } from '../path-display/path-display.component';
 import { OperationControlConfig, PrimaryActionType, LocalDiskUsage } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -42,6 +43,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
     MatTooltipModule,
     MatExpansionModule,
     MatProgressBarModule,
+    MatSlideToggleModule,
     PathDisplayComponent,
     TranslateModule,
     FormatFileSizePipe,
@@ -57,6 +59,15 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
+            @if (dryRun() && isSyncType()) {
+              <span
+                class="app-pill p-accent"
+                [matTooltip]="'dashboard.appDetail.dryRunActive' | translate"
+              >
+                <mat-icon svgIcon="eye" class="accent"></mat-icon>
+                <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
+              </span>
+            }
           </div>
         </mat-panel-title>
 
@@ -119,6 +130,18 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
                 'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
               }}</span>
             }
+          </div>
+        }
+
+        @if (isSyncType()) {
+          <div class="dry-run-control">
+            <mat-slide-toggle
+              [checked]="dryRun()"
+              (change)="toggleDryRun.emit()"
+              [disabled]="config().isActive || config().isLoading"
+            >
+              {{ 'dashboard.appDetail.dryRun' | translate }}
+            </mat-slide-toggle>
           </div>
         }
 
@@ -218,20 +241,34 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           text-align: right;
         }
       }
+
+      .dry-run-control {
+        margin-top: var(--space-md);
+        padding: var(--space-sm);
+        background: var(--sidebar-bg-color);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--box-shadow);
+      }
     `,
   ],
 })
 export class OperationControlComponent {
   readonly config = input.required<OperationControlConfig>();
+  readonly dryRun = input<boolean>(false);
   readonly startJob = output<PrimaryActionType>();
   readonly stopJob = output<PrimaryActionType>();
   readonly openPath = output<string>();
+  readonly toggleDryRun = output<void>();
 
   private readonly systemInfo = inject(SystemInfoService);
 
   readonly isExpanded = signal(false);
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
   readonly isDiskUsageLoading = signal(false);
+
+  readonly isSyncType = computed(() =>
+    ['sync', 'bisync', 'move', 'copy'].includes(this.config().operationType)
+  );
 
   readonly shouldPollDiskUsage = computed(() => {
     const { operationType, isActive, pathConfig } = this.config();

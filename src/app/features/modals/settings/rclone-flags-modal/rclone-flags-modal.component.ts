@@ -387,8 +387,9 @@ export class RcloneFlagsModalComponent implements OnInit {
       for (const category in options[service]) {
         const seen = new Set<string>();
         result[service][category] = options[service][category].filter(opt => {
-          if (seen.has(opt.Name)) return false;
-          seen.add(opt.Name);
+          const key = opt.FieldName || opt.Name;
+          if (seen.has(key)) return false;
+          seen.add(key);
           return true;
         });
       }
@@ -407,7 +408,7 @@ export class RcloneFlagsModalComponent implements OnInit {
         for (const option of options[service][category]) {
           const fullFieldName =
             category === 'General' ? option.FieldName : `${category}.${option.FieldName}`;
-          const key = `${service}---${category}---${option.Name}`;
+          const key = `${service}---${category}---${option.FieldName || option.Name}`;
           this.optionToServiceMap[key] = service;
           this.optionToFullFieldNameMap[key] = fullFieldName;
           controls[key] = this.fb.control(option.Value);
@@ -598,7 +599,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   // ── Config accessors ───────────────────────────────────────────────────────
 
   getUniqueControlKey(option: RcConfigOption): string {
-    return `${this.currentPage()}---${this.currentCategory()}---${option.Name}`;
+    return `${this.currentPage()}---${this.currentCategory()}---${option.FieldName || option.Name}`;
   }
 
   getServiceIcon(name: string): string {

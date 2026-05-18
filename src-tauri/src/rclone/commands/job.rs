@@ -37,6 +37,9 @@ pub struct JobMetadata {
     pub origin: Option<Origin>,
     pub group: Option<String>,
     pub no_cache: bool,
+    /// True when the job was submitted with `DryRun: true` (no actual changes).
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 impl JobMetadata {
@@ -522,9 +525,11 @@ pub async fn handle_job_completion(
                                 i.get("srcRemote")
                                     .or_else(|| i.get("remote"))
                                     .or_else(|| i.get("dstRemote"))
+                                    .or_else(|| i.get("path1"))
+                                    .or_else(|| i.get("path2"))
                             })
                             .and_then(|v| v.as_str())
-                            .unwrap_or("unknown item");
+                            .unwrap_or(&metadata.source);
 
                         let full_err = format!("{}: {}", item_name, err);
                         if error_msg.is_empty() {
@@ -962,6 +967,7 @@ pub async fn register_preparing_job(
         origin,
         group: None,
         no_cache: false,
+        dry_run: false,
     };
 
     job_cache
@@ -1009,6 +1015,7 @@ mod tests {
             origin,
             group: None,
             no_cache: false,
+            dry_run: false,
         }
     }
 

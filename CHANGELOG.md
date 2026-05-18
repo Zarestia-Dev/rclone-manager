@@ -6,10 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [unreleased]
 
+### Added
+- Dry run toggle on Operation Control Panel for sync, bisync, copy and move operations.
+
 ### Changed
 - Allow users the show hidden window via application shortcut. Not only via tray.
 
 ### Fixed
+- **Rclone Flags Case Alignment**: Standardized all configuration flags to **PascalCase** across all Sync, Copy, Move, and Bisync operations (e.g., `DryRun`, `Resync`, `WorkDir`, `CreateEmptySrcDirs`):
+  - **Why**: Casing mismatches between the frontend (camelCase/lowercase/lower_case) and Rclone's case-sensitive Go structs caused options like dry-run or resync to be silently ignored during execution. Standardizing to PascalCase guarantees precise alignment with Rclone's expected properties, with the Rust backend (`sync.rs`) now robustly supporting both camelCase and PascalCase profiles.
 - Fixed the issue on destination paths not load correctly on remote config modal.
 - UI not load the ordered remote list Fixed.
 - Fixed the issue on when tray menu updated in main thread, UI thread was freezed for a long time. Not anymore.
