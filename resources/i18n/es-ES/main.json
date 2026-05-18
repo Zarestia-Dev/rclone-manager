@@ -84,7 +84,9 @@
     "toggleSync": "Alternar sincronización como acción rápida",
     "toggleCopy": "Alternar copia como acción rápida",
     "toggleMove": "Alternar movimiento como acción rápida",
-    "toggleBisync": "Alternar BiSync como acción rápida"
+    "toggleBisync": "Alternar BiSync como acción rápida",
+    "successStart": "Se inició correctamente {{type}} para {{remote}} ({{profile}})",
+    "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}"
   },
   "serve": {
     "noActive": "Sin servicios activos",
@@ -605,7 +607,7 @@
       "import": "Importar",
       "export": "Exportar",
       "preferences": "Preferencias",
-      "configuration": "Configuración",
+      "flags": "Banderas de Rclone",
       "fileBrowser": "Explorador de archivos",
       "shortcuts": "Atajos de teclado",
       "about": "Acerca de RClone Manager",
@@ -1061,6 +1063,7 @@
       "requiredBadge": "Requerido",
       "nextQuestionHelp": "Responda la siguiente pregunta para continuar.",
       "defaultValue": "Valor predeterminado:",
+      "defaultPrefix": "Predeterminado:",
       "yes": "Sí",
       "no": "No",
       "chooseOption": "Elige una opción",
@@ -1635,7 +1638,7 @@
       "quit": "Salir de la aplicación",
       "showShortcuts": "Mostrar atajos de teclado",
       "openPreferences": "Abrir preferencias",
-      "openConfig": "Abrir configuración de RClone",
+      "openFlags": "Abrir banderas de Rclone",
       "forceCheck": "Forzar la comprobación de los remotos montados",
       "newRemoteDetailed": "Crear nuevo remoto (detallado)",
       "newRemoteQuick": "Crear nuevo remoto (rápido)",
@@ -2211,73 +2214,73 @@
         "interactiveProcessingFailed": "Error al procesar la respuesta interactiva"
       }
     },
-    "rcloneConfig": {
-      "title": "Configuración de RClone",
+    "rcloneFlags": {
+      "title": "Banderas de Rclone",
       "search": {
         "toggle": "Alternar búsqueda",
-        "label": "Buscar en la configuración de RClone",
-        "placeholderHome": "Buscar en todos los servicios y ajustes...",
+        "label": "Buscar en las banderas de Rclone",
+        "placeholderHome": "Buscar en todos los servicios y banderas...",
         "placeholderPage": "Buscar en {{page}}...",
-        "emptyResult": "No se ha encontrado ninguna configuración de Rclone",
-        "emptySettings": "No se encontraron ajustes",
+        "emptyResult": "No se ha encontrado ninguna bandera de Rclone",
+        "emptySettings": "No se encontraron banderas",
         "adjustTerms": "Intente ajustar sus términos de búsqueda",
-        "showing": "Mostrando {{count}} de {{total}} ajustes"
+        "showing": "Mostrando {{count}} de {{total}} banderas"
       },
       "pageTitle": {
-        "home": "Configuración de RClone",
+        "home": "Banderas de Rclone",
         "category": "{{page}} - {{category}}",
-        "backend": "Ajustes de backend"
+        "backend": "Banderas de backend"
       },
       "notifications": {
         "resetSuccess": "Restablecer al valor predeterminado: {{field}}",
         "saveSuccess": "Guardado: {{field}}",
         "saveError": "Error al guardar {{field}}: {{error}}",
-        "loadError": "Error al cargar la configuración de RClone",
-        "resetAllSuccess": "Todas las opciones de backend de RClone se han restablecido a los valores predeterminados",
-        "resetAllError": "Error al restablecer las opciones de backend de RClone"
+        "loadError": "Error al cargar las banderas de Rclone",
+        "resetAllSuccess": "Todas las banderas de backend de Rclone se han restablecido a los valores predeterminados",
+        "resetAllError": "Error al restablecer las banderas de backend de Rclone"
       },
       "reset": {
         "button": "Restablecer todo a los valores predeterminados",
-        "aria": "Restablecer todas las opciones de backend de RClone a los valores predeterminados",
-        "title": "Restablecer las opciones de backend",
-        "message": "Esto restablecerá todas las opciones de backend de RClone a sus valores predeterminados y reiniciará el motor de rclone. Cualquier configuración personalizada se perderá. ¿Continuar?",
+        "aria": "Restablecer todas las banderas de backend de Rclone a los valores predeterminados",
+        "title": "Restablecer las banderas",
+        "message": "Esto restablecerá todas las banderas de backend de Rclone a sus valores predeterminados y reiniciará el motor de rclone. Cualquier configuración personalizada se perderá. ¿Continuar?",
         "confirm": "Restablecer y reiniciar"
       },
       "mainCategories": {
         "generalSettings": {
           "title": "Configuración general",
-          "description": "Opciones básicas de RClone y configuración de registro"
+          "description": "Opciones básicas de Rclone y banderas de registro"
         },
         "fileSystemAndStorage": {
           "title": "Sistema de archivos y almacenamiento",
-          "description": "Sistema de archivos virtual, montaje, filtrado y opciones de almacenamiento"
+          "description": "Sistema de archivos virtual, montaje, filtrado y banderas de almacenamiento"
         },
         "networkAndServers": {
           "title": "Red y servidores",
-          "description": "Ajustes de HTTP, FTP, SFTP, WebDAV, S3 y otros servicios de red"
+          "description": "Banderas de HTTP, FTP, SFTP, WebDAV, S3 y otros servicios de red"
         }
       },
       "services": {
-        "vfs": "Ajustes de rendimiento y almacenamiento en caché del sistema de archivos virtual",
-        "mount": "Opciones específicas del montaje y configuración de FUSE",
-        "filter": "Reglas y patrones de filtrado de archivos",
-        "main": "Ajustes generales de operación y transferencia de RClone",
-        "log": "Configuración de registro y ajustes de salida",
-        "http": "Ajustes del servidor HTTP",
-        "rc": "Configuración del servidor de control remoto",
-        "dlna": "Ajustes del servidor DLNA",
-        "ftp": "Configuración del servidor FTP",
-        "nfs": "Ajustes del servidor NFS",
-        "proxy": "Ajustes de autenticación del proxy",
-        "restic": "Configuración del servidor Restic",
-        "s3": "Ajustes del servidor S3",
-        "sftp": "Configuración del servidor SFTP",
-        "webdav": "Ajustes del servidor WebDAV"
+        "vfs": "Banderas de rendimiento y almacenamiento en caché del sistema de archivos virtual",
+        "mount": "Banderas específicas del montaje y configuración de FUSE",
+        "filter": "Reglas, patrones y banderas de filtrado de archivos",
+        "main": "Banderas generales de operación y transferencia de RClone",
+        "log": "Banderas de registro y ajustes de salida",
+        "http": "Banderas del servidor HTTP",
+        "rc": "Banderas del servidor de control remoto",
+        "dlna": "Banderas del servidor DLNA",
+        "ftp": "Banderas del servidor FTP",
+        "nfs": "Banderas del servidor NFS",
+        "proxy": "Banderas de autenticación del proxy",
+        "restic": "Banderas del servidor Restic",
+        "s3": "Banderas del servidor S3",
+        "sftp": "Banderas del servidor SFTP",
+        "webdav": "Banderas del servidor WebDAV"
       },
       "categories": {
-        "General": "Opciones de configuración generales",
-        "Auth": "Autenticación y credenciales",
-        "HTTP": "Configuraciones específicas de HTTP",
+        "General": "Banderas de configuración generales",
+        "Auth": "Banderas de autenticación y credenciales",
+        "HTTP": "Banderas específicas de HTTP",
         "Template": "Configuraciones de plantilla",
         "MetaRules": "Configuraciones de reglas meta",
         "RulesOpt": "Opciones de regla",

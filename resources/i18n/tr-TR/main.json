@@ -85,7 +85,9 @@
     "toggleSync": "Senkronizasyonu Hızlı İşlem Olarak Değiştir",
     "toggleCopy": "Kopyalamayı Hızlı İşlem Olarak Değiştir",
     "toggleMove": "Taşımayı Hızlı İşlem Olarak Değiştir",
-    "toggleBisync": "Çift Yönlü Senk. Hızlı İşlem Olarak Değiştir"
+    "toggleBisync": "Çift Yönlü Senk. Hızlı İşlem Olarak Değiştir",
+    "successStart": "{{remote}} ({{profile}}) için {{type}} başarıyla başlatıldı",
+    "failedStart": "{{remote}} için {{type}} başlatılamadı: {{error}}"
   },
   "serve": {
     "noActive": "Aktif sunum yok",
@@ -594,7 +596,7 @@
       "import": "İçe Aktar",
       "export": "Dışa Aktar",
       "preferences": "Tercihler",
-      "configuration": "Yapılandırma",
+      "flags": "Rclone Bayrakları",
       "fileBrowser": "Dosya Gezgini",
       "shortcuts": "Klavye Kısayolları",
       "about": "RClone Yöneticisi Hakkında",
@@ -1053,6 +1055,7 @@
       "requiredBadge": "Gerekli",
       "nextQuestionHelp": "Devam etmek için bir sonraki soruyu yanıtlayın.",
       "defaultValue": "Varsayılan değer:",
+      "defaultPrefix": "Varsayılan:",
       "yes": "Evet",
       "no": "Hayır",
       "chooseOption": "Bir seçenek belirleyin",
@@ -1635,7 +1638,7 @@
       "quit": "Uygulamadan Çık",
       "showShortcuts": "Klavye Kısayollarını Göster",
       "openPreferences": "Tercihleri Aç",
-      "openConfig": "Rclone Yapılandırmasını Aç",
+      "openFlags": "Rclone Bayraklarını Aç",
       "forceCheck": "Bağlı Sunucuları Zorla Kontrol Et",
       "newRemoteDetailed": "Yeni Uzak Sunucu Oluştur (Detaylı)",
       "newRemoteQuick": "Yeni Uzak Sunucu Oluştur (Hızlı)",
@@ -2217,73 +2220,73 @@
         "interactiveProcessingFailed": "Etkileşimli yanıt işlenemedi"
       }
     },
-    "rcloneConfig": {
-      "title": "RClone Yapılandırması",
+    "rcloneFlags": {
+      "title": "Rclone Bayrakları",
       "search": {
         "toggle": "Aramayı Aç/Kapat",
-        "label": "RClone ayarlarını ara",
-        "placeholderHome": "Tüm servis ve ayarda ara...",
+        "label": "Rclone bayraklarını ara",
+        "placeholderHome": "Tüm servis ve bayraklarda ara...",
         "placeholderPage": "{{page}} içinde ara...",
-        "emptyResult": "Rclone ayarı bulunamadı",
-        "emptySettings": "Ayar bulunamadı",
+        "emptyResult": "Rclone bayrağı bulunamadı",
+        "emptySettings": "Bayrak bulunamadı",
         "adjustTerms": "Arama terimlerinizi ayarlamayı deneyin",
-        "showing": "{{total}} ayardan {{count}} tanesi gösteriliyor"
+        "showing": "{{total}} bayraktan {{count}} tanesi gösteriliyor"
       },
       "pageTitle": {
-        "home": "RClone Yapılandırması",
+        "home": "Rclone Bayrakları",
         "category": "{{page}} - {{category}}",
-        "backend": "Arka Uç Ayarları"
+        "backend": "Arka Uç Bayrakları"
       },
       "notifications": {
         "resetSuccess": "Varsayılana sıfırlandı: {{field}}",
         "saveSuccess": "Kaydedildi: {{field}}",
         "saveError": "{{field}} kaydedilemedi: {{error}}",
-        "loadError": "RClone yapılandırması yüklenemedi",
-        "resetAllSuccess": "Tüm RClone arka uç seçenekleri varsayılanlara sıfırlandı",
-        "resetAllError": "RClone arka uç seçenekleri sıfırlanamadı"
+        "loadError": "Rclone bayrakları yüklenemedi",
+        "resetAllSuccess": "Tüm Rclone arka uç bayrakları varsayılanlara sıfırlandı",
+        "resetAllError": "Rclone arka uç bayrakları sıfırlanamadı"
       },
       "reset": {
         "button": "Tümünü Varsayılana Sıfırla",
-        "aria": "Tüm RClone arka uç seçeneklerini varsayılan değerlere sıfırla",
-        "title": "Arka Uç Seçeneklerini Sıfırla",
-        "message": "Bu işlem tüm RClone arka uç seçeneklerini varsayılan değerlerine sıfırlayacak ve rclone motorunu yeniden başlatacaktır. Özel ayarlarınız kaybolacaktır. Devam edilsin mi?",
+        "aria": "Tüm Rclone arka uç bayraklarını varsayılan değerlere sıfırla",
+        "title": "Arka Uç Bayraklarını Sıfırla",
+        "message": "Bu işlem tüm Rclone arka uç bayraklarını varsayılan değerlerine sıfırlayacak ve rclone motorunu yeniden başlatacaktır. Özel ayarlarınız kaybolacaktır. Devam edilsin mi?",
         "confirm": "Sıfırla ve Yeniden Başlat"
       },
       "mainCategories": {
         "generalSettings": {
           "title": "Genel Ayarlar",
-          "description": "Temel RClone seçenekleri ve günlük yapılandırması"
+          "description": "Temel Rclone seçenekleri ve günlük bayrakları"
         },
         "fileSystemAndStorage": {
           "title": "Dosya Sistemi ve Depolama",
-          "description": "Sanal dosya sistemi, bağlama, filtreleme ve depolama seçenekleri"
+          "description": "Sanal dosya sistemi, bağlama, filtreleme ve depolama bayrakları"
         },
         "networkAndServers": {
           "title": "Ağ ve Sunucular",
-          "description": "HTTP, FTP, SFTP, WebDAV, S3 ve diğer ağ servisi ayarları"
+          "description": "HTTP, FTP, SFTP, WebDAV, S3 and diğer ağ servisi bayrakları"
         }
       },
       "services": {
-        "vfs": "Sanal Dosya Sistemi önbellekleme ve performans ayarları",
-        "mount": "Bağlamaya özel seçenekler ve FUSE yapılandırması",
-        "filter": "Dosya filtreleme kuralları ve desenleri",
-        "main": "Genel RClone operasyon ve aktarım ayarları",
-        "log": "Günlük yapılandırması ve çıktı ayarları",
-        "http": "HTTP sunucu ayarları",
-        "rc": "Uzaktan kumanda sunucusu yapılandırması",
-        "dlna": "DLNA sunucu ayarları",
-        "ftp": "FTP sunucu yapılandırması",
-        "nfs": "NFS sunucu ayarları",
-        "proxy": "Proxy kimlik doğrulama ayarları",
-        "restic": "Restic sunucu yapılandırması",
-        "s3": "S3 server ayarları",
-        "sftp": "SFTP sunucu yapılandırması",
-        "webdav": "WebDAV sunucu ayarları"
+        "vfs": "Sanal Dosya Sistemi önbellekleme ve performans bayrakları",
+        "mount": "Bağlamaya özel seçenekler ve FUSE bayrakları",
+        "filter": "Dosya filtreleme kuralları, desenleri ve bayrakları",
+        "main": "Genel RClone operasyon ve aktarım bayrakları",
+        "log": "Günlük bayrakları ve çıktı ayarları",
+        "http": "HTTP sunucu bayrakları",
+        "rc": "Uzaktan kumanda sunucusu bayrakları",
+        "dlna": "DLNA sunucu bayrakları",
+        "ftp": "FTP sunucu bayrakları",
+        "nfs": "NFS sunucu bayrakları",
+        "proxy": "Proxy kimlik doğrulama bayrakları",
+        "restic": "Restic sunucu bayrakları",
+        "s3": "S3 server bayrakları",
+        "sftp": "SFTP sunucu bayrakları",
+        "webdav": "WebDAV sunucu bayrakları"
       },
       "categories": {
-        "General": "Genel yapılandırma seçenekleri",
-        "Auth": "Kimlik doğrulama ve kimlik bilgileri",
-        "HTTP": "HTTP-spesifik ayarlar",
+        "General": "Genel bayrak seçenekleri",
+        "Auth": "Kimlik doğrulama ve kimlik bilgisi bayrakları",
+        "HTTP": "HTTP-spesifik bayraklar",
         "Template": "Şablon ayarları",
         "MetaRules": "Meta kural yapılandırmaları",
         "RulesOpt": "Kural seçenekleri",

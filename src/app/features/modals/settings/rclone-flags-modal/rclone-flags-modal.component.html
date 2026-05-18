@@ -1,9 +1,9 @@
-<div class="rclone-config-modal">
+<div class="rclone-flags-modal">
   <div class="modal-header" data-tauri-drag-region>
     <button
       mat-icon-button
       (click)="toggleSearchVisibility()"
-      [attr.aria-label]="'modals.rcloneConfig.search.toggle' | translate"
+      [attr.aria-label]="'modals.rcloneFlags.search.toggle' | translate"
     >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
@@ -18,7 +18,7 @@
     [searchText]="searchQuery()"
     (searchTextChange)="onSearchInput($event)"
     [placeholder]="getSearchPlaceholder() | translate"
-    [ariaLabel]="'modals.rcloneConfig.search.label' | translate"
+    [ariaLabel]="'modals.rcloneFlags.search.label' | translate"
   ></app-search-container>
 
   @if (isLoading()) {
@@ -72,7 +72,7 @@
         } @else {
           <div class="empty-state">
             <mat-icon svgIcon="search"></mat-icon>
-            <span>{{ 'modals.rcloneConfig.search.emptyResult' | translate }}</span>
+            <span>{{ 'modals.rcloneFlags.search.emptyResult' | translate }}</span>
           </div>
         }
       } @else {
@@ -155,14 +155,14 @@
             class="warn"
             (click)="resetAllOptions()"
             [disabled]="isResetting()"
-            [attr.aria-label]="'modals.rcloneConfig.reset.aria' | translate"
+            [attr.aria-label]="'modals.rcloneFlags.reset.aria' | translate"
           >
             @if (isResetting()) {
               <mat-spinner diameter="16"></mat-spinner>
             } @else {
               <mat-icon svgIcon="rotate-right"></mat-icon>
             }
-            {{ 'modals.rcloneConfig.reset.button' | translate }}
+            {{ 'modals.rcloneFlags.reset.button' | translate }}
           </button>
         </div>
       }
@@ -213,7 +213,7 @@
         @if (hasSearchQuery()) {
           <div class="search-results-info">
             <small>{{
-              'modals.rcloneConfig.search.showing'
+              'modals.rcloneFlags.search.showing'
                 | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
             }}</small>
           </div>
@@ -222,8 +222,8 @@
         @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
           <div class="empty-state">
             <mat-icon svgIcon="search"></mat-icon>
-            <span>{{ 'modals.rcloneConfig.search.emptySettings' | translate }}</span>
-            <p>{{ 'modals.rcloneConfig.search.adjustTerms' | translate }}</p>
+            <span>{{ 'modals.rcloneFlags.search.emptySettings' | translate }}</span>
+            <p>{{ 'modals.rcloneFlags.search.adjustTerms' | translate }}</p>
           </div>
         } @else {
           @if (showJsonMode()) {

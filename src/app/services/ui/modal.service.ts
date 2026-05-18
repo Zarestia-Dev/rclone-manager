@@ -8,7 +8,7 @@ import { BackendModalComponent } from '../../features/modals/settings/backend-mo
 import { LogsModalComponent } from '../../features/modals/settings/logs-modal/logs-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
-import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
+import { RcloneFlagsModalComponent } from '../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
@@ -153,8 +153,8 @@ export class ModalService {
     });
   }
 
-  openRcloneConfig(): MatDialogRef<RcloneConfigModalComponent> {
-    return this.dialog.open(RcloneConfigModalComponent, {
+  openRcloneFlags(): MatDialogRef<RcloneFlagsModalComponent> {
+    return this.dialog.open(RcloneFlagsModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
     });

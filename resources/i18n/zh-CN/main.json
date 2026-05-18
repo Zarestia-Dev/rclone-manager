@@ -85,7 +85,9 @@
     "toggleSync": "切换同步快捷操作",
     "toggleCopy": "切换复制快捷操作",
     "toggleMove": "切换移动快捷操作",
-    "toggleBisync": "切换双向同步快捷操作"
+    "toggleBisync": "切换双向同步快捷操作",
+    "successStart": "成功为 {{remote}} ({{profile}}) 启动了 {{type}}",
+    "failedStart": "无法为 {{remote}} 启动 {{type}}：{{error}}"
   },
   "serve": {
     "noActive": "无正在运行的服务",
@@ -608,7 +610,7 @@
       "import": "导入",
       "export": "导出",
       "preferences": "偏好设置",
-      "configuration": "配置",
+      "flags": "Rclone 标志",
       "fileBrowser": "文件浏览器",
       "shortcuts": "快捷键",
       "about": "关于 RClone Manager",
@@ -1067,6 +1069,7 @@
       "requiredBadge": "必填",
       "nextQuestionHelp": "回答下一个问题以继续",
       "defaultValue": "默认值：",
+      "defaultPrefix": "默认值：",
       "yes": "是",
       "no": "否",
       "chooseOption": "选择一个选项",
@@ -1649,7 +1652,7 @@
       "quit": "退出应用",
       "showShortcuts": "显示键盘快捷键",
       "openPreferences": "打开偏好设置",
-      "openConfig": "打开 RClone 配置",
+      "openFlags": "打开 Rclone 标志",
       "forceCheck": "强制检查已挂载远程",
       "newRemoteDetailed": "新建远程存储（详细）",
       "newRemoteQuick": "新建远程存储（快速）",
@@ -2231,73 +2234,73 @@
         "interactiveProcessingFailed": "处理交互式响应失败"
       }
     },
-    "rcloneConfig": {
-      "title": "RClone 配置",
+    "rcloneFlags": {
+      "title": "Rclone 标志",
       "search": {
         "toggle": "切换搜索",
-        "label": "搜索 RClone 设置",
-        "placeholderHome": "搜索所有服务与设置...",
+        "label": "搜索 Rclone 标志",
+        "placeholderHome": "搜索所有服务与标志...",
         "placeholderPage": "在 {{page}} 中搜索...",
-        "emptyResult": "未找到 Rclone 设置",
-        "emptySettings": "未找到设置",
+        "emptyResult": "未找到 Rclone 标志",
+        "emptySettings": "未找到标志",
         "adjustTerms": "请调整搜索关键词",
-        "showing": "显示 {{count}} / 共 {{total}} 项设置"
+        "showing": "显示 {{count}} / 共 {{total}} 项标志"
       },
       "pageTitle": {
-        "home": "RClone 配置",
+        "home": "Rclone 标志",
         "category": "{{page}} - {{category}}",
-        "backend": "后端设置"
+        "backend": "后端标志"
       },
       "notifications": {
         "resetSuccess": "已恢复默认：{{field}}",
         "saveSuccess": "已保存：{{field}}",
         "saveError": "保存 {{field}} 失败：{{error}}",
-        "loadError": "加载 RClone 配置失败",
-        "resetAllSuccess": "所有 RClone 后端选项已恢复默认",
-        "resetAllError": "恢复 RClone 后端选项失败"
+        "loadError": "加载 Rclone 标志失败",
+        "resetAllSuccess": "所有 Rclone 标志已恢复默认",
+        "resetAllError": "恢复 Rclone 标志失败"
       },
       "reset": {
         "button": "恢复全部默认",
-        "aria": "将所有 RClone 后端选项恢复为默认值",
-        "title": "重置后端选项",
-        "message": "此操作将把所有 RClone 后端选项恢复为默认值并重启引擎，自定义设置将会丢失，是否继续？",
+        "aria": "将所有 Rclone 标志恢复为默认值",
+        "title": "重置标志",
+        "message": "此操作将把所有 Rclone 标志恢复为默认值并重启引擎，自定义设置将会丢失，是否继续？",
         "confirm": "重置并重启"
       },
       "mainCategories": {
         "generalSettings": {
           "title": "通用设置",
-          "description": "核心 RClone 选项与日志配置"
+          "description": "核心 Rclone 选项与日志标志"
         },
         "fileSystemAndStorage": {
           "title": "文件系统与存储",
-          "description": "虚拟文件系统、挂载、过滤与存储选项"
+          "description": "虚拟文件系统、挂载、过滤与存储标志"
         },
         "networkAndServers": {
           "title": "网络与服务",
-          "description": "HTTP、FTP、SFTP、WebDAV、S3 等网络服务设置"
+          "description": "HTTP、FTP、SFTP、WebDAV、S3 等网络服务标志"
         }
       },
       "services": {
-        "vfs": "虚拟文件系统缓存与性能设置",
-        "mount": "挂载专属选项与 FUSE 配置",
-        "filter": "文件过滤规则与匹配模式",
-        "main": "RClone 通用运行与传输设置",
-        "log": "日志配置与输出设置",
-        "http": "HTTP 服务设置",
-        "rc": "远程控制服务配置",
-        "dlna": "DLNA 服务设置",
-        "ftp": "FTP 服务配置",
-        "nfs": "NFS 服务设置",
-        "proxy": "代理认证设置",
-        "restic": "Restic 服务配置",
-        "s3": "S3 服务设置",
-        "sftp": "SFTP 服务配置",
-        "webdav": "WebDAV 服务设置"
+        "vfs": "虚拟文件系统缓存与性能标志",
+        "mount": "挂载专属选项与 FUSE 标志",
+        "filter": "文件过滤规则、匹配模式与标志",
+        "main": "Rclone 通用运行与传输标志",
+        "log": "日志标志与输出设置",
+        "http": "HTTP 服务标志",
+        "rc": "远程控制服务标志",
+        "dlna": "DLNA 服务标志",
+        "ftp": "FTP 服务标志",
+        "nfs": "NFS 服务标志",
+        "proxy": "代理认证标志",
+        "restic": "Restic 服务标志",
+        "s3": "S3 服务标志",
+        "sftp": "SFTP 服务标志",
+        "webdav": "WebDAV 服务标志"
       },
       "categories": {
-        "General": "通用配置选项",
-        "Auth": "身份验证与凭据",
-        "HTTP": "HTTP 专属设置",
+        "General": "通用标志选项",
+        "Auth": "身份验证与凭据标志",
+        "HTTP": "HTTP 专属标志",
         "Template": "模板设置",
         "MetaRules": "元规则配置",
         "RulesOpt": "规则选项",
