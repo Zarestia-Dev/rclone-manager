@@ -205,6 +205,7 @@
         "started": "Started",
         "actions": "Actions"
       },
+      "dryRun": "Dry Run",
       "status": {
         "running": "Running",
         "completed": "Completed",
@@ -1615,7 +1616,9 @@
       "duration": "Duration",
       "checks": "Checks",
       "listed": "Listed",
-      "transferStatistics": "{{op}} Statistics"
+      "transferStatistics": "{{op}} Statistics",
+      "dryRun": "Dry Run",
+      "dryRunActive": "Dry run is active — no changes will be made"
     },
     "generalDetail": {
       "scheduledTasks": "Scheduled Tasks",
@@ -1737,6 +1740,7 @@
       "fields": {
         "type": "Job Type",
         "id": "Job ID",
+        "dryRun": "Dry Run",
         "profile": "Profile",
         "status": "Job Status",
         "started": "Started",
@@ -2729,7 +2733,9 @@
       "folderNotEmpty": "Selected folder is not empty",
       "pickerUnavailable": "Folder picker is not available on this platform",
       "invalidPath": "Invalid path: Path cannot be empty.",
-      "filePickerUnavailable": "File picker is not available on this platform"
+      "filePickerUnavailable": "File picker is not available on this platform",
+      "notFound": "Path does not exist: {{path}}",
+      "failedToOpen": "Failed to open file manager: {{error}}"
     },
     "rclone": {
       "unsupportedPlatform": "Unsupported platform",
