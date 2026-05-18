@@ -3043,8 +3043,7 @@
       "engineRestartFailed": "Engine Restart Failed",
       "engineConnectionFailed": "Engine Connection Error",
       "engineBinaryNotFound": "Rclone Not Found",
-      "enginePasswordRequired": "Password Required",
-      "alreadyRunning": "App Already Running"
+      "enginePasswordRequired": "Password Required"
     },
     "body": {
       "mountSucceeded": "Successfully mounted {{remote}} profile '{{profile}}' from {{backend}} at {{mountPoint}}.",
@@ -3079,8 +3078,7 @@
       "engineRestartFailed": "Error restarting engine: {{error}}",
       "engineConnectionFailed": "Could not connect to rclone engine: {{error}}",
       "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
-      "enginePasswordRequired": "Password is required to access the configuration file.",
-      "alreadyRunning": "Another instance of the app is already running."
+      "enginePasswordRequired": "Password is required to access the configuration file."
     }
   },
   "repairSheet": {
