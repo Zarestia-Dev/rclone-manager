@@ -17,7 +17,6 @@ use crate::utils::types::monitoring::SystemStatusPayload;
 use crate::utils::types::remotes::MountedRemote;
 use crate::utils::types::state::RcloneState;
 
-/// Get a deterministic system status snapshot for UI hydration.
 #[tauri::command]
 pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
@@ -30,16 +29,14 @@ pub async fn get_system_status_snapshot(
     match perform_batch_poll(&app_handle).await {
         Ok(payload) => Ok(payload),
         Err(e) => {
-            warn!("🔄 Failed to fetch system status snapshot: {e}");
+            warn!("Failed to fetch system status snapshot: {e}");
             Ok(SystemStatusPayload::error())
         }
     }
 }
 
-/// Update the system poller visibility state
 #[tauri::command]
 pub fn set_poller_visibility(app_handle: AppHandle, visible: bool) -> Result<(), String> {
-    debug!("🔄 System poller visibility set to: {}", visible);
     app_handle
         .state::<RcloneState>()
         .poller_visible
@@ -47,21 +44,20 @@ pub fn set_poller_visibility(app_handle: AppHandle, visible: bool) -> Result<(),
     Ok(())
 }
 
-/// Background task that performs unified system monitoring
 pub fn start_system_poller(app_handle: AppHandle) {
     if app_handle
         .state::<RcloneState>()
         .poller_running
         .swap(true, Ordering::SeqCst)
     {
-        debug!("🔄 System poller already running");
+        debug!("System poller already running");
         return;
     }
 
     tauri::async_runtime::spawn(async move {
-        debug!("🔄 Starting unified system poller");
+        debug!("Starting unified system poller");
         let mut has_active_jobs = false;
-        let mut burst_ticks = BURST_TICK_COUNT; // Start with a burst on startup
+        let mut burst_ticks = BURST_TICK_COUNT;
         let mut prev_visible = true;
         let mut interval = time::interval(Duration::from_secs(1));
 
@@ -70,7 +66,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
 
             let state = app_handle.state::<RcloneState>();
             if !state.poller_running.load(Ordering::SeqCst) {
-                debug!("🔄 Stopping system poller");
+                debug!("Stopping system poller");
                 break;
             }
 
@@ -79,26 +75,26 @@ pub fn start_system_poller(app_handle: AppHandle) {
             }
 
             let (running, updating, should_exit) = get_engine_status(&app_handle).await;
-            let (should_skip, should_emit_inactive) =
-                (!running || updating || should_exit, !running);
+            let should_skip = !running || updating || should_exit;
 
             if should_skip {
-                burst_ticks = BURST_TICK_COUNT; // Reset burst for when engine comes back
-                if should_emit_inactive {
+                burst_ticks = BURST_TICK_COUNT;
+                if !running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
+                    start_engine_if_not_running(&app_handle).await;
                 }
                 continue;
             }
 
             if state.initial_startup.load(Ordering::Acquire) {
-                debug!("🔄 Skipping poll during initial startup");
+                debug!("Skipping poll during initial startup");
                 continue;
             }
 
             let is_visible = state.poller_visible.load(Ordering::SeqCst);
 
             if is_visible && !prev_visible {
-                debug!("🔄 Visibility restored, triggering burst mode");
+                debug!("Visibility restored, triggering burst mode");
                 burst_ticks = BURST_TICK_COUNT;
             }
             prev_visible = is_visible;
@@ -110,36 +106,33 @@ pub fn start_system_poller(app_handle: AppHandle) {
                     let _ = app_handle.emit(SYSTEM_STATUS, payload);
                 }
                 Err(e) => {
-                    warn!("🔄 System poller batch failed: {e}");
-
-                    error!("🔄 System poller reached failure threshold, triggering engine restart");
-                    warn!("Engine crash detected by poller, marking as dead and restarting...");
+                    error!("Poller batch failed, restarting engine: {e}");
                     crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
                     start_engine_if_not_running(&app_handle).await;
-                    burst_ticks = BURST_TICK_COUNT; // Reset burst for restart
-
+                    burst_ticks = BURST_TICK_COUNT;
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::error());
                 }
             }
 
             let new_duration = if burst_ticks > 0 {
-                Duration::from_secs(1) // Burst: Fast poll regardless of state
+                Duration::from_secs(1)
             } else if !is_visible {
-                Duration::from_secs(10) // Hidden: Slow poll
+                Duration::from_secs(10)
             } else if has_active_jobs {
-                Duration::from_secs(1) // Visible + Active: Fast poll
+                Duration::from_secs(1)
             } else {
-                Duration::from_secs(5) // Visible + Idle: Medium poll
+                Duration::from_secs(5)
             };
 
             if interval.period() != new_duration {
                 debug!(
-                    "🔄 Adjusting poller interval to {:?} (burst_ticks: {})",
+                    "Adjusting poller interval to {:?} (burst_ticks: {})",
                     new_duration, burst_ticks
                 );
                 interval = time::interval_at(time::Instant::now() + new_duration, new_duration);
             }
         }
+
         app_handle
             .state::<RcloneState>()
             .poller_running
@@ -147,29 +140,27 @@ pub fn start_system_poller(app_handle: AppHandle) {
     });
 }
 
-/// Stop the unified system poller
 pub fn stop_system_poller(app_handle: &AppHandle) {
-    let state = app_handle.state::<RcloneState>();
-    state.poller_running.store(false, Ordering::SeqCst);
+    app_handle
+        .state::<RcloneState>()
+        .poller_running
+        .store(false, Ordering::SeqCst);
 }
 
-/// Parse a single batch result - batch returns results directly, not wrapped
 fn parse_batch_result(result_obj: &serde_json::Value, endpoint_name: &str) -> serde_json::Value {
     if result_obj.is_null() {
-        debug!("⚠️  Batch result for {endpoint_name} is null");
+        debug!("Batch result for {endpoint_name} is null");
         return serde_json::Value::Null;
     }
 
-    // Check for error field (rclone batch returns this directly in the result)
     if let Some(error) = result_obj.get("error") {
         let error_str = error.as_str().unwrap_or("");
         if !error_str.is_empty() {
-            debug!("⚠️  Batch result for {endpoint_name} has error: {error_str}");
+            debug!("Batch result for {endpoint_name} has error: {error_str}");
             return serde_json::Value::Null;
         }
     }
 
-    // Batch returns results directly (not wrapped in {"result": ..., "error": ...})
     result_obj.clone()
 }
 
@@ -246,8 +237,7 @@ async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
                     .collect()
             });
 
-    let backend_manager = app.state::<BackendManager>();
-    backend_manager
+    app.state::<BackendManager>()
         .remote_cache
         .update_mounts_if_changed(mounts, app)
         .await;
@@ -255,8 +245,7 @@ async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
 
 async fn update_serve_cache(app: &AppHandle, result: &serde_json::Value) {
     let serves = parse_serves_response(result);
-    let backend_manager = app.state::<BackendManager>();
-    backend_manager
+    app.state::<BackendManager>()
         .remote_cache
         .update_serves_if_changed(serves, app)
         .await;

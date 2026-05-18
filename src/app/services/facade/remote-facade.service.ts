@@ -160,7 +160,10 @@ export class RemoteFacadeService extends TauriBaseService {
     this.eventListeners
       .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.refreshAll());
+      .subscribe(() => {
+        console.log('Rclone engine ready, refreshing all...');
+        this.refreshAll();
+      });
 
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
@@ -326,10 +329,10 @@ export class RemoteFacadeService extends TauriBaseService {
     this.isLoading.set(true);
     try {
       await Promise.all([
+        this.loadRemotes(),
         this.mountService.getMountedRemotes(),
         this.serveService.refreshServes(),
         this.jobService.refreshJobs(),
-        this.loadRemotes(),
       ]);
       this.loadDiskUsageInBackground();
     } finally {

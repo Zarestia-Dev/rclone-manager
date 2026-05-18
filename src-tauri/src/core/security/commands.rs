@@ -20,15 +20,9 @@ fn update_local_config_password(
         .map_err(|e| format!("Failed to update Local config password: {e}"))
 }
 
-// -----------------------------------------------------------------------------
-// PASSWORD MANAGEMENT (USING RCMAN CREDENTIALS)
-// These functions require the keychain feature which is only available on desktop
-// -----------------------------------------------------------------------------
-
-/// Store the rclone config password securely
 #[tauri::command]
 pub async fn store_config_password(app: AppHandle, password: String) -> Result<(), String> {
-    info!("Storing rclone config password via rcman (Unified Storage)");
+    info!("Storing rclone config password");
 
     let manager = app.state::<AppSettingsManager>();
     let env_manager = app.state::<SafeEnvironmentManager>();
@@ -56,11 +50,8 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
     Ok(())
 }
 
-/// Retrieve the stored rclone config password
 #[tauri::command]
 pub async fn get_config_password(app: AppHandle) -> Result<String, String> {
-    debug!("Retrieving stored config password via rcman");
-
     let manager = app.state::<AppSettingsManager>();
     let connections = manager
         .inner()
@@ -71,21 +62,16 @@ pub async fn get_config_password(app: AppHandle) -> Result<String, String> {
         && let Some(password) = local.get("config_password").and_then(|v| v.as_str())
         && !password.is_empty()
     {
-        debug!("Password retrieved successfully");
         return Ok(password.to_string());
     }
 
-    debug!("No password stored");
     Err(crate::localized_error!(
         "backendErrors.security.noPasswordStored"
     ))
 }
 
-/// Check if a config password is stored
 #[tauri::command]
 pub async fn has_stored_password(app: AppHandle) -> Result<bool, String> {
-    debug!("Checking if password is stored via rcman");
-
     let manager = app.state::<AppSettingsManager>();
     let connections = manager
         .inner()
@@ -103,10 +89,9 @@ pub async fn has_stored_password(app: AppHandle) -> Result<bool, String> {
     Ok(false)
 }
 
-/// Remove the stored config password
 #[tauri::command]
 pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
-    info!("Removing stored config password via rcman");
+    info!("Removing stored config password");
 
     let manager = app.state::<AppSettingsManager>();
     let env_manager = app.state::<SafeEnvironmentManager>();
@@ -116,13 +101,11 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
 
     use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
-
     if let Some(mut backend) = backend_manager.get("Local").await {
         backend.config_password = None;
         let _ = backend_manager
             .update(manager.inner(), "Local", backend)
             .await;
-        debug!("Cleared in-memory Local backend config password");
     }
 
     env_manager.clear_config_password();
@@ -130,11 +113,8 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Test if a password is valid for rclone
 #[tauri::command]
 pub async fn validate_rclone_password(app: AppHandle, password: String) -> Result<(), String> {
-    debug!("Testing rclone password");
-
     if password.trim().is_empty() {
         return Err(crate::localized_error!(
             "backendErrors.security.passwordEmpty"
@@ -158,46 +138,38 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
 
     if output.status.success() {
         info!("Password validation successful");
-        Ok(())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        error!("Password validation failed: {stderr}");
-
-        let error_msg = if stderr
-            .contains("Couldn't decrypt configuration, most likely wrong password")
-            || stderr.contains("unable to decrypt configuration")
-            || stderr.contains("wrong password")
-        {
-            crate::localized_error!("backendErrors.security.incorrectPassword")
-        } else {
-            crate::localized_error!("backendErrors.security.rcloneError", "error" => stderr.trim())
-        };
-
-        Err(error_msg)
+        return Ok(());
     }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    error!("Password validation failed: {stderr}");
+
+    let error_msg = if stderr.contains("Couldn't decrypt configuration, most likely wrong password")
+        || stderr.contains("unable to decrypt configuration")
+        || stderr.contains("wrong password")
+    {
+        crate::localized_error!("backendErrors.security.incorrectPassword")
+    } else {
+        crate::localized_error!("backendErrors.security.rcloneError", "error" => stderr.trim())
+    };
+
+    Err(error_msg)
 }
 
-/// Set the config password environment variable (for current session)
 #[tauri::command]
 pub async fn set_config_password_env(app: AppHandle, password: String) -> Result<(), String> {
     let env_manager = app.state::<SafeEnvironmentManager>();
-    debug!("Setting config password environment variable");
-
     env_manager.set_config_password(password);
-    // Emit event so other parts (engine) can react
+
     if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
         error!("Failed to emit password_stored event: {e}");
     }
 
-    debug!("Environment variable set");
     Ok(())
 }
 
-/// Check if the rclone configuration is encrypted
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
-    debug!("Checking if rclone config is encrypted");
-
     use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let config_path = backend_manager.get_local_config_path().await.map_err(
@@ -230,10 +202,9 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     Ok(is_encrypted)
 }
 
-/// Helper to run rclone encryption commands
 async fn run_encryption_command(
     app: &AppHandle,
-    action: &str, // "set" or "remove"
+    action: &str,
     password: &str,
 ) -> Result<(String, String), String> {
     use crate::rclone::backend::BackendManager;
@@ -268,31 +239,32 @@ async fn run_encryption_command(
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-    if output.status.success()
+    let success = output.status.success()
         || (action == "set"
             && (stdout.contains("Password set")
                 || stdout.contains("Your configuration is encrypted")))
         || (action == "remove"
             && (stdout.contains("Your configuration is not encrypted")
-                || stderr.contains("config file is NOT encrypted")))
-    {
-        Ok((stdout, stderr))
-    } else {
-        let err_detail = if stderr.trim().is_empty() {
-            stdout
-        } else {
-            stderr
-        };
-        let l10n_key = if action == "set" {
-            "backendErrors.security.encryptFailed"
-        } else {
-            "backendErrors.security.decryptFailed"
-        };
-        Err(crate::localized_error!(l10n_key, "error" => err_detail))
+                || stderr.contains("config file is NOT encrypted")));
+
+    if success {
+        return Ok((stdout, stderr));
     }
+
+    let err_detail = if stderr.trim().is_empty() {
+        stdout
+    } else {
+        stderr
+    };
+    let l10n_key = if action == "set" {
+        "backendErrors.security.encryptFailed"
+    } else {
+        "backendErrors.security.decryptFailed"
+    };
+
+    Err(crate::localized_error!(l10n_key, "error" => err_detail))
 }
 
-/// Encrypt the rclone configuration with a password
 #[tauri::command]
 pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), String> {
     info!("Encrypting rclone configuration");
@@ -303,7 +275,7 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
     let env_manager = app.state::<SafeEnvironmentManager>();
 
     if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
-        warn!("Failed to store password after encryption via rcman: {e}");
+        warn!("Failed to store password after encryption: {e}");
     } else {
         use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
@@ -322,7 +294,6 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
     Ok(())
 }
 
-/// Unencrypt (decrypt) the rclone configuration
 #[tauri::command]
 pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), String> {
     info!("Unencrypting rclone configuration");
@@ -333,7 +304,7 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
     let env_manager = app.state::<SafeEnvironmentManager>();
 
     if let Err(e) = update_local_config_password(manager.inner(), None) {
-        warn!("Failed to remove stored config password via rcman: {e}");
+        warn!("Failed to remove stored config password: {e}");
     }
 
     use crate::rclone::backend::BackendManager;
@@ -350,7 +321,6 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
     Ok(())
 }
 
-/// Change the rclone configuration password
 #[tauri::command]
 pub async fn change_config_password(
     app: AppHandle,

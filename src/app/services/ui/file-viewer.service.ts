@@ -155,7 +155,7 @@ export class FileViewerService extends TauriBaseService {
       )}&path=${encodedPath}`;
     }
 
-    const urlSafeRemote = rName.endsWith(':') ? rName.slice(0, -1) : rName;
+    const urlSafeRemote = this.pathService.normalizeRemoteName(rName);
     const encodedRemote = encodeURIComponent(urlSafeRemote);
     if (platform() === 'windows') {
       return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;

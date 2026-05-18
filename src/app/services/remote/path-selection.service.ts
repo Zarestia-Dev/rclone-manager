@@ -20,6 +20,7 @@ export class PathSelectionService {
   private readonly pathService = inject(PathService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
+  private readonly fetchSequence = new Map<string, number>();
 
   // ============================================================================
   // PUBLIC API
@@ -60,9 +61,8 @@ export class PathSelectionService {
    * Unregisters a field, cleaning up its state.
    */
   public unregisterField(fieldId: string): void {
-    if (this.pathStates.has(fieldId)) {
-      this.pathStates.delete(fieldId);
-    }
+    this.pathStates.delete(fieldId);
+    this.fetchSequence.delete(fieldId);
   }
 
   /**
@@ -124,6 +124,9 @@ export class PathSelectionService {
     const stateSignal = this.pathStates.get(fieldId);
     if (!stateSignal) return;
 
+    const seq = (this.fetchSequence.get(fieldId) ?? 0) + 1;
+    this.fetchSequence.set(fieldId, seq);
+
     // Set loading state
     stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
 
@@ -138,10 +141,15 @@ export class PathSelectionService {
         {},
         'filemanager'
       );
+
+      // Discard if a newer request has already been dispatched
+      if (this.fetchSequence.get(fieldId) !== seq) return;
+
       const entries = response && Array.isArray(response.list) ? response.list : [];
       // Update state with new entries
       stateSignal.update(s => ({ ...s, options: entries, isLoading: false }));
     } catch (error) {
+      if (this.fetchSequence.get(fieldId) !== seq) return;
       console.error(`Error fetching entries for ${fieldId}:`, error);
       stateSignal.update(s => ({ ...s, options: [], isLoading: false }));
     }

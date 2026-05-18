@@ -1,6 +1,5 @@
 use std::fmt;
 
-/// Errors that can occur during engine operations
 #[derive(Debug)]
 pub enum EngineError {
     SpawnFailed(String),
@@ -18,7 +17,6 @@ pub enum EngineError {
 
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Helper to reduce boilerplate - directly write localized message
         let msg = match self {
             Self::SpawnFailed(err) => {
                 crate::localized_error!("backendErrors.rclone.spawnFailed", "error" => err)
@@ -58,7 +56,6 @@ impl std::error::Error for EngineError {}
 
 pub type EngineResult<T> = Result<T, EngineError>;
 
-// Convert to String for backward compatibility
 impl From<EngineError> for String {
     fn from(e: EngineError) -> Self {
         e.to_string()
@@ -118,7 +115,6 @@ mod tests {
 
     #[test]
     fn test_engine_error_is_error_trait() {
-        // Verify EngineError implements std::error::Error
         fn assert_error<E: std::error::Error>() {}
         assert_error::<EngineError>();
     }

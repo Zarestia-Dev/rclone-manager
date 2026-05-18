@@ -102,7 +102,7 @@ checksum = "48c6349ddff23194f8fdce2ea8849380f5a4868c1648965b70e801e104cba9b3"
 dependencies = [
  "base64 0.22.1",
  "jni 0.21.1",
- "keyring-core 1.0.0",
+ "keyring-core",
  "log",
  "ndk-context",
  "regex",
@@ -199,7 +199,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7be2f067ccd8d4b4d4a66ddafe0f32a5dff31732f32dbff85fefc40929b1f72"
 dependencies = [
- "keyring-core 1.0.0",
+ "keyring-core",
  "log",
  "security-framework",
 ]
@@ -1499,7 +1499,7 @@ dependencies = [
  "anyhow",
  "clap",
  "futures",
- "keyring-core 1.0.0",
+ "keyring-core",
  "log",
  "regex",
  "serde",
@@ -1546,7 +1546,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21d8f54da401bb5eb2a4d873ac4b359f4a599df2ca8634bb5b8c045e5ee78757"
 dependencies = [
  "dbus-secret-service",
- "keyring-core 1.0.0",
+ "keyring-core",
 ]
 
 [[package]]
@@ -3351,21 +3351,12 @@ dependencies = [
  "clap",
  "db-keystore",
  "dbus-secret-service-keyring-store",
- "keyring-core 1.0.0",
+ "keyring-core",
  "linux-keyutils-keyring-store",
  "rpassword",
  "rprompt",
  "windows-native-keyring-store",
  "zbus-secret-service-keyring-store",
-]
-
-[[package]]
-name = "keyring-core"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8286c3ab222af2fa9e57874fe419893d967f739c7bf1743f98a88678edbf08"
-dependencies = [
- "log",
 ]
 
 [[package]]
@@ -3561,7 +3552,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39fbed79f71dc21eb21d3d07c0e908a3c58ff9a1fdbf5cf44230fb3deb6d994b"
 dependencies = [
- "keyring-core 1.0.0",
+ "keyring-core",
  "linux-keyutils",
 ]
 
@@ -5322,16 +5313,14 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "620e64f6c3304f8a552380b3e91d49324fa60f9dc98eb45572254656239a1899"
+version = "0.1.9"
 dependencies = [
  "aes-gcm",
  "argon2",
  "base64 0.22.1",
  "dirs 6.0.0",
  "keyring",
- "keyring-core 0.7.4",
+ "keyring-core",
  "log",
  "lru",
  "rand 0.10.1",
@@ -5349,9 +5338,7 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a4b885994f4a8c308957f4dd45ea1b63fee5f460dfd325ba9112240fee69aa"
+version = "0.1.9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8643,7 +8630,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5fd986f648459dd29aa252ed3a5ad11a60c0b1251bf81625fb03a86c69d274e"
 dependencies = [
  "byteorder",
- "keyring-core 1.0.0",
+ "keyring-core",
  "regex",
  "windows-sys 0.61.2",
  "zeroize",
@@ -9254,7 +9241,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ccede190ba363386a24e8021c7f3848393976609ec9f5d1f8c6c09ef37075b4"
 dependencies = [
- "keyring-core 1.0.0",
+ "keyring-core",
  "secret-service",
  "zbus",
 ]

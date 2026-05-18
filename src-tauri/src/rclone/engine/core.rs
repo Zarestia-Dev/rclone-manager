@@ -1,12 +1,9 @@
 use crate::utils::types::state::RcApiEngine;
 use std::fmt;
 
-/// Default port for the rclone API
 pub const DEFAULT_API_PORT: u16 = 51900;
-
 pub const DEFAULT_OAUTH_PORT: u16 = 51901;
 
-/// Why the engine cannot start
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PauseReason {
     Password,
@@ -14,8 +11,8 @@ pub enum PauseReason {
     Updating,
 }
 
-impl std::fmt::Display for PauseReason {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+impl fmt::Display for PauseReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PauseReason::Password => write!(f, "Password Error"),
             PauseReason::Path => write!(f, "Path Error"),
@@ -39,10 +36,6 @@ impl Default for RcApiEngine {
 }
 
 impl RcApiEngine {
-    // -------------------------------------------------------------------------
-    // State setters
-    // -------------------------------------------------------------------------
-
     pub fn set_updating(&mut self, updating: bool) {
         self.updating = updating;
     }

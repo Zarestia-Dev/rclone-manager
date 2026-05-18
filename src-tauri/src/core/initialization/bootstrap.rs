@@ -75,5 +75,8 @@ async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
         engine.init(app_handle).await;
     }
 
+    drop(engine);
+    crate::rclone::engine::poller::start_system_poller(app_handle.clone());
+
     Ok(())
 }

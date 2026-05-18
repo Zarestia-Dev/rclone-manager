@@ -14,7 +14,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
     try {
-      return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
+      return await this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
     } catch (error) {
       console.error('Error getting filesystem info:', error);
       throw error;

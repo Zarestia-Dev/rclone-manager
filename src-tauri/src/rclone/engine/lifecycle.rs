@@ -3,6 +3,17 @@ use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::backend::BackendManager;
+use crate::rclone::engine::poller::stop_system_poller;
+use crate::utils::{
+    app::notification::{EngineStage, NotificationEvent, notify},
+    types::{
+        events::{
+            ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
+            RCLONE_ENGINE_PATH_ERROR,
+        },
+        state::{EngineState, RcApiEngine, RcloneState},
+    },
+};
 
 pub fn mark_startup_complete(app: &AppHandle) {
     let state = app.state::<RcloneState>();
@@ -11,18 +22,6 @@ pub fn mark_startup_complete(app: &AppHandle) {
 }
 
 const API_READY_TIMEOUT_SECS: u64 = 10;
-
-use crate::rclone::engine::poller::{start_system_poller, stop_system_poller};
-use crate::utils::{
-    app::notification::{EngineStage, NotificationEvent, notify},
-    types::{
-        events::{
-            ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
-            RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
-        },
-        state::{EngineState, RcApiEngine, RcloneState},
-    },
-};
 
 impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
@@ -34,7 +33,7 @@ impl RcApiEngine {
     }
 
     pub async fn shutdown(&mut self, app: &AppHandle) {
-        info!("Shutting down Rclone engine...");
+        info!("Shutting down Rclone engine");
         self.should_exit = true;
 
         if let Err(e) = self.kill_process(app).await {
@@ -47,25 +46,18 @@ impl RcApiEngine {
     }
 }
 
-// -------------------------------------------------------------------------
-// EngineState Helpers (Thread-safe Accessors)
-// -------------------------------------------------------------------------
-
-/// Sets the updating flag on the engine.
 pub async fn set_engine_updating(app: &AppHandle, updating: bool) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.set_updating(updating);
 }
 
-/// Shuts down the engine cleanly by locking its state first.
 pub async fn shutdown_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.shutdown(app).await;
 }
 
-/// Resumes the engine after an update by resetting the updating and exit flags.
 pub async fn resume_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
@@ -73,30 +65,26 @@ pub async fn resume_engine(app: &AppHandle) {
     engine.set_updating(false);
 }
 
-/// Clears path and password errors from the engine state.
 pub async fn clear_engine_errors(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.clear_errors();
 }
 
-/// Returns the current runtime status of the engine: (running, updating, should_exit).
 pub async fn get_engine_status(app: &AppHandle) -> (bool, bool, bool) {
     let state = app.state::<EngineState>();
     let engine = state.lock().await;
     (engine.running, engine.updating, engine.should_exit)
 }
 
-/// Starts the engine if it's not already running or in an error state.
 pub async fn start_engine_if_not_running(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
-    if !engine.running && !engine.path_error && !engine.password_error {
+    if !engine.running {
         start(&mut engine, app).await;
     }
 }
 
-/// Marks the engine as dead (e.g., after a crash is detected by the poller).
 pub async fn mark_engine_dead(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
@@ -126,7 +114,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     if engine.process.is_some() {
-        debug!("Rclone process already exists, stopping first...");
+        debug!("Rclone process already exists, stopping first");
         if let Err(e) = engine.kill_process(app).await {
             error!("Failed to stop Rclone process: {e}");
         }
@@ -147,14 +135,9 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = true;
                 info!("Rclone API started on port {}", engine.current_api_port);
 
-                if let Err(e) = app.emit(RCLONE_ENGINE_READY, ()) {
-                    error!("Failed to emit ready event: {e}");
-                }
-
-                start_system_poller(app.clone());
                 super::post_start::trigger_post_start_setup(app.clone());
             } else {
-                error!("Failed to start Rclone API within timeout.");
+                error!("Failed to start Rclone API within timeout");
                 engine.running = false;
                 engine.process = None;
                 let _ = engine.kill_process(app).await;
@@ -184,8 +167,6 @@ fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     }
 }
 
-/// Restart engine due to a configuration change (rclone path, API port, flags, etc.).
-/// Fires-and-forgets an async task; results are communicated via events.
 pub fn restart_for_config_change(
     app: &AppHandle,
     change_type: &str,
