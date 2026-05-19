@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Dry run toggle on Operation Control Panel for sync, bisync, copy and move operations.
+- Added new component to map to cli rclone commands to application values.
 
 ### Changed
 - Allow users the show hidden window via application shortcut. Not only via tray.

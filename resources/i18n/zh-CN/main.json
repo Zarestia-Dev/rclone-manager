@@ -779,7 +779,9 @@
         "partial": "部分完成",
         "completed": "已完成",
         "transferError": "传输错误",
-        "transferCompleted": "传输完成"
+        "transferCompleted": "传输完成",
+        "preparing": "正在准备",
+        "finalizing": "正在完成..."
       },
       "empty": {
         "noActive": "无正在进行的传输",
@@ -1794,9 +1796,8 @@
     },
     "about": {
       "title": "关于",
-      "keepClicking": "继续点击...",
+      "aboutApp": "关于应用",
       "details": "详情",
-      "updates": "更新",
       "aboutRclone": "关于 Rclone",
       "credits": "致谢",
       "legal": "法律信息",
@@ -1876,7 +1877,6 @@
       "systemInfo": "系统信息",
       "mode": "模式",
       "platform": "平台",
-      "folders": "文件夹",
       "logsFolder": "日志文件夹",
       "configFolder": "配置文件夹",
       "cacheFolder": "缓存文件夹",

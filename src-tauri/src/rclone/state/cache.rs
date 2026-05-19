@@ -169,12 +169,14 @@ impl RemoteCache {
     }
 
     pub async fn refresh_mounted_remotes(&self, app: AppHandle) -> Result<(), String> {
-        match get_mounted_remotes(app).await {
+        match get_mounted_remotes(app.clone()).await {
             Ok(remotes) => {
                 let mut mounted = self.mounted.write().await;
                 let existing = mounted.clone();
                 *mounted = Self::merge_mount_profiles(remotes, &existing);
                 debug!("🔄 Updated mounted remotes cache");
+                drop(mounted);
+                let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
                 Ok(())
             }
             Err(e) => {
@@ -187,7 +189,7 @@ impl RemoteCache {
     }
 
     pub async fn refresh_serves(&self, app: AppHandle) -> Result<(), String> {
-        match list_serves(app).await {
+        match list_serves(app.clone()).await {
             Ok(serves) => {
                 let mut cache_serves = self.serves.write().await;
                 let existing = cache_serves.clone();
@@ -196,6 +198,8 @@ impl RemoteCache {
                     "🔄 Updated serves cache: {} active serves",
                     cache_serves.len()
                 );
+                drop(cache_serves);
+                let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
                 Ok(())
             }
             Err(e) => {

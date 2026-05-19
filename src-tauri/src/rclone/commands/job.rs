@@ -671,7 +671,9 @@ pub async fn handle_job_completion(
             format!("{} Job {jobid} completed successfully", metadata.job_type),
             Some(json!({"jobid": jobid, "status": job_status})),
         );
-        notify(app, metadata.completed_event(backend_name.clone()));
+        if metadata.job_type != JobType::Mount {
+            notify(app, metadata.completed_event(backend_name.clone()));
+        }
     }
 
     Ok(job_status.get("output").cloned().unwrap_or(json!({})))

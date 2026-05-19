@@ -197,6 +197,17 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
 
+    let backend_name = backend_manager.get_active_name().await;
+    notify(
+        &app,
+        NotificationEvent::Mount(MountStage::Succeeded {
+            backend: backend_name,
+            remote: params.remote_name.clone(),
+            profile: params.profile.clone(),
+            mount_point: params.mount_point.clone(),
+        }),
+    );
+
     Ok(())
 }
 

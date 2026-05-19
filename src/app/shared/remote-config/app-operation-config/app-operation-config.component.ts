@@ -7,6 +7,7 @@ import {
   effect,
   DestroyRef,
   WritableSignal,
+  signal,
 } from '@angular/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { startWith, switchMap } from 'rxjs';
@@ -107,16 +108,20 @@ export class OperationConfigComponent {
     )
   );
 
+  private readonly pathStructureVersion = signal(0);
+
   readonly cronExpression = computed(() => this.formValue()?.cronExpression);
   readonly isCronEnabled = computed(() => !!this.formValue()?.cronEnabled);
 
   // Path Item Lists (Computed from Form State)
   readonly sourceItems = computed(() => {
-    this.formValue(); // Track changes
+    this.pathStructureVersion();
+    this.opFormGroup();
     return this.getPathItems('source');
   });
   readonly destItem = computed(() => {
-    this.formValue(); // Track changes
+    this.pathStructureVersion();
+    this.opFormGroup();
     return this.getPathItems('dest')[0] || null;
   });
 
@@ -145,17 +150,16 @@ export class OperationConfigComponent {
     ['copy', 'move'].includes(this.operationType() as string)
   );
 
-  readonly isSourcePickerDisabled = computed(
-    () =>
-      this.isNewRemote() &&
-      this.sourceItems().some(i => i.type === 'currentRemote' && !i.pathControl.value)
-  );
-  readonly isDestPickerDisabled = computed(
-    () =>
-      this.isNewRemote() &&
-      this.destItem()?.type === 'currentRemote' &&
-      !this.destItem()?.pathControl.value
-  );
+  readonly isSourcePickerDisabled = computed(() => {
+    if (!this.isNewRemote()) return false;
+    this.formValue();
+    return this.sourceItems().some(i => i.type === 'currentRemote' && !i.pathControl.value);
+  });
+  readonly isDestPickerDisabled = computed(() => {
+    if (!this.isNewRemote()) return false;
+    this.formValue();
+    return this.destItem()?.type === 'currentRemote' && !this.destItem()?.pathControl.value;
+  });
 
   constructor() {
     effect(() => {
@@ -211,6 +215,7 @@ export class OperationConfigComponent {
     }
 
     this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
+    this.pathStructureVersion.update(v => v + 1);
   }
 
   addPath(group: PathGroup, initial?: { type: string; path: string; remote?: string }): void {
@@ -225,6 +230,7 @@ export class OperationConfigComponent {
         remote: new FormControl(initial?.remote || ''),
       })
     );
+    this.pathStructureVersion.update(v => v + 1);
   }
 
   removePath(group: PathGroup, index: number): void {
@@ -234,6 +240,7 @@ export class OperationConfigComponent {
     array.removeAt(index);
     this.pathSelectionService.unregisterField(`${group}-${index}`);
     this.pathStates.delete(`${group}-${index}`);
+    this.pathStructureVersion.update(v => v + 1);
   }
 
   // ===================================

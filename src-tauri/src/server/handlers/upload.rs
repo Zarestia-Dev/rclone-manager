@@ -100,7 +100,6 @@ pub async fn stream_upload_handler(
                             cleanup_dir: Some(bdir),
                             existing_jobid: job_id,
                             no_cache: false,
-                            dry_run: false,
                         },
                     )
                     .await
@@ -119,7 +118,6 @@ pub async fn stream_upload_handler(
                         cleanup_dir: Some(temp_path),
                         existing_jobid: job_id,
                         no_cache: false,
-                        dry_run: false,
                     },
                 )
                 .await

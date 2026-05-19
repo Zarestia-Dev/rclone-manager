@@ -765,7 +765,9 @@
         "partial": "Kısmi",
         "completed": "Tamamlandı",
         "transferError": "Transfer hatası",
-        "transferCompleted": "Transfer tamamlandı"
+        "transferCompleted": "Transfer tamamlandı",
+        "preparing": "Hazırlanıyor",
+        "finalizing": "Tamamlanıyor..."
       },
       "empty": {
         "noActive": "Aktif transfer yok",
@@ -1780,9 +1782,8 @@
     },
     "about": {
       "title": "Hakkında",
-      "keepClicking": "Tıklamaya devam et...",
+      "aboutApp": "Uygulama Hakkında",
       "details": "Detaylar",
-      "updates": "Güncellemeler",
       "aboutRclone": "Rclone Hakkında",
       "credits": "Teşekkürler",
       "legal": "Yasal Bilgiler",
@@ -1862,7 +1863,6 @@
       "systemInfo": "Sistem Bilgisi",
       "mode": "Mod",
       "platform": "Platform",
-      "folders": "Klasörler",
       "logsFolder": "Günlük Klasörü",
       "configFolder": "Yapılandırma Klasörü",
       "cacheFolder": "Önbellek Klasörü",
