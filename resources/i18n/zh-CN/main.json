@@ -165,9 +165,9 @@
       "title": "磁盘使用情况",
       "notSupported": "不支持",
       "unknown": "未知",
-      "total": "总计：{{value}}",
-      "used": "已用：{{value}}",
-      "free": "可用：{{value}}",
+      "total": "总计：",
+      "used": "已用：",
+      "free": "可用：",
       "loading": "加载中...",
       "errorLoading": "加载磁盘使用情况时出错"
     },

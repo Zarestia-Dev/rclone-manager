@@ -170,9 +170,9 @@
       "title": "Disk Usage",
       "notSupported": "Not Supported",
       "unknown": "Unknown",
-      "total": "Total: {{value}}",
-      "used": "Used: {{value}}",
-      "free": "Free: {{value}}",
+      "total": "Total:",
+      "used": "Used:",
+      "free": "Free:",
       "loading": "Loading...",
       "errorLoading": "Problem loading disk usage"
     },

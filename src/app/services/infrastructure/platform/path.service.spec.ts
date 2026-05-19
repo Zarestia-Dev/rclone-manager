@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { PathService } from './path.service';
+import { FileBrowserItem } from '@app/types';
 
 describe('PathService', () => {
   let service: PathService;
@@ -127,6 +128,47 @@ describe('PathService', () => {
 
     it('should parse otherRemote', () => {
       expect(service.parsePathType('otherRemote:myremote')).toBe('otherRemote');
+    });
+  });
+
+  describe('resolvePathGroup', () => {
+    it('should resolve local items correctly by joining root and path', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Documents/test' } as any,
+        meta: { remote: '/home/hakan', isLocal: true },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'local',
+        path: '/home/hakan/Documents/test',
+        remote: '',
+      });
+    });
+
+    it('should resolve current remote items correctly', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Photos/album' } as any,
+        meta: { remote: 'myremote:', isLocal: false },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'currentRemote',
+        path: 'Photos/album',
+        remote: 'myremote',
+      });
+    });
+
+    it('should resolve other remote items correctly', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Photos/album' } as any,
+        meta: { remote: 'gdrive:', isLocal: false },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'otherRemote:gdrive',
+        path: 'Photos/album',
+        remote: 'gdrive',
+      });
     });
   });
 });

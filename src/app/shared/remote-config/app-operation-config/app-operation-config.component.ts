@@ -312,23 +312,16 @@ export class OperationConfigComponent {
   }
 
   private getPathData(item: FileBrowserItem, group: PathGroup) {
-    const remote = this.pathService.normalizeRemoteName(item.meta.remote || '');
-    const isLocal = item.meta.isLocal;
-    const path = item.entry.Path;
+    const data = this.pathService.resolvePathGroup(item, this.currentRemoteName());
 
-    if (this.isMount() && group === 'dest' && !isLocal) {
+    if (this.isMount() && group === 'dest' && data.type !== 'local') {
       this.notificationService.showError(
         this.translate.instant('wizards.appOperation.mountDestMustBeLocal')
       );
       return null;
     }
 
-    const type = isLocal
-      ? 'local'
-      : remote === this.pathService.normalizeRemoteName(this.currentRemoteName())
-        ? 'currentRemote'
-        : `otherRemote:${remote}`;
-    return { path, type, remote: isLocal ? '' : remote };
+    return data;
   }
 
   // ===================================

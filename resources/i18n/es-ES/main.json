@@ -164,9 +164,9 @@
       "title": "Uso del disco",
       "notSupported": "No compatible",
       "unknown": "Desconocido",
-      "total": "Total: {{value}}",
-      "used": "Usado: {{value}}",
-      "free": "Libre: {{value}}",
+      "total": "Total:",
+      "used": "Usado:",
+      "free": "Libre:",
       "loading": "Cargando..."
     },
     "status": {

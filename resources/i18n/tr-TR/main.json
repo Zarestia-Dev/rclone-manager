@@ -165,9 +165,9 @@
       "title": "Disk Kullanımı",
       "notSupported": "Desteklenmiyor",
       "unknown": "Bilinmiyor",
-      "total": "Toplam: {{value}}",
-      "used": "Kullanılan: {{value}}",
-      "free": "Boş: {{value}}",
+      "total": "Toplam:",
+      "used": "Kullanılan:",
+      "free": "Boş:",
       "loading": "Yükleniyor...",
       "errorLoading": "Disk kullanımı yüklenirken sorun oluştu"
     },

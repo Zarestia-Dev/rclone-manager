@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ExplorerRoot } from '@app/types';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
 
 export interface PathSegment {
   name: string;
@@ -335,5 +335,26 @@ export class PathService {
     }
 
     return { type: 'local', path: fs, remote: '' };
+  }
+
+  resolvePathGroup(item: FileBrowserItem, currentRemoteName: string): PathGroup {
+    const { isLocal, remote } = item.meta;
+    const entryPath = item.entry.Path;
+
+    if (isLocal) {
+      // For local items, reconstruct the full absolute path.
+      // meta.remote is the drive root (e.g. "/" or "C:\").
+      // entry.Path is the remainder under that root.
+      const fullPath = this.joinPath(remote, entryPath);
+      return { type: 'local', path: fullPath, remote: '' };
+    }
+
+    const normalizedRemote = this.normalizeRemoteName(remote);
+    const normalizedCurrent = this.normalizeRemoteName(currentRemoteName);
+
+    const type: PathGroupType =
+      normalizedRemote === normalizedCurrent ? 'currentRemote' : `otherRemote:${normalizedRemote}`;
+
+    return { type, path: entryPath, remote: normalizedRemote };
   }
 }

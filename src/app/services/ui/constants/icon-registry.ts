@@ -84,6 +84,7 @@ export const BASE_ICONS: Record<string, string> = {
 
   // ------------------- Device Icons -------------------
   'hard-drive': 'assets/icons/devices/hard-drive.svg',
+  disk: 'assets/icons/devices/disk.svg',
   server: 'assets/icons/devices/server.svg',
   cloud: 'assets/icons/devices/cloud.svg',
   tv: 'assets/icons/devices/tv.svg',

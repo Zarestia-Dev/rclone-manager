@@ -664,8 +664,9 @@ $dark-theme: (
 
   mat-card-header {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     padding: var(--space-md);
+    justify-content: space-between;
 
     mat-card-title {
       display: flex;
