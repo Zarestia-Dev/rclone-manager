@@ -779,7 +779,9 @@
         "partial": "Partial",
         "completed": "Completed",
         "transferError": "Transfer error",
-        "transferCompleted": "Transfer completed"
+        "transferCompleted": "Transfer completed",
+        "preparing": "Preparing",
+        "finalizing": "Finalizing..."
       },
       "empty": {
         "noActive": "No active transfers",
@@ -1808,9 +1810,8 @@
     },
     "about": {
       "title": "About",
-      "keepClicking": "Keep clicking...",
+      "aboutApp": "About App",
       "details": "Details",
-      "updates": "Updates",
       "aboutRclone": "About Rclone",
       "credits": "Credits",
       "legal": "Legal",
@@ -1888,7 +1889,6 @@
       "systemInfo": "System Information",
       "mode": "Mode",
       "platform": "Platform",
-      "folders": "Folders",
       "logsFolder": "Logs Folder",
       "configFolder": "Config Folder",
       "cacheFolder": "Cache Folder",
