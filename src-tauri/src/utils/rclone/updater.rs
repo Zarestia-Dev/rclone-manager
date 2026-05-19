@@ -176,14 +176,13 @@ pub async fn perform_check_rclone_update(
         ..Default::default()
     };
 
-    if update_available {
+    {
         let state = app_handle.state::<RcloneUpdaterState>();
         let mut d = state.data.lock();
         d.state = UpdateState::Idle;
-        d.pending_update = Some(metadata.clone());
-    } else {
-        let state = app_handle.state::<RcloneUpdaterState>();
-        state.data.lock().state = UpdateState::Idle;
+        if update_available {
+            d.pending_update = Some(metadata.clone());
+        }
     }
 
     let status = if metadata.update_available {
@@ -283,10 +282,15 @@ pub async fn update_rclone(
     };
 
     let update_check = match cached_update {
-        Some(metadata) if metadata.update_available => UpdateInfo {
-            metadata,
-            status: UpdateState::Available,
-        },
+        Some(metadata)
+            if metadata.update_available
+                && metadata.channel.as_deref() == Some(&channel_enum.to_string()) =>
+        {
+            UpdateInfo {
+                metadata,
+                status: UpdateState::Available,
+            }
+        }
         _ => perform_check_rclone_update(app_handle.clone(), channel).await?,
     };
 
@@ -350,9 +354,7 @@ pub async fn update_rclone(
         return Err(Error::BinaryNotFound);
     }
 
-    set_engine_updating(&app_handle, true).await;
     if let Err(e) = app_handle.emit(RCLONE_ENGINE_UPDATING, ()) {
-        set_engine_updating(&app_handle, false).await;
         return Err(Error::Backend(format!("Failed to emit update event: {e}")));
     }
 
@@ -366,7 +368,6 @@ pub async fn update_rclone(
     let target_path = match resolve_update_target_path(&current_path, &app_handle) {
         Ok(path) => path,
         Err(e) => {
-            set_engine_updating(&app_handle, false).await;
             return Err(e);
         }
     };
@@ -398,7 +399,6 @@ pub async fn update_rclone(
             }
         }
         Err(e) => {
-            set_engine_updating(&app_handle, false).await;
             notify(
                 &app_handle,
                 NotificationEvent::RcloneUpdate(UpdateStage::Failed {
@@ -425,7 +425,15 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
             )));
         }
     }
-    let pending_version = activate_pending_rclone_update(&app_handle).await?;
+    set_engine_updating(&app_handle, true).await;
+
+    let pending_version = match activate_pending_rclone_update(&app_handle, true).await {
+        Ok(v) => v,
+        Err(e) => {
+            set_engine_updating(&app_handle, false).await;
+            return Err(e);
+        }
+    };
 
     notify(
         &app_handle,
@@ -445,7 +453,10 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
 
 /// Swaps the pending `.new` binary into the active location.
 /// Does NOT restart the engine — returns the activated version string.
-pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<String> {
+pub async fn activate_pending_rclone_update(
+    app_handle: &AppHandle,
+    resume: bool,
+) -> Result<String> {
     debug!("Activating rclone update (native binary swap)");
     let (current_path, new_path) = match find_pending_new_binary(app_handle) {
         Some(paths) => paths,
@@ -474,9 +485,20 @@ pub async fn activate_pending_rclone_update(app_handle: &AppHandle) -> Result<St
         new_path.display(),
         current_path.display()
     );
-    std::fs::rename(&new_path, &current_path).map_err(Error::Io)?;
+    if let Err(e) = std::fs::rename(&new_path, &current_path) {
+        if old_path.exists() {
+            let _ = std::fs::rename(&old_path, &current_path);
+        }
+        return Err(Error::Io(e));
+    }
 
-    resume_engine(app_handle).await;
+    if old_path.exists() {
+        let _ = std::fs::remove_file(&old_path);
+    }
+
+    if resume {
+        resume_engine(app_handle).await;
+    }
 
     {
         let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
@@ -538,13 +560,31 @@ async fn get_binary_version(path: &Path) -> Option<String> {
 async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
     let backend_manager = app_handle.state::<BackendManager>();
     let active_name = backend_manager.get_active_name().await;
-    let runtime = backend_manager.get_runtime_info(&active_name).await?;
 
-    runtime
-        .core_version
-        .as_ref()
-        .map(|version_info| version_info.version.clone())
-        .or(runtime.version)
+    if let Some(v) = backend_manager
+        .get_runtime_info(&active_name)
+        .await
+        .and_then(|runtime| {
+            runtime
+                .core_version
+                .as_ref()
+                .map(|version_info| version_info.version.clone())
+                .or(runtime.version)
+        })
+    {
+        return Some(v);
+    }
+
+    // Fallback for local backend if engine is not running
+    let active = backend_manager.get_active().await;
+    if active.is_local {
+        let current_path = read_rclone_binary(app_handle);
+        if let Some(v) = get_binary_version(&current_path).await {
+            return Some(v);
+        }
+    }
+
+    None
 }
 
 /// Global function to check for and apply any staged rclone updates.
@@ -554,7 +594,7 @@ async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
 pub async fn apply_rclone_update_if_staged(app_handle: &AppHandle) -> Result<bool> {
     if find_pending_new_binary(app_handle).is_some() {
         info!("Applying staged rclone update...");
-        activate_pending_rclone_update(app_handle).await?;
+        activate_pending_rclone_update(app_handle, false).await?;
         return Ok(true);
     }
 

@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fixed the issue on destination paths not load correctly on remote config modal.
 - UI not load the ordered remote list Fixed.
 - Fixed the issue on when tray menu updated in main thread, UI thread was freezed for a long time. Not anymore.
+- Some update issues fixed.
 
 ## [v0.2.5] - 2026-05-16
 
