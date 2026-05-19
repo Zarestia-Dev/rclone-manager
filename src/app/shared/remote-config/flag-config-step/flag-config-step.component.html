@@ -98,7 +98,11 @@
     } @else {
       <div class="dynamic-fields" formGroupName="options">
         @for (binding of dynamicFieldBindings(); track binding.trackKey) {
-          <app-setting-control [option]="binding.field" [formControlName]="binding.controlKey" />
+          <app-setting-control
+            [option]="binding.field"
+            [formControlName]="binding.controlKey"
+            [class.highlighted-field]="highlightedFields().has(binding.controlKey)"
+          />
         }
       </div>
     }

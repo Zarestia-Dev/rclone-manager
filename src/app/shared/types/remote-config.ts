@@ -22,6 +22,7 @@ export const FLAG_TYPES: FlagType[] = [
 export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
+export type SharedProfileType = FlagType | 'runtimeRemote';
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',

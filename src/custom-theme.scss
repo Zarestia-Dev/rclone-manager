@@ -679,16 +679,6 @@ $dark-theme: (
       mat-icon {
         color: var(--primary-color);
       }
-
-      .count {
-        color: var(--dim-color);
-        font-size: var(--font-size-base);
-        font-weight: 400;
-        background: rgba(var(--accent-color-rgb), var(--active-opacity));
-        padding: var(--space-xxs) var(--space-xs);
-        border-radius: var(--badge-radius);
-        box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
-      }
     }
   }
 

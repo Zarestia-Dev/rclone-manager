@@ -130,56 +130,65 @@
     .step-indicator-container {
       flex: 1;
       overflow-y: auto;
+    }
 
-      .step-indicator {
-        padding: var(--space-xs);
+    .step-indicator {
+      padding: var(--space-xs);
 
-        ::ng-deep .mat-mdc-list-item {
-          border-radius: var(--radius-sm);
-          margin-bottom: 4px;
-          max-height: 40px;
-          transition: background-color 0.2s ease;
+      ::ng-deep .mat-mdc-list-item {
+        border-radius: var(--radius-sm);
+        margin-bottom: 4px;
+        max-height: 40px;
+        transition: background-color 0.2s ease;
 
-          &.mdc-list-item--activated {
-            background: var(--selected-bg-color);
-          }
+        &.mdc-list-item--activated {
+          background: var(--selected-bg-color);
+        }
 
-          &.mdc-list-item--disabled {
-            opacity: 0.5;
-            background: transparent !important;
-          }
+        &.mdc-list-item--disabled {
+          opacity: 0.5;
+          background: transparent !important;
+        }
 
-          &.completed:not(.mdc-list-item--activated) {
-            .mat-mdc-list-item-icon {
-              color: var(--primary-color) !important;
-              opacity: 0.6;
-            }
-
-            .mat-mdc-list-item-title {
-              opacity: 0.55;
-            }
-          }
-
-          // ── Icon ─────────────────────────────────────────────────────
+        &.completed:not(.mdc-list-item--activated) {
           .mat-mdc-list-item-icon {
-            font-size: var(--icon-size-sm);
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-            color: var(--dim-color);
-            transition:
-              color 0.2s ease,
-              opacity 0.2s ease;
+            color: var(--primary-color) !important;
+            opacity: 0.6;
           }
 
-          // ── Label ────────────────────────────────────────────────────
           .mat-mdc-list-item-title {
-            font-size: var(--font-size-md);
-            font-weight: 500;
-            transition:
-              color 0.2s ease,
-              opacity 0.2s ease;
+            opacity: 0.55;
           }
         }
+
+        // ── Icon ─────────────────────────────────────────────────────
+        .mat-mdc-list-item-icon {
+          font-size: var(--icon-size-sm);
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
+          color: var(--dim-color);
+          transition:
+            color 0.2s ease,
+            opacity 0.2s ease;
+        }
+
+        // ── Label ────────────────────────────────────────────────────
+        .mat-mdc-list-item-title {
+          font-size: var(--font-size-md);
+          font-weight: 500;
+          transition:
+            color 0.2s ease,
+            opacity 0.2s ease;
+        }
+      }
+    }
+
+    .sidebar-footer {
+      padding: var(--space-xs);
+      border-top: 1px solid var(--border-color);
+
+      .step-indicator {
+        padding: 0 !important;
       }
     }
   }

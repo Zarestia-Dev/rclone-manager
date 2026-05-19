@@ -198,6 +198,23 @@
               }
             </div>
           }
+
+          @if (currentStep() > 1 || editTarget()) {
+            <div class="sidebar-footer">
+              <mat-nav-list class="step-indicator">
+                <button
+                  mat-list-item
+                  [activated]="showCliImport()"
+                  (click)="toggleCliImportVisibility()"
+                  [matTooltip]="'wizards.cliImport.title' | translate"
+                  matTooltipPosition="right"
+                >
+                  <mat-icon matListItemIcon svgIcon="terminal"></mat-icon>
+                  <span matListItemTitle>{{ 'wizards.cliImport.title' | translate }}</span>
+                </button>
+              </mat-nav-list>
+            </div>
+          }
         </aside>
       }
 
@@ -209,6 +226,14 @@
           [placeholder]="'shared.search.placeholder'"
           [ariaLabel]="'shared.search.ariaLabel'"
         ></app-search-container>
+
+        <app-cli-import
+          [visible]="showCliImport()"
+          [flagFields]="allFlagFields()"
+          [remoteType]="remoteTypeSignal()"
+          [existingProfiles]="profileNamesMap()"
+          (apply)="applyImportResult($event)"
+        ></app-cli-import>
 
         @if (oauthHelperUrl(); as oauthUrlValue) {
           <section class="oauth-helper oauth-helper--actions" aria-live="polite">
@@ -388,7 +413,10 @@
                   <mat-label>{{
                     'modals.remoteConfig.advancedProfiles.vfs' | translate
                   }}</mat-label>
-                  <mat-select [formControl]="formControl(configPath + '.vfsProfile')">
+                  <mat-select
+                    [formControl]="formControl(configPath + '.vfsProfile')"
+                    (selectionChange)="selectProfile('vfs', $event.value)"
+                  >
                     @for (opt of profileOptions().vfs; track opt) {
                       <mat-option [value]="opt">{{ opt }}</mat-option>
                     }
@@ -400,7 +428,10 @@
                 <mat-label>{{
                   'modals.remoteConfig.advancedProfiles.filter' | translate
                 }}</mat-label>
-                <mat-select [formControl]="formControl(configPath + '.filterProfile')">
+                <mat-select
+                  [formControl]="formControl(configPath + '.filterProfile')"
+                  (selectionChange)="selectProfile('filter', $event.value)"
+                >
                   @for (opt of profileOptions().filter; track opt) {
                     <mat-option [value]="opt">{{ opt }}</mat-option>
                   }
@@ -411,7 +442,10 @@
                 <mat-label>{{
                   'modals.remoteConfig.advancedProfiles.backend' | translate
                 }}</mat-label>
-                <mat-select [formControl]="formControl(configPath + '.backendProfile')">
+                <mat-select
+                  [formControl]="formControl(configPath + '.backendProfile')"
+                  (selectionChange)="selectProfile('backend', $event.value)"
+                >
                   @for (opt of profileOptions().backend; track opt) {
                     <mat-option [value]="opt">{{ opt }}</mat-option>
                   }
@@ -423,7 +457,10 @@
                   <mat-label>{{
                     'modals.remoteConfig.advancedProfiles.runtimeRemote' | translate
                   }}</mat-label>
-                  <mat-select [formControl]="formControl(configPath + '.runtimeRemoteProfile')">
+                  <mat-select
+                    [formControl]="formControl(configPath + '.runtimeRemoteProfile')"
+                    (selectionChange)="selectProfile('runtimeRemote', $event.value)"
+                  >
                     @for (opt of profileOptions().runtimeRemote; track opt) {
                       <mat-option [value]="opt">{{ opt }}</mat-option>
                     }
@@ -492,6 +529,7 @@
                     [availableServeTypes]="availableServeTypes()"
                     [isLoadingServeFields]="isLoadingServeFields()"
                     [searchQuery]="searchQuery()"
+                    [highlightedFields]="highlightedFieldsForActiveProfiles()"
                     (serveTypeChange)="onServeTypeChange($event)"
                   />
                 </section>

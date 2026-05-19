@@ -41,6 +41,7 @@ import {
   INITIAL_COMMAND_OPTIONS,
 } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
+import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import {
@@ -58,11 +59,13 @@ import {
   NotificationService,
   IconService,
   PathService,
+  ImportResult,
 } from '@app/services';
 import {
   RcConfigOption,
   EditTarget,
   FlagType,
+  SharedProfileType,
   RemoteType,
   RemoteConfigSections,
   InteractiveFlowState,
@@ -113,8 +116,6 @@ type ProfileData = Record<string, unknown>;
 
 type ProfilesMap = Record<string, ProfileData>;
 
-type SharedProfileType = FlagType | 'runtimeRemote';
-
 interface JobProfile {
   autoStart?: boolean;
   source?: string;
@@ -164,6 +165,7 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
     MatDividerModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
+    CliImportComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
@@ -198,7 +200,6 @@ export class RemoteConfigModalComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Static config ─────────────────────────────────────────────────────────────
-  // FLAG_TYPES and LINKED_PROFILE_TYPES are exposed so the template can use them.
 
   readonly FLAG_TYPES = FLAG_TYPES;
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
@@ -263,9 +264,35 @@ export class RemoteConfigModalComponent implements OnInit {
     >
   );
 
+  readonly allFlagFields = computed(
+    () =>
+      ({
+        ...this.dynamicFlagFields(),
+        runtimeRemote: this.dynamicRuntimeRemoteFields(),
+      }) as Record<SharedProfileType, RcConfigOption[]>
+  );
+
   readonly profileState = signal<
     Record<SharedProfileType, { mode: 'view' | 'edit' | 'add'; tempName: string }>
   >(profileRecord(() => ({ mode: 'view' as const, tempName: '' })));
+
+  readonly showCliImport = signal(false);
+  readonly highlightedFields = signal<
+    { controlKey: string; flagType: SharedProfileType; profileName: string }[]
+  >([]);
+
+  readonly highlightedFieldsForActiveProfiles = computed(() => {
+    const activeHighlights = new Set<string>();
+    const selectedProfiles = this.selectedProfileName();
+
+    this.highlightedFields().forEach(h => {
+      if (selectedProfiles[h.flagType] === h.profileName) {
+        activeHighlights.add(h.controlKey);
+      }
+    });
+
+    return activeHighlights;
+  });
 
   readonly profiles = signal<Record<SharedProfileType, ProfilesMap>>(
     profileRecord(() => ({}) as ProfilesMap)
@@ -276,15 +303,23 @@ export class RemoteConfigModalComponent implements OnInit {
   );
 
   readonly profileLists = computed(
-    (): Record<SharedProfileType, { name: string; [key: string]: unknown }[]> => {
-      const p = this.profiles();
-      return Object.fromEntries(
+    (): Record<SharedProfileType, { name: string; [key: string]: unknown }[]> =>
+      Object.fromEntries(
         PROFILE_TYPES.map(t => [
           t,
-          Object.entries(p[t] ?? {}).map(([name, data]) => ({ name, ...(data as object) })),
+          Object.entries(this.profiles()[t] ?? {}).map(([name, data]) => ({
+            name,
+            ...(data as object),
+          })),
         ])
-      ) as Record<SharedProfileType, { name: string; [key: string]: unknown }[]>;
-    }
+      ) as Record<SharedProfileType, { name: string; [key: string]: unknown }[]>
+  );
+
+  readonly profileNamesMap = computed(
+    (): Record<SharedProfileType, string[]> =>
+      Object.fromEntries(
+        PROFILE_TYPES.map(t => [t, Object.keys(this.profiles()[t] ?? {})])
+      ) as Record<SharedProfileType, string[]>
   );
 
   readonly editTarget = signal<EditTarget>(null);
@@ -334,7 +369,7 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   );
 
-  readonly PROFILE_ICONS: Record<string, string> = {
+  readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
     mount: 'hard-drive',
     sync: 'refresh',
     copy: 'copy',
@@ -391,7 +426,7 @@ export class RemoteConfigModalComponent implements OnInit {
       label: 'modals.remoteConfig.editMode.sections.advanced',
       icon: 'wrench',
     },
-  ];
+  ] as const;
 
   readonly visibleSections = computed(() => {
     const step = this.configStep();
@@ -503,7 +538,6 @@ export class RemoteConfigModalComponent implements OnInit {
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelectedNames);
 
-    // Auto-enter "add profile" mode when triggered from app detail.
     if (this.dialogData?.autoAddProfile && this.editTarget()) {
       const type = this.editTarget() as SharedProfileType;
       if (PROFILE_TYPES.includes(type)) {
@@ -904,7 +938,7 @@ export class RemoteConfigModalComponent implements OnInit {
       }
     } else if (this.editTarget()) {
       if (this.dialogData?.remoteType) {
-        this.remoteForm.get('type')?.setValue(this.dialogData.remoteType, { emitEvent: false });
+        this.remoteForm.get('type')?.setValue(this.dialogData.remoteType);
       }
       await this.syncRuntimeRemoteType();
 
@@ -919,7 +953,7 @@ export class RemoteConfigModalComponent implements OnInit {
             this.profiles()['runtimeRemote'] as Record<string, Record<string, unknown>>
           ).find(p => p?.['type'])?.['type'] as string) ||
           '';
-        this.remoteForm.get('type')?.setValue(remoteType, { emitEvent: false });
+        this.remoteForm.get('type')?.setValue(remoteType);
       }
 
       if (profile) await this.populateProfileForm(type, profile);
@@ -959,6 +993,11 @@ export class RemoteConfigModalComponent implements OnInit {
       this.selectedServeType.set(serveType);
       await this.loadServeFields();
 
+      const vfsVal = (config['vfsProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const filterVal = (config['filterProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const backendVal = (config['backendProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const runtimeRemoteVal = (config['runtimeRemoteProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+
       group.patchValue({
         autoStart: config['autoStart'] ?? false,
         source: this.pathService.parseFsString(
@@ -968,10 +1007,10 @@ export class RemoteConfigModalComponent implements OnInit {
           this.existingRemotes()
         ),
         type: serveType,
-        vfsProfile: config['vfsProfile'] ?? DEFAULT_PROFILE_NAME,
-        filterProfile: config['filterProfile'] ?? DEFAULT_PROFILE_NAME,
-        backendProfile: config['backendProfile'] ?? DEFAULT_PROFILE_NAME,
-        runtimeRemoteProfile: config['runtimeRemoteProfile'] ?? DEFAULT_PROFILE_NAME,
+        vfsProfile: vfsVal,
+        filterProfile: filterVal,
+        backendProfile: backendVal,
+        runtimeRemoteProfile: runtimeRemoteVal,
       });
 
       const optionsGroup = group.get('options') as FormGroup;
@@ -982,6 +1021,11 @@ export class RemoteConfigModalComponent implements OnInit {
           }
         });
       }
+
+      await this.selectLinkedProfile('vfs', vfsVal);
+      await this.selectLinkedProfile('filter', filterVal);
+      await this.selectLinkedProfile('backend', backendVal);
+      await this.selectLinkedProfile('runtimeRemote', runtimeRemoteVal);
     } else if (type === 'runtimeRemote') {
       const options = this.getRuntimeRemoteOptions(this.currentRemoteName(), config);
       const runtimeType =
@@ -998,16 +1042,20 @@ export class RemoteConfigModalComponent implements OnInit {
       });
     } else {
       const flagType = type as FlagType;
-      const hasActualData = Object.keys(config).some(k => k !== 'name');
+
+      const vfsVal = (config['vfsProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const filterVal = (config['filterProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const backendVal = (config['backendProfile'] as string) ?? DEFAULT_PROFILE_NAME;
+      const runtimeRemoteVal = (config['runtimeRemoteProfile'] as string) ?? DEFAULT_PROFILE_NAME;
 
       const patchData: Record<string, unknown> = {
         autoStart: config['autoStart'] ?? false,
         cronEnabled: config['cronEnabled'] ?? false,
         cronExpression: config['cronExpression'] ?? null,
-        vfsProfile: config['vfsProfile'] ?? DEFAULT_PROFILE_NAME,
-        filterProfile: config['filterProfile'] ?? DEFAULT_PROFILE_NAME,
-        backendProfile: config['backendProfile'] ?? DEFAULT_PROFILE_NAME,
-        runtimeRemoteProfile: config['runtimeRemoteProfile'] ?? DEFAULT_PROFILE_NAME,
+        vfsProfile: vfsVal,
+        filterProfile: filterVal,
+        backendProfile: backendVal,
+        runtimeRemoteProfile: runtimeRemoteVal,
       };
 
       if (flagType === 'mount' && config['type'] !== undefined) patchData['type'] = config['type'];
@@ -1075,19 +1123,19 @@ export class RemoteConfigModalComponent implements OnInit {
             )
           );
         }
+      } else if (destCtrl instanceof FormGroup && configDests.length === 0) {
+        destCtrl.patchValue({ type: 'local', path: '', remote: '' });
       }
 
       group.patchValue(patchData);
 
       const optionsGroup = group.get('options') as FormGroup;
       if (optionsGroup && this.dynamicFlagFields()[flagType]) {
-        if (hasActualData) {
-          this.dynamicFlagFields()[flagType].forEach(field => {
-            optionsGroup
-              .get(this.getUniqueControlKey(flagType, field))
-              ?.setValue(field.Default ?? null);
-          });
-        }
+        this.dynamicFlagFields()[flagType].forEach(field => {
+          optionsGroup
+            .get(this.getUniqueControlKey(flagType, field))
+            ?.setValue(field.Default ?? null);
+        });
 
         const knownControlKeys = new Set(
           this.dynamicFlagFields()[flagType].map(f => this.getUniqueControlKey(flagType, f))
@@ -1116,6 +1164,13 @@ export class RemoteConfigModalComponent implements OnInit {
             }
           );
         }
+      }
+
+      if (LINKED_PROFILE_TYPES.has(flagType)) {
+        await this.selectLinkedProfile('vfs', vfsVal);
+        await this.selectLinkedProfile('filter', filterVal);
+        await this.selectLinkedProfile('backend', backendVal);
+        await this.selectLinkedProfile('runtimeRemote', runtimeRemoteVal);
       }
     }
 
@@ -1150,6 +1205,9 @@ export class RemoteConfigModalComponent implements OnInit {
     this.saveCurrentStepProfile();
     this.currentStep.set(step);
     this.scrollToTop();
+    if (step === 1 && !this.editTarget()) {
+      this.showCliImport.set(false);
+    }
   }
 
   isStepDisabled(step: number): boolean {
@@ -1214,8 +1272,6 @@ export class RemoteConfigModalComponent implements OnInit {
 
   onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
     if (this.isPopulatingForm()) return;
-    // In edit mode track every field so existing values aren't silently dropped on save.
-    // In create mode track only actual user changes.
     if (isChanged || this.editTarget() === 'remote') {
       this.changedRemoteFields.add(fieldName);
     } else {
@@ -1345,31 +1401,28 @@ export class RemoteConfigModalComponent implements OnInit {
   readonly isSaveDisabled = computed(() => {
     if (this.isAuthInProgress()) return true;
 
-    if (!this.editTarget()) {
+    const target = this.editTarget();
+
+    if (!target) {
       return this.remoteFormStatus() === 'INVALID' || this.remoteConfigFormStatus() === 'INVALID';
     }
 
-    if (this.editTarget() === 'remote') {
+    if (target === 'remote') {
       return this.remoteFormStatus() === 'INVALID';
     }
 
-    const target = this.editTarget() as SharedProfileType;
-    const group = this.remoteConfigForm.get(`${target}Config`);
-    return group?.invalid ?? false;
+    return this.remoteConfigForm.get(`${target}Config`)?.invalid ?? false;
   });
 
-  readonly saveButtonLabel = computed(() => {
-    if (this.editTarget() === 'remote') return 'modals.remoteConfig.buttons.save';
-    if (this.editTarget()) return 'modals.remoteConfig.buttons.save';
-    return 'modals.remoteConfig.buttons.create';
-  });
+  readonly saveButtonLabel = computed(() =>
+    this.editTarget() ? 'modals.remoteConfig.buttons.save' : 'modals.remoteConfig.buttons.create'
+  );
 
   private buildUpdateConfig(): Record<string, unknown> {
     const target = this.editTarget() as SharedProfileType;
     if (!target) return {};
 
     this.saveCurrentProfile(target);
-
     this.dirtyProfileTypes.add(target);
 
     const updatedConfig: Record<string, unknown> = {};
@@ -1554,13 +1607,240 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
+  toggleCliImportVisibility(): void {
+    if (this.currentStep() === 1 && !this.editTarget()) {
+      return;
+    }
+    this.showCliImport.update(v => !v);
+  }
+
+  highlightField(key: string, flagType: SharedProfileType, profileName: string): void {
+    this.highlightedFields.update(list => {
+      if (
+        list.some(
+          h => h.controlKey === key && h.flagType === flagType && h.profileName === profileName
+        )
+      ) {
+        return list;
+      }
+      return [...list, { controlKey: key, flagType, profileName }];
+    });
+  }
+
+  async applyImportResult(event: {
+    result: ImportResult;
+    profileName: string;
+    isNew: boolean;
+  }): Promise<void> {
+    const { result, profileName, isNew } = event;
+    const t = (result.verb || this.editTarget() || 'sync') as SharedProfileType;
+
+    if (isNew) {
+      this.profiles.update(p => ({
+        ...p,
+        [t]: { ...p[t], [profileName]: {} },
+      }));
+      this.selectedProfileName.update(s => ({ ...s, [t]: profileName }));
+      this.setProfileMode(t, 'view');
+    } else {
+      this.selectProfile(t, profileName);
+    }
+
+    if (this.editTarget()) {
+      if (this.editTarget() !== t) {
+        this.editTarget.set(t);
+      }
+    } else {
+      const stepIdx = this.stepConfigs().findIndex(s => s.type === t);
+      if (stepIdx !== -1) {
+        this.goToStep(stepIdx + 1);
+      }
+    }
+
+    const group = this.remoteConfigForm.get(`${t}Config`) as FormGroup;
+    if (!group) return;
+
+    if (t === 'serve' && result.serveSubtype) {
+      await this.onServeTypeChange(result.serveSubtype);
+    }
+
+    if (t === 'mount' && result.mountSubtype) {
+      group.get('type')?.setValue(result.mountSubtype);
+    }
+
+    if (result.sourcePath) {
+      const sourceCtrl = group.get('source');
+      const parsedSource = this.pathService.parseFsString(
+        result.sourcePath,
+        'currentRemote',
+        this.currentRemoteName(),
+        this.existingRemotes()
+      );
+
+      if (sourceCtrl instanceof FormArray) {
+        sourceCtrl.clear();
+        sourceCtrl.push(this.fb.group(parsedSource));
+      } else if (sourceCtrl instanceof FormGroup) {
+        sourceCtrl.patchValue(parsedSource);
+      }
+    }
+
+    if (result.destPath) {
+      const destCtrl = group.get('dest');
+      const parsedDest = this.pathService.parseFsString(
+        result.destPath,
+        'local',
+        this.currentRemoteName(),
+        this.existingRemotes()
+      );
+
+      if (destCtrl instanceof FormGroup) {
+        destCtrl.patchValue(parsedDest);
+      }
+    }
+
+    const processedLinkedTypes = new Set<string>();
+    for (const cls of result.classified) {
+      if (cls.status === 'mapped' && cls.fieldName) {
+        const targetFlagType = (cls.flagType || t) as SharedProfileType;
+        if (targetFlagType !== t && !processedLinkedTypes.has(targetFlagType)) {
+          processedLinkedTypes.add(targetFlagType);
+          const profileCtrl = group.get(`${targetFlagType}Profile`);
+          if (profileCtrl) {
+            const currentProfileVal = profileCtrl.value || DEFAULT_PROFILE_NAME;
+            if (currentProfileVal === DEFAULT_PROFILE_NAME) {
+              const targetProfiles = this.profiles()[targetFlagType] || {};
+              if (!targetProfiles[profileName]) {
+                const defaultData = targetProfiles[DEFAULT_PROFILE_NAME] || {};
+                this.profiles.update(p => ({
+                  ...p,
+                  [targetFlagType]: {
+                    ...p[targetFlagType],
+                    [profileName]: JSON.parse(JSON.stringify(defaultData)),
+                  },
+                }));
+              }
+              profileCtrl.setValue(profileName);
+              await this.selectLinkedProfile(targetFlagType, profileName);
+            }
+          }
+        }
+      }
+    }
+
+    const processedKeys = new Set<string>();
+
+    result.classified.forEach(cls => {
+      if (cls.status === 'mapped' && cls.fieldName) {
+        const targetFlagType = (cls.flagType || t) as SharedProfileType;
+        const targetGroup = this.remoteConfigForm.get(`${targetFlagType}Config`) as FormGroup;
+        const targetOptionsGroup =
+          targetFlagType === 'runtimeRemote'
+            ? targetGroup
+            : (targetGroup?.get('options') as FormGroup);
+
+        if (targetOptionsGroup) {
+          const fields =
+            targetFlagType === 'runtimeRemote'
+              ? this.dynamicRuntimeRemoteFields()
+              : this.dynamicFlagFields()[targetFlagType as FlagType] || [];
+
+          const matchedField = fields.find(
+            f =>
+              (f.FieldName && f.FieldName.toLowerCase() === cls.fieldName!.toLowerCase()) ||
+              (f.Name && f.Name.toLowerCase() === cls.fieldName!.toLowerCase())
+          );
+
+          if (matchedField) {
+            const uniqueKey =
+              targetFlagType === 'runtimeRemote'
+                ? matchedField.Name
+                : this.getUniqueControlKey(targetFlagType as FlagType, matchedField);
+
+            const control = targetOptionsGroup.get(uniqueKey);
+            if (control) {
+              const isArrayType = [
+                'stringArray',
+                'CommaSepList',
+                'SpaceSepList',
+                'Bits',
+                'Encoding',
+                'DumpFlags',
+              ].includes(matchedField.Type);
+
+              if (isArrayType) {
+                let newArray: unknown[] = [];
+                if (processedKeys.has(uniqueKey)) {
+                  const currentVal = control.value;
+                  if (Array.isArray(currentVal)) {
+                    newArray = [...currentVal];
+                  } else if (typeof currentVal === 'string' && currentVal) {
+                    const delimiter = matchedField.Type === 'SpaceSepList' ? /\s+/ : ',';
+                    newArray = currentVal
+                      .split(delimiter)
+                      .map(v => v.trim())
+                      .filter(Boolean);
+                  }
+                }
+
+                const coerced = cls.coercedValue;
+                if (Array.isArray(coerced)) {
+                  coerced.forEach(v => {
+                    if (!newArray.includes(v)) newArray.push(v);
+                  });
+                } else if (coerced != null && coerced !== '') {
+                  if (!newArray.includes(coerced)) newArray.push(coerced);
+                }
+
+                control.setValue(newArray);
+              } else {
+                control.setValue(cls.coercedValue);
+              }
+
+              control.markAsDirty();
+              control.markAsTouched();
+              processedKeys.add(uniqueKey);
+
+              const isLinkedType = ['vfs', 'filter', 'backend', 'runtimeRemote'].includes(
+                targetFlagType
+              );
+              const targetProfileName = isLinkedType
+                ? group.get(`${targetFlagType}Profile`)?.value || DEFAULT_PROFILE_NAME
+                : profileName;
+              this.highlightField(uniqueKey, targetFlagType, targetProfileName);
+            }
+          }
+        }
+      }
+    });
+
+    processedLinkedTypes.forEach(flagType => {
+      this.saveCurrentProfile(flagType as SharedProfileType);
+      this.dirtyProfileTypes.add(flagType as SharedProfileType);
+    });
+    this.saveCurrentProfile(t);
+    this.dirtyProfileTypes.add(t);
+
+    this.showCliImport.set(false);
+  }
+
+  // ── Profile selection ─────────────────────────────────────────────────────────
+
   selectProfile(type: EditTarget, name: string): void {
     if (!type) return;
-    const t = type as SharedProfileType;
+    void this.doSelectProfile(type as SharedProfileType, name);
+  }
+
+  private async selectLinkedProfile(type: SharedProfileType, name: string): Promise<void> {
+    if (!type) return;
+    await this.doSelectProfile(type, name);
+  }
+
+  private async doSelectProfile(t: SharedProfileType, name: string): Promise<void> {
     if (!this.profiles()[t]?.[name]) return;
     this.saveCurrentProfile(t);
     this.selectedProfileName.update(prev => ({ ...prev, [t]: name }));
-    void this.populateProfileForm(t, this.profiles()[t][name] as Record<string, unknown>);
+    await this.populateProfileForm(t, this.profiles()[t][name] as Record<string, unknown>);
   }
 
   saveCurrentProfile(type: EditTarget): void {
@@ -1583,17 +1863,20 @@ export class RemoteConfigModalComponent implements OnInit {
     }));
   }
 
+  // ── Navigation ────────────────────────────────────────────────────────────────
+
+  private saveCurrentAndMarkDirty(target: NonNullable<EditTarget>): void {
+    if (target !== 'remote') {
+      this.saveCurrentProfile(target as SharedProfileType);
+      this.dirtyProfileTypes.add(target as SharedProfileType);
+    }
+  }
+
   navigateToShared(type: EditTarget): void {
     if (!type) return;
     const current = this.editTarget();
-
-    if (current && current !== 'remote') {
-      this.saveCurrentProfile(current as SharedProfileType);
-      this.dirtyProfileTypes.add(current as SharedProfileType);
-    }
-    if (current) {
-      this.editStack.update(s => [...s, current as NonNullable<EditTarget>]);
-    }
+    if (current) this.saveCurrentAndMarkDirty(current);
+    if (current) this.editStack.update(s => [...s, current as NonNullable<EditTarget>]);
 
     this.editTarget.set(type);
     const idx = this.stepConfigs().findIndex(s => s.type === type);
@@ -1605,11 +1888,7 @@ export class RemoteConfigModalComponent implements OnInit {
     if (stack.length === 0) return;
 
     const current = this.editTarget();
-
-    if (current && current !== 'remote') {
-      this.saveCurrentProfile(current as SharedProfileType);
-      this.dirtyProfileTypes.add(current as SharedProfileType);
-    }
+    if (current) this.saveCurrentAndMarkDirty(current);
 
     const target = stack[stack.length - 1];
     this.editStack.update(s => s.slice(0, -1));
@@ -1649,15 +1928,12 @@ export class RemoteConfigModalComponent implements OnInit {
       return { options: this.buildRuntimeRemoteOptions(remoteName, configData) };
     }
 
-    // Flag types
     const result: Record<string, unknown> = {};
     for (const key in configData) {
       if (key === 'source') {
-        if (Array.isArray(configData[key])) {
-          result[key] = this.pathService.buildPathStrings(configData[key] as any[], remoteName);
-        } else {
-          result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
-        }
+        result[key] = Array.isArray(configData[key])
+          ? this.pathService.buildPathStrings(configData[key] as any[], remoteName)
+          : this.pathService.buildPathString(configData[key] as any, remoteName);
       } else if (key === 'dest') {
         result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
       } else {
@@ -1852,9 +2128,7 @@ export class RemoteConfigModalComponent implements OnInit {
     return (
       state.isProcessing ||
       (state.question?.Option?.Type !== 'password' &&
-        (state.answer === null ||
-          state.answer === undefined ||
-          String(state.answer).trim() === '')) ||
+        (state.answer == null || String(state.answer).trim() === '')) ||
       this.isAuthCancelled()
     );
   });

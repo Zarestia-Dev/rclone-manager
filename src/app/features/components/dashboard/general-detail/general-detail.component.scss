@@ -259,16 +259,6 @@
     align-items: center;
     gap: 12px;
     color: var(--window-fg-color);
-
-    .task-counter {
-      margin-left: auto;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--dim-color);
-      background: rgba(var(--primary-color-rgb), 0.1);
-      padding: 4px 12px;
-      border-radius: 12px;
-    }
   }
 
   .carousel-indicators {

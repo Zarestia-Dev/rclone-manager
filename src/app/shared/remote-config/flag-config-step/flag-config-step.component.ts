@@ -61,6 +61,7 @@ export class FlagConfigStepComponent {
   getControlKey = input.required<(flagType: FlagType, field: RcConfigOption) => string>();
   availableServeTypes = input<string[]>([]);
   isLoadingServeFields = input(false);
+  highlightedFields = input<Set<string>>(new Set());
 
   serveTypeChange = output<string>();
 

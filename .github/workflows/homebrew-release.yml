@@ -1,0 +1,140 @@
+name: Update Homebrew Cask
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to use (e.g. v0.2.5)'
+        required: true
+        default: 'v0.2.5'
+
+jobs:
+  update-cask:
+    name: Generate and push Homebrew cask
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing version: $VERSION"
+
+      - name: Checkout rclone-manager repo
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Download ARM64 DMG
+        run: |
+          curl -sL --fail \
+            "https://github.com/Zarestia-Dev/rclone-manager/releases/download/${{ steps.version.outputs.TAG }}/RClone.Manager_${{ steps.version.outputs.VERSION }}_aarch64.dmg" \
+            -o /tmp/arm64.dmg
+          echo "ARM64 DMG downloaded"
+
+      - name: Download x64 DMG
+        run: |
+          curl -sL --fail \
+            "https://github.com/Zarestia-Dev/rclone-manager/releases/download/${{ steps.version.outputs.TAG }}/RClone.Manager_${{ steps.version.outputs.VERSION }}_x64.dmg" \
+            -o /tmp/x64.dmg
+          echo "x64 DMG downloaded"
+
+      - name: Compute checksums
+        id: checksums
+        run: |
+          ARM64_SHA=$(sha256sum /tmp/arm64.dmg | awk '{print $1}')
+          X64_SHA=$(sha256sum /tmp/x64.dmg | awk '{print $1}')
+          echo "ARM64_SHA=$ARM64_SHA" >> "$GITHUB_OUTPUT"
+          echo "X64_SHA=$X64_SHA" >> "$GITHUB_OUTPUT"
+          echo "ARM64 SHA256: $ARM64_SHA"
+          echo "x64   SHA256: $X64_SHA"
+
+      - name: Checkout homebrew-zarestia tap
+        uses: actions/checkout@v4
+        with:
+          repository: Zarestia-Dev/homebrew-zarestia
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
+          path: tap
+
+      - name: Render cask files
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          ARM64_SHA: ${{ steps.checksums.outputs.ARM64_SHA }}
+          X64_SHA: ${{ steps.checksums.outputs.X64_SHA }}
+        run: |
+          TEMPLATE="source/rclone-manager.rb.template"
+          MAIN_CASK="tap/Casks/rclone-manager.rb"
+          VERSIONED_CASK="tap/Casks/rclone-manager@${VERSION}.rb"
+
+          if [ ! -f "$TEMPLATE" ]; then
+            echo "ERROR: Template not found at $TEMPLATE"
+            ls -la source/
+            exit 1
+          fi
+
+          # Render main cask (rclone-manager.rb — always latest)
+          sed \
+            -e "s/{{VERSION}}/${VERSION}/g" \
+            -e "s/{{ARM64_SHA256}}/${ARM64_SHA}/g" \
+            -e "s/{{X64_SHA256}}/${X64_SHA}/g" \
+            "$TEMPLATE" > "$MAIN_CASK"
+
+          # Render versioned snapshot (e.g. rclone-manager@0.2.6.rb)
+          sed \
+            -e "s/cask \"rclone-manager\"/cask \"rclone-manager@${VERSION}\"/" \
+            "$MAIN_CASK" > "$VERSIONED_CASK"
+
+          echo "=== Generated: rclone-manager.rb ==="
+          cat "$MAIN_CASK"
+          echo ""
+          echo "=== Generated: rclone-manager@${VERSION}.rb ==="
+          cat "$VERSIONED_CASK"
+
+      - name: Write checksums file
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          ARM64_SHA: ${{ steps.checksums.outputs.ARM64_SHA }}
+          X64_SHA: ${{ steps.checksums.outputs.X64_SHA }}
+        run: |
+          cat > tap/checksums.txt <<EOF
+          RClone Manager v${VERSION} Checksums
+          ======================================
+
+          ARM64 (Apple Silicon):
+            File: RClone.Manager_${VERSION}_aarch64.dmg
+            SHA256: ${ARM64_SHA}
+
+          Intel (x86_64):
+            File: RClone.Manager_${VERSION}_x64.dmg
+            SHA256: ${X64_SHA}
+          EOF
+
+      - name: Commit and push to tap
+        working-directory: tap
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            Casks/rclone-manager.rb \
+            Casks/rclone-manager@${{ steps.version.outputs.VERSION }}.rb \
+            checksums.txt
+
+          # Only commit if something actually changed
+          if git diff --cached --quiet; then
+            echo "Nothing changed — skipping commit"
+          else
+            git commit -m "chore: update cask to v${{ steps.version.outputs.VERSION }}"
+            git push
+            echo "Pushed to homebrew-zarestia"
+          fi
+
+      - name: Upload checksums to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tap/checksums.txt
