@@ -1,203 +1,208 @@
 <div class="cli-import-container" [class.visible]="visible()">
-  <div class="cli-import-header">
-    <h3>
-      <mat-icon svgIcon="terminal"></mat-icon>
-      {{ 'wizards.cliImport.title' | translate }}
-    </h3>
-  </div>
-
-  <div class="cli-import-body">
-    <div class="textarea-section">
-      <p class="description">{{ 'wizards.cliImport.description' | translate }}</p>
-      <mat-form-field>
-        <mat-label>{{ 'wizards.cliImport.placeholder' | translate }}</mat-label>
-        <textarea
-          matInput
-          rows="4"
-          [ngModel]="cliInput()"
-          (ngModelChange)="cliInput.set($event)"
-          [placeholder]="'wizards.cliImport.placeholderText' | translate"
-        ></textarea>
-      </mat-form-field>
-
-      @if (validationError()) {
-        <div class="validation-error-message">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-          <span>{{ validationError()! | translate }}</span>
-        </div>
-      }
-
-      <div class="actions">
-        <button mat-stroked-button (click)="clearInput()" [disabled]="!cliInput()">
-          <mat-icon svgIcon="broom"></mat-icon>
-          {{ 'common.clear' | translate }}
-        </button>
-        <button
-          mat-raised-button
-          class="accent"
-          (click)="previewImport()"
-          [disabled]="!cliInput().trim()"
-        >
-          <mat-icon svgIcon="eye"></mat-icon>
-          {{ 'wizards.cliImport.preview' | translate }}
-        </button>
-      </div>
+  <div class="cli-import-inner">
+    <div class="cli-import-header">
+      <h3>
+        <mat-icon svgIcon="terminal"></mat-icon>
+        {{ 'wizards.cliImport.title' | translate }}
+      </h3>
     </div>
 
-    <!-- Preview Results Section -->
-    @if (importResult()) {
-      <div class="preview-section">
-        <div class="detected-info">
-          <h4>{{ 'wizards.cliImport.detectedTitle' | translate }}</h4>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">{{ 'wizards.cliImport.operation' | translate }}:</span>
-              <span class="value capitalize" [class.highlight]="detectedVerb()">
-                {{ detectedVerb() || ('wizards.cliImport.none' | translate) }}
-              </span>
-            </div>
-            @if (detectedServeSubtype()) {
-              <div class="info-item">
-                <span class="label">{{ 'wizards.cliImport.serveType' | translate }}:</span>
-                <span class="value capitalize font-mono">{{ detectedServeSubtype() }}</span>
-              </div>
-            }
-            @if (detectedSource()) {
-              <div class="info-item">
-                <span class="label">
-                  @if (detectedVerb() === 'mount' || detectedVerb() === 'serve') {
-                    {{ 'wizards.cliImport.remote' | translate }}:
-                  } @else {
-                    {{ 'wizards.cliImport.source' | translate }}:
-                  }
-                </span>
-                <span class="value font-mono">{{ detectedSource() }}</span>
-              </div>
-            }
-            @if (detectedDest() && detectedVerb() !== 'serve') {
-              <div class="info-item">
-                <span class="label">
-                  @if (detectedVerb() === 'mount') {
-                    {{ 'wizards.cliImport.mountPoint' | translate }}:
-                  } @else {
-                    {{ 'wizards.cliImport.destination' | translate }}:
-                  }
-                </span>
-                <span class="value font-mono">{{ detectedDest() }}</span>
-              </div>
-            }
-          </div>
-        </div>
+    <div class="cli-import-body">
+      <div class="textarea-section">
+        <p class="description">{{ 'wizards.cliImport.description' | translate }}</p>
+        <mat-form-field>
+          <mat-label>{{ 'wizards.cliImport.placeholder' | translate }}</mat-label>
+          <textarea
+            matInput
+            rows="4"
+            [ngModel]="cliInput()"
+            (ngModelChange)="cliInput.set($event)"
+            [placeholder]="'wizards.cliImport.placeholderText' | translate"
+          ></textarea>
+        </mat-form-field>
 
-        <!-- Mapped Flags -->
-        @if (mappedFlags().length > 0) {
-          <div class="preview-group">
-            <h5 class="success-header">
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ mappedFlags().length }})
-            </h5>
-            <div class="flag-list">
-              @for (item of mappedFlags(); track item.flag.key) {
-                <div class="flag-row">
-                  <span class="flag-key font-mono">--{{ item.flag.key }}</span>
-                  <span class="arrow">→</span>
-                  <span class="form-field font-mono">{{ item.fieldName }}</span>
-                  <span class="equals">=</span>
-                  <span class="flag-val font-mono">{{ item.coercedValue }}</span>
-                </div>
-              }
-            </div>
+        @if (validationError()) {
+          <div class="validation-error-message">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>{{ validationError()! | translate }}</span>
           </div>
         }
 
-        <!-- Macro Values -->
-        @if (macroFlags().length > 0) {
-          <div class="preview-group">
-            <h5 class="info-header">
-              <mat-icon svgIcon="info"></mat-icon>
-              {{ 'wizards.cliImport.macroDetected' | translate }}
-            </h5>
-            <p class="macro-desc">{{ 'wizards.cliImport.macroDesc' | translate }}</p>
-            <div class="flag-list">
-              @for (macro of macroFlags(); track macro.source) {
-                <div class="flag-row">
-                  <span class="flag-key font-mono">{{ macro.source }}</span>
-                  <span class="arrow">:</span>
-                  <span class="flag-val font-mono">{{ macro.value }}</span>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Unknown Flags -->
-        @if (unknownFlags().length > 0) {
-          <div class="preview-group">
-            <h5 class="error-header">
-              <mat-icon svgIcon="question"></mat-icon>
-              {{ 'wizards.cliImport.unrecognizedFlags' | translate }} ({{ unknownFlags().length }})
-            </h5>
-            <div class="flag-list">
-              @for (item of unknownFlags(); track item.flag.raw) {
-                <div class="flag-row font-mono unmapped-item">
-                  {{ item.flag.raw }}
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Profile Application Config -->
-        <div class="profile-apply-section">
-          <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
-
-          <div class="radio-group-container">
-            <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
-              <mat-radio-button value="new">{{
-                'wizards.cliImport.newProfile' | translate
-              }}</mat-radio-button>
-              <mat-radio-button value="override" [disabled]="detectedVerbProfiles().length === 0">
-                {{ 'wizards.cliImport.overrideProfile' | translate }}
-              </mat-radio-button>
-            </mat-radio-group>
-          </div>
-
-          <div class="input-row">
-            @if (profileMode() === 'new') {
-              <mat-form-field class="full-width">
-                <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
-                <input
-                  matInput
-                  [ngModel]="newProfileName()"
-                  (ngModelChange)="newProfileName.set($event)"
-                  placeholder="e.g. daily-backup"
-                />
-              </mat-form-field>
-            }
-
-            @if (profileMode() === 'override') {
-              <mat-form-field class="full-width">
-                <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
-                <mat-select
-                  [ngModel]="selectedOverrideProfile()"
-                  (ngModelChange)="selectedOverrideProfile.set($event)"
-                >
-                  @for (p of detectedVerbProfiles(); track p) {
-                    <mat-option [value]="p">{{ p }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            }
-          </div>
-
-          <div class="apply-actions">
-            <button mat-raised-button [disabled]="isApplyDisabled()" (click)="onApply()">
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              {{ 'wizards.cliImport.applyToProfile' | translate }}
-            </button>
-          </div>
+        <div class="actions">
+          <button mat-stroked-button (click)="clearInput()" [disabled]="!cliInput()">
+            <mat-icon svgIcon="broom"></mat-icon>
+            {{ 'common.clear' | translate }}
+          </button>
+          <button
+            mat-raised-button
+            class="accent"
+            (click)="previewImport()"
+            [disabled]="!cliInput().trim()"
+          >
+            <mat-icon svgIcon="eye"></mat-icon>
+            {{ 'wizards.cliImport.preview' | translate }}
+          </button>
         </div>
       </div>
-    }
+
+      @if (importResult(); as result) {
+        @let verb = result.verb ?? '';
+
+        <div class="preview-section">
+          <div class="detected-info">
+            <h4>{{ 'wizards.cliImport.detectedTitle' | translate }}</h4>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">{{ 'wizards.cliImport.operation' | translate }}:</span>
+                <span class="value capitalize" [class.highlight]="verb">
+                  {{ verb || ('wizards.cliImport.none' | translate) }}
+                </span>
+              </div>
+              @if (result.serveSubtype) {
+                <div class="info-item">
+                  <span class="label">{{ 'wizards.cliImport.serveType' | translate }}:</span>
+                  <span class="value capitalize font-mono">{{ result.serveSubtype }}</span>
+                </div>
+              }
+              @if (result.sourcePath) {
+                <div class="info-item">
+                  <span class="label">
+                    @if (verb === 'mount' || verb === 'serve') {
+                      {{ 'wizards.cliImport.remote' | translate }}:
+                    } @else {
+                      {{ 'wizards.cliImport.source' | translate }}:
+                    }
+                  </span>
+                  <span class="value font-mono">{{ result.sourcePath }}</span>
+                </div>
+              }
+              @if (result.destPath && verb !== 'serve') {
+                <div class="info-item">
+                  <span class="label">
+                    @if (verb === 'mount') {
+                      {{ 'wizards.cliImport.mountPoint' | translate }}:
+                    } @else {
+                      {{ 'wizards.cliImport.destination' | translate }}:
+                    }
+                  </span>
+                  <span class="value font-mono">{{ result.destPath }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Mapped Flags -->
+          @if (mappedFlags().length > 0) {
+            <div class="preview-group">
+              <h5 class="success-header">
+                <mat-icon svgIcon="circle-check"></mat-icon>
+                {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ mappedFlags().length }})
+              </h5>
+              <div class="flag-list">
+                @for (item of mappedFlags(); track item.flag.key) {
+                  <div class="flag-row">
+                    <span class="flag-key font-mono">--{{ item.flag.key }}</span>
+                    <span class="arrow">→</span>
+                    <span class="form-field font-mono">{{ item.fieldName }}</span>
+                    <span class="equals">=</span>
+                    <span class="flag-val font-mono">{{ item.coercedValue }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Macro Values -->
+          @if (macroFlags().length > 0) {
+            <div class="preview-group">
+              <h5 class="info-header">
+                <mat-icon svgIcon="info"></mat-icon>
+                {{ 'wizards.cliImport.macroDetected' | translate }}
+              </h5>
+              <p class="macro-desc">{{ 'wizards.cliImport.macroDesc' | translate }}</p>
+              <div class="flag-list">
+                @for (macro of macroFlags(); track macro.source) {
+                  <div class="flag-row">
+                    <span class="flag-key font-mono">{{ macro.source }}</span>
+                    <span class="arrow">:</span>
+                    <span class="flag-val font-mono">{{ macro.value }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Unknown Flags -->
+          @if (unknownFlags().length > 0) {
+            <div class="preview-group">
+              <h5 class="error-header">
+                <mat-icon svgIcon="question"></mat-icon>
+                {{ 'wizards.cliImport.unrecognizedFlags' | translate }} ({{
+                  unknownFlags().length
+                }})
+              </h5>
+              <div class="flag-list">
+                @for (item of unknownFlags(); track item.flag.raw) {
+                  <div class="flag-row font-mono unmapped-item">
+                    {{ item.flag.raw }}
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Profile Application Config -->
+          <div class="profile-apply-section">
+            <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
+
+            <div class="radio-group-container">
+              <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
+                <mat-radio-button value="new">{{
+                  'wizards.cliImport.newProfile' | translate
+                }}</mat-radio-button>
+                <mat-radio-button value="override" [disabled]="detectedVerbProfiles().length === 0">
+                  {{ 'wizards.cliImport.overrideProfile' | translate }}
+                </mat-radio-button>
+              </mat-radio-group>
+            </div>
+
+            <div class="input-row">
+              @if (profileMode() === 'new') {
+                <mat-form-field class="full-width">
+                  <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="newProfileName()"
+                    (ngModelChange)="newProfileName.set($event)"
+                    placeholder="e.g. daily-backup"
+                  />
+                </mat-form-field>
+              }
+
+              @if (profileMode() === 'override') {
+                <mat-form-field class="full-width">
+                  <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
+                  <mat-select
+                    [ngModel]="selectedOverrideProfile()"
+                    (ngModelChange)="selectedOverrideProfile.set($event)"
+                  >
+                    @for (p of detectedVerbProfiles(); track p) {
+                      <mat-option [value]="p">{{ p }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+            </div>
+
+            <div class="apply-actions">
+              <button mat-raised-button [disabled]="isApplyDisabled()" (click)="onApply()">
+                <mat-icon svgIcon="circle-check"></mat-icon>
+                {{ 'wizards.cliImport.applyToProfile' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
   </div>
 </div>

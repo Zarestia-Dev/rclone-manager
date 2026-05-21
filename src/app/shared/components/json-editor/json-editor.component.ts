@@ -399,7 +399,7 @@ export class JsonEditorComponent {
         const isExplicit = explicit.has(controlKey);
 
         if (field && isDefaultValue(val, field, this.valueMapper) && !isExplicit) continue;
-        if (!field && (val === null || val === undefined || val === '') && !isExplicit) continue;
+        if (!field && (val === null || val === undefined || val === '')) continue;
 
         out[displayKey] = field?.Type === 'Tristate' ? this.valueMapper.parseTristate(val) : val;
 

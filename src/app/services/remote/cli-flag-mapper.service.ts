@@ -180,11 +180,14 @@ export class CliFlagMapperService {
         if (token.includes('=')) {
           const eqIdx = token.indexOf('=');
           rawKey = token.substring(0, eqIdx);
-          rawValue = token.substring(eqIdx + 1);
+          rawValue = this.stripQuotes(token.substring(eqIdx + 1));
         } else {
           rawKey = token;
-          const cleanKey = rawKey.replace(/^-+/, '');
-          const isKnownBool = existingBools.has(cleanKey);
+          const cleanKey = rawKey.replace(/^-+/, '').toLowerCase();
+          const isKnownBool =
+            existingBools.has(cleanKey) ||
+            existingBools.has(cleanKey.replace(/-/g, '_')) ||
+            existingBools.has(cleanKey.replace(/_/g, '-'));
           const isNextFlag = i + 1 < tokens.length && /^-{1,2}[a-zA-Z0-9_]/.test(tokens[i + 1]);
 
           if (i + 1 < tokens.length && !isNextFlag && !isKnownBool) {
@@ -309,8 +312,19 @@ export class CliFlagMapperService {
       const s = val.toLowerCase().trim();
       return s === 'true' || s === '1' || s === 'yes';
     }
-    if (type === 'int' || type === 'int64' || type === 'int32') {
+    if (
+      type === 'int' ||
+      type === 'int64' ||
+      type === 'int32' ||
+      type === 'uint' ||
+      type === 'uint32' ||
+      type === 'uint64'
+    ) {
       const num = parseInt(val, 10);
+      return isNaN(num) ? val : num;
+    }
+    if (type === 'float' || type === 'float32' || type === 'float64') {
+      const num = parseFloat(val);
       return isNaN(num) ? val : num;
     }
     return val;

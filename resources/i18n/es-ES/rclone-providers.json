@@ -3666,7 +3666,6 @@
         "help": "Límite para cambiar a la API de carga de archivos grandes (>= 10 MB)."
       }
     },
-
     "filen": {
       "email": {
         "title": "Correo electrónico",
@@ -3755,7 +3754,6 @@
         "help": "Descripción del control remoto."
       }
     },
-
     "shade": {
       "drive_id": {
         "title": "ID de la unidad",

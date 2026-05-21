@@ -8,7 +8,6 @@ const i18nRoot = path.join(repoRoot, 'resources', 'i18n');
 const args = new Set(process.argv.slice(2));
 const strictMode = args.has('--strict');
 const jsonMode = args.has('--json');
-const codeUnusedMode = args.has('--code-unused');
 
 const backendFiles = collectFiles(path.join(repoRoot, 'src-tauri', 'src'), ['.rs']);
 const frontendFiles = collectFiles(path.join(repoRoot, 'src'), ['.ts', '.html']);
@@ -17,7 +16,11 @@ const localeFiles = collectLocaleFiles(i18nRoot);
 const englishLocalePath = path.join(i18nRoot, 'en-US', 'main.json');
 const englishTree = readJson(englishLocalePath);
 const englishKeys = flattenKeys(englishTree);
-const usage = collectUsage([...backendFiles, ...frontendFiles]);
+
+// Build the set of all internal JSON node paths (prefixes) for validating indirect refs
+const englishPrefixes = flattenPrefixes(englishTree);
+
+const usage = collectUsage([...backendFiles, ...frontendFiles], englishKeys, englishPrefixes);
 const englishMissingFromCode = diff(usage.combined, englishKeys);
 
 const report = {
@@ -27,6 +30,7 @@ const report = {
     backend: usage.backend.size,
     frontend: usage.frontend.size,
     combined: usage.combined.size,
+    dynamicPrefixes: usage.dynamicPrefixes.size,
   },
 };
 
@@ -40,7 +44,7 @@ for (const localeFile of localeFiles) {
   const localeKeys = flattenKeys(localeTree);
   const localeMissing = localeName === 'en-US' ? englishMissingFromCode : diff(englishKeys, localeKeys);
   const localeUnused = localeName === 'en-US' ? [] : diff(localeKeys, englishKeys);
-  const localeCodeUnused = diff(localeKeys, usage.combined);
+  const localeCodeUnused = findCodeUnused(localeKeys, usage);
 
   missingCount += localeMissing.length;
   unusedCount += localeUnused.length;
@@ -49,7 +53,7 @@ for (const localeFile of localeFiles) {
   report.locales[localeName] = {
     missing: localeMissing,
     unused: localeUnused,
-    ...(codeUnusedMode ? { codeUnused: localeCodeUnused } : {}),
+    codeUnused: localeCodeUnused,
   };
 }
 
@@ -62,6 +66,8 @@ if (jsonMode) {
 if (strictMode && (missingCount > 0 || unusedCount > 0)) {
   process.exitCode = 1;
 }
+
+// ── File collection ───────────────────────────────────────────────────────────
 
 function collectFiles(rootDir, extensions) {
   const result = [];
@@ -120,22 +126,68 @@ function flattenKeys(value, prefix = '', result = new Set()) {
   return result;
 }
 
-function collectUsage(files) {
+/**
+ * Collect all internal (non-leaf) node paths in the JSON tree.
+ * For {"a": {"b": {"c": "val"}}}, returns Set(["a", "a.b"]).
+ * This lets us validate that a string literal is at least a valid prefix
+ * of an i18n key path.
+ */
+function flattenPrefixes(value, prefix = '', result = new Set()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return result;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+    if (child && typeof child === 'object' && !Array.isArray(child)) {
+      result.add(nextKey);
+      flattenPrefixes(child, nextKey, result);
+    }
+  }
+
+  return result;
+}
+
+// ── Usage collection ──────────────────────────────────────────────────────────
+
+function collectUsage(files, knownKeys, knownPrefixes) {
   const backend = new Set();
   const frontend = new Set();
 
+  // Dynamic prefixes from patterns like 'prefix.' + variable + '.suffix' | translate
+  // Keys matching any of these prefixes are considered "used"
+  const dynamicPrefixes = new Set();
+
+  // ── Rust backend regexes ──────────────────────────────────────────────────
   const backendRegexes = [
     /\b(?:crate::)?localized_(?:error|success)!\(\s*"([^"]+)"/g,
     /\bt!\(\s*"([^"]+)"/g,
+    // Plain function calls: t("key") and t_with_params("key", ...)
+    /\bt(?:_with_params)?\(\s*"([^"]+)"/g,
   ];
 
-  const tsRegexes = [
+  // ── TypeScript regexes ────────────────────────────────────────────────────
+  // Direct translate.instant/get/stream('key.path') calls
+  const tsDirectRegexes = [
     /\btranslate\.(?:instant|get|stream)\(\s*(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g,
     /\btranslate\.(?:instant|get|stream)\(\s*`([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)`/g,
   ];
 
-  const htmlLiteralRegex = /(['"`])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1\s*\|\s*translate\b/g;
-  const htmlKeyRegex = /(['"`])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
+  // Template literal with interpolation: `prefix.${var}.suffix`
+  // Extracts the prefix (before ${) as a dynamic prefix
+  const tsTemplateDynamicRegex =
+    /`([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\.\$\{/g;
+
+  // Dotted string literals in TS files — validated against known keys/prefixes
+  const tsStringLiteralRegex = /(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
+
+  // Dynamic HTML keys: 'prefix.' + variable + '.suffix' | translate
+  // Captures the constant prefix before the + sign
+  const htmlDynamicPrefixRegex =
+    /['"]([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\.\s*['"]?\s*\+[^|]*\|\s*translate/g;
+
+  // General HTML key extractor for string literals that look like i18n keys
+  const htmlStringLiteralRegex = /(['"`])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
 
   for (const file of files) {
     const content = fs.readFileSync(file, 'utf8');
@@ -144,8 +196,18 @@ function collectUsage(files) {
     const source = isBackend ? stripRustComments(content) : content;
 
     if (isBackend) {
+      // Direct macro invocations: t!("key"), localized_error!("key"), localized_success!("key")
       for (const regex of backendRegexes) {
         for (const key of extractMatches(source, regex, 1)) {
+          backend.add(key);
+        }
+      }
+
+      // String literals in Rust used as i18n key references (e.g. label_key: "tray.mountCount")
+      // Only accept strings that are actual known keys or known prefixes
+      const rustStringRegex = /"([a-zA-Z][a-zA-Z0-9_-]*(?:\.[a-zA-Z][a-zA-Z0-9_-]*)+)"/g;
+      for (const key of extractMatchesNoFilter(source, rustStringRegex, 1)) {
+        if (knownKeys.has(key) || knownPrefixes.has(key)) {
           backend.add(key);
         }
       }
@@ -153,38 +215,58 @@ function collectUsage(files) {
     }
 
     if (isHtml) {
-      for (const key of extractMatches(source, htmlLiteralRegex, 2)) {
-        frontend.add(key);
+      // Dynamic prefix patterns → 'alerts.action.' + kind | translate
+      for (const prefix of extractMatchesNoFilter(source, htmlDynamicPrefixRegex, 1)) {
+        if (prefix.includes('.') && knownPrefixes.has(prefix)) {
+          dynamicPrefixes.add(prefix);
+        }
       }
 
-      for (const line of source.split(/\r?\n/)) {
-        if (!line.includes('| translate')) {
-          continue;
-        }
-
-        htmlKeyRegex.lastIndex = 0;
-        let match;
-        while ((match = htmlKeyRegex.exec(line)) !== null) {
-          const translateIndex = line.indexOf('| translate', match.index);
-          if (translateIndex < 0) {
-            continue;
-          }
-
-          const trailingContext = line.slice(match.index + match[0].length, translateIndex);
-          if (trailingContext.includes('>') || trailingContext.includes('=')) {
-            continue;
-          }
-
-          frontend.add(match[2]);
+      // Scan for dotted string literals that match known i18n keys or prefixes.
+      // This catches ternary operators, newlines before | translate, etc.
+      for (const key of extractMatchesNoFilter(source, htmlStringLiteralRegex, 2)) {
+        if (knownKeys.has(key)) {
+          frontend.add(key);
+        } else if (knownPrefixes.has(key)) {
+          dynamicPrefixes.add(key);
         }
       }
 
       continue;
     }
 
-    for (const regex of tsRegexes) {
+    // ── TypeScript files ──────────────────────────────────────────────────
+    // Direct translate calls
+    for (const regex of tsDirectRegexes) {
       for (const key of extractMatches(source, regex, 2)) {
         frontend.add(key);
+      }
+    }
+
+    // Template literal dynamic keys → extract prefix
+    for (const prefix of extractMatchesNoFilter(source, tsTemplateDynamicRegex, 1)) {
+      if (prefix.includes('.') && knownPrefixes.has(prefix)) {
+        dynamicPrefixes.add(prefix);
+      }
+    }
+
+    // Inline HTML templates in TS files can also use dynamic prefix patterns
+    for (const prefix of extractMatchesNoFilter(source, htmlDynamicPrefixRegex, 1)) {
+      if (prefix.includes('.') && knownPrefixes.has(prefix)) {
+        dynamicPrefixes.add(prefix);
+      }
+    }
+
+    // Scan for dotted string literals that match known i18n keys or prefixes.
+    // This catches indirect usages like: label: 'dashboard.appDetail.sync',
+    // tooltip: 'overviews.remoteCard.actions.mount', etc.
+    for (const key of extractMatchesNoFilter(source, tsStringLiteralRegex, 2)) {
+      if (knownKeys.has(key)) {
+        frontend.add(key);
+      } else if (knownPrefixes.has(key)) {
+        // It's a prefix being used dynamically (e.g. assigned to a variable
+        // that later gets .suffix appended)
+        dynamicPrefixes.add(key);
       }
     }
   }
@@ -192,8 +274,32 @@ function collectUsage(files) {
   return {
     backend,
     frontend,
+    dynamicPrefixes,
     combined: new Set([...backend, ...frontend]),
   };
+}
+
+/**
+ * Finds keys in `localeKeys` that are not directly in `usage.combined`
+ * AND not covered by any dynamic prefix in `usage.dynamicPrefixes`.
+ */
+function findCodeUnused(localeKeys, usageData) {
+  const { combined, dynamicPrefixes } = usageData;
+  const prefixArray = [...dynamicPrefixes];
+
+  return [...localeKeys]
+    .filter((key) => {
+      // If directly referenced, it's used
+      if (combined.has(key)) return false;
+
+      // If any dynamic prefix matches this key, it's dynamically used
+      for (const prefix of prefixArray) {
+        if (key.startsWith(prefix + '.')) return false;
+      }
+
+      return true;
+    })
+    .sort();
 }
 
 function extractMatches(content, regex, groupIndex) {
@@ -203,6 +309,19 @@ function extractMatches(content, regex, groupIndex) {
   while ((match = regex.exec(content)) !== null) {
     const key = match[groupIndex];
     if (key && key.includes('.')) {
+      matches.push(key);
+    }
+  }
+  return matches;
+}
+
+function extractMatchesNoFilter(content, regex, groupIndex) {
+  const matches = [];
+  regex.lastIndex = 0;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const key = match[groupIndex];
+    if (key) {
       matches.push(key);
     }
   }
@@ -221,25 +340,45 @@ function diff(left, right) {
 }
 
 function printReport(reportData) {
+  const MAX_INLINE = 20;
+
   console.log(`Reference locale: ${reportData.reference}`);
-  console.log(`Detected usage: backend=${reportData.usage.backend}, frontend=${reportData.usage.frontend}, combined=${reportData.usage.combined}`);
+  console.log(
+    `Detected usage: backend=${reportData.usage.backend}, frontend=${reportData.usage.frontend}, combined=${reportData.usage.combined}, dynamicPrefixes=${reportData.usage.dynamicPrefixes}`
+  );
 
   for (const localeName of Object.keys(reportData.locales).sort()) {
     const locale = reportData.locales[localeName];
     console.log(`\n[${localeName}]`);
-    console.log(
-      `${localeName === 'en-US' ? 'Missing vs code' : 'Missing'} (${locale.missing.length}): ${locale.missing.length ? locale.missing.join(', ') : 'none'}`
+    printKeyList(
+      localeName === 'en-US' ? 'Missing vs code' : 'Missing',
+      locale.missing,
+      MAX_INLINE
     );
-    console.log(`Unused vs English (${locale.unused.length}): ${locale.unused.length ? locale.unused.join(', ') : 'none'}`);
-    if (codeUnusedMode) {
-      const codeUnused = locale.codeUnused || [];
-      console.log(`Unused vs code (${codeUnused.length}): ${codeUnused.length ? codeUnused.join(', ') : 'none'}`);
-    }
+    printKeyList('Unused vs English', locale.unused, MAX_INLINE);
+    printKeyList('Unused vs code', locale.codeUnused || [], MAX_INLINE);
   }
 
-  if (codeUnusedMode) {
-    console.log(`\nTotals: missing=${missingCount}, unusedVsEnglish=${unusedCount}, unusedVsCode=${codeUnusedCount}`);
-  } else {
-    console.log(`\nTotals: missing=${missingCount}, unusedVsEnglish=${unusedCount}`);
+  console.log(
+    `\nTotals: missing=${missingCount}, unusedVsEnglish=${unusedCount}, unusedVsCode=${codeUnusedCount}`
+  );
+
+  const hasLong =
+    Object.values(reportData.locales).some(
+      (l) => l.missing.length > MAX_INLINE || l.unused.length > MAX_INLINE || (l.codeUnused || []).length > MAX_INLINE
+    );
+  if (hasLong) {
+    console.log(`\nTip: Use --json for the full machine-readable report.`);
   }
+}
+
+function printKeyList(label, keys, max) {
+  if (!keys.length) {
+    console.log(`${label} (0): none`);
+    return;
+  }
+  const shown = keys.slice(0, max);
+  const remaining = keys.length - shown.length;
+  const suffix = remaining > 0 ? `, ... and ${remaining} more` : '';
+  console.log(`${label} (${keys.length}): ${shown.join(', ')}${suffix}`);
 }

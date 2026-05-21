@@ -89,6 +89,20 @@ describe('CliFlagMapperService', () => {
       });
     });
 
+    it('should parse boolean flags with underscore-hyphen normalization', () => {
+      const existingBools = new Set(['track_renames']);
+      const parsed = service.parse(
+        'rclone sync source:path dest:path --track-renames',
+        existingBools
+      );
+      expect(parsed.flags[0]).toEqual({
+        raw: '--track-renames',
+        key: 'track-renames',
+        value: true,
+        hasMacro: false,
+      });
+    });
+
     it('should handle equal sign in flags', () => {
       const parsed = service.parse(
         'rclone sync source:path dest:path --backup-dir=dest:/archive',
@@ -98,6 +112,19 @@ describe('CliFlagMapperService', () => {
         raw: '--backup-dir=dest:/archive',
         key: 'backup-dir',
         value: 'dest:/archive',
+        hasMacro: false,
+      });
+    });
+
+    it('should strip quotes from equal sign values in flags', () => {
+      const parsed = service.parse(
+        'rclone sync source:path dest:path --exclude-from="/path/to/exclude-list.txt"',
+        new Set()
+      );
+      expect(parsed.flags[0]).toEqual({
+        raw: '--exclude-from="/path/to/exclude-list.txt"',
+        key: 'exclude-from',
+        value: '/path/to/exclude-list.txt',
         hasMacro: false,
       });
     });
@@ -188,6 +215,29 @@ describe('CliFlagMapperService', () => {
       expect(result.classified[1].fieldName).toBe('TrackRenames');
 
       expect(result.classified[2].status).toBe('unknown');
+    });
+
+    it('should coerce uint and float types', () => {
+      const lookupTable = service.buildLookupTable({
+        sync: [
+          { Name: 'tpslimit', FieldName: 'TpsLimit', Type: 'float64' } as any,
+          { Name: 'tpslimit-burst', FieldName: 'TpsLimitBurst', Type: 'uint32' } as any,
+        ],
+      } as any);
+
+      const parsed: ParsedCLI = {
+        verb: 'sync',
+        sourcePath: 'src:',
+        destPath: 'dst:',
+        flags: [
+          { raw: '--tpslimit 10.5', key: 'tpslimit', value: '10.5', hasMacro: false },
+          { raw: '--tpslimit-burst 12', key: 'tpslimit-burst', value: '12', hasMacro: false },
+        ],
+      };
+
+      const result = service.classify(parsed, lookupTable);
+      expect(result.classified[0].coercedValue).toBe(10.5);
+      expect(result.classified[1].coercedValue).toBe(12);
     });
 
     it('should match runtimeRemote specific prefixed options if remoteType is provided', () => {

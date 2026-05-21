@@ -1,4 +1,4 @@
-<form [formGroup]="form()">
+<form [formGroup]="activeForm()">
   <div class="main-fields-container">
     @let remoteType = remoteTypeValue();
     @if (showTypeField()) {
@@ -45,7 +45,7 @@
       </mat-form-field>
     }
 
-    @if (showTypeField() && !remoteType && !isLoading()) {
+    @if (showTypeField() && !remoteType && !activeIsLoading()) {
       <div class="empty-state">
         <div class="empty-state-icon-ring">
           <mat-icon
@@ -63,7 +63,7 @@
             {{ 'wizards.remoteConfig.emptyStateDesc' | translate }}
           </p>
         </div>
-        @if (remoteTypes().length > 0) {
+        @if (activeRemoteTypes().length > 0) {
           <div class="empty-state-pills">
             @for (remote of suggestedRemotes(); track remote.value) {
               <button class="app-pill interactive" (click)="onTypeSelected(remote.value)">
@@ -84,7 +84,7 @@
     }
 
     @if (showNameField() && !!remoteType) {
-      @let nameCtrl = form().get('name');
+      @let nameCtrl = activeForm().get('name');
       <mat-form-field id="section-general" class="anim-field">
         <mat-label>{{ 'wizards.remoteConfig.remoteName' | translate }}</mat-label>
         <mat-icon matPrefix svgIcon="cloud" class="field-icon"></mat-icon>
@@ -113,7 +113,7 @@
     }
 
     @if (providerField(); as pField) {
-      @let pCtrl = form().get(pField.Name);
+      @let pCtrl = activeForm().get(pField.Name);
       <mat-form-field appearance="fill" id="section-auth" class="anim-field">
         <mat-label>{{
           pField.Help || ('wizards.remoteConfig.authenticationMethod' | translate)
@@ -150,7 +150,7 @@
     @if (providerReady()) {
       @let basicLen = basicFields().length;
       @let advLen = advancedFields().length;
-      @let showAdvOpts = showAdvancedOptions();
+      @let showAdvOpts = activeShowAdvancedOptions();
       @let showJson = showJsonMode();
 
       @let showAdv = (showAdvOpts || showJson) && advLen > 0;
@@ -234,7 +234,7 @@
     }
   </div>
 
-  @if (isLoading()) {
+  @if (activeIsLoading()) {
     <div class="loading-container anim-fade">
       <div class="loading-inner">
         <mat-spinner diameter="24"></mat-spinner>
@@ -392,10 +392,10 @@
     @if (showJsonMode()) {
       <div class="anim-panel">
         <app-json-editor
-          [formGroup]="form()"
-          [fieldDefs]="remoteFields()"
+          [formGroup]="activeForm()"
+          [fieldDefs]="activeRemoteFields()"
           [provider]="remoteType"
-          [searchQuery]="searchQuery()"
+          [searchQuery]="activeSearchQuery()"
           [excludeKeys]="jsonExcludeKeys()"
         />
       </div>
@@ -411,7 +411,7 @@
         ></app-setting-control>
       }
 
-      @if (showAdvancedOptions() && advancedFields().length > 0) {
+      @if (activeShowAdvancedOptions() && advancedFields().length > 0) {
         <div class="advanced-section anim-panel" id="section-advanced">
           <h3 class="section-heading">
             {{ 'wizards.remoteConfig.advancedOptions' | translate }}

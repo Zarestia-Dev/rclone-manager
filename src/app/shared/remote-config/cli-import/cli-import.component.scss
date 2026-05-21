@@ -1,24 +1,29 @@
 .cli-import-container {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 0fr;
   overflow: hidden;
-  max-height: 0;
   padding: 0 var(--space-md);
-  gap: var(--space-md);
   border-bottom: 0 solid var(--border-color);
   opacity: 0;
   transition:
-    max-height var(--transition-cubic),
+    grid-template-rows var(--transition-cubic),
     padding var(--transition-cubic),
     border-bottom-width var(--transition-cubic),
     opacity var(--transition-cubic);
 
   &.visible {
-    max-height: 1200px;
+    grid-template-rows: 1fr;
     padding: var(--space-md);
     border-bottom: 1px solid var(--border-color);
     opacity: 1;
   }
+}
+
+.cli-import-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .cli-import-header {

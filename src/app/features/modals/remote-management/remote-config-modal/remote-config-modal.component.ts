@@ -7,24 +7,9 @@ import {
   HostListener,
   inject,
   OnInit,
-  signal,
-  effect,
-  Signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { startWith } from 'rxjs';
-import { NgTemplateOutlet } from '@angular/common';
-import {
-  FormBuilder,
-  FormGroup,
-  Validators,
-  FormControl,
-  FormsModule,
-  ReactiveFormsModule,
-  AbstractControl,
-  FormArray,
-} from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -33,88 +18,63 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { MatListModule } from '@angular/material/list';
-import { MatDividerModule } from '@angular/material/divider';
-import {
-  RemoteConfigStepComponent,
-  INITIAL_COMMAND_OPTIONS,
-} from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
+import { AuthStateService } from '../../../../services/security/auth-state.service';
+import { JobManagementService } from '../../../../services/operations/job-management.service';
+import { MountManagementService } from '../../../../services/operations/mount-management.service';
+import { AppSettingsService } from '../../../../services/settings/app-settings.service';
+import { ServeManagementService } from '../../../../services/operations/serve-management.service';
+import { NautilusService } from '../../../../services/ui/nautilus.service';
+import { ModalService } from '../../../../services/ui/modal.service';
+import { NotificationService } from '../../../../services/ui/notification.service';
+import { IconService } from '../../../../services/ui/icon.service';
+import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
-  AuthStateService,
-  ValidatorRegistryService,
-  FlagConfigService,
-  RemoteManagementService,
-  JobManagementService,
-  MountManagementService,
-  AppSettingsService,
-  FileSystemService,
-  ServeManagementService,
-  NautilusService,
-  ModalService,
-  NotificationService,
-  IconService,
-  PathService,
-  ImportResult,
-} from '@app/services';
+  RemoteConfigStateService,
+  DialogData,
+} from '../../../../services/remote/remote-config-state.service';
 import {
-  RcConfigOption,
-  EditTarget,
-  FlagType,
-  SharedProfileType,
-  RemoteType,
-  RemoteConfigSections,
-  InteractiveFlowState,
+  RemoteConfigFormBuilderService,
+  PendingRemoteData,
+} from '../../../../services/remote/remote-config-form-builder.service';
+import {
+  RemoteConfigProfileManagerService,
+  PROFILE_TYPES,
+  LINKED_PROFILE_TYPES,
+} from '../../../../services/remote/remote-config-profile-manager.service';
+import { RemoteConfigCliImporterService } from '../../../../services/remote/remote-config-cli-importer.service';
+import {
   FLAG_TYPES,
-  REMOTE_NAME_REGEX,
-  ServeConfig,
+  RemoteConfigSections,
+  REMOTE_CONFIG_KEYS,
   MountConfig,
   CopyConfig,
   SyncConfig,
   BisyncConfig,
   MoveConfig,
-  FilterConfig,
+  ServeConfig,
   VfsConfig,
   BackendConfig,
   RuntimeRemoteConfig,
-  DEFAULT_PROFILE_NAME,
-  REMOTE_CONFIG_KEYS,
-  CommandOption,
+  SharedProfileType,
+  FilterConfig,
 } from '@app/types';
+import { CopyToClipboardDirective } from '@app/directives';
+import { ProfileHeaderComponent } from './profile-header/profile-header.component';
+import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
+import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import {
-  getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
   convertBoolAnswerToString,
+  getDefaultAnswerFromQuestion,
 } from '../../../../services/remote/utils/remote-config.utils';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { CopyToClipboardDirective } from '@app/directives';
-import { MatProgressBar } from '@angular/material/progress-bar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface DialogData {
-  editTarget?: EditTarget;
-  cloneTarget?: boolean;
-  existingConfig?: RemoteConfigSections;
-  name?: string;
-  remoteType: string;
-  targetProfile?: string;
-  autoAddProfile?: boolean;
-}
-
-interface PendingRemoteData {
-  name: string;
-  type: string;
-  [key: string]: unknown;
-}
-
-type ProfileData = Record<string, unknown>;
-
-type ProfilesMap = Record<string, ProfileData>;
 
 interface JobProfile {
   autoStart?: boolean;
@@ -124,32 +84,11 @@ interface JobProfile {
 
 type JobMap = Record<string, JobProfile>;
 
-const PROFILE_TYPES: SharedProfileType[] = [...FLAG_TYPES, 'runtimeRemote'];
-
-/** Operation types managed by jobManagementService */
-const JOB_TYPES = new Set(['sync', 'copy', 'bisync', 'move']);
-
-const LINKED_PROFILE_TYPES = new Set<FlagType>([
-  'mount',
-  'serve',
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-]);
-
-function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
-  return Object.fromEntries(PROFILE_TYPES.map(t => [t, factory()])) as Record<SharedProfileType, T>;
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-remote-config-modal',
-  standalone: true,
   imports: [
-    NgTemplateOutlet,
-    FormsModule,
     ReactiveFormsModule,
     TranslateModule,
     MatIconModule,
@@ -158,26 +97,32 @@ function profileRecord<T>(factory: () => T): Record<SharedProfileType, T> {
     MatFormFieldModule,
     MatInputModule,
     MatTooltipModule,
-    MatProgressSpinner,
-    MatProgressBar,
     MatExpansionModule,
-    MatListModule,
-    MatDividerModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     CliImportComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
+    ProfileHeaderComponent,
+    ConfigModalSidebarComponent,
+    ConfigModalFooterComponent,
+  ],
+  providers: [
+    RemoteConfigStateService,
+    RemoteConfigFormBuilderService,
+    RemoteConfigProfileManagerService,
+    RemoteConfigCliImporterService,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigModalComponent implements OnInit {
+  readonly state = inject(RemoteConfigStateService);
+
   // ── Injections ────────────────────────────────────────────────────────────────
 
-  private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
@@ -186,188 +131,19 @@ export class RemoteConfigModalComponent implements OnInit {
   readonly configStep = viewChild(RemoteConfigStepComponent);
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
-  private readonly fileSystemService = inject(FileSystemService);
-  private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData;
   private readonly serveManagementService = inject(ServeManagementService);
-  readonly flagConfigService = inject(FlagConfigService);
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Static config ─────────────────────────────────────────────────────────────
 
   readonly FLAG_TYPES = FLAG_TYPES;
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
-
-  private static readonly STATIC_STEP_CONFIGS = [
-    { label: 'modals.remoteConfig.steps.mount', icon: 'mount', type: 'mount' as const },
-    { label: 'modals.remoteConfig.steps.serve', icon: 'satellite-dish', type: 'serve' as const },
-    { label: 'modals.remoteConfig.steps.sync', icon: 'sync', type: 'sync' as const },
-    { label: 'modals.remoteConfig.steps.bisync', icon: 'right-left', type: 'bisync' as const },
-    { label: 'modals.remoteConfig.steps.move', icon: 'move', type: 'move' as const },
-    { label: 'modals.remoteConfig.steps.copy', icon: 'copy', type: 'copy' as const },
-    { label: 'modals.remoteConfig.steps.filter', icon: 'filter', type: 'filter' as const },
-    { label: 'modals.remoteConfig.steps.vfs', icon: 'vfs', type: 'vfs' as const },
-    { label: 'modals.remoteConfig.steps.backend', icon: 'server', type: 'backend' as const },
-    {
-      label: 'modals.remoteConfig.steps.runtimeRemote',
-      icon: 'gear',
-      type: 'runtimeRemote' as const,
-    },
-  ] as const;
-
-  readonly stepConfigs = computed(() => {
-    const remoteType = this.remoteTypeSignal();
-    const remoteIcon = this.iconService.getIconName(remoteType || 'hard-drive');
-    return [
-      {
-        label: 'modals.remoteConfig.steps.remoteConfig',
-        icon: remoteIcon,
-        type: 'remote' as const,
-      },
-      ...RemoteConfigModalComponent.STATIC_STEP_CONFIGS,
-    ];
-  });
-
-  readonly stepLabels = computed(() => this.stepConfigs().map(s => s.label));
-
-  // ── Forms ─────────────────────────────────────────────────────────────────────
-
-  remoteForm!: FormGroup;
-  remoteConfigForm!: FormGroup;
-
-  readonly remoteFormStatus!: Signal<string>;
-  readonly remoteConfigFormStatus!: Signal<string>;
-  readonly remoteTypeSignal!: Signal<string>;
-  readonly remoteNameSignal!: Signal<string>;
-
-  // ── State signals ─────────────────────────────────────────────────────────────
-
-  readonly remoteTypes = signal<RemoteType[]>([]);
-  readonly existingRemotes = signal<string[]>([]);
-  readonly mountTypes = signal<string[]>([]);
-  readonly availableServeTypes = signal<string[]>([]);
-  readonly selectedServeType = signal('http');
-
-  readonly dynamicRemoteFields = signal<RcConfigOption[]>([]);
-  readonly dynamicServeFields = signal<RcConfigOption[]>([]);
-  readonly dynamicRuntimeRemoteFields = signal<RcConfigOption[]>([]);
-  readonly dynamicFlagFields = signal<Record<FlagType, RcConfigOption[]>>(
-    Object.fromEntries(FLAG_TYPES.map(t => [t, [] as RcConfigOption[]])) as Record<
-      FlagType,
-      RcConfigOption[]
-    >
-  );
-
-  readonly allFlagFields = computed(
-    () =>
-      ({
-        ...this.dynamicFlagFields(),
-        runtimeRemote: this.dynamicRuntimeRemoteFields(),
-      }) as Record<SharedProfileType, RcConfigOption[]>
-  );
-
-  readonly profileState = signal<
-    Record<SharedProfileType, { mode: 'view' | 'edit' | 'add'; tempName: string }>
-  >(profileRecord(() => ({ mode: 'view' as const, tempName: '' })));
-
-  readonly showCliImport = signal(false);
-  readonly highlightedFields = signal<
-    { controlKey: string; flagType: SharedProfileType; profileName: string }[]
-  >([]);
-
-  readonly highlightedFieldsForActiveProfiles = computed(() => {
-    const activeHighlights = new Set<string>();
-    const selectedProfiles = this.selectedProfileName();
-
-    this.highlightedFields().forEach(h => {
-      if (selectedProfiles[h.flagType] === h.profileName) {
-        activeHighlights.add(h.controlKey);
-      }
-    });
-
-    return activeHighlights;
-  });
-
-  readonly profiles = signal<Record<SharedProfileType, ProfilesMap>>(
-    profileRecord(() => ({}) as ProfilesMap)
-  );
-
-  readonly selectedProfileName = signal<Record<SharedProfileType, string>>(
-    profileRecord(() => DEFAULT_PROFILE_NAME)
-  );
-
-  readonly profileLists = computed(
-    (): Record<SharedProfileType, { name: string; [key: string]: unknown }[]> =>
-      Object.fromEntries(
-        PROFILE_TYPES.map(t => [
-          t,
-          Object.entries(this.profiles()[t] ?? {}).map(([name, data]) => ({
-            name,
-            ...(data as object),
-          })),
-        ])
-      ) as Record<SharedProfileType, { name: string; [key: string]: unknown }[]>
-  );
-
-  readonly profileNamesMap = computed(
-    (): Record<SharedProfileType, string[]> =>
-      Object.fromEntries(
-        PROFILE_TYPES.map(t => [t, Object.keys(this.profiles()[t] ?? {})])
-      ) as Record<SharedProfileType, string[]>
-  );
-
-  readonly editTarget = signal<EditTarget>(null);
-  readonly cloneTarget = signal(false);
-  readonly editStack = signal<NonNullable<EditTarget>[]>([]);
-
-  readonly sharedReturnTarget = computed<EditTarget>(() => {
-    const s = this.editStack();
-    return s.length > 0 ? (s[s.length - 1] as EditTarget) : null;
-  });
-
-  readonly editTargetStepKey = computed(() => {
-    const t = this.editTarget();
-    if (!t) return null;
-    return 'modals.remoteConfig.steps.' + (t === 'remote' ? 'remoteConfig' : t);
-  });
-
-  readonly activeProfileType = computed<Exclude<EditTarget, null | 'remote'> | null>(() => {
-    const target = this.editTarget();
-    if (!target || target === 'remote') return null;
-    return target;
-  });
-
-  readonly sharedSidebarTypes = computed(
-    (): { type: Exclude<EditTarget, null | 'remote'>; icon: string; label: string }[] => {
-      const target = this.editTarget();
-      if (!target || target === 'remote') return [];
-      const vfsEligible: Exclude<EditTarget, null | 'remote'>[] = [
-        'mount',
-        'serve',
-        'filter',
-        'backend',
-      ];
-      const candidates: {
-        type: Exclude<EditTarget, null | 'remote'>;
-        icon: string;
-        label: string;
-      }[] = [
-        { type: 'vfs', icon: 'vfs', label: 'modals.remoteConfig.steps.vfs' },
-        { type: 'filter', icon: 'filter', label: 'modals.remoteConfig.steps.filter' },
-        { type: 'backend', icon: 'database', label: 'modals.remoteConfig.steps.backend' },
-        { type: 'runtimeRemote', icon: 'gear', label: 'modals.remoteConfig.steps.runtimeRemote' },
-      ];
-      return candidates
-        .filter(item => item.type !== target)
-        .filter(item => item.type !== 'vfs' || vfsEligible.includes(target));
-    }
-  );
 
   readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
     mount: 'hard-drive',
@@ -381,42 +157,6 @@ export class RemoteConfigModalComponent implements OnInit {
     backend: 'database',
     runtimeRemote: 'gear',
   };
-
-  readonly profileOptions = computed(() => {
-    const p = this.profiles();
-    const runtimeNames = Object.keys(p['runtimeRemote'] ?? {});
-    return {
-      vfs: Object.keys(p['vfs'] ?? {}),
-      filter: Object.keys(p['filter'] ?? {}),
-      backend: Object.keys(p['backend'] ?? {}),
-      runtimeRemote: runtimeNames.length > 0 ? runtimeNames : [DEFAULT_PROFILE_NAME],
-    };
-  });
-
-  readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
-  readonly showAdvancedOptions = signal(false);
-  readonly isRemoteConfigLoading = signal(false);
-  readonly isLoadingServeFields = signal(false);
-  readonly isLoadingRuntimeRemoteFields = signal(false);
-  readonly isAuthInProgress = this.authStateService.isAuthInProgress;
-  readonly isAuthCancelled = this.authStateService.isAuthCancelled;
-  readonly oauthUrl = this.authStateService.oauthUrl;
-  readonly oauthHelperUrl = computed(() =>
-    this.isAuthInProgress() && !this.isAuthCancelled() ? this.oauthUrl() : null
-  );
-  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
-  readonly currentStep = signal(1);
-  readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
-
-  readonly isSearchVisible = signal(false);
-  readonly searchQuery = signal('');
-  readonly isInitializing = signal(true);
-
-  readonly isStepNavigationLocked = computed(
-    () => this.isAuthInProgress() || this.isRemoteConfigLoading()
-  );
-
-  readonly currentRemoteName = computed(() => this.dialogData?.name ?? this.remoteNameSignal());
 
   readonly remoteEditCategories = [
     { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },
@@ -445,858 +185,78 @@ export class RemoteConfigModalComponent implements OnInit {
     remoteData: PendingRemoteData;
     finalConfig: RemoteConfigSections;
   } | null = null;
-  private readonly changedRemoteFields = new Set<string>();
-  private readonly optionToFlagTypeMap: Record<string, FlagType> = {};
-  private readonly optionToFieldNameMap: Record<string, string> = {};
-  private readonly isPopulatingForm = signal(false);
-  private readonly dirtyProfileTypes = new Set<SharedProfileType>();
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   constructor() {
-    this.editTarget.set(this.dialogData?.editTarget ?? null);
-    this.cloneTarget.set(this.dialogData?.cloneTarget ?? false);
-
-    this.remoteForm = this.createRemoteForm();
-    this.remoteConfigForm = this.createRemoteConfigForm();
-
-    this.remoteFormStatus = toSignal(this.remoteForm.statusChanges, {
-      initialValue: this.remoteForm.status,
-    });
-    this.remoteConfigFormStatus = toSignal(this.remoteConfigForm.statusChanges, {
-      initialValue: this.remoteConfigForm.status,
-    });
-    this.remoteTypeSignal = toSignal(
-      this.remoteForm
-        .get('type')!
-        .valueChanges.pipe(startWith(this.remoteForm.get('type')!.value as string)),
-      { initialValue: this.remoteForm.get('type')?.value ?? '' }
-    );
-    this.remoteNameSignal = toSignal(
-      this.remoteForm
-        .get('name')!
-        .valueChanges.pipe(startWith(this.remoteForm.get('name')!.value as string)),
-      { initialValue: this.remoteForm.get('name')?.value ?? '' }
-    );
-
-    this.setupAuthStateListeners();
+    this.state.initStepConfigs(this.iconService);
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
+    this.state.setStepInvalidFn((stepType: string) => this.isStepInvalid(stepType));
   }
 
   async ngOnInit(): Promise<void> {
     try {
-      await Promise.all([
-        this.loadExistingRemotes(),
-        this.loadRemoteTypes(),
-        this.loadAllFlagFields(),
-        this.loadMountTypes(),
-        this.loadServeTypes(),
-      ]);
-      await this.loadServeFields();
-      this.initProfiles();
-      this.initCurrentStep();
-      await this.populateFormIfEditingOrCloning();
-      this.setupAutoStartValidators();
+      await this.state.init(this.dialogData);
     } finally {
-      this.isInitializing.set(false);
+      this.state.isInitializing.set(false);
     }
   }
 
-  private initCurrentStep(): void {
-    const editTargetValue = this.editTarget();
-    if (!editTargetValue) {
-      this.currentStep.set(1);
-      return;
-    }
-    const index = this.stepConfigs().findIndex(s => s.type === editTargetValue);
-    this.currentStep.set(index !== -1 ? index + 1 : 1);
-  }
-
-  private initProfiles(): void {
-    const newProfiles = { ...this.profiles() };
-    const newSelectedNames = { ...this.selectedProfileName() };
-
-    PROFILE_TYPES.forEach(type => {
-      const multiKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-      const multiVal = this.dialogData?.existingConfig?.[multiKey] as
-        | Record<string, unknown>
-        | undefined;
-
-      newProfiles[type] =
-        multiVal && Object.keys(multiVal).length > 0
-          ? ({ ...multiVal } as ProfilesMap)
-          : { [DEFAULT_PROFILE_NAME]: {} };
-
-      const profileNames = Object.keys(newProfiles[type]);
-      const targetProfile = this.dialogData?.targetProfile;
-      newSelectedNames[type] =
-        targetProfile && profileNames.includes(targetProfile)
-          ? targetProfile
-          : (profileNames[0] ?? DEFAULT_PROFILE_NAME);
-    });
-
-    this.profiles.set(newProfiles);
-    this.selectedProfileName.set(newSelectedNames);
-
-    if (this.dialogData?.autoAddProfile && this.editTarget()) {
-      const type = this.editTarget() as SharedProfileType;
-      if (PROFILE_TYPES.includes(type)) {
-        this.startAddProfile(type);
-      }
-    }
-  }
-
-  // ── Data loading ──────────────────────────────────────────────────────────────
-
-  private async loadExistingRemotes(): Promise<void> {
-    try {
-      this.existingRemotes.set(await this.remoteManagementService.getRemotes());
-      this.refreshRemoteNameValidator();
-    } catch (error) {
-      console.error('Error loading remotes:', error);
-    }
-  }
-
-  private async loadRemoteTypes(): Promise<void> {
-    try {
-      const providers = await this.remoteManagementService.getRemoteTypes();
-      this.remoteTypes.set(providers.map(p => ({ value: p.name, label: p.description })));
-    } catch (error) {
-      console.error('Error fetching remote types:', error);
-    }
-  }
-
-  private async loadAllFlagFields(): Promise<void> {
-    this.dynamicFlagFields.set(await this.flagConfigService.loadAllFlagFields());
-    this.addDynamicFieldsToForm();
-  }
-
-  private async loadMountTypes(): Promise<void> {
-    try {
-      this.mountTypes.set(await this.mountManagementService.getMountTypes());
-    } catch (error) {
-      console.error('Error fetching mount types:', error);
-    }
-  }
-
-  private async loadServeTypes(): Promise<void> {
-    try {
-      const types = await this.serveManagementService.getServeTypes();
-      this.availableServeTypes.set(types);
-      if (types.length > 0) this.selectedServeType.set(types[0]);
-    } catch (error) {
-      console.error('Error fetching serve types:', error);
-    }
-  }
-
-  private async loadServeFields(): Promise<void> {
-    const type = this.selectedServeType();
-    if (!type) return;
-
-    this.isLoadingServeFields.set(true);
-    this.dynamicServeFields.set([]);
-    try {
-      this.dynamicServeFields.set(await this.flagConfigService.loadServeFlagFields(type));
-      this.rebuildServeOptionsGroup();
-    } catch (error) {
-      console.error('Error loading serve config fields:', error);
-    } finally {
-      this.isLoadingServeFields.set(false);
-    }
-  }
-
-  private async loadRuntimeRemoteFields(type: string): Promise<void> {
-    if (!type) return;
-
-    this.isLoadingRuntimeRemoteFields.set(true);
-    this.dynamicRuntimeRemoteFields.set([]);
-    try {
-      this.dynamicRuntimeRemoteFields.set(
-        await this.remoteManagementService.getRemoteConfigFields(type)
-      );
-      this.replaceRuntimeRemoteFormControls();
-    } catch (error) {
-      console.error('Error loading runtime remote config fields:', error);
-    } finally {
-      this.isLoadingRuntimeRemoteFields.set(false);
-    }
-  }
-
-  private async syncRuntimeRemoteType(): Promise<void> {
-    const runtimeRemoteGroup = this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup | null;
-    if (!runtimeRemoteGroup) return;
-
-    const currentRemoteType =
-      String(this.remoteForm.get('type')?.value ?? '').trim() ||
-      String(this.dialogData?.remoteType ?? '').trim();
-    runtimeRemoteGroup.get('type')?.setValue(currentRemoteType, { emitEvent: false });
-
-    if (!currentRemoteType) {
-      this.dynamicRuntimeRemoteFields.set([]);
-      return;
-    }
-    await this.loadRuntimeRemoteFields(currentRemoteType);
-  }
-
-  private replaceRuntimeRemoteFormControls(): void {
-    const group = this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup;
-    if (!group) return;
-    Object.keys(group.controls).forEach(key => {
-      if (key !== 'type') group.removeControl(key);
-    });
-    this.dynamicRuntimeRemoteFields().forEach(field => {
-      group.addControl(field.Name, new FormControl(field.Value ?? field.Default));
-    });
-  }
-
-  private rebuildServeOptionsGroup(): void {
-    const optionsGroup = this.remoteConfigForm.get('serveConfig.options') as FormGroup;
-    if (!optionsGroup) return;
-    Object.keys(optionsGroup.controls).forEach(key => optionsGroup.removeControl(key));
-    this.dynamicServeFields().forEach(field => {
-      optionsGroup.addControl(
-        field.FieldName || field.Name,
-        new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
-      );
-    });
-  }
-
-  async onServeTypeChange(type: string): Promise<void> {
-    this.selectedServeType.set(type);
-    this.remoteConfigForm.get('serveConfig.type')?.setValue(type, { emitEvent: false });
-    await this.loadServeFields();
-  }
-
-  private addDynamicFieldsToForm(): void {
-    FLAG_TYPES.forEach(flagType => {
-      const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
-      if (!optionsGroup || !this.dynamicFlagFields()[flagType]) return;
-      this.dynamicFlagFields()[flagType].forEach(field => {
-        const uniqueKey = this.getUniqueControlKey(flagType, field);
-        this.optionToFlagTypeMap[uniqueKey] = flagType;
-        this.optionToFieldNameMap[uniqueKey] = field.FieldName;
-        optionsGroup.addControl(
-          uniqueKey,
-          new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
-        );
-      });
-    });
-  }
-
-  readonly getUniqueControlKey = (flagType: FlagType, field: RcConfigOption): string => {
-    return flagType === 'serve'
-      ? field.FieldName || field.Name
-      : `${flagType}---${field.FieldName || field.Name}`;
-  };
-
-  // ── Form creation ─────────────────────────────────────────────────────────────
-
-  private createRemoteForm(): FormGroup {
-    const isEdit = this.editTarget() === 'remote';
-    const isClone = isEdit && this.cloneTarget();
-    return this.fb.group({
-      name: [
-        '',
-        [
-          Validators.required,
-          Validators.pattern(REMOTE_NAME_REGEX),
-          ...(isEdit && !isClone
-            ? []
-            : [this.validatorRegistry.createRemoteNameValidator(this.existingRemotes())]),
-        ],
-      ],
-      type: ['', [Validators.required]],
-    });
-  }
-
-  private createRemoteConfigForm(): FormGroup {
-    const group: Record<string, AbstractControl> = {};
-
-    FLAG_TYPES.forEach(flag => {
-      group[`${flag}Config`] =
-        flag === 'serve'
-          ? this.createServeConfigGroup()
-          : this.createConfigGroup(flag, this.getFieldsForFlagType(flag));
-    });
-    group['runtimeRemoteConfig'] = this.createRuntimeRemoteConfigGroup();
-
-    return this.fb.group(group);
-  }
-
-  private createRuntimeRemoteConfigGroup(): FormGroup {
-    return this.fb.group({
-      type: [this.remoteForm?.get('type')?.value ?? '', Validators.required],
-    });
-  }
-
-  private getRuntimeRemoteOptions(
-    remoteName: string,
-    config: Record<string, unknown>
-  ): Record<string, unknown> {
-    const options = (config['options'] as Record<string, unknown>) ?? {};
-    const remoteOptions = options[remoteName];
-
-    if (remoteOptions && typeof remoteOptions === 'object' && !Array.isArray(remoteOptions)) {
-      return remoteOptions as Record<string, unknown>;
-    }
-
-    return options;
-  }
-
-  private buildRuntimeRemoteOptions(
-    remoteName: string,
-    configData: Record<string, unknown>
-  ): Record<string, unknown> {
-    const options = this.dynamicRuntimeRemoteFields().reduce(
-      (acc, field) => {
-        if (!Object.prototype.hasOwnProperty.call(configData, field.Name)) return acc;
-        const value = configData[field.Name];
-        if (!this.isDefaultValue(value, field)) acc[field.FieldName || field.Name] = value;
-        return acc;
-      },
-      {} as Record<string, unknown>
-    );
-
-    return { [remoteName]: options };
-  }
-
-  private createServeConfigGroup(): FormGroup {
-    return this.fb.group({
-      autoStart: [false],
-      cronEnabled: [false],
-      cronExpression: [null],
-      source: this.fb.group({
-        type: ['currentRemote'],
-        path: [''],
-        remote: [''],
-      }),
-      type: ['http', Validators.required],
-      vfsProfile: [DEFAULT_PROFILE_NAME],
-      filterProfile: [DEFAULT_PROFILE_NAME],
-      backendProfile: [DEFAULT_PROFILE_NAME],
-      runtimeRemoteProfile: [DEFAULT_PROFILE_NAME],
-      options: this.fb.group({}),
-    });
-  }
-
-  private createConfigGroup(flagType: string, fields: string[], includeProfiles = true): FormGroup {
-    const group: Record<string, unknown> = {};
-    fields.forEach(field => {
-      group[field] = field === 'autoStart' || field === 'cronEnabled' ? [false] : [''];
-    });
-
-    if (fields.includes('source')) {
-      const sourceGroup = this.fb.group({
-        type: ['currentRemote'],
-        path: [''],
-        remote: [''],
-      });
-      if (flagType === 'mount' || flagType === 'serve' || flagType === 'bisync') {
-        group['source'] = sourceGroup;
-      } else {
-        group['source'] = this.fb.array([sourceGroup]);
-      }
-    }
-    if (fields.includes('dest')) {
-      const destGroup = this.fb.group({ type: ['local'], path: [''], remote: [''] });
-      group['dest'] = destGroup;
-    }
-    if (fields.includes('autoStart') && !fields.includes('type')) {
-      group['cronExpression'] = [null];
-    }
-
-    const isMainOp =
-      fields.includes('source') || fields.includes('dest') || fields.includes('autoStart');
-    if (includeProfiles && isMainOp) {
-      group['vfsProfile'] = [DEFAULT_PROFILE_NAME];
-      group['filterProfile'] = [DEFAULT_PROFILE_NAME];
-      group['backendProfile'] = [DEFAULT_PROFILE_NAME];
-      group['runtimeRemoteProfile'] = [DEFAULT_PROFILE_NAME];
-    }
-
-    group['options'] = this.fb.group({});
-    return this.fb.group(group);
-  }
-
-  private refreshRemoteNameValidator(): void {
-    const nameCtrl = this.remoteForm?.get('name');
-    if (!nameCtrl) return;
-    const isEdit = this.editTarget() === 'remote';
-    const isClone = isEdit && this.cloneTarget();
-    nameCtrl.setValidators([
-      Validators.required,
-      Validators.pattern(REMOTE_NAME_REGEX),
-      ...(isEdit && !isClone
-        ? []
-        : [this.validatorRegistry.createRemoteNameValidator(this.existingRemotes())]),
-    ]);
-    nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
-  }
-
-  // ── Form setup ────────────────────────────────────────────────────────────────
-
-  private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
-
-  private setupAutoStartValidators(): void {
-    if (this.editTarget() === 'remote' || !this.editTarget() || this.cloneTarget()) {
-      FLAG_TYPES.forEach(type => {
-        if (type !== 'mount' && !RemoteConfigModalComponent.AUTO_START_OP_TYPES.has(type)) return;
-
-        const opGroup = this.remoteConfigForm.get(`${type}Config`);
-        if (!opGroup) return;
-
-        if (type === 'mount') {
-          const autoStartCtrl = opGroup.get('autoStart');
-          const destCtrl = opGroup.get('dest');
-          autoStartCtrl?.valueChanges
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(enabled => {
-              if (enabled) {
-                const validator = this.validatorRegistry.getValidator('crossPlatformPath');
-                destCtrl?.setValidators([Validators.required, ...(validator ? [validator] : [])]);
-              } else {
-                destCtrl?.clearValidators();
-              }
-              destCtrl?.updateValueAndValidity();
-            });
-        } else {
-          const sourceControl = opGroup.get('source');
-          const destControl = opGroup.get('dest');
-          const autoStartCtrl = opGroup.get('autoStart');
-          const cronEnabledCtrl = opGroup.get('cronEnabled');
-          const cronExpressionCtrl = opGroup.get('cronExpression');
-
-          cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
-
-          autoStartCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            if (sourceControl instanceof FormArray) {
-              sourceControl.controls.forEach(c => c.get('path')?.updateValueAndValidity());
-            } else if (sourceControl instanceof FormGroup) {
-              sourceControl.get('path')?.updateValueAndValidity();
-            }
-
-            if (destControl instanceof FormGroup) {
-              destControl.get('path')?.updateValueAndValidity();
-            }
-          });
-          cronEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            cronExpressionCtrl?.updateValueAndValidity();
-          });
-        }
-      });
-    }
-  }
-
-  private setupAuthStateListeners(): void {
-    effect(() => {
-      const isInProgress = this.authStateService.isAuthInProgress();
-      this.setFormState(isInProgress);
-    });
-  }
-
-  // ── Form population ───────────────────────────────────────────────────────────
-
-  private async populateFormIfEditingOrCloning(): Promise<void> {
-    if (!this.dialogData?.existingConfig) return;
-
-    if (this.editTarget() === 'remote' || this.cloneTarget()) {
-      const remoteSpecs = this.cloneTarget()
-        ? this.dialogData.existingConfig['config']
-        : this.dialogData.existingConfig;
-      await this.populateRemoteForm(remoteSpecs);
-
-      if (this.cloneTarget()) {
-        const clonePromises: Promise<void>[] = [];
-
-        this.FLAG_TYPES.forEach(type => {
-          const configKey = REMOTE_CONFIG_KEYS[
-            type as keyof typeof REMOTE_CONFIG_KEYS
-          ] as keyof RemoteConfigSections;
-          const configs = this.dialogData.existingConfig?.[configKey] as
-            | Record<string, unknown>
-            | undefined;
-          if (configs && Object.keys(configs).length > 0) {
-            clonePromises.push(
-              this.populateProfileForm(type, Object.values(configs)[0] as Record<string, unknown>)
-            );
-          }
-        });
-
-        const runtimeConfigs = this.dialogData.existingConfig?.[
-          REMOTE_CONFIG_KEYS.runtimeRemote
-        ] as Record<string, unknown> | undefined;
-        if (runtimeConfigs && Object.keys(runtimeConfigs).length > 0) {
-          clonePromises.push(
-            this.populateProfileForm(
-              'runtimeRemote',
-              Object.values(runtimeConfigs)[0] as Record<string, unknown>
-            )
-          );
-        }
-
-        await Promise.all(clonePromises);
-      }
-    } else if (this.editTarget()) {
-      if (this.dialogData?.remoteType) {
-        this.remoteForm.get('type')?.setValue(this.dialogData.remoteType);
-      }
-      await this.syncRuntimeRemoteType();
-
-      const type = this.editTarget() as SharedProfileType;
-      const profileName = this.selectedProfileName()[type];
-      const profile = this.profiles()[type]?.[profileName] as Record<string, unknown>;
-
-      if (type === 'runtimeRemote') {
-        const remoteType =
-          this.dialogData?.remoteType ||
-          (Object.values(
-            this.profiles()['runtimeRemote'] as Record<string, Record<string, unknown>>
-          ).find(p => p?.['type'])?.['type'] as string) ||
-          '';
-        this.remoteForm.get('type')?.setValue(remoteType);
-      }
-
-      if (profile) await this.populateProfileForm(type, profile);
-    }
-
-    if (this.cloneTarget()) this.generateNewCloneName();
-  }
-
-  private async populateRemoteForm(config: Record<string, unknown>): Promise<void> {
-    this.isPopulatingForm.set(true);
-    this.remoteForm.patchValue({ name: config['name'], type: config['type'] });
-    await this.onRemoteTypeChange();
-    for (const [key, value] of Object.entries(config)) {
-      if (key !== 'name' && key !== 'type' && !this.remoteForm.contains(key)) {
-        this.remoteForm.addControl(key, new FormControl(value));
-      }
-    }
-
-    this.remoteForm.patchValue(config);
-    this.isPopulatingForm.set(false);
-  }
-
-  private async populateProfileForm(
-    type: SharedProfileType,
-    config: Record<string, unknown>
-  ): Promise<void> {
-    this.isPopulatingForm.set(true);
-    const group = this.remoteConfigForm.get(`${type}Config`);
-    if (!group) {
-      this.isPopulatingForm.set(false);
-      return;
-    }
-
-    if (type === 'serve') {
-      const options = (config?.['options'] as Record<string, unknown>) ?? {};
-      const serveType = (options?.['type'] as string) ?? 'http';
-      this.selectedServeType.set(serveType);
-      await this.loadServeFields();
-
-      const vfsVal = (config['vfsProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const filterVal = (config['filterProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const backendVal = (config['backendProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const runtimeRemoteVal = (config['runtimeRemoteProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-
-      group.patchValue({
-        autoStart: config['autoStart'] ?? false,
-        source: this.pathService.parseFsString(
-          (config['source'] as string) ?? '',
-          'currentRemote',
-          this.currentRemoteName(),
-          this.existingRemotes()
-        ),
-        type: serveType,
-        vfsProfile: vfsVal,
-        filterProfile: filterVal,
-        backendProfile: backendVal,
-        runtimeRemoteProfile: runtimeRemoteVal,
-      });
-
-      const optionsGroup = group.get('options') as FormGroup;
-      if (optionsGroup) {
-        Object.entries(options).forEach(([key, value]) => {
-          if (key !== 'type' && key !== 'fs') {
-            optionsGroup.get(key)?.setValue(value, { emitEvent: false });
-          }
-        });
-      }
-
-      await this.selectLinkedProfile('vfs', vfsVal);
-      await this.selectLinkedProfile('filter', filterVal);
-      await this.selectLinkedProfile('backend', backendVal);
-      await this.selectLinkedProfile('runtimeRemote', runtimeRemoteVal);
-    } else if (type === 'runtimeRemote') {
-      const options = this.getRuntimeRemoteOptions(this.currentRemoteName(), config);
-      const runtimeType =
-        String(this.remoteForm.get('type')?.value ?? '').trim() ||
-        (options['type'] as string) ||
-        (config['type'] as string) ||
-        '';
-      group.get('type')?.setValue(runtimeType, { emitEvent: false });
-      await this.loadRuntimeRemoteFields(runtimeType);
-      this.dynamicRuntimeRemoteFields().forEach(field => {
-        const value =
-          options[field.FieldName] ?? options[field.Name] ?? field.Value ?? field.Default;
-        group.get(field.Name)?.setValue(value, { emitEvent: false });
-      });
-    } else {
-      const flagType = type as FlagType;
-
-      const vfsVal = (config['vfsProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const filterVal = (config['filterProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const backendVal = (config['backendProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-      const runtimeRemoteVal = (config['runtimeRemoteProfile'] as string) ?? DEFAULT_PROFILE_NAME;
-
-      const patchData: Record<string, unknown> = {
-        autoStart: config['autoStart'] ?? false,
-        cronEnabled: config['cronEnabled'] ?? false,
-        cronExpression: config['cronExpression'] ?? null,
-        vfsProfile: vfsVal,
-        filterProfile: filterVal,
-        backendProfile: backendVal,
-        runtimeRemoteProfile: runtimeRemoteVal,
-      };
-
-      if (flagType === 'mount' && config['type'] !== undefined) patchData['type'] = config['type'];
-
-      // ── Handle Source(s) ──
-      const sourceVal = config['source'];
-      const configSources = (
-        Array.isArray(sourceVal) ? sourceVal : sourceVal ? [sourceVal] : []
-      ) as string[];
-
-      const sourceCtrl = group.get('source');
-
-      if (sourceCtrl instanceof FormArray) {
-        sourceCtrl.clear();
-        if (configSources.length > 0) {
-          configSources.forEach(s => {
-            sourceCtrl.push(
-              this.fb.group(
-                this.pathService.parseFsString(
-                  s,
-                  'currentRemote',
-                  this.currentRemoteName(),
-                  this.existingRemotes()
-                )
-              )
-            );
-          });
-        } else {
-          sourceCtrl.push(
-            this.fb.group({
-              type: ['currentRemote'],
-              path: [''],
-              remote: [this.currentRemoteName()],
-            })
-          );
-        }
-      } else if (sourceCtrl instanceof FormGroup && configSources.length > 0) {
-        sourceCtrl.patchValue(
-          this.pathService.parseFsString(
-            configSources[0],
-            'currentRemote',
-            this.currentRemoteName(),
-            this.existingRemotes()
-          )
-        );
-      }
-
-      // ── Handle Dest ──
-      const destVal = config['dest'];
-      const configDests = (Array.isArray(destVal) ? destVal : destVal ? [destVal] : []) as string[];
-
-      const destCtrl = group.get('dest');
-
-      if (destCtrl instanceof FormGroup && configDests.length > 0) {
-        const d = configDests[0];
-        if (flagType === 'mount') {
-          destCtrl.patchValue({ type: 'local', path: d, remote: '' });
-        } else {
-          destCtrl.patchValue(
-            this.pathService.parseFsString(
-              d,
-              'local',
-              this.currentRemoteName(),
-              this.existingRemotes()
-            )
-          );
-        }
-      } else if (destCtrl instanceof FormGroup && configDests.length === 0) {
-        destCtrl.patchValue({ type: 'local', path: '', remote: '' });
-      }
-
-      group.patchValue(patchData);
-
-      const optionsGroup = group.get('options') as FormGroup;
-      if (optionsGroup && this.dynamicFlagFields()[flagType]) {
-        this.dynamicFlagFields()[flagType].forEach(field => {
-          optionsGroup
-            .get(this.getUniqueControlKey(flagType, field))
-            ?.setValue(field.Default ?? null);
-        });
-
-        const knownControlKeys = new Set(
-          this.dynamicFlagFields()[flagType].map(f => this.getUniqueControlKey(flagType, f))
-        );
-        Object.keys(optionsGroup.controls).forEach(key => {
-          if (!knownControlKeys.has(key)) {
-            optionsGroup.removeControl(key, { emitEvent: false });
-          }
-        });
-
-        if (config['options']) {
-          Object.entries(config['options'] as Record<string, unknown>).forEach(
-            ([fieldName, value]) => {
-              const field = this.dynamicFlagFields()[flagType].find(f => f.FieldName === fieldName);
-              if (field) {
-                optionsGroup.get(this.getUniqueControlKey(flagType, field))?.setValue(value);
-              } else {
-                const controlKey = `${flagType}---${fieldName}`;
-                const existing = optionsGroup.get(controlKey);
-                if (existing) {
-                  existing.setValue(value, { emitEvent: false });
-                } else {
-                  optionsGroup.addControl(controlKey, new FormControl(value), { emitEvent: false });
-                }
-              }
-            }
-          );
-        }
-      }
-
-      if (LINKED_PROFILE_TYPES.has(flagType)) {
-        await this.selectLinkedProfile('vfs', vfsVal);
-        await this.selectLinkedProfile('filter', filterVal);
-        await this.selectLinkedProfile('backend', backendVal);
-        await this.selectLinkedProfile('runtimeRemote', runtimeRemoteVal);
-      }
-    }
-
-    this.isPopulatingForm.set(false);
-  }
-
-  private generateNewCloneName(): void {
-    const baseName = this.remoteForm.get('name')?.value as string;
-    if (!baseName) return;
-    let newName = `${baseName}-clone`;
-    let counter = 1;
-    while (this.existingRemotes().includes(newName)) {
-      newName = `${baseName}-clone-${counter++}`;
-    }
-    this.remoteForm.get('name')?.setValue(newName);
-    this.refreshRemoteNameValidator();
+  isStepInvalid(stepType: string): boolean {
+    return this.state.remoteConfigForm.get(`${stepType}Config`)?.invalid ?? false;
   }
 
   // ── Step navigation ───────────────────────────────────────────────────────────
 
-  readonly applicableSteps = computed(() => {
-    const editTargetValue = this.editTarget();
-    if (!editTargetValue || editTargetValue === 'remote') {
-      return this.stepConfigs().map((_, i) => i + 1);
-    }
-    const index = this.stepConfigs().findIndex(s => s.type === editTargetValue);
-    return index !== -1 ? [index + 1] : [1];
-  });
-
   goToStep(step: number): void {
     if (this.isStepDisabled(step)) return;
     this.saveCurrentStepProfile();
-    this.currentStep.set(step);
+    this.state.currentStep.set(step);
     this.scrollToTop();
-    if (step === 1 && !this.editTarget()) {
-      this.showCliImport.set(false);
+    if (step === 1 && !this.state.editTarget()) {
+      this.state.showCliImport.set(false);
     }
   }
 
   isStepDisabled(step: number): boolean {
-    if (this.isStepNavigationLocked()) return true;
-    return !this.editTarget() && step > 1 && this.remoteFormStatus() === 'INVALID';
+    if (this.state.isStepNavigationLocked()) return true;
+    return !this.state.editTarget() && step > 1 && this.state.remoteFormStatus() === 'INVALID';
   }
 
   nextStep(): void {
-    const steps = this.applicableSteps();
-    const idx = steps.indexOf(this.currentStep());
+    const steps = this.state.applicableSteps();
+    const idx = steps.indexOf(this.state.currentStep());
     if (idx !== -1 && idx < steps.length - 1) this.goToStep(steps[idx + 1]);
   }
 
   prevStep(): void {
-    const steps = this.applicableSteps();
-    const idx = steps.indexOf(this.currentStep());
+    const steps = this.state.applicableSteps();
+    const idx = steps.indexOf(this.state.currentStep());
     if (idx > 0) this.goToStep(steps[idx - 1]);
-  }
-
-  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
-    if (stepNumber < this.currentStep()) return 'completed';
-    if (stepNumber === this.currentStep()) return 'current';
-    return 'future';
   }
 
   private scrollToTop(): void {
     this.hostEl.nativeElement.querySelector('.modal-content')?.scrollTo(0, 0);
   }
 
-  // ── Event handlers ────────────────────────────────────────────────────────────
-
-  async onRemoteTypeChange(): Promise<void> {
-    const remoteType = this.remoteForm.get('type')?.value;
-    await this.loadRemoteFields(remoteType);
-    await this.syncRuntimeRemoteType();
-  }
-
-  private async loadRemoteFields(type: string): Promise<void> {
-    this.isRemoteConfigLoading.set(true);
-    this.dynamicRemoteFields.set([]);
-    try {
-      this.dynamicRemoteFields.set(await this.remoteManagementService.getRemoteConfigFields(type));
-      this.replaceDynamicFormControls();
-    } catch (error) {
-      console.error('Error loading remote config fields:', error);
-    } finally {
-      this.isRemoteConfigLoading.set(false);
-    }
-  }
-
-  private replaceDynamicFormControls(): void {
-    Object.keys(this.remoteForm.controls).forEach(key => {
-      if (!['name', 'type'].includes(key)) this.remoteForm.removeControl(key);
-    });
-    this.dynamicRemoteFields().forEach(field => {
-      this.remoteForm.addControl(
-        field.Name,
-        new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
-      );
-    });
-  }
-
-  onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
-    if (this.isPopulatingForm()) return;
-    if (isChanged || this.editTarget() === 'remote') {
-      this.changedRemoteFields.add(fieldName);
-    } else {
-      this.changedRemoteFields.delete(fieldName);
-    }
-  }
-
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.interactiveFlowState().isActive) {
-      this.interactiveFlowState.update(s => ({ ...s, answer: newAnswer }));
+    if (this.state.interactiveFlowState().isActive) {
+      this.state.interactiveFlowState.update(s => ({ ...s, answer: newAnswer }));
     }
   }
 
   // ── Form submission ───────────────────────────────────────────────────────────
 
   async onSubmit(): Promise<void> {
-    if (this.isAuthInProgress()) return;
+    if (this.state.isAuthInProgress()) return;
     try {
-      const result = this.editTarget()
+      const result = this.state.editTarget()
         ? await this.handleEditMode()
         : await this.handleCreateMode();
-      if (result.success && !this.isAuthCancelled()) this.close();
+      if (result.success && !this.state.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
-      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
 
       let errorMessage = this.translate.instant(
         'modals.remoteConfig.errors.interactiveProcessingFailed'
@@ -1308,27 +268,27 @@ export class RemoteConfigModalComponent implements OnInit {
       }
       this.notificationService.showError(errorMessage);
     } finally {
-      if (!this.interactiveFlowState().isActive) {
+      if (!this.state.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
       }
     }
   }
 
   private async handleCreateMode(): Promise<{ success: boolean }> {
-    PROFILE_TYPES.forEach(type => this.saveCurrentProfile(type));
-    const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
+    const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    const requiresInteractiveFlow = this.commandOptions().some(
-      o => o.key === 'nonInteractive' && o.value === true
-    );
+    const requiresInteractiveFlow = this.state
+      .commandOptions()
+      .some(o => o.key === 'nonInteractive' && o.value === true);
 
     if (!requiresInteractiveFlow) {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
-        this.remoteManagementService.buildOpt(this.commandOptions())
+        this.remoteManagementService.buildOpt(this.state.commandOptions())
       );
       this.pendingConfig = { remoteData, finalConfig };
       await this.finalizeRemoteCreation();
@@ -1340,15 +300,15 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private async handleEditMode(): Promise<{ success: boolean }> {
-    const remoteName = this.currentRemoteName();
+    const remoteName = this.state.currentRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    const requiresInteractiveFlow = this.commandOptions().some(
-      o => o.key === 'nonInteractive' && o.value === true
-    );
+    const requiresInteractiveFlow = this.state
+      .commandOptions()
+      .some(o => o.key === 'nonInteractive' && o.value === true);
 
-    if (this.editTarget() === 'remote') {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    if (this.state.editTarget() === 'remote') {
+      const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
       if (requiresInteractiveFlow) {
         this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
         return await this.startInteractiveRemoteConfig(remoteData);
@@ -1366,7 +326,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   private buildFinalConfig(): RemoteConfigSections {
     this.saveCurrentStepProfile();
-    const p = this.profiles();
+    const p = this.state.profiles();
     return {
       [REMOTE_CONFIG_KEYS.mount]: p['mount'] as Record<string, MountConfig>,
       [REMOTE_CONFIG_KEYS.copy]: p['copy'] as Record<string, CopyConfig>,
@@ -1382,53 +342,17 @@ export class RemoteConfigModalComponent implements OnInit {
     };
   }
 
-  readonly isNextDisabled = computed(() => {
-    if (this.isAuthInProgress()) return true;
-
-    if (this.currentStep() === 1) {
-      if (this.remoteFormStatus() === 'INVALID') return true;
-    } else {
-      const stepType = this.stepConfigs()[this.currentStep() - 1]?.type;
-      if (stepType && stepType !== 'remote') {
-        const group = this.remoteConfigForm.get(`${stepType}Config`);
-        if (group?.invalid) return true;
-      }
-    }
-
-    return false;
-  });
-
-  readonly isSaveDisabled = computed(() => {
-    if (this.isAuthInProgress()) return true;
-
-    const target = this.editTarget();
-
-    if (!target) {
-      return this.remoteFormStatus() === 'INVALID' || this.remoteConfigFormStatus() === 'INVALID';
-    }
-
-    if (target === 'remote') {
-      return this.remoteFormStatus() === 'INVALID';
-    }
-
-    return this.remoteConfigForm.get(`${target}Config`)?.invalid ?? false;
-  });
-
-  readonly saveButtonLabel = computed(() =>
-    this.editTarget() ? 'modals.remoteConfig.buttons.save' : 'modals.remoteConfig.buttons.create'
-  );
-
   private buildUpdateConfig(): Record<string, unknown> {
-    const target = this.editTarget() as SharedProfileType;
+    const target = this.state.editTarget() as SharedProfileType;
     if (!target) return {};
 
-    this.saveCurrentProfile(target);
-    this.dirtyProfileTypes.add(target);
+    this.state.saveCurrentProfile(target);
+    this.state.dirtyProfileTypes.add(target);
 
     const updatedConfig: Record<string, unknown> = {};
-    for (const dirty of this.dirtyProfileTypes) {
+    for (const dirty of this.state.dirtyProfileTypes) {
       const key = REMOTE_CONFIG_KEYS[dirty as keyof typeof REMOTE_CONFIG_KEYS];
-      if (key) updatedConfig[key] = this.profiles()[dirty];
+      if (key) updatedConfig[key] = this.state.profiles()[dirty];
     }
 
     return updatedConfig;
@@ -1441,654 +365,60 @@ export class RemoteConfigModalComponent implements OnInit {
     return { ...empty, showOnTray: true };
   }
 
-  // ── Profile management ────────────────────────────────────────────────────────
-
   saveCurrentStepProfile(): void {
-    const editTargetValue = this.editTarget();
+    const editTargetValue = this.state.editTarget();
     const type =
       editTargetValue && editTargetValue !== 'remote'
         ? editTargetValue
-        : this.stepConfigs()[this.currentStep() - 1]?.type;
-    if (type && type !== 'remote') this.saveCurrentProfile(type as SharedProfileType);
-  }
-
-  isRenameProfileDisabled(type: string, profileName: string): boolean {
-    const t = type as SharedProfileType;
-    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) return true;
-    if (!JOB_TYPES.has(t)) return false;
-
-    const remoteName = this.currentRemoteName();
-    if (!remoteName) return false;
-
-    return this.getProfileUsage(t, remoteName, profileName).inUse;
-  }
-
-  isDeleteProfileDisabled(type: string, profileName: string): boolean {
-    const t = type as SharedProfileType;
-    const profileList = this.profileLists()[t] ?? [];
-
-    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) return true;
-    if (profileList.length <= 1) return true;
-
-    if (!JOB_TYPES.has(t) && t !== 'mount' && t !== 'serve') return false;
-
-    const remoteName = this.currentRemoteName();
-    if (!remoteName) return false;
-
-    return this.getProfileUsage(t, remoteName, profileName).inUse;
-  }
-
-  getRenameProfileDisabledReason(type: string, profileName: string): string {
-    const t = type as SharedProfileType;
-
-    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) {
-      return this.translate.instant('modals.remoteConfig.profile.disabledReason.defaultProtected');
-    }
-
-    if (!JOB_TYPES.has(t)) return '';
-
-    const remoteName = this.currentRemoteName();
-    if (!remoteName) return '';
-
-    const usage = this.getProfileUsage(t, remoteName, profileName);
-    if (!usage.inUse) return '';
-
-    return this.translate.instant('modals.remoteConfig.profile.disabledReason.inUse', {
-      operation: this.getProfileUsageOperationLabel(t),
-    });
-  }
-
-  getDeleteProfileDisabledReason(type: string, profileName: string): string {
-    const t = type as SharedProfileType;
-    const profileList = this.profileLists()[t] ?? [];
-
-    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME) {
-      return this.translate.instant('modals.remoteConfig.profile.disabledReason.defaultProtected');
-    }
-
-    if (profileList.length <= 1) {
-      return this.translate.instant('modals.remoteConfig.profile.disabledReason.lastProfile');
-    }
-
-    if (!JOB_TYPES.has(t) && t !== 'mount' && t !== 'serve') return '';
-
-    const remoteName = this.currentRemoteName();
-    if (!remoteName) return '';
-
-    const usage = this.getProfileUsage(t, remoteName, profileName);
-    if (!usage.inUse) return '';
-
-    return this.translate.instant('modals.remoteConfig.profile.disabledReason.inUse', {
-      operation: this.getProfileUsageOperationLabel(t),
-    });
-  }
-
-  startAddProfile(type: string): void {
-    const t = type as SharedProfileType;
-    const existingNames = Object.keys(this.profiles()[t] ?? {});
-    let counter = 1;
-    while (existingNames.includes(`profile-${counter}`)) counter++;
-    this.setProfileMode(t, 'add', `profile-${counter}`);
-  }
-
-  startEditProfile(type: string): void {
-    const t = type as SharedProfileType;
-    const currentName = this.selectedProfileName()[t];
-    if (!currentName || currentName.toLowerCase() === DEFAULT_PROFILE_NAME) return;
-    this.setProfileMode(t, 'edit', currentName);
-  }
-
-  cancelProfileEdit(type: string): void {
-    this.setProfileMode(type as SharedProfileType, 'view');
-  }
-
-  saveProfile(type: string): void {
-    const t = type as SharedProfileType;
-    const state = this.profileState()[t];
-    const newName = state.tempName.trim();
-    if (!newName) return;
-
-    if (state.mode === 'add') {
-      this.profiles.update(p => ({ ...p, [t]: { ...p[t], [newName]: {} } }));
-      this.selectProfile(t, newName);
-    } else if (state.mode === 'edit') {
-      const oldName = this.selectedProfileName()[t];
-      if (oldName === newName) {
-        this.cancelProfileEdit(t);
-        return;
-      }
-      if (this.profiles()[t][newName] !== undefined) return;
-
-      const profileData = this.profiles()[t][oldName];
-      this.profiles.update(p => {
-        const updated = { ...p, [t]: { ...p[t], [newName]: profileData } };
-        delete updated[t][oldName];
-        return updated;
-      });
-      this.selectedProfileName.update(s => ({ ...s, [t]: newName }));
-      this.cascadeProfileRename(t, oldName, newName);
-    }
-    this.setProfileMode(t, 'view');
-  }
-
-  deleteProfile(type: string, name: string): void {
-    const t = type as SharedProfileType;
-    if (name.toLowerCase() === DEFAULT_PROFILE_NAME) return;
-
-    const remoteName = this.currentRemoteName();
-    if (remoteName) {
-      const usage = this.getProfileUsage(t, remoteName, name);
-      if (usage.inUse) {
-        this.notificationService.showWarning(
-          this.translate.instant('modals.remoteConfig.profile.inUseWarning', {
-            name,
-            count: usage.count,
-            type: usage.opType,
-          })
-        );
-        return;
-      }
-    }
-
-    this.profiles.update(p => {
-      const rest = { ...p[t] };
-      delete rest[name];
-      return { ...p, [t]: rest };
-    });
-
-    if (this.selectedProfileName()[t] === name) {
-      const remaining = Object.keys(this.profiles()[t] ?? {});
-      if (remaining.length > 0) {
-        this.selectProfile(t, remaining[0]);
-      } else {
-        this.profiles.update(p => ({ ...p, [t]: { [DEFAULT_PROFILE_NAME]: {} } }));
-        this.selectProfile(t, DEFAULT_PROFILE_NAME);
-      }
-    }
-  }
-
-  toggleCliImportVisibility(): void {
-    if (this.currentStep() === 1 && !this.editTarget()) {
-      return;
-    }
-    this.showCliImport.update(v => !v);
-  }
-
-  highlightField(key: string, flagType: SharedProfileType, profileName: string): void {
-    this.highlightedFields.update(list => {
-      if (
-        list.some(
-          h => h.controlKey === key && h.flagType === flagType && h.profileName === profileName
-        )
-      ) {
-        return list;
-      }
-      return [...list, { controlKey: key, flagType, profileName }];
-    });
-  }
-
-  async applyImportResult(event: {
-    result: ImportResult;
-    profileName: string;
-    isNew: boolean;
-  }): Promise<void> {
-    const { result, profileName, isNew } = event;
-    const t = (result.verb || this.editTarget() || 'sync') as SharedProfileType;
-
-    if (isNew) {
-      this.profiles.update(p => ({
-        ...p,
-        [t]: { ...p[t], [profileName]: {} },
-      }));
-      this.selectedProfileName.update(s => ({ ...s, [t]: profileName }));
-      this.setProfileMode(t, 'view');
-    } else {
-      this.selectProfile(t, profileName);
-    }
-
-    if (this.editTarget()) {
-      if (this.editTarget() !== t) {
-        this.editTarget.set(t);
-      }
-    } else {
-      const stepIdx = this.stepConfigs().findIndex(s => s.type === t);
-      if (stepIdx !== -1) {
-        this.goToStep(stepIdx + 1);
-      }
-    }
-
-    const group = this.remoteConfigForm.get(`${t}Config`) as FormGroup;
-    if (!group) return;
-
-    if (t === 'serve' && result.serveSubtype) {
-      await this.onServeTypeChange(result.serveSubtype);
-    }
-
-    if (t === 'mount' && result.mountSubtype) {
-      group.get('type')?.setValue(result.mountSubtype);
-    }
-
-    if (result.sourcePath) {
-      const sourceCtrl = group.get('source');
-      const parsedSource = this.pathService.parseFsString(
-        result.sourcePath,
-        'currentRemote',
-        this.currentRemoteName(),
-        this.existingRemotes()
-      );
-
-      if (sourceCtrl instanceof FormArray) {
-        sourceCtrl.clear();
-        sourceCtrl.push(this.fb.group(parsedSource));
-      } else if (sourceCtrl instanceof FormGroup) {
-        sourceCtrl.patchValue(parsedSource);
-      }
-    }
-
-    if (result.destPath) {
-      const destCtrl = group.get('dest');
-      const parsedDest = this.pathService.parseFsString(
-        result.destPath,
-        'local',
-        this.currentRemoteName(),
-        this.existingRemotes()
-      );
-
-      if (destCtrl instanceof FormGroup) {
-        destCtrl.patchValue(parsedDest);
-      }
-    }
-
-    const processedLinkedTypes = new Set<string>();
-    for (const cls of result.classified) {
-      if (cls.status === 'mapped' && cls.fieldName) {
-        const targetFlagType = (cls.flagType || t) as SharedProfileType;
-        if (targetFlagType !== t && !processedLinkedTypes.has(targetFlagType)) {
-          processedLinkedTypes.add(targetFlagType);
-          const profileCtrl = group.get(`${targetFlagType}Profile`);
-          if (profileCtrl) {
-            const currentProfileVal = profileCtrl.value || DEFAULT_PROFILE_NAME;
-            if (currentProfileVal === DEFAULT_PROFILE_NAME) {
-              const targetProfiles = this.profiles()[targetFlagType] || {};
-              if (!targetProfiles[profileName]) {
-                const defaultData = targetProfiles[DEFAULT_PROFILE_NAME] || {};
-                this.profiles.update(p => ({
-                  ...p,
-                  [targetFlagType]: {
-                    ...p[targetFlagType],
-                    [profileName]: JSON.parse(JSON.stringify(defaultData)),
-                  },
-                }));
-              }
-              profileCtrl.setValue(profileName);
-              await this.selectLinkedProfile(targetFlagType, profileName);
-            }
-          }
-        }
-      }
-    }
-
-    const processedKeys = new Set<string>();
-
-    result.classified.forEach(cls => {
-      if (cls.status === 'mapped' && cls.fieldName) {
-        const targetFlagType = (cls.flagType || t) as SharedProfileType;
-        const targetGroup = this.remoteConfigForm.get(`${targetFlagType}Config`) as FormGroup;
-        const targetOptionsGroup =
-          targetFlagType === 'runtimeRemote'
-            ? targetGroup
-            : (targetGroup?.get('options') as FormGroup);
-
-        if (targetOptionsGroup) {
-          const fields =
-            targetFlagType === 'runtimeRemote'
-              ? this.dynamicRuntimeRemoteFields()
-              : this.dynamicFlagFields()[targetFlagType as FlagType] || [];
-
-          const matchedField = fields.find(
-            f =>
-              (f.FieldName && f.FieldName.toLowerCase() === cls.fieldName!.toLowerCase()) ||
-              (f.Name && f.Name.toLowerCase() === cls.fieldName!.toLowerCase())
-          );
-
-          if (matchedField) {
-            const uniqueKey =
-              targetFlagType === 'runtimeRemote'
-                ? matchedField.Name
-                : this.getUniqueControlKey(targetFlagType as FlagType, matchedField);
-
-            const control = targetOptionsGroup.get(uniqueKey);
-            if (control) {
-              const isArrayType = [
-                'stringArray',
-                'CommaSepList',
-                'SpaceSepList',
-                'Bits',
-                'Encoding',
-                'DumpFlags',
-              ].includes(matchedField.Type);
-
-              if (isArrayType) {
-                let newArray: unknown[] = [];
-                if (processedKeys.has(uniqueKey)) {
-                  const currentVal = control.value;
-                  if (Array.isArray(currentVal)) {
-                    newArray = [...currentVal];
-                  } else if (typeof currentVal === 'string' && currentVal) {
-                    const delimiter = matchedField.Type === 'SpaceSepList' ? /\s+/ : ',';
-                    newArray = currentVal
-                      .split(delimiter)
-                      .map(v => v.trim())
-                      .filter(Boolean);
-                  }
-                }
-
-                const coerced = cls.coercedValue;
-                if (Array.isArray(coerced)) {
-                  coerced.forEach(v => {
-                    if (!newArray.includes(v)) newArray.push(v);
-                  });
-                } else if (coerced != null && coerced !== '') {
-                  if (!newArray.includes(coerced)) newArray.push(coerced);
-                }
-
-                control.setValue(newArray);
-              } else {
-                control.setValue(cls.coercedValue);
-              }
-
-              control.markAsDirty();
-              control.markAsTouched();
-              processedKeys.add(uniqueKey);
-
-              const isLinkedType = ['vfs', 'filter', 'backend', 'runtimeRemote'].includes(
-                targetFlagType
-              );
-              const targetProfileName = isLinkedType
-                ? group.get(`${targetFlagType}Profile`)?.value || DEFAULT_PROFILE_NAME
-                : profileName;
-              this.highlightField(uniqueKey, targetFlagType, targetProfileName);
-            }
-          }
-        }
-      }
-    });
-
-    processedLinkedTypes.forEach(flagType => {
-      this.saveCurrentProfile(flagType as SharedProfileType);
-      this.dirtyProfileTypes.add(flagType as SharedProfileType);
-    });
-    this.saveCurrentProfile(t);
-    this.dirtyProfileTypes.add(t);
-
-    this.showCliImport.set(false);
-  }
-
-  // ── Profile selection ─────────────────────────────────────────────────────────
-
-  selectProfile(type: EditTarget, name: string): void {
-    if (!type) return;
-    void this.doSelectProfile(type as SharedProfileType, name);
-  }
-
-  private async selectLinkedProfile(type: SharedProfileType, name: string): Promise<void> {
-    if (!type) return;
-    await this.doSelectProfile(type, name);
-  }
-
-  private async doSelectProfile(t: SharedProfileType, name: string): Promise<void> {
-    if (!this.profiles()[t]?.[name]) return;
-    this.saveCurrentProfile(t);
-    this.selectedProfileName.update(prev => ({ ...prev, [t]: name }));
-    await this.populateProfileForm(t, this.profiles()[t][name] as Record<string, unknown>);
-  }
-
-  saveCurrentProfile(type: EditTarget): void {
-    if (!type) return;
-    const t = type as SharedProfileType;
-    const currentName = this.selectedProfileName()[t];
-    if (!this.profiles()[t]?.[currentName]) return;
-    const formValue = this.remoteConfigForm.get(`${t}Config`)?.getRawValue();
-    if (!formValue) return;
-    this.profiles.update(p => ({
-      ...p,
-      [t]: {
-        ...p[t],
-        [currentName]: this.buildProfileConfig(
-          t,
-          this.currentRemoteName(),
-          formValue as Record<string, unknown>
-        ),
-      },
-    }));
-  }
-
-  // ── Navigation ────────────────────────────────────────────────────────────────
-
-  private saveCurrentAndMarkDirty(target: NonNullable<EditTarget>): void {
-    if (target !== 'remote') {
-      this.saveCurrentProfile(target as SharedProfileType);
-      this.dirtyProfileTypes.add(target as SharedProfileType);
-    }
-  }
-
-  navigateToShared(type: EditTarget): void {
-    if (!type) return;
-    const current = this.editTarget();
-    if (current) this.saveCurrentAndMarkDirty(current);
-    if (current) this.editStack.update(s => [...s, current as NonNullable<EditTarget>]);
-
-    this.editTarget.set(type);
-    const idx = this.stepConfigs().findIndex(s => s.type === type);
-    if (idx !== -1) this.currentStep.set(idx + 1);
-  }
-
-  returnFromShared(): void {
-    const stack = this.editStack();
-    if (stack.length === 0) return;
-
-    const current = this.editTarget();
-    if (current) this.saveCurrentAndMarkDirty(current);
-
-    const target = stack[stack.length - 1];
-    this.editStack.update(s => s.slice(0, -1));
-    this.editTarget.set(target as EditTarget);
-    const idx = this.stepConfigs().findIndex(s => s.type === target);
-    if (idx !== -1) this.currentStep.set(idx + 1);
-  }
-
-  private buildProfileConfig(
-    type: SharedProfileType,
-    remoteName: string,
-    configData: Record<string, unknown>
-  ): Record<string, unknown> {
-    if (type === 'serve') {
-      const sourcePaths = this.pathService.buildPathStrings(
-        configData['source'] as any[],
-        remoteName
-      );
-      const fs = sourcePaths.length > 0 ? sourcePaths[0] : '';
-      const serveOptions = this.cleanServeOptions(
-        (configData['options'] as Record<string, unknown>) ?? {}
-      );
-      return {
-        autoStart: configData['autoStart'] as boolean,
-        cronEnabled: configData['cronEnabled'] as boolean,
-        cronExpression: configData['cronExpression'] as string | null,
-        source: fs,
-        vfsProfile: configData['vfsProfile'] ?? DEFAULT_PROFILE_NAME,
-        filterProfile: configData['filterProfile'] ?? DEFAULT_PROFILE_NAME,
-        backendProfile: configData['backendProfile'] ?? DEFAULT_PROFILE_NAME,
-        runtimeRemoteProfile: configData['runtimeRemoteProfile'] ?? DEFAULT_PROFILE_NAME,
-        options: { type: configData['type'], fs, ...serveOptions },
-      };
-    }
-
-    if (type === 'runtimeRemote') {
-      return { options: this.buildRuntimeRemoteOptions(remoteName, configData) };
-    }
-
-    const result: Record<string, unknown> = {};
-    for (const key in configData) {
-      if (key === 'source') {
-        result[key] = Array.isArray(configData[key])
-          ? this.pathService.buildPathStrings(configData[key] as any[], remoteName)
-          : this.pathService.buildPathString(configData[key] as any, remoteName);
-      } else if (key === 'dest') {
-        result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
-      } else {
-        result[key] = configData[key];
-      }
-    }
-
-    const isMainOp = LINKED_PROFILE_TYPES.has(type as FlagType);
-    if (isMainOp) {
-      const runtimeOptions = this.profileOptions().runtimeRemote;
-      const selectedProfile = String(result['runtimeRemoteProfile'] ?? '').trim();
-      result['runtimeRemoteProfile'] = runtimeOptions.includes(selectedProfile)
-        ? selectedProfile
-        : DEFAULT_PROFILE_NAME;
-    } else {
-      delete result['vfsProfile'];
-      delete result['filterProfile'];
-      delete result['backendProfile'];
-      delete result['runtimeRemoteProfile'];
-    }
-
-    result['options'] = this.cleanData(
-      configData['options'] as Record<string, unknown>,
-      this.dynamicFlagFields()[type as FlagType],
-      type as FlagType
-    );
-    return result;
-  }
-
-  private cleanServeOptions(options: Record<string, unknown>): Record<string, unknown> {
-    return this.dynamicServeFields().reduce(
-      (cleaned, field) => {
-        const key = field.FieldName || field.Name;
-        const value = options[key];
-        if (value !== undefined && !this.isDefaultValue(value, field)) cleaned[key] = value;
-        return cleaned;
-      },
-      {} as Record<string, unknown>
-    );
-  }
-
-  private static readonly FLAG_TYPE_FIELDS: Partial<Record<string, string[]>> = {
-    mount: ['autoStart', 'dest', 'source', 'type'],
-    sync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    copy: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    move: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    bisync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-  };
-
-  private getFieldsForFlagType(type: string): string[] {
-    return RemoteConfigModalComponent.FLAG_TYPE_FIELDS[type] ?? [];
-  }
-
-  // ── Data cleaning ─────────────────────────────────────────────────────────────
-
-  private cleanFormData(formData: Record<string, unknown>): PendingRemoteData {
-    const fieldsByName = new Map(this.dynamicRemoteFields().map(f => [f.Name, f]));
-
-    const result: PendingRemoteData = {
-      name: formData['name'] as string,
-      type: formData['type'] as string,
-    };
-
-    for (const [key, value] of Object.entries(formData)) {
-      if (key === 'name' || key === 'type') continue;
-      const field = fieldsByName.get(key);
-      if (field) {
-        if (!this.isDefaultValue(value, field) || this.changedRemoteFields.has(key))
-          result[field.FieldName || key] = value;
-      } else if (value !== null && value !== undefined && value !== '') {
-        result[key] = value;
-      }
-    }
-
-    return result;
-  }
-
-  private cleanData(
-    formData: Record<string, unknown>,
-    fieldDefinitions: RcConfigOption[],
-    flagType: FlagType
-  ): Record<string, unknown> {
-    const fieldMap = new Map<string, RcConfigOption>();
-    fieldDefinitions.forEach(f => fieldMap.set(this.getUniqueControlKey(flagType, f), f));
-
-    return Object.entries(formData).reduce(
-      (acc, [key, value]) => {
-        const field = fieldMap.get(key);
-        if (field) {
-          if (!this.isDefaultValue(value, field)) acc[field.FieldName] = value;
-        } else if (value !== undefined && value !== null && value !== '') {
-          const prefix = `${flagType}---`;
-          const cleanKey = key.startsWith(prefix) ? key.slice(prefix.length) : key;
-          acc[cleanKey] = value;
-        }
-        return acc;
-      },
-      {} as Record<string, unknown>
-    );
-  }
-
-  private isDefaultValue(value: unknown, field: RcConfigOption): boolean {
-    if (value === null || value === undefined) return true;
-    const strVal = String(value);
-    return strVal === String(field.Default) || strVal === String(field.DefaultStr) || strVal === '';
+        : this.state.stepConfigs()[this.state.currentStep() - 1]?.type;
+    if (type && type !== 'remote') this.state.saveCurrentProfile(type as SharedProfileType);
   }
 
   // ── Interactive flow ──────────────────────────────────────────────────────────
 
   onInteractiveContinue(answer: string | number | boolean | null): void {
-    if (this.interactiveFlowState().isProcessing) return;
-    this.interactiveFlowState.update(s => ({ ...s, isProcessing: true, answer: String(answer) }));
+    if (this.state.interactiveFlowState().isProcessing) return;
+    this.state.interactiveFlowState.update(s => ({
+      ...s,
+      isProcessing: true,
+      answer: String(answer),
+    }));
     void this.processInteractiveResponse(String(answer));
   }
 
   private async startInteractiveRemoteConfig(
     remoteData: PendingRemoteData
   ): Promise<{ success: boolean }> {
-    this.interactiveFlowState.set({
-      isActive: true,
-      isProcessing: true,
-      question: null,
-      answer: '',
-    });
-    const { name, type, ...paramRest } = remoteData;
-
     try {
-      const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-        name,
-        type ?? '',
-        paramRest,
-        this.remoteManagementService.buildOpt(this.commandOptions())
+      const resp = await this.remoteManagementService.startRemoteConfigInteractive(
+        remoteData.name,
+        remoteData.type,
+        remoteData,
+        this.remoteManagementService.buildOpt(this.state.commandOptions())
       );
 
-      if (!startResp || startResp.State === '') {
+      if (!resp || resp.State === '') {
         await this.finalizeRemoteCreation();
         return { success: true };
       }
 
-      this.interactiveFlowState.set({
+      this.state.interactiveFlowState.set({
         isActive: true,
-        question: startResp,
-        answer: getDefaultAnswerFromQuestion(startResp),
         isProcessing: false,
+        question: resp,
+        answer: getDefaultAnswerFromQuestion(resp),
       });
+
       return { success: false };
     } catch (error) {
-      this.interactiveFlowState.set(createInitialInteractiveFlowState());
+      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
       throw error;
     }
   }
 
   private async processInteractiveResponse(answer: string): Promise<void> {
     try {
-      const state = this.interactiveFlowState();
+      const state = this.state.interactiveFlowState();
       if (!state.isActive || !state.question || !this.pendingConfig) return;
 
       const { name, ...paramRest } = this.pendingConfig.remoteData;
@@ -2100,14 +430,14 @@ export class RemoteConfigModalComponent implements OnInit {
         state.question.State,
         processedAnswer,
         paramRest,
-        this.remoteManagementService.buildOpt(this.commandOptions())
+        this.remoteManagementService.buildOpt(this.state.commandOptions())
       );
 
       if (!resp || resp.State === '') {
-        this.interactiveFlowState.set(createInitialInteractiveFlowState());
+        this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
         await this.finalizeRemoteCreation();
       } else {
-        this.interactiveFlowState.update(s => ({
+        this.state.interactiveFlowState.update(s => ({
           ...s,
           question: resp,
           answer: getDefaultAnswerFromQuestion(resp),
@@ -2116,29 +446,19 @@ export class RemoteConfigModalComponent implements OnInit {
       }
     } catch (error) {
       console.error('Error processing interactive response:', error);
-      this.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
+      this.state.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
       this.notificationService.showError(
         this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
       );
     }
   }
 
-  readonly isInteractiveContinueDisabled = computed(() => {
-    const state = this.interactiveFlowState();
-    return (
-      state.isProcessing ||
-      (state.question?.Option?.Type !== 'password' &&
-        (state.answer == null || String(state.answer).trim() === '')) ||
-      this.isAuthCancelled()
-    );
-  });
-
   // ── Finalization ──────────────────────────────────────────────────────────────
 
   private async finalizeRemoteCreation(): Promise<void> {
     if (!this.pendingConfig) return;
     const { remoteData, finalConfig } = this.pendingConfig;
-    this.interactiveFlowState.set(createInitialInteractiveFlowState());
+    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     await this.remoteManagementService.getRemotes();
     this.authStateService.resetAuthState();
@@ -2206,110 +526,18 @@ export class RemoteConfigModalComponent implements OnInit {
 
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
-    this.interactiveFlowState.set(createInitialInteractiveFlowState());
+    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  // ── Utilities ─────────────────────────────────────────────────────────────────
-
-  private cascadeProfileRename(type: SharedProfileType, oldName: string, newName: string): void {
-    const remoteName = this.currentRemoteName();
-    if (!remoteName) return;
-
-    const onResult = (n: number): void => {
-      if (n > 0) console.debug(`Updated ${n} ${type}(s) with new profile name: ${newName}`);
-    };
-    const onError = (err: unknown): void =>
-      console.warn(`Failed to update ${type}s with new profile name:`, err);
-
-    const handlers: Partial<Record<string, () => Promise<number>>> = {
-      mount: () =>
-        this.mountManagementService.renameProfileInMountCache(remoteName, oldName, newName),
-      serve: () =>
-        this.serveManagementService.renameProfileInServeCache(remoteName, oldName, newName),
-    };
-    handlers[type]?.().then(onResult).catch(onError);
-  }
-
-  private getProfileUsage(
-    type: SharedProfileType,
-    remoteName: string,
-    profileName: string
-  ): { inUse: boolean; count: number; opType: string } {
-    if (JOB_TYPES.has(type)) {
-      const activeJobs = this.jobManagementService.getActiveJobsForRemote(remoteName, profileName);
-      return { inUse: activeJobs.length > 0, count: activeJobs.length, opType: 'job' };
-    }
-    if (type === 'mount') {
-      const activeMounts = this.mountManagementService.getMountsForRemoteProfile(
-        remoteName,
-        profileName
-      );
-      return { inUse: activeMounts.length > 0, count: activeMounts.length, opType: 'mount' };
-    }
-    if (type === 'serve') {
-      const activeServes = this.serveManagementService.getServesForRemoteProfile(
-        remoteName,
-        profileName
-      );
-      return { inUse: activeServes.length > 0, count: activeServes.length, opType: 'serve' };
-    }
-    return { inUse: false, count: 0, opType: '' };
-  }
-
-  private getProfileUsageOperationLabel(type: SharedProfileType): string {
-    if (JOB_TYPES.has(type)) return `${type} job`;
-    if (type === 'mount') return 'mount';
-    if (type === 'serve') return 'serve';
-    return type;
-  }
-
-  private setProfileMode(
-    type: SharedProfileType,
-    mode: 'view' | 'edit' | 'add',
-    tempName = ''
-  ): void {
-    this.profileState.update(state => ({ ...state, [type]: { mode, tempName } }));
-  }
-
-  public setProfileTempName(type: EditTarget, name: string): void {
-    if (!type) return;
-    const key = type as SharedProfileType;
-    this.profileState.update(state => ({ ...state, [key]: { ...state[key], tempName: name } }));
-  }
-
-  formControl(path: string): FormControl {
-    return this.remoteConfigForm.get(path) as FormControl;
-  }
-
-  get runtimeRemoteConfigGroup(): FormGroup {
-    return this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup;
-  }
-
-  setFormState(disabled: boolean): void {
-    if (disabled) {
-      this.remoteForm.disable();
-      this.remoteConfigForm.disable();
-    } else {
-      if (this.editTarget() === 'remote' && !this.cloneTarget()) {
-        this.remoteForm.enable({ emitEvent: false });
-        this.remoteForm.get('name')?.disable({ emitEvent: false });
-        this.remoteForm.get('type')?.disable({ emitEvent: false });
-      } else {
-        this.remoteForm.enable();
-      }
-      this.remoteConfigForm.enable();
-    }
-  }
-
-  // ── Search ────────────────────────────────────────────────────────────────────
+  // ── Search & Listeners ─────────────────────────────────────────────────────────
 
   toggleSearchVisibility(): void {
-    this.isSearchVisible.update(visible => !visible);
-    if (!this.isSearchVisible()) this.searchQuery.set('');
+    this.state.isSearchVisible.update(visible => !visible);
+    if (!this.state.isSearchVisible()) this.state.searchQuery.set('');
   }
 
   onSearchInput(query: string): void {
-    this.searchQuery.set(query);
+    this.state.searchQuery.set(query);
   }
 
   scrollToSection(sectionId: string): void {
