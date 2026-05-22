@@ -99,7 +99,7 @@
     "successStopAll": "Successfully stopped all serves",
     "failedStopAll": "Failed to stop all serves: {{error}}"
   },
-  "task": {
+  "automation": {
     "status": {
       "enabled": "Enabled",
       "disabled": "Disabled",
@@ -108,17 +108,24 @@
       "stopping": "Stopping"
     },
     "toggle": {
-      "enable": "Enable task",
-      "disable": "Disable task",
-      "stopping": "Task is stopping..."
+      "enable": "Enable automation",
+      "disable": "Disable automation",
+      "stopping": "Automation is stopping..."
     },
     "nextRun": {
-      "disabled": "Task is disabled",
+      "disabled": "Automation is disabled",
       "stopping": "Disabling after current run",
       "notScheduled": "Not scheduled"
     },
     "lastRun": {
       "never": "Never"
+    },
+    "monitoring": {
+      "realtime": "Real-time Monitoring",
+      "debounce": "Debounce Delay",
+      "watcherActive": "Watcher Active",
+      "seconds": "seconds",
+      "realtimeSchedule": "Real-time File Watcher"
     }
   },
   "actions": {
@@ -263,7 +270,7 @@
     "origins": {
       "title": "Origins",
       "dashboard": "Dashboard",
-      "scheduler": "Scheduler",
+      "automation": "Automation",
       "filemanager": "File Manager",
       "startup": "Startup",
       "update": "Update",
@@ -297,7 +304,7 @@
       "mount": "Drive Mounts",
       "engine": "Backend Infrastructure",
       "update": "Software Updates",
-      "scheduled_task": "Scheduled Tasks",
+      "automation": "Automations",
       "system": "System Events"
     },
     "action": {
@@ -1059,8 +1066,14 @@
     "appOperation": {
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
       "enableScheduled": "Enable Scheduled {{type}}",
+      "enableWatch": "Enable Real-time File Monitoring",
+      "watchDescription": "Watch local source directories for file modifications and sync changes automatically.",
+      "watchDelay": "Debounce delay (seconds)",
+      "watchRequiresLocalSource": "Real-time monitoring requires at least one local source directory.",
+      "watchRequiresLocal": "Real-time monitoring requires at least one local source or destination directory.",
+      "watchMixedSourcesNote": "Only local source directories will be monitored in real-time. Changes on remote sources will not trigger sync automatically.",
+      "watchFilterNote": "Note: The file watcher respects your Filter Profile. Changes to files or directories that match your exclusions (e.g. by pattern, size, or age) will not trigger a sync.",
       "scheduleDescription": "When enabled, this operation will run <strong>recurring</strong> based on the cron schedule below.",
-      "cronSchedule": "Cron Schedule",
       "notConfigured": "Not configured",
       "sourcePaths": "Source Paths",
       "destinationPath": "Destination Path",
@@ -1078,7 +1091,7 @@
       "noItemsFound": "No items found in this directory.",
       "chooseCommonSchedule": "Choose a common schedule:",
       "orCustomize": "or customize",
-      "runThisTask": "Run this task",
+      "runThisAutomation": "Run this automation",
       "everyDay": "every day",
       "everyWeek": "every week",
       "everyMonth": "every month",
@@ -1480,8 +1493,8 @@
       "dryRunActive": "Dry run is active — no changes will be made"
     },
     "generalDetail": {
-      "scheduledTasks": "Scheduled Tasks",
-      "goToTask": "Go to task {{index}}",
+      "automations": "Automations",
+      "goToAutomation": "Go to automation {{index}}",
       "schedule": "Schedule",
       "cronExpression": "Cron Expression:",
       "nextRunLabel": "Next Run:",
@@ -1497,8 +1510,8 @@
       "lastError": "Last Error",
       "currentlyRunning": "Currently Running",
       "jobIdLabel": "Job ID:",
-      "previousTaskTooltip": "Previous task",
-      "nextTaskTooltip": "Next task",
+      "previousAutomationTooltip": "Previous automation",
+      "nextAutomationTooltip": "Next automation",
       "remoteConfiguration": "Remote Configuration",
       "editConfiguration": "Edit Configuration",
       "toggleQuickAction": "Toggle {{label}} as quick action",
@@ -2289,7 +2302,7 @@
       "bandwidth": "Bandwidth Limit",
       "system": "System Information",
       "jobs": "Job Information",
-      "tasks": "Scheduled Tasks",
+      "automations": "Automations",
       "serves": "Running Serves"
     },
     "layout": {
@@ -2299,7 +2312,7 @@
       "save": "Save Layout",
       "reset": "Reset Layout",
       "resetSuccess": "Layout reset to default",
-      "toggleTaskFailed": "Failed to toggle scheduled task",
+      "toggleAutomationFailed": "Failed to toggle automation",
       "showDetailed": "Show Detailed Cards",
       "showCompact": "Show Compact Cards",
       "settings": "Layout Settings"
@@ -2353,14 +2366,14 @@
       "starting": "Starting...",
       "noRunning": "No active jobs are currently running."
     },
-    "tasks": {
+    "automations": {
       "activeCount": "{{active}} active / {{total}} total",
-      "noScheduled": "No scheduled tasks",
-      "loading": "Loading scheduled tasks...",
+      "noScheduled": "No automations",
+      "loading": "Loading automations...",
       "aria": {
-        "loading": "Loading scheduled tasks"
+        "loading": "Loading automations"
       },
-      "noConfigured": "No scheduled tasks configured. Configure auto-start operations with cron expressions to create scheduled tasks.",
+      "noConfigured": "No automations configured. Configure operations with cron schedules or real-time file monitoring to create automations.",
       "nextRun": "Next Run:"
     },
     "serves": {
@@ -2476,15 +2489,15 @@
       "refreshMountsFailed": "Failed to refresh mounted remotes",
       "refreshServesFailed": "Failed to refresh serves"
     },
-    "scheduler": {
-      "taskNotEnabled": "Task is not enabled",
-      "taskCannotRun": "Task cannot run (status: {{status}})",
-      "executionFailed": "Task execution failed: {{error}}",
-      "initFailed": "Failed to initialize scheduler: {{error}}",
-      "startFailed": "Failed to start scheduler: {{error}}",
-      "stopFailed": "Failed to stop scheduler: {{error}}",
+    "automation": {
+      "automationNotEnabled": "Automation is not enabled",
+      "automationCannotRun": "Automation cannot run (status: {{status}})",
+      "executionFailed": "Automation execution failed: {{error}}",
+      "initFailed": "Failed to initialize automation engine: {{error}}",
+      "startFailed": "Failed to start automation engine: {{error}}",
+      "stopFailed": "Failed to stop automation engine: {{error}}",
       "invalidCron": "Invalid cron expression: {{error}}",
-      "taskNotFound": "Task not found"
+      "automationNotFound": "Automation not found"
     },
     "system": {
       "themeSetFailed": "Failed to set application theme: {{error}}",
@@ -2618,8 +2631,8 @@
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "serveCount": "Serve [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Task",
-    "tooltipTasks": "{{count}} Tasks",
+    "tooltipTask": "1 Job",
+    "tooltipTasks": "{{count}} Jobs",
     "tooltipMount": "1 Mount",
     "tooltipMounts": "{{count}} Mounts",
     "tooltipServe": "1 Serve",
@@ -2637,9 +2650,9 @@
       "serveStarted": "Server Online",
       "serveFailed": "Server Error",
       "serveStopped": "Server Stopped",
-      "scheduledTaskStarted": "{{type}} Task Started",
-      "scheduledTaskCompleted": "{{type}} Task Completed",
-      "scheduledTaskFailed": "{{type}} Task Error",
+      "automationStarted": "{{type}} Automation Started",
+      "automationCompleted": "{{type}} Automation Completed",
+      "automationFailed": "{{type}} Automation Error",
       "allJobsStopped": "All Jobs Stopped",
       "allServesStopped": "All Servers Stopped",
       "allUnmounted": "All Remotes Disconnected",
@@ -2675,9 +2688,9 @@
       "allJobsStopped": "Successfully terminated all active jobs.",
       "allServesStopped": "Successfully closed all active servers.",
       "allUnmounted": "Successfully disconnected all remote mounts.",
-      "scheduledTaskStarted": "Scheduled {{type}} task '{{task}}' is running on {{backend}}.",
-      "scheduledTaskCompleted": "Scheduled {{type}} task '{{task}}' completed successfully.",
-      "scheduledTaskFailed": "Scheduled {{type}} task '{{task}}' encountered an error: {{error}}",
+      "automationStarted": "Automation {{type}} '{{automation}}' is running on {{backend}}.",
+      "automationCompleted": "Automation {{type}} '{{automation}}' completed successfully.",
+      "automationFailed": "Automation {{type}} '{{automation}}' encountered an error: {{error}}",
       "updateFound": "A new version {{version}} of RClone Manager is available.",
       "updateStarted": "Downloading and installing version {{version}}...",
       "updateDownloaded": "A new version {{version}} of RClone Manager has been downloaded and is ready to install.",
