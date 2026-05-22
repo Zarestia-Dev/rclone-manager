@@ -262,16 +262,16 @@ macro_rules! MASTER_COMMAND_LIST {
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
 
             // =================================================================
-            // SCHEDULED TASKS
+            // AUTOMATIONS
             // =================================================================
-            (get_scheduled_tasks, $crate::rclone::state::scheduled_tasks::get_scheduled_tasks, []);
-            (get_scheduled_task, $crate::rclone::state::scheduled_tasks::get_scheduled_task, [id: String]);
-            (get_scheduled_tasks_stats, $crate::rclone::state::scheduled_tasks::get_scheduled_tasks_stats, []);
-            (toggle_scheduled_task, $crate::core::scheduler::commands::toggle_scheduled_task, [id: String]);
-            (validate_cron, $crate::core::scheduler::commands::validate_cron, [cron_expression: String], [no_app]);
-            (reload_scheduled_tasks, $crate::core::scheduler::commands::reload_scheduled_tasks, []);
-            (reload_scheduled_tasks_from_configs, $crate::core::scheduler::commands::reload_scheduled_tasks_from_configs, [all_settings: serde_json::Value]);
-            (clear_all_scheduled_tasks, $crate::core::scheduler::commands::clear_all_scheduled_tasks, []);
+            (get_automations, $crate::rclone::state::automations::get_automations, []);
+            (get_automation, $crate::rclone::state::automations::get_automation, [automation_id: String]);
+            (get_automation_stats, $crate::rclone::state::automations::get_automation_stats, []);
+            (toggle_automation, $crate::core::automation::commands::toggle_automation, [automation_id: String]);
+            (validate_cron, $crate::core::automation::commands::validate_cron, [cron_expression: String], [no_app]);
+            (reload_automations, $crate::core::automation::commands::reload_automations, []);
+            (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
+            (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
             // =================================================================
             // WATCHERS

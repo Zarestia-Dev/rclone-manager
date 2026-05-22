@@ -26,11 +26,11 @@ mod server;
 // =============================================================================
 // SHARED IMPORTS (Both modes)
 // =============================================================================
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::rclone::state::automations::AutomationsCache;
 use crate::{
     core::{
-        alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
-        scheduler::engine::CronScheduler,
+        alerts::AlertHistoryCache, automation::engine::AutomationScheduler,
+        initialization::initialization, paths::AppPaths,
     },
     utils::types::{
         logs::LogCache,
@@ -337,8 +337,9 @@ fn setup_app(
     });
 
     app.manage(LogCache::new(1000));
-    app.manage(ScheduledTasksCache::new());
-    app.manage(CronScheduler::new());
+    app.manage(AutomationsCache::new());
+    app.manage(AutomationScheduler::new());
+    app.manage(crate::core::automation::watcher::WatcherManager::new());
     app.manage(core::alerts::dispatch::DispatchContext::new());
 
     app.manage(AppUpdaterState::default());

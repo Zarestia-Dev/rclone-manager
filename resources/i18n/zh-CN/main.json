@@ -97,7 +97,7 @@
     "successStopAll": "所有服务已停止",
     "failedStopAll": "停止所有服务失败：{{error}}"
   },
-  "task": {
+  "automation": {
     "status": {
       "enabled": "已启用",
       "disabled": "已禁用",
@@ -106,17 +106,24 @@
       "stopping": "正在停止"
     },
     "toggle": {
-      "enable": "启用任务",
-      "disable": "禁用任务",
-      "stopping": "任务正在停止..."
+      "enable": "启用自动化",
+      "disable": "禁用自动化",
+      "stopping": "自动化正在停止..."
     },
     "nextRun": {
-      "disabled": "任务已禁用",
+      "disabled": "自动化已禁用",
       "stopping": "当前运行结束后禁用",
       "notScheduled": "未计划"
     },
     "lastRun": {
       "never": "从未运行"
+    },
+    "monitoring": {
+      "realtime": "实时监控",
+      "debounce": "防抖延迟",
+      "watcherActive": "监控器处于活动状态",
+      "seconds": "秒",
+      "realtimeSchedule": "实时文件监控"
     }
   },
   "actions": {
@@ -258,7 +265,7 @@
     "origins": {
       "title": "来源",
       "dashboard": "仪表板",
-      "scheduler": "调度器",
+      "automation": "自动化",
       "filemanager": "文件管理器",
       "startup": "启动",
       "update": "更新",
@@ -1017,8 +1024,14 @@
     "appOperation": {
       "enableAutoStart": "开机自动{{type}}",
       "enableScheduled": "启用{{type}}计划任务",
+      "enableWatch": "启用实时文件监控",
+      "watchDescription": "监控本地源目录的文件修改并自动同步更改。",
+      "watchDelay": "防抖延迟（秒）",
+      "watchRequiresLocalSource": "实时监控需要至少一个本地源目录。",
+      "watchRequiresLocal": "实时监控需要至少一个本地源或目标目录。",
+      "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
+      "watchFilterNote": "注意：文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
       "scheduleDescription": "启用后，此操作将根据下方的 cron 计划<strong>定期</strong>运行",
-      "cronSchedule": "Cron 计划",
       "notConfigured": "未配置",
       "sourcePaths": "源路径列表",
       "destinationPath": "目标路径",
@@ -1036,7 +1049,7 @@
       "noItemsFound": "此目录中无项目",
       "chooseCommonSchedule": "选择常用计划：",
       "orCustomize": "或自定义",
-      "runThisTask": "运行此任务",
+      "runThisAutomation": "运行此自动化",
       "everyDay": "每天",
       "everyWeek": "每周",
       "everyMonth": "每月",
@@ -1437,8 +1450,8 @@
       "dryRunActive": "模拟运行已激活 — 不会进行任何更改"
     },
     "generalDetail": {
-      "scheduledTasks": "计划任务",
-      "goToTask": "跳转到任务 {{index}}",
+      "automations": "自动化",
+      "goToAutomation": "前往自动化 {{index}}",
       "schedule": "计划",
       "cronExpression": "Cron 表达式：",
       "nextRunLabel": "下次运行：",
@@ -1454,8 +1467,8 @@
       "lastError": "上次错误",
       "currentlyRunning": "正在运行",
       "jobIdLabel": "任务 ID：",
-      "previousTaskTooltip": "上一个任务",
-      "nextTaskTooltip": "下一个任务",
+      "previousAutomationTooltip": "上一个自动化",
+      "nextAutomationTooltip": "下一个自动化",
       "remoteConfiguration": "远程存储配置",
       "editConfiguration": "编辑配置",
       "toggleQuickAction": "将 {{label}} 设为快捷操作",
@@ -2231,7 +2244,7 @@
       "bandwidth": "带宽限制",
       "system": "系统信息",
       "jobs": "任务信息",
-      "tasks": "计划任务",
+      "automations": "自动化",
       "serves": "运行中的服务"
     },
     "layout": {
@@ -2243,7 +2256,7 @@
       "save": "保存布局",
       "reset": "重置布局",
       "resetSuccess": "布局已恢复默认",
-      "toggleTaskFailed": "切换计划任务状态失败",
+      "toggleAutomationFailed": "切换自动化状态失败",
       "settings": "布局设置"
     },
     "bandwidth": {
@@ -2295,14 +2308,14 @@
       "starting": "正在启动...",
       "noRunning": "当前没有正在运行的活动任务。"
     },
-    "tasks": {
+    "automations": {
       "activeCount": "活动 {{active}} / 总计 {{total}}",
-      "noScheduled": "暂无计划任务",
-      "loading": "正在加载计划任务...",
+      "noScheduled": "暂无自动化",
+      "loading": "正在加载自动化...",
       "aria": {
-        "loading": "正在加载计划任务"
+        "loading": "正在加载自动化"
       },
-      "noConfigured": "未配置任何计划任务。可通过 Cron 表达式配置自动启动操作来创建计划任务。",
+      "noConfigured": "未配置任何自动化。可通过配置 Cron 表达式或实时文件监控来创建自动化。",
       "nextRun": "下次运行："
     },
     "serves": {
@@ -2401,15 +2414,15 @@
       "refreshMountsFailed": "刷新已挂载远程存储失败",
       "refreshServesFailed": "刷新服务失败"
     },
-    "scheduler": {
-      "taskNotEnabled": "任务未启用",
-      "taskCannotRun": "任务无法运行（状态：{{status}}）",
-      "executionFailed": "任务执行失败：{{error}}",
-      "initFailed": "调度器初始化失败：{{error}}",
-      "startFailed": "启动调度器失败：{{error}}",
-      "stopFailed": "停止调度器失败：{{error}}",
+    "automation": {
+      "automationNotEnabled": "自动化未启用",
+      "automationCannotRun": "自动化无法运行（状态：{{status}}）",
+      "executionFailed": "自动化执行失败：{{error}}",
+      "initFailed": "自动化引擎初始化失败：{{error}}",
+      "startFailed": "启动自动化引擎失败：{{error}}",
+      "stopFailed": "停止自动化引擎失败：{{error}}",
       "invalidCron": "Cron 表达式无效：{{error}}",
-      "taskNotFound": "未找到任务"
+      "automationNotFound": "未找到自动化"
     },
     "system": {
       "unlockFailed": "解锁失败：{{error}}",
@@ -2542,8 +2555,8 @@
     "bisyncCount": "双向同步 [{{active}}/{{total}}]",
     "serveCount": "服务 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 个任务",
-    "tooltipTasks": "{{count}} 个任务",
+    "tooltipTask": "1 个作业",
+    "tooltipTasks": "{{count}} 个作业",
     "tooltipMount": "1 个挂载",
     "tooltipMounts": "{{count}} 个挂载",
     "tooltipServe": "1 个服务",
@@ -2561,9 +2574,9 @@
       "serveStarted": "服务器已上线",
       "serveFailed": "服务器错误",
       "serveStopped": "服务器已停止",
-      "scheduledTaskStarted": "{{type}} 计划任务已启动",
-      "scheduledTaskCompleted": "{{type}} 计划任务已完成",
-      "scheduledTaskFailed": "{{type}} 计划任务错误",
+      "automationStarted": "{{type}} 自动化已启动",
+      "automationCompleted": "{{type}} 自动化已完成",
+      "automationFailed": "{{type}} 自动化错误",
       "allJobsStopped": "所有任务已停止",
       "allServesStopped": "所有服务器已停止",
       "allUnmounted": "所有远程连接已断开",
@@ -2599,9 +2612,9 @@
       "allJobsStopped": "已成功终止所有活动任务。",
       "allServesStopped": "已成功关闭所有活动服务器。",
       "allUnmounted": "已成功断开所有远程挂载。",
-      "scheduledTaskStarted": "{{type}} 计划任务 '{{task}}' 正在 {{backend}} 上运行。",
-      "scheduledTaskCompleted": "{{type}} 计划任务 '{{task}}' 已成功完成。",
-      "scheduledTaskFailed": "{{type}} 计划任务 '{{task}}' 遇到错误：{{error}}",
+      "automationStarted": "{{type}} 自动化 '{{automation}}' 正在 {{backend}} 上运行。",
+      "automationCompleted": "{{type}} 自动化 '{{automation}}' 已成功完成。",
+      "automationFailed": "{{type}} 自动化 '{{automation}}' 遇到错误：{{error}}",
       "updateFound": "RClone Manager 的新版本 {{version}} 已发布。",
       "updateStarted": "正在下载并安装版本 {{version}}...",
       "updateDownloaded": "RClone Manager 的 {{version}} 版本已下载，准备安装。",

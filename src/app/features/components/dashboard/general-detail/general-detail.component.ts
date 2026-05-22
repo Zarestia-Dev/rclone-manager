@@ -16,9 +16,9 @@ import {
   DiskUsagePanelComponent,
   JobsPanelComponent,
   SettingsPanelComponent,
-  ScheduledTaskCardComponent,
+  AutomationCardComponent,
 } from '../../../../shared/detail-shared';
-import { IconService, SchedulerService, RemoteFacadeService, PathService } from '@app/services';
+import { IconService, AutomationService, RemoteFacadeService, PathService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {
@@ -104,14 +104,14 @@ const ACTION_CONFIGS: ActionConfig[] = [
     DiskUsagePanelComponent,
     JobsPanelComponent,
     TranslateModule,
-    ScheduledTaskCardComponent,
+    AutomationCardComponent,
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
 })
 export class GeneralDetailComponent {
   protected readonly iconService = inject(IconService);
-  private readonly schedulerService = inject(SchedulerService);
+  private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
@@ -137,8 +137,8 @@ export class GeneralDetailComponent {
   readonly retryDiskUsage = output<void>();
 
   // State
-  private readonly allScheduledTasks = this.schedulerService.scheduledTasks;
-  readonly currentTaskCardIndex = signal(0);
+  private readonly allAutomations = this.automationService.automations;
+  readonly currentAutomationCardIndex = signal(0);
 
   protected readonly maxPrimaryActions = 3;
 
@@ -155,17 +155,17 @@ export class GeneralDetailComponent {
   readonly jobs = computed(() =>
     this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
   );
-  readonly remoteScheduledTasks = computed(() => {
-    const allTasks = this.allScheduledTasks();
+  readonly remoteAutomations = computed(() => {
+    const allAutomations = this.allAutomations();
     const remote = this.selectedRemote();
     if (!remote) return [];
-    return allTasks.filter(task => task.remoteName === remote.name);
+    return allAutomations.filter(automation => automation.remoteName === remote.name);
   });
 
-  readonly hasScheduledTasks = computed(() => this.remoteScheduledTasks().length > 0);
+  readonly hasAutomations = computed(() => this.remoteAutomations().length > 0);
 
-  readonly currentTask = computed(
-    () => this.remoteScheduledTasks()[this.currentTaskCardIndex()] ?? null
+  readonly currentAutomation = computed(
+    () => this.remoteAutomations()[this.currentAutomationCardIndex()] ?? null
   );
 
   readonly viewActionConfigs = computed<ActionViewModel[]>(() => {
@@ -215,13 +215,13 @@ export class GeneralDetailComponent {
   }));
 
   constructor() {
-    void this.schedulerService
-      .getScheduledTasks()
-      .catch(err => console.error('Error loading scheduled tasks:', err));
+    void this.automationService
+      .getAutomations()
+      .catch(err => console.error('Error loading automations:', err));
 
     effect(() => {
       this.selectedRemote();
-      untracked(() => this.currentTaskCardIndex.set(0));
+      untracked(() => this.currentAutomationCardIndex.set(0));
     });
   }
 
@@ -241,32 +241,34 @@ export class GeneralDetailComponent {
     });
   }
 
-  // --- Scheduled Task Helpers ---
+  // --- Automation Helpers ---
 
-  async toggleScheduledTask(taskId: string): Promise<void> {
+  async toggleAutomation(automationId: string): Promise<void> {
     try {
-      await this.schedulerService.toggleScheduledTask(taskId);
+      await this.automationService.toggleAutomation(automationId);
     } catch (error) {
-      console.error('Error toggling scheduled task:', error);
+      console.error('Error toggling automation:', error);
     }
   }
 
-  onOpenTaskInFiles(path: string): void {
+  onOpenAutomationInFiles(path: string): void {
     const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
 
   // --- Carousel ---
 
-  nextTaskCard(): void {
-    this.currentTaskCardIndex.update(i => (i < this.remoteScheduledTasks().length - 1 ? i + 1 : i));
+  nextAutomationCard(): void {
+    this.currentAutomationCardIndex.update(i =>
+      i < this.remoteAutomations().length - 1 ? i + 1 : i
+    );
   }
 
-  previousTaskCard(): void {
-    this.currentTaskCardIndex.update(i => (i > 0 ? i - 1 : i));
+  previousAutomationCard(): void {
+    this.currentAutomationCardIndex.update(i => (i > 0 ? i - 1 : i));
   }
 
-  goToTaskCard(index: number): void {
-    this.currentTaskCardIndex.set(index);
+  goToAutomationCard(index: number): void {
+    this.currentAutomationCardIndex.set(index);
   }
 }

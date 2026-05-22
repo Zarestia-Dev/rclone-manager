@@ -20,7 +20,7 @@ import {
   RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
-  SCHEDULED_TASKS_CACHE_CHANGED,
+  AUTOMATIONS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
   RCLONE_OAUTH_URL,
@@ -107,8 +107,8 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<SettingsChangeEvent>(SYSTEM_SETTINGS_CHANGED);
   }
 
-  listenToScheduledTasksCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(SCHEDULED_TASKS_CACHE_CHANGED);
+  listenToAutomationsCacheChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>(AUTOMATIONS_CACHE_CHANGED);
   }
 
   listenToRemoteSettingsChanged(): Observable<unknown> {

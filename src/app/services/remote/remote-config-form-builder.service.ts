@@ -29,21 +29,40 @@ export interface PendingRemoteData {
   [key: string]: unknown;
 }
 
+// Shared field list for all sync-like operations (sync, copy, move, bisync)
+const OPERATION_FIELDS = [
+  'autoStart',
+  'cronEnabled',
+  'cronExpression',
+  'watchEnabled',
+  'watchDelay',
+  'source',
+  'dest',
+] as const;
+
+// Default values for known boolean/numeric fields when building form groups
+const FIELD_DEFAULTS: Record<string, unknown> = {
+  autoStart: false,
+  cronEnabled: false,
+  watchEnabled: false,
+  watchDelay: 5,
+};
+
 @Injectable()
 export class RemoteConfigFormBuilderService {
   private readonly fb = inject(FormBuilder);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly pathService = inject(PathService);
 
-  private static readonly FLAG_TYPE_FIELDS: Partial<Record<string, string[]>> = {
+  private static readonly FLAG_TYPE_FIELDS: Partial<Record<string, readonly string[]>> = {
     mount: ['autoStart', 'dest', 'source', 'type'],
-    sync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    copy: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    move: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
-    bisync: ['autoStart', 'cronEnabled', 'cronExpression', 'source', 'dest'],
+    sync: OPERATION_FIELDS,
+    copy: OPERATION_FIELDS,
+    move: OPERATION_FIELDS,
+    bisync: OPERATION_FIELDS,
   };
 
-  private getFieldsForFlagType(type: string): string[] {
+  private getFieldsForFlagType(type: string): readonly string[] {
     return RemoteConfigFormBuilderService.FLAG_TYPE_FIELDS[type] ?? [];
   }
 
@@ -66,12 +85,12 @@ export class RemoteConfigFormBuilderService {
   createRemoteConfigForm(_dynamicFlagFields: Record<FlagType, RcConfigOption[]>): FormGroup {
     const group: Record<string, AbstractControl> = {};
 
-    FLAG_TYPES.forEach(flag => {
+    for (const flag of FLAG_TYPES) {
       group[`${flag}Config`] =
         flag === 'serve'
           ? this.createServeConfigGroup()
           : this.createConfigGroup(flag, this.getFieldsForFlagType(flag));
-    });
+    }
     group['runtimeRemoteConfig'] = this.createRuntimeRemoteConfigGroup('');
 
     return this.fb.group(group);
@@ -88,11 +107,7 @@ export class RemoteConfigFormBuilderService {
       autoStart: [false],
       cronEnabled: [false],
       cronExpression: [null],
-      source: this.fb.group({
-        type: ['currentRemote'],
-        path: [''],
-        remote: [''],
-      }),
+      source: this.fb.group({ type: ['currentRemote'], path: [''], remote: [''] }),
       type: ['http', Validators.required],
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
@@ -102,34 +117,38 @@ export class RemoteConfigFormBuilderService {
     });
   }
 
-  private createConfigGroup(flagType: string, fields: string[], includeProfiles = true): FormGroup {
+  private createConfigGroup(
+    flagType: string,
+    fields: readonly string[],
+    includeProfiles = true
+  ): FormGroup {
     const group: Record<string, unknown> = {};
-    fields.forEach(field => {
-      group[field] = field === 'autoStart' || field === 'cronEnabled' ? [false] : [''];
-    });
 
-    if (fields.includes('source')) {
-      const sourceGroup = this.fb.group({
-        type: ['currentRemote'],
-        path: [''],
-        remote: [''],
-      });
-      if (flagType === 'mount' || flagType === 'serve' || flagType === 'bisync') {
-        group['source'] = sourceGroup;
-      } else {
-        group['source'] = this.fb.array([sourceGroup]);
+    for (const field of fields) {
+      if (field in FIELD_DEFAULTS) {
+        group[field] = [FIELD_DEFAULTS[field]];
+      } else if (field !== 'source' && field !== 'dest') {
+        group[field] = [''];
       }
     }
-    if (fields.includes('dest')) {
-      const destGroup = this.fb.group({ type: ['local'], path: [''], remote: [''] });
-      group['dest'] = destGroup;
+
+    if (fields.includes('source')) {
+      const sourceGroup = this.fb.group({ type: ['currentRemote'], path: [''], remote: [''] });
+      group['source'] =
+        flagType === 'mount' || flagType === 'serve' || flagType === 'bisync'
+          ? sourceGroup
+          : this.fb.array([sourceGroup]);
     }
+
+    if (fields.includes('dest')) {
+      group['dest'] = this.fb.group({ type: ['local'], path: [''], remote: [''] });
+    }
+
     if (fields.includes('autoStart') && !fields.includes('type')) {
       group['cronExpression'] = [null];
     }
 
-    const isMainOp = LINKED_PROFILE_TYPES.has(flagType);
-    if (includeProfiles && isMainOp) {
+    if (includeProfiles && LINKED_PROFILE_TYPES.has(flagType)) {
       group['vfsProfile'] = [DEFAULT_PROFILE_NAME];
       group['filterProfile'] = [DEFAULT_PROFILE_NAME];
       group['backendProfile'] = [DEFAULT_PROFILE_NAME];
@@ -147,10 +166,11 @@ export class RemoteConfigFormBuilderService {
     optionToFlagTypeMap: Record<string, FlagType>,
     optionToFieldNameMap: Record<string, string>
   ): void {
-    FLAG_TYPES.forEach(flagType => {
+    for (const flagType of FLAG_TYPES) {
       const optionsGroup = remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
-      if (!optionsGroup || !dynamicFlagFields[flagType]) return;
-      dynamicFlagFields[flagType].forEach(field => {
+      if (!optionsGroup || !dynamicFlagFields[flagType]) continue;
+
+      for (const field of dynamicFlagFields[flagType]) {
         const uniqueKey = getUniqueControlKey(flagType, field);
         optionToFlagTypeMap[uniqueKey] = flagType;
         optionToFieldNameMap[uniqueKey] = field.FieldName;
@@ -158,20 +178,20 @@ export class RemoteConfigFormBuilderService {
           uniqueKey,
           new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
         );
-      });
-    });
+      }
+    }
   }
 
   replaceDynamicFormControls(remoteForm: FormGroup, dynamicRemoteFields: RcConfigOption[]): void {
-    Object.keys(remoteForm.controls).forEach(key => {
-      if (!['name', 'type'].includes(key)) remoteForm.removeControl(key);
-    });
-    dynamicRemoteFields.forEach(field => {
+    for (const key of Object.keys(remoteForm.controls)) {
+      if (key !== 'name' && key !== 'type') remoteForm.removeControl(key);
+    }
+    for (const field of dynamicRemoteFields) {
       remoteForm.addControl(
         field.Name,
         new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
       );
-    });
+    }
   }
 
   replaceRuntimeRemoteFormControls(
@@ -180,12 +200,12 @@ export class RemoteConfigFormBuilderService {
   ): void {
     const group = remoteConfigForm.get('runtimeRemoteConfig') as FormGroup;
     if (!group) return;
-    Object.keys(group.controls).forEach(key => {
+    for (const key of Object.keys(group.controls)) {
       if (key !== 'type') group.removeControl(key);
-    });
-    dynamicRuntimeRemoteFields.forEach(field => {
+    }
+    for (const field of dynamicRuntimeRemoteFields) {
       group.addControl(field.Name, new FormControl(field.Value ?? field.Default));
-    });
+    }
   }
 
   rebuildServeOptionsGroup(
@@ -194,13 +214,15 @@ export class RemoteConfigFormBuilderService {
   ): void {
     const optionsGroup = remoteConfigForm.get('serveConfig.options') as FormGroup;
     if (!optionsGroup) return;
-    Object.keys(optionsGroup.controls).forEach(key => optionsGroup.removeControl(key));
-    dynamicServeFields.forEach(field => {
+    for (const key of Object.keys(optionsGroup.controls)) {
+      optionsGroup.removeControl(key);
+    }
+    for (const field of dynamicServeFields) {
       optionsGroup.addControl(
         field.FieldName || field.Name,
         new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
       );
-    });
+    }
   }
 
   isDefaultValue(value: unknown, field: RcConfigOption): boolean {
@@ -230,8 +252,7 @@ export class RemoteConfigFormBuilderService {
     flagType: FlagType,
     getUniqueControlKey: (flagType: FlagType, field: RcConfigOption) => string
   ): Record<string, unknown> {
-    const fieldMap = new Map<string, RcConfigOption>();
-    fieldDefinitions.forEach(f => fieldMap.set(getUniqueControlKey(flagType, f), f));
+    const fieldMap = new Map(fieldDefinitions.map(f => [getUniqueControlKey(flagType, f), f]));
 
     return Object.entries(formData).reduce(
       (acc, [key, value]) => {
@@ -240,8 +261,7 @@ export class RemoteConfigFormBuilderService {
           if (!this.isDefaultValue(value, field)) acc[field.FieldName] = value;
         } else if (value !== undefined && value !== null && value !== '') {
           const prefix = `${flagType}---`;
-          const cleanKey = key.startsWith(prefix) ? key.slice(prefix.length) : key;
-          acc[cleanKey] = value;
+          acc[key.startsWith(prefix) ? key.slice(prefix.length) : key] = value;
         }
         return acc;
       },
@@ -255,12 +275,9 @@ export class RemoteConfigFormBuilderService {
   ): Record<string, unknown> {
     const options = (config['options'] as Record<string, unknown>) ?? {};
     const remoteOptions = options[remoteName];
-
-    if (remoteOptions && typeof remoteOptions === 'object' && !Array.isArray(remoteOptions)) {
-      return remoteOptions as Record<string, unknown>;
-    }
-
-    return options;
+    return remoteOptions && typeof remoteOptions === 'object' && !Array.isArray(remoteOptions)
+      ? (remoteOptions as Record<string, unknown>)
+      : options;
   }
 
   private buildRuntimeRemoteOptions(
@@ -277,7 +294,6 @@ export class RemoteConfigFormBuilderService {
       },
       {} as Record<string, unknown>
     );
-
     return { [remoteName]: options };
   }
 
@@ -296,7 +312,7 @@ export class RemoteConfigFormBuilderService {
         configData['source'] as any[],
         remoteName
       );
-      const fs = sourcePaths.length > 0 ? sourcePaths[0] : '';
+      const fs = sourcePaths[0] ?? '';
       const serveOptions = this.cleanServeOptions(
         (configData['options'] as Record<string, unknown>) ?? {},
         dynamicServeFields
@@ -321,23 +337,22 @@ export class RemoteConfigFormBuilderService {
     }
 
     const result: Record<string, unknown> = {};
-    for (const key in configData) {
+    for (const [key, value] of Object.entries(configData)) {
       if (key === 'source') {
-        result[key] = Array.isArray(configData[key])
-          ? this.pathService.buildPathStrings(configData[key] as any[], remoteName)
-          : this.pathService.buildPathString(configData[key] as any, remoteName);
+        result[key] = Array.isArray(value)
+          ? this.pathService.buildPathStrings(value as any[], remoteName)
+          : this.pathService.buildPathString(value as any, remoteName);
       } else if (key === 'dest') {
-        result[key] = this.pathService.buildPathString(configData[key] as any, remoteName);
+        result[key] = this.pathService.buildPathString(value as any, remoteName);
       } else {
-        result[key] = configData[key];
+        result[key] = value;
       }
     }
 
     const isMainOp = LINKED_PROFILE_TYPES.has(type);
     if (isMainOp) {
-      const runtimeOptions = runtimeRemoteProfileNames;
       const selectedProfile = String(result['runtimeRemoteProfile'] ?? '').trim();
-      result['runtimeRemoteProfile'] = runtimeOptions.includes(selectedProfile)
+      result['runtimeRemoteProfile'] = runtimeRemoteProfileNames.includes(selectedProfile)
         ? selectedProfile
         : DEFAULT_PROFILE_NAME;
     } else {
@@ -362,7 +377,6 @@ export class RemoteConfigFormBuilderService {
     changedRemoteFields: Set<string>
   ): PendingRemoteData {
     const fieldsByName = new Map(dynamicRemoteFields.map(f => [f.Name, f]));
-
     const result: PendingRemoteData = {
       name: formData['name'] as string,
       type: formData['type'] as string,
@@ -372,8 +386,9 @@ export class RemoteConfigFormBuilderService {
       if (key === 'name' || key === 'type') continue;
       const field = fieldsByName.get(key);
       if (field) {
-        if (!this.isDefaultValue(value, field) || changedRemoteFields.has(key))
+        if (!this.isDefaultValue(value, field) || changedRemoteFields.has(key)) {
           result[field.FieldName || key] = value;
+        }
       } else if (value !== null && value !== undefined && value !== '') {
         result[key] = value;
       }
@@ -381,8 +396,6 @@ export class RemoteConfigFormBuilderService {
 
     return result;
   }
-
-  // ── Form Population Methods moved from state class ──
 
   async populateFormIfEditingOrCloning(
     dialogData: DialogData,
@@ -415,7 +428,7 @@ export class RemoteConfigFormBuilderService {
       if (cloneTarget()) {
         const clonePromises: Promise<void>[] = [];
 
-        FLAG_TYPES.forEach(type => {
+        for (const type of FLAG_TYPES) {
           const configKey = REMOTE_CONFIG_KEYS[
             type as keyof typeof REMOTE_CONFIG_KEYS
           ] as keyof RemoteConfigSections;
@@ -442,7 +455,7 @@ export class RemoteConfigFormBuilderService {
               )
             );
           }
-        });
+        }
 
         const runtimeConfigs = dialogData.existingConfig?.[REMOTE_CONFIG_KEYS.runtimeRemote] as
           | Record<string, unknown>
@@ -529,7 +542,6 @@ export class RemoteConfigFormBuilderService {
         remoteForm.addControl(key, new FormControl(value));
       }
     }
-
     remoteForm.patchValue(config);
     isPopulatingForm.set(false);
   }
@@ -587,16 +599,15 @@ export class RemoteConfigFormBuilderService {
 
       const optionsGroup = group.get('options') as FormGroup;
       if (optionsGroup) {
-        Object.entries(options).forEach(([key, value]) => {
-          if (key !== 'type' && key !== 'fs') {
-            const existingCtrl = optionsGroup.get(key);
-            if (existingCtrl) {
-              existingCtrl.setValue(value, { emitEvent: false });
-            } else {
-              optionsGroup.addControl(key, new FormControl(value), { emitEvent: false });
-            }
+        for (const [key, value] of Object.entries(options)) {
+          if (key === 'type' || key === 'fs') continue;
+          const existing = optionsGroup.get(key);
+          if (existing) {
+            existing.setValue(value, { emitEvent: false });
+          } else {
+            optionsGroup.addControl(key, new FormControl(value), { emitEvent: false });
           }
-        });
+        }
       }
 
       await selectLinkedProfile('vfs', vfsVal);
@@ -612,14 +623,13 @@ export class RemoteConfigFormBuilderService {
         '';
       group.get('type')?.setValue(runtimeType, { emitEvent: false });
       await loadRuntimeRemoteFields(runtimeType);
-      dynamicRuntimeRemoteFields().forEach(field => {
+      for (const field of dynamicRuntimeRemoteFields()) {
         const value =
           options[field.FieldName] ?? options[field.Name] ?? field.Value ?? field.Default;
         group.get(field.Name)?.setValue(value, { emitEvent: false });
-      });
+      }
     } else {
       const flagType = type as FlagType;
-
       const vfsVal = (config['vfsProfile'] as string) ?? DEFAULT_PROFILE_NAME;
       const filterVal = (config['filterProfile'] as string) ?? DEFAULT_PROFILE_NAME;
       const backendVal = (config['backendProfile'] as string) ?? DEFAULT_PROFILE_NAME;
@@ -629,6 +639,8 @@ export class RemoteConfigFormBuilderService {
         autoStart: config['autoStart'] ?? false,
         cronEnabled: config['cronEnabled'] ?? false,
         cronExpression: config['cronExpression'] ?? null,
+        watchEnabled: config['watchEnabled'] ?? false,
+        watchDelay: config['watchDelay'] ?? 5,
         vfsProfile: vfsVal,
         filterProfile: filterVal,
         backendProfile: backendVal,
@@ -649,7 +661,7 @@ export class RemoteConfigFormBuilderService {
       if (sourceCtrl instanceof FormArray) {
         sourceCtrl.clear();
         if (configSources.length > 0) {
-          configSources.forEach(s => {
+          for (const s of configSources) {
             sourceCtrl.push(
               this.fb.group(
                 this.pathService.parseFsString(
@@ -660,14 +672,10 @@ export class RemoteConfigFormBuilderService {
                 )
               )
             );
-          });
+          }
         } else {
           sourceCtrl.push(
-            this.fb.group({
-              type: ['currentRemote'],
-              path: [''],
-              remote: [currentRemoteName],
-            })
+            this.fb.group({ type: ['currentRemote'], path: [''], remote: [currentRemoteName] })
           );
         }
       } else if (sourceCtrl instanceof FormGroup) {
@@ -699,24 +707,23 @@ export class RemoteConfigFormBuilderService {
       const optionsGroup = group.get('options') as FormGroup;
       if (optionsGroup) {
         const fields = dynamicFlagFields()[flagType] || [];
-        fields.forEach(field => {
+        for (const field of fields) {
           const uniqueKey = getUniqueControlKey(flagType, field);
           optionsGroup.get(uniqueKey)?.setValue(field.Value ?? field.Default, { emitEvent: false });
-        });
+        }
 
-        Object.entries(options).forEach(([key, value]) => {
+        for (const [key, value] of Object.entries(options)) {
           const controlKey = getUniqueControlKey(flagType, {
             FieldName: key,
             Name: key,
           } as RcConfigOption);
-          const existingCtrl = optionsGroup.get(controlKey);
-          if (existingCtrl) {
-            existingCtrl.setValue(value, { emitEvent: false });
+          const existing = optionsGroup.get(controlKey);
+          if (existing) {
+            existing.setValue(value, { emitEvent: false });
           } else {
-            // Custom key not in rclone flags — add it so it shows in the JSON editor
             optionsGroup.addControl(controlKey, new FormControl(value), { emitEvent: false });
           }
-        });
+        }
       }
 
       if (LINKED_PROFILE_TYPES.has(flagType)) {

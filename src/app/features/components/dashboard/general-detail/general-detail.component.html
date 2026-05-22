@@ -72,65 +72,65 @@
     >
     </app-jobs-panel>
 
-    @if (hasScheduledTasks()) {
-      <mat-card class="scheduled-tasks-card">
+    @if (hasAutomations()) {
+      <mat-card class="automations-card">
         <mat-card-header>
           <mat-card-title>
             <div class="panel-title">
               <mat-icon svgIcon="clock"></mat-icon>
-              <span>{{ 'dashboard.generalDetail.scheduledTasks' | translate }}</span>
+              <span>{{ 'dashboard.generalDetail.automations' | translate }}</span>
               <span class="app-pill p-primary"
-                >{{ currentTaskCardIndex() + 1 }} / {{ remoteScheduledTasks().length }}</span
+                >{{ currentAutomationCardIndex() + 1 }} / {{ remoteAutomations().length }}</span
               >
             </div>
           </mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          @if (remoteScheduledTasks().length > 1) {
+          @if (remoteAutomations().length > 1) {
             <div class="carousel-indicators">
-              @for (task of remoteScheduledTasks(); track task.id) {
+              @for (automation of remoteAutomations(); track automation.id) {
                 <div
                   class="indicator"
-                  [class.active]="$index === currentTaskCardIndex()"
-                  (click)="goToTaskCard($index)"
-                  [matTooltip]="task.profileName"
+                  [class.active]="$index === currentAutomationCardIndex()"
+                  (click)="goToAutomationCard($index)"
+                  [matTooltip]="automation.profileName"
                   role="button"
                   tabindex="0"
                   [attr.aria-label]="
-                    'dashboard.generalDetail.goToTask' | translate: { index: $index + 1 }
+                    'dashboard.generalDetail.goToAutomation' | translate: { index: $index + 1 }
                   "
                 ></div>
               }
             </div>
           }
 
-          <div class="task-carousel-slide-wrapper">
-            @if (currentTask(); as task) {
-              <app-scheduled-task-card
-                [task]="task"
+          <div class="automation-carousel-slide-wrapper">
+            @if (currentAutomation(); as automation) {
+              <app-automation-card
+                [automation]="automation"
                 variant="detailed"
-                (toggled)="toggleScheduledTask($event)"
-                (openInFiles)="onOpenTaskInFiles($event)"
-              ></app-scheduled-task-card>
+                (toggled)="toggleAutomation($event)"
+                (openInFiles)="onOpenAutomationInFiles($event)"
+              ></app-automation-card>
             }
           </div>
 
-          @if (remoteScheduledTasks().length > 1) {
+          @if (remoteAutomations().length > 1) {
             <div class="carousel-navigation">
               <button
                 mat-icon-button
-                (click)="previousTaskCard()"
-                [disabled]="currentTaskCardIndex() === 0"
-                [matTooltip]="'dashboard.generalDetail.previousTaskTooltip' | translate"
+                (click)="previousAutomationCard()"
+                [disabled]="currentAutomationCardIndex() === 0"
+                [matTooltip]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
                 class="nav-button"
               >
                 <mat-icon svgIcon="left-arrow"></mat-icon>
               </button>
               <button
                 mat-icon-button
-                (click)="nextTaskCard()"
-                [disabled]="currentTaskCardIndex() === remoteScheduledTasks().length - 1"
-                [matTooltip]="'dashboard.generalDetail.nextTaskTooltip' | translate"
+                (click)="nextAutomationCard()"
+                [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
+                [matTooltip]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
                 class="nav-button"
               >
                 <mat-icon svgIcon="right-arrow"></mat-icon>

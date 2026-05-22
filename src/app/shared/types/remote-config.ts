@@ -209,6 +209,8 @@ interface RcloneBaseConfig {
 export interface MultiSourceConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
   source?: string[];
   dest?: string;
 }
@@ -217,6 +219,8 @@ export interface MultiSourceConfig extends RcloneBaseConfig {
 export interface SingleSourceConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
   source?: string;
   dest?: string;
 }

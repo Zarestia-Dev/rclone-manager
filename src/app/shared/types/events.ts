@@ -40,8 +40,8 @@ export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
 // Network events
 export const NETWORK_STATUS_CHANGED = 'network_status_changed';
 
-// Scheduled task event
-export const SCHEDULED_TASKS_CACHE_CHANGED = 'scheduled_tasks_cache_changed';
+// Automation event
+export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed';
 
 // Application events
 export const APP_EVENT = 'app_event';

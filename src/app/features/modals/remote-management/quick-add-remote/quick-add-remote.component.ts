@@ -287,6 +287,8 @@ export class QuickAddRemoteComponent {
       autoStart: new FormControl(false),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(''),
+      watchEnabled: new FormControl(false),
+      watchDelay: new FormControl(5),
     };
 
     if (opType === 'bisync') {
@@ -376,7 +378,19 @@ export class QuickAddRemoteComponent {
         sourcePath?.setValidators(this.validatorRegistry.requiredIfLocal());
         destPath?.setValidators(this.validatorRegistry.requiredIfLocal());
 
-        const watch$: Observable<any>[] = [opGroup.get('autoStart')!.valueChanges];
+        const cronEnabledCtrl = opGroup.get('cronEnabled');
+        const cronExpressionCtrl = opGroup.get('cronExpression');
+        const watchEnabledCtrl = opGroup.get('watchEnabled');
+        const watchDelayCtrl = opGroup.get('watchDelay');
+
+        cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
+        watchDelayCtrl?.setValidators(this.validatorRegistry.requiredIfWatchEnabled());
+
+        const watch$: Observable<any>[] = [
+          opGroup.get('autoStart')!.valueChanges,
+          cronEnabledCtrl!.valueChanges,
+          watchEnabledCtrl!.valueChanges,
+        ];
         if (sourceG) watch$.push(sourceG.get('type')!.valueChanges);
         if (destG) watch$.push(destG.get('type')!.valueChanges);
 
@@ -385,6 +399,8 @@ export class QuickAddRemoteComponent {
           .subscribe(() => {
             sourcePath?.updateValueAndValidity();
             destPath?.updateValueAndValidity();
+            cronExpressionCtrl?.updateValueAndValidity();
+            watchDelayCtrl?.updateValueAndValidity();
           });
       }
     }
@@ -493,6 +509,8 @@ export class QuickAddRemoteComponent {
         autoStart: op.autoStart ?? false,
         cronEnabled: op.cronEnabled ?? false,
         cronExpression: op.cronExpression ?? null,
+        watchEnabled: op.watchEnabled ?? false,
+        watchDelay: op.watchDelay ?? 5,
         filterProfile: DEFAULT_PROFILE_NAME,
         backendProfile: DEFAULT_PROFILE_NAME,
       };

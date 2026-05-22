@@ -87,7 +87,26 @@ export class PathService {
   isLocalPath(path: string | string[]): boolean {
     const p = Array.isArray(path) ? path[0] : path;
     if (!p) return false;
-    return p.startsWith('/') || /^[a-zA-Z]:([\\/]|$)/.test(p);
+
+    // If there is no colon, it's definitely a local path
+    const colonIdx = p.indexOf(':');
+    if (colonIdx === -1) {
+      return true;
+    }
+
+    // If the colon is at index 1 (like C: or C:\), it's a drive letter (local path)
+    if (colonIdx === 1) {
+      return true;
+    }
+
+    // If there is a path separator before the first colon, the colon is part of the path (local path)
+    const remotePart = p.substring(0, colonIdx);
+    if (remotePart.includes('/') || remotePart.includes('\\')) {
+      return true;
+    }
+
+    // Otherwise, it starts with a remote name (e.g., "remote:path"), so it's not a local path
+    return false;
   }
 
   splitFsPath(fullPath: string | string[]): { remote: string; path: string } {

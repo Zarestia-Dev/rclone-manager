@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 pub enum Origin {
     /// Action initiated from the main application Dashboard.
     Dashboard,
-    /// Automation / Cron triggered task.
-    Scheduler,
+    /// Automation task.
+    Automation,
     /// Integration with OS shell (Nautilus, Finder, etc.).
     FileManager,
     /// Initial application boot and environment setup.
@@ -41,7 +41,7 @@ impl Origin {
     pub fn as_str(&self) -> &str {
         match self {
             Origin::Dashboard => "dashboard",
-            Origin::Scheduler => "scheduler",
+            Origin::Automation => "automation",
             Origin::FileManager => "filemanager",
             Origin::Startup => "startup",
             Origin::Update => "update",

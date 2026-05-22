@@ -30,7 +30,9 @@
 
         <div class="custom-builder" [formGroup]="simpleForm">
           <div class="builder-row">
-            <span class="builder-label">{{ 'wizards.appOperation.runThisTask' | translate }}</span>
+            <span class="builder-label">{{
+              'wizards.appOperation.runThisAutomation' | translate
+            }}</span>
             <mat-form-field class="inline-field" subscriptSizing="dynamic">
               <mat-select formControlName="frequency">
                 <mat-option value="daily">{{
@@ -293,7 +295,7 @@
               [formControl]="cronControl"
               [placeholder]="'wizards.appOperation.cronPlaceholder' | translate"
               [attr.aria-label]="
-                'wizards.appOperation.aria.cronFor' | translate: { name: taskName() }
+                'wizards.appOperation.aria.cronFor' | translate: { name: automationName() }
               "
             />
             @if (cronValue()) {

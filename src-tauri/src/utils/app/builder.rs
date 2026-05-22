@@ -148,7 +148,7 @@ pub fn create_nautilus_window(
         use crate::utils::types::events::BROWSE;
         let full_path = match (remote_name, path) {
             (Some(r), Some(p)) => {
-                let is_local = r.starts_with('/') || (r.len() > 1 && r.as_bytes()[1] == b':');
+                let is_local = crate::rclone::state::cache::is_local_path(r);
                 let sep = if is_local { "/" } else { ":" };
                 format!("{}{}{}", r, sep, p.trim_start_matches('/'))
             }

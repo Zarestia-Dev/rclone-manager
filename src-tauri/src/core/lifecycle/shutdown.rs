@@ -14,13 +14,19 @@ use crate::{
     },
 };
 
-use crate::core::scheduler::engine::CronScheduler;
+use crate::core::automation::engine::AutomationScheduler;
 
 /// Main entry point for the shutdown sequence.
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
 
-    let scheduler_state = app_handle.state::<CronScheduler>();
+    let scheduler_state = app_handle.state::<AutomationScheduler>();
+
+    if let Some(watcher_manager) =
+        app_handle.try_state::<crate::core::automation::watcher::WatcherManager>()
+    {
+        watcher_manager.stop_all().await;
+    }
 
     // Run cleanup tasks concurrently with individual timeouts.
     let (unmount_result, stop_jobs_result, stop_serves_result) = tokio::join!(

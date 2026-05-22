@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+- Local filesystem watchers for sync, copy, move, and bisync automations. Sync, copy, and move require at least one local source path; bisync watches local paths from both sides.
+- Net-change debounce: create/delete pairs on the same path within the debounce window cancel each other out, suppressing temp files and atomic saves without explicit exclude rules.
+
+### Changed
+- Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 
+
+
 ## [v0.2.6] - 2026-05-19
 
 ### Added

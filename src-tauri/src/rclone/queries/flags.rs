@@ -15,38 +15,59 @@ use crate::{
 // "Copy,Check" or "Networking". These constants define the canonical sets
 // for each profile so there is a single source of truth.
 //
-// BACKEND groups — global settings that apply regardless of operation.
-//   Changing these affects everything (networking, logging, performance…).
-//   They do NOT include Copy/Sync/Filter because those are operation-level.
+// Source of truth: https://rclone.org/flags/
 //
-// COPY / SYNC groups — flags that control how a single transfer operation
-//   behaves. Copy is the base set; Sync adds the sync-specific flags on top.
+// KEY DESIGN RULE — every flag belongs to exactly one UI panel:
 //
-// FILTER groups — file-selection flags, always shown in their own section.
+//   COPY panel    → Groups that rclone docs list under "Copy Options"
+//   SYNC panel    → COPY + Groups that rclone docs list under "Sync Options"
+//   FILTER panel  → "Filter" group from the `filter` block + main "Filter" group
+//   BACKEND panel → everything else that is global / daemon-level
+//
+// The `Performance` group (checkers, transfers, buffer_size) is intentionally
+// kept OUT of COPY/SYNC. Those flags are global daemon settings — they appear
+// under the "Performance" section on the global flags page, NOT under the per-
+// command "Copy Options" or "Sync Options" sections. Including them in both
+// panels was the original source of duplication.
 // ---------------------------------------------------------------------------
 
 /// Groups that belong to the global backend / daemon settings panel.
-/// NOTE: "Copy" and "Sync" are intentionally absent — they are operation-level.
+///
+/// Includes `Performance` (checkers, transfers, buffer_size) because those
+/// are global concurrency knobs, not per-operation flags.
+/// Includes `Important` (dry_run, interactive) so they appear as global
+/// defaults even though they also show up on operation panels via `Config`.
 const BACKEND_INCLUDE: &[&str] = &[
-    "Performance", // transfers, checkers, buffer_size
-    "Networking",  // bwlimit, timeout, tpslimit, …
+    "Performance", // checkers, transfers, buffer_size
+    "Networking",  // bwlimit, timeout, tpslimit, contimeout, …
     "Config",      // retries, ask_password, human_readable, …
     "Logging",     // log_level, stats_*, progress, …
     "Debugging",   // dump
     "Listing",     // fast_list, default_time
-    "Important",   // dry_run, interactive
-    "Metadata",    // metadata_mapper (the mapper is a backend config)
+    "Important",   // dry_run, interactive (global defaults)
+    "Metadata",    // metadata_mapper
 ];
 
-/// Groups that are kept *out* of the backend panel regardless of BACKEND_INCLUDE.
-/// Ensures operation-specific and subsystem flags never leak into global settings.
+/// Groups that are hard-excluded from the backend panel regardless of
+/// BACKEND_INCLUDE. Prevents operation-specific flags from leaking in.
 const BACKEND_EXCLUDE: &[&str] = &["Copy", "Sync", "Filter", "Mount", "VFS", "RC", "WebDAV"];
 
 /// Groups for copy (and move) operations.
-const COPY_GROUPS: &[&str] = &["Copy", "Performance"];
+///
+/// Matches the "Copy Options" section in `rclone copy --help` /
+/// https://rclone.org/commands/rclone_copy/#copy-options
+///
+/// NOTE: `Performance` is intentionally absent. checkers/transfers/buffer_size
+/// are global daemon settings; they must not double-appear here.
+const COPY_GROUPS: &[&str] = &["Copy"];
 
 /// Groups for sync operations — a superset of copy.
-const SYNC_GROUPS: &[&str] = &["Copy", "Sync", "Performance"];
+///
+/// Matches "Copy Options" + "Sync Options" in `rclone sync --help` /
+/// https://rclone.org/commands/rclone_sync/#sync-options
+///
+/// NOTE: `Performance` is intentionally absent — same reason as COPY_GROUPS.
+const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 
 /// Returns the flag's groups as a `Vec<&str>`, trimmed.
 fn flag_groups(flag: &Value) -> Vec<&str> {
@@ -285,6 +306,11 @@ pub async fn get_flags_by_category(
     ))
 }
 
+/// Copy flags — matches `rclone copy --help` "Copy Options" section.
+/// https://rclone.org/commands/rclone_copy/#copy-options
+///
+/// Does NOT include Performance (checkers/transfers/buffer_size) — those are
+/// global daemon settings shown in the backend panel instead.
 #[tauri::command]
 pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
@@ -302,6 +328,10 @@ pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     get_copy_flags(app).await
 }
 
+/// Sync flags — matches `rclone sync --help` "Copy Options" + "Sync Options".
+/// https://rclone.org/commands/rclone_sync/#sync-options
+///
+/// Does NOT include Performance — same reasoning as get_copy_flags.
 #[tauri::command]
 pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
@@ -337,17 +367,25 @@ pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     Ok(simplify_field_names(combined))
 }
 
+/// Backend / global daemon flags.
+///
+/// These are settings that apply to the rclone process as a whole, regardless
+/// of which operation is running. Includes Performance (checkers, transfers,
+/// buffer_size), Networking, Config, Logging, Debugging, Listing, and Metadata.
+///
+/// Flags that carry a Copy or Sync group are explicitly excluded so that
+/// operation-specific options never appear here.
 #[tauri::command]
 pub async fn get_backend_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
     let mut flags: Vec<Value> = get_flags_by_category_internal(&merged_json, "main", None, None)
         .into_iter()
         .filter(|flag| {
-            // Hard exclusions — never show these in the backend panel.
+            // Hard exclusions — never show operation-specific flags in backend.
             if flag_has_any_group(flag, BACKEND_EXCLUDE) {
                 return false;
             }
-            // Only include recognised backend groups.
+            // Only include recognised global/backend groups.
             flag_has_any_group(flag, BACKEND_INCLUDE)
         })
         .collect();

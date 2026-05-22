@@ -1,5 +1,5 @@
 use crate::core::{
-    scheduler::commands::reload_scheduled_tasks_from_configs, settings::AppSettingsManager,
+    automation::commands::reload_automations_from_configs, settings::AppSettingsManager,
 };
 use log::{debug, error, info};
 use serde_json::Value;
@@ -79,8 +79,8 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 &remote_names,
             );
 
-            if let Err(e) = reload_scheduled_tasks_from_configs(app.clone(), all_configs).await {
-                error!("Failed to reload scheduled tasks after remote change: {e}");
+            if let Err(e) = reload_automations_from_configs(app.clone(), all_configs).await {
+                error!("Failed to reload automations after remote change: {e}");
             }
 
             #[cfg(feature = "tray")]

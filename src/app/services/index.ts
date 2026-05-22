@@ -6,7 +6,7 @@ export * from './infrastructure/system/connection.service';
 export * from './infrastructure/platform/logging.service';
 export * from './infrastructure/maintenance/rclone-update.service';
 export * from './infrastructure/maintenance/app-updater.service';
-export * from './operations/scheduler.service';
+export * from './operations/automation.service';
 export * from './infrastructure/maintenance/system-health.service';
 export * from './infrastructure/system/backend.service';
 export * from './infrastructure/system/debug.service';

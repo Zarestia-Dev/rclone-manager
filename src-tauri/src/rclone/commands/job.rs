@@ -6,10 +6,10 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    core::scheduler::engine::get_next_run,
-    rclone::{backend::BackendManager, state::scheduled_tasks::ScheduledTasksCache},
+    core::automation::engine::get_next_run,
+    rclone::{backend::BackendManager, state::automations::AutomationsCache},
     utils::{
-        app::notification::{JobStage, NotificationEvent, TaskStage, notify},
+        app::notification::{AutomationStage, JobStage, NotificationEvent, notify},
         logging::log::log_operation,
         rclone::endpoints::{core, job},
         types::{
@@ -197,7 +197,7 @@ async fn initialize_and_register_job(
             Some(app),
         )
         .await;
-        if metadata.origin != Some(Origin::Scheduler) && (metadata.job_type != JobType::Mount) {
+        if metadata.origin != Some(Origin::Automation) && (metadata.job_type != JobType::Mount) {
             notify(app, metadata.started_event(backend_name.clone()));
         }
     }
@@ -483,7 +483,7 @@ pub async fn handle_job_completion(
     last_stats: Option<Value>,
 ) -> Result<Value, RcloneError> {
     let job_cache = &app.state::<BackendManager>().job_cache;
-    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
+    let automations_cache = app.state::<AutomationsCache>();
     let mut success = job_status
         .get("success")
         .and_then(serde_json::Value::as_bool)
@@ -558,10 +558,10 @@ pub async fn handle_job_completion(
         }
     }
 
-    let task = scheduled_tasks_cache
-        .get_task_by_job_id(jobid.to_string())
+    let automation = automations_cache
+        .get_automation_by_job_id(jobid.to_string())
         .await;
-    let next_run = task
+    let next_run = automation
         .as_ref()
         .and_then(|t| get_next_run(&t.cron_expression).ok());
 
@@ -583,18 +583,18 @@ pub async fn handle_job_completion(
             .await;
     }
 
-    if let Some(task) = task {
-        let task_name = format!(
+    if let Some(automation) = automation {
+        let automation_name = format!(
             "{}: {}-{}.{}",
-            task.backend_name, task.remote_name, task.profile_name, task.id
+            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
 
-        info!("Job {jobid} associated with scheduled task '{task_name}', updating status.");
+        info!("Job {jobid} associated with automation '{automation_name}', updating status.");
 
         if success {
-            scheduled_tasks_cache
-                .update_task(
-                    &task.id,
+            automations_cache
+                .update_automation(
+                    &automation.id,
                     |t| {
                         t.mark_success();
                         t.next_run = next_run;
@@ -606,18 +606,18 @@ pub async fn handle_job_completion(
 
             notify(
                 app,
-                NotificationEvent::ScheduledTask(TaskStage::Completed {
-                    backend: task.backend_name.clone(),
-                    remote: task.remote_name.clone(),
-                    profile: task.profile_name.clone(),
-                    task_name: task.display_name(),
-                    task_type: task.task_type.clone(),
+                NotificationEvent::Automation(AutomationStage::Completed {
+                    backend: automation.backend_name.clone(),
+                    remote: automation.remote_name.clone(),
+                    profile: automation.profile_name.clone(),
+                    automation_name: automation.display_name(),
+                    automation_type: automation.automation_type.clone(),
                 }),
             );
         } else {
-            scheduled_tasks_cache
-                .update_task(
-                    &task.id,
+            automations_cache
+                .update_automation(
+                    &automation.id,
                     |t| {
                         t.mark_failure(error_msg.clone());
                         t.next_run = next_run;
@@ -629,12 +629,12 @@ pub async fn handle_job_completion(
 
             notify(
                 app,
-                NotificationEvent::ScheduledTask(TaskStage::Failed {
-                    backend: task.backend_name.clone(),
-                    remote: task.remote_name.clone(),
-                    profile: task.profile_name.clone(),
-                    task_name: task.display_name(),
-                    task_type: task.task_type.clone(),
+                NotificationEvent::Automation(AutomationStage::Failed {
+                    backend: automation.backend_name.clone(),
+                    remote: automation.remote_name.clone(),
+                    profile: automation.profile_name.clone(),
+                    automation_name: automation.display_name(),
+                    automation_type: automation.automation_type.clone(),
                     error: error_msg.clone(),
                 }),
             );
@@ -643,14 +643,14 @@ pub async fn handle_job_completion(
 
     if stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
-        if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
+        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
             notify(app, metadata.stopped_event(backend_name.clone()));
         }
         return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
     }
 
     if !success {
-        if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
+        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
@@ -663,7 +663,7 @@ pub async fn handle_job_completion(
         return Err(RcloneError::JobError(error_msg));
     }
 
-    if !metadata.no_cache && metadata.origin != Some(Origin::Scheduler) {
+    if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
         log_operation(
             LogLevel::Info,
             Some(metadata.remote_name.clone()),
@@ -751,7 +751,7 @@ fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
 
 #[tauri::command]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
-    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
+    let automations_cache = app.state::<AutomationsCache>();
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let job_cache = &backend_manager.job_cache;
@@ -790,23 +790,23 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
         .await
         .map_err(|e| e.clone())?;
 
-    if let Some(task) = scheduled_tasks_cache
-        .get_task_by_job_id(jobid.to_string())
+    if let Some(automation) = automations_cache
+        .get_automation_by_job_id(jobid.to_string())
         .await
     {
-        let task_name = format!(
+        let automation_name = format!(
             "{}: {}-{}.{}",
-            task.backend_name, task.remote_name, task.profile_name, task.id
+            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
-        info!("Job {jobid} associated with scheduled task '{task_name}', marking as stopped");
-        scheduled_tasks_cache
-            .update_task(
-                &task.id,
-                crate::utils::types::scheduled_task::ScheduledTask::mark_stopped,
+        info!("Job {jobid} associated with automation '{automation_name}', marking as stopped");
+        automations_cache
+            .update_automation(
+                &automation.id,
+                crate::utils::types::automation::Automation::mark_stopped,
                 Some(&app),
             )
             .await
-            .map_err(|e| format!("Failed to update task state: {e}"))?;
+            .map_err(|e| format!("Failed to update automation state: {e}"))?;
     }
 
     log_operation(
@@ -932,7 +932,7 @@ pub async fn submit_batch_job(
         )
         .await;
 
-        if metadata.origin != Some(Origin::Scheduler) {
+        if metadata.origin != Some(Origin::Automation) {
             notify(&app, metadata.started_event(backend.name.clone()));
         }
     }

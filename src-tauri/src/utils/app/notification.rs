@@ -63,27 +63,27 @@ pub enum JobStage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "stage", content = "data", rename_all = "snake_case")]
-pub enum TaskStage {
+pub enum AutomationStage {
     Started {
         backend: String,
         remote: String,
         profile: String,
-        task_name: String,
-        task_type: crate::utils::types::scheduled_task::TaskType,
+        automation_name: String,
+        automation_type: crate::utils::types::automation::AutomationType,
     },
     Completed {
         backend: String,
         remote: String,
         profile: String,
-        task_name: String,
-        task_type: crate::utils::types::scheduled_task::TaskType,
+        automation_name: String,
+        automation_type: crate::utils::types::automation::AutomationType,
     },
     Failed {
         backend: String,
         remote: String,
         profile: String,
-        task_name: String,
-        task_type: crate::utils::types::scheduled_task::TaskType,
+        automation_name: String,
+        automation_type: crate::utils::types::automation::AutomationType,
         error: String,
     },
 }
@@ -154,7 +154,7 @@ pub enum EngineStage {
 #[serde(tag = "domain", content = "event", rename_all = "snake_case")]
 pub enum NotificationEvent {
     Job(JobStage),
-    ScheduledTask(TaskStage),
+    Automation(AutomationStage),
     AppUpdate(UpdateStage),
     RcloneUpdate(UpdateStage),
     Serve(ServeStage),
@@ -278,74 +278,74 @@ impl NotificationEvent {
                 },
             },
 
-            // --- TASK DOMAIN ---
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started {
-                    task_name,
+            // --- AUTOMATION DOMAIN ---
+            Self::Automation(stage) => match stage {
+                AutomationStage::Started {
+                    automation_name,
                     backend,
                     remote,
                     profile,
-                    task_type,
+                    automation_type,
                 } => RenderedContent {
                     title: t_with_params(
-                        "notification.title.scheduledTaskStarted",
-                        &[("type", &task_type.to_string())],
+                        "notification.title.automationStarted",
+                        &[("type", &automation_type.to_string())],
                     ),
                     body: t_with_params(
-                        "notification.body.scheduledTaskStarted",
+                        "notification.body.automationStarted",
                         &[
-                            ("task", task_name),
+                            ("automation", automation_name),
                             ("backend", backend),
                             ("remote", remote),
                             ("profile", profile),
-                            ("type", &task_type.to_string().to_lowercase()),
+                            ("type", &automation_type.to_string().to_lowercase()),
                         ],
                     ),
                     level: LogLevel::Info,
                 },
-                TaskStage::Completed {
-                    task_name,
+                AutomationStage::Completed {
+                    automation_name,
                     backend,
                     remote,
                     profile,
-                    task_type,
+                    automation_type,
                 } => RenderedContent {
                     title: t_with_params(
-                        "notification.title.scheduledTaskCompleted",
-                        &[("type", &task_type.to_string())],
+                        "notification.title.automationCompleted",
+                        &[("type", &automation_type.to_string())],
                     ),
                     body: t_with_params(
-                        "notification.body.scheduledTaskCompleted",
+                        "notification.body.automationCompleted",
                         &[
-                            ("task", task_name),
+                            ("automation", automation_name),
                             ("backend", backend),
                             ("remote", remote),
                             ("profile", profile),
-                            ("type", &task_type.to_string().to_lowercase()),
+                            ("type", &automation_type.to_string().to_lowercase()),
                         ],
                     ),
                     level: LogLevel::Info,
                 },
-                TaskStage::Failed {
-                    task_name,
+                AutomationStage::Failed {
+                    automation_name,
                     backend,
                     profile,
                     remote,
-                    task_type,
+                    automation_type,
                     error,
                 } => RenderedContent {
                     title: t_with_params(
-                        "notification.title.scheduledTaskFailed",
-                        &[("type", &task_type.to_string())],
+                        "notification.title.automationFailed",
+                        &[("type", &automation_type.to_string())],
                     ),
                     body: t_with_params(
-                        "notification.body.scheduledTaskFailed",
+                        "notification.body.automationFailed",
                         &[
-                            ("task", task_name),
+                            ("automation", automation_name),
                             ("backend", backend),
                             ("remote", remote),
                             ("profile", profile),
-                            ("type", &task_type.to_string().to_lowercase()),
+                            ("type", &automation_type.to_string().to_lowercase()),
                             ("error", error),
                         ],
                     ),

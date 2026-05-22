@@ -97,7 +97,7 @@
     "successStopAll": "Tüm sunumlar başarıyla durduruldu",
     "failedStopAll": "Tüm sunumlar durdurulamadı: {{error}}"
   },
-  "task": {
+  "automation": {
     "status": {
       "enabled": "Etkin",
       "disabled": "Devre dışı",
@@ -106,17 +106,24 @@
       "stopping": "Durduruluyor"
     },
     "toggle": {
-      "enable": "Görevi etkinleştir",
-      "disable": "Görevi devre dışı bırak",
-      "stopping": "Görev durduruluyor..."
+      "enable": "Otomasyonu etkinleştir",
+      "disable": "Otomasyonu devre dışı bırak",
+      "stopping": "Otomasyon durduruluyor..."
     },
     "nextRun": {
-      "disabled": "Görev devre dışı",
+      "disabled": "Otomasyon devre dışı",
       "stopping": "Mevcut çalışmadan sonra devre dışı",
       "notScheduled": "Zamanlanmadı"
     },
     "lastRun": {
       "never": "Hiçbir zaman"
+    },
+    "monitoring": {
+      "realtime": "Gerçek Zamanlı İzleme",
+      "debounce": "Geciktirme Süresi",
+      "watcherActive": "İzleyici Etkin",
+      "seconds": "saniye",
+      "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici"
     }
   },
   "actions": {
@@ -258,7 +265,7 @@
     "origins": {
       "title": "Kaynaklar",
       "dashboard": "Panel",
-      "scheduler": "Zamanlayıcı",
+      "automation": "Otomasyon",
       "filemanager": "Dosya Yöneticisi",
       "startup": "Başlangıç",
       "update": "Güncelleme",
@@ -288,7 +295,7 @@
       "mount": "Sürücü Bağlantıları",
       "engine": "Altyapı ve Motor",
       "update": "Yazılım Güncellemeleri",
-      "scheduled_task": "Zamanlanmış Görevler",
+      "automation": "Otomasyonlar",
       "system": "Sistem Olayları"
     },
     "action": {
@@ -1039,8 +1046,14 @@
     "appOperation": {
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
       "enableScheduled": "Zamanlanmış {{type}} Etkinleştir",
+      "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
+      "watchDescription": "Dosya değişikliklerini izlemek ve bunları otomatik olarak senkronize etmek için yerel kaynak dizinlerini izleyin.",
+      "watchDelay": "Gecikme süresi (saniye)",
+      "watchRequiresLocalSource": "Gerçek zamanlı izleme en az bir yerel kaynak dizini gerektirir.",
+      "watchRequiresLocal": "Gerçek zamanlı izleme en az bir yerel kaynak veya hedef dizini gerektirir.",
+      "watchMixedSourcesNote": "Sadece yerel kaynak dizinleri gerçek zamanlı olarak izlenecektir. Uzak kaynaklardaki değişiklikler senkronizasyonu otomatik olarak tetiklemez.",
+      "watchFilterNote": "Not: Dosya izleyici Filtre Profilinize uyar. Hariç tutulan dosyalar veya dizinlerdeki (örneğin örüntü, boyut veya yaşa göre) değişiklikler senkronizasyonu tetiklemez.",
       "scheduleDescription": "Etkinleştirildiğinde, bu işlem aşağıdaki cron zamanlamasına göre <strong>tekrarlı</strong> olarak çalışır.",
-      "cronSchedule": "Cron Zamanlaması",
       "notConfigured": "Yapılandırılmadı",
       "sourcePaths": "Kaynak Yolları",
       "destinationPath": "Hedef Yolu",
@@ -1058,7 +1071,7 @@
       "noItemsFound": "Bu dizinde öğe bulunamadı.",
       "chooseCommonSchedule": "Yaygın bir zamanlama seçin:",
       "orCustomize": "veya özelleştirin",
-      "runThisTask": "Bu görevi çalıştır",
+      "runThisAutomation": "Bu otomasyonu çalıştır",
       "everyDay": "her gün",
       "everyWeek": "her hafta",
       "everyMonth": "her ay",
@@ -1459,8 +1472,8 @@
       "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak"
     },
     "generalDetail": {
-      "scheduledTasks": "Zamanlanmış Görevler",
-      "goToTask": "Görev {{index}}'e git",
+      "automations": "Otomasyonlar",
+      "goToAutomation": "Otomasyon {{index}}'e git",
       "schedule": "Zamanlama",
       "cronExpression": "Cron İfadesi:",
       "nextRunLabel": "Sonraki Çalışma:",
@@ -1476,8 +1489,8 @@
       "lastError": "Son Hata",
       "currentlyRunning": "Şu Anda Çalışıyor",
       "jobIdLabel": "İş Kimliği:",
-      "previousTaskTooltip": "Önceki görev",
-      "nextTaskTooltip": "Sonraki görev",
+      "previousAutomationTooltip": "Önceki otomasyon",
+      "nextAutomationTooltip": "Sonraki otomasyon",
       "remoteConfiguration": "Uzak Bağlantı Yapılandırması",
       "editConfiguration": "Yapılandırmayı Düzenle",
       "toggleQuickAction": "{{label}}'ı hızlı eylem olarak değiştir",
@@ -2252,7 +2265,7 @@
       "bandwidth": "Bant Genişliği Sınırı",
       "system": "Sistem Bilgisi",
       "jobs": "İş Bilgisi",
-      "tasks": "Zamanlanmış Görevler",
+      "automations": "Otomasyonlar",
       "serves": "Çalışan Sunumlar"
     },
     "layout": {
@@ -2262,7 +2275,7 @@
       "save": "Düzeni Kaydet",
       "reset": "Düzeni Sıfırla",
       "resetSuccess": "Düzen varsayılana sıfırlandı",
-      "toggleTaskFailed": "Zamanlanmış görev değiştirilemedi",
+      "toggleAutomationFailed": "Otomasyon değiştirilemedi",
       "showDetailed": "Ayrıntılı Kartları Göster",
       "showCompact": "Kompakt Kartları Göster",
       "settings": "Düzen Ayarları"
@@ -2316,14 +2329,14 @@
       "starting": "Başlatılıyor...",
       "noRunning": "Şu anda çalışan aktif iş yok."
     },
-    "tasks": {
+    "automations": {
       "activeCount": "{{active}} aktif / {{total}} toplam",
-      "noScheduled": "Zamanlanmış görev yok",
-      "loading": "Zamanlanmış görevler yükleniyor...",
+      "noScheduled": "Otomasyon yok",
+      "loading": "Otomasyonlar yükleniyor...",
       "aria": {
-        "loading": "Zamanlanmış görevler yükleniyor"
+        "loading": "Otomasyonlar yükleniyor"
       },
-      "noConfigured": "Zamanlanmış görev yapılandırılmamış. Otomatik başlatma operasyonları oluşturmak için cron ifadeleri kullanın.",
+      "noConfigured": "Otomasyon yapılandırılmamış. Otomasyon oluşturmak için cron zamanlamaları veya gerçek zamanlı dosya izlemeyi yapılandırın.",
       "nextRun": "Sonraki Çalışma:"
     },
     "serves": {
@@ -2421,15 +2434,15 @@
       "refreshMountsFailed": "Bağlı uzak bağlantılar yenilenemedi",
       "refreshServesFailed": "Sunucular yenilenemedi"
     },
-    "scheduler": {
-      "taskNotEnabled": "Görev etkin değil",
-      "taskCannotRun": "Görev çalıştırılamıyor (durum: {{status}})",
-      "executionFailed": "Görev yürütme başarısız: {{error}}",
-      "initFailed": "Zamanlayıcı başlatılamadı: {{error}}",
-      "startFailed": "Zamanlayıcı çalıştırılamadı: {{error}}",
-      "stopFailed": "Zamanlayıcı durdurulamadı: {{error}}",
+    "automation": {
+      "automationNotEnabled": "Otomasyon etkin değil",
+      "automationCannotRun": "Otomasyon çalıştırılamıyor (durum: {{status}})",
+      "executionFailed": "Otomasyon yürütme başarısız: {{error}}",
+      "initFailed": "Otomasyon motoru başlatılamadı: {{error}}",
+      "startFailed": "Otomasyon motoru çalıştırılamadı: {{error}}",
+      "stopFailed": "Otomasyon motoru durdurulamadı: {{error}}",
       "invalidCron": "Geçersiz cron ifadesi: {{error}}",
-      "taskNotFound": "Görev bulunamadı"
+      "automationNotFound": "Otomasyon bulunamadı"
     },
     "system": {
       "unlockFailed": "Kilit açma başarısız: {{error}}",
@@ -2562,8 +2575,8 @@
     "bisyncCount": "Çift Yönlü [{{active}}/{{total}}]",
     "serveCount": "Sunucu [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Yöneticisi",
-    "tooltipTask": "1 Görev",
-    "tooltipTasks": "{{count}} Görev",
+    "tooltipTask": "1 İş",
+    "tooltipTasks": "{{count}} İş",
     "tooltipMount": "1 Bağlama",
     "tooltipMounts": "{{count}} Bağlama",
     "tooltipServe": "1 Sunucu",
@@ -2581,9 +2594,9 @@
       "serveStarted": "Sunucu Yayında",
       "serveFailed": "Sunucu Hatası",
       "serveStopped": "Sunucu Durduruldu",
-      "scheduledTaskStarted": "Zamanlanmış {{type}} Görevi Başladı",
-      "scheduledTaskCompleted": "Zamanlanmış {{type}} Görevi Tamamlandı",
-      "scheduledTaskFailed": "Zamanlanmış {{type}} Görevi Hatası",
+      "automationStarted": "{{type}} Otomasyonu Başladı",
+      "automationCompleted": "{{type}} Otomasyonu Tamamlandı",
+      "automationFailed": "{{type}} Otomasyon Hatası",
       "allJobsStopped": "Tüm İşler Durduruldu",
       "allServesStopped": "Tüm Sunucular Durduruldu",
       "allUnmounted": "Tüm Bağlantılar Kesildi",
@@ -2619,9 +2632,9 @@
       "allJobsStopped": "Tüm aktif işler başarıyla sonlandırıldı.",
       "allServesStopped": "Tüm aktif sunucular başarıyla kapatıldı.",
       "allUnmounted": "Tüm uzak bağlantılar başarıyla ayrıldı.",
-      "scheduledTaskStarted": "'{{task}}' zamanlanmış {{type}} görevi {{backend}} üzerinde yürütülüyor.",
-      "scheduledTaskCompleted": "'{{task}}' zamanlanmış {{type}} görevi başarıyla sonuçlandı.",
-      "scheduledTaskFailed": "'{{task}}' zamanlanmış {{type}} görevi hatayla karşılaştı: {{error}}",
+      "automationStarted": "{{type}} otomasyonu '{{automation}}' {{backend}} üzerinde yürütülüyor.",
+      "automationCompleted": "{{type}} otomasyonu '{{automation}}' başarıyla sonuçlandı.",
+      "automationFailed": "{{type}} otomasyonu '{{automation}}' hatayla karşılaştı: {{error}}",
       "updateFound": "RClone Yöneticisi'nin yeni bir {{version}} sürümü mevcut.",
       "updateStarted": "{{version}} sürümü indiriliyor ve kuruluyor...",
       "updateDownloaded": "RClone Yöneticisi'nin {{version}} sürümü indirildi ve kuruluma hazır.",

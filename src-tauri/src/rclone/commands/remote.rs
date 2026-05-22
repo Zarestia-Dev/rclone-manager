@@ -15,7 +15,7 @@ use crate::{
             serve::stop_serve,
             system::{clear_fscache, ensure_oauth_process, get_fscache_entries},
         },
-        state::scheduled_tasks::ScheduledTasksCache,
+        state::automations::AutomationsCache,
     },
     utils::{
         logging::log::log_operation,
@@ -299,23 +299,23 @@ pub async fn update_remote(
 
 #[tauri::command]
 pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
-    let cache = app.state::<ScheduledTasksCache>();
+    let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");
 
     let state = app.state::<RcloneState>();
     let backend = app.state::<BackendManager>().get_active().await;
 
     match cache
-        .remove_tasks_for_remote(&backend.name, &name, Some(&app))
+        .remove_automations_for_remote(&backend.name, &name, Some(&app))
         .await
     {
         Ok(ids) if !ids.is_empty() => {
             info!(
-                "Removed {} scheduled task(s) for deleted remote '{name}'",
+                "Removed {} automation(s) for deleted remote '{name}'",
                 ids.len()
             );
         }
-        Err(e) => warn!("Failed to clean up scheduled tasks for remote '{name}': {e}"),
+        Err(e) => warn!("Failed to clean up automations for remote '{name}': {e}"),
         _ => {}
     }
 

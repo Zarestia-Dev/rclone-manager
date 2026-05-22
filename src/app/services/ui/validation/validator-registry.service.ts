@@ -14,7 +14,10 @@ export class ValidatorRegistryService {
   private readonly regexCache = new Map<string, RegExp>();
 
   constructor() {
-    this.registerBuiltinValidators();
+    this.validators.set('crossPlatformPath', this.crossPlatformPathValidator());
+    this.validators.set('urlList', this.urlArrayValidator());
+    this.validators.set('bandwidthFormat', this.bandwidthValidator());
+    this.validators.set('password', this.passwordValidator());
   }
 
   private getCachedRegex(pattern: string): RegExp {
@@ -26,10 +29,17 @@ export class ValidatorRegistryService {
     return compiled;
   }
 
+  registerValidator(name: string, validator: ValidatorFn): void {
+    this.validators.set(name, validator);
+  }
+
+  getValidator(name: string): ValidatorFn | null {
+    return this.validators.get(name) ?? null;
+  }
+
   arrayValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value) return null;
-      if (Array.isArray(control.value)) return null;
+      if (!control.value || Array.isArray(control.value)) return null;
       return { invalidArray: true };
     };
   }
@@ -79,9 +89,7 @@ export class ValidatorRegistryService {
       if (
         !this.getCachedRegex('^\\d+(\\.\\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$').test(value)
       ) {
-        return {
-          sizeSuffix: { value, message: this.translate.instant('validators.sizeSuffix') },
-        };
+        return { sizeSuffix: { value, message: this.translate.instant('validators.sizeSuffix') } };
       }
       return null;
     };
@@ -89,8 +97,7 @@ export class ValidatorRegistryService {
 
   tristateValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const allowedValues = [null, true, false];
-      if (allowedValues.includes(control.value)) return null;
+      if ([null, true, false].includes(control.value)) return null;
       return {
         tristate: { value: control.value, message: this.translate.instant('validators.tristate') },
       };
@@ -105,14 +112,10 @@ export class ValidatorRegistryService {
       if (
         !this.getCachedRegex(
           '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?([+-]\\d{2}:\\d{2}|Z)?$'
-        ).test(value)
+        ).test(value) &&
+        isNaN(new Date(value).getTime())
       ) {
-        const date = new Date(value);
-        if (isNaN(date.getTime())) {
-          return {
-            time: { value, message: this.translate.instant('validators.time') },
-          };
-        }
+        return { time: { value, message: this.translate.instant('validators.time') } };
       }
       return null;
     };
@@ -158,9 +161,7 @@ export class ValidatorRegistryService {
       const value = control.value.toString().trim();
       if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
       if (!this.getCachedRegex('^[0-7]{3,4}$').test(value)) {
-        return {
-          fileMode: { value, message: this.translate.instant('validators.fileMode') },
-        };
+        return { fileMode: { value, message: this.translate.instant('validators.fileMode') } };
       }
       return null;
     };
@@ -186,64 +187,15 @@ export class ValidatorRegistryService {
     };
   }
 
-  /**
-   * Register built-in validators that can be referenced by name from backend metadata
-   */
-  private registerBuiltinValidators(): void {
-    // Cross-platform path validator
-    this.registerValidator('crossPlatformPath', this.crossPlatformPathValidator());
-
-    // URL array validator (for arrays of URLs)
-    this.registerValidator('urlList', this.urlArrayValidator());
-
-    // Bandwidth format validator
-    this.registerValidator('bandwidthFormat', this.bandwidthValidator());
-
-    // Password validator
-    this.registerValidator('password', this.passwordValidator());
-
-    // Remote name validator (requires existingNames parameter, so not pre-registered)
-    // Use createRemoteNameValidator() instead
-  }
-
-  /**
-   * Register a custom validator with a given name
-   */
-  registerValidator(name: string, validator: ValidatorFn): void {
-    this.validators.set(name, validator);
-  }
-
-  /**
-   * Get a validator by name
-   */
-  getValidator(name: string): ValidatorFn | null {
-    return this.validators.get(name) || null;
-  }
-
-  /**
-   * Get all registered validator names
-   */
-  getValidatorNames(): string[] {
-    return Array.from(this.validators.keys());
-  }
-
   requiredIfLocal(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const pathGroup = control.parent;
       const opGroup = pathGroup?.parent;
-
-      if (!pathGroup || !opGroup) {
-        return null; // Cannot determine context, so don't validate.
-      }
+      if (!pathGroup || !opGroup) return null;
 
       const autoStart = opGroup.get('autoStart')?.value;
       const type = pathGroup.get('type')?.value;
-
-      // The field is required if autoStart is on, the path type is local, and there's no value.
-      if (autoStart && type === 'local' && !control.value) {
-        return { required: true };
-      }
-
+      if (autoStart && type === 'local' && !control.value) return { required: true };
       return null;
     };
   }
@@ -252,58 +204,53 @@ export class ValidatorRegistryService {
     return (control: AbstractControl): ValidationErrors | null => {
       const opGroup = control.parent;
       if (!opGroup) return null;
-
-      const cronEnabled = opGroup.get('cronEnabled')?.value;
-
-      if (cronEnabled && !control.value) {
-        return { required: true };
-      }
-
+      if (opGroup.get('cronEnabled')?.value && !control.value) return { required: true };
       return null;
     };
   }
 
-  /**
-   * Create a remote name validator with existing names and regex pattern
-   */
+  requiredIfWatchEnabled(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const opGroup = control.parent;
+      if (!opGroup) return null;
+      if (!opGroup.get('watchEnabled')?.value) return null;
+
+      if (control.value === null || control.value === undefined || control.value === '') {
+        return { required: true };
+      }
+      const val = Number(control.value);
+      if (isNaN(val) || val < 1) {
+        return { min: { min: 1, actual: control.value } };
+      }
+      return null;
+    };
+  }
+
   createRemoteNameValidator(
     existingNames: string[],
     allowedPattern: RegExp = REMOTE_NAME_REGEX
   ): ValidatorFn {
-    return this.remoteNameValidator(existingNames, allowedPattern);
-  }
-
-  /**
-   * Remote name validator implementation
-   */
-  private remoteNameValidator(existingNames: string[], allowedPattern?: RegExp): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const raw = control.value;
       const value = typeof raw === 'string' ? raw.trim() : raw;
       if (!value) return null;
 
-      // Check allowed characters if pattern provided
       if (allowedPattern && !allowedPattern.test(value)) {
         return {
           invalidChars: { message: this.translate.instant('validators.remoteName.invalidChars') },
         };
       }
-
-      // Check start character
       if (value.startsWith('-') || value.startsWith(' ')) {
         return {
           invalidStart: { message: this.translate.instant('validators.remoteName.invalidStart') },
         };
       }
-
-      // Check end character
       if (control.value.endsWith(' ')) {
         return {
           invalidEnd: { message: this.translate.instant('validators.remoteName.invalidEnd') },
         };
       }
 
-      // Check uniqueness (case-sensitive, trimmed) to match rclone behavior.
       const existingTrimmed = existingNames.map(n => String(n).trim());
       return existingTrimmed.includes(String(value))
         ? { nameTaken: { message: this.translate.instant('validators.remoteName.nameTaken') } }
@@ -311,9 +258,19 @@ export class ValidatorRegistryService {
     };
   }
 
-  /**
-   * Platform-aware path validator
-   */
+  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
+    return (group: AbstractControl): ValidationErrors | null => {
+      const password = group.get(passwordFieldName)?.value;
+      const confirm = group.get(confirmFieldName)?.value;
+      if (password && confirm && password !== confirm) {
+        return {
+          passwordMismatch: { message: this.translate.instant('validators.passwordMismatch') },
+        };
+      }
+      return null;
+    };
+  }
+
   private crossPlatformPathValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
@@ -324,32 +281,23 @@ export class ValidatorRegistryService {
           /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
         if (winAbs.test(value)) return null;
       } else {
-        const unixAbs = /^(\/[^\0]*)$/;
-        if (unixAbs.test(value)) return null;
+        if (/^(\/[^\0]*)$/.test(value)) return null;
       }
 
       return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
     };
   }
 
-  /**
-   * URL array validator
-   */
   private urlArrayValidator(): ValidatorFn {
+    const urlPattern = /^https?:\/\/[^\s;]+$/;
     return (control: AbstractControl): ValidationErrors | null => {
       const urls = control.value;
-      if (!Array.isArray(urls)) return null;
-      if (urls.length === 0) return null;
-
-      const urlPattern = /^https?:\/\/[^\s;]+$/;
+      if (!Array.isArray(urls) || urls.length === 0) return null;
 
       for (const url of urls) {
         if (typeof url !== 'string' || !urlPattern.test(url.trim())) {
           return {
-            urlArray: {
-              message: this.translate.instant('validators.urlArray'),
-              invalidUrl: url,
-            },
+            urlArray: { message: this.translate.instant('validators.urlArray'), invalidUrl: url },
           };
         }
       }
@@ -357,35 +305,22 @@ export class ValidatorRegistryService {
     };
   }
 
-  /**
-   * Bandwidth format validator
-   */
   private bandwidthValidator(): ValidatorFn {
+    const bandwidthPattern =
+      /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
     return (control: AbstractControl): ValidationErrors | null => {
       if (!control.value) return null;
-
-      const bandwidthPattern =
-        /^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$/;
-
       if (!bandwidthPattern.test(control.value)) {
-        return {
-          bandwidth: {
-            message: this.translate.instant('validators.bandwidth'),
-          },
-        };
+        return { bandwidth: { message: this.translate.instant('validators.bandwidth') } };
       }
       return null;
     };
   }
 
-  /**
-   * Password validator for backend/rclone config passwords
-   */
   private passwordValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
       if (!value) return null;
-
       if (value.length < 3) {
         return {
           minLength: {
@@ -395,63 +330,12 @@ export class ValidatorRegistryService {
           },
         };
       }
-
       if (/['"]/.test(value)) {
         return {
           invalidChars: { message: this.translate.instant('validators.password.invalidChars') },
         };
       }
-
       return null;
-    };
-  }
-
-  /**
-   * Password match validator for confirmation fields
-   */
-  passwordMatchValidator(passwordFieldName: string, confirmFieldName: string): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const password = group.get(passwordFieldName)?.value;
-      const confirm = group.get(confirmFieldName)?.value;
-
-      if (password && confirm && password !== confirm) {
-        return {
-          passwordMismatch: { message: this.translate.instant('validators.passwordMismatch') },
-        };
-      }
-
-      return null;
-    };
-  }
-
-  /**
-   * Debug method to test validators from console
-   * Usage: (window as any).validatorRegistry.testValidator('crossPlatformPath', '/invalid<>path')
-   */
-  testValidator(
-    validatorName: string,
-    value: unknown
-  ):
-    | {
-        validatorName: string;
-        value: unknown;
-        isValid: boolean;
-        errors: Record<string, unknown> | null;
-      }
-    | { error: string } {
-    const validator = this.getValidator(validatorName);
-    if (!validator) {
-      return { error: `Validator '${validatorName}' not found` };
-    }
-
-    const control = { value } as AbstractControl;
-    const result = validator(control);
-
-    return {
-      validatorName,
-      value,
-      isValid: result === null,
-      errors: result,
     };
   }
 }

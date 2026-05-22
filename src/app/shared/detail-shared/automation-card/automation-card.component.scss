@@ -57,7 +57,7 @@
 // BASE CARD
 // ============================================================================
 
-.task-card {
+.automation-card {
   background: var(--card-bg-color);
   border-radius: var(--card-border-radius);
   box-shadow: var(--box-shadow);
@@ -69,7 +69,7 @@
   }
 }
 
-.task-icon-wrapper {
+.automation-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,14 +111,14 @@
 // COMPACT VARIANT
 // ============================================================================
 
-.task-card.compact {
+.automation-card.compact {
   cursor: pointer;
 
   &:hover {
     background-color: var(--hover-bg-color);
   }
 
-  .task-header {
+  .automation-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -126,7 +126,7 @@
     gap: var(--space-sm);
   }
 
-  .task-info-section {
+  .automation-info-section {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
@@ -134,14 +134,14 @@
     min-width: 0;
   }
 
-  .task-title-section {
+  .automation-title-section {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
   }
 
-  .task-name {
+  .automation-name {
     font-weight: 600;
     font-size: var(--font-size-md);
     color: var(--window-fg-color);
@@ -150,22 +150,40 @@
     text-overflow: ellipsis;
   }
 
-  .task-subtitle {
+  .automation-subtitle {
+    display: inline-flex;
+    align-items: center;
     font-size: var(--font-size-xs);
     color: var(--dim-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    .watcher-mini-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-color);
+      margin-left: 4px;
+      vertical-align: middle;
+
+      .watcher-mini-icon {
+        width: 12px;
+        height: 12px;
+        font-size: 12px;
+        display: block;
+      }
+    }
   }
 
-  .task-header-end {
+  .automation-header-end {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
     flex-shrink: 0;
   }
 
-  .task-footer {
+  .automation-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -174,7 +192,7 @@
     border-top: 1px solid var(--border-color);
   }
 
-  .task-stats {
+  .automation-stats {
     display: flex;
     gap: var(--space-md);
   }
@@ -201,7 +219,7 @@
     }
   }
 
-  .task-schedule {
+  .automation-schedule {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -221,10 +239,10 @@
 // DETAILED VARIANT
 // ============================================================================
 
-.task-card.detailed {
+.automation-card.detailed {
   background: var(--window-bg-color);
 
-  .task-header {
+  .automation-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -232,12 +250,12 @@
     gap: var(--space-md);
   }
 
-  .task-info {
+  .automation-info {
     flex: 1;
     min-width: 0;
   }
 
-  .task-title-row {
+  .automation-title-row {
     display: flex;
     align-items: center;
     gap: var(--space-md);
@@ -259,13 +277,13 @@
       }
     }
 
-    .task-type-label {
+    .automation-type-label {
       font-size: var(--font-size-sm);
       color: var(--dim-color);
     }
   }
 
-  .task-body {
+  .automation-body {
     padding: 0 var(--space-md) var(--space-md);
     display: flex;
     flex-direction: column;

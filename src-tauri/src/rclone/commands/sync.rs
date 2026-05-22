@@ -243,8 +243,11 @@ pub async fn start_profile_batch(
         )
     })?;
 
+    if transfer_type == TransferType::Bisync && common.source.len() != 1 {
+        return Err("Bisync only supports a single source path".to_string());
+    }
+
     let mut inputs = Vec::new();
-    let is_copy_move = matches!(transfer_type, TransferType::Copy | TransferType::Move);
 
     let dest = common.dest.clone();
     if dest.is_empty() {
@@ -257,18 +260,26 @@ pub async fn start_profile_batch(
         let source = source.clone();
         let runtime_remote_options = common.runtime_remote_options.clone();
         tasks.push(async move {
-            let is_dir = if is_copy_move {
-                is_directory(&app, &source, runtime_remote_options.as_ref())
-                    .await
-                    .unwrap_or(true)
-            } else {
-                true
-            };
+            let is_dir = is_directory(&app, &source, runtime_remote_options.as_ref())
+                .await
+                .unwrap_or(true);
             (source, is_dir)
         });
     }
 
     let results = join_all(tasks).await;
+
+    // Validate that Sync and Bisync do not contain files
+    if matches!(transfer_type, TransferType::Sync | TransferType::Bisync) {
+        for (source, is_dir) in &results {
+            if !*is_dir {
+                return Err(format!(
+                    "{:?} only supports directories, not files: {}",
+                    transfer_type, source
+                ));
+            }
+        }
+    }
 
     for (source, is_dir) in results {
         let body = GenericTransferParams {

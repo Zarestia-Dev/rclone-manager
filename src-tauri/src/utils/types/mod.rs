@@ -1,3 +1,4 @@
+pub mod automation;
 pub mod backup_types;
 pub mod events;
 pub mod jobs;
@@ -6,6 +7,5 @@ pub mod monitoring;
 pub mod origin;
 pub mod rclone;
 pub mod remotes;
-pub mod scheduled_task;
 pub mod state;
 pub mod updater;

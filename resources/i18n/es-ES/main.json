@@ -96,7 +96,7 @@
     "successStopAll": "Se detuvieron correctamente todos los servicios",
     "failedStopAll": "Error al detener todos los servicios: {{error}}"
   },
-  "task": {
+  "automation": {
     "status": {
       "enabled": "Habilitado",
       "disabled": "Deshabilitado",
@@ -105,17 +105,24 @@
       "stopping": "Deteniendo"
     },
     "toggle": {
-      "enable": "Habilitar tarea",
-      "disable": "Deshabilitar tarea",
-      "stopping": "La tarea se está deteniendo..."
+      "enable": "Habilitar automatización",
+      "disable": "Deshabilitar automatización",
+      "stopping": "La automatización se está deteniendo..."
     },
     "nextRun": {
-      "disabled": "La tarea está deshabilitada",
+      "disabled": "La automatización está deshabilitada",
       "stopping": "Deshabilitando después de la ejecución actual",
       "notScheduled": "No programado"
     },
     "lastRun": {
       "never": "Nunca"
+    },
+    "monitoring": {
+      "realtime": "Monitoreo en tiempo real",
+      "debounce": "Retardo de rebote",
+      "watcherActive": "Observador activo",
+      "seconds": "segundos",
+      "realtimeSchedule": "Observador de archivos en tiempo real"
     }
   },
   "actions": {
@@ -256,7 +263,7 @@
     "origins": {
       "title": "Orígenes",
       "dashboard": "Tablero",
-      "scheduler": "Programador",
+      "automation": "Automatización",
       "filemanager": "Gestor de archivos",
       "startup": "Inicio",
       "update": "Actualización",
@@ -1011,8 +1018,14 @@
     "appOperation": {
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
       "enableScheduled": "Habilitar {{type}} programado",
+      "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
+      "watchDescription": "Monitoree directorios de origen locales para detectar modificaciones de archivos y sincronizar cambios automáticamente.",
+      "watchDelay": "Retardo de rebote (segundos)",
+      "watchRequiresLocalSource": "El monitoreo en tiempo real requiere al menos un directorio de origen local.",
+      "watchRequiresLocal": "El monitoreo en tiempo real requiere al menos un directorio de origen o destino local.",
+      "watchMixedSourcesNote": "Solo los directorios de origen locales se monitorearán en tiempo real. Los cambios en los orígenes remotos no activarán la sincronización automáticamente.",
+      "watchFilterNote": "Nota: El Perfil de filtro se aplica al monitor de archivos. Los cambios en archivos o directorios excluidos (por patrón, tamaño o antigüedad) no iniciarán la sincronización.",
       "scheduleDescription": "Cuando está habilitada, esta operación se ejecutará de forma <strong>recurrente</strong> según la programación de cron a continuación.",
-      "cronSchedule": "Programación Cron",
       "notConfigured": "No configurado",
       "sourcePaths": "Rutas de origen",
       "destinationPath": "Ruta de destino",
@@ -1030,7 +1043,7 @@
       "noItemsFound": "No se encontraron elementos en este directorio.",
       "chooseCommonSchedule": "Elige una programación común:",
       "orCustomize": "o personalizar",
-      "runThisTask": "Ejecutar esta tarea",
+      "runThisAutomation": "Ejecutar esta automatización",
       "everyDay": "cada día",
       "everyWeek": "cada semana",
       "everyMonth": "cada mes",
@@ -1423,8 +1436,8 @@
       "dryRunActive": "Simulacro activo: no se realizarán cambios"
     },
     "generalDetail": {
-      "scheduledTasks": "Tareas programadas",
-      "goToTask": "Ir a la tarea {{index}}",
+      "automations": "Automatizaciones",
+      "goToAutomation": "Ir a la automatización {{index}}",
       "schedule": "Programar",
       "cronExpression": "Expresión Cron:",
       "nextRunLabel": "Próxima ejecución:",
@@ -1440,8 +1453,8 @@
       "lastError": "Último error",
       "currentlyRunning": "Actualmente en ejecución",
       "jobIdLabel": "ID de trabajo:",
-      "previousTaskTooltip": "Tarea anterior",
-      "nextTaskTooltip": "Siguiente tarea",
+      "previousAutomationTooltip": "Automatización anterior",
+      "nextAutomationTooltip": "Siguiente automatización",
       "remoteConfiguration": "Configuración remota",
       "editConfiguration": "Editar configuración",
       "toggleQuickAction": "Alternar {{label}} como acción rápida",
@@ -2166,7 +2179,7 @@
       "bandwidth": "Límite de ancho de banda",
       "system": "Información del sistema",
       "jobs": "Información de trabajos",
-      "tasks": "Tareas programadas",
+      "automations": "Automatizaciones",
       "serves": "Servicios en ejecución"
     },
     "layout": {
@@ -2176,7 +2189,7 @@
       "save": "Guardar diseño",
       "reset": "Restablecer diseño",
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
-      "toggleTaskFailed": "Error al alternar tarea programada",
+      "toggleAutomationFailed": "Error al alternar automatización",
       "showDetailed": "Mostrar tarjetas detalladas",
       "showCompact": "Mostrar tarjetas compactas",
       "settings": "Ajustes de diseño"
@@ -2230,14 +2243,14 @@
       "starting": "Iniciando...",
       "noRunning": "No hay trabajos activos en ejecución."
     },
-    "tasks": {
+    "automations": {
       "activeCount": "{{active}} activo / {{total}} total",
-      "noScheduled": "No hay tareas programadas",
-      "loading": "Cargando tareas programadas...",
+      "noScheduled": "No hay automatizaciones",
+      "loading": "Cargando automatizaciones...",
       "aria": {
-        "loading": "Cargando tareas programadas"
+        "loading": "Cargando automatizaciones"
       },
-      "noConfigured": "No hay tareas programadas configuradas. Configure operaciones de inicio automático con expresiones cron para crear tareas programadas.",
+      "noConfigured": "No hay automatizaciones configuradas. Configure operaciones con cron o monitoreo de archivos en tiempo real para crear automatizaciones.",
       "nextRun": "Próxima ejecución:"
     },
     "serves": {
@@ -2335,15 +2348,15 @@
       "refreshMountsFailed": "Error al refrescar los remotos montados",
       "refreshServesFailed": "Error al refrescar los servicios"
     },
-    "scheduler": {
-      "taskNotEnabled": "La tarea no está habilitada",
-      "taskCannotRun": "La tarea no puede ejecutarse (estado: {{status}})",
-      "executionFailed": "Error en la ejecución de la tarea: {{error}}",
-      "initFailed": "Error al inicializar el programador: {{error}}",
-      "startFailed": "Error al iniciar el programador: {{error}}",
-      "stopFailed": "Error al detener el programador: {{error}}",
+    "automation": {
+      "automationNotEnabled": "La automatización no está habilitada",
+      "automationCannotRun": "La automatización no puede ejecutarse (estado: {{status}})",
+      "executionFailed": "Error en la ejecución de la automatización: {{error}}",
+      "initFailed": "Error al inicializar el motor de automatización: {{error}}",
+      "startFailed": "Error al iniciar el motor de automatización: {{error}}",
+      "stopFailed": "Error al detener el motor de automatización: {{error}}",
       "invalidCron": "Expresión cron inválida: {{error}}",
-      "taskNotFound": "Tarea no encontrada"
+      "automationNotFound": "Automatización no encontrada"
     },
     "system": {
       "unlockFailed": "Desbloqueo fallido: {{error}}",
@@ -2476,8 +2489,8 @@
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "serveCount": "Servicio [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Tarea",
-    "tooltipTasks": "{{count}} Tareas",
+    "tooltipTask": "1 Trabajo",
+    "tooltipTasks": "{{count}} Trabajos",
     "tooltipMount": "1 Montaje",
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
@@ -2495,9 +2508,9 @@
       "serveStarted": "Servidor en línea",
       "serveFailed": "Error del servidor",
       "serveStopped": "Servidor detenido",
-      "scheduledTaskStarted": "Tarea de {{type}} iniciada",
-      "scheduledTaskCompleted": "Tarea de {{type}} completada",
-      "scheduledTaskFailed": "Error en tarea de {{type}}",
+      "automationStarted": "Automatización de {{type}} iniciada",
+      "automationCompleted": "Automatización de {{type}} completada",
+      "automationFailed": "Error en automatización de {{type}}",
       "allJobsStopped": "Todos los trabajos detenidos",
       "allServesStopped": "Todos los servidores detenidos",
       "allUnmounted": "Todos los remotos desconectados",
@@ -2533,9 +2546,9 @@
       "allJobsStopped": "Todos los trabajos activos se detuvieron con éxito.",
       "allServesStopped": "Todos los servidores activos se cerraron con éxito.",
       "allUnmounted": "Todos los remotos se desconectaron con éxito.",
-      "scheduledTaskStarted": "La tarea programada '{{task}}' se está ejecutando en {{backend}}.",
-      "scheduledTaskCompleted": "La tarea programada '{{task}}' se completó con éxito.",
-      "scheduledTaskFailed": "La tarea programada '{{task}}' encontró un error: {{error}}",
+      "automationStarted": "La automatización {{type}} '{{automation}}' se está ejecutando en {{backend}}.",
+      "automationCompleted": "La automatización {{type}} '{{automation}}' se completó con éxito.",
+      "automationFailed": "La automatización {{type}} '{{automation}}' encontró un error: {{error}}",
       "updateFound": "Una nueva versión {{version}} de RClone Manager está disponible.",
       "updateStarted": "Descargando e instalando la versión {{version}}...",
       "updateDownloaded": "La versión {{version}} de RClone Manager ha sido descargada y está lista para instalar.",

@@ -189,7 +189,6 @@ export class RemoteConfigModalComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   constructor() {
-    this.state.initStepConfigs(this.iconService);
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
     this.state.setStepInvalidFn((stepType: string) => this.isStepInvalid(stepType));
   }

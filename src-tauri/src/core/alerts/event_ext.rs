@@ -1,6 +1,6 @@
 use crate::core::alerts::types::{AlertEventKind, AlertSeverity};
 use crate::utils::app::notification::{
-    EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, TaskStage, UpdateStage,
+    AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, UpdateStage,
 };
 use crate::utils::types::origin::Origin;
 
@@ -101,20 +101,20 @@ impl NotificationEvent {
                 profile: profile.clone(),
                 backend: Some(backend.clone()),
             },
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started {
+            Self::Automation(stage) => match stage {
+                AutomationStage::Started {
                     remote,
                     profile,
                     backend,
                     ..
                 }
-                | TaskStage::Completed {
+                | AutomationStage::Completed {
                     remote,
                     profile,
                     backend,
                     ..
                 }
-                | TaskStage::Failed {
+                | AutomationStage::Failed {
                     remote,
                     profile,
                     backend,
@@ -154,7 +154,7 @@ impl NotificationEventExt for NotificationEvent {
             Self::Mount(_) => AlertEventKind::Mount,
             Self::Engine(_) => AlertEventKind::Engine,
             Self::AppUpdate(_) | Self::RcloneUpdate(_) => AlertEventKind::Update,
-            Self::ScheduledTask(_) => AlertEventKind::ScheduledTask,
+            Self::Automation(_) => AlertEventKind::Automation,
             Self::System(_) => AlertEventKind::System,
         }
     }
@@ -166,8 +166,8 @@ impl NotificationEventExt for NotificationEvent {
                 JobStage::Stopped { .. } => AlertSeverity::Warning,
                 _ => AlertSeverity::Info,
             },
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Failed { .. } => AlertSeverity::High,
+            Self::Automation(stage) => match stage {
+                AutomationStage::Failed { .. } => AlertSeverity::High,
                 _ => AlertSeverity::Info,
             },
             Self::Serve(stage) => match stage {
@@ -204,10 +204,16 @@ impl NotificationEventExt for NotificationEvent {
                 | JobStage::Failed { job_type, .. }
                 | JobStage::Stopped { job_type, .. } => Some(job_type.to_string()),
             },
-            Self::ScheduledTask(stage) => match stage {
-                TaskStage::Started { task_type, .. }
-                | TaskStage::Completed { task_type, .. }
-                | TaskStage::Failed { task_type, .. } => Some(task_type.to_string()),
+            Self::Automation(stage) => match stage {
+                AutomationStage::Started {
+                    automation_type, ..
+                }
+                | AutomationStage::Completed {
+                    automation_type, ..
+                }
+                | AutomationStage::Failed {
+                    automation_type, ..
+                } => Some(automation_type.to_string()),
             },
             Self::Serve(
                 ServeStage::Started { protocol, .. }
@@ -226,7 +232,7 @@ impl NotificationEventExt for NotificationEvent {
                 | JobStage::Failed { origin, .. }
                 | JobStage::Stopped { origin, .. } => origin.clone(),
             },
-            Self::ScheduledTask(_) => Origin::Scheduler,
+            Self::Automation(_) => Origin::Automation,
             Self::AppUpdate(_) | Self::RcloneUpdate(_) => Origin::Update,
             Self::Engine(_) => Origin::Internal,
             Self::System(_) => Origin::Internal,

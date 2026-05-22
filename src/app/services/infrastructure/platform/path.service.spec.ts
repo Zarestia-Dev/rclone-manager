@@ -171,4 +171,24 @@ describe('PathService', () => {
       });
     });
   });
+
+  describe('isLocalPath', () => {
+    it('should correctly classify local paths', () => {
+      expect(service.isLocalPath('/absolute/path/on/linux')).toBeTrue();
+      expect(service.isLocalPath('relative/path/on/linux')).toBeTrue();
+      expect(service.isLocalPath('C:\\absolute\\path\\on\\windows')).toBeTrue();
+      expect(service.isLocalPath('d:\\some\\path')).toBeTrue();
+      expect(service.isLocalPath('c:relative/path')).toBeTrue();
+      expect(service.isLocalPath('\\relative\\backslash\\path')).toBeTrue();
+      expect(service.isLocalPath('/path/with:colon/in/middle')).toBeTrue();
+      expect(service.isLocalPath('')).toBeFalse();
+    });
+
+    it('should correctly classify remote paths', () => {
+      expect(service.isLocalPath('remote:')).toBeFalse();
+      expect(service.isLocalPath('my-remote:bucket/file.txt')).toBeFalse();
+      expect(service.isLocalPath('s3:path')).toBeFalse();
+      expect(service.isLocalPath('folder:name/file.txt')).toBeFalse();
+    });
+  });
 });

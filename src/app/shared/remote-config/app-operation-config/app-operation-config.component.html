@@ -1,79 +1,158 @@
 <ng-container [formGroup]="opFormGroup()">
-  <!-- Top Options Section -->
-  @if (showAutoStart()) {
-    <div class="header-section">
-      <mat-slide-toggle formControlName="autoStart" class="operation-enable">
-        {{
-          'wizards.appOperation.enableAutoStart'
-            | translate
-              : {
-                  type:
-                    ('modals.remoteConfig.steps.' +
-                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                    | translate),
-                }
-        }}
-      </mat-slide-toggle>
-      <p class="section-description">{{ description() }}</p>
-    </div>
-  }
-
-  @if (!isMount() && !isServe() && showCronSection()) {
-    <div class="header-section">
-      <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
-        {{
-          'wizards.appOperation.enableScheduled'
-            | translate
-              : {
-                  type:
-                    ('modals.remoteConfig.steps.' +
-                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                    | translate),
-                }
-        }}
-      </mat-slide-toggle>
-      <p
-        class="section-description"
-        [innerHTML]="'wizards.appOperation.scheduleDescription' | translate"
-      ></p>
-    </div>
-  }
-
-  @if (!isMount() && !isServe() && isCronEnabled() && showCronSection()) {
-    <mat-expansion-panel class="cron-panel">
-      <mat-expansion-panel-header>
-        <mat-panel-title>{{ 'wizards.appOperation.cronSchedule' | translate }}</mat-panel-title>
-        <mat-panel-description>
-          <span [class.no-schedule]="!cronExpression()">
-            {{ cronExpression() || ('wizards.appOperation.notConfigured' | translate) }}
-          </span>
-          @if (cronExpression()) {
-            <button
-              mat-icon-button
-              class="clear-schedule-btn"
-              (click)="clearSchedule($event)"
-              type="button"
-            >
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
+  <!-- Automation accordion -->
+  <div class="automation-accordion">
+    @if (showAutoStart()) {
+      <div class="accordion-item autostart-item">
+        <div class="accordion-header">
+          <mat-slide-toggle formControlName="autoStart" class="operation-enable">
+            {{
+              'wizards.appOperation.enableAutoStart'
+                | translate
+                  : {
+                      type:
+                        ('modals.remoteConfig.steps.' +
+                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                        | translate),
+                    }
+            }}
+          </mat-slide-toggle>
+          @if (description()) {
+            <span class="header-description">{{ description() }}</span>
           }
-        </mat-panel-description>
-      </mat-expansion-panel-header>
-
-      <div class="cron-content">
-        <app-cron-input
-          [initialValue]="cronExpression()"
-          [taskName]="operationType()"
-          (cronChange)="onCronChange($event)"
-          (validationChange)="onCronValidationChange($event)"
-        >
-        </app-cron-input>
+        </div>
       </div>
-    </mat-expansion-panel>
-  }
+    }
 
+    @if (!isMount() && !isServe() && showCronSection()) {
+      <div class="accordion-item" [class.expanded]="cronPanelExpanded()">
+        <button type="button" class="accordion-header" (click)="toggleCronPanel()">
+          <mat-slide-toggle formControlName="cronEnabled" (click)="$event.stopPropagation()">
+            {{
+              'wizards.appOperation.enableScheduled'
+                | translate
+                  : {
+                      type:
+                        ('modals.remoteConfig.steps.' +
+                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                        | translate),
+                    }
+            }}
+          </mat-slide-toggle>
+
+          <span class="header-meta">
+            @if (cronExpression()) {
+              <code class="cron-chip">{{ cronExpression() }}</code>
+              <button mat-icon-button (click)="clearSchedule($event)" type="button">
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+            } @else {
+              <span class="not-configured">{{
+                'wizards.appOperation.notConfigured' | translate
+              }}</span>
+            }
+          </span>
+
+          <mat-icon svgIcon="chevron-down" class="expand-icon"></mat-icon>
+        </button>
+
+        <div class="accordion-body">
+          <p
+            class="body-description"
+            [innerHTML]="'wizards.appOperation.scheduleDescription' | translate"
+          ></p>
+          <app-cron-input
+            [initialValue]="cronExpression()"
+            [automationName]="operationType()"
+            (cronChange)="onCronChange($event)"
+            (validationChange)="onCronValidationChange($event)"
+          />
+        </div>
+      </div>
+    }
+
+    @if (showWatchSection()) {
+      <div
+        class="accordion-item"
+        [class.expanded]="watchPanelExpanded()"
+        [class.disabled-tape]="!isWatchPossible()"
+      >
+        <button
+          type="button"
+          class="accordion-header"
+          (click)="toggleWatchPanel()"
+          [matTooltip]="
+            !isWatchPossible()
+              ? ((operationType() === 'bisync'
+                  ? 'wizards.appOperation.watchRequiresLocal'
+                  : 'wizards.appOperation.watchRequiresLocalSource'
+                ) | translate)
+              : ''
+          "
+        >
+          <mat-slide-toggle formControlName="watchEnabled" (click)="$event.stopPropagation()">
+            {{ 'wizards.appOperation.enableWatch' | translate }}
+          </mat-slide-toggle>
+
+          <span class="header-meta">
+            @if (isWatchEnabled() && isWatchPossible()) {
+              {{ 'wizards.appOperation.watchDelay' | translate }}:
+              <strong>{{ opFormGroup().get('watchDelay')?.value || 1 }}s</strong>
+            } @else {
+              <span class="not-configured">{{
+                'wizards.appOperation.watchDescription' | translate
+              }}</span>
+            }
+          </span>
+
+          <mat-icon svgIcon="chevron-down" class="expand-icon"></mat-icon>
+        </button>
+
+        <div class="accordion-body">
+          @if (!isWatchPossible()) {
+            <div class="message warning" role="alert">
+              <mat-icon svgIcon="info" class="orange"></mat-icon>
+              <span>{{
+                (operationType() === 'bisync'
+                  ? 'wizards.appOperation.watchRequiresLocal'
+                  : 'wizards.appOperation.watchRequiresLocalSource'
+                ) | translate
+              }}</span>
+            </div>
+          }
+
+          @if (isWatchPossible()) {
+            @if (hasMixedSources()) {
+              <div class="message info" role="alert">
+                <mat-icon svgIcon="info" class="primary"></mat-icon>
+                <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
+              </div>
+            }
+
+            <div class="message info" role="alert">
+              <mat-icon svgIcon="info" class="primary"></mat-icon>
+              <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
+            </div>
+
+            <div class="watch-delay-section">
+              <mat-form-field appearance="fill" class="watch-delay-field">
+                <mat-label>{{ 'wizards.appOperation.watchDelay' | translate }}</mat-label>
+                <input matInput type="number" formControlName="watchDelay" min="1" />
+                @if (opFormGroup().get('watchDelay')?.hasError('required')) {
+                  <mat-error>{{ 'shared.validation.required' | translate }}</mat-error>
+                }
+                @if (opFormGroup().get('watchDelay')?.hasError('min')) {
+                  <mat-error>{{ 'shared.validation.min' | translate: { val: 1 } }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Paths -->
   <div class="paths-container">
-    <!-- SOURCE PATHS -->
     @if (showSourcePath()) {
       <div class="section-header">
         <span class="section-title">
@@ -95,14 +174,11 @@
 
       <div class="path-list">
         @for (item of sourceItems(); track item.control) {
-          <ng-container
-            *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }"
-          ></ng-container>
+          <ng-container *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }" />
         }
       </div>
     }
 
-    <!-- DESTINATION PATH -->
     @if (showDestPath()) {
       <div class="section-header">
         <span class="section-title">
@@ -113,9 +189,7 @@
 
       <div class="path-list">
         @if (destItem(); as item) {
-          <ng-container
-            *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: true }"
-          ></ng-container>
+          <ng-container *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: true }" />
         }
       </div>
     }
@@ -129,7 +203,7 @@
   </div>
 </ng-container>
 
-<!-- Reusable Path Row Template -->
+<!-- Path row template -->
 <ng-template #pathRow let-item let-isDest="isDest">
   <div class="path-item-row" [formGroup]="item.control">
     <div class="path-type-selector">
@@ -184,7 +258,7 @@
               <span class="item-label">{{ currentRemoteName() }}:</span>
             </button>
             @if (otherRemotes().length) {
-              <mat-divider></mat-divider>
+              <mat-divider />
               <div class="menu-group-label">
                 {{ 'wizards.appOperation.otherRemotes' | translate }}
               </div>
@@ -204,7 +278,6 @@
       }
     </div>
 
-    <!-- Input Field -->
     <mat-form-field appearance="fill" class="path-input-field">
       <input
         matInput
@@ -225,7 +298,6 @@
       />
     </mat-form-field>
 
-    <!-- Actions -->
     <div class="action-suffix">
       <button
         matIconButton
@@ -262,13 +334,13 @@
   </div>
 </ng-template>
 
-<!-- Unified Autocomplete Menu Template -->
+<!-- Autocomplete menu template -->
 <ng-template #autocompleteMenu let-item="item">
   @if (pathStates.get(item.group + '-' + item.index)?.(); as state) {
     <div class="material-context-menu" cdkMenu>
       @if (state.isLoading) {
         <div class="menu-item disabled">
-          <mat-spinner diameter="16"></mat-spinner>
+          <mat-spinner diameter="16" />
           <span class="item-label">{{ 'wizards.appOperation.loading' | translate }}</span>
         </div>
       } @else {
@@ -277,7 +349,7 @@
             <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
             <span class="item-label">{{ 'wizards.appOperation.upFolder' | translate }}</span>
           </button>
-          <mat-divider></mat-divider>
+          <mat-divider />
         }
         @if (state.options.length === 0) {
           <div class="empty-state">

@@ -69,6 +69,7 @@ export class RemoteConfigStateService {
   private readonly serveManagementService = inject(ServeManagementService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
+  private readonly iconService = inject(IconService);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -100,14 +101,10 @@ export class RemoteConfigStateService {
     { label: 'modals.remoteConfig.steps.filter', icon: 'filter', type: 'filter' },
     { label: 'modals.remoteConfig.steps.vfs', icon: 'vfs', type: 'vfs' },
     { label: 'modals.remoteConfig.steps.backend', icon: 'server', type: 'backend' },
-    {
-      label: 'modals.remoteConfig.steps.runtimeRemote',
-      icon: 'gear',
-      type: 'runtimeRemote',
-    },
+    { label: 'modals.remoteConfig.steps.runtimeRemote', icon: 'gear', type: 'runtimeRemote' },
   ];
 
-  // ── Form status signals ──
+  // ── Form status signals (initialized in init()) ──
   remoteFormStatus: Signal<string> = signal('INVALID').asReadonly();
   remoteConfigFormStatus: Signal<string> = signal('INVALID').asReadonly();
   remoteTypeSignal: Signal<string> = signal('').asReadonly();
@@ -174,22 +171,11 @@ export class RemoteConfigStateService {
   // ── Computed states ──
   readonly currentRemoteName = computed(() => this.dialogData?.name ?? this.remoteNameSignal());
 
-  // ── Computed step configurations ──
-  private _iconService!: IconService;
-
-  initStepConfigs(iconService: IconService): void {
-    this._iconService = iconService;
-  }
-
   readonly stepConfigs = computed((): StepConfig[] => {
-    const remoteType = this.remoteTypeSignal?.() ?? '';
-    const remoteIcon = this._iconService?.getIconName(remoteType || 'hard-drive') ?? 'hard-drive';
+    const remoteType = this.remoteTypeSignal() ?? '';
+    const remoteIcon = this.iconService.getIconName(remoteType || 'hard-drive') ?? 'hard-drive';
     return [
-      {
-        label: 'modals.remoteConfig.steps.remoteConfig',
-        icon: remoteIcon,
-        type: 'remote',
-      },
+      { label: 'modals.remoteConfig.steps.remoteConfig', icon: remoteIcon, type: 'remote' },
       ...RemoteConfigStateService.STATIC_STEP_CONFIGS,
     ];
   });
@@ -321,7 +307,6 @@ export class RemoteConfigStateService {
     this.editTarget.set(dialogData?.editTarget ?? null);
     this.cloneTarget.set(dialogData?.cloneTarget ?? false);
 
-    // Build form groups
     this.remoteForm = this.formBuilder.createRemoteForm(
       this.existingRemotes(),
       this.editTarget() === 'remote',
@@ -330,7 +315,6 @@ export class RemoteConfigStateService {
     this.remoteConfigForm = this.formBuilder.createRemoteConfigForm(this.dynamicFlagFields());
     this.runtimeRemoteConfigGroup = this.remoteConfigForm.get('runtimeRemoteConfig') as FormGroup;
 
-    // Connect form status signals
     runInInjectionContext(this.injector, () => {
       this.remoteFormStatus = toSignal(
         this.remoteForm.statusChanges.pipe(startWith(this.remoteForm.status)),
@@ -354,7 +338,6 @@ export class RemoteConfigStateService {
       }
     });
 
-    // Load static and async options
     await Promise.all([
       this.loadExistingRemotes(),
       this.loadRemoteTypes(),
@@ -485,13 +468,15 @@ export class RemoteConfigStateService {
     nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
   }
 
+  private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
+
   private setupAutoStartValidators(): void {
     if (this.editTarget() === 'remote' || !this.editTarget() || this.cloneTarget()) {
-      FLAG_TYPES.forEach(type => {
-        if (type !== 'mount' && !RemoteConfigStateService.AUTO_START_OP_TYPES.has(type)) return;
+      for (const type of FLAG_TYPES) {
+        if (type !== 'mount' && !RemoteConfigStateService.AUTO_START_OP_TYPES.has(type)) continue;
 
         const opGroup = this.remoteConfigForm.get(`${type}Config`);
-        if (!opGroup) return;
+        if (!opGroup) continue;
 
         if (type === 'mount') {
           const autoStartCtrl = opGroup.get('autoStart');
@@ -513,31 +498,34 @@ export class RemoteConfigStateService {
           const autoStartCtrl = opGroup.get('autoStart');
           const cronEnabledCtrl = opGroup.get('cronEnabled');
           const cronExpressionCtrl = opGroup.get('cronExpression');
+          const watchEnabledCtrl = opGroup.get('watchEnabled');
+          const watchDelayCtrl = opGroup.get('watchDelay');
 
           cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
+          watchDelayCtrl?.setValidators(this.validatorRegistry.requiredIfWatchEnabled());
 
           autoStartCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
             if (sourceControl instanceof FormArray) {
-              (sourceControl as FormArray).controls.forEach((c: AbstractControl) =>
+              sourceControl.controls.forEach((c: AbstractControl) =>
                 c.get('path')?.updateValueAndValidity()
               );
             } else if (sourceControl instanceof FormGroup) {
-              (sourceControl as FormGroup).get('path')?.updateValueAndValidity();
+              sourceControl.get('path')?.updateValueAndValidity();
             }
-
             if (destControl instanceof FormGroup) {
-              (destControl as FormGroup).get('path')?.updateValueAndValidity();
+              destControl.get('path')?.updateValueAndValidity();
             }
           });
           cronEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
             cronExpressionCtrl?.updateValueAndValidity();
           });
+          watchEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+            watchDelayCtrl?.updateValueAndValidity();
+          });
         }
-      });
+      }
     }
   }
-
-  private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
 
   private setupAuthStateListeners(): void {
     effect(
@@ -584,11 +572,10 @@ export class RemoteConfigStateService {
     this.formBuilder.rebuildServeOptionsGroup(this.remoteConfigForm, this.dynamicServeFields());
   }
 
-  readonly getUniqueControlKey = (flagType: FlagType, field: RcConfigOption): string => {
-    return flagType === 'serve'
+  readonly getUniqueControlKey = (flagType: FlagType, field: RcConfigOption): string =>
+    flagType === 'serve'
       ? field.FieldName || field.Name
       : `${flagType}---${field.FieldName || field.Name}`;
-  };
 
   private initCurrentStep(): void {
     const editTargetValue = this.editTarget();
@@ -600,7 +587,7 @@ export class RemoteConfigStateService {
     this.currentStep.set(index !== -1 ? index + 1 : 1);
   }
 
-  // ── Profile CRUD and Validations ──
+  // ── Profile CRUD ──
   isRenameProfileDisabled(type: string, profileName: string): boolean {
     return this.profileManager.isRenameProfileDisabled(type, profileName, this.currentRemoteName());
   }
@@ -726,8 +713,11 @@ export class RemoteConfigStateService {
     const group = this.remoteConfigForm.get(`${t}Config`);
     if (!group) return;
 
-    const rawData = group.value as Record<string, unknown>;
-    const cleaned = this.buildProfileConfig(t, this.currentRemoteName(), rawData);
+    const cleaned = this.buildProfileConfig(
+      t,
+      this.currentRemoteName(),
+      group.value as Record<string, unknown>
+    );
     this.profileManager.updateProfileConfig(t, currentName, cleaned);
   }
 
@@ -830,9 +820,7 @@ export class RemoteConfigStateService {
   }
 
   toggleCliImportVisibility(): void {
-    if (this.currentStep() === 1 && !this.editTarget()) {
-      return;
-    }
+    if (this.currentStep() === 1 && !this.editTarget()) return;
     this.showCliImport.update(v => !v);
   }
 
