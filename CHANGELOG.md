@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 
 
+### Fixed
+- Fixed missing language values on some sections of the application and remove the non-used language keys.
+- Fixed the issue on wrong mapped rclone flags on backend and sync types.
 
 ## [v0.2.6] - 2026-05-19
 

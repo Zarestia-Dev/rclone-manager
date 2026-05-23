@@ -26,7 +26,9 @@
     "time": "时间",
     "context": "上下文",
     "all": "全部",
-    "description": "描述"
+    "description": "描述",
+    "password": "密码",
+    "username": "用户名"
   },
   "validators": {
     "integer": "必须为有效的整数",
@@ -147,7 +149,8 @@
       "mountStatus": "挂载状态",
       "syncStatus": "同步状态",
       "serveStatus": "服务状态"
-    }
+    },
+    "hiddenOnDashboard": "在仪表板上隐藏"
   },
   "detailShared": {
     "jobInfo": {
@@ -156,7 +159,8 @@
       "id": "任务 ID",
       "started": "开始时间",
       "finished": "完成时间",
-      "duration": "持续时间"
+      "duration": "持续时间",
+      "status": "任务状态"
     },
     "diskUsage": {
       "title": "磁盘使用情况",
@@ -205,7 +209,8 @@
         "stop": "停止任务",
         "delete": "删除任务"
       },
-      "empty": "未找到任务"
+      "empty": "未找到任务",
+      "dryRun": "模拟运行 (Dry Run)"
     },
     "settings": {
       "metrics": "{{count}} 项设置",
@@ -287,7 +292,11 @@
       "profileFilterHint": "仅监控特定配置文件的事件。",
       "autoAcknowledge": "自动确认",
       "autoAcknowledgeHint": "自动将警报标记为已确认。适用于已触发系统通知的警报。",
-      "actions": "触发操作"
+      "actions": "触发操作",
+      "actionRequired": "至少需要一个操作。",
+      "filtersEmptyHint": "留空以匹配所有事件。",
+      "noActionsHint": "您需要先创建一个警报操作，然后才能将其分配给规则。",
+      "scopeFilters": "范围过滤器"
     },
     "action": {
       "telegram": "Telegram",
@@ -319,7 +328,33 @@
       "from": "发件人地址",
       "to": "收件人地址",
       "encryption": "加密方式",
-      "subjectTemplate": "主题模板"
+      "subjectTemplate": "主题模板",
+      "basicInfo": "基本信息",
+      "configuration": "配置",
+      "discord": "Discord",
+      "headerKey": "请求头名称",
+      "headerValue": "值",
+      "headers": "HTTP/S 请求头",
+      "host": "主机",
+      "kind": "操作类型",
+      "noActionsCreated": "尚未创建任何警报操作。",
+      "noHeaders": "未配置自定义请求头。",
+      "os_toast": "系统通知",
+      "port": "端口",
+      "presets": "预设",
+      "script": "自定义脚本",
+      "slack": "Slack",
+      "useTls": "使用 TLS",
+      "webhook": "Webhook (HTTP/S)"
+    },
+    "events": {
+      "automation": "自动化",
+      "engine": "后端基础设施",
+      "job": "任务与文件操作",
+      "mount": "磁盘挂载",
+      "serve": "后台服务",
+      "system": "系统事件",
+      "update": "软件更新"
     }
   },
   "settings": {
@@ -781,7 +816,8 @@
       },
       "errors": {
         "invalidValue": "值无效"
-      }
+      },
+      "others": "其他"
     },
     "serveCard": {
       "tooltips": {
@@ -904,6 +940,12 @@
       "required": "密码为必填项",
       "remember": "记住密码",
       "keychain": "存储在系统钥匙串中"
+    },
+    "actions": {
+      "hide": "隐藏",
+      "open": "打开",
+      "reset": "重置",
+      "show": "显示"
     }
   },
   "wizards": {
@@ -1382,7 +1424,8 @@
       "edit": "编辑",
       "cancel": "取消",
       "saveSuccess": "文件保存成功",
-      "saveError": "文件保存失败"
+      "saveError": "文件保存失败",
+      "errorDownload": "下载文件出错"
     }
   },
   "dashboard": {
@@ -1676,7 +1719,9 @@
       "logContext": "日志上下文",
       "logLevel": "日志等级",
       "allLevels": "所有等级",
-      "searchPlaceholder": "搜索日志..."
+      "searchPlaceholder": "搜索日志...",
+      "clearError": "清除应用日志失败。",
+      "fetchError": "获取应用日志失败。"
     },
     "preferences": {
       "title": "偏好设置",
@@ -1890,6 +1935,10 @@
         "move": {
           "label": "移动",
           "description": "将内容移动到本地文件夹。"
+        },
+        "serve": {
+          "label": "服务",
+          "description": "在后台运行服务以共享文件。"
         }
       },
       "buttons": {
@@ -1941,7 +1990,12 @@
         "new": "新配置文件名称",
         "save": "保存",
         "cancel": "取消",
-        "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用"
+        "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
+        "disabledReason": {
+          "defaultProtected": "默认配置文件无法重命名或删除",
+          "inUse": "配置文件正在被运行中的 {{operation}} 使用，请先停止它。",
+          "lastProfile": "必须保留至少一个配置文件"
+        }
       },
       "buttons": {
         "back": "上一步",
@@ -2146,7 +2200,8 @@
       "openFileFailed": "无法打开文件：缺少远程服务器上下文",
       "minSelection": "请至少选择 {{min}} 项。",
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
-      "archiveCreateFailed": "创建归档失败: {{error}}"
+      "archiveCreateFailed": "创建归档失败: {{error}}",
+      "externalDropFailed": "处理外部文件拖放失败。"
     },
     "contextMenu": {
       "open": "打开",
@@ -2183,7 +2238,9 @@
       "nextTab": "下一个标签页",
       "previousTab": "上一个标签页",
       "toggleSplit": "切换分屏视图",
-      "switchPane": "切换窗格"
+      "switchPane": "切换窗格",
+      "compress": "压缩",
+      "openNewWindow": "在新窗口中打开"
     },
     "view": {
       "iconSize": "图标大小",
@@ -2199,7 +2256,11 @@
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
       "copyUrlStarted": "正在从 URL 下载...",
-      "archiveCreateStarted": "已开始创建归档操作"
+      "archiveCreateStarted": "已开始创建归档操作",
+      "mkdirFailed": "创建目录失败: {{path}}",
+      "uploadFailed": "上传 {{count}} 个文件失败。",
+      "uploadStarted": "正在开始上传 {{count}} 个文件...",
+      "uploadSuccess": "成功上传 {{count}} 个文件。"
     }
   },
   "home": {
@@ -2232,7 +2293,8 @@
       "initialLoadFailed": "初始数据加载失败",
       "updateActionsFailed": "更新快捷操作失败",
       "openFailed": "打开 {{name}} 失败",
-      "resetSettingsFailed": "重置远程存储设置失败"
+      "resetSettingsFailed": "重置远程存储设置失败",
+      "generic": "发生意外错误。请检查日志获取更多详细信息。"
     }
   },
   "transfer": {
@@ -2378,7 +2440,16 @@
       "downloadFailed": "重试 3 次后下载仍失败：{{error}}",
       "executionFailed": "执行 rclone 失败：{{error}}",
       "notFound": "在 {{path}} 未找到 Rclone 可执行文件",
-      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}"
+      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
+      "cacheRefreshFailed": "刷新 rclone 缓存失败: {{error}}",
+      "configValidationFailed": "Rclone 配置验证失败: {{error}}",
+      "invalidFlags": "检测到无效的 rclone 标志: {{error}}",
+      "invalidPath": "指定了无效的 rclone 路径",
+      "killFailed": "终止 rclone 进程失败: {{error}}",
+      "lockFailed": "获取 rclone 配置锁失败: {{error}}",
+      "portCleanupFailed": "清理 rclone 端口失败: {{error}}",
+      "spawnFailed": "启动 rclone 进程失败: {{error}}",
+      "updateRemoteUnsupported": "此 rclone 版本不支持远程更新"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -2395,13 +2466,21 @@
       "unknownFormat": "未知备份格式",
       "integrityFailed": "完整性校验失败！备份可能已损坏。",
       "encryptedPasswordRequired": "备份已加密，需要密码。",
-      "unsupportedArchive": "不支持的压缩包类型，必须是 .rcman 文件"
+      "unsupportedArchive": "不支持的压缩包类型，必须是 .rcman 文件",
+      "invalidArchive": "无效的备份存档格式",
+      "manifestParseFailed": "解析备份清单失败: {{error}}",
+      "missingManifest": "存档中缺少备份清单",
+      "openFailed": "打开备份存档失败: {{error}}",
+      "restoreFailed": "备份恢复失败: {{error}}",
+      "secretRequirePassword": "此备份受密码保护，需要输入密码"
     },
     "backend": {
       "nameEmpty": "后端名称不能为空",
       "cannotAddLocal": "无法添加名为 'Local' 的后端",
       "cannotRemoveLocal": "无法移除本地后端",
-      "cannotRemoveActive": "无法移除当前活动后端"
+      "cannotRemoveActive": "无法移除当前活动后端",
+      "alreadyExists": "已存在同名后端",
+      "notFound": "未找到后端 '{{name}}'"
     },
     "job": {
       "notFound": "未找到任务信息",
@@ -2427,7 +2506,8 @@
     "system": {
       "unlockFailed": "解锁失败：{{error}}",
       "killFailed": "结束进程失败：{{error}}",
-      "quitFailed": "退出 rclone 引擎失败：{{error}}"
+      "quitFailed": "退出 rclone 引擎失败：{{error}}",
+      "themeSetFailed": "设置应用主题失败: {{error}}"
     },
     "remote": {
       "configFailed": "配置远程存储失败：{{error}}"
@@ -2723,7 +2803,8 @@
     },
     "errors": {
       "passwordRequired": "需要密码",
-      "mountPluginInstallFailed": "插件安装失败：{{error}}"
+      "mountPluginInstallFailed": "插件安装失败：{{error}}",
+      "rcloneInstallFailed": "Rclone 安装失败: {{error}}"
     },
     "configTabs": {
       "default": "默认",
@@ -2741,6 +2822,8 @@
     "refreshUi": "刷新界面",
     "clearCache": "清空缓存",
     "openDevTools": "打开开发者工具",
-    "cleared": "数据已清空"
+    "cleared": "数据已清空",
+    "openDevToolsError": "打开开发者工具失败",
+    "openDevToolsHint": "打开开发者工具进行调试"
   }
 }

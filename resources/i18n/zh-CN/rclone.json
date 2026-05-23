@@ -1150,5 +1150,9 @@
   "disable_zip": {
     "title": "禁用 Zip 下载",
     "help": "禁用目录的 zip 下载。"
+  },
+  "vfs_handle_caching": {
+    "title": "VFS 句柄缓存",
+    "help": "最后一次关闭后，保持文件句柄和下载器活跃的时间"
   }
 }

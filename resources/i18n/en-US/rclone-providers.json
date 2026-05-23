@@ -184,6 +184,14 @@
       "connection_string": {
         "title": "Connection String",
         "help": "Storage Connection String.\n\nConnection string for the storage. Leave blank if using other auth methods.\n"
+      },
+      "copy_total_concurrency": {
+        "title": "Copy Total Concurrency",
+        "help": "Global concurrency limit for multipart copy chunks.\n\nThis limits the total number of multipart copy chunks running at once\nacross all files.\n\nSet to 0 to disable this limiter."
+      },
+      "decompress": {
+        "title": "Decompress",
+        "help": "If set this will decompress gzip encoded objects.\n\nIt is possible to upload objects to Azure Blob Storage with \"Content-Encoding: gzip\"\nset. Normally rclone will download these files as compressed objects.\n\nIf this flag is set then rclone will decompress these files with\n\"Content-Encoding: gzip\" as they are received. This means that rclone\ncan't check the size and hash but the file contents will be decompressed.\n"
       }
     },
     "azurefiles": {
@@ -1614,6 +1622,10 @@
       "trust_token": {
         "title": "Trust Token",
         "help": "Trust token (internal use)"
+      },
+      "service": {
+        "title": "Service",
+        "help": "iCloud service to use."
       }
     },
     "imagekit": {
@@ -1788,6 +1800,18 @@
       "token": {
         "title": "Token",
         "help": "Token from https://www.linkbox.to/admin/account"
+      },
+      "email": {
+        "title": "Email",
+        "help": "Email for login"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password for login"
+      },
+      "web_token": {
+        "title": "Web Token",
+        "help": "Web API login token - set automatically."
       }
     },
     "local": {
@@ -2878,6 +2902,42 @@
       "role_external_id": {
         "title": "Role External Id",
         "help": "External ID for assumed role.\n\t\t\t\nLeave blank if not using an external ID."
+      },
+      "list_versions_oldest_first": {
+        "title": "List Versions Oldest First",
+        "help": "Set if the backend returns object versions oldest first.\n\nThe S3 standard returns object versions newest first. Some backends\n(e.g. Hitachi HCP) return them oldest first instead.\n\nSet this quirk if --s3-version-at or --s3-versions produce incorrect\nresults with your backend.\n\nThis should be automatically set correctly for all providers rclone\nknows about - please make a bug report if not.\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "Ibm Iam Endpoint",
+        "help": "IBM IAM Endpoint to use for authentication.\n\nLeave blank to use the default public endpoint."
+      },
+      "object_lock_mode": {
+        "title": "Object Lock Mode",
+        "help": "Object Lock mode to apply when uploading or copying objects.\n\nSet this to apply Object Lock retention mode to objects.\nIf not set, no Object Lock mode is applied (even with --metadata).\n\nNote: To enable Object Lock retention, you must set BOTH object_lock_mode\nAND object_lock_retain_until_date. Setting only one has no effect.\n\n- GOVERNANCE: Set Object Lock mode to GOVERNANCE\n- COMPLIANCE: Set Object Lock mode to COMPLIANCE\n- copy: Copy the mode from the source object (requires --metadata)\n\nSee: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "Object Lock Retain Until Date",
+        "help": "Object Lock retention until date to apply when uploading or copying objects.\n\nSet this to apply Object Lock retention date to objects.\nIf not set, no retention date is applied (even with --metadata).\n\nNote: To enable Object Lock retention, you must set BOTH object_lock_mode\nAND object_lock_retain_until_date. Setting only one has no effect.\n\nAccepts:\n- RFC 3339 format: 2030-01-02T15:04:05Z\n- Duration from now: 365d, 1y, 6M (days, years, months)\n- copy: Copy the date from the source object (requires --metadata)\n\nSee: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "Object Lock Legal Hold Status",
+        "help": "Object Lock legal hold status to apply when uploading or copying objects.\n\nSet this to apply Object Lock legal hold to objects.\nIf not set, no legal hold is applied (even with --metadata).\n\nNote: Legal hold is independent of retention and can be set separately.\n\n- ON: Enable legal hold\n- OFF: Disable legal hold\n- copy: Copy the legal hold status from the source object (requires --metadata)\n\nSee: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "Bypass Governance Retention",
+        "help": "Allow deleting or modifying objects locked with GOVERNANCE mode."
+      },
+      "bucket_object_lock_enabled": {
+        "title": "Bucket Object Lock Enabled",
+        "help": "Enable Object Lock when creating new buckets."
+      },
+      "object_lock_set_after_upload": {
+        "title": "Object Lock Set After Upload",
+        "help": "Set Object Lock via separate API calls after upload.\n\nUse this for S3-compatible providers that don't support setting Object Lock\nheaders during PUT operations. When enabled, Object Lock is set via separate\nPutObjectRetention and PutObjectLegalHold API calls after the upload completes.\n\nThis adds extra API calls per object, so only enable if your provider requires it."
+      },
+      "object_lock_supported": {
+        "title": "Object Lock Supported",
+        "help": "Whether the provider supports S3 Object Lock.\n\nThis should be true, false or left unset to use the default for the provider.\n\nSet to false for providers that don't fully support the S3 Object Lock API\n(e.g. GCS which uses non-standard headers for bypass governance retention\nand doesn't implement Legal Hold via the S3 API).\n"
       }
     },
     "seafile": {
@@ -3812,6 +3872,68 @@
       "skip_hash_validation": {
         "title": "Skip Hash Validation",
         "help": "Skip hash validation when downloading files.\n\nBy default, hash validation is disabled. Set this to false to enable validation."
+      },
+      "encoding": {
+        "title": "Encoding",
+        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
+      },
+      "description": {
+        "title": "Description",
+        "help": "Description of the remote."
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "Client Id",
+        "help": "OAuth Client Id.\n\nLeave blank normally."
+      },
+      "client_secret": {
+        "title": "Client Secret",
+        "help": "OAuth Client Secret.\n\nLeave blank normally."
+      },
+      "token": {
+        "title": "Token",
+        "help": "OAuth Access Token as a JSON blob."
+      },
+      "auth_url": {
+        "title": "Auth Url",
+        "help": "Auth server URL.\n\nLeave blank to use the provider defaults."
+      },
+      "token_url": {
+        "title": "Token Url",
+        "help": "Token server url.\n\nLeave blank to use the provider defaults."
+      },
+      "client_credentials": {
+        "title": "Client Credentials",
+        "help": "Use client credentials OAuth flow.\n\nThis will use the OAUTH2 client Credentials Flow as described in RFC 6749.\n\nNote that this option is NOT supported by all backends."
+      },
+      "root_folder_id": {
+        "title": "Root Folder Id",
+        "help": "ID of the root folder.\n\nNormally this is auto-detected, but if it fails or you want to speed up startup,\nyou can set it manually.\n\nLeave blank normally."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Upload chunk size.\n\nMust be a power of 2 >= 256k and <= 64MB."
+      },
+      "list_chunk": {
+        "title": "List Chunk",
+        "help": "Size of listing chunk 1-1000."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to resumable upload.\n\nAny files larger than this will be uploaded using resumable upload.\nThe minimum is 0 and the maximum is 20 MiB (Huawei Drive API limit for single request uploads)."
       },
       "encoding": {
         "title": "Encoding",

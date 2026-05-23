@@ -25,7 +25,10 @@
     "time": "Hora",
     "context": "Contexto",
     "all": "Todos",
-    "description": "Descripción"
+    "description": "Descripción",
+    "password": "Contraseña",
+    "required": "Este campo es requerido.",
+    "username": "Nombre de usuario"
   },
   "validators": {
     "integer": "Debe ser un entero válido",
@@ -146,7 +149,8 @@
       "mountStatus": "Estado del montaje",
       "syncStatus": "Estado de las operaciones de sincronización",
       "serveStatus": "Estado del servicio"
-    }
+    },
+    "hiddenOnDashboard": "Oculto en el panel"
   },
   "detailShared": {
     "jobInfo": {
@@ -155,7 +159,8 @@
       "id": "ID del trabajo",
       "started": "Iniciado",
       "finished": "Finalizado",
-      "duration": "Duración"
+      "duration": "Duración",
+      "status": "Estado de la tarea"
     },
     "diskUsage": {
       "title": "Uso del disco",
@@ -163,7 +168,8 @@
       "total": "Total:",
       "used": "Usado:",
       "free": "Libre:",
-      "loading": "Cargando..."
+      "loading": "Cargando...",
+      "errorLoading": "Problema al cargar el uso de disco"
     },
     "status": {
       "mounted": "Montado",
@@ -203,7 +209,8 @@
         "stop": "Detener trabajo",
         "delete": "Borrar trabajo"
       },
-      "empty": "No se han encontrado trabajos"
+      "empty": "No se han encontrado trabajos",
+      "dryRun": "Simulación (Dry Run)"
     },
     "settings": {
       "metrics": "{{count}} ajustes",
@@ -285,7 +292,11 @@
       "profileFilterHint": "Monitorear eventos solo para perfiles específicos.",
       "autoAcknowledge": "Reconocimiento automático",
       "autoAcknowledgeHint": "Marcar alertas como reconocidas automáticamente. Ideal para alertas que ya activan notificaciones del sistema.",
-      "actions": "Acciones a activar"
+      "actions": "Acciones a activar",
+      "actionRequired": "Se requiere al menos una acción.",
+      "filtersEmptyHint": "Dejar vacío para que coincida con todos los eventos.",
+      "noActionsHint": "Debe crear una acción de alerta antes de poder asignarla a una regla.",
+      "scopeFilters": "Filtros de Ámbito"
     },
     "action": {
       "telegram": "Telegram",
@@ -317,7 +328,33 @@
       "from": "Dirección del remitente",
       "to": "Dirección del destinatario",
       "encryption": "Cifrado",
-      "subjectTemplate": "Plantilla de asunto"
+      "subjectTemplate": "Plantilla de asunto",
+      "basicInfo": "Información Básica",
+      "configuration": "Configuración",
+      "discord": "Discord",
+      "headerKey": "Nombre de Cabecera",
+      "headerValue": "Valor",
+      "headers": "Cabeceras HTTP/S",
+      "host": "Host",
+      "kind": "Tipo de Acción",
+      "noActionsCreated": "Aún no se han creado acciones de alerta.",
+      "noHeaders": "No hay cabeceras personalizadas configuradas.",
+      "os_toast": "Notificación de SO",
+      "port": "Puerto",
+      "presets": "Preajustes",
+      "script": "Script Personalizado",
+      "slack": "Slack",
+      "useTls": "Usar TLS",
+      "webhook": "Webhook (HTTP/S)"
+    },
+    "events": {
+      "automation": "Automatizaciones",
+      "engine": "Infraestructura del Motor",
+      "job": "Tareas y Operaciones de Archivos",
+      "mount": "Montajes de Unidad",
+      "serve": "Servidores en Segundo Plano",
+      "system": "Eventos del Sistema",
+      "update": "Actualizaciones de Software"
     }
   },
   "settings": {
@@ -639,7 +676,9 @@
       "description": "Ninguna opción coincide con su búsqueda",
       "action": "Borrar búsqueda",
       "hideSearch": "Ocultar búsqueda",
-      "showSearch": "Mostrar búsqueda"
+      "showSearch": "Mostrar búsqueda",
+      "hide": "Ocultar búsqueda",
+      "show": "Mostrar búsqueda"
     },
     "installationOptions": {
       "tabs": {
@@ -777,7 +816,8 @@
       },
       "errors": {
         "invalidValue": "Valor inválido"
-      }
+      },
+      "others": "otros"
     },
     "serveCard": {
       "tooltips": {
@@ -885,8 +925,10 @@
           "directoryRefreshed": "Directorio actualizado",
           "intervalSet": "Intervalo establecido en {{val}}",
           "error": "Error: {{error}}"
-        }
-      }
+        },
+        "pollIntervalNotSupported": "ChangeNotify no compatible"
+      },
+      "pollIntervalPlaceholder": "Introduzca el intervalo de sondeo (segundos)"
     },
     "jsonEditor": {
       "noFields": "No hay campos para mostrar en modo JSON"
@@ -898,6 +940,12 @@
       "required": "Se requiere contraseña",
       "remember": "Recordar contraseña",
       "keychain": "Almacenado en el llavero del sistema"
+    },
+    "actions": {
+      "hide": "Ocultar",
+      "open": "Abrir",
+      "reset": "Restablecer",
+      "show": "Mostrar"
     }
   },
   "wizards": {
@@ -1134,7 +1182,8 @@
           "one": "1 minuto",
           "other": "{{count}} minutos"
         }
-      }
+      },
+      "cronPlaceholder": "Introduzca una expresión cron (ej. 0 0 * * *)"
     },
     "cronPresets": {
       "daily-9am": {
@@ -1280,7 +1329,8 @@
       "metadata": {
         "system": "Metadatos del sistema",
         "standard": "Metadatos estándar"
-      }
+      },
+      "reloadUsage": "Recargar Uso"
     },
     "properties": {
       "title": "Propiedades",
@@ -1369,7 +1419,13 @@
       "errorListArchive": "Error al listar el contenido del archivo",
       "extract": "Extraer",
       "extracting": "Extrayendo \"{{name}}\"...",
-      "errorExtract": "Error al extraer el archivo"
+      "errorExtract": "Error al extraer el archivo",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "errorDownload": "Error al descargar el archivo",
+      "save": "Guardar",
+      "saveError": "Error al guardar el archivo",
+      "saveSuccess": "Archivo guardado correctamente"
     }
   },
   "dashboard": {
@@ -1433,7 +1489,8 @@
       "listed": "Listados",
       "transferStatistics": "{{op}} Estadísticas",
       "dryRun": "Simulacro",
-      "dryRunActive": "Simulacro activo: no se realizarán cambios"
+      "dryRunActive": "Simulacro activo: no se realizarán cambios",
+      "selectOperationMode": "Seleccionar modo de operación"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -1487,8 +1544,12 @@
       "remoteManagement": "Administración remota",
       "fileOperations": "Operaciones de archivo",
       "fileBrowser": "Explorador de archivos",
-      "navigation": "Navegación"
-    }
+      "navigation": "Navegación",
+      "fileBrowserNautilus": "Explorador de Archivos (Nautilus)"
+    },
+    "quitError": "Error al salir de la aplicación: {{error}}",
+    "refreshError": "Error al actualizar los atajos: {{error}}",
+    "refreshSuccess": "Atajos actualizados correctamente"
   },
   "app": {
     "shutdown": {
@@ -1639,7 +1700,9 @@
       "entries": "Entradas activas",
       "clear": "Borrar",
       "cacheCleared": "Caché borrada correctamente",
-      "cacheClearFailed": "Error al borrar la caché"
+      "cacheClearFailed": "Error al borrar la caché",
+      "rcloneRestartDescription": "Se ha instalado una actualización de Rclone. Por favor, reinicie el motor para aplicar los cambios.",
+      "rcloneRestartRequired": "Reinicio de Rclone Requerido"
     },
     "logs": {
       "clearAll": "Borrar todos los registros",
@@ -1656,7 +1719,9 @@
       "logContext": "Contexto del registro",
       "logLevel": "Nivel de registro",
       "allLevels": "Todos los niveles",
-      "searchPlaceholder": "Buscar registros..."
+      "searchPlaceholder": "Buscar registros...",
+      "clearError": "Error al limpiar los registros de la aplicación.",
+      "fetchError": "Error al obtener los registros de la aplicación."
     },
     "preferences": {
       "title": "Preferencias",
@@ -1870,6 +1935,10 @@
         "move": {
           "label": "Mover",
           "description": "Mover el contenido a una carpeta local."
+        },
+        "serve": {
+          "label": "Servir",
+          "description": "Ejecutar un servidor en segundo plano para compartir archivos."
         }
       },
       "buttons": {
@@ -1921,7 +1990,12 @@
         "new": "Nombre del nuevo perfil",
         "save": "Guardar",
         "cancel": "Cancelar",
-        "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos"
+        "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
+        "disabledReason": {
+          "defaultProtected": "El perfil predeterminado no se puede renombrar ni eliminar",
+          "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero.",
+          "lastProfile": "Debe permanecer al menos un perfil"
+        }
       },
       "buttons": {
         "back": "Atrás",
@@ -2030,7 +2104,10 @@
       "starred": "Favoritos",
       "searchPlaceholder": "Buscar archivos...",
       "local": "Local",
-      "localDisk": "Disco local"
+      "localDisk": "Disco local",
+      "bookmarks": "Marcadores",
+      "cloud": "Nube",
+      "fileSystem": "Sistema de Archivos"
     },
     "sort": {
       "az": "A-Z",
@@ -2089,6 +2166,16 @@
         "fullPathLabel": "Incluir rutas de origen completas",
         "fullPathHint": "Mantiene la estructura de directorios desde la raíz",
         "compress": "Comprimir"
+      },
+      "delete": {
+        "messageMultiple": "¿Está seguro de que desea eliminar {{count}} elementos?",
+        "messageSingle": "¿Está seguro de que desea eliminar \"{{name}}\"?",
+        "title": "Eliminar Elementos"
+      },
+      "rmdirs": {
+        "confirm": "Eliminar",
+        "message": "¿Está seguro de que desea eliminar todas las carpetas vacías en \"{{name}}\"?",
+        "title": "Eliminar Carpetas Vacías"
       }
     },
     "errors": {
@@ -2101,7 +2188,14 @@
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
-      "archiveCreateFailed": "Error al crear el archivo: {{error}}"
+      "archiveCreateFailed": "Error al crear el archivo: {{error}}",
+      "copyFailed": "Error al copiar {{count}} elementos",
+      "deleteFailed": "Error al eliminar {{count}} elementos",
+      "externalDropFailed": "Error al procesar la caída de archivos externos.",
+      "moveFailed": "Error al mover {{count}} elementos",
+      "redoFailed": "Error al rehacer para {{count}} elementos",
+      "rmdirsFailed": "Error al eliminar carpetas vacías en \"{{name}}\": {{error}}",
+      "undoFailed": "Error al deshacer para {{count}} elementos"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2124,7 +2218,23 @@
       "closeOtherTabs": "Cerrar otras pestañas",
       "closeTabsToRight": "Cerrar pestañas a la derecha",
       "about": "Acerca de",
-      "emptyTrash": "Vaciar papelera"
+      "emptyTrash": "Vaciar papelera",
+      "compress": "Comprimir",
+      "copy": "Copiar",
+      "cut": "Cortar",
+      "delete": "Eliminar",
+      "focusPath": "Enfocar Ruta",
+      "goBack": "Atrás",
+      "goForward": "Adelante",
+      "goUp": "Subir",
+      "newTab": "Nueva Pestaña",
+      "nextTab": "Siguiente Pestaña",
+      "paste": "Pegar",
+      "previousTab": "Pestaña Anterior",
+      "removeEmptyDirs": "Eliminar carpetas vacías",
+      "search": "Buscar",
+      "switchPane": "Cambiar de Panel",
+      "toggleSplit": "Alternar Vista Dividida"
     },
     "view": {
       "iconSize": "Tamaño del ícono",
@@ -2134,7 +2244,23 @@
       "trashEmptied": "Papelera vaciada",
       "renameStarted": "Operación de renombrado iniciada",
       "copyUrlStarted": "Descargando desde URL...",
-      "archiveCreateStarted": "Operación de creación de archivo iniciada"
+      "archiveCreateStarted": "Operación de creación de archivo iniciada",
+      "copyStarted": "Copiando {{count}} elementos...",
+      "deleteStarted": "Eliminando {{count}} elementos...",
+      "mkdirFailed": "Error al crear el directorio: {{path}}",
+      "moveStarted": "Moviendo {{count}} elementos...",
+      "redoComplete": "Rehacer exitoso",
+      "rmdirsStarted": "Eliminando carpetas vacías en \"{{name}}\"...",
+      "undoComplete": "Deshacer exitoso",
+      "uploadFailed": "Error al cargar {{count}} archivos.",
+      "uploadStarted": "Iniciando carga de {{count}} archivos...",
+      "uploadSuccess": "{{count}} archivos cargados correctamente."
+    },
+    "bookmarks": {
+      "emptyHint": "Sin marcadores"
+    },
+    "shortcuts": {
+      "title": "Atajos de Teclado de Nautilus"
     }
   },
   "home": {
@@ -2167,7 +2293,8 @@
       "initialLoadFailed": "Error al cargar datos iniciales",
       "updateActionsFailed": "Error al actualizar acciones rápidas",
       "openFailed": "Error al abrir {{name}}",
-      "resetSettingsFailed": "Error al restablecer configuraciones del remoto"
+      "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
+      "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles."
     }
   },
   "transfer": {
@@ -2312,7 +2439,17 @@
       "selfupdateFailed": "rclone selfupdate --check falló: {{error}}",
       "downloadFailed": "Descarga fallida después de 3 intentos: {{error}}",
       "executionFailed": "Error al ejecutar rclone: {{error}}",
-      "notFound": "Binario de Rclone no encontrado en {{path}}"
+      "notFound": "Binario de Rclone no encontrado en {{path}}",
+      "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
+      "cacheRefreshFailed": "Error al actualizar la caché de rclone: {{error}}",
+      "configValidationFailed": "Error de validación de la configuración de rclone: {{error}}",
+      "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
+      "invalidPath": "Ruta de rclone especificada no válida",
+      "killFailed": "Error al terminar el proceso de rclone: {{error}}",
+      "lockFailed": "Error al adquirir el bloqueo de configuración de rclone: {{error}}",
+      "portCleanupFailed": "Error al limpiar los puertos de rclone: {{error}}",
+      "spawnFailed": "Error al iniciar el proceso de rclone: {{error}}",
+      "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone"
     },
     "security": {
       "passwordEmpty": "La contraseña no puede estar vacía",
@@ -2329,13 +2466,21 @@
       "unknownFormat": "Formato de copia de seguridad desconocido",
       "integrityFailed": "¡Falló la verificación de integridad! La copia de seguridad puede estar corrupta.",
       "encryptedPasswordRequired": "Esta copia de seguridad está encriptada. Se requiere contraseña.",
-      "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman"
+      "unsupportedArchive": "Tipo de archivo no soportado. Debe ser un archivo .rcman",
+      "invalidArchive": "Formato de archivo de copia de seguridad no válido",
+      "manifestParseFailed": "Error al analizar el manifiesto de copia de seguridad: {{error}}",
+      "missingManifest": "El manifiesto de copia de seguridad no se encuentra en el archivo",
+      "openFailed": "Error al abrir el archivo de copia de seguridad: {{error}}",
+      "restoreFailed": "Fallo en la restauración de la copia de seguridad: {{error}}",
+      "secretRequirePassword": "Esta copia de seguridad está protegida por un secreto y requiere una contraseña"
     },
     "backend": {
       "nameEmpty": "El nombre del backend no puede estar vacío",
       "cannotAddLocal": "No se puede agregar un backend llamado 'Local'",
       "cannotRemoveLocal": "No se puede eliminar el backend Local",
-      "cannotRemoveActive": "No se puede eliminar el backend activo"
+      "cannotRemoveActive": "No se puede eliminar el backend activo",
+      "alreadyExists": "Ya existe un backend con este nombre",
+      "notFound": "Backend '{{name}}' no encontrado"
     },
     "job": {
       "notFound": "JobInfo no encontrado",
@@ -2361,7 +2506,8 @@
     "system": {
       "unlockFailed": "Desbloqueo fallido: {{error}}",
       "killFailed": "Error al terminar el proceso: {{error}}",
-      "quitFailed": "Error al cerrar el motor de rclone: {{error}}"
+      "quitFailed": "Error al cerrar el motor de rclone: {{error}}",
+      "themeSetFailed": "Error al establecer el tema de la aplicación: {{error}}"
     },
     "remote": {
       "configFailed": "Error al configurar el remoto: {{error}}"
@@ -2671,5 +2817,13 @@
     "repairingAria": "Reparación en curso",
     "startRepairAria": "Iniciar reparación",
     "validatingPassword": "Validando..."
+  },
+  "developerTools": {
+    "clearCache": "Limpiar Caché",
+    "cleared": "Datos Limpiados",
+    "openDevTools": "Abrir Herramientas de Desarrollador",
+    "openDevToolsError": "Error al abrir DevTools",
+    "openDevToolsHint": "Abrir DevTools para depuración",
+    "refreshUi": "Refrescar UI"
   }
 }
