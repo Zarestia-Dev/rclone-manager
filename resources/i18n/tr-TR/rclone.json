@@ -1150,5 +1150,9 @@
   "disable_zip": {
     "title": "Zip İndirmeyi Devre Dışı Bırak",
     "help": "Dizinlerin zip olarak indirilmesini devre dışı bırak."
+  },
+  "vfs_handle_caching": {
+    "title": "VFS Tanımlayıcı Önbelleğe Alma",
+    "help": "Son kapatmadan sonra dosya tanımlayıcısını ve indiricileri aktif tutma süresi"
   }
 }
