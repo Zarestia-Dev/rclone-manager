@@ -13,6 +13,7 @@ import {
 } from '@app/services';
 import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS } from '@app/types';
 import { TabItem } from '../../file-browser/nautilus/tabs/nautilus-tabs.component';
+import { FileViewerService } from '../ui/file-viewer.service';
 
 export interface PaneState {
   remote: ExplorerRoot | null;
@@ -64,6 +65,7 @@ export class NautilusTabService {
   private readonly pathService = inject(PathService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly fileViewerSvc = inject(FileViewerService);
 
   public readonly listReadGroups: Record<0 | 1, string> = {
     0: `ui/nautilus/list-left-${Date.now().toString(36)}`,
@@ -74,6 +76,7 @@ export class NautilusTabService {
   onCloseOverlay!: () => void;
 
   // -- Signals --
+  readonly pendingPreviewFilePath = signal<string | null>(null);
   readonly nautilusRemote = signal<ExplorerRoot | null>(null);
   readonly currentPath = signal<string>('');
   readonly refreshTrigger = signal(0);
@@ -275,6 +278,21 @@ export class NautilusTabService {
     // Priority 4: Standard fallback
     initialRemote ??= this.nautilusService.localDrives()[0] ?? null;
 
+    if (initialRemote && initialPath) {
+      try {
+        const fsName = initialRemote.isLocal
+          ? initialRemote.name
+          : this.pathService.normalizeRemoteForRclone(initialRemote.name);
+        const stat = await this.remoteOps.getStat(fsName, initialPath);
+        if (stat && stat.item && !stat.item.IsDir) {
+          this.pendingPreviewFilePath.set(initialPath);
+          initialPath = this.pathService.getParentPath(initialPath);
+        }
+      } catch (err) {
+        console.debug('Failed to getStat for initial path:', err);
+      }
+    }
+
     this.createTab(initialRemote, initialPath);
     return initialLocationApplied;
   }
@@ -404,9 +422,10 @@ export class NautilusTabService {
 
   createTab(remote: ExplorerRoot | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
-    const title =
-      this.pathService.getDisplaySegment(remote, path) ||
-      this.translate.instant(!remote ? 'nautilus.titles.starred' : 'nautilus.titles.files');
+    const displaySeg = this.pathService.getDisplaySegment(remote, path);
+    const title = displaySeg
+      ? this.translate.instant(displaySeg)
+      : this.translate.instant(!remote ? 'nautilus.titles.starred' : 'nautilus.titles.files');
 
     const paneState = this.createPaneState(remote, path);
 
@@ -562,7 +581,32 @@ export class NautilusTabService {
     this.traverseHistory(1);
   }
 
-  _navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): void {
+  async _navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
+    if (this.pendingPreviewFilePath() !== path) {
+      this.pendingPreviewFilePath.set(null);
+    }
+
+    if (remote && path) {
+      try {
+        const fsName = remote.isLocal
+          ? remote.name
+          : this.pathService.normalizeRemoteForRclone(remote.name);
+        const stat = await this.remoteOps.getStat(fsName, path);
+        if (stat && stat.item && !stat.item.IsDir) {
+          const parentPath = this.pathService.getParentPath(path);
+          this.pendingPreviewFilePath.set(path);
+          this.executeNavigate(remote, parentPath, newHistory);
+          return;
+        }
+      } catch (err) {
+        console.debug('Failed to getStat for path, assuming directory:', err);
+      }
+    }
+
+    this.executeNavigate(remote, path, newHistory);
+  }
+
+  executeNavigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): void {
     const index = this.activeTabIndex();
     const pIdx = this.activePaneIndex();
     const tab = this.tabs()[index];
@@ -584,11 +628,13 @@ export class NautilusTabService {
 
     const currentStarredMode = pIdx === 0 ? this.starredMode() : this.starredModeRight();
     const targetStarredMode = !remote && path === '';
+    const displaySeg = this.pathService.getDisplaySegment(remote, path);
     const computedTitle =
       targetStarredMode || (currentStarredMode && !remote)
         ? this.translate.instant('nautilus.titles.starred')
-        : this.pathService.getDisplaySegment(remote, path) ||
-          this.translate.instant('nautilus.titles.files');
+        : displaySeg
+          ? this.translate.instant(displaySeg)
+          : this.translate.instant('nautilus.titles.files');
 
     this.tabs.update(tabs =>
       tabs.map((t, i) => {
@@ -737,6 +783,28 @@ export class NautilusTabService {
         if (pane) {
           pane.rawFiles.set(files);
           pane.isLoading.set(false);
+        }
+
+        const pending = this.pendingPreviewFilePath();
+        if (pending) {
+          const item = files.find(f => f.entry.Path === pending);
+          if (item) {
+            this.pendingPreviewFilePath.set(null);
+            const currentRemote = ref.remote();
+            const actualRemoteName = item.meta.remote ?? currentRemote?.name;
+            if (actualRemoteName) {
+              const isLocal = this.pathService.isLocalPath(actualRemoteName);
+              const idx = files.findIndex(f => f.entry.Path === item.entry.Path);
+              if (idx !== -1) {
+                this.fileViewerSvc.open(
+                  files.map(f => f.entry),
+                  idx,
+                  actualRemoteName,
+                  isLocal
+                );
+              }
+            }
+          }
         }
       });
   }

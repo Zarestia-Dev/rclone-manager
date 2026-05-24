@@ -1,11 +1,17 @@
 <div class="app-wrapper" appShortcutHandler>
   @if (!initializing()) {
-    @if (nautilusService.isStandaloneWindow()) {
-      <app-nautilus></app-nautilus>
-    } @else if (!completedOnboarding()) {
+    @if (!completedOnboarding()) {
       @defer {
         <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
+    } @else if (isDialogStandalone()) {
+      <div class="standalone-dialog-window">
+        <ng-container
+          *ngComponentOutlet="dialogComponent(); injector: dialogInjector"
+        ></ng-container>
+      </div>
+    } @else if (nautilusService.isStandaloneWindow()) {
+      <app-nautilus></app-nautilus>
     } @else {
       @defer {
         <app-titlebar data-tauri-drag-region></app-titlebar>

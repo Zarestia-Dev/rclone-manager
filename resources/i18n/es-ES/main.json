@@ -386,6 +386,10 @@
       "restrict": {
         "label": "Restringir valores",
         "description": "Restringir algunos valores específicos por motivos de seguridad (por ejemplo, token, ID de cliente, etc.)"
+      },
+      "standalone_dialogs": {
+        "label": "Diálogos independientes",
+        "description": "Abre cuadros de diálogo (modales) en ventanas nativas independientes del sistema operativo."
       }
     },
     "core": {

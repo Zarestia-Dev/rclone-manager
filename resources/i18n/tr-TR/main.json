@@ -386,6 +386,10 @@
       "restrict": {
         "label": "Değerleri Kısıtla",
         "description": "Güvenlik amacıyla bazı özel değerleri kısıtlar (örn. Token, İstemci Kimliği vb.)."
+      },
+      "standalone_dialogs": {
+        "label": "Bağımsız Pencereler",
+        "description": "İletişim kutularını (modalleri) ayrı işletim sistemi pencerelerinde açar."
       }
     },
     "core": {

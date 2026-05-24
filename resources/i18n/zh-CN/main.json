@@ -386,6 +386,10 @@
       "restrict": {
         "label": "限制敏感值",
         "description": "出于安全限制部分敏感值（如 Token、Client ID 等）"
+      },
+      "standalone_dialogs": {
+        "label": "独立窗口对话框",
+        "description": "在独立的系统原生窗口中打开对话框（模态框）。"
       }
     },
     "core": {

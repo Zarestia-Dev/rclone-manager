@@ -255,5 +255,38 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
         "Opening in-app browser{}",
         remote_name.map(|n| format!(" for {n}")).unwrap_or_default()
     );
-    crate::utils::app::builder::create_nautilus_window(app.clone(), remote_name, None);
+
+    let label = remote_name
+        .map(|name| {
+            let slug: String = name
+                .chars()
+                .map(|c| {
+                    if c.is_alphanumeric() || c == '-' {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
+                .collect();
+            format!("nautilus-{slug}")
+        })
+        .unwrap_or_else(|| "nautilus".to_string());
+
+    let url = match remote_name {
+        Some(name) => format!("index.html#/nautilus/{}", urlencoding::encode(name)),
+        None => "index.html#/nautilus".to_string(),
+    };
+
+    crate::utils::app::builder::new_window(
+        app.clone(),
+        crate::utils::app::builder::WindowOptions {
+            label,
+            url,
+            title: "RClone Nautilus".to_string(),
+            width: Some(1024.0),
+            height: Some(768.0),
+            remote: remote_name.map(|s| s.to_string()),
+            path: None,
+        },
+    );
 }

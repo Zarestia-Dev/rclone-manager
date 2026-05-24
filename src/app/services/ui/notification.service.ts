@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogData } from '@app/types';
@@ -15,8 +15,16 @@ import { firstValueFrom } from 'rxjs';
 })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
-  private readonly modalService = inject(ModalService);
+  private injector = inject(Injector);
   private translate = inject(TranslateService);
+
+  private _modalService?: ModalService;
+  private get modalService(): ModalService {
+    if (!this._modalService) {
+      this._modalService = this.injector.get(ModalService);
+    }
+    return this._modalService;
+  }
 
   /**
    * Show success message

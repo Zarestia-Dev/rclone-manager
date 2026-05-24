@@ -17,7 +17,7 @@
         {
           "identifier": "default",
           "description": "Capability for the main window",
-          "windows": ["main", "nautilus", "nautilus-*"],
+          "windows": ["main", "nautilus", "nautilus-*", "dialog-*"],
           "permissions": [
             "core:event:allow-listen",
             "core:event:allow-unlisten",

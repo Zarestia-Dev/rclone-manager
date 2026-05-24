@@ -335,7 +335,7 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(not(feature = "web-server"))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
             #[cfg(not(feature = "web-server"))]
-            (new_nautilus_window, $crate::utils::app::builder::new_nautilus_window, [remote: Option<String>, path: Option<String>]);
+            (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
         }
     }
 }

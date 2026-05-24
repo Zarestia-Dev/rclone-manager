@@ -20,6 +20,7 @@ export class FileViewerService extends TauriBaseService {
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
   public readonly isViewerOpen = this._isViewerOpen;
+  public readonly activeFileName = signal<string | null>(null);
 
   async open(
     items: Entry[],
@@ -50,11 +51,13 @@ export class FileViewerService extends TauriBaseService {
     componentRef.instance.closeViewer.subscribe(() => {
       overlayRef.dispose();
       this._isViewerOpen.set(false);
+      this.activeFileName.set(null);
     });
 
     overlayRef.backdropClick().subscribe(() => {
       overlayRef.dispose();
       this._isViewerOpen.set(false);
+      this.activeFileName.set(null);
     });
   }
 

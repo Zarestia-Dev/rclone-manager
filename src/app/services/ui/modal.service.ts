@@ -1,5 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
+import { TranslateService } from '@ngx-translate/core';
+import { Subject, Observable } from 'rxjs';
+import { Window } from '@tauri-apps/api/window';
 
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -35,6 +38,8 @@ import {
 } from '@app/types';
 import { JobInfo } from '../../shared/types/jobs';
 import { BackupAnalysis } from '../settings/backup-restore.service';
+import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
   remoteName?: string;
@@ -76,6 +81,37 @@ export interface RestorePreviewOptions {
   analysis: BackupAnalysis;
 }
 
+class MockDialogRef<R = any> {
+  private readonly afterClosedSubject = new Subject<R | undefined>();
+
+  constructor(public id: string) {}
+
+  afterClosed(): Observable<R | undefined> {
+    return this.afterClosedSubject.asObservable();
+  }
+
+  close(result?: R): void {
+    this.afterClosedSubject.next(result);
+    this.afterClosedSubject.complete();
+  }
+
+  backdropClick(): Observable<MouseEvent> {
+    return new Subject<MouseEvent>().asObservable();
+  }
+
+  keydownEvents(): Observable<KeyboardEvent> {
+    return new Subject<KeyboardEvent>().asObservable();
+  }
+
+  updatePosition(): this {
+    return this;
+  }
+
+  updateSize(): this {
+    return this;
+  }
+}
+
 /**
  * Centralized service for opening modal dialogs.
  * Reduces boilerplate in components and provides consistent modal configuration.
@@ -85,12 +121,98 @@ export interface RestorePreviewOptions {
 })
 export class ModalService {
   private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
+  private readonly apiClient = inject(ApiClientService);
+  private readonly injector = inject(Injector);
+
+  private shouldOpenStandalone(): boolean {
+    if (isHeadlessMode()) {
+      return false;
+    }
+    const appSettingsService = this.injector.get(AppSettingsService);
+    const options = appSettingsService.options();
+    return options ? options['general.standalone_dialogs']?.value === true : false;
+  }
+
+  private openStandaloneDialog<T, R = any>(
+    dialogType: string,
+    title: string,
+    data: any,
+    width?: number,
+    height?: number
+  ): MatDialogRef<T, R> {
+    const label = `dialog-${dialogType}`;
+    const mockRef = new MockDialogRef<R>(label);
+
+    let url = `index.html?standalone=dialog&dialogType=${dialogType}`;
+    if (data) {
+      url += `&data=${encodeURIComponent(JSON.stringify(data))}`;
+    }
+
+    // Call Rust to create the window
+    this.apiClient
+      .invoke('new_window', {
+        opts: {
+          label,
+          url,
+          title,
+          width,
+          height,
+        },
+      })
+      .catch(err => {
+        console.error('Failed to open standalone dialog window:', err);
+      });
+
+    const targetWin = new Window(label);
+
+    let resultReceived = false;
+    let unlistenResult: (() => void) | undefined;
+    let unlistenDestroyed: (() => void) | undefined;
+
+    const cleanup = () => {
+      if (unlistenResult) unlistenResult();
+      if (unlistenDestroyed) unlistenDestroyed();
+    };
+
+    targetWin
+      .listen<R>(`dialog-result-${label}`, event => {
+        resultReceived = true;
+        mockRef.close(event.payload);
+        cleanup();
+      })
+      .then(u => {
+        unlistenResult = u;
+      });
+
+    targetWin
+      .once('tauri://destroyed', () => {
+        cleanup();
+        if (!resultReceived) {
+          mockRef.close();
+        }
+      })
+      .then(u => {
+        unlistenDestroyed = u;
+      });
+
+    return mockRef as unknown as MatDialogRef<T, R>;
+  }
 
   // ============================================================================
   // Remote Management Modals
   // ============================================================================
 
   openQuickAddRemote(): MatDialogRef<QuickAddRemoteComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<QuickAddRemoteComponent>(
+        'quick-add-remote',
+        this.translate.instant('titlebar.menu.quickRemote'),
+        null,
+        680,
+        600
+      );
+    }
     return this.dialog.open(QuickAddRemoteComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -100,19 +222,29 @@ export class ModalService {
   openRemoteConfig(
     options: RemoteConfigModalOptions = {}
   ): MatDialogRef<RemoteConfigModalComponent> {
+    const data = {
+      name: options.remoteName,
+      remoteType: options.remoteType,
+      editTarget: options.editTarget,
+      existingConfig: options.existingConfig,
+      initialSection: options.initialSection,
+      targetProfile: options.targetProfile,
+      cloneTarget: options.cloneTarget,
+      autoAddProfile: options.autoAddProfile,
+    };
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<RemoteConfigModalComponent>(
+        'remote-config',
+        this.translate.instant('titlebar.menu.detailedRemote'),
+        data,
+        1024,
+        768
+      );
+    }
     return this.dialog.open(RemoteConfigModalComponent, {
       ...CONFIG_MODAL_SIZE,
       disableClose: true,
-      data: {
-        name: options.remoteName,
-        remoteType: options.remoteType,
-        editTarget: options.editTarget,
-        existingConfig: options.existingConfig,
-        initialSection: options.initialSection,
-        targetProfile: options.targetProfile,
-        cloneTarget: options.cloneTarget,
-        autoAddProfile: options.autoAddProfile,
-      },
+      data,
     });
   }
 
@@ -121,25 +253,54 @@ export class ModalService {
   // ============================================================================
 
   openLogs(remoteName: string): MatDialogRef<LogsModalComponent> {
+    const data = { remoteName };
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<LogsModalComponent>(
+        'logs',
+        this.translate.instant('settings.logs.remoteLogs', { name: remoteName }),
+        data,
+        680,
+        600
+      );
+    }
     return this.dialog.open(LogsModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data: { remoteName },
+      data,
     });
   }
 
   openExport(options: ExportModalOptions = {}): MatDialogRef<ExportModalComponent> {
+    const data = {
+      remoteName: options.remoteName,
+      defaultExportType: options.defaultExportType ?? 'FullBackup',
+    };
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<ExportModalComponent>(
+        'export',
+        this.translate.instant('titlebar.menu.export'),
+        data,
+        680,
+        600
+      );
+    }
     return this.dialog.open(ExportModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data: {
-        remoteName: options.remoteName,
-        defaultExportType: options.defaultExportType ?? 'FullBackup',
-      },
+      data,
     });
   }
 
   openBackend(): MatDialogRef<BackendModalComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<BackendModalComponent>(
+        'backend',
+        this.translate.instant('settings.backend.title') || 'Backend Management',
+        null,
+        680,
+        600
+      );
+    }
     return this.dialog.open(BackendModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: false,
@@ -147,6 +308,15 @@ export class ModalService {
   }
 
   openPreferences(): MatDialogRef<PreferencesModalComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<PreferencesModalComponent>(
+        'preferences',
+        this.translate.instant('settings.preferences.title'),
+        null,
+        680,
+        600
+      );
+    }
     return this.dialog.open(PreferencesModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -154,6 +324,15 @@ export class ModalService {
   }
 
   openRcloneFlags(): MatDialogRef<RcloneFlagsModalComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<RcloneFlagsModalComponent>(
+        'rclone-flags',
+        this.translate.instant('titlebar.menu.flags'),
+        null,
+        680,
+        600
+      );
+    }
     return this.dialog.open(RcloneFlagsModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -165,6 +344,15 @@ export class ModalService {
    * Uses the standard modal sizing and provides a default panelClass for styling.
    */
   openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<JobDetailModalComponent>(
+        'job-detail',
+        this.translate.instant('settings.jobDetail.title', { id: job.jobid }),
+        job,
+        680,
+        600
+      );
+    }
     return this.dialog.open(JobDetailModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -173,15 +361,41 @@ export class ModalService {
   }
 
   openProperties(options: PropertiesModalOptions): MatDialogRef<PropertiesModalComponent> {
+    const data = {
+      remoteName: options.remoteName,
+      path: options.path,
+      isLocal: options.isLocal,
+      item: options.item,
+      remoteType: options.remoteType,
+      features: options.features,
+    };
+    if (this.shouldOpenStandalone()) {
+      let width = 680;
+      if (options.width) {
+        if (options.width.endsWith('px')) {
+          width = parseInt(options.width);
+        } else if (options.width.endsWith('vw')) {
+          width = Math.round((parseInt(options.width) / 100) * window.innerWidth);
+        }
+      }
+      let height = 600;
+      if (options.height) {
+        if (options.height.endsWith('px')) {
+          height = parseInt(options.height);
+        } else if (options.height.endsWith('vh')) {
+          height = Math.round((parseInt(options.height) / 100) * window.innerHeight);
+        }
+      }
+      return this.openStandaloneDialog<PropertiesModalComponent>(
+        'properties',
+        this.translate.instant('properties.title') || 'Properties',
+        data,
+        width,
+        height
+      );
+    }
     return this.dialog.open(PropertiesModalComponent, {
-      data: {
-        remoteName: options.remoteName,
-        path: options.path,
-        isLocal: options.isLocal,
-        item: options.item,
-        remoteType: options.remoteType,
-        features: options.features,
-      },
+      data,
       height: options.height ?? '60vh',
       maxHeight: options.maxHeight ?? '800px',
       width: options.width ?? '60vw',
@@ -190,16 +404,26 @@ export class ModalService {
   }
 
   openRemoteAbout(options: RemoteAboutModalOptions): MatDialogRef<RemoteAboutModalComponent> {
+    const data = {
+      remote: {
+        displayName: options.displayName,
+        normalizedName: options.normalizedName,
+        type: options.type,
+      },
+    };
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<RemoteAboutModalComponent>(
+        'remote-about',
+        options.displayName,
+        data,
+        680,
+        600
+      );
+    }
     return this.dialog.open(RemoteAboutModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data: {
-        remote: {
-          displayName: options.displayName,
-          normalizedName: options.normalizedName,
-          type: options.type,
-        },
-      },
+      data,
     });
   }
 
@@ -221,17 +445,36 @@ export class ModalService {
   }
 
   openRestorePreview(options: RestorePreviewOptions): MatDialogRef<RestorePreviewModalComponent> {
+    const data = {
+      backupPath: options.backupPath,
+      analysis: options.analysis,
+    };
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<RestorePreviewModalComponent>(
+        'restore-preview',
+        this.translate.instant('settings.restore.title') || 'Restore Backup',
+        data,
+        680,
+        600
+      );
+    }
     return this.dialog.open(RestorePreviewModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data: {
-        backupPath: options.backupPath,
-        analysis: options.analysis,
-      },
+      data,
     });
   }
 
   openAlerts(): MatDialogRef<AlertsModalComponent> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<AlertsModalComponent>(
+        'alerts',
+        this.translate.instant('alerts.title') || 'Alerts & Notifications',
+        null,
+        1200,
+        800
+      );
+    }
     return this.dialog.open(AlertsModalComponent, {
       width: '90vw',
       maxWidth: '1200px',
@@ -242,6 +485,15 @@ export class ModalService {
   }
 
   openAlertActionEditor(data?: AlertAction): MatDialogRef<AlertActionEditorComponent, AlertAction> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<AlertActionEditorComponent, AlertAction>(
+        'alert-action-editor',
+        'Alert Action Editor',
+        data,
+        600,
+        500
+      );
+    }
     return this.dialog.open(AlertActionEditorComponent, {
       width: '600px',
       disableClose: false,
@@ -250,6 +502,15 @@ export class ModalService {
   }
 
   openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
+    if (this.shouldOpenStandalone()) {
+      return this.openStandaloneDialog<AlertRuleEditorComponent, AlertRule>(
+        'alert-rule-editor',
+        'Alert Rule Editor',
+        data,
+        600,
+        500
+      );
+    }
     return this.dialog.open(AlertRuleEditorComponent, {
       width: '600px',
       disableClose: true,
