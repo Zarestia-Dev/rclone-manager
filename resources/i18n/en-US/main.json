@@ -1935,6 +1935,10 @@
         "move": {
           "label": "Move",
           "description": "Move contents to a local folder."
+        },
+        "serve": {
+          "label": "Serve",
+          "description": "Run a background server to share files."
         }
       },
       "buttons": {
