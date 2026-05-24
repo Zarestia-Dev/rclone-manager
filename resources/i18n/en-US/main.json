@@ -386,6 +386,10 @@
       "restrict": {
         "label": "Restrict Values",
         "description": "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)"
+      },
+      "standalone_dialogs": {
+        "label": "Detached Dialogs",
+        "description": "Open dialog boxes (modals) in separate native OS windows."
       }
     },
     "core": {
