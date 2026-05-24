@@ -332,6 +332,9 @@ fn setup_app(
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
 
+    #[cfg(target_os = "macos")]
+    app.manage(crate::rclone::commands::apple_file::AppleFileState::default());
+
     let history_cache = AlertHistoryCache::new(10000);
     app.manage(history_cache);
 

@@ -86,6 +86,22 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_mount_types, $crate::rclone::queries::get_mount_types, []);
 
             // =================================================================
+            // APPLE FILEPROVIDER (macOS only)
+            // =================================================================
+            #[cfg(target_os = "macos")]
+            (register_apple_file_domain, $crate::rclone::commands::apple_file::register_apple_file_domain, [params: $crate::rclone::commands::apple_file::RegisterAppleFileParams]);
+            #[cfg(target_os = "macos")]
+            (unregister_apple_file_domain, $crate::rclone::commands::apple_file::unregister_apple_file_domain, [remote_name: String]);
+            #[cfg(target_os = "macos")]
+            (list_apple_file_domains, $crate::rclone::commands::apple_file::list_apple_file_domains, []);
+            #[cfg(target_os = "macos")]
+            (is_apple_file_domain_registered, $crate::rclone::commands::apple_file::is_apple_file_domain_registered, [remote_name: String]);
+            #[cfg(target_os = "macos")]
+            (refresh_apple_file_endpoint, $crate::rclone::commands::apple_file::refresh_apple_file_endpoint, []);
+            #[cfg(target_os = "macos")]
+            (signal_apple_file_change, $crate::rclone::commands::apple_file::signal_apple_file_change, [remote_name: String]);
+
+            // =================================================================
             // VFS COMMANDS
             // =================================================================
             (vfs_forget, $crate::rclone::queries::vfs_forget, [fs: Option<String>, file: Option<String>]);
