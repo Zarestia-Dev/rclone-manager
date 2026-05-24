@@ -184,6 +184,14 @@
       "connection_string": {
         "title": "连接字符串",
         "help": "存储连接字符串。\n\n存储的连接字符串。如果使用其他认证方法，则留空。\n"
+      },
+      "copy_total_concurrency": {
+        "title": "复制总并发度",
+        "help": "分块复制的全局并发限制。\n\n这限制了所有文件上同时运行的分块复制任务的总数。\n\n设置为 0 以禁用此限制。"
+      },
+      "decompress": {
+        "title": "解压缩",
+        "help": "如果设置，将解密/解压 gzip 编码的对象。\n\n可以将带有 \"Content-Encoding: gzip\" 设置的对象上传到 Azure Blob 存储。通常 rclone 会将这些文件下载为压缩对象。\n\n如果设置了此标志，rclone 将在接收到这些文件时使用 \"Content-Encoding: gzip\" 进行解压。这意味着 rclone 无法检查大小和哈希，但文件内容会被解压。\n"
       }
     },
     "azurefiles": {
@@ -1614,6 +1622,10 @@
       "trust_token": {
         "title": "信任令牌",
         "help": "信任令牌（仅内部使用）"
+      },
+      "service": {
+        "title": "服务",
+        "help": "要使用的 iCloud 服务。"
       }
     },
     "imagekit": {
@@ -1788,6 +1800,18 @@
       "token": {
         "title": "令牌",
         "help": "从 https://www.linkbox.to/admin/account 获取的令牌。"
+      },
+      "email": {
+        "title": "Email",
+        "help": "Email for login"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password for login"
+      },
+      "web_token": {
+        "title": "Web Token",
+        "help": "Web API login token - set automatically."
       }
     },
     "local": {
@@ -2878,6 +2902,42 @@
       "role_external_id": {
         "title": "角色外部 ID",
         "help": "承担角色的外部 ID。\n\t\t\t\n如果不使用外部 ID，则留空。"
+      },
+      "list_versions_oldest_first": {
+        "title": "最旧版本优先列出",
+        "help": "如果后端先返回最旧的对象版本，则设置此项。\n\nS3 标准会先返回最新的对象版本。某些后端（例如 Hitachi HCP）会先返回最旧的版本。\n\n如果 --s3-version-at 或 --s3-versions 在您的后端产生了错误结果，请设置此项。\n\n对于 rclone 已知的所有提供商，此项应当能自动正确设置 - 如果没有，请提交 bug 报告。\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "IBM IAM 终端节点",
+        "help": "用于身份验证的 IBM IAM 终端节点。\n\n留空以使用默认的公共终端节点。"
+      },
+      "object_lock_mode": {
+        "title": "对象锁定模式",
+        "help": "上传或复制对象时要应用的对象锁定模式。\n\n设置此项可向对象应用对象锁定保留模式。如果不设置，则不应用任何对象锁定模式（即使有 --metadata）。\n\n注意：要启用对象锁定保留，您必须同时设置 object_lock_mode 和 object_lock_retain_until_date。仅设置其中一个将不起作用。\n\n- GOVERNANCE：将对象锁定模式设置为 GOVERNANCE\n- COMPLIANCE：将对象锁定模式设置为 COMPLIANCE\n- copy：从源对象复制模式（需要 --metadata）\n\n参考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "对象锁定保留截止日期",
+        "help": "上传或复制对象时要应用的对象锁定保留截止日期。\n\n设置此项可向对象应用对象锁定保留日期。如果不设置，则不应用保留日期（即使有 --metadata）。\n\n注意：要启用对象锁定保留，您必须同时设置 object_lock_mode 和 object_lock_retain_until_date。仅设置其中一个将不起作用。\n\n接收：\n- RFC 3339 格式：2030-01-02T15:04:05Z\n- 自当前起的时间跨度：365d, 1y, 6M（天、年、月）\n- copy：从源对象复制日期（需要 --metadata）\n\n参考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "对象锁定法律保留状态",
+        "help": "上传或复制对象时要应用的对象锁定法律保留状态。\n\n设置此项可向对象应用法律保留。如果不设置，则不应用法律保留（即使有 --metadata）。\n\n注意：法律保留独立于保留期，可以单独设置。\n\n- ON：启用法律保留\n- OFF：禁用法律保留\n- copy：从源对象复制法律保留状态（需要 --metadata）\n\n参考：https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "绕过合规保留限制",
+        "help": "允许删除或修改被 GOVERNANCE 模式锁定的对象。"
+      },
+      "bucket_object_lock_enabled": {
+        "title": "启用存储桶对象锁定",
+        "help": "在创建新存储桶时启用对象锁定。"
+      },
+      "object_lock_set_after_upload": {
+        "title": "上传后设置对象锁定",
+        "help": "在上传后通过单独的 API 调用设置对象锁定。\n\n这适用于那些在 PUT 操作期间不支持设置对象锁定请求头的 S3 兼容提供商。启用后，对象锁定会在上传完成后通过单独的 PutObjectRetention 和 PutObjectLegalHold API 调用来设置。\n\n这会增加每个对象的 API 调用次数，因此只有当您的提供商有此要求时才启用。"
+      },
+      "object_lock_supported": {
+        "title": "支持对象锁定",
+        "help": "提供商是否支持 S3 对象锁定。\n\n应当为 true、false 或保持未设置以使用提供商的默认值。\n\n对于不完全支持 S3 对象锁定 API 的提供商（例如 GCS，它使用非标准请求头来绕过合规保留限制，且不支持通过 S3 API 实现法律保留），请设置为 false。\n"
       }
     },
     "seafile": {
@@ -3798,8 +3858,8 @@
     },
     "internxt": {
       "email": {
-        "title": "邮箱",
-        "help": "你的 Internxt 账户邮箱。"
+        "title": "电子邮箱",
+        "help": "登录邮箱"
       },
       "pass": {
         "title": "密码",
@@ -3820,6 +3880,68 @@
       "description": {
         "title": "描述",
         "help": "远程连接的描述"
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "客户端 ID",
+        "help": "OAuth 客户端 ID。\n\n通常保持为空。"
+      },
+      "client_secret": {
+        "title": "客户端密钥",
+        "help": "OAuth 客户端密钥。\n\n通常保持为空。"
+      },
+      "token": {
+        "title": "令牌",
+        "help": "作为 JSON 数据的 OAuth 访问令牌。"
+      },
+      "auth_url": {
+        "title": "认证地址",
+        "help": "认证服务器 URL。\n\n留空以使用提供商默认值。"
+      },
+      "token_url": {
+        "title": "令牌地址",
+        "help": "令牌服务器 URL。\n\n留空以使用提供商默认值。"
+      },
+      "client_credentials": {
+        "title": "客户端凭据",
+        "help": "使用客户端凭据 OAuth 流程。\n\n这将使用 RFC 6749 中所述的 OAUTH2 客户端凭据流程。\n\n请请注意，并非所有后端都支持此选项。"
+      },
+      "root_folder_id": {
+        "title": "根文件夹 ID",
+        "help": "根文件夹的 ID。\n\n通常此项为自动检测，但如果检测失败或者您想加速启动，可以手动设置。\n\n通常保持为空。"
+      },
+      "chunk_size": {
+        "title": "分块大小",
+        "help": "上传分块大小。\n\n必须是 2 的幂且 >= 256k 且 <= 64MB。"
+      },
+      "list_chunk": {
+        "title": "列出分块数量",
+        "help": "列表分块大小 1-1000。"
+      },
+      "upload_cutoff": {
+        "title": "断点续传阈值",
+        "help": "切换到可恢复上传的阈值大小。\n\n大于此大小的文件将使用可恢复上传方法上传。最小值为 0，最大值为 20 MiB（华为云盘单个请求上传 API 的限制）。"
+      },
+      "encoding": {
+        "title": "编码",
+        "help": "后端的编码格式。\n\n有关更多信息，请参阅概述中的 [编码章节](/overview/#encoding)。"
+      },
+      "description": {
+        "title": "描述",
+        "help": "远程存储的描述。"
       }
     }
   }
