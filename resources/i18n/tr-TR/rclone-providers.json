@@ -184,6 +184,14 @@
       "connection_string": {
         "title": "Bağlantı Dizisi",
         "help": "Depolama Bağlantı Dizisi.\n\nDepolama için bağlantı dizisi. Diğer kimlik doğrulama yöntemlerini kullanıyorsanız boş bırakın.\n"
+      },
+      "copy_total_concurrency": {
+        "title": "Kopyalama Toplam Eşzamanlılığı",
+        "help": "Çok parçalı kopyalama blokları için genel eşzamanlılık sınırı.\n\nBu, tüm dosyalar genelinde aynı anda çalışan toplam çok parçalı kopyalama bloğu sayısını sınırlar.\n\nBu sınırlayıcıyı devre dışı bırakmak için 0 olarak ayarlayın."
+      },
+      "decompress": {
+        "title": "Sıkıştırmayı Aç",
+        "help": "Ayarlanırsa gzip kodlu nesnelerin sıkıştırmasını açar.\n\nAzure Blob Depolama'ya \"Content-Encoding: gzip\" ayarıyla nesne yüklemek mümkündür. Normalde rclone bu dosyaları sıkıştırılmış nesneler olarak indirir.\n\nBu bayrak ayarlanırsa, rclone bu dosyaları alındıklarında \"Content-Encoding: gzip\" ile açar. Bu, rclone'un boyut ve karma (hash) değerini kontrol edemeyeceği ancak dosya içeriğinin sıkıştırmasının açılacağı anlamına gelir.\n"
       }
     },
     "azurefiles": {
@@ -1614,6 +1622,10 @@
       "trust_token": {
         "title": "Güven Jetonu",
         "help": "Güven jetonu (dahili kullanım)"
+      },
+      "service": {
+        "title": "Servis",
+        "help": "Kullanılacak iCloud servisi."
       }
     },
     "imagekit": {
@@ -1788,6 +1800,18 @@
       "token": {
         "title": "Jeton",
         "help": "https://www.linkbox.to/admin/account adresinden alınan jeton"
+      },
+      "email": {
+        "title": "Email",
+        "help": "Email for login"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password for login"
+      },
+      "web_token": {
+        "title": "Web Token",
+        "help": "Web API login token - set automatically."
       }
     },
     "local": {
@@ -2878,6 +2902,42 @@
       "role_external_id": {
         "title": "Rol Harici Kimliği (External ID)",
         "help": "Üstlenilen rol için harici kimlik (external ID).\n\nHarici kimlik kullanılmıyorsa boş bırakın."
+      },
+      "list_versions_oldest_first": {
+        "title": "Sürümleri En Eskiden Başlayarak Listele",
+        "help": "Arka uç nesne sürümlerini en eskiden başlayarak döndürüyorsa ayarlayın.\n\nS3 standardı nesne sürümlerini en yeniden başlayarak döndürür. Bazı arka uçlar (örn. Hitachi HCP) bunun yerine en eskiden başlayarak döndürür.\n\nEğer --s3-version-at veya --s3-versions arka ucunuzla yanlış sonuçlar veriyorsa bu ayarı etkinleştirin.\n\nBu ayar, rclone'un bildiği tüm sağlayıcılar için otomatik olarak doğru ayarlanmalıdır - aksi takdirde lütfen hata bildiriminde bulunun.\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "IBM IAM Bağlantı Noktası",
+        "help": "Kimlik doğrulama için kullanılacak IBM IAM Bağlantı Noktası (Endpoint).\n\nVarsayılan genel bağlantı noktasını kullanmak için boş bırakın."
+      },
+      "object_lock_mode": {
+        "title": "Nesne Kilitleme Modu",
+        "help": "Nesneleri yüklerken veya kopyalarken uygulanacak Nesne Kilitleme modu.\n\nNesnelere Nesne Kilitleme saklama modu uygulamak için bunu ayarlayın. Ayarlanmazsa, Nesne Kilitleme modu uygulanmaz (ve --metadata kullanılsa bile).\n\nNot: Nesne Kilitleme saklamayı etkinleştirmek için hem object_lock_mode hem de object_lock_retain_until_date ayarlarını yapmalısınız. Yalnızca birini ayarlamak etki etmez.\n\n- GOVERNANCE: Nesne Kilitleme modunu GOVERNANCE olarak ayarlar\n- COMPLIANCE: Nesne Kilitleme modunu COMPLIANCE olarak ayarlar\n- copy: Modu kaynak nesneden kopyalar (--metadata gerektirir)\n\nDetaylar için bkz: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "Nesne Kilitleme Son Saklama Tarihi",
+        "help": "Nesneleri yüklerken veya kopyalarken uygulanacak Nesne Kilitleme son saklama tarihi.\n\nNesnelere Nesne Kilitleme saklama tarihi uygulamak için bunu ayarlayın. Ayarlanmazsa, saklama tarihi uygulanmaz (ve --metadata kullanılsa bile).\n\nNot: Nesne Kilitleme saklamayı etkinleştirmek için hem object_lock_mode hem de object_lock_retain_until_date ayarlarını yapmalısınız. Yalnızca birini ayarlamak etki etmez.\n\nKabul edilen değerler:\n- RFC 3339 formatı: 2030-01-02T15:04:05Z\n- Şu andan itibaren süre: 365d, 1y, 6M (gün, yıl, ay)\n- copy: Tarihi kaynak nesneden kopyalar (--metadata gerektirir)\n\nDetaylar için bkz: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "Nesne Kilitleme Yasal Bekletme Durumu",
+        "help": "Nesneleri yüklerken veya kopyalarken uygulanacak Nesne Kilitleme yasal bekletme durumu.\n\nNesnelere Nesne Kilitleme yasal bekletmesi uygulamak için bunu ayarlayın. Ayarlanmazsa, yasal bekletme uygulanmaz (ve --metadata kullanılsa bile).\n\nNot: Yasal bekletme, saklamadan bağımsızdır ve ayrıca ayarlanabilir.\n\n- ON: Yasal bekletmeyi etkinleştirir\n- OFF: Yasal bekletmeyi devre dışı bırakır\n- copy: Yasal bekletme durumunu kaynak nesneden kopyalar (--metadata gerektirir)\n\nDetaylar için bkz: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "Yönetici Saklama Kuralını Devre Dışı Bırak",
+        "help": "GOVERNANCE moduyla kilitlenen nesnelerin silinmesine veya değiştirilmesine izin verin."
+      },
+      "bucket_object_lock_enabled": {
+        "title": "Kova Nesne Kilitleme Etkin",
+        "help": "Yeni kovalar (bucket) oluştururken Nesne Kilitlemeyi etkinleştirin."
+      },
+      "object_lock_set_after_upload": {
+        "title": "Yüklemeden Sonra Nesne Kilitleme Ayarla",
+        "help": "Yüklemeden sonra ayrı API çağrılarıyla Nesne Kilitlemeyi ayarlayın.\n\nBunu, PUT işlemleri sırasında Nesne Kilitleme üstbilgilerini ayarlamayı desteklemeyen S3 uyumlu sağlayıcılar için kullanın. Etkinleştirildiğinde, yükleme tamamlandıktan sonra Nesne Kilitleme ayrı PutObjectRetention ve PutObjectLegalHold API çağrılarıyla ayarlanır.\n\nBu, nesne başına ekstra API çağrıları ekler, bu nedenle yalnızca sağlayıcınız gerektiriyorsa etkinleştirin."
+      },
+      "object_lock_supported": {
+        "title": "Nesne Kilitleme Destekleniyor",
+        "help": "Sağlayıcının S3 Nesne Kilitlemeyi destekleyip desteklemediği.\n\nBu değer true, false olmalı veya sağlayıcı için varsayılanı kullanmak üzere boş bırakılmalıdır.\n\nS3 Nesne Kilitleme API'sini tam olarak desteklemeyen sağlayıcılar için false olarak ayarlayın (örneğin, yönetici saklama kuralını devre dışı bırakmak için standart dışı başlıklar kullanan ve S3 API üzerinden Yasal Bekletmeyi uygulamayan GCS).\n"
       }
     },
     "seafile": {
@@ -3799,7 +3859,7 @@
     "internxt": {
       "email": {
         "title": "E-posta",
-        "help": "Internxt hesabınızın e-postası."
+        "help": "Giriş için e-posta adresi."
       },
       "pass": {
         "title": "Parola",
@@ -3820,6 +3880,68 @@
       "description": {
         "title": "Açıklama",
         "help": "Uzak bağlantı açıklaması."
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "İstemci Kimliği",
+        "help": "OAuth İstemci Kimliği.\n\nNormalde boş bırakın."
+      },
+      "client_secret": {
+        "title": "İstemci Sırrı",
+        "help": "OAuth İstemci Sırrı.\n\nNormalde boş bırakın."
+      },
+      "token": {
+        "title": "Belirteç (Token)",
+        "help": "JSON bloğu olarak OAuth Erişim Belirteci."
+      },
+      "auth_url": {
+        "title": "Yetkilendirme URL'si",
+        "help": "Yetkilendirme sunucusu URL'si.\n\nSağlayıcı varsayılanlarını kullanmak için boş bırakın."
+      },
+      "token_url": {
+        "title": "Belirteç URL'si",
+        "help": "Belirteç sunucu URL'si.\n\nSağlayıcı varsayılanlarını kullanmak için boş bırakın."
+      },
+      "client_credentials": {
+        "title": "İstemci Kimlik Bilgileri",
+        "help": "İstemci kimlik bilgileri OAuth akışını kullanın.\n\nBu, RFC 6749'da tanımlanan OAuth2 İstemci Kimlik Bilgileri Akışını kullanacaktır.\n\nBu seçeneğin tüm arka uçlar tarafından DESTEKLENMEDİĞİNİ unutmayın."
+      },
+      "root_folder_id": {
+        "title": "Kök Klasör Kimliği",
+        "help": "Kök klasörün kimliği.\n\nNormalde bu otomatik olarak algılanır, ancak başarısız olursa veya başlangıcı hızlandırmak isterseniz bunu manuel olarak ayarlayabilirsiniz.\n\nNormalde boş bırakın."
+      },
+      "chunk_size": {
+        "title": "Parça Boyutu",
+        "help": "Yükleme parça boyutu.\n\n2'nin kuvveti olmalıdır (>= 256k ve <= 64MB)."
+      },
+      "list_chunk": {
+        "title": "Listeleme Parçası",
+        "help": "Listeleme parça boyutu (1-1000)."
+      },
+      "upload_cutoff": {
+        "title": "Yükleme Sınırı",
+        "help": "Yarıda kalan yüklemeye geçiş sınırı.\n\nBu değerden büyük olan dosyalar yarıda kalan yükleme yöntemiyle yüklenecektir. Minimum 0, maksimum 20 MiB'dir (Tek istekli yüklemeler için Huawei Drive API sınırı)."
+      },
+      "encoding": {
+        "title": "Kodlama",
+        "help": "Arka uç için karakter kodlaması.\n\nDaha fazla bilgi için genel bakış sayfasındaki [kodlama bölümüne](/overview/#encoding) bakın."
+      },
+      "description": {
+        "title": "Açıklama",
+        "help": "Uzak bağlantının açıklaması."
       }
     }
   }
