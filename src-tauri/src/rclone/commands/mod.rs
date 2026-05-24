@@ -1,3 +1,4 @@
+pub mod apple_file;
 pub mod archive;
 pub mod backend;
 pub mod common;
