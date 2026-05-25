@@ -130,6 +130,14 @@ export class FileSystemService extends TauriBaseService {
       const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);
     }
-    return this.invokeCommand('open_in_files', { path });
+    try {
+      return await this.invokeCommand('open_in_files', { path });
+    } catch (error) {
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('home.errors.openFailed', { name: path }) + ': ' + translatedError
+      );
+      throw error;
+    }
   }
 }

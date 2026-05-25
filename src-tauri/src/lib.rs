@@ -26,11 +26,11 @@ mod server;
 // =============================================================================
 // SHARED IMPORTS (Both modes)
 // =============================================================================
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::rclone::state::automations::AutomationsCache;
 use crate::{
     core::{
-        alerts::AlertHistoryCache, initialization::initialization, paths::AppPaths,
-        scheduler::engine::CronScheduler,
+        alerts::AlertHistoryCache, automation::engine::AutomationScheduler,
+        initialization::initialization, paths::AppPaths,
     },
     utils::types::{
         logs::LogCache,
@@ -112,22 +112,34 @@ pub fn run() {
 
                     #[cfg(not(feature = "web-server"))]
                     {
-                        if let Some(window) = _app.get_webview_window("main") {
-                            log::info!("📢 Second instance detected, showing existing window");
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        } else {
-                            log::info!(
-                                "📢 Second instance detected, but window was destroyed. \
-                                 Use tray to reopen."
-                            );
-                            crate::utils::app::notification::notify(
-                                _app,
-                                crate::utils::app::notification::NotificationEvent::System(
-                                    crate::utils::app::notification::SystemStage::AlreadyRunning,
-                                ),
-                            );
-                        }
+                        let app_clone = _app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            // Give the second instance a moment to exit and release the IPC pipe
+                            // to prevent a WebView/Windows focus deadlock.
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+                            let app_for_main = app_clone.clone();
+                            let _ = app_clone.run_on_main_thread(move || {
+                                if let Some(window) = app_for_main.get_webview_window("main") {
+                                    log::info!(
+                                        "📢 Second instance detected, showing existing window"
+                                    );
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                } else {
+                                    log::info!(
+                                        "📢 Second instance detected, but window was destroyed. \
+                                         Recreating main window."
+                                    );
+                                    crate::utils::app::builder::create_app_window(
+                                        app_for_main.clone(),
+                                    );
+                                    if let Some(window) = app_for_main.get_webview_window("main") {
+                                        let _ = window.set_focus();
+                                    }
+                                }
+                            });
+                        });
                     }
                 })
                 .build(),
@@ -180,6 +192,8 @@ pub fn run() {
                         }
                         api.prevent_close();
                     }
+                    #[cfg(target_os = "macos")]
+                    crate::utils::app::platform::update_macos_dock_visibility(app_handle);
                 } else {
                     api.prevent_close();
                     let window_ = window.clone();
@@ -194,12 +208,21 @@ pub fn run() {
                     });
                 }
             }
+            WindowEvent::Destroyed => {
+                #[cfg(target_os = "macos")]
+                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
+            }
             #[cfg(desktop)]
             WindowEvent::Focused(true) => {
-                if let Some(win) = window.app_handle().get_webview_window("main")
-                    && let Err(e) = win.show()
-                {
-                    log::error!("Failed to show window: {e}");
+                if let Some(win) = window.app_handle().get_webview_window("main") {
+                    if let Err(e) = win.show() {
+                        log::error!("Failed to show window: {e}");
+                    } else {
+                        #[cfg(target_os = "macos")]
+                        crate::utils::app::platform::update_macos_dock_visibility(
+                            window.app_handle(),
+                        );
+                    }
                 }
             }
             _ => {}
@@ -325,12 +348,15 @@ fn setup_app(
     });
 
     app.manage(LogCache::new(1000));
-    app.manage(ScheduledTasksCache::new());
-    app.manage(CronScheduler::new());
+    app.manage(AutomationsCache::new());
+    app.manage(AutomationScheduler::new());
+    app.manage(crate::core::automation::watcher::WatcherManager::new());
     app.manage(core::alerts::dispatch::DispatchContext::new());
 
     app.manage(AppUpdaterState::default());
     app.manage(RcloneUpdaterState::default());
+    #[cfg(all(desktop, feature = "tray"))]
+    app.manage(crate::core::tray::TrayMenuState::default());
 
     #[cfg(target_os = "macos")]
     app.manage(crate::rclone::commands::apple_file::AppleFileState::default());
@@ -405,6 +431,9 @@ fn setup_app(
         utils::app::builder::create_app_window(app.handle().clone());
     }
 
+    #[cfg(target_os = "macos")]
+    crate::utils::app::platform::update_macos_dock_visibility(app.handle());
+
     Ok(())
 }
 
@@ -421,6 +450,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent
 
 #[cfg(all(desktop, feature = "tray"))]
 fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+    use crate::rclone::commands::sync::TransferType;
+    use crate::utils::types::jobs::JobType;
+
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
@@ -432,28 +464,28 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             handle_unmount_profile(app.clone(), &remote, &profile);
         }
         TrayAction::SyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "sync");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Sync);
         }
         TrayAction::StopSyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "sync");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Sync);
         }
         TrayAction::CopyProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "copy");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Copy);
         }
         TrayAction::StopCopyProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "copy");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Copy);
         }
         TrayAction::MoveProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "move");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Move);
         }
         TrayAction::StopMoveProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "move");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Move);
         }
         TrayAction::BisyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, "bisync");
+            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Bisync);
         }
         TrayAction::StopBisyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, "bisync");
+            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Bisync);
         }
         TrayAction::ServeProfile(remote, profile) => {
             handle_serve_profile(app.clone(), &remote, &profile);

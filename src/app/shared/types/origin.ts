@@ -1,8 +1,8 @@
-export type Origin = 'dashboard' | 'scheduler' | 'filemanager' | 'startup' | 'update' | 'internal';
+export type Origin = 'dashboard' | 'automation' | 'filemanager' | 'startup' | 'update' | 'internal';
 
 export const ORIGINS = {
   DASHBOARD: 'dashboard' as Origin,
-  SCHEDULER: 'scheduler' as Origin,
+  AUTOMATION: 'automation' as Origin,
   FILEMANAGER: 'filemanager' as Origin,
   STARTUP: 'startup' as Origin,
   UPDATE: 'update' as Origin,

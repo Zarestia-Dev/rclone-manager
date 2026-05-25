@@ -1,6 +1,6 @@
 #[cfg(desktop)]
 pub mod app_updates {
-    use crate::core::lifecycle::shutdown::shutdown_app;
+    use crate::core::lifecycle::shutdown::handle_shutdown;
     use crate::utils::app::platform::relaunch_app;
     use crate::utils::types::updater::{
         AppUpdaterState, DownloadState, DownloadStatus, Result, UpdateInfo, UpdateMetadata,
@@ -99,9 +99,9 @@ pub mod app_updates {
             .on_before_exit(move || {
                 let app = app_exit.clone();
                 warn!("Shutting down for update installation...");
-                tauri::async_runtime::spawn(async move {
+                tauri::async_runtime::block_on(async move {
                     app.state::<RcloneState>().set_shutting_down();
-                    let _ = shutdown_app(app).await;
+                    handle_shutdown(app).await;
                 });
             })
             .build()?
@@ -237,12 +237,13 @@ pub mod app_updates {
     pub async fn install_update(app: AppHandle) -> Result<()> {
         let updater_state = app.state::<AppUpdaterState>();
 
-        let update = updater_state
-            .data
-            .lock()
-            .pending_action
-            .take()
-            .ok_or(Error::NoPendingUpdate)?;
+        let update = {
+            let data = updater_state.data.lock();
+            if data.state == UpdateState::Downloading {
+                return Ok(());
+            }
+            data.pending_action.clone().ok_or(Error::NoPendingUpdate)?
+        };
 
         // Reset progress and set updating flag
         {
@@ -262,117 +263,147 @@ pub mod app_updates {
             }),
         );
 
-        let download_app = app.clone();
-        let res: std::result::Result<Vec<u8>, tauri_plugin_updater::Error> = update
-            .download(
-                {
-                    let app = download_app.clone();
-                    let mut last_emit = std::time::Instant::now();
-                    move |chunk_length, content_length| {
-                        let st = app.state::<AppUpdaterState>();
-                        let (downloaded, total) = {
-                            let mut data = st.data.lock();
-                            data.downloaded_bytes += chunk_length as u64;
-                            if let Some(total) = content_length {
-                                data.total_bytes = total;
+        let app_clone = app.clone();
+        let update_clone = update.clone();
+
+        let handle = tauri::async_runtime::spawn(async move {
+            let res = update
+                .download(
+                    {
+                        let app = app_clone.clone();
+                        let mut last_emit = std::time::Instant::now();
+                        move |chunk_length, content_length| {
+                            let st = app.state::<AppUpdaterState>();
+                            let (downloaded, total) = {
+                                let mut data = st.data.lock();
+                                data.downloaded_bytes += chunk_length as u64;
+                                if let Some(total) = content_length {
+                                    data.total_bytes = total;
+                                }
+                                (data.downloaded_bytes, data.total_bytes)
+                            };
+
+                            let percentage = if total > 0 {
+                                (downloaded as f64 / total as f64) * 100.0
+                            } else {
+                                0.0
+                            };
+
+                            let now = std::time::Instant::now();
+                            if now.duration_since(last_emit).as_millis() >= 200 {
+                                let _ = app.emit(
+                                    crate::utils::types::events::APP_EVENT,
+                                    serde_json::json!({
+                                        "status": "download_progress",
+                                        "data": DownloadStatus {
+                                            downloaded_bytes: downloaded,
+                                            total_bytes: total,
+                                            percentage,
+                                            state: DownloadState::InProgress,
+                                        }
+                                    }),
+                                );
+                                last_emit = now;
                             }
-                            (data.downloaded_bytes, data.total_bytes)
-                        };
-
-                        let percentage = if total > 0 {
-                            (downloaded as f64 / total as f64) * 100.0
-                        } else {
-                            0.0
-                        };
-
-                        let now = std::time::Instant::now();
-                        if now.duration_since(last_emit).as_millis() >= 200 {
-                            let _ = app.emit(
-                                crate::utils::types::events::APP_EVENT,
-                                serde_json::json!({
-                                    "status": "download_progress",
-                                    "data": DownloadStatus {
-                                        downloaded_bytes: downloaded,
-                                        total_bytes: total,
-                                        percentage,
-                                        state: DownloadState::InProgress,
-                                    }
-                                }),
-                            );
-                            last_emit = now;
                         }
-                    }
-                },
-                || {
-                    info!("App update download finished successfully");
-                },
-            )
-            .await;
+                    },
+                    || {
+                        info!("App update download finished successfully");
+                    },
+                )
+                .await;
 
-        match res {
-            Ok(signature) => {
-                let (downloaded, total) = {
-                    let mut data = updater_state.data.lock();
-                    data.state = UpdateState::ReadyToRestart;
-                    data.signature = Some(signature);
-                    data.pending_action = Some(update.clone());
-                    (data.downloaded_bytes, data.total_bytes)
-                };
+            let st = app_clone.state::<AppUpdaterState>();
+            match res {
+                Ok(signature) => {
+                    let (downloaded, total) = {
+                        let mut data = st.data.lock();
+                        data.state = UpdateState::ReadyToRestart;
+                        data.signature = Some(signature);
+                        data.pending_action = Some(update_clone.clone());
+                        (data.downloaded_bytes, data.total_bytes)
+                    };
 
-                notify(
-                    &app,
-                    NotificationEvent::AppUpdate(UpdateStage::Downloaded {
-                        version: update.version.clone(),
-                    }),
-                );
+                    notify(
+                        &app_clone,
+                        NotificationEvent::AppUpdate(UpdateStage::Downloaded {
+                            version: update_clone.version.clone(),
+                        }),
+                    );
 
-                let _ = app.emit(
-                    crate::utils::types::events::APP_EVENT,
-                    serde_json::json!({
-                        "status": "download_progress",
-                        "data": DownloadStatus {
-                            downloaded_bytes: downloaded,
-                            total_bytes: total,
-                            percentage: 100.0,
-                            state: DownloadState::Complete,
-                        }
-                    }),
-                );
-                Ok(())
+                    let _ = app_clone.emit(
+                        crate::utils::types::events::APP_EVENT,
+                        serde_json::json!({
+                            "status": "download_progress",
+                            "data": DownloadStatus {
+                                downloaded_bytes: downloaded,
+                                total_bytes: total,
+                                percentage: 100.0,
+                                state: DownloadState::Complete,
+                            }
+                        }),
+                    );
+                }
+                Err(e) => {
+                    warn!("App update download failed: {e}");
+                    let (downloaded, total) = {
+                        let mut data = st.data.lock();
+                        data.state = UpdateState::Available;
+                        data.failure_message = Some(e.to_string());
+                        data.pending_action = Some(update_clone.clone());
+                        (data.downloaded_bytes, data.total_bytes)
+                    };
+
+                    notify(
+                        &app_clone,
+                        NotificationEvent::AppUpdate(UpdateStage::Failed {
+                            error: e.to_string(),
+                        }),
+                    );
+
+                    let _ = app_clone.emit(
+                        crate::utils::types::events::APP_EVENT,
+                        serde_json::json!({
+                            "status": "download_progress",
+                            "data": DownloadStatus {
+                                downloaded_bytes: downloaded,
+                                total_bytes: total,
+                                percentage: 0.0,
+                                state: DownloadState::Failed(e.to_string()),
+                            }
+                        }),
+                    );
+                }
             }
-            Err(e) => {
-                warn!("App update download failed: {e}");
-                let (downloaded, total) = {
-                    let mut data = updater_state.data.lock();
-                    data.state = UpdateState::Available;
-                    data.failure_message = Some(e.to_string());
-                    data.pending_action = Some(update.clone());
-                    (data.downloaded_bytes, data.total_bytes)
-                };
+        });
 
-                notify(
-                    &app,
-                    NotificationEvent::AppUpdate(UpdateStage::Failed {
-                        error: e.to_string(),
-                    }),
-                );
+        updater_state.data.lock().download_handle = Some(handle);
 
-                let _ = app.emit(
-                    crate::utils::types::events::APP_EVENT,
-                    serde_json::json!({
-                        "status": "download_progress",
-                        "data": DownloadStatus {
-                            downloaded_bytes: downloaded,
-                            total_bytes: total,
-                            percentage: 0.0,
-                            state: DownloadState::Failed(e.to_string()),
-                        }
-                    }),
-                );
+        Ok(())
+    }
 
-                Err(Error::Tauri(e))
+    #[tauri::command]
+    pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
+        let updater_state = app.state::<AppUpdaterState>();
+        let mut data = updater_state.data.lock();
+
+        if data.state == UpdateState::Downloading {
+            if let Some(handle) = data.download_handle.take() {
+                info!("Cancelling app update download");
+                handle.abort();
             }
+
+            data.state = if data.last_metadata.is_some() {
+                UpdateState::Available
+            } else {
+                UpdateState::Idle
+            };
+            data.downloaded_bytes = 0;
+            data.total_bytes = 0;
+            data.failure_message = Some("Download cancelled by user".to_string());
         }
+
+        Ok(())
     }
 
     #[tauri::command]
@@ -382,10 +413,7 @@ pub mod app_updates {
         let (update, signature) = {
             let mut data = updater_state.data.lock();
             match (data.pending_action.take(), data.signature.take()) {
-                (Some(u), Some(s)) => {
-                    data.state = UpdateState::Downloading;
-                    Some((u, s))
-                }
+                (Some(u), Some(s)) => Some((u, s)),
                 _ => None,
             }
         }

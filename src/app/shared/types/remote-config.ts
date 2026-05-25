@@ -22,6 +22,7 @@ export const FLAG_TYPES: FlagType[] = [
 export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
+export type SharedProfileType = FlagType | 'runtimeRemote';
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
@@ -208,6 +209,8 @@ interface RcloneBaseConfig {
 export interface MultiSourceConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
   source?: string[];
   dest?: string;
 }
@@ -216,6 +219,8 @@ export interface MultiSourceConfig extends RcloneBaseConfig {
 export interface SingleSourceConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
   source?: string;
   dest?: string;
 }

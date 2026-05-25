@@ -50,6 +50,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
             (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
+            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
             (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
             (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
 
@@ -278,16 +279,16 @@ macro_rules! MASTER_COMMAND_LIST {
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
 
             // =================================================================
-            // SCHEDULED TASKS
+            // AUTOMATIONS
             // =================================================================
-            (get_scheduled_tasks, $crate::rclone::state::scheduled_tasks::get_scheduled_tasks, []);
-            (get_scheduled_task, $crate::rclone::state::scheduled_tasks::get_scheduled_task, [id: String]);
-            (get_scheduled_tasks_stats, $crate::rclone::state::scheduled_tasks::get_scheduled_tasks_stats, []);
-            (toggle_scheduled_task, $crate::core::scheduler::commands::toggle_scheduled_task, [id: String]);
-            (validate_cron, $crate::core::scheduler::commands::validate_cron, [cron_expression: String], [no_app]);
-            (reload_scheduled_tasks, $crate::core::scheduler::commands::reload_scheduled_tasks, []);
-            (reload_scheduled_tasks_from_configs, $crate::core::scheduler::commands::reload_scheduled_tasks_from_configs, [all_settings: serde_json::Value]);
-            (clear_all_scheduled_tasks, $crate::core::scheduler::commands::clear_all_scheduled_tasks, []);
+            (get_automations, $crate::rclone::state::automations::get_automations, []);
+            (get_automation, $crate::rclone::state::automations::get_automation, [automation_id: String]);
+            (get_automation_stats, $crate::rclone::state::automations::get_automation_stats, []);
+            (toggle_automation, $crate::core::automation::commands::toggle_automation, [automation_id: String]);
+            (validate_cron, $crate::core::automation::commands::validate_cron, [cron_expression: String], [no_app]);
+            (reload_automations, $crate::core::automation::commands::reload_automations, []);
+            (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
+            (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
             // =================================================================
             // WATCHERS
@@ -342,6 +343,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (fetch_update, $crate::utils::app::updater::app_updates::fetch_update, [channel: String]);
             (get_app_update_info, $crate::utils::app::updater::app_updates::get_app_update_info, []);
             (install_update, $crate::utils::app::updater::app_updates::install_update, []);
+            (cancel_app_update, $crate::utils::app::updater::app_updates::cancel_app_update, []);
             (apply_app_update, $crate::utils::app::updater::app_updates::apply_app_update, []);
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
 
@@ -351,7 +353,7 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(not(feature = "web-server"))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
             #[cfg(not(feature = "web-server"))]
-            (new_nautilus_window, $crate::utils::app::builder::new_nautilus_window, [remote: Option<String>, path: Option<String>]);
+            (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
         }
     }
 }

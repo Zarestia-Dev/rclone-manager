@@ -214,11 +214,11 @@ export class JsonEditorComponent {
     const explicit = this.explicitKeys();
     const excluded = this.excludedSet();
 
-    const baseDefs = defs.filter(f => !excluded.has(prefix + f.Name));
+    const baseDefs = defs.filter(f => !excluded.has(prefix + (f.FieldName || f.Name)));
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
     return filteredDefs.map(field => {
-      const controlKey = prefix + field.Name;
+      const controlKey = prefix + (field.FieldName || field.Name);
       const currentValue = value[controlKey] ?? null;
       const isChanged = !isDefaultValue(currentValue, field, this.valueMapper);
       const isActive = isChanged || explicit.has(controlKey);
@@ -399,7 +399,7 @@ export class JsonEditorComponent {
         const isExplicit = explicit.has(controlKey);
 
         if (field && isDefaultValue(val, field, this.valueMapper) && !isExplicit) continue;
-        if (!field && (val === null || val === undefined || val === '') && !isExplicit) continue;
+        if (!field && (val === null || val === undefined || val === '')) continue;
 
         out[displayKey] = field?.Type === 'Tristate' ? this.valueMapper.parseTristate(val) : val;
 

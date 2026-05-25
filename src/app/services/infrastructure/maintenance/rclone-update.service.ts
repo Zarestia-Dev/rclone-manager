@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, map, firstValueFrom } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
@@ -22,21 +22,27 @@ export class RcloneUpdateService extends TauriBaseService {
   private _latestCheckId = 0;
 
   private readonly _isChecking = signal<boolean>(false);
-  private readonly _downloading = signal<boolean>(false);
-  private readonly _readyToRestart = signal<boolean>(false);
-  private readonly _updateAvailable = signal<UpdateInfo | null>(null);
-  private readonly _hasUpdates = signal<boolean>(false);
+  private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _error = signal<string | null>(null);
   private readonly _lastCheck = signal<Date | null>(null);
 
-  // Public readonly surface
+  // Public readonly surface (Derived to prevent state tears)
   public readonly isChecking = this._isChecking.asReadonly();
-  public readonly downloading = this._downloading.asReadonly();
-  public readonly readyToRestart = this._readyToRestart.asReadonly();
-  public readonly updateAvailable = this._updateAvailable.asReadonly();
-  public readonly hasUpdates = this._hasUpdates.asReadonly();
   public readonly error = this._error.asReadonly();
   public readonly lastCheck = this._lastCheck.asReadonly();
+
+  public readonly updateAvailable = computed(() => {
+    const update = this._updateState();
+    return update && !this.settings.isVersionSkipped(update.version) ? update : null;
+  });
+
+  public readonly hasUpdates = computed(() => !!this.updateAvailable());
+  public readonly downloading = computed(
+    () => this._updateState()?.status === BackendUpdateStatus.Downloading
+  );
+  public readonly readyToRestart = computed(
+    () => this._updateState()?.status === BackendUpdateStatus.ReadyToRestart
+  );
 
   // Settings surface
   public readonly skippedVersions = this.settings.skippedVersions;
@@ -56,7 +62,7 @@ export class RcloneUpdateService extends TauriBaseService {
   async checkForUpdates(): Promise<UpdateInfo | null> {
     const checkId = ++this._latestCheckId;
 
-    if (this._isChecking() || this._downloading() || this._readyToRestart()) {
+    if (this._isChecking() || this.downloading() || this.readyToRestart()) {
       // Already active — just sync the current info.
       const info = await this.invokeCommand<UpdateInfo | null>('get_rclone_update_info');
 
@@ -98,7 +104,7 @@ export class RcloneUpdateService extends TauriBaseService {
   }
 
   async performUpdate(): Promise<boolean> {
-    this._downloading.set(true);
+    this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
     this._error.set(null);
 
     try {
@@ -109,33 +115,42 @@ export class RcloneUpdateService extends TauriBaseService {
       );
 
       if (result.success) {
-        if (result.manual) {
-          // Binary swapped on a remote host — user must restart it manually.
-          this._downloading.set(false);
-          this._updateAvailable.set(null);
-          this._hasUpdates.set(false);
-          this._readyToRestart.set(true);
+        this._updateState.update(u =>
+          u ? { ...u, status: BackendUpdateStatus.ReadyToRestart } : null
+        );
 
+        if (result.manual) {
           this.notificationService.showWarning(
             this.translate.instant('rcloneUpdate.manualRestartRequired')
           );
-        } else {
-          this._downloading.set(false);
-          this._updateAvailable.set(null);
-          this._hasUpdates.set(false);
-          this._readyToRestart.set(true);
         }
         return true;
       }
 
-      this._downloading.set(false);
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
       this._error.set(result.message ?? null);
       return false;
     } catch (error) {
       console.error('Failed to update rclone:', error);
-      this._downloading.set(false);
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
       this._error.set(String(error));
       return false;
+    }
+  }
+
+  async cancelUpdate(): Promise<void> {
+    if (!this.downloading()) return;
+
+    try {
+      await this.invokeCommand('cancel_rclone_update');
+      this._error.set(null);
+
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
+
+      this.notificationService.showInfo(this.translate.instant('rcloneUpdate.cancelled'));
+    } catch (error) {
+      console.error('Failed to cancel rclone update:', error);
+      this.notificationService.showError(this.translate.instant('rcloneUpdate.cancelFailed'));
     }
   }
 
@@ -152,21 +167,19 @@ export class RcloneUpdateService extends TauriBaseService {
           .pipe(filter(event => event.reason === 'rclone_update'))
       );
 
-      this._readyToRestart.set(false);
-      this._updateAvailable.set(null);
-      this._hasUpdates.set(false);
+      this._updateState.set(null);
       return true;
     } catch (error) {
       console.error('Failed to apply rclone update:', error);
-      this._readyToRestart.set(false);
+      // Let readyToRestart visually revert if applying failed.
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
       return false;
     }
   }
 
   async setChannel(channel: string): Promise<void> {
     await this.settings.setChannel(channel);
-    this._updateAvailable.set(null);
-    this._hasUpdates.set(false);
+    this._updateState.set(null);
     this._error.set(null);
     this._lastCheck.set(null);
 
@@ -179,11 +192,6 @@ export class RcloneUpdateService extends TauriBaseService {
   async skipVersion(version: string): Promise<void> {
     await this.settings.skipVersion(version);
     this.notificationService.showInfo(this.translate.instant('rcloneUpdate.skipped', { version }));
-    const info = this._updateAvailable();
-    if (info?.version === version) {
-      this._updateAvailable.set(null);
-      this._hasUpdates.set(false);
-    }
   }
 
   async unskipVersion(version: string): Promise<void> {
@@ -220,14 +228,17 @@ export class RcloneUpdateService extends TauriBaseService {
     this.eventListenersService
       .listenToRcloneEngineUpdating()
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this._downloading.set(true));
+      .subscribe(() =>
+        this._updateState.update(u =>
+          u ? { ...u, status: BackendUpdateStatus.Downloading } : null
+        )
+      );
 
     this.eventListenersService
       .listenToEngineRestarted()
       .pipe(takeUntilDestroyed())
       .subscribe(event => {
         if (event.reason === 'rclone_update') {
-          this._downloading.set(false);
           void this.checkForUpdates();
         }
       });
@@ -252,32 +263,17 @@ export class RcloneUpdateService extends TauriBaseService {
   }
 
   private processUpdateResult(info: UpdateInfo): void {
-    if (info.status === BackendUpdateStatus.ReadyToRestart) {
-      this._readyToRestart.set(true);
-      this._updateAvailable.set(info);
-      this._hasUpdates.set(false);
-      this._lastCheck.set(new Date());
-      return;
+    if (
+      !info.updateAvailable &&
+      info.status !== BackendUpdateStatus.Downloading &&
+      info.status !== BackendUpdateStatus.ReadyToRestart
+    ) {
+      this._updateState.set(null);
+    } else {
+      this._updateState.set(info);
     }
-
-    if (info.status === BackendUpdateStatus.Downloading) {
-      this._isChecking.set(false);
-      this._downloading.set(true);
-      this._updateAvailable.set(info);
-      this._hasUpdates.set(true);
-      return;
-    }
-
-    const isSkipped = info.updateAvailable && this.settings.isVersionSkipped(info.version);
 
     this._isChecking.set(false);
-    if (info.updateAvailable && !isSkipped) {
-      this._updateAvailable.set(info);
-      this._hasUpdates.set(true);
-    } else {
-      this._updateAvailable.set(null);
-      this._hasUpdates.set(false);
-    }
     this._lastCheck.set(new Date());
   }
 }

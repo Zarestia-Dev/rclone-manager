@@ -1,107 +1,194 @@
-.usage-bar-container {
+:host {
+  display: block;
+}
+
+// ── Header Actions ───────────────────────────────────────────────────
+.header-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-xs);
-  margin-bottom: var(--panel-gap);
+}
 
-  .disk-usage-bar {
-    width: 100%;
-    height: 48px;
-    border-radius: var(--usage-bar-radius);
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 0 0 2px var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition-slow);
+// ── Usage badge (% in title row) ──────────────────────────────────────
+.usage-badge {
+  min-width: 44px;
+  height: 22px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
 
-    .usage-status-text,
-    .usage-status-error {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-xs);
-      padding: 0 var(--space-md);
+  &.healthy {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+  }
+
+  &.warning {
+    color: var(--yellow);
+    background: rgba(var(--yellow-rgb), 0.12);
+  }
+
+  &.high {
+    color: var(--orange);
+    background: rgba(var(--orange-rgb), 0.12);
+  }
+
+  &.critical {
+    color: var(--warn-color);
+    background: rgba(var(--warn-color-rgb), 0.12);
+  }
+}
+
+// ── Inline status: error / not-supported ─────────────────────────────
+.inline-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+
+  mat-icon {
+    font-size: var(--icon-size-sm);
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+  }
+
+  &.warning {
+    color: var(--yellow);
+    background: rgba(var(--yellow-rgb), 0.1);
+    box-shadow: inset 0 0 0 1px rgba(var(--yellow-rgb), 0.3);
+  }
+
+  &.error {
+    color: var(--warn-color);
+    background: rgba(var(--warn-color-rgb), 0.08);
+    box-shadow: inset 0 0 0 1px rgba(var(--warn-color-rgb), 0.25);
+    cursor: help;
+  }
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────
+.progress-track {
+  height: 10px;
+  border-radius: var(--radius-xxs);
+  overflow: hidden;
+  background: var(--hover-bg-color);
+  margin-bottom: var(--space-md);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+
+  &.loading {
+    width: 100% !important;
+    background: linear-gradient(
+      90deg,
+      var(--hover-bg-color) 0%,
+      rgba(var(--orange-rgb), 0.35) 50%,
+      var(--hover-bg-color) 100%
+    ) !important;
+    background-size: 200% 100% !important;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  &.healthy {
+    background: linear-gradient(
+      90deg,
+      var(--primary-color),
+      var(--light-green, var(--primary-color))
+    );
+  }
+
+  &.warning {
+    background: linear-gradient(90deg, var(--yellow), rgba(var(--yellow-rgb), 0.65));
+  }
+
+  &.high {
+    background: linear-gradient(90deg, var(--orange), rgba(var(--orange-rgb), 0.65));
+  }
+
+  &.critical {
+    background: linear-gradient(90deg, var(--warn-color), rgba(var(--warn-color-rgb), 0.65));
+  }
+}
+
+// ── Legend ────────────────────────────────────────────────────────────
+.legend {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+
+  // Total pushed to the far right as a quiet tertiary value
+  &.total-item {
+    margin-left: auto;
+
+    .legend-label,
+    .legend-value {
       color: var(--dim-color);
       font-weight: 500;
-      font-size: var(--font-size-sm);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-      height: 100%;
-
-      .error-icon {
-        color: var(--warn-color);
-      }
     }
+  }
+}
 
-    .usage-fill {
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 100%;
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.used {
+    &.healthy {
       background: var(--primary-color);
-      transition: width var(--transition-slow);
-      border-radius: inherit;
-
-      &.hidden {
-        width: 0 !important;
-        opacity: 0;
-      }
+      box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
     }
+
+    &.warning {
+      background: var(--yellow);
+      box-shadow: 0 0 0 2px rgba(var(--yellow-rgb), 0.2);
+    }
+
+    &.high {
+      background: var(--orange);
+      box-shadow: 0 0 0 2px rgba(var(--orange-rgb), 0.2);
+    }
+
+    &.critical {
+      background: var(--warn-color);
+      box-shadow: 0 0 0 2px rgba(var(--warn-color-rgb), 0.2);
+    }
+  }
+
+  &.free {
+    background: var(--dim-color);
+    opacity: 0.4;
   }
 }
 
-.usage-legend {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--header-gap);
-
-  .legend-spinner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-sm);
-    background: var(--window-bg-color);
-    border-radius: var(--radius-xs);
-    box-shadow: var(--box-shadow);
-
-    .legend-color {
-      width: var(--header-gap);
-      height: var(--header-gap);
-      border-radius: var(--radius-xxs);
-      flex-shrink: 0;
-
-      &.total {
-        background: transparent;
-        box-shadow: 0 0 0 2px var(--primary-color);
-      }
-
-      &.free {
-        background: rgba(var(--window-fg-color-rgb), 0.15);
-      }
-    }
-
-    .legend-text {
-      font-size: var(--font-size-sm);
-      color: var(--window-fg-color);
-      font-weight: 500;
-    }
-  }
+.legend-label {
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+  font-weight: 500;
 }
 
-@media (max-width: 768px) {
-  .usage-legend {
-    grid-template-columns: 1fr;
-    gap: var(--space-sm);
-  }
+.legend-value {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--window-fg-color);
 }

@@ -235,17 +235,16 @@ export class JobManagementService extends TauriBaseService {
       'start_profile_batch',
       { transferType, params },
       {
-        successKey: 'notification.body.jobStarted',
+        successKey: 'sync.successStart',
         successParams: {
           type: transferType,
           remote: params.remoteName,
           profile: params.profileName,
         },
-        errorKey: 'notification.body.jobFailed',
+        errorKey: 'sync.failedStart',
         errorParams: {
           type: transferType,
           remote: params.remoteName,
-          profile: params.profileName,
         },
       }
     );

@@ -82,3 +82,20 @@ mat-form-field {
   font-size: var(--font-size-xs);
   color: var(--dim-color);
 }
+
+.highlighted-field {
+  animation: pulse-highlight 2.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes pulse-highlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(98, 0, 238, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--purple);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(98, 0, 238, 0);
+  }
+}

@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, signal, computed, inject } from '@angular/core';
 import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { firstValueFrom } from 'rxjs';
+import { EMPTY, firstValueFrom, from } from 'rxjs';
+import { catchError, exhaustMap, filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RepairSheetComponent } from '../../../features/components/repair-sheet/repair-sheet.component';
 import { RepairData, RepairSheetType, PasswordPromptResult } from '@app/types';
@@ -297,11 +298,11 @@ export class SystemHealthService {
 
     this.eventListenersService
       .listenToRcloneEnginePasswordError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(async () => {
-        if (this.onboardingCompleted && !this.passwordUnlocked()) {
-          await this.handlePasswordRequired(false);
-        }
-      });
+      .pipe(
+        filter(() => this.onboardingCompleted && !this.passwordUnlocked()),
+        exhaustMap(() => from(this.handlePasswordRequired(false)).pipe(catchError(() => EMPTY))),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 }

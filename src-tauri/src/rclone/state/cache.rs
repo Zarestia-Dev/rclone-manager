@@ -169,12 +169,14 @@ impl RemoteCache {
     }
 
     pub async fn refresh_mounted_remotes(&self, app: AppHandle) -> Result<(), String> {
-        match get_mounted_remotes(app).await {
+        match get_mounted_remotes(app.clone()).await {
             Ok(remotes) => {
                 let mut mounted = self.mounted.write().await;
                 let existing = mounted.clone();
                 *mounted = Self::merge_mount_profiles(remotes, &existing);
                 debug!("🔄 Updated mounted remotes cache");
+                drop(mounted);
+                let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
                 Ok(())
             }
             Err(e) => {
@@ -187,7 +189,7 @@ impl RemoteCache {
     }
 
     pub async fn refresh_serves(&self, app: AppHandle) -> Result<(), String> {
-        match list_serves(app).await {
+        match list_serves(app.clone()).await {
             Ok(serves) => {
                 let mut cache_serves = self.serves.write().await;
                 let existing = cache_serves.clone();
@@ -196,6 +198,8 @@ impl RemoteCache {
                     "🔄 Updated serves cache: {} active serves",
                     cache_serves.len()
                 );
+                drop(cache_serves);
+                let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
                 Ok(())
             }
             Err(e) => {
@@ -356,6 +360,34 @@ impl RemoteCache {
     }
 }
 
+/// Check if a path is a local path (i.e. not a remote path).
+///
+/// Logically, a path in rclone is local if it does not refer to a remote config.
+/// Historically, we checked if it started with `/`, `\`, or had a Windows drive letter (e.g., `C:`).
+/// More robustly, we check if it has a colon `:` and the part before the colon is not a drive letter
+/// and doesn't contain path separators.
+#[must_use]
+pub fn is_local_path(path: &str) -> bool {
+    // If there is no colon, it's definitely a local path
+    let Some(colon_idx) = path.find(':') else {
+        return true;
+    };
+
+    // If the colon is at index 1 (like C: or C:\), it's a drive letter (local path)
+    if colon_idx == 1 {
+        return true;
+    }
+
+    // If there is a path separator before the first colon, the colon is part of the path (local path)
+    let remote_part = &path[..colon_idx];
+    if remote_part.contains('/') || remote_part.contains('\\') {
+        return true;
+    }
+
+    // Otherwise, it starts with a remote name (e.g., "remote:path"), so it's not a local path
+    false
+}
+
 // --- Tauri Commands ---
 
 #[tauri::command]
@@ -476,5 +508,29 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
 impl Default for RemoteCache {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_local_path() {
+        // Local path cases
+        assert!(is_local_path("/absolute/path/on/linux"));
+        assert!(is_local_path("relative/path/on/linux"));
+        assert!(is_local_path(r"C:\absolute\path\on\windows"));
+        assert!(is_local_path(r"d:\some\path"));
+        assert!(is_local_path("c:relative/path"));
+        assert!(is_local_path(r"\relative\backslash\path"));
+        assert!(is_local_path("/path/with:colon/in/middle"));
+        assert!(is_local_path(""));
+
+        // Remote path cases
+        assert!(!is_local_path("remote:"));
+        assert!(!is_local_path("my-remote:bucket/file.txt"));
+        assert!(!is_local_path("s3:path"));
+        assert!(!is_local_path("folder:name/file.txt"));
     }
 }

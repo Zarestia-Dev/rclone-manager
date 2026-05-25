@@ -1,7 +1,7 @@
 /// Initialization submodules
 pub mod apply_settings;
+pub mod automation;
 pub mod bootstrap;
-pub mod scheduler;
 
 use crate::core::lifecycle::startup::handle_startup;
 use crate::core::settings::AppSettingsManager;
@@ -43,8 +43,8 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     info!("⏰ Phase 4: Starting services...");
 
-    if let Err(e) = scheduler::initialize_scheduler(app_handle.clone()).await {
-        error!("❌ Failed to initialize cron scheduler: {e}");
+    if let Err(e) = automation::initialize_automations(app_handle.clone()).await {
+        error!("❌ Failed to initialize automations: {e}");
     }
 
     #[cfg(desktop)]
@@ -104,13 +104,13 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         manager.inner(),
         &remote_names,
     );
-    if let Err(e) = crate::core::scheduler::commands::reload_scheduled_tasks_from_configs(
+    if let Err(e) = crate::core::automation::commands::reload_automations_from_configs(
         app_handle.clone(),
         all_configs,
     )
     .await
     {
-        error!("⚠️ Failed to reload scheduled tasks: {e}");
+        error!("⚠️ Failed to reload automations: {e}");
     }
 
     apply_settings::apply_core_settings(&app_handle, &settings).await;

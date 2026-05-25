@@ -8,7 +8,7 @@ export type AlertEventKind =
   | 'mount'
   | 'engine'
   | 'update'
-  | 'scheduled_task'
+  | 'automation'
   | 'system';
 
 export interface AlertRule {

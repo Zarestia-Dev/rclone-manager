@@ -4,7 +4,7 @@ members = [".", "rman-file-provider"]
 
 [package]
 name = "rclone-manager"
-version = "0.2.6"
+version = "0.2.7"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -63,7 +63,7 @@ tauri-plugin-window-state = { version = "2", optional = true }
 tauri-plugin-dialog = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
-rcman = {version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2"
 futures = { version = "0.3" }
@@ -77,6 +77,7 @@ anyhow = {version = "1", optional = true}
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
 parking_lot = "0.12"
+notify = "8.2.0"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { PathService } from './path.service';
+import { FileBrowserItem } from '@app/types';
 
 describe('PathService', () => {
   let service: PathService;
@@ -127,6 +128,67 @@ describe('PathService', () => {
 
     it('should parse otherRemote', () => {
       expect(service.parsePathType('otherRemote:myremote')).toBe('otherRemote');
+    });
+  });
+
+  describe('resolvePathGroup', () => {
+    it('should resolve local items correctly by joining root and path', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Documents/test' } as any,
+        meta: { remote: '/home/hakan', isLocal: true },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'local',
+        path: '/home/hakan/Documents/test',
+        remote: '',
+      });
+    });
+
+    it('should resolve current remote items correctly', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Photos/album' } as any,
+        meta: { remote: 'myremote:', isLocal: false },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'currentRemote',
+        path: 'Photos/album',
+        remote: 'myremote',
+      });
+    });
+
+    it('should resolve other remote items correctly', () => {
+      const item: FileBrowserItem = {
+        entry: { Path: 'Photos/album' } as any,
+        meta: { remote: 'gdrive:', isLocal: false },
+      };
+      const result = service.resolvePathGroup(item, 'myremote');
+      expect(result).toEqual({
+        type: 'otherRemote:gdrive',
+        path: 'Photos/album',
+        remote: 'gdrive',
+      });
+    });
+  });
+
+  describe('isLocalPath', () => {
+    it('should correctly classify local paths', () => {
+      expect(service.isLocalPath('/absolute/path/on/linux')).toBeTrue();
+      expect(service.isLocalPath('relative/path/on/linux')).toBeTrue();
+      expect(service.isLocalPath('C:\\absolute\\path\\on\\windows')).toBeTrue();
+      expect(service.isLocalPath('d:\\some\\path')).toBeTrue();
+      expect(service.isLocalPath('c:relative/path')).toBeTrue();
+      expect(service.isLocalPath('\\relative\\backslash\\path')).toBeTrue();
+      expect(service.isLocalPath('/path/with:colon/in/middle')).toBeTrue();
+      expect(service.isLocalPath('')).toBeFalse();
+    });
+
+    it('should correctly classify remote paths', () => {
+      expect(service.isLocalPath('remote:')).toBeFalse();
+      expect(service.isLocalPath('my-remote:bucket/file.txt')).toBeFalse();
+      expect(service.isLocalPath('s3:path')).toBeFalse();
+      expect(service.isLocalPath('folder:name/file.txt')).toBeFalse();
     });
   });
 });

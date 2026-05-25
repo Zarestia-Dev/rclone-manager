@@ -70,6 +70,7 @@ export interface JobInfoConfig {
   selectedProfile?: string;
   showProfileSelector?: boolean;
   errors?: string[];
+  dryRun?: boolean;
 }
 
 // ── Operation Control ───────────────────────────────────────────────────────

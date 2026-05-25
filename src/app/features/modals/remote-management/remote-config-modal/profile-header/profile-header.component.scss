@@ -1,0 +1,26 @@
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  background: rgba(var(--accent-color-rgb), 0.03);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-gnome);
+
+  .profile-select,
+  .profile-input {
+    flex: 1;
+  }
+
+  .profile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+
+    .action-tooltip-anchor {
+      display: inline-flex;
+    }
+  }
+}

@@ -1,9 +1,9 @@
 //! Cron scheduler engine using tokio-cron-scheduler
 
 use crate::rclone::commands::sync::{TransferType, start_profile_batch};
-use crate::rclone::state::scheduled_tasks::{CacheUpdateResult, ScheduledTasksCache};
-use crate::utils::app::notification::{NotificationEvent, TaskStage, notify};
-use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
+use crate::rclone::state::automations::{AutomationsCache, CacheUpdateResult};
+use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify};
+use crate::utils::types::automation::{Automation, AutomationStatus, AutomationType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
@@ -16,12 +16,12 @@ use uuid::Uuid;
 // CRON SCHEDULER
 // ============================================================================
 
-pub struct CronScheduler {
+pub struct AutomationScheduler {
     pub scheduler: Arc<RwLock<Option<JobScheduler>>>,
     app_handle: Arc<RwLock<Option<AppHandle>>>,
 }
 
-impl CronScheduler {
+impl AutomationScheduler {
     pub fn new() -> Self {
         Self {
             scheduler: Arc::new(RwLock::new(None)),
@@ -34,7 +34,7 @@ impl CronScheduler {
         info!("Initializing cron scheduler...");
 
         let scheduler = JobScheduler::new().await.map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.initFailed", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.initFailed", "error" => e),
         )?;
 
         *self.scheduler.write().await = Some(scheduler);
@@ -48,13 +48,13 @@ impl CronScheduler {
         let mut guard = self.scheduler.write().await;
         let scheduler = guard.as_mut().ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.scheduler.initFailed",
+                "backendErrors.automation.initFailed",
                 "error" => "Scheduler not initialized"
             )
         })?;
 
         scheduler.start().await.map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.startFailed", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.startFailed", "error" => e),
         )?;
 
         info!("Cron scheduler started");
@@ -65,45 +65,52 @@ impl CronScheduler {
         let mut guard = self.scheduler.write().await;
         let scheduler = guard.as_mut().ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.scheduler.initFailed",
+                "backendErrors.automation.initFailed",
                 "error" => "Scheduler not initialized"
             )
         })?;
 
         scheduler.shutdown().await.map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.stopFailed", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.stopFailed", "error" => e),
         )?;
 
         info!("Cron scheduler stopped");
         Ok(())
     }
 
-    /// Schedule a task and return the new scheduler job UUID.
-    pub async fn schedule_task(
+    /// Schedule an automation and return the new scheduler job UUID.
+    pub async fn schedule_automation(
         &self,
-        task: &ScheduledTask,
-        cache: State<'_, ScheduledTasksCache>,
+        automation: &Automation,
+        cache: State<'_, AutomationsCache>,
     ) -> Result<Uuid, String> {
-        if task.status != TaskStatus::Enabled {
+        if automation.status != AutomationStatus::Enabled
+            && automation.status != AutomationStatus::Failed
+        {
             return Err(crate::localized_error!(
-                "backendErrors.scheduler.taskNotEnabled"
+                "backendErrors.automation.automationNotEnabled"
             ));
         }
 
-        if let Some(old_job_id_str) = &task.scheduler_job_id
+        if let Some(old_job_id_str) = &automation.scheduler_job_id
             && let Ok(old_job_id) = Uuid::parse_str(old_job_id_str)
-            && let Err(e) = self.unschedule_task(old_job_id).await
+            && let Err(e) = self.unschedule_automation(old_job_id).await
         {
             warn!(
-                "Failed to remove old scheduler job {} for task '{}: {}-{}.{}: {}",
-                old_job_id, task.backend_name, task.remote_name, task.profile_name, task.id, e
+                "Failed to remove old scheduler job {} for automation '{}: {}-{}.{}: {}",
+                old_job_id,
+                automation.backend_name,
+                automation.remote_name,
+                automation.profile_name,
+                automation.id,
+                e
             );
         }
 
         let scheduler_guard = self.scheduler.read().await;
         let scheduler = scheduler_guard.as_ref().ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.scheduler.initFailed",
+                "backendErrors.automation.initFailed",
                 "error" => "Scheduler not initialized"
             )
         })?;
@@ -114,13 +121,13 @@ impl CronScheduler {
             .ok_or("App handle not initialized")?
             .clone();
 
-        let task_id = task.id.clone();
-        let task_name = format!(
+        let automation_id = automation.id.clone();
+        let automation_name = format!(
             "{}: {}-{}",
-            task.backend_name, task.remote_name, task.profile_name
+            automation.backend_name, automation.remote_name, automation.profile_name
         );
-        let task_type = task.task_type.clone();
-        let cron_expr_5_field = task.cron_expression.clone();
+        let automation_type = automation.automation_type.clone();
+        let cron_expr_5_field = automation.cron_expression.clone();
         let cron_expr_6_field = format!("0 {cron_expr_5_field}");
 
         let app_handle_for_job = app_handle.clone();
@@ -129,39 +136,38 @@ impl CronScheduler {
             .with_cron_job_type()
             .with_schedule(&cron_expr_6_field)
             .map_err(
-                |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
+                |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
             )?
             .with_run_async(Box::new(move |_uuid, _l| {
-                let task_id = task_id.clone();
-                let task_name = task_name.clone();
-                let task_type = task_type.clone();
+                let automation_id = automation_id.clone();
+                let automation_name = automation_name.clone();
+                let automation_type = automation_type.clone();
                 let app_handle = app_handle_for_job.clone();
 
                 Box::pin(async move {
                     info!(
-                        "Executing scheduled task: {task_name} ({task_id}) — {task_type:?}"
+                        "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
 
-                    let cache = app_handle.state::<ScheduledTasksCache>();
-                    if let Err(e) = execute_scheduled_task(&task_id, &app_handle, cache).await {
-                        error!("Task execution failed {task_id}: {e}");
+                    if let Err(e) = execute_automation(&automation_id, &app_handle).await {
+                        error!("Automation execution failed {automation_id}: {e}");
                     } else {
-                        info!("Task execution completed: {task_id}");
+                        info!("Automation execution completed: {automation_id}");
                     }
                 })
             }))
             .build()
             .map_err(
-                |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+                |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
             )?;
 
         let job_id = scheduler.add(job).await.map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
         )?;
 
         cache
-            .update_task(
-                &task.id,
+            .update_automation(
+                &automation.id,
                 |t| {
                     t.scheduler_job_id = Some(job_id.to_string());
                 },
@@ -170,69 +176,74 @@ impl CronScheduler {
             .await
             .ok();
 
-        let task_name = format!(
+        let automation_name = format!(
             "{}: {}-{}.{}",
-            task.backend_name, task.remote_name, task.profile_name, task.id
+            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
         info!(
             "Scheduled '{}' ({}) — job ID: {}",
-            task_name, cron_expr_6_field, job_id
+            automation_name, cron_expr_6_field, job_id
         );
 
         Ok(job_id)
     }
 
     /// Remove a job from the underlying scheduler by its UUID.
-    pub async fn unschedule_task(&self, job_id: Uuid) -> Result<(), String> {
+    pub async fn unschedule_automation(&self, job_id: Uuid) -> Result<(), String> {
         let guard = self.scheduler.read().await;
         let scheduler = guard.as_ref().ok_or("Scheduler not initialized")?;
 
         scheduler.remove(&job_id).await.map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
         )?;
 
         debug!("Unscheduled job: {job_id}");
         Ok(())
     }
 
-    /// Atomically replace a task's scheduler job.
-    pub async fn reschedule_task(
+    /// Atomically replace an automation's scheduler job.
+    pub async fn reschedule_automation(
         &self,
-        task: &ScheduledTask,
-        cache: State<'_, ScheduledTasksCache>,
+        automation: &Automation,
+        cache: State<'_, AutomationsCache>,
     ) -> Result<(), String> {
-        let task_name = format!(
+        let automation_name = format!(
             "{}: {}-{}.{}",
-            task.backend_name, task.remote_name, task.profile_name, task.id
+            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
-        if let Some(job_id_str) = &task.scheduler_job_id
+        if let Some(job_id_str) = &automation.scheduler_job_id
             && let Ok(job_id) = Uuid::parse_str(job_id_str)
         {
-            match self.unschedule_task(job_id).await {
-                Ok(()) => info!("Removed old job {} for '{}'", job_id, task_name),
+            match self.unschedule_automation(job_id).await {
+                Ok(()) => info!("Removed old job {} for '{}'", job_id, automation_name),
                 Err(e) => warn!("Failed to remove old job {job_id}: {e}"),
             }
         }
 
-        if task.status == TaskStatus::Enabled {
-            info!("Scheduling enabled task '{}'…", task_name);
-            match self.schedule_task(task, cache.clone()).await {
+        let is_active = automation.status == AutomationStatus::Enabled
+            || automation.status == AutomationStatus::Failed;
+        if is_active && automation.cron_expression != "realtime" {
+            info!("Scheduling active automation '{}'…", automation_name);
+            match self.schedule_automation(automation, cache.clone()).await {
                 Ok(new_job_id) => {
-                    info!("Rescheduled '{}' → job {}", task_name, new_job_id);
+                    info!("Rescheduled '{}' → job {}", automation_name, new_job_id);
                 }
                 Err(e) => {
-                    error!("Failed to reschedule '{}': {}", task_name, e);
+                    error!("Failed to reschedule '{}': {}", automation_name, e);
                     cache
-                        .update_task(&task.id, |t| t.mark_failure(e.clone()), None)
+                        .update_automation(&automation.id, |t| t.mark_failure(e.clone()), None)
                         .await?;
                     return Err(e);
                 }
             }
         } else {
-            info!("Task '{}' is disabled — clearing job ID.", task_name);
+            info!(
+                "Automation '{}' is disabled or realtime-only — clearing job ID.",
+                automation_name
+            );
             cache
-                .update_task(
-                    &task.id,
+                .update_automation(
+                    &automation.id,
                     |t| {
                         t.scheduler_job_id = None;
                     },
@@ -245,23 +256,29 @@ impl CronScheduler {
         Ok(())
     }
 
-    /// Reload all tasks from the cache, rescheduling every one.
-    pub async fn reload_tasks(&self, app: AppHandle) -> Result<(), String> {
-        info!("Reloading all scheduled tasks…");
-        let cache = app.state::<ScheduledTasksCache>();
+    /// Reload all automations from the cache, rescheduling every one.
+    pub async fn reload_automations(&self, app: AppHandle) -> Result<(), String> {
+        info!("Reloading all scheduled automations…");
+        let cache = app.state::<AutomationsCache>();
 
-        let tasks = cache.get_all_tasks().await;
-        info!("Found {} task(s) to sync", tasks.len());
+        let automations = cache.get_all_automations().await;
+        info!("Found {} automation(s) to sync", automations.len());
 
         let mut errors: Vec<String> = Vec::new();
-        for task in tasks {
-            let task_name = format!(
+        for automation in automations {
+            let automation_name = format!(
                 "{}: {}-{}.{}",
-                task.backend_name, task.remote_name, task.profile_name, task.id
+                automation.backend_name,
+                automation.remote_name,
+                automation.profile_name,
+                automation.id
             );
-            if let Err(e) = self.reschedule_task(&task, cache.clone()).await {
-                error!("Failed to reload '{}' ({}): {}", task_name, task.id, e);
-                errors.push(format!("{}: {}", task.id, e));
+            if let Err(e) = self.reschedule_automation(&automation, cache.clone()).await {
+                error!(
+                    "Failed to reload '{}' ({}): {}",
+                    automation_name, automation.id, e
+                );
+                errors.push(format!("{}: {}", automation.id, e));
             }
         }
 
@@ -270,7 +287,7 @@ impl CronScheduler {
             Ok(())
         } else {
             Err(format!(
-                "{} task(s) failed to reload: {}",
+                "{} automation(s) failed to reload: {}",
                 errors.len(),
                 errors.join("; ")
             ))
@@ -281,26 +298,35 @@ impl CronScheduler {
     pub async fn apply_cache_result(
         &self,
         result: &CacheUpdateResult,
-        cache: State<'_, ScheduledTasksCache>,
+        cache: State<'_, AutomationsCache>,
     ) -> Result<(), String> {
-        for task in &result.removed {
-            if let Some(job_id_str) = &task.scheduler_job_id
+        for automation in &result.removed {
+            if let Some(job_id_str) = &automation.scheduler_job_id
                 && let Ok(job_id) = Uuid::parse_str(job_id_str)
-                && let Err(e) = self.unschedule_task(job_id).await
+                && let Err(e) = self.unschedule_automation(job_id).await
             {
-                warn!("Failed to unschedule removed task '{}': {}", task.id, e);
+                warn!(
+                    "Failed to unschedule removed automation '{}': {}",
+                    automation.id, e
+                );
             }
         }
 
         let mut errors: Vec<String> = Vec::new();
-        for task in result.added.iter().chain(result.updated.iter()) {
-            let task_name = format!(
+        for automation in result.added.iter().chain(result.updated.iter()) {
+            let automation_name = format!(
                 "{}: {}-{}.{}",
-                task.backend_name, task.remote_name, task.profile_name, task.id
+                automation.backend_name,
+                automation.remote_name,
+                automation.profile_name,
+                automation.id
             );
-            if let Err(e) = self.reschedule_task(task, cache.clone()).await {
-                error!("Failed to reschedule '{}' ({}): {}", task_name, task.id, e);
-                errors.push(format!("{}: {}", task.id, e));
+            if let Err(e) = self.reschedule_automation(automation, cache.clone()).await {
+                error!(
+                    "Failed to reschedule '{}' ({}): {}",
+                    automation_name, automation.id, e
+                );
+                errors.push(format!("{}: {}", automation.id, e));
             }
         }
 
@@ -308,7 +334,7 @@ impl CronScheduler {
             Ok(())
         } else {
             Err(format!(
-                "{} task(s) failed to reschedule: {}",
+                "{} automation(s) failed to reschedule: {}",
                 errors.len(),
                 errors.join("; ")
             ))
@@ -316,7 +342,7 @@ impl CronScheduler {
     }
 }
 
-impl Default for CronScheduler {
+impl Default for AutomationScheduler {
     fn default() -> Self {
         Self::new()
     }
@@ -325,11 +351,11 @@ impl Default for CronScheduler {
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
     if cron_expr.split_whitespace().count() == 6 {
         return Err(
-            crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => "unexpected number of fields"),
+            crate::localized_error!("backendErrors.automation.invalidCron", "error" => "unexpected number of fields"),
         );
     }
     croner::parser::CronParser::new().parse(cron_expr).map_err(
-        |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
+        |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
     )?;
 
     let cron_6_field = format!("0 {cron_expr}");
@@ -337,7 +363,7 @@ pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
         .with_cron_job_type()
         .with_schedule(&cron_6_field)
         .map_err(
-            |e| crate::localized_error!("backendErrors.scheduler.invalidCron", "error" => e),
+            |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
         )?;
 
     Ok(())
@@ -350,26 +376,23 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
         .map_err(|e| format!("Invalid cron expression: {e}"))?;
 
     let next_local = cron.find_next_occurrence(&Local::now(), false).map_err(
-        |e| crate::localized_error!("backendErrors.scheduler.executionFailed", "error" => e),
+        |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
     )?;
 
     Ok(next_local.with_timezone(&Utc))
 }
 
-async fn execute_scheduled_task(
-    task_id: &str,
-    app_handle: &AppHandle,
-    cache: State<'_, ScheduledTasksCache>,
-) -> Result<(), String> {
-    let task = cache
-        .get_task(task_id)
+pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> Result<(), String> {
+    let cache = app_handle.state::<AutomationsCache>();
+    let automation = cache
+        .get_automation(automation_id)
         .await
-        .ok_or_else(|| crate::localized_error!("backendErrors.scheduler.taskNotFound"))?;
+        .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
 
-    if !task.can_run() {
+    if !automation.can_run() {
         return Err(crate::localized_error!(
-            "backendErrors.scheduler.taskCannotRun",
-            "status" => format!("{:?}", task.status)
+            "backendErrors.automation.automationCannotRun",
+            "status" => format!("{:?}", automation.status)
         ));
     }
 
@@ -377,30 +400,30 @@ async fn execute_scheduled_task(
     let backend_manager = app_handle.state::<BackendManager>();
     let job_cache = &backend_manager.job_cache;
 
-    let remote_name = task.args.params.remote_name.clone();
-    let job_type = task.task_type.as_job_type();
-    let profile = Some(task.args.params.profile_name.as_str());
+    let remote_name = automation.args.params.remote_name.clone();
+    let job_type = automation.automation_type.as_job_type();
+    let profile = Some(automation.args.params.profile_name.as_str());
 
-    if task.status == crate::utils::types::scheduled_task::TaskStatus::Running
-        || task.status == crate::utils::types::scheduled_task::TaskStatus::Stopping
+    if automation.status == crate::utils::types::automation::AutomationStatus::Running
+        || automation.status == crate::utils::types::automation::AutomationStatus::Stopping
         || job_cache
             .is_job_running(&remote_name, job_type.clone(), profile)
             .await
     {
-        let task_name = format!(
+        let automation_name = format!(
             "{}: {}-{}.{}",
-            task.backend_name, task.remote_name, task.profile_name, task.id
+            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
         warn!(
-            "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running (task status: {:?}).",
-            task_name, job_type, remote_name, profile, task.status
+            "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running (automation status: {:?}).",
+            automation_name, job_type, remote_name, profile, automation.status
         );
         return Ok(());
     }
 
     cache
-        .update_task(
-            task_id,
+        .update_automation(
+            automation_id,
             |t| {
                 let _ = t.mark_starting();
             },
@@ -408,25 +431,29 @@ async fn execute_scheduled_task(
         )
         .await?;
 
-    let params = task.args.params.clone();
+    let params = automation.args.params.clone();
 
-    let transfer_type = match task.task_type {
-        TaskType::Copy => TransferType::Copy,
-        TaskType::Sync => TransferType::Sync,
-        TaskType::Move => TransferType::Move,
-        TaskType::Bisync => TransferType::Bisync,
+    let transfer_type = match automation.automation_type {
+        AutomationType::Copy => TransferType::Copy,
+        AutomationType::Sync => TransferType::Sync,
+        AutomationType::Move => TransferType::Move,
+        AutomationType::Bisync => TransferType::Bisync,
     };
 
     let mut params = params;
-    params.source = Some(crate::utils::types::origin::Origin::Scheduler);
+    params.source = Some(crate::utils::types::origin::Origin::Automation);
     let result = start_profile_batch(app_handle.clone(), transfer_type, params).await;
 
     match result {
         Ok(job_id) => {
-            let next_run = get_next_run(&task.cron_expression).ok();
+            let next_run = if automation.watch_enabled && automation.cron_expression == "realtime" {
+                None
+            } else {
+                get_next_run(&automation.cron_expression).ok()
+            };
             cache
-                .update_task(
-                    task_id,
+                .update_automation(
+                    automation_id,
                     |t| {
                         t.mark_running(job_id);
                         t.next_run = next_run;
@@ -437,21 +464,25 @@ async fn execute_scheduled_task(
                 .ok();
             notify(
                 app_handle,
-                NotificationEvent::ScheduledTask(TaskStage::Started {
-                    backend: task.backend_name.clone(),
-                    remote: task.remote_name.clone(),
-                    profile: task.profile_name.clone(),
-                    task_name: task.display_name(),
-                    task_type: task.task_type.clone(),
+                NotificationEvent::Automation(AutomationStage::Started {
+                    backend: automation.backend_name.clone(),
+                    remote: automation.remote_name.clone(),
+                    profile: automation.profile_name.clone(),
+                    automation_name: automation.display_name(),
+                    automation_type: automation.automation_type.clone(),
                 }),
             );
             Ok(())
         }
         Err(e) => {
-            let next_run = get_next_run(&task.cron_expression).ok();
+            let next_run = if automation.watch_enabled && automation.cron_expression == "realtime" {
+                None
+            } else {
+                get_run_expr_or_none(automation.watch_enabled, &automation.cron_expression)
+            };
             cache
-                .update_task(
-                    task_id,
+                .update_automation(
+                    automation_id,
                     |t| {
                         t.mark_failure(e.clone());
                         t.next_run = next_run;
@@ -461,6 +492,14 @@ async fn execute_scheduled_task(
                 .await?;
             Err(e)
         }
+    }
+}
+
+fn get_run_expr_or_none(watch_enabled: bool, cron_expr: &str) -> Option<chrono::DateTime<Utc>> {
+    if watch_enabled && cron_expr == "realtime" {
+        None
+    } else {
+        get_next_run(cron_expr).ok()
     }
 }
 
@@ -551,12 +590,12 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // CronScheduler construction (no async runtime needed)
+    // AutomationScheduler construction (no async runtime needed)
     // -----------------------------------------------------------------------
 
     #[test]
     fn test_cron_scheduler_default() {
-        let s = CronScheduler::default();
+        let s = AutomationScheduler::default();
         // These must not panic
         let _ = Arc::clone(&s.scheduler);
         let _ = Arc::clone(&s.app_handle);

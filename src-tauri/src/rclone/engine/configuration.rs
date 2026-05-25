@@ -13,12 +13,9 @@ use crate::{
 use super::error::{EngineError, EngineResult};
 
 impl RcApiEngine {
-    /// Validate rclone configuration and password before starting the engine.
-    /// This prevents engine startup failures due to wrong passwords.
     pub async fn validate_config_before_start(&self, app: &AppHandle) -> EngineResult<()> {
-        info!("🔍 Validating rclone configuration before engine start...");
+        info!("Validating rclone configuration before engine start");
 
-        // Check if rclone binary exists and is available
         if !crate::core::check_binaries::check_rclone_available(app.clone(), String::new())
             .await
             .unwrap_or(false)
@@ -26,25 +23,21 @@ impl RcApiEngine {
             return Err(EngineError::RcloneNotFound);
         }
 
-        // Use shared method from core security to check if config is encrypted
         let is_encrypted = match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(encrypted) => encrypted,
             Err(e) => {
-                warn!("⚠️ Unexpected error checking encryption: {e}");
+                warn!("Unexpected error checking encryption: {e}");
                 false
             }
         };
 
-        // If config is not encrypted, we're done - no password needed
         if !is_encrypted {
-            info!("✅ Configuration is not encrypted, validation successful");
+            info!("Configuration is not encrypted, validation successful");
             return Ok(());
         }
 
-        // Config is encrypted, test with current password
-        info!("🔐 Configuration is encrypted, testing password...");
+        info!("Configuration is encrypted, testing password");
 
-        // Get environment variables from SafeEnvironmentManager
         let env_vars = if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
             env_manager.get_env_vars()
         } else {
@@ -52,23 +45,17 @@ impl RcApiEngine {
             std::env::vars().collect()
         };
 
-        // Check if we have a password to test
         if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
-            warn!("🔑 No password available for encrypted configuration");
-            return Err(EngineError::ConfigValidationFailed(
-                "Configuration is encrypted but no password is available".to_string(),
-            ));
+            warn!("No password available for encrypted configuration");
+            return Err(EngineError::PasswordRequired);
         }
 
-        // Fetch Local backend to get the configured config path
         let backend_manager = app.state::<BackendManager>();
         let config_path_string = backend_manager.get_local_config_path().await.map_err(|e| {
             EngineError::ConfigValidationFailed(format!("Local backend error: {e}"))
         })?;
 
-        let config_path = config_path_string.as_deref();
-
-        let output = build_rclone_command(app, None, config_path, None)
+        let output = build_rclone_command(app, None, config_path_string.as_deref(), None)
             .args(["listremotes", "--ask-password=false"])
             .envs(&env_vars)
             .output()
@@ -82,47 +69,43 @@ impl RcApiEngine {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         if output.status.success() {
-            info!("✅ Rclone configuration and password validation successful");
-            Ok(())
-        } else {
-            // Check for specific error patterns
-            if stderr
-                .contains("unable to decrypt configuration and not allowed to ask for password")
-                || stderr.contains("Couldn't decrypt configuration")
-                || stderr.contains("most likely wrong password")
-                || stderr.contains("unable to decrypt configuration")
-            {
-                error!("❌ Wrong password for encrypted rclone configuration");
-                Err(EngineError::WrongPassword)
-            } else if stderr.contains("Failed to load config file") {
-                let error_msg = format!("Failed to load rclone config file: {}", stderr.trim());
-                error!("❌ {error_msg}");
-                Err(EngineError::ConfigValidationFailed(error_msg))
-            } else {
-                // Unknown error, but we can still try to start the engine
-                warn!(
-                    "⚠️ Unexpected rclone error, but attempting to continue: {}",
-                    stderr.trim()
-                );
-                Ok(())
-            }
+            info!("Rclone configuration and password validation successful");
+            return Ok(());
         }
+
+        if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
+            || stderr.contains("Couldn't decrypt configuration")
+            || stderr.contains("most likely wrong password")
+            || stderr.contains("unable to decrypt configuration")
+        {
+            error!("Wrong password for encrypted rclone configuration");
+            return Err(EngineError::WrongPassword);
+        }
+
+        if stderr.contains("Failed to load config file") {
+            let msg = format!("Failed to load rclone config file: {}", stderr.trim());
+            error!("{msg}");
+            return Err(EngineError::ConfigValidationFailed(msg));
+        }
+
+        warn!(
+            "Unexpected rclone error, attempting to continue: {}",
+            stderr.trim()
+        );
+        Ok(())
     }
 
-    /// Test configuration and password without starting the engine.
     pub async fn validate_config(&mut self, app: &AppHandle) -> bool {
-        info!("🧪 Testing rclone configuration and password...");
+        info!("Testing rclone configuration and password");
 
-        let result = self.validate_config_before_start(app).await;
-
-        match result {
+        match self.validate_config_before_start(app).await {
             Ok(()) => {
-                info!("✅ Rclone configuration and password are valid");
+                info!("Rclone configuration and password are valid");
                 self.clear_errors();
                 true
             }
             Err(ref e) => {
-                error!("❌ Rclone configuration validation failed: {e}");
+                error!("Rclone configuration validation failed: {e}");
 
                 match e {
                     EngineError::RcloneNotFound => {
@@ -149,6 +132,7 @@ impl RcApiEngine {
                 if let Err(emit_err) = app.emit(event, ()) {
                     error!("Failed to emit validation error event: {emit_err}");
                 }
+
                 false
             }
         }

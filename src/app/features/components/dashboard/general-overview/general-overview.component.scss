@@ -286,11 +286,11 @@
 }
 
 // =============================================
-// SCHEDULED TASKS PANEL
+// AUTOMATIONS PANEL
 // =============================================
 
 .serves-panel,
-.scheduled-tasks-panel {
+.automations-panel {
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));

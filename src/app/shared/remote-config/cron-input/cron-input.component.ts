@@ -32,7 +32,7 @@ import {
   tap,
 } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { SchedulerService } from '@app/services';
+import { AutomationService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -69,11 +69,11 @@ type PresetKey =
 })
 export class CronInputComponent {
   initialValue = input<string | null>();
-  taskName = input<string | null>(null);
+  automationName = input<string | null>(null);
   cronChange = output<string | null>();
   validationChange = output<CronValidationResponse>();
 
-  private readonly schedulerService = inject(SchedulerService);
+  private readonly automationService = inject(AutomationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -172,7 +172,7 @@ export class CronInputComponent {
         filter(trimmed => trimmed.length > 0),
         debounceTime(250),
         switchMap(expression =>
-          from(this.schedulerService.validateCron(expression)).pipe(
+          from(this.automationService.validateCron(expression)).pipe(
             map(result => ({ expression, result })),
             catchError(error => {
               console.error('Validation failed', error);

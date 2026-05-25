@@ -4,10 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [unreleased]
+## Unreleased
+
+### Added
+- Local filesystem watchers for sync, copy, move, and bisync automations. Sync, copy, and move require at least one local source path; bisync watches local paths from both sides.
+- Net-change debounce: create/delete pairs on the same path within the debounce window cancel each other out, suppressing temp files and atomic saves without explicit exclude rules.
+- Added support for detached windows for dialogs (like progress, logs etc.). If you close the main window, dialogs will stay open. Some helper dialogs not open as a new window.
+- Added a cancel support for While updates downloading.
+
+### Changed
+- Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 
+- **macOS Dock Visibility Control**: Added functionality to control the macOS dock visibility based on the presence of visible windows. The dock icon will now hide when there are no visible windows and show when there is at least one visible window. This is the default behavior for macOS apps that don't have a dock icon. This is a macOS-specific change. #208
 
 ### Fixed
+- Fixed missing language values on some sections of the application and remove the non-used language keys.
+- Fixed the issue on wrong mapped rclone flags on backend and sync types.
+
+## [v0.2.6] - 2026-05-19
+
+### Added
+- Dry run toggle on Operation Control Panel for sync, bisync, copy and move operations.
+- Added new component to map to cli rclone commands to application values.
+
+### Changed
+- Allow users the show hidden window via application shortcut. Not only via tray.
+
+### Fixed
+- **Rclone Flags Case Alignment**: On json editor, changed the flags format from camel case to pascal case to match with rclone struct format.
 - Fixed the issue on destination paths not load correctly on remote config modal.
+- UI not load the ordered remote list Fixed.
+- Fixed the issue on when tray menu updated in main thread, UI thread was freezed for a long time. Not anymore.
+- Some update issues fixed.
 
 ## [v0.2.5] - 2026-05-16
 

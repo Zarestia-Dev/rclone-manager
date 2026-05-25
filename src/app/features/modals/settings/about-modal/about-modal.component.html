@@ -8,17 +8,7 @@
   </div>
 
   <div class="modal-content" #content (scroll)="onScroll(content)">
-    <img
-      src="assets/rclone-manager.svg"
-      alt="Rclone Logo"
-      class="app-icon"
-      (click)="onLogoClick()"
-      (keydown.enter)="onLogoClick()"
-      (keydown.space)="onLogoClick()"
-      tabindex="0"
-      role="button"
-      [matTooltip]="logoClickCount() >= 3 ? ('modals.about.keepClicking' | translate) : ''"
-    />
+    <img src="assets/rclone-manager.svg" alt="Rclone Logo" class="app-icon" />
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">
       Zarestia
@@ -61,11 +51,11 @@
         matButton
         class="about-item"
         role="tab"
-        [attr.aria-selected]="currentView().id === 'updates'"
-        (click)="navigateTo('updates')"
+        [attr.aria-selected]="currentView().id === 'about-app'"
+        (click)="navigateTo('about-app')"
         [matBadge]="appUpdateAvailable() || appReadyToRestart() ? '!' : null"
       >
-        <span>{{ 'modals.about.updates' | translate }}</span>
+        <span>{{ 'modals.about.aboutApp' | translate }}</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>
       </button>
 
@@ -95,7 +85,7 @@
       [class.whats-new-overlay]="
         overlay.id === 'whats-new-app' || overlay.id === 'whats-new-rclone'
       "
-      [class.debug-overlay]="overlay.id === 'debug' || overlay.id === 'memory'"
+      [class.debug-overlay]="overlay.id === 'memory'"
       [style.z-index]="10 + i"
       animate.enter="slide-overlay-enter"
       animate.leave="slide-overlay-leave"
@@ -104,7 +94,7 @@
         <button mat-icon-button (click)="goBack()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <p>{{ getPageTitle(overlay.id) }}</p>
+        <p>{{ getPageTitle(overlay.id) | translate }}</p>
         <button mat-icon-button (click)="close()">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
@@ -162,8 +152,59 @@
             </div>
           </div>
         }
-        @case ('updates') {
+        @case ('about-app') {
           <div class="modal-content updates-page">
+            <div class="rclone-info">
+              @if (debugInfo()) {
+                @let debug = debugInfo()!;
+                <div class="rclone-hero">
+                  <img
+                    src="assets/rclone-manager.svg"
+                    alt="Rclone Manager Logo"
+                    class="rclone-icon"
+                  />
+                  <div class="rclone-identity">
+                    <span class="rclone-name">RClone Manager</span>
+                    <span class="rclone-version">{{ rCloneManagerVersion }}</span>
+                    @if (buildType()) {
+                      <span class="channel-badge stable">
+                        {{ getChannelLabel(buildType()) | translate }}
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <div class="rclone-details">
+                  <div class="detail-row">
+                    <span class="detail-label">{{ 'modals.about.os' | translate }}</span>
+                    <span class="detail-value">{{ debug.platform }} ({{ debug.arch }})</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">{{ 'modals.about.mode' | translate }}</span>
+                    <span class="detail-value">{{ debug.mode }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">{{ 'modals.about.debugTools' | translate }}</span>
+                    <span class="detail-value"></span>
+                    <button
+                      mat-icon-button
+                      class="action-button"
+                      (click)="navigateTo('debugging')"
+                      [matTooltip]="'modals.about.debugTools' | translate"
+                      matTooltipPosition="right"
+                    >
+                      <mat-icon svgIcon="bug" class="purple"></mat-icon>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="loading">
+                  <mat-spinner diameter="24"></mat-spinner>
+                  <span>{{ 'common.loading' | translate }}</span>
+                </div>
+              }
+            </div>
+
             @if (appReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">
@@ -292,13 +333,15 @@
                         {{ 'modals.about.installUpdate' | translate }}
                       }
                     </button>
-                    <button
-                      mat-stroked-button
-                      (click)="skipUpdate()"
-                      [disabled]="appDownloadInProgress()"
-                    >
-                      {{ 'modals.about.skipVersion' | translate }}
-                    </button>
+                    @if (appDownloadInProgress()) {
+                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
+                        {{ 'common.cancel' | translate }}
+                      </button>
+                    } @else {
+                      <button mat-stroked-button (click)="skipUpdate()">
+                        {{ 'modals.about.skipVersion' | translate }}
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -343,6 +386,63 @@
                 <ng-container
                   *ngTemplateOutlet="skippedList; context: { versions: appSkippedVersions() }"
                 ></ng-container>
+              </div>
+            }
+          </div>
+        }
+        @case ('debugging') {
+          <div class="modal-content updates-page">
+            @if (debugInfo()) {
+              @let debug = debugInfo()!;
+              <div class="stacked-buttons">
+                <button
+                  matButton
+                  class="about-item"
+                  (click)="openFolder('logs')"
+                  [matTooltip]="debug.logsDir"
+                  matTooltipPosition="right"
+                >
+                  <span>{{ 'modals.about.logsFolder' | translate }}</span>
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <mat-divider></mat-divider>
+                <button
+                  matButton
+                  class="about-item"
+                  (click)="openFolder('config')"
+                  [matTooltip]="debug.configDir"
+                  matTooltipPosition="right"
+                >
+                  <span>{{ 'modals.about.configFolder' | translate }}</span>
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <mat-divider></mat-divider>
+                <button
+                  matButton
+                  class="about-item"
+                  (click)="openFolder('cache')"
+                  [matTooltip]="debug.cacheDir"
+                  matTooltipPosition="right"
+                >
+                  <span>{{ 'modals.about.cacheFolder' | translate }}</span>
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+              </div>
+
+              <div class="debug-actions-section">
+                <button mat-raised-button class="primary" (click)="openDevTools()">
+                  <mat-icon svgIcon="terminal"></mat-icon>
+                  <span>{{ 'modals.about.openDevTools' | translate }}</span>
+                </button>
+                <button mat-raised-button class="warn" (click)="restartApp()">
+                  <mat-icon svgIcon="reset-wrench"></mat-icon>
+                  <span>{{ 'modals.about.restartApp' | translate }}</span>
+                </button>
+              </div>
+            } @else {
+              <div class="loading">
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>{{ 'common.loading' | translate }}</span>
               </div>
             }
           </div>
@@ -523,13 +623,15 @@
                       {{ 'modals.about.updateRclone' | translate }}
                     }
                   </button>
-                  <button
-                    mat-button
-                    (click)="skipRcloneUpdate()"
-                    [disabled]="rcloneUpdateInProgress()"
-                  >
-                    {{ 'modals.about.skipVersion' | translate }}
-                  </button>
+                  @if (rcloneUpdateInProgress()) {
+                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
+                      {{ 'common.cancel' | translate }}
+                    </button>
+                  } @else {
+                    <button mat-button (click)="skipRcloneUpdate()">
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  }
                 </div>
               </div>
             } @else {
@@ -700,66 +802,7 @@
             }
           </div>
         }
-        @case ('debug') {
-          <div class="modal-content debug-content">
-            @if (debugInfo()) {
-              @let debug = debugInfo()!;
-              <div class="debug-section">
-                <h4>{{ 'modals.about.systemInfo' | translate }}</h4>
-                <div class="rclone-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.version' | translate }}</span>
-                    <span class="detail-value">{{ debug.appVersion }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.mode' | translate }}</span>
-                    <span class="detail-value">{{ debug.mode }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{{ 'modals.about.platform' | translate }}</span>
-                    <span class="detail-value">{{ debug.platform }} ({{ debug.arch }})</span>
-                  </div>
-                </div>
-              </div>
 
-              <div class="debug-section">
-                <h4>{{ 'modals.about.folders' | translate }}</h4>
-                <div class="folder-buttons">
-                  <button matButton class="about-item" (click)="openFolder('logs')">
-                    <span>{{ 'modals.about.logsFolder' | translate }}</span>
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                  </button>
-                  <button matButton class="about-item" (click)="openFolder('config')">
-                    <span>{{ 'modals.about.configFolder' | translate }}</span>
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                  </button>
-                  <button matButton class="about-item" (click)="openFolder('cache')">
-                    <span>{{ 'modals.about.cacheFolder' | translate }}</span>
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                  </button>
-                </div>
-              </div>
-
-              <div class="debug-section">
-                <h4>{{ 'modals.about.developerTools' | translate }}</h4>
-                <div class="debug-actions">
-                  <button matButton="filled" class="primary" (click)="openDevTools()">
-                    <mat-icon svgIcon="terminal"></mat-icon>
-                    {{ 'modals.about.openDevTools' | translate }}
-                  </button>
-                  <button matButton="outlined" class="warn" (click)="restartApp()">
-                    {{ 'modals.about.restartApp' | translate }}
-                  </button>
-                </div>
-              </div>
-            } @else {
-              <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
-                <span>{{ 'common.loading' | translate }}</span>
-              </div>
-            }
-          </div>
-        }
         @case ('memory') {
           <div class="modal-content debug-content">
             @if (memoryStats()) {

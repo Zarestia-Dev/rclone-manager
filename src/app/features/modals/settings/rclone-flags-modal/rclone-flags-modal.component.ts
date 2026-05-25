@@ -56,90 +56,90 @@ interface ServiceConfig {
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {
     icon: 'vfs',
-    description: 'modals.rcloneConfig.services.vfs',
+    description: 'modals.rcloneFlags.services.vfs',
     mainCategory: 'File System & Storage',
   },
   mount: {
     icon: 'mount',
-    description: 'modals.rcloneConfig.services.mount',
+    description: 'modals.rcloneFlags.services.mount',
     mainCategory: 'File System & Storage',
   },
   filter: {
     icon: 'filter',
-    description: 'modals.rcloneConfig.services.filter',
+    description: 'modals.rcloneFlags.services.filter',
     mainCategory: 'File System & Storage',
   },
   main: {
     icon: 'gear',
-    description: 'modals.rcloneConfig.services.main',
+    description: 'modals.rcloneFlags.services.main',
     mainCategory: 'General Settings',
   },
   log: {
     icon: 'file-lines',
-    description: 'modals.rcloneConfig.services.log',
+    description: 'modals.rcloneFlags.services.log',
     mainCategory: 'General Settings',
   },
   http: {
     icon: 'globe',
-    description: 'modals.rcloneConfig.services.http',
+    description: 'modals.rcloneFlags.services.http',
     mainCategory: 'Network & Servers',
   },
   rc: {
     icon: 'server',
-    description: 'modals.rcloneConfig.services.rc',
+    description: 'modals.rcloneFlags.services.rc',
     mainCategory: 'General Settings',
   },
   dlna: {
     icon: 'tv',
-    description: 'modals.rcloneConfig.services.dlna',
+    description: 'modals.rcloneFlags.services.dlna',
     mainCategory: 'Network & Servers',
   },
   ftp: {
     icon: 'ftp',
-    description: 'modals.rcloneConfig.services.ftp',
+    description: 'modals.rcloneFlags.services.ftp',
     mainCategory: 'Network & Servers',
   },
   nfs: {
     icon: 'database',
-    description: 'modals.rcloneConfig.services.nfs',
+    description: 'modals.rcloneFlags.services.nfs',
     mainCategory: 'Network & Servers',
   },
   proxy: {
     icon: 'security',
-    description: 'modals.rcloneConfig.services.proxy',
+    description: 'modals.rcloneFlags.services.proxy',
     mainCategory: 'General Settings',
   },
   restic: {
     icon: 'box-archive',
-    description: 'modals.rcloneConfig.services.restic',
+    description: 'modals.rcloneFlags.services.restic',
     mainCategory: 'Network & Servers',
   },
   s3: {
     icon: 'bucket',
-    description: 'modals.rcloneConfig.services.s3',
+    description: 'modals.rcloneFlags.services.s3',
     mainCategory: 'Network & Servers',
   },
   sftp: {
     icon: 'lock',
-    description: 'modals.rcloneConfig.services.sftp',
+    description: 'modals.rcloneFlags.services.sftp',
     mainCategory: 'Network & Servers',
   },
   webdav: {
     icon: 'cloud',
-    description: 'modals.rcloneConfig.services.webdav',
+    description: 'modals.rcloneFlags.services.webdav',
     mainCategory: 'Network & Servers',
   },
 };
 
 const CATEGORY_CONFIG: Record<string, { icon: string; description: string }> = {
-  General: { icon: 'gear', description: 'modals.rcloneConfig.categories.General' },
-  Auth: { icon: 'lock', description: 'modals.rcloneConfig.categories.Auth' },
-  HTTP: { icon: 'globe', description: 'modals.rcloneConfig.categories.HTTP' },
-  Template: { icon: 'terminal', description: 'modals.rcloneConfig.categories.Template' },
-  MetaRules: { icon: 'chart', description: 'modals.rcloneConfig.categories.MetaRules' },
-  RulesOpt: { icon: 'filter', description: 'modals.rcloneConfig.categories.RulesOpt' },
-  MetricsAuth: { icon: 'lock', description: 'modals.rcloneConfig.categories.MetricsAuth' },
-  MetricsHTTP: { icon: 'globe', description: 'modals.rcloneConfig.categories.MetricsHTTP' },
+  General: { icon: 'gear', description: 'modals.rcloneFlags.categories.General' },
+  Auth: { icon: 'lock', description: 'modals.rcloneFlags.categories.Auth' },
+  HTTP: { icon: 'globe', description: 'modals.rcloneFlags.categories.HTTP' },
+  Template: { icon: 'terminal', description: 'modals.rcloneFlags.categories.Template' },
+  MetaRules: { icon: 'chart', description: 'modals.rcloneFlags.categories.MetaRules' },
+  RulesOpt: { icon: 'filter', description: 'modals.rcloneFlags.categories.RulesOpt' },
+  MetricsAuth: { icon: 'lock', description: 'modals.rcloneFlags.categories.MetricsAuth' },
+  MetricsHTTP: { icon: 'globe', description: 'modals.rcloneFlags.categories.MetricsHTTP' },
 };
 
 const MAIN_CATEGORY_CONFIG: Record<
@@ -148,23 +148,23 @@ const MAIN_CATEGORY_CONFIG: Record<
 > = {
   'General Settings': {
     icon: 'gear',
-    description: 'modals.rcloneConfig.mainCategories.generalSettings.description',
-    titleKey: 'modals.rcloneConfig.mainCategories.generalSettings.title',
+    description: 'modals.rcloneFlags.mainCategories.generalSettings.description',
+    titleKey: 'modals.rcloneFlags.mainCategories.generalSettings.title',
   },
   'File System & Storage': {
     icon: 'folder',
-    description: 'modals.rcloneConfig.mainCategories.fileSystemAndStorage.description',
-    titleKey: 'modals.rcloneConfig.mainCategories.fileSystemAndStorage.title',
+    description: 'modals.rcloneFlags.mainCategories.fileSystemAndStorage.description',
+    titleKey: 'modals.rcloneFlags.mainCategories.fileSystemAndStorage.title',
   },
   'Network & Servers': {
     icon: 'public',
-    description: 'modals.rcloneConfig.mainCategories.networkAndServers.description',
-    titleKey: 'modals.rcloneConfig.mainCategories.networkAndServers.title',
+    description: 'modals.rcloneFlags.mainCategories.networkAndServers.description',
+    titleKey: 'modals.rcloneFlags.mainCategories.networkAndServers.title',
   },
 };
 
 @Component({
-  selector: 'app-rclone-config-modal',
+  selector: 'app-rclone-flags-modal',
   standalone: true,
   imports: [
     TitleCasePipe,
@@ -180,12 +180,12 @@ const MAIN_CATEGORY_CONFIG: Record<
     MatTooltipModule,
     TranslateModule,
   ],
-  templateUrl: './rclone-config-modal.component.html',
-  styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  templateUrl: './rclone-flags-modal.component.html',
+  styleUrls: ['./rclone-flags-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RcloneConfigModalComponent implements OnInit {
-  private readonly dialogRef = inject(MatDialogRef<RcloneConfigModalComponent>);
+export class RcloneFlagsModalComponent implements OnInit {
+  private readonly dialogRef = inject(MatDialogRef<RcloneFlagsModalComponent>);
   private readonly notificationService = inject(NotificationService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
@@ -220,9 +220,9 @@ export class RcloneConfigModalComponent implements OnInit {
   readonly hasSearchQuery = computed(() => this.searchQuery().trim().length > 0);
 
   readonly pageTitle = computed(() => {
-    if (this.currentPage() === 'home') return 'modals.rcloneConfig.pageTitle.home';
-    if (this.currentCategory()) return 'modals.rcloneConfig.pageTitle.category';
-    return 'modals.rcloneConfig.pageTitle.backend';
+    if (this.currentPage() === 'home') return 'modals.rcloneFlags.pageTitle.home';
+    if (this.currentCategory()) return 'modals.rcloneFlags.pageTitle.category';
+    return 'modals.rcloneFlags.pageTitle.backend';
   });
 
   readonly pageTitleParams = computed(() => {
@@ -374,7 +374,7 @@ export class RcloneConfigModalComponent implements OnInit {
       this.createFormControls(deduplicated);
     } catch {
       this.notificationService.showError(
-        this.translate.instant('modals.rcloneConfig.notifications.loadError')
+        this.translate.instant('modals.rcloneFlags.notifications.loadError')
       );
     }
   }
@@ -387,8 +387,9 @@ export class RcloneConfigModalComponent implements OnInit {
       for (const category in options[service]) {
         const seen = new Set<string>();
         result[service][category] = options[service][category].filter(opt => {
-          if (seen.has(opt.Name)) return false;
-          seen.add(opt.Name);
+          const key = opt.FieldName || opt.Name;
+          if (seen.has(key)) return false;
+          seen.add(key);
           return true;
         });
       }
@@ -407,7 +408,7 @@ export class RcloneConfigModalComponent implements OnInit {
         for (const option of options[service][category]) {
           const fullFieldName =
             category === 'General' ? option.FieldName : `${category}.${option.FieldName}`;
-          const key = `${service}---${category}---${option.Name}`;
+          const key = `${service}---${category}---${option.FieldName || option.Name}`;
           this.optionToServiceMap[key] = service;
           this.optionToFullFieldNameMap[key] = fullFieldName;
           controls[key] = this.fb.control(option.Value);
@@ -459,8 +460,8 @@ export class RcloneConfigModalComponent implements OnInit {
 
   getSearchPlaceholder(): string {
     return this.currentPage() === 'home'
-      ? 'modals.rcloneConfig.search.placeholderHome'
-      : 'modals.rcloneConfig.search.placeholderPage';
+      ? 'modals.rcloneFlags.search.placeholderHome'
+      : 'modals.rcloneFlags.search.placeholderPage';
   }
 
   getMatchCountForCategory(serviceName: string, categoryName: string): number {
@@ -536,14 +537,14 @@ export class RcloneConfigModalComponent implements OnInit {
       if (isAtDefault) {
         await this.rcloneBackendOptionsService.removeOption(service, fullFieldName);
         this.notificationService.showSuccess(
-          this.translate.instant('modals.rcloneConfig.notifications.resetSuccess', {
+          this.translate.instant('modals.rcloneFlags.notifications.resetSuccess', {
             field: fullFieldName,
           })
         );
       } else {
         await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
         this.notificationService.showSuccess(
-          this.translate.instant('modals.rcloneConfig.notifications.saveSuccess', {
+          this.translate.instant('modals.rcloneFlags.notifications.saveSuccess', {
             field: fullFieldName,
           })
         );
@@ -553,7 +554,7 @@ export class RcloneConfigModalComponent implements OnInit {
       control.markAsPristine();
     } catch (error) {
       this.notificationService.showError(
-        this.translate.instant('modals.rcloneConfig.notifications.saveError', {
+        this.translate.instant('modals.rcloneFlags.notifications.saveError', {
           field: optionName,
           error: error as string,
         })
@@ -570,9 +571,9 @@ export class RcloneConfigModalComponent implements OnInit {
 
   async resetAllOptions(): Promise<void> {
     const dialogRef = this.modalService.openConfirm({
-      title: this.translate.instant('modals.rcloneConfig.reset.title'),
-      message: this.translate.instant('modals.rcloneConfig.reset.message'),
-      confirmText: this.translate.instant('modals.rcloneConfig.reset.confirm'),
+      title: this.translate.instant('modals.rcloneFlags.reset.title'),
+      message: this.translate.instant('modals.rcloneFlags.reset.message'),
+      confirmText: this.translate.instant('modals.rcloneFlags.reset.confirm'),
       cancelText: this.translate.instant('common.cancel'),
     });
 
@@ -584,11 +585,11 @@ export class RcloneConfigModalComponent implements OnInit {
       await this.rcloneBackendOptionsService.resetOptions();
       await this.loadAndBuildOptions();
       this.notificationService.showSuccess(
-        this.translate.instant('modals.rcloneConfig.notifications.resetAllSuccess')
+        this.translate.instant('modals.rcloneFlags.notifications.resetAllSuccess')
       );
     } catch {
       this.notificationService.showError(
-        this.translate.instant('modals.rcloneConfig.notifications.resetAllError')
+        this.translate.instant('modals.rcloneFlags.notifications.resetAllError')
       );
     } finally {
       this.isResetting.set(false);
@@ -598,7 +599,7 @@ export class RcloneConfigModalComponent implements OnInit {
   // ── Config accessors ───────────────────────────────────────────────────────
 
   getUniqueControlKey(option: RcConfigOption): string {
-    return `${this.currentPage()}---${this.currentCategory()}---${option.Name}`;
+    return `${this.currentPage()}---${this.currentCategory()}---${option.FieldName || option.Name}`;
   }
 
   getServiceIcon(name: string): string {

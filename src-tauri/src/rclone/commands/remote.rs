@@ -13,9 +13,9 @@ use crate::{
             job::stop_job,
             mount::unmount_remote,
             serve::stop_serve,
-            system::{ensure_oauth_process, get_fscache_entries},
+            system::{clear_fscache, ensure_oauth_process, get_fscache_entries},
         },
-        state::scheduled_tasks::ScheduledTasksCache,
+        state::automations::AutomationsCache,
     },
     utils::{
         logging::log::log_operation,
@@ -146,6 +146,10 @@ pub async fn continue_create_remote_interactive(
     }
 
     let value = call_config(&app, config::UPDATE, body).await?;
+
+    if let Err(e) = clear_fscache(app.clone()).await {
+        warn!("Failed to clear fscache after interactive remote update: {e}");
+    }
 
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
@@ -284,6 +288,10 @@ pub async fn update_remote(
     app.emit(REMOTE_CACHE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
+    if let Err(e) = clear_fscache(app.clone()).await {
+        warn!("Failed to clear fscache after remote update: {e}");
+    }
+
     let _ = get_fscache_entries(app).await;
 
     Ok(())
@@ -291,23 +299,23 @@ pub async fn update_remote(
 
 #[tauri::command]
 pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
-    let cache = app.state::<ScheduledTasksCache>();
+    let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");
 
     let state = app.state::<RcloneState>();
     let backend = app.state::<BackendManager>().get_active().await;
 
     match cache
-        .remove_tasks_for_remote(&backend.name, &name, Some(&app))
+        .remove_automations_for_remote(&backend.name, &name, Some(&app))
         .await
     {
         Ok(ids) if !ids.is_empty() => {
             info!(
-                "Removed {} scheduled task(s) for deleted remote '{name}'",
+                "Removed {} automation(s) for deleted remote '{name}'",
                 ids.len()
             );
         }
-        Err(e) => warn!("Failed to clean up scheduled tasks for remote '{name}': {e}"),
+        Err(e) => warn!("Failed to clean up automations for remote '{name}': {e}"),
         _ => {}
     }
 

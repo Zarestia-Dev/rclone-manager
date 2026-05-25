@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
@@ -40,21 +40,27 @@ export class AppUpdaterService extends TauriBaseService {
   // ---------------------------------------------------------------------------
 
   private readonly _buildType = signal<string | null>(null);
-  private readonly _hasUpdates = signal<boolean>(false);
-  private readonly _updateInProgress = signal<boolean>(false);
-  private readonly _updateAvailable = signal<UpdateInfo | null>(null);
+  private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
-  private readonly _readyToRestart = signal<boolean>(false);
   private readonly _isChecking = signal<boolean>(false);
 
-  // Public readonly surface
+  // Public readonly surface (Derived to prevent state tears)
   public readonly buildType = this._buildType.asReadonly();
-  public readonly hasUpdates = this._hasUpdates.asReadonly();
-  public readonly updateInProgress = this._updateInProgress.asReadonly();
-  public readonly updateAvailable = this._updateAvailable.asReadonly();
-  public readonly downloadStatus = this._downloadStatus.asReadonly();
-  public readonly readyToRestart = this._readyToRestart.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
+  public readonly downloadStatus = this._downloadStatus.asReadonly();
+
+  public readonly updateAvailable = computed(() => {
+    const update = this._updateState();
+    return update && !this.settings.isVersionSkipped(update.version) ? update : null;
+  });
+
+  public readonly hasUpdates = computed(() => !!this.updateAvailable());
+  public readonly updateInProgress = computed(
+    () => this._updateState()?.status === BackendUpdateStatus.Downloading
+  );
+  public readonly readyToRestart = computed(
+    () => this._updateState()?.status === BackendUpdateStatus.ReadyToRestart
+  );
 
   // Settings surface
   public readonly skippedVersions = this.settings.skippedVersions;
@@ -76,9 +82,9 @@ export class AppUpdaterService extends TauriBaseService {
 
     try {
       // If we're already updating, just sync and return current state.
-      if (this._updateInProgress() || this._readyToRestart()) {
+      if (this.updateInProgress() || this.readyToRestart()) {
         this._isChecking.set(true);
-        const result = this._updateAvailable() ?? (await this.syncUpdateStatus());
+        const result = this._updateState() ?? (await this.syncUpdateStatus());
 
         // Even in the "already updating" branch, we should check for staleness.
         if (checkId !== this._latestCheckId) return null;
@@ -87,8 +93,7 @@ export class AppUpdaterService extends TauriBaseService {
       }
 
       this._isChecking.set(true);
-      this._updateInProgress.set(false);
-      this.resetDownloadStatus();
+      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       const result = await this.invokeCommand<UpdateInfo | null>('fetch_update', {
         channel: this.settings.updateChannel(),
@@ -115,44 +120,25 @@ export class AppUpdaterService extends TauriBaseService {
   }
 
   private processUpdateResult(result: UpdateInfo | null, options: { silent: boolean }): void {
-    if (result) {
-      if (result.status === BackendUpdateStatus.ReadyToRestart) {
-        this._readyToRestart.set(true);
-        this._updateAvailable.set(result);
-        return;
-      }
+    this._updateState.set(result);
 
-      if (result.status === BackendUpdateStatus.Downloading) {
-        this._updateAvailable.set(result);
-        this._updateInProgress.set(true);
-        this._hasUpdates.set(true);
-        return;
-      }
-
-      if (this.settings.isVersionSkipped(result.version)) {
-        this._updateAvailable.set(null);
-        this._hasUpdates.set(false);
-        return;
-      }
-
-      this._updateAvailable.set(result);
-      this._hasUpdates.set(true);
-
-      if (!options.silent) {
-        this.notificationService.showInfo(
-          this.translate.instant('updates.availableNotification', { version: result.version }),
-          this.translate.instant('common.ok'),
-          10000
-        );
-      }
-    } else {
-      this._updateAvailable.set(null);
-      this._hasUpdates.set(false);
+    if (
+      result &&
+      !options.silent &&
+      result.status !== BackendUpdateStatus.Downloading &&
+      result.status !== BackendUpdateStatus.ReadyToRestart &&
+      !this.settings.isVersionSkipped(result.version)
+    ) {
+      this.notificationService.showInfo(
+        this.translate.instant('updates.availableNotification', { version: result.version }),
+        this.translate.instant('common.ok'),
+        10000
+      );
     }
   }
 
   async installUpdate(): Promise<void> {
-    const update = this._updateAvailable();
+    const update = this.updateAvailable();
     if (!update) {
       this.notificationService.showWarning(this.translate.instant('updates.noUpdateAvailable'));
       return;
@@ -173,8 +159,8 @@ export class AppUpdaterService extends TauriBaseService {
         if (!confirmed) return;
       }
 
-      this._updateInProgress.set(true);
-      this.resetDownloadStatus();
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
+      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       await this.invokeWithNotification('install_update', undefined, {
         errorKey: 'updates.installFailed',
@@ -182,14 +168,31 @@ export class AppUpdaterService extends TauriBaseService {
       });
     } catch (error) {
       console.error('Failed to install update:', error);
-      this._updateInProgress.set(false);
-      this.resetDownloadStatus();
+      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
       if (this.isStaleUpdateError(String(error))) {
-        this._updateAvailable.set(null);
-        this._hasUpdates.set(false);
+        this._updateState.set(null);
         await this.checkForUpdates();
+      } else {
+        this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
       }
+    }
+  }
+
+  async cancelUpdate(): Promise<void> {
+    if (!this.updateInProgress()) return;
+
+    try {
+      await this.invokeCommand('cancel_app_update');
+      this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
+
+      this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Available } : null));
+
+      // Optionally sync status to ensure we match backend exactly
+      await this.syncUpdateStatus();
+    } catch (error) {
+      console.error('Failed to cancel app update:', error);
+      this.notificationService.showError(this.translate.instant('updates.cancelFailed'));
     }
   }
 
@@ -207,8 +210,6 @@ export class AppUpdaterService extends TauriBaseService {
 
   async skipVersion(version: string): Promise<void> {
     await this.settings.skipVersion(version);
-    this._updateAvailable.set(null);
-    this._hasUpdates.set(false);
     this.notificationService.showInfo(this.translate.instant('updates.skipVersion', { version }));
   }
 
@@ -219,10 +220,8 @@ export class AppUpdaterService extends TauriBaseService {
 
   async setChannel(channel: string): Promise<void> {
     await this.settings.setChannel(channel);
-    this._updateAvailable.set(null);
-    this._hasUpdates.set(false);
-    this._readyToRestart.set(false);
-    this.resetDownloadStatus();
+    this._updateState.set(null);
+    this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
     this.notificationService.showInfo(
       this.translate.instant('updates.channelChanged', { channel })
     );
@@ -274,12 +273,13 @@ export class AppUpdaterService extends TauriBaseService {
         map(event => event.data as UpdateInfo)
       )
       .subscribe(metadata => {
-        const current = this._updateAvailable();
+        const current = this._updateState();
         if (current?.version === metadata.version) return;
+
+        this._updateState.set(metadata);
+
         if (this.settings.isVersionSkipped(metadata.version)) return;
 
-        this._updateAvailable.set(metadata);
-        this._hasUpdates.set(true);
         this.notificationService.showInfo(
           this.translate.instant('updates.availableNotification', { version: metadata.version }),
           this.translate.instant('common.ok'),
@@ -300,25 +300,22 @@ export class AppUpdaterService extends TauriBaseService {
         if (status.state.status === DownloadStateStatus.Failed) {
           const msg = status.state.data ?? this.translate.instant('updates.installFailed');
           this.notificationService.showError(msg);
-          this._updateInProgress.set(false);
-          this.resetDownloadStatus();
+          this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
           if (this.isStaleUpdateError(msg)) {
-            this._updateAvailable.set(null);
-            this._hasUpdates.set(false);
+            this._updateState.set(null);
             void this.checkForUpdates();
+          } else {
+            this._updateState.update(u =>
+              u ? { ...u, status: BackendUpdateStatus.Available } : null
+            );
           }
           return;
         }
 
         if (status.state.status === DownloadStateStatus.Complete) {
-          this._updateInProgress.set(false);
-          this._hasUpdates.set(false);
-          this._readyToRestart.set(true);
-
-          // Transition the metadata to ReadyToRestart status instead of wiping it.
-          this._updateAvailable.update(current =>
-            current ? { ...current, status: BackendUpdateStatus.ReadyToRestart } : null
+          this._updateState.update(u =>
+            u ? { ...u, status: BackendUpdateStatus.ReadyToRestart } : null
           );
 
           this.notificationService.showSuccess(this.translate.instant('updates.installSuccess'));
@@ -329,10 +326,6 @@ export class AppUpdaterService extends TauriBaseService {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
-  private resetDownloadStatus(): void {
-    this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
-  }
 
   /** True when the error message indicates the staged update is no longer valid. */
   private isStaleUpdateError(message: string): boolean {

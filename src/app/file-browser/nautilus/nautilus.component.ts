@@ -34,6 +34,7 @@ import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.s
 import { NautilusTabService, PaneViewModel } from 'src/app/services/ui/nautilus-tab.service';
 import { NautilusActionsService } from 'src/app/services/ui/nautilus-actions.service';
 import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection.service';
+import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 
 import { NautilusSidebarComponent } from './sidebar/nautilus-sidebar.component';
 import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
@@ -103,6 +104,7 @@ export class NautilusComponent implements OnInit {
   protected readonly tabSvc = inject(NautilusTabService);
   protected readonly actions = inject(NautilusActionsService);
   protected readonly selectionSvc = inject(NautilusSelectionService);
+  protected readonly fileViewerSvc = inject(FileViewerService);
 
   // ── Outputs & ViewChild ──────────────────────────────────────────────────────
   readonly closeOverlay = output<void>();
@@ -377,12 +379,14 @@ export class NautilusComponent implements OnInit {
       const path = this.tabSvc.activePath();
       const isOpen = this.nautilusService.isNautilusOverlayOpen();
       const isStandalone = this.nautilusService.isStandaloneWindow();
+      const activeFile = this.fileViewerSvc.activeFileName();
 
       untracked(() => {
         let newPath = '/';
         if (isOpen || isStandalone) {
+          const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
           newPath = remote
-            ? `/nautilus/${encodeURIComponent(remote.name)}${path ? `/${path}` : ''}`
+            ? `/nautilus/${encodeURIComponent(remote.name)}${displayPath ? `/${displayPath}` : ''}`
             : '/nautilus';
         }
         if (window.location.pathname !== newPath) {
@@ -407,13 +411,15 @@ export class NautilusComponent implements OnInit {
       } else if (starred) {
         segment = this.translate.instant('nautilus.titles.starred');
       } else if (remote) {
-        segment = this.pathService.getDisplaySegment(
-          remote,
-          path,
-          this.translate.instant(remote.label || remote.name)
-        );
+        const seg = this.pathService.getDisplaySegment(remote, path, remote.label || remote.name);
+        segment = this.translate.instant(seg);
       } else {
         segment = this.translate.instant('nautilus.titles.files');
+      }
+
+      const activeFile = this.fileViewerSvc.activeFileName();
+      if (activeFile) {
+        segment = segment ? `${activeFile} - ${segment}` : activeFile;
       }
 
       this.nautilusService.setWindowTitle(segment ? `${segment} - ${appSuffix}` : appSuffix);

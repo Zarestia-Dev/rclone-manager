@@ -119,9 +119,9 @@ export class TitlebarComponent implements OnInit {
       action: (): void => this.openPreferencesModal(),
     },
     {
-      label: 'titlebar.menu.configuration',
+      label: 'titlebar.menu.flags',
       shortcut: 'Ctrl + .',
-      action: (): void => this.openRcloneConfigModal(),
+      action: (): void => this.openRcloneFlagsModal(),
       dividerAfter: true,
     },
     {
@@ -179,8 +179,8 @@ export class TitlebarComponent implements OnInit {
     this.modalService.openPreferences();
   }
 
-  openRcloneConfigModal(): void {
-    this.modalService.openRcloneConfig();
+  openRcloneFlagsModal(): void {
+    this.modalService.openRcloneFlags();
   }
 
   openKeyboardShortcutsModal(): void {

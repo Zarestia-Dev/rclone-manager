@@ -12,7 +12,7 @@ use log::{info, warn};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
 
 /// **Save remote settings (per remote)**
@@ -23,7 +23,7 @@ pub async fn save_remote_settings(
     mut settings: Value,
 ) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
-    let cache = app.state::<ScheduledTasksCache>();
+    let cache = app.state::<AutomationsCache>();
 
     // Insert name into settings
     if let Some(settings_obj) = settings.as_object_mut() {
@@ -91,16 +91,21 @@ pub async fn save_remote_settings(
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
-        .add_or_update_task_for_remote(&backend_name, &remote_name, &settings)
+        .add_or_update_automation_for_remote(&backend_name, &remote_name, &settings)
         .await
     {
         Ok(result) if result.has_changes() => {
-            use crate::core::scheduler::engine::CronScheduler;
-            let scheduler = app.state::<CronScheduler>();
+            use crate::core::automation::engine::AutomationScheduler;
+            let scheduler = app.state::<AutomationScheduler>();
             if let Err(e) = scheduler.apply_cache_result(&result, cache).await {
-                warn!("Scheduler sync incomplete for remote '{remote_name}': {e}");
+                warn!("Automation sync incomplete for remote '{remote_name}': {e}");
             } else {
-                info!("Scheduler updated for remote '{remote_name}'");
+                info!("Automation updated for remote '{remote_name}'");
+            }
+
+            let watcher_manager = app.state::<crate::core::automation::watcher::WatcherManager>();
+            if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
+                warn!("Watcher sync incomplete for remote '{remote_name}': {e}");
             }
         }
         _ => {}

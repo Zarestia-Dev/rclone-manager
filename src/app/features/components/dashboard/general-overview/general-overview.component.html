@@ -473,64 +473,68 @@
                       }
                     </mat-expansion-panel>
                   }
-                  @case ('tasks') {
+                  @case ('automations') {
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('tasks')"
-                      (opened)="setPanelOpenState('tasks', true)"
-                      (closed)="setPanelOpenState('tasks', false)"
-                      class="scheduled-tasks-panel"
+                      [expanded]="getPanelOpenState('automations')"
+                      (opened)="setPanelOpenState('automations', true)"
+                      (closed)="setPanelOpenState('automations', false)"
+                      class="automations-panel"
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
                           <div class="panel-title-content">
                             <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
-                            <span>{{ 'generalOverview.panels.tasks' | translate }}</span>
+                            <span>{{ 'generalOverview.panels.automations' | translate }}</span>
                           </div>
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
                             class="app-pill"
-                            [class.p-primary]="activeScheduledTasksCount() > 0"
-                            [class.p-dim]="activeScheduledTasksCount() === 0"
+                            [class.p-primary]="activeAutomationsCount() > 0"
+                            [class.p-dim]="activeAutomationsCount() === 0"
                           >
                             {{
-                              totalScheduledTasksCount() > 0
-                                ? ('generalOverview.tasks.activeCount'
+                              totalAutomationsCount() > 0
+                                ? ('generalOverview.automations.activeCount'
                                   | translate
                                     : {
-                                        active: activeScheduledTasksCount(),
-                                        total: totalScheduledTasksCount(),
+                                        active: activeAutomationsCount(),
+                                        total: totalAutomationsCount(),
                                       })
-                                : ('generalOverview.tasks.noScheduled' | translate)
+                                : ('generalOverview.automations.noScheduled' | translate)
                             }}
                           </span>
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
-                      @if (isLoadingScheduledTasks()) {
+                      @if (isLoadingAutomations()) {
                         <div class="loading fade-in" aria-live="polite">
                           <mat-spinner
                             diameter="24"
-                            [attr.aria-label]="'generalOverview.tasks.aria.loading' | translate"
+                            [attr.aria-label]="
+                              'generalOverview.automations.aria.loading' | translate
+                            "
                           ></mat-spinner>
-                          <span>{{ 'generalOverview.tasks.loading' | translate }}</span>
+                          <span>{{ 'generalOverview.automations.loading' | translate }}</span>
                         </div>
                       } @else {
-                        @if (totalScheduledTasksCount() === 0) {
-                          <div class="no-tasks-message empty-state-message" role="status">
+                        @if (totalAutomationsCount() === 0) {
+                          <div class="no-automations-message empty-state-message" role="status">
                             <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                            <span>{{ 'generalOverview.tasks.noConfigured' | translate }}</span>
+                            <span>{{
+                              'generalOverview.automations.noConfigured' | translate
+                            }}</span>
                           </div>
                         } @else {
                           <div class="grid">
-                            @for (task of scheduledTasks(); track task.id) {
-                              <app-scheduled-task-card
-                                [task]="task"
+                            @for (automation of automations(); track automation.id) {
+                              <app-automation-card
+                                [automation]="automation"
                                 variant="compact"
-                                (click)="onTaskClick(task)"
-                                (toggled)="toggleScheduledTask($event)"
-                                (openInFiles)="onOpenTaskInFiles($event)"
-                              ></app-scheduled-task-card>
+                                (click)="onAutomationClick(automation)"
+                                (toggled)="toggleAutomation($event)"
+                                (openInFiles)="onOpenAutomationInFiles($event)"
+                              ></app-automation-card>
                             }
                           </div>
                         }

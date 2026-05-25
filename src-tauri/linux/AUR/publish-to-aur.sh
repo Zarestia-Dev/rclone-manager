@@ -79,7 +79,7 @@ init_package() {
         print_info "Creating new repository..."
         mkdir -p "$pkg_name"
         cd "$pkg_name"
-        git init
+        git init --initial-branch=master
         git remote add origin "$pkg_url"
         print_success "Repository initialized"
     fi

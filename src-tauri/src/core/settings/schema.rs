@@ -55,6 +55,13 @@ pub struct GeneralSettings {
         description = "settings.general.restrict.description"
     )]
     pub restrict: bool,
+
+    #[setting(
+        label = "settings.general.standalone_dialogs.label",
+        description = "settings.general.standalone_dialogs.description"
+    )]
+    #[cfg(not(feature = "web-server"))]
+    pub standalone_dialogs: bool,
 }
 
 impl Default for GeneralSettings {
@@ -74,6 +81,8 @@ impl Default for GeneralSettings {
             start_on_startup: false,
             notifications: true,
             restrict: true,
+            #[cfg(not(feature = "web-server"))]
+            standalone_dialogs: false,
         }
     }
 }

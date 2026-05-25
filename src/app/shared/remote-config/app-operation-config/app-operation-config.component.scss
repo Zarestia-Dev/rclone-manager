@@ -1,37 +1,158 @@
-.header-section {
-  padding: var(--space-md);
+// ── Automation accordion ──────────────────────────────────────────────────────
+
+.automation-accordion {
+  margin-top: var(--space-sm);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
-  margin-top: var(--space-md);
   box-shadow: var(--box-shadow);
-
-  .section-description {
-    color: var(--dim-color);
-    font-size: var(--font-size-md);
-    line-height: 1.5;
-    margin-bottom: 0;
-  }
-}
-
-.cron-panel {
-  margin-top: var(--space-md);
-  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--box-shadow);
+}
 
-  .no-schedule {
-    font-style: italic;
-    opacity: 0.7;
+.accordion-item {
+  border-bottom: 1px solid var(--border-color);
+
+  &:last-child {
+    border-bottom: none;
   }
 
-  .clear-schedule-btn {
-    margin-left: 0.5rem;
-    color: var(--red);
+  // Expanded state: tint the header slightly
+  &.expanded > .accordion-header {
+    background: rgba(var(--primary-color-rgb), 0.04);
+  }
+
+  // Collapsed body
+  .accordion-body {
+    display: none;
+    padding: var(--space-md);
+    border-top: 1px solid var(--border-color);
+    animation: accordionOpen 0.18s ease;
+  }
+
+  &.expanded .accordion-body {
+    display: block;
+  }
+
+  &.disabled-tape {
+    position: relative;
+    background: repeating-linear-gradient(
+      -45deg,
+      rgba(var(--window-fg-color-rgb), 0.04),
+      rgba(var(--window-fg-color-rgb), 0.04) 10px,
+      rgba(var(--orange-rgb), 0.1) 10px,
+      rgba(var(--orange-rgb), 0.1) 20px
+    );
+
+    .accordion-header {
+      cursor: not-allowed;
+
+      &:hover {
+        background: rgba(var(--window-fg-color-rgb), 0.04);
+      }
+    }
+
+    .expand-icon {
+      opacity: 0.3;
+    }
+
+    mat-slide-toggle {
+      pointer-events: none;
+    }
   }
 }
+
+.accordion-header {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+
+  // Static autostart row has no cursor
+  .autostart-item & {
+    cursor: default;
+
+    &:hover {
+      background: transparent;
+    }
+  }
+}
+
+// Right-side meta (cron expression, watch delay, description)
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}
+
+.header-description {
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}
+
+.not-configured {
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.cron-chip {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
+}
+
+// Chevron rotates when expanded
+.expand-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  color: var(--dim-color);
+  transition: transform 0.18s ease;
+  margin-left: var(--space-xs);
+
+  .expanded > .accordion-header & {
+    transform: rotate(180deg);
+  }
+}
+
+.body-description {
+  color: var(--dim-color);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  margin: 0 0 var(--space-md);
+}
+
+@keyframes accordionOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ── Paths container ──────────────────────────────────────────────────────────
 
 .paths-container {
-  margin-top: var(--space-md);
+  margin-top: var(--space-sm);
   padding: var(--space-sm) var(--space-md) var(--space-md);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
@@ -85,25 +206,23 @@
   overflow: hidden;
 }
 
+// ── Path row ─────────────────────────────────────────────────────────────────
+
 .path-item-row {
   display: flex;
   align-items: stretch;
   min-height: 56px;
-  background: transparent;
   border-bottom: 1px solid var(--border-color);
-  transition: background 0.2s ease;
-  animation: pathEntry 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: pathEntry 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 
   &:last-child {
     border-bottom: none;
   }
 
-  // Focus effect for the entire row mimicking GNOME behavior
   &:focus-within {
     background: var(--hover-bg-color);
   }
 
-  // --- Type Selector (Prefix area) ---
   .path-type-selector {
     flex: 0 0 auto;
     display: flex;
@@ -134,7 +253,6 @@
       }
     }
 
-    // New custom dropdown button replacing mat-select
     .type-dropdown-btn {
       display: flex;
       align-items: center;
@@ -182,12 +300,10 @@
     }
   }
 
-  // --- Input Area (Stripped mat-form-field) ---
   mat-form-field.path-input-field {
     flex: 1;
     width: auto;
 
-    // Aggressively strip MDC structural elements so it blends into the row
     ::ng-deep {
       .mat-mdc-text-field-wrapper {
         background: transparent !important;
@@ -205,11 +321,9 @@
         padding: 0 !important;
         min-height: auto !important;
       }
-      .mdc-line-ripple {
-        display: none !important; // Hide underline
-      }
+      .mdc-line-ripple,
       .mat-mdc-form-field-subscript-wrapper {
-        display: none !important; // Hide error/hint area spacing
+        display: none !important;
       }
     }
 
@@ -224,7 +338,6 @@
     }
   }
 
-  // --- Actions Suffix ---
   .action-suffix {
     display: flex;
     align-items: center;
@@ -257,13 +370,15 @@
 @keyframes pathEntry {
   from {
     opacity: 0;
-    transform: translateY(-5px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
+// ── Messages ─────────────────────────────────────────────────────────────────
 
 .message {
   display: flex;
@@ -272,7 +387,7 @@
   padding: var(--space-sm);
   border-radius: var(--radius-md);
   font-size: var(--font-size-md);
-  margin-block: var(--space-md);
+  margin-top: var(--space-md);
 
   &.warning {
     background: rgba(var(--orange-rgb), 0.1);

@@ -62,7 +62,6 @@ impl RcApiEngine {
             return Ok(());
         };
 
-        // If the process is running and has a valid PID, try a graceful shutdown first.
         if self.running && child.id().is_some() {
             use crate::rclone::backend::BackendManager;
             let backend = app.state::<BackendManager>().get_active().await;
@@ -73,7 +72,6 @@ impl RcApiEngine {
                 self.running = false;
                 return Ok(());
             }
-            // Graceful shutdown failed; the child has been consumed and killed by that fn.
         } else {
             info!("Force killing engine process");
             if let Err(e) = child.kill().await {

@@ -8,14 +8,14 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::{
-    core::scheduler::engine::CronScheduler,
+    core::automation::engine::AutomationScheduler,
     rclone::{
         backend::{
             BackendManager,
             schema::BackendConnectionSchema,
             types::{Backend, BackendInfo},
         },
-        state::scheduled_tasks::ScheduledTasksCache,
+        state::automations::AutomationsCache,
     },
     utils::{
         rclone::endpoints::{config, core},
@@ -286,8 +286,8 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("➖ Removing backend: {name}");
 
-    let scheduler = app.state::<CronScheduler>();
-    let task_cache = app.state::<ScheduledTasksCache>();
+    let scheduler = app.state::<AutomationScheduler>();
+    let automations_cache = app.state::<AutomationsCache>();
     let settings_manager = app.state::<AppSettingsManager>();
     let backend_manager = app.state::<BackendManager>();
 
@@ -297,17 +297,20 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     delete_backend_from_settings(settings_manager.inner(), &name)?;
 
-    let tasks = task_cache.get_tasks_for_backend(&name).await;
-    if !tasks.is_empty() {
-        info!("🗑️ Cleaning up {} tasks for backend '{name}'", tasks.len());
-        for task in tasks {
-            if let Some(job_id_str) = &task.scheduler_job_id
+    let automations = automations_cache.get_automations_for_backend(&name).await;
+    if !automations.is_empty() {
+        info!(
+            "🗑️ Cleaning up {} automations for backend '{name}'",
+            automations.len()
+        );
+        for automation in automations {
+            if let Some(job_id_str) = &automation.scheduler_job_id
                 && let Ok(job_id) = uuid::Uuid::parse_str(job_id_str)
             {
-                let _ = scheduler.unschedule_task(job_id).await;
+                let _ = scheduler.unschedule_automation(job_id).await;
             }
         }
-        task_cache.clear_backend_tasks(&name).await;
+        automations_cache.clear_backend_automations(&name).await;
     }
 
     info!("✅ Backend '{name}' removed");

@@ -22,7 +22,7 @@ export class RemoteMetadataService extends TauriBaseService {
     source: Origin = 'dashboard',
     group?: string
   ): Promise<FsInfo> {
-    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+    const normalizedKey = this.pathService.normalizeRemoteName(remoteName);
 
     // Determine the proper fs name for rclone backend.
     // Local paths (starting with / or a Windows drive letter) shouldn't always have a colon appended.
@@ -49,7 +49,7 @@ export class RemoteMetadataService extends TauriBaseService {
    * Get a signal for a specific remote's features
    */
   getFeaturesSignal(remoteName: string): Signal<RemoteFeatures> {
-    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+    const normalizedKey = this.pathService.normalizeRemoteName(remoteName);
     return computed(() => {
       return (
         this._features()[normalizedKey] ?? {
@@ -73,7 +73,7 @@ export class RemoteMetadataService extends TauriBaseService {
     source: Origin = 'dashboard',
     group?: string
   ): Promise<RemoteFeatures> {
-    const normalizedKey = remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+    const normalizedKey = this.pathService.normalizeRemoteName(remoteName);
 
     if (this._features()[normalizedKey]) {
       return this._features()[normalizedKey];
@@ -109,10 +109,11 @@ export class RemoteMetadataService extends TauriBaseService {
 
   clearCache(remoteName?: string): void {
     if (remoteName) {
-      this.metadataCache.delete(remoteName);
+      const key = this.pathService.normalizeRemoteName(remoteName);
+      this.metadataCache.delete(key);
       this._features.update(cache => {
         const next = { ...cache };
-        delete next[remoteName];
+        delete next[key];
         return next;
       });
     } else {

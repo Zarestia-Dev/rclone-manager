@@ -99,7 +99,7 @@
     <button
       matButton="filled"
       [disabled]="!canRepair()"
-      (click)="repair()"
+      (click)="void repair()"
       [attr.aria-label]="
         (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
       "

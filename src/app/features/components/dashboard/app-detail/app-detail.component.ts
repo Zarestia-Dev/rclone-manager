@@ -273,6 +273,37 @@ export class AppDetailComponent {
       this.activeGroupJob()?.status === 'Running'
   );
 
+  /** True when dryRun is active based on operation type */
+  readonly isDryRun = computed(() => {
+    const opType = this.currentOpType();
+    if (opType === 'bisync') {
+      const configKey = 'bisyncConfigs';
+      const profiles = this.remoteSettings()[configKey] as Record<string, any> | undefined;
+      const profile = this.selectedProfile();
+      const cfg = profiles?.[profile];
+      if (!cfg) return false;
+      return !!(cfg.dryRun ?? cfg.options?.['dryRun'] ?? cfg.options?.['DryRun']);
+    } else if (['sync', 'copy', 'move'].includes(opType)) {
+      const configKey = REMOTE_CONFIG_KEYS[
+        opType as keyof typeof REMOTE_CONFIG_KEYS
+      ] as keyof RemoteSettings;
+      if (!configKey) return false;
+      const profiles = this.remoteSettings()[configKey] as
+        | Record<string, { backendProfile?: string }>
+        | undefined;
+      const profile = this.selectedProfile();
+      const cfg = profiles?.[profile];
+      const backendProfileName = cfg?.backendProfile || 'default';
+
+      const backendConfigs = this.remoteSettings()['backendConfigs'] as
+        | Record<string, { options?: Record<string, unknown> }>
+        | undefined;
+      const backendCfg = backendConfigs?.[backendProfileName];
+      return !!backendCfg?.options?.['DryRun'];
+    }
+    return false;
+  });
+
   // --- Derived: Live Data (from service, when polling) ---
   readonly jobStats = computed<GlobalStats>(() => {
     if (this.shouldPoll()) {
@@ -469,6 +500,7 @@ export class AppDetailComponent {
       startTime,
       endTime,
       duration,
+      dryRun: this.activeGroupJob()?.dry_run,
     };
   });
 
@@ -600,6 +632,70 @@ export class AppDetailComponent {
       this.jobService.clearGroupData(groupName);
     } catch (error) {
       console.error('Failed to reset group stats:', error);
+    }
+  }
+
+  async toggleDryRun(): Promise<void> {
+    const opType = this.currentOpType();
+    const profile = this.selectedProfile();
+    const settings = this.remoteSettings();
+
+    if (opType === 'bisync') {
+      const configKey = 'bisyncConfigs';
+      const profiles = (settings[configKey] as Record<string, any>) ?? {};
+      const existing = profiles[profile] ?? {};
+      const existingOptions = (existing.options ?? {}) as Record<string, unknown>;
+      const currentDryRun = !!(
+        existing.dryRun ??
+        existingOptions['dryRun'] ??
+        existingOptions['DryRun']
+      );
+      const newDryRun = !currentDryRun;
+
+      const updatedProfiles = {
+        ...profiles,
+        [profile]: {
+          ...existing,
+          dryRun: newDryRun,
+          options: {
+            ...existingOptions,
+            dryRun: newDryRun,
+          },
+        },
+      };
+
+      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+        [configKey]: updatedProfiles,
+      });
+    } else if (['sync', 'copy', 'move'].includes(opType)) {
+      const configKey = REMOTE_CONFIG_KEYS[
+        opType as keyof typeof REMOTE_CONFIG_KEYS
+      ] as keyof RemoteSettings;
+      if (!configKey) return;
+
+      const profiles = (settings[configKey] as Record<string, { backendProfile?: string }>) ?? {};
+      const cfg = profiles[profile];
+      const backendProfileName = cfg?.backendProfile || 'default';
+
+      const backendConfigs = (settings['backendConfigs'] as Record<string, any>) ?? {};
+      const existingBackend = backendConfigs[backendProfileName] ?? {};
+      const existingOptions = (existingBackend.options ?? {}) as Record<string, unknown>;
+      const newDryRun = !existingOptions['DryRun'];
+
+      const updatedBackendConfigs = {
+        ...backendConfigs,
+        [backendProfileName]: {
+          ...existingBackend,
+          options: {
+            ...existingOptions,
+            DryRun: newDryRun,
+          },
+        },
+      };
+
+      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+        backendConfigs: updatedBackendConfigs,
+      });
     }
   }
 

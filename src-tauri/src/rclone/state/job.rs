@@ -43,6 +43,7 @@ impl JobCache {
             execute_id,
             origin: metadata.origin,
             backend_name,
+            dry_run: metadata.dry_run,
         };
 
         self.add_job(job, app).await;
@@ -259,6 +260,7 @@ mod tests {
             execute_id: None,
             origin: None,
             backend_name: default_backend_name(),
+            dry_run: false,
         }
     }
 

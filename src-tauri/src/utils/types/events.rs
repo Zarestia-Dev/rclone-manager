@@ -37,8 +37,8 @@ pub const MOUNT_PLUGIN_INSTALLED: &str = "mount_plugin_installed";
 // Network events
 pub const NETWORK_STATUS_CHANGED: &str = "network_status_changed";
 
-// Scheduled task events
-pub const SCHEDULED_TASKS_CACHE_CHANGED: &str = "scheduled_tasks_cache_changed";
+// Automation events
+pub const AUTOMATIONS_CACHE_CHANGED: &str = "automations_cache_changed";
 
 // Alert events
 pub const ALERT_FIRED: &str = "alert_fired";
@@ -70,7 +70,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     MOUNT_PLUGIN_INSTALLED,
     NETWORK_STATUS_CHANGED,
-    SCHEDULED_TASKS_CACHE_CHANGED,
+    AUTOMATIONS_CACHE_CHANGED,
     APP_EVENT,
     BROWSE,
     ALERT_FIRED,

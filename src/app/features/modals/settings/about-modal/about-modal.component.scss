@@ -295,9 +295,15 @@
 }
 
 // ----------------------------------------------------------------------------
-// View: Updates
+// View: Updates / About App
 // ----------------------------------------------------------------------------
 .updates-page {
+  .debug-actions-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
   .current-version-card {
     padding-inline: var(--space-md);
 

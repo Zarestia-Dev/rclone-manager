@@ -67,7 +67,6 @@ const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RepairSheetComponent {
-  // --- STATE SIGNALS ---
   readonly installing = signal(false);
   readonly showAdvanced = signal(false);
   readonly showConfigOptions = signal(false);
@@ -81,7 +80,6 @@ export class RepairSheetComponent {
   readonly passwordErrorMessage = signal('');
   private readonly messageOverride = signal<string | null>(null);
 
-  // --- INJECTED DEPENDENCIES ---
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
   private readonly sheetRef = inject(MatBottomSheetRef<RepairSheetComponent>);
   private readonly repairService = inject(RepairService);
@@ -92,10 +90,8 @@ export class RepairSheetComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
 
-  // --- UI CONFIGURATION ---
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
 
-  // --- COMPUTED SIGNALS ---
   readonly isRcloneBinaryRepair = computed(() => this.data.type === 'rclone_binary');
   readonly isMountPluginRepair = computed(() => this.data.type === 'mount_plugin');
   readonly requiresPassword = computed(
@@ -147,7 +143,6 @@ export class RepairSheetComponent {
     return this.repairService.getRepairButtonIcon(this.data.type);
   });
 
-  // Single source of truth for button text — replaces the triple-nested ternary in the template
   readonly repairActionTextKey = computed(() => {
     if (this.isSubmittingPassword()) return 'repairSheet.validatingPassword';
     if (this.installing()) return this.repairProgressTextKey();
@@ -201,8 +196,6 @@ export class RepairSheetComponent {
     }
     return this.installationValid() ? '' : 'repairSheet.tooltips.fixValidationErrors';
   });
-
-  // --- PUBLIC METHODS ---
 
   async repair(): Promise<void> {
     if (!this.canRepair()) return;
@@ -299,9 +292,6 @@ export class RepairSheetComponent {
     this.sheetRef.dismiss();
   }
 
-  // --- PRIVATE METHODS ---
-
-  // Centralised dismissal with leak-safe cleanup via DestroyRef
   private dismissAfter(result: string, delay: number): void {
     const id = setTimeout(() => this.sheetRef.dismiss(result), delay);
     this.destroyRef.onDestroy(() => clearTimeout(id));
@@ -312,8 +302,6 @@ export class RepairSheetComponent {
     try {
       const { installLocation, customPath } = this.installationData();
       const configPath = installLocation === 'custom' ? customPath : '';
-      // rclone_config_file is now stored as config_path on the Local backend.
-      // Ensure backends are loaded in case this runs before the backend modal initializes them.
       if (this.backendService.backends().length === 0) {
         await this.backendService.loadBackends();
       }

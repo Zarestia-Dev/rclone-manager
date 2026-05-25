@@ -1150,5 +1150,9 @@
   "disable_zip": {
     "title": "Disable Zip",
     "help": "Disable zip download of directories"
+  },
+  "vfs_handle_caching": {
+    "title": "Caché de manejadores VFS",
+    "help": "Tiempo para mantener activos el manejador de archivos y los descargadores después del último cierre"
   }
 }

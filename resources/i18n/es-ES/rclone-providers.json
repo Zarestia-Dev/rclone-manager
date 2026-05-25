@@ -184,6 +184,14 @@
       "connection_string": {
         "title": "Cadena de conexión",
         "help": "Cadena de conexión de almacenamiento.\n\nCadena de conexión para el almacenamiento. Déjela en blanco si usa otros métodos de autenticación.\n"
+      },
+      "copy_total_concurrency": {
+        "title": "Concurrencia total de copia",
+        "help": "Límite global de concurrencia para fragmentos de copia multiparte.\n\nEsto limita el número total de fragmentos de copia multiparte ejecutándose a la vez en todos los archivos.\n\nEstablézcalo en 0 para desactivar este limitador."
+      },
+      "decompress": {
+        "title": "Descomprimir",
+        "help": "Si se establece, esto descomprimirá los objetos codificados con gzip.\n\nEs posible subir objetos a Azure Blob Storage con \"Content-Encoding: gzip\" establecido. Normalmente rclone descargará estos archivos como objetos comprimidos.\n\nSi esta bandera está establecida, rclone descomprimirá estos archivos con \"Content-Encoding: gzip\" a medida que se reciban. Esto significa que rclone no podrá verificar el tamaño y el hash, pero el contenido del archivo se descomprimirá.\n"
       }
     },
     "azurefiles": {
@@ -1614,6 +1622,10 @@
       "trust_token": {
         "title": "Token de confianza",
         "help": "Token de confianza (uso interno)"
+      },
+      "service": {
+        "title": "Servicio",
+        "help": "Servicio de iCloud a utilizar."
       }
     },
     "imagekit": {
@@ -1788,6 +1800,30 @@
       "token": {
         "title": "Token",
         "help": "Token de https://www.linkbox.to/admin/account"
+      },
+      "email": {
+        "title": "Email",
+        "help": "Email for login"
+      },
+      "password": {
+        "title": "Password",
+        "help": "Password for login"
+      },
+      "web_token": {
+        "title": "Web Token",
+        "help": "Web API login token - set automatically."
+      },
+      "upload_concurrency": {
+        "title": "Concurrencia de subida",
+        "help": "Concurrencia para subidas multiparte.\n\nEste es el número de fragmentos del mismo archivo que se suben simultáneamente.\n\nTenga en cuenta que cada fragmento se almacena en búfer en la memoria."
+      },
+      "upload_cutoff": {
+        "title": "Límite de subida",
+        "help": "Límite para cambiar a la subida multiparte.\n\nCualquier archivo más grande que este se subirá en fragmentos de chunk_size. El mínimo es 100 MiB y el máximo es 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Tamaño del fragmento",
+        "help": "Tamaño de fragmento para subidas multiparte.\n\nLos archivos más grandes que upload_cutoff se subirán en fragmentos de este tamaño.\n\nEl uso de memoria es aproximadamente chunk_size * upload_concurrency."
       }
     },
     "local": {
@@ -2878,6 +2914,42 @@
       "role_external_id": {
         "title": "ID externo del rol",
         "help": "ID externo para el rol asumido.\n\t\t\t\nDejar en blanco si no se usa un ID externo."
+      },
+      "list_versions_oldest_first": {
+        "title": "Listar versiones más antiguas primero",
+        "help": "Establézcalo si el backend devuelve las versiones de los objetos de la más antigua a la más reciente.\n\nEl estándar S3 devuelve las versiones de los objetos de la más reciente a la más antigua. Algunos backends (por ejemplo, Hitachi HCP) las devuelven al revés.\n\nActive esta opción si --s3-version-at o --s3-versions producen resultados incorrectos con su backend.\n\nEsto debería establecerse automáticamente de forma correcta para todos los proveedores que rclone conoce; envíe un informe de error si no es así.\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "Punto final IBM IAM",
+        "help": "Punto final de IBM IAM que se utilizará para la autenticación.\n\nDejar en blanco para utilizar el punto final público predeterminado."
+      },
+      "object_lock_mode": {
+        "title": "Modo de bloqueo de objetos",
+        "help": "Modo de bloqueo de objetos a aplicar al subir o copiar objetos.\n\nEstablezca esto para aplicar el modo de retención de bloqueo de objetos a los objetos. Si no se establece, no se aplica ningún modo de bloqueo de objetos (incluso con --metadata).\n\nNota: Para habilitar la retención de bloqueo de objetos, debe establecer TANTO object_lock_mode COMO object_lock_retain_until_date. Establecer solo uno no tiene efecto.\n\n- GOVERNANCE: Establece el modo de bloqueo de objetos en GOVERNANCE\n- COMPLIANCE: Establece el modo de bloqueo de objetos en COMPLIANCE\n- copy: Copia el modo del objeto de origen (requiere --metadata)\n\nVer: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "Fecha de retención de bloqueo de objetos",
+        "help": "Fecha de retención de bloqueo de objetos a aplicar al subir o copiar objetos.\n\nEstablezca esto para aplicar la fecha de retención de bloqueo de objetos a los objetos. Si no se establece, no se aplica ninguna fecha de retención (incluso con --metadata).\n\nNota: Para habilitar la retención de bloqueo de objetos, debe establecer TANTO object_lock_mode COMO object_lock_retain_until_date. Establecer solo uno no tiene efecto.\n\nAcepta:\n- Formato RFC 3339: 2030-01-02T15:04:05Z\n- Duración desde ahora: 365d, 1y, 6M (días, años, meses)\n- copy: Copia la fecha del objeto de origen (requiere --metadata)\n\nVer: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "Estado de retención legal de bloqueo de objetos",
+        "help": "Estado de retención legal de bloqueo de objetos a aplicar al subir o copiar objetos.\n\nEstablezca esto para aplicar la retención legal de bloqueo de objetos a los objetos. Si no se establece, no se aplica ninguna retención legal (incluso con --metadata).\n\nNota: La retención legal es independiente de la retención y se puede establecer por separado.\n\n- ON: Habilita la retención legal\n- OFF: Deshabilita la retención legal\n- copy: Copia el estado de retención legal del objeto de origen (requiere --metadata)\n\nVer: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "Omitir la retención de gobernanza",
+        "help": "Permitir la eliminación o modificación de objetos bloqueados con el modo GOVERNANCE."
+      },
+      "bucket_object_lock_enabled": {
+        "title": "Bloqueo de objetos del bucket habilitado",
+        "help": "Habilitar el bloqueo de objetos al crear nuevos buckets."
+      },
+      "object_lock_set_after_upload": {
+        "title": "Bloqueo de objetos establecido después de subir",
+        "help": "Establece el bloqueo de objetos mediante llamadas de API independientes después de la subida.\n\nUse esto para proveedores compatibles con S3 que no admiten establecer las cabeceras de bloqueo de objetos durante las operaciones PUT. Cuando está habilitado, el bloqueo de objetos se establece mediante llamadas de API PutObjectRetention y PutObjectLegalHold independientes después de que se completa la subida.\n\nEsto añade llamadas de API adicionales por objeto, por lo que solo debe habilitarlo si su proveedor lo requiere."
+      },
+      "object_lock_supported": {
+        "title": "Bloqueo de objetos admitido",
+        "help": "Si el proveedor admite el bloqueo de objetos S3.\n\nDebe ser true, false o dejarse sin definir para usar el valor predeterminado del proveedor.\n\nEstablézcalo en false para proveedores que no admiten completamente la API de bloqueo de objetos S3 (por ejemplo, GCS, que usa cabeceras no estándar para omitir la retención de gobernanza y no implementa la retención legal a través de la API S3).\n"
       }
     },
     "seafile": {
@@ -3666,7 +3738,6 @@
         "help": "Límite para cambiar a la API de carga de archivos grandes (>= 10 MB)."
       }
     },
-
     "filen": {
       "email": {
         "title": "Correo electrónico",
@@ -3755,7 +3826,6 @@
         "help": "Descripción del control remoto."
       }
     },
-
     "shade": {
       "drive_id": {
         "title": "ID de la unidad",
@@ -3801,7 +3871,7 @@
     "internxt": {
       "email": {
         "title": "Correo electrónico",
-        "help": "Correo electrónico de tu cuenta Internxt."
+        "help": "Correo electrónico para el inicio de sesión."
       },
       "pass": {
         "title": "Contraseña",
@@ -3822,6 +3892,76 @@
       "description": {
         "title": "Descripción",
         "help": "Descripción del control remoto."
+      },
+      "upload_concurrency": {
+        "title": "Upload Concurrency",
+        "help": "Concurrency for multipart uploads.\n\nThis is the number of chunks of the same file that are uploaded concurrently.\n\nNote that each chunk is buffered in memory."
+      },
+      "upload_cutoff": {
+        "title": "Upload Cutoff",
+        "help": "Cutoff for switching to multipart upload.\n\nAny files larger than this will be uploaded in chunks of chunk_size.\nThe minimum is 100 MiB and the maximum is 5 GiB."
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
+      },
+      "password": {
+        "title": "Contraseña",
+        "help": "Contraseña para el inicio de sesión."
+      },
+      "web_token": {
+        "title": "Token web",
+        "help": "Token de inicio de sesión de la API web - establecido automáticamente."
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "Id de cliente",
+        "help": "Id de cliente de OAuth.\n\nNormalmente dejar en blanco."
+      },
+      "client_secret": {
+        "title": "Secreto de cliente",
+        "help": "Secreto de cliente de OAuth.\n\nNormalmente dejar en blanco."
+      },
+      "token": {
+        "title": "Token",
+        "help": "Token de acceso OAuth como un blob JSON."
+      },
+      "auth_url": {
+        "title": "URL de autenticación",
+        "help": "URL del servidor de autenticación.\n\nDejar en blanco para utilizar los valores predeterminados del proveedor."
+      },
+      "token_url": {
+        "title": "URL del token",
+        "help": "URL del servidor de tokens.\n\nDejar en blanco para utilizar los valores predeterminados del proveedor."
+      },
+      "client_credentials": {
+        "title": "Credenciales de cliente",
+        "help": "Usar flujo de OAuth de credenciales de cliente.\n\nEsto usará el flujo de credenciales de cliente OAuth2 como se describe en RFC 6749.\n\nTenga en cuenta que esta opción NO es compatible con todos los backends."
+      },
+      "root_folder_id": {
+        "title": "Id de carpeta raíz",
+        "help": "ID de la carpeta raíz.\n\nNormalmente se detecta automáticamente, pero si falla o si desea acelerar el inicio, puede establecerlo manualmente.\n\nNormalmente dejar en blanco."
+      },
+      "chunk_size": {
+        "title": "Tamaño de fragmento",
+        "help": "Tamaño de fragmento de subida.\n\nDebe ser una potencia de 2 >= 256k y <= 64MB."
+      },
+      "list_chunk": {
+        "title": "Fragmento de listado",
+        "help": "Tamaño del fragmento de listado 1-1000."
+      },
+      "upload_cutoff": {
+        "title": "Límite de subida",
+        "help": "Límite para cambiar a la subida reanudable.\n\nCualquier archivo más grande que este se subirá utilizando la subida reanudable. El mínimo es 0 y el máximo es 20 MiB (límite de la API de Huawei Drive para subidas de solicitud única)."
+      },
+      "encoding": {
+        "title": "Codificación",
+        "help": "La codificación para el backend.\n\nConsulte la [sección de codificación en la descripción general](/overview/#encoding) para obtener más información."
+      },
+      "description": {
+        "title": "Descripción",
+        "help": "Descripción del remoto."
       }
     }
   }

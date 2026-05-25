@@ -92,99 +92,6 @@
   }
 
   // =============================================
-  // SIDEBAR
-  // =============================================
-  .modal-sidebar {
-    width: var(--sidebar-width);
-    background: var(--sidebar-bg-color);
-    box-shadow:
-      inset -1px 0 0 0 var(--border-color),
-      inset -5px 0 10px -5px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: width var(--transition-cubic);
-    animation: fadeInUp 0.2s ease-out both;
-
-    .sidebar-header {
-      padding: var(--space-sm) var(--space-md) 0;
-
-      .header-label {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        color: var(--dim-color);
-        opacity: 0.8;
-      }
-    }
-
-    .sidebar-profile-count {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--primary-color);
-      background: rgba(var(--primary-color-rgb), 0.1);
-      padding: 2px 6px;
-      border-radius: var(--radius-xxs);
-    }
-
-    .step-indicator-container {
-      flex: 1;
-      overflow-y: auto;
-
-      .step-indicator {
-        padding: var(--space-xs);
-
-        ::ng-deep .mat-mdc-list-item {
-          border-radius: var(--radius-sm);
-          margin-bottom: 4px;
-          max-height: 40px;
-          transition: background-color 0.2s ease;
-
-          &.mdc-list-item--activated {
-            background: var(--selected-bg-color);
-          }
-
-          &.mdc-list-item--disabled {
-            opacity: 0.5;
-            background: transparent !important;
-          }
-
-          &.completed:not(.mdc-list-item--activated) {
-            .mat-mdc-list-item-icon {
-              color: var(--primary-color) !important;
-              opacity: 0.6;
-            }
-
-            .mat-mdc-list-item-title {
-              opacity: 0.55;
-            }
-          }
-
-          // ── Icon ─────────────────────────────────────────────────────
-          .mat-mdc-list-item-icon {
-            font-size: var(--icon-size-sm);
-            width: var(--icon-size-sm);
-            height: var(--icon-size-sm);
-            color: var(--dim-color);
-            transition:
-              color 0.2s ease,
-              opacity 0.2s ease;
-          }
-
-          // ── Label ────────────────────────────────────────────────────
-          .mat-mdc-list-item-title {
-            font-size: var(--font-size-md);
-            font-weight: 500;
-            transition:
-              color 0.2s ease,
-              opacity 0.2s ease;
-          }
-        }
-      }
-    }
-  }
-
-  // =============================================
   // MODAL CONTENT
   // =============================================
   .modal-content {
@@ -251,33 +158,6 @@
       width: 100%;
       box-sizing: border-box;
 
-      .profile-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-md);
-        padding: var(--space-md);
-        margin-bottom: var(--space-md);
-        background: rgba(var(--accent-color-rgb), 0.03);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-gnome);
-
-        .profile-select,
-        .profile-input {
-          flex: 1;
-        }
-
-        .profile-actions {
-          display: flex;
-          align-items: center;
-          gap: var(--space-xs);
-
-          .action-tooltip-anchor {
-            display: inline-flex;
-          }
-        }
-      }
-
       .linked-profiles-panel {
         .profile-count {
           font-size: 11px;
@@ -312,68 +192,9 @@
   }
 
   // =============================================
-  // FOOTER BUTTONS
-  // =============================================
-  .button-container {
-    box-shadow: inset 0 1px 0 0 var(--border-color);
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: var(--space-sm) var(--space-md);
-    gap: var(--space-md);
-    background: var(--window-bg-color);
-
-    .back-btn {
-      margin-right: auto;
-    }
-
-    .saving-overlay {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-sm);
-    }
-  }
-
-  // =============================================
   // RESPONSIVE STATES
   // =============================================
   @media (max-width: 800px) and (min-width: 641px) {
-    .modal-sidebar {
-      width: var(--sidebar-icon-width);
-
-      .sidebar-header {
-        display: none;
-      }
-
-      .step-indicator-container {
-        .step-indicator {
-          padding: var(--radius-xxs);
-        }
-      }
-
-      ::ng-deep .mat-mdc-list-item {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-
-        .mdc-list-item__content {
-          display: none !important;
-        }
-
-        // Hide count badges too
-        .mdc-list-item__end {
-          display: none !important;
-        }
-
-        // Center the icon in the now-full-width row
-        .mdc-list-item__start {
-          margin-left: auto;
-          margin-right: auto;
-        }
-      }
-    }
-
     .init-skeleton__sidebar {
       width: var(--sidebar-icon-width);
     }
@@ -386,10 +207,6 @@
 
     .step-container:not(.interactive) {
       padding: var(--space-md) !important;
-    }
-
-    .modal-sidebar {
-      display: none;
     }
 
     .mobile-step-indicator {
@@ -405,36 +222,6 @@
 
       &__content {
         padding: var(--space-md);
-      }
-    }
-
-    .button-container {
-      padding: var(--space-md);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-
-      button {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 var(--space-sm) !important;
-        height: 44px !important;
-
-        &.cancel-btn,
-        &:not(.back-btn):not(.next-btn) {
-          grid-column: span 2;
-          order: -2;
-        }
-
-        &.back-btn {
-          grid-column: span 1;
-          order: 1;
-        }
-
-        &.next-btn {
-          grid-column: span 1;
-          order: 2;
-        }
       }
     }
   }

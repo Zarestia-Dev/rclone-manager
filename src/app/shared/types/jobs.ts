@@ -91,6 +91,8 @@ export interface JobInfo {
   origin?: Origin;
   /** The backend instance this job belongs to (e.g., "Local", "NAS") */
   backend_name?: string;
+  /** True when the job was started with the --dry-run flag (no actual file changes). */
+  dry_run?: boolean;
 }
 
 export interface BatchMasterJob {

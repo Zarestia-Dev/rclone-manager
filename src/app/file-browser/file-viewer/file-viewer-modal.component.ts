@@ -201,6 +201,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.cancelCurrentRequest$.complete();
     void this.stopReadJobs();
+    this.fileViewerService.activeFileName.set(null);
   }
 
   private async stopReadJobs(): Promise<void> {
@@ -487,6 +488,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     await this.stopReadJobs();
 
     const item = this.currentItem();
+    this.fileViewerService.activeFileName.set(item ? item.Name : null);
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
     this.cancelCurrentRequest$.next();

@@ -31,13 +31,13 @@ describe('NautilusBottomBarComponent', () => {
     spyOn(component.setLayout, 'emit');
 
     // Initial is grid, toggle should emit list
-    component.toggleLayout();
+    component.setLayout.emit(component['oppositeLayout']());
     expect(component.setLayout.emit).toHaveBeenCalledWith('list');
 
     // If layout is list, toggle should emit grid
     fixture.componentRef.setInput('layout', 'list');
     fixture.detectChanges();
-    component.toggleLayout();
+    component.setLayout.emit(component['oppositeLayout']());
     expect(component.setLayout.emit).toHaveBeenCalledWith('grid');
   });
 });

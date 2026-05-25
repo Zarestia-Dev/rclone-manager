@@ -216,7 +216,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       if (!isLocal && (!path || path === '/')) {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
-          remoteName.endsWith(':') ? remoteName : `${remoteName}:`,
+          this.pathService.normalizeRemoteForRclone(remoteName),
           'filemanager',
           this.readJobGroup
         );

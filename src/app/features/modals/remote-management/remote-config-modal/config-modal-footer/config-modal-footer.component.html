@@ -1,0 +1,102 @@
+@let flow = state.interactiveFlowState();
+
+<footer class="button-container">
+  @if (state.currentStep() > 1 && !state.editTarget() && !flow.isActive) {
+    <button
+      matButton="filled"
+      class="accent back-btn"
+      [disabled]="state.isAuthInProgress()"
+      (click)="prevStep.emit()"
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
+      [attr.title]="'modals.remoteConfig.buttons.back' | translate"
+      [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
+    >
+      <mat-icon svgIcon="left-arrow"></mat-icon>
+      {{ 'modals.remoteConfig.buttons.back' | translate }}
+    </button>
+  }
+
+  @if ((state.isAuthInProgress() && !state.isAuthCancelled()) || flow.isActive) {
+    <button
+      matButton="filled"
+      class="warn cancel-btn"
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
+      (click)="cancelAuth.emit()"
+      [disabled]="(!state.isAuthInProgress() && !flow.isActive) || state.isAuthCancelled()"
+      [attr.title]="'modals.remoteConfig.buttons.cancel' | translate"
+      [attr.aria-label]="'modals.remoteConfig.buttons.cancel' | translate"
+    >
+      {{ 'modals.remoteConfig.buttons.cancel' | translate }}
+    </button>
+  }
+
+  @if (state.isAuthCancelled()) {
+    <span class="cleanup-status" aria-live="polite">
+      {{ 'modals.remoteConfig.buttons.cleanup' | translate }}
+      <mat-progress-bar mode="indeterminate" aria-hidden="true" />
+    </span>
+  }
+
+  @if (((state.currentStep() > 1 && !state.editTarget()) || state.editTarget()) && !flow.isActive) {
+    <button
+      matButton="filled"
+      (click)="submitForm.emit()"
+      [disabled]="state.isSaveDisabled()"
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
+      [attr.aria-label]="state.saveButtonLabel() | translate"
+      [attr.title]="state.saveButtonLabel() | translate"
+    >
+      @if (state.isAuthInProgress() && !state.isAuthCancelled()) {
+        <div class="saving-overlay" aria-hidden="true">
+          <mat-spinner diameter="16"></mat-spinner>
+        </div>
+      }
+      <span>{{ state.saveButtonLabel() | translate }}</span>
+    </button>
+  }
+
+  @if (flow.isActive) {
+    @let continueLabel =
+      (flow.isProcessing
+        ? 'modals.remoteConfig.buttons.processing'
+        : 'modals.remoteConfig.buttons.continue'
+      ) | translate;
+    <button
+      matButton="filled"
+      (click)="interactiveContinue.emit(flow.answer)"
+      [disabled]="state.isInteractiveContinueDisabled()"
+      class="continue-button"
+      [class.loading]="flow.isProcessing || state.isAuthCancelled()"
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
+      [attr.aria-label]="continueLabel"
+      [attr.title]="continueLabel"
+    >
+      @if (flow.isProcessing && !state.isAuthCancelled()) {
+        <div class="saving-overlay" aria-hidden="true">
+          <mat-spinner diameter="16"></mat-spinner>
+        </div>
+      }
+      <span>{{ continueLabel }}</span>
+    </button>
+  }
+
+  @if (state.currentStep() < state.stepConfigs().length && !state.editTarget() && !flow.isActive) {
+    <button
+      matButton="filled"
+      class="accent next-btn"
+      (click)="nextStep.emit()"
+      [disabled]="state.isNextDisabled()"
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
+      [attr.title]="'modals.remoteConfig.buttons.next' | translate"
+      [attr.aria-label]="'modals.remoteConfig.buttons.next' | translate"
+    >
+      {{ 'modals.remoteConfig.buttons.next' | translate }}
+      <mat-icon svgIcon="right-arrow"></mat-icon>
+    </button>
+  }
+</footer>

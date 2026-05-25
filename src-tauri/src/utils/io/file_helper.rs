@@ -90,7 +90,10 @@ pub async fn open_in_files(
     }
 
     if !path.exists() {
-        return Err(format!("Path not exist: {}", path.display()));
+        return Err(crate::localized_error!(
+            "backendErrors.file.notFound",
+            "path" => path.display().to_string()
+        ));
     }
 
     let path_str = path
@@ -99,7 +102,10 @@ pub async fn open_in_files(
         .to_string();
     match app.opener().open_path(path_str, None::<String>) {
         Ok(_) => Ok(format!("Opened file manager at {}", path.display())),
-        Err(e) => Err(format!("Failed to open file manager: {e}")),
+        Err(e) => Err(crate::localized_error!(
+            "backendErrors.file.failedToOpen",
+            "error" => e.to_string()
+        )),
     }
 }
 

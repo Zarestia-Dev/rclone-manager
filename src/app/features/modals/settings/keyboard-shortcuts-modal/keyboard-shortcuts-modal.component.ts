@@ -68,7 +68,7 @@ export class KeyboardShortcutsModalComponent {
     },
     {
       keys: 'Ctrl + .',
-      description: 'shortcuts.actions.openConfig',
+      description: 'shortcuts.actions.openFlags',
       category: 'shortcuts.categories.application',
     },
     {

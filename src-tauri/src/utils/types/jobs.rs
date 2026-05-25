@@ -125,6 +125,9 @@ pub struct JobInfo {
     pub origin: Option<Origin>,
     #[serde(default = "crate::rclone::backend::types::default_backend_name")]
     pub backend_name: String,
+    /// Whether this job was started with the `--dry-run` flag (no actual changes).
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 impl JobInfo {

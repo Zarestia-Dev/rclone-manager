@@ -72,13 +72,13 @@ export class AlertRuleEditorComponent {
     'mount',
     'engine',
     'update',
-    'scheduled_task',
+    'automation',
     'system',
   ];
 
   readonly origins: Origin[] = [
     'dashboard',
-    'scheduler',
+    'automation',
     'filemanager',
     'startup',
     'update',

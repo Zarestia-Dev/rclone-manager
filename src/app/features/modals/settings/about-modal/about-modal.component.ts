@@ -48,14 +48,14 @@ renderer.link = ({ href, title, text }): string => {
 
 export type ViewId =
   | 'details'
-  | 'updates'
+  | 'about-app'
   | 'about-rclone'
   | 'credits'
   | 'legal'
   | 'whats-new-app'
   | 'whats-new-rclone'
-  | 'debug'
-  | 'memory';
+  | 'memory'
+  | 'debugging';
 
 export interface OverlayView {
   id: ViewId;
@@ -173,7 +173,6 @@ export class AboutModalComponent implements OnInit {
     return { ...info, pid };
   });
 
-  readonly isLocalBackend = computed(() => this.backendService.activeBackend() === 'Local');
   readonly loadingRclone = this.rcloneStatusService.isLoading;
 
   readonly rcloneError = computed(() =>
@@ -199,14 +198,6 @@ export class AboutModalComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   readonly debugInfo = signal<DebugInfo | null>(null);
-
-  // ---------------------------------------------------------------------------
-  // Easter egg
-  // ---------------------------------------------------------------------------
-
-  // Must be a signal — plain properties are invisible to zoneless OnPush CD.
-  readonly logoClickCount = signal(0);
-  private logoClickTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // ---------------------------------------------------------------------------
   // Memoized markdown rendering
@@ -255,28 +246,27 @@ export class AboutModalComponent implements OnInit {
   // new object literal on every call.
   private readonly pageTitleMap: Partial<Record<ViewId | 'main', string>> = {
     details: 'modals.about.details',
-    updates: 'modals.about.updates',
+    'about-app': 'modals.about.aboutApp',
     'about-rclone': 'modals.about.aboutRclone',
     credits: 'modals.about.credits',
     legal: 'modals.about.legal',
     'whats-new-app': 'modals.about.whatsNew',
     'whats-new-rclone': 'modals.about.whatsNew',
-    debug: 'modals.about.debugTools',
     memory: 'modals.about.memoryStats',
+    debugging: 'modals.about.debugTools',
   };
 
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.loadFsCacheEntries();
-
-    this.destroyRef.onDestroy(() => {
-      if (this.logoClickTimeout) {
-        clearTimeout(this.logoClickTimeout);
-      }
-    });
+    try {
+      this.debugInfo.set(await this.debugService.getDebugInfo());
+    } catch (error) {
+      console.error('Failed to load debug info:', error);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -305,8 +295,7 @@ export class AboutModalComponent implements OnInit {
 
   getPageTitle(viewId?: ViewId): string {
     const id = viewId ?? this.currentView().id;
-    const key = this.pageTitleMap[id];
-    return key ? this.translate.instant(key) : '';
+    return this.pageTitleMap[id] ?? '';
   }
 
   // ---------------------------------------------------------------------------
@@ -321,6 +310,10 @@ export class AboutModalComponent implements OnInit {
   async installUpdate(): Promise<void> {
     if (this.appUpdateInProgress()) return;
     await this.appUpdaterService.installUpdate();
+  }
+
+  async cancelAppUpdate(): Promise<void> {
+    await this.appUpdaterService.cancelUpdate();
   }
 
   async finishUpdate(): Promise<void> {
@@ -393,6 +386,10 @@ export class AboutModalComponent implements OnInit {
   async installRcloneUpdate(): Promise<void> {
     if (this.rcloneUpdateInProgress()) return;
     await this.rcloneUpdateService.performUpdate();
+  }
+
+  async cancelRcloneUpdate(): Promise<void> {
+    await this.rcloneUpdateService.cancelUpdate();
   }
 
   async applyRcloneUpdate(): Promise<void> {
@@ -527,30 +524,6 @@ export class AboutModalComponent implements OnInit {
 
   onScroll(content: HTMLElement): void {
     this.scrolled.set(content.scrollTop > 10);
-  }
-
-  onLogoClick(): void {
-    const count = this.logoClickCount() + 1;
-    this.logoClickCount.set(count);
-
-    if (this.logoClickTimeout) clearTimeout(this.logoClickTimeout);
-
-    if (count >= 5) {
-      this.logoClickCount.set(0);
-      this.showDebugOverlay();
-      return;
-    }
-
-    this.logoClickTimeout = setTimeout(() => this.logoClickCount.set(0), 2000);
-  }
-
-  async showDebugOverlay(): Promise<void> {
-    this.navigateTo('debug');
-    try {
-      this.debugInfo.set(await this.debugService.getDebugInfo());
-    } catch (error) {
-      console.error('Failed to load debug info:', error);
-    }
   }
 
   showMemoryOverlay(): void {

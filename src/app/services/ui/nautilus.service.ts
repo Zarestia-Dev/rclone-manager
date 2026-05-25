@@ -211,14 +211,27 @@ export class NautilusService extends TauriBaseService {
     return url;
   }
 
+  private getNautilusLabel(remote: string | null): string {
+    if (!remote) return 'nautilus';
+    const slug = remote.replace(/[^a-zA-Z0-9-]/g, '_');
+    return `nautilus-${slug}`;
+  }
+
   async newNautilusWindow(remote: string | null, path: string | null): Promise<void> {
+    const url = this.getNautilusUrl(remote, path);
     if (this.isTauri) {
-      await this.invokeCommand('new_nautilus_window', {
-        remote: remote ?? null,
-        path: path ?? null,
+      const label = this.getNautilusLabel(remote);
+      await this.invokeCommand('new_window', {
+        opts: {
+          label,
+          url,
+          title: 'RClone Nautilus',
+          width: 1024,
+          height: 768,
+        },
       });
     } else {
-      window.open(this.getNautilusUrl(remote, path), '_blank');
+      window.open(url, '_blank');
     }
   }
 
@@ -342,8 +355,24 @@ export class NautilusService extends TauriBaseService {
       input: string
     ): { remoteName: string | null; remotePath: string | null } => {
       const [first, ...rest] = this.pathService.splitSegments(input);
+      const decodedFirst = first ? decodeURIComponent(first) : null;
+
+      if (
+        decodedFirst &&
+        (decodedFirst.startsWith('/') || /^[a-zA-Z]:/.test(decodedFirst)) &&
+        this.pathService.splitSegments(decodedFirst).length > 1
+      ) {
+        const parsed = this.pathService.parseLocation(decodedFirst, this.allRemotesLookup());
+        if (parsed) {
+          return {
+            remoteName: parsed.remote.name,
+            remotePath: parsed.path,
+          };
+        }
+      }
+
       return {
-        remoteName: first ? decodeURIComponent(first) : null,
+        remoteName: decodedFirst,
         remotePath: rest.length ? this.pathService.decodePath(rest.join('/')) : null,
       };
     };

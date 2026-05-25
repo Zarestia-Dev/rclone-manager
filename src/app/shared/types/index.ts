@@ -9,7 +9,7 @@ export * from './operations';
 export * from './params';
 export * from './remote-config';
 export * from './remotes';
-export * from './scheduler';
+export * from './automation';
 export * from './serve';
 export * from './system';
 export * from './ui';

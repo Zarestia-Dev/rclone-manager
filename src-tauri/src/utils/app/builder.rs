@@ -3,23 +3,32 @@
 #[cfg(feature = "tray")]
 pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
+    use crate::core::settings::AppSettingsManager;
     use crate::core::tray::TraySnapshot;
-    let snapshot = TraySnapshot::fetch(&app_clone).await?;
-    app.run_on_main_thread(move || {
-        let tray_menu = match crate::core::tray::menu::create_tray_menu(&app_clone, &snapshot) {
-            Ok(m) => m,
-            Err(e) => {
-                log::error!("Failed to create tray menu during setup: {e}");
-                return;
-            }
-        };
+    use crate::core::tray::menu::{MenuPlan, create_tray_menu_from_plan};
+    use tauri::Manager;
 
+    let snapshot = TraySnapshot::fetch(&app_clone).await?;
+
+    // Build plan off main thread
+    let plan = {
+        let settings_manager = app_clone.state::<AppSettingsManager>();
+        let max_tray_items = settings_manager
+            .get_all()
+            .map_err(|e| tauri::Error::Io(std::io::Error::other(e.to_string())))?
+            .core
+            .max_tray_items;
+        MenuPlan::build(&snapshot, max_tray_items)
+    };
+
+    let tray_menu = create_tray_menu_from_plan(&app, &plan)?;
+    let icon = crate::core::tray::icon::get_icon(false)
+        .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0));
+
+    app.run_on_main_thread(move || {
         #[allow(unused_mut)]
         let mut tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
-            .icon(
-                crate::core::tray::icon::get_icon(false)
-                    .unwrap_or_else(|_| tauri::image::Image::new(&[], 0, 0)),
-            )
+            .icon(icon)
             .tooltip(crate::t!("tray.tooltipDefault"))
             .menu(&tray_menu);
 
@@ -42,24 +51,6 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     })?;
 
     Ok(())
-}
-
-#[cfg(not(feature = "web-server"))]
-fn build_nautilus_url(remote_name: Option<&str>, path: Option<&str>) -> String {
-    let Some(name) = remote_name else {
-        return "nautilus".to_string();
-    };
-
-    let encoded_remote = urlencoding::encode(name);
-
-    match path.filter(|p| !p.is_empty()) {
-        Some(p) => {
-            let clean_path = p.trim_start_matches('/');
-            let encoded_path = urlencoding::encode(clean_path);
-            format!("nautilus/{encoded_remote}?path={encoded_path}")
-        }
-        None => format!("nautilus/{encoded_remote}"),
-    }
 }
 
 #[cfg(not(feature = "web-server"))]
@@ -107,72 +98,66 @@ pub fn create_app_window(app_handle: tauri::AppHandle) {
     window
         .show()
         .unwrap_or_else(|e| log::error!("Failed to show main window: {e}"));
+
+    #[cfg(target_os = "macos")]
+    crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
 }
 
-#[cfg(not(feature = "web-server"))]
-pub fn create_nautilus_window(
-    app_handle: tauri::AppHandle,
-    remote_name: Option<&str>,
-    path: Option<&str>,
-) {
-    // Deterministic label based on remote identity
-    let label = remote_name
-        .map(|name| {
-            let slug: String = name
-                .chars()
-                .map(|c| {
-                    if c.is_alphanumeric() || c == '-' {
-                        c
-                    } else {
-                        '_'
-                    }
-                })
-                .collect();
-            format!("nautilus-{slug}")
-        })
-        .unwrap_or_else(|| "nautilus".to_string());
-
-    if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &label) {
-        let _ = existing.unminimize();
-        let _ = existing.set_focus();
-
-        use crate::utils::types::events::BROWSE;
-        let full_path = match (remote_name, path) {
-            (Some(r), Some(p)) => {
-                let is_local = r.starts_with('/') || (r.len() > 1 && r.as_bytes()[1] == b':');
-                let sep = if is_local { "/" } else { ":" };
-                format!("{}{}{}", r, sep, p.trim_start_matches('/'))
-            }
-            (Some(r), None) => r.to_string(),
-            (None, Some(p)) => p.to_string(),
-            _ => "".to_string(),
-        };
-        let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
-        return;
-    }
-
-    // Otherwise create a fresh window as before
-    let url = build_nautilus_url(remote_name, path);
-    let builder =
-        tauri::WebviewWindowBuilder::new(&app_handle, label, tauri::WebviewUrl::App(url.into()))
-            .title("RClone Nautilus");
-
-    match apply_platform_config(builder).build() {
-        Ok(window) => {
-            window
-                .show()
-                .unwrap_or_else(|e| log::error!("Failed to show nautilus window: {e}"));
-        }
-        Err(e) => log::error!("Failed to build nautilus window: {e}"),
-    }
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowOptions {
+    pub label: String,
+    pub url: String,
+    pub title: String,
+    pub width: Option<f64>,
+    pub height: Option<f64>,
+    pub remote: Option<String>,
+    pub path: Option<String>,
 }
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub fn new_nautilus_window(
-    app_handle: tauri::AppHandle,
-    remote: Option<String>,
-    path: Option<String>,
-) {
-    create_nautilus_window(app_handle, remote.as_deref(), path.as_deref());
+pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
+    if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
+        let _ = existing.unminimize();
+        let _ = existing.set_focus();
+
+        // Special case: if this is a nautilus window, emit BROWSE event with the path
+        if opts.label.starts_with("nautilus-") || opts.label == "nautilus" {
+            let full_path = match (opts.remote, opts.path) {
+                (Some(r), Some(p)) => {
+                    let is_local = crate::rclone::state::cache::is_local_path(&r);
+                    let sep = if is_local { "/" } else { ":" };
+                    format!("{}{}{}", r, sep, p.trim_start_matches('/'))
+                }
+                (Some(r), None) => r,
+                (None, Some(p)) => p,
+                _ => "".to_string(),
+            };
+            use crate::utils::types::events::BROWSE;
+            let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
+        }
+        return;
+    }
+
+    let w = opts.width.unwrap_or(360.0);
+    let h = opts.height.unwrap_or(240.0);
+
+    let builder = tauri::WebviewWindowBuilder::new(
+        &app_handle,
+        &opts.label,
+        tauri::WebviewUrl::App(opts.url.into()),
+    )
+    .title(&opts.title)
+    .inner_size(w, h)
+    .min_inner_size(360.0, 240.0);
+
+    match apply_platform_config(builder).build() {
+        Ok(window) => {
+            let _ = window.show();
+            #[cfg(target_os = "macos")]
+            crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
+        }
+        Err(e) => log::error!("Failed to build window {}: {e}", opts.label),
+    }
 }

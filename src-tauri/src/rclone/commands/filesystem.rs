@@ -65,6 +65,7 @@ pub async fn mkdir(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -112,6 +113,7 @@ pub async fn cleanup(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -161,6 +163,7 @@ pub async fn copy_url(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -207,6 +210,7 @@ pub async fn remove_empty_dirs(
             origin,
             group,
             no_cache: true,
+            dry_run: false,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -309,6 +313,7 @@ pub async fn transfer(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await
@@ -351,6 +356,7 @@ pub async fn delete(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await
@@ -470,6 +476,7 @@ pub async fn execute_upload_batch(
         origin: origin.clone(),
         group,
         no_cache,
+        dry_run: false,
     };
 
     if existing_jobid.is_none() {
@@ -484,7 +491,7 @@ pub async fn execute_upload_batch(
             .await;
     }
 
-    if metadata.origin != Some(Origin::Scheduler) && !metadata.no_cache {
+    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
         notify(&app, metadata.started_event(backend.name.clone()));
     }
 
@@ -542,7 +549,7 @@ pub async fn execute_upload_batch(
     let success = errors.is_empty();
     let error_msg = (!success).then(|| format!("{} failed: {}", errors.len(), errors.join("; ")));
 
-    if metadata.origin != Some(Origin::Scheduler) && !metadata.no_cache {
+    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
         if success {
             notify(&app, metadata.completed_event(backend.name.clone()));
         } else if let Some(ref m) = error_msg {
@@ -636,6 +643,7 @@ pub async fn rename(
             origin,
             group,
             no_cache: false,
+            dry_run: false,
         },
     )
     .await

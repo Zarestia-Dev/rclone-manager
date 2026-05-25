@@ -1,6 +1,6 @@
 {
   "name": "rclone-manager",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -9,7 +9,7 @@
     "tauri": "tauri",
     "dev:portable": "npm run tauri dev -- --features portable",
     "dev:flatpak": "npm run tauri dev -- --features flatpak",
-    "dev:headless": "concurrently -n \"Angular,Tauri\" -c \"blue,magenta\" \"ng serve --configuration headless\" \"wait-on http://127.0.0.1:1420 && npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,tray -- --no-default-features\"",
+    "dev:headless": "npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,tray -- --no-default-features",
     "build:portable": "npm run tauri build -- --features portable --no-bundle",
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
     "build:snap": "npm run tauri build -- --bundles deb && cp src-tauri/target/release/bundle/deb/rclone-manager_*.deb ./rclone-manager.deb && snapcraft",

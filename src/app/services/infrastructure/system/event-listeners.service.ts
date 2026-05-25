@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { fromEvent } from 'rxjs';
+import { Observable, fromEvent } from 'rxjs';
 import {
   AppEventPayloadType,
   ENGINE_RESTARTED,
@@ -21,7 +20,7 @@ import {
   RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
-  SCHEDULED_TASKS_CACHE_CHANGED,
+  AUTOMATIONS_CACHE_CHANGED,
   REMOTE_SETTINGS_CHANGED,
   SettingsChangeEvent,
   RCLONE_OAUTH_URL,
@@ -30,167 +29,96 @@ import {
   SystemStatusPayload,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
-/**
- * Service for listening to backend events and exposing them as observables
- */
-@Injectable({
-  providedIn: 'root',
-})
+
+@Injectable({ providedIn: 'root' })
 export class EventListenersService extends TauriBaseService {
-  /**
-   * Listen to tauri window resize events
-   */
   listenToWindowResize(): Observable<unknown> {
-    // In the web/headless mode Tauri window events don't exist, so fall back to
-    // native window resize events when not running as Tauri runtime.
     if (!this.isTauri) {
       return fromEvent(window, 'resize');
     }
-
     return this.listenToEvent<unknown>('tauri://resize');
   }
 
-  /**
-   * Listen to engine restarted events
-   */
   listenToEngineRestarted(): Observable<{ reason: string }> {
     return this.listenToEvent<{ reason: string }>(ENGINE_RESTARTED);
   }
-  /**
-   * Listen to mount cache updated events
-   */
+
   listenToMountCacheUpdated(): Observable<unknown> {
     return this.listenToEvent<unknown>(MOUNT_STATE_CHANGED);
   }
 
-  /**
-   * Listen to remote cache updated events
-   */
   listenToRemoteCacheUpdated(): Observable<unknown> {
     return this.listenToEvent<unknown>(REMOTE_CACHE_CHANGED);
   }
 
-  /**
-   * Listen to serve state changed events
-   */
   listenToServeStateChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(SERVE_STATE_CHANGED);
   }
 
-  /**
-   * Listen to job cache changed events
-   */
   listenToJobCacheChanged(): Observable<JobChangeEvent> {
     return this.listenToEvent<JobChangeEvent>(JOB_CACHE_CHANGED);
   }
-  /**
-   * Listen to mount plugin installation events
-   */
+
   listenToMountPluginInstalled(): Observable<unknown> {
     return this.listenToEvent<unknown>(MOUNT_PLUGIN_INSTALLED);
   }
 
-  /**
-   * Listen to rclone engine ready events
-   */
   listenToRcloneEngineReady(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_ENGINE_READY);
   }
 
-  /**
-   * Listen to rclone engine error events
-   */
   listenToRcloneEngineError(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_ENGINE_ERROR);
   }
 
-  /**
-   * Listen to rclone engine password error events
-   */
   listenToRcloneEnginePasswordError(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_ENGINE_PASSWORD_ERROR);
   }
 
-  /**
-   * Listen to rclone engine path error events
-   */
   listenToRcloneEnginePathError(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_ENGINE_PATH_ERROR);
   }
 
-  /**
-   * Listen to rclone engine updating events
-   */
   listenToRcloneEngineUpdating(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_ENGINE_UPDATING);
   }
 
-  /**
-   * Listen to rclone password stored events
-   */
   listenToRclonePasswordStored(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_PASSWORD_STORED);
   }
 
-  /**
-   * Listen to app events
-   */
   listenToAppEvents(): Observable<AppEventPayloadType> {
     return this.listenToEvent<AppEventPayloadType>(APP_EVENT);
   }
 
-  /**
-   * Listen to network status changed events
-   */
   listenToNetworkStatusChanged(): Observable<{ isMetered: boolean }> {
     return this.listenToEvent<{ isMetered: boolean }>(NETWORK_STATUS_CHANGED);
   }
 
-  /**
-   * Listen to bandwidth limit changed events
-   */
   listenToBandwidthLimitChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(BANDWIDTH_LIMIT_CHANGED);
   }
 
-  /**
-   * Listen to open internal route events from tray menu
-   */
   listenToBrowse(): Observable<string> {
     return this.listenToEvent<string>(BROWSE);
   }
 
-  /**
-   * Listen to system settings changed events
-   */
   listenToSystemSettingsChanged(): Observable<SettingsChangeEvent> {
     return this.listenToEvent<SettingsChangeEvent>(SYSTEM_SETTINGS_CHANGED);
   }
 
-  /**
-   * Listen to scheduled tasks cache changed events
-   */
-  listenToScheduledTasksCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>(SCHEDULED_TASKS_CACHE_CHANGED);
+  listenToAutomationsCacheChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>(AUTOMATIONS_CACHE_CHANGED);
   }
 
-  /**
-   * Listen to remote settings changed events
-   */
   listenToRemoteSettingsChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(REMOTE_SETTINGS_CHANGED);
   }
 
-  /**
-   * Listen to OAuth URL events emitted while rclone oauth process is running
-   */
   listenToOAuthUrl(): Observable<OAuthUrlEvent> {
     return this.listenToEvent<OAuthUrlEvent>(RCLONE_OAUTH_URL);
   }
 
-  /**
-   * Listen to consolidated system status updates
-   */
   listenToSystemStatus(): Observable<SystemStatusPayload> {
     return this.listenToEvent<SystemStatusPayload>(SYSTEM_STATUS);
   }

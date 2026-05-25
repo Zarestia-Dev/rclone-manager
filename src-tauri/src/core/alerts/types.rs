@@ -71,8 +71,8 @@ pub enum AlertEventKind {
     Engine,
     /// Software update lifecycle (App and Rclone)
     Update,
-    /// Automated tasks triggered by the scheduler
-    ScheduledTask,
+    /// Automated tasks
+    Automation,
     /// Application-level events (Startup, etc.)
     System,
     /// Export operations (credentials, profiles, settings, etc.)
@@ -93,7 +93,7 @@ impl AlertEventKind {
             Self::Mount => "mount",
             Self::Engine => "engine",
             Self::Update => "update",
-            Self::ScheduledTask => "scheduled_task",
+            Self::Automation => "automation",
             Self::System => "system",
             Self::Export => "export",
         }

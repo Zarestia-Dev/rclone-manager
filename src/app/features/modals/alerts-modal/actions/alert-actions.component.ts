@@ -102,7 +102,8 @@ import { SearchContainerComponent } from '@app/shared/components';
                   [checked]="action.enabled"
                   (change)="toggleAction(action)"
                   [matTooltip]="
-                    (action.enabled ? 'task.status.enabled' : 'task.status.disabled') | translate
+                    (action.enabled ? 'automation.status.enabled' : 'automation.status.disabled')
+                      | translate
                   "
                 ></mat-slide-toggle>
               </td>

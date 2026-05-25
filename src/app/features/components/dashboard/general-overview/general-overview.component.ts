@@ -23,7 +23,7 @@ import {
   JobInfo,
   PrimaryActionType,
   Remote,
-  ScheduledTask,
+  Automation,
   ServeListItem,
   CardDisplayMode,
 } from '@app/types';
@@ -39,7 +39,7 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import {
-  SchedulerService,
+  AutomationService,
   UiStateService,
   RcloneStatusService,
   AppSettingsService,
@@ -52,7 +52,7 @@ import { CopyToClipboardDirective } from '@app/directives';
 
 const SCROLL_DELAY_MS = 60;
 
-import { ScheduledTaskCardComponent } from '../../../../shared/detail-shared';
+import { AutomationCardComponent } from '../../../../shared/detail-shared';
 
 const JOB_ICON_MAP: Record<string, string> = {
   sync: 'refresh',
@@ -67,7 +67,7 @@ const JOB_ICON_MAP: Record<string, string> = {
   upload: 'file-arrow-up',
 };
 
-export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
+export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves';
 
 interface PanelConfig {
   id: PanelId;
@@ -96,7 +96,7 @@ const ALL_PANELS: PanelConfig[] = [
   { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
   { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
   { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
-  { id: 'tasks', title: 'generalOverview.panels.tasks', defaultVisible: true },
+  { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
   { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
 ];
 
@@ -127,14 +127,14 @@ const ALL_PANELS: PanelConfig[] = [
     OverviewHeaderComponent,
     TranslateModule,
     CopyToClipboardDirective,
-    ScheduledTaskCardComponent,
+    AutomationCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
 })
 export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
-  private readonly schedulerService = inject(SchedulerService);
+  private readonly automationService = inject(AutomationService);
   private readonly uiStateService = inject(UiStateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
@@ -168,15 +168,15 @@ export class GeneralOverviewComponent {
     bandwidth: false,
     system: false,
     jobs: false,
-    tasks: false,
+    automations: false,
     serves: false,
   });
   readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
-  readonly isLoadingScheduledTasks = signal(false);
+  readonly isLoadingAutomations = signal(false);
 
-  readonly scheduledTasks = this.schedulerService.scheduledTasks;
+  readonly automations = this.automationService.automations;
 
   // --- Service signals re-exposed for the template ---
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
@@ -208,11 +208,11 @@ export class GeneralOverviewComponent {
     return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
   });
 
-  readonly activeScheduledTasksCount = computed(
-    () => this.scheduledTasks().filter(t => t.status === 'enabled' || t.status === 'running').length
+  readonly activeAutomationsCount = computed(
+    () => this.automations().filter(t => t.status === 'enabled' || t.status === 'running').length
   );
 
-  readonly totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
+  readonly totalAutomationsCount = computed(() => this.automations().length);
 
   readonly bandwidthDetails = computed((): BandwidthDetailItem[] => {
     const limit = this.bandwidthLimit();
@@ -239,7 +239,7 @@ export class GeneralOverviewComponent {
 
   constructor() {
     void this.loadLayoutSettings();
-    void this.loadScheduledTasks();
+    void this.loadAutomations();
   }
 
   // --- Layout management ---
@@ -329,26 +329,26 @@ export class GeneralOverviewComponent {
     }
   }
 
-  // --- Task actions ---
+  // --- Automation actions ---
 
-  async toggleScheduledTask(taskId: string): Promise<void> {
+  async toggleAutomation(automationId: string): Promise<void> {
     try {
-      await this.schedulerService.toggleScheduledTask(taskId);
+      await this.automationService.toggleAutomation(automationId);
     } catch (error) {
-      console.error('Failed to toggle scheduled task:', error);
-      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleTaskFailed'));
+      console.error('Failed to toggle automation:', error);
+      this.showSnackbar(this.translate.instant('generalOverview.layout.toggleAutomationFailed'));
     }
   }
 
-  onTaskClick(task: ScheduledTask): void {
-    const remoteName = task.args.remoteName;
+  onAutomationClick(automation: Automation): void {
+    const remoteName = automation.args.remoteName;
     if (remoteName) {
       const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
       if (remote) this.selectRemote.emit(remote);
     }
   }
 
-  onOpenTaskInFiles(path: string): void {
+  onOpenAutomationInFiles(path: string): void {
     const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
   }
@@ -406,14 +406,14 @@ export class GeneralOverviewComponent {
     }
   }
 
-  private async loadScheduledTasks(): Promise<void> {
-    this.isLoadingScheduledTasks.set(true);
+  private async loadAutomations(): Promise<void> {
+    this.isLoadingAutomations.set(true);
     try {
-      await this.schedulerService.getScheduledTasks();
+      await this.automationService.getAutomations();
     } catch (error) {
-      console.error('Error loading scheduled tasks:', error);
+      console.error('Error loading automations:', error);
     } finally {
-      this.isLoadingScheduledTasks.set(false);
+      this.isLoadingAutomations.set(false);
     }
   }
 

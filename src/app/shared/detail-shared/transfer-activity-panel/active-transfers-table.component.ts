@@ -62,14 +62,25 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
             <td mat-cell *matCellDef="let transfer" class="progress-cell">
               <div class="progress-info">
                 <div class="progress-header">
-                  <span class="progress-text">{{ transfer.percentage }}%</span>
+                  @if (isPreparing(transfer.percentage)) {
+                    <span class="progress-text">{{
+                      'shared.transferActivity.status.preparing' | translate
+                    }}</span>
+                  } @else if (transfer.percentage === 100) {
+                    <span class="progress-text">{{
+                      'shared.transferActivity.status.finalizing' | translate
+                    }}</span>
+                  } @else {
+                    <span class="progress-text">{{ transfer.percentage }}%</span>
+                  }
                   <span class="size-text">
-                    {{ transfer.bytes | formatFileSize }} / {{ transfer.size | formatFileSize }}
+                    {{ transfer.bytes ?? 0 | formatFileSize }} /
+                    {{ transfer.size | formatFileSize }}
                   </span>
                 </div>
                 <mat-progress-bar
-                  mode="determinate"
-                  [value]="transfer.percentage"
+                  [mode]="isPreparing(transfer.percentage) ? 'indeterminate' : 'determinate'"
+                  [value]="isPreparing(transfer.percentage) ? 0 : transfer.percentage"
                 ></mat-progress-bar>
               </div>
             </td>
@@ -166,5 +177,8 @@ export class ActiveTransfersTableComponent {
     if (speed > 10 * 1024 * 1024) return 'speed-fast';
     if (speed > 1 * 1024 * 1024) return 'speed-medium';
     return 'speed-slow';
+  }
+  isPreparing(percentage: number | undefined | null): boolean {
+    return percentage === undefined || percentage === null || isNaN(percentage);
   }
 }

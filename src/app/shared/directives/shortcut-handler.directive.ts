@@ -105,7 +105,7 @@ export class ShortcutHandlerDirective {
     }
 
     if (ctrlKey && !shiftKey && !altKey && key === '.') {
-      this.openRcloneConfig();
+      this.openRcloneFlags();
       return true;
     }
 
@@ -226,8 +226,8 @@ export class ShortcutHandlerDirective {
     this.modalService.openPreferences();
   }
 
-  private openRcloneConfig(): void {
-    this.modalService.openRcloneConfig();
+  private openRcloneFlags(): void {
+    this.modalService.openRcloneFlags();
   }
 
   private openAlerts(): void {
