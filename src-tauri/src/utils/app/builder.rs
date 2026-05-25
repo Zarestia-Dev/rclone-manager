@@ -98,6 +98,9 @@ pub fn create_app_window(app_handle: tauri::AppHandle) {
     window
         .show()
         .unwrap_or_else(|e| log::error!("Failed to show main window: {e}"));
+
+    #[cfg(target_os = "macos")]
+    crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
@@ -152,6 +155,8 @@ pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
     match apply_platform_config(builder).build() {
         Ok(window) => {
             let _ = window.show();
+            #[cfg(target_os = "macos")]
+            crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
         }
         Err(e) => log::error!("Failed to build window {}: {e}", opts.label),
     }

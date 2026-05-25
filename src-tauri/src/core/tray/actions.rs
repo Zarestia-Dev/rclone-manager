@@ -29,6 +29,8 @@ pub fn show_main_window(app: AppHandle) {
         window.show().unwrap_or_else(|_| {
             error!("Failed to show main window");
         });
+        #[cfg(target_os = "macos")]
+        crate::utils::app::platform::update_macos_dock_visibility(&app);
     } else {
         use crate::utils::app::builder::create_app_window;
         info!("Main window not found, building a new one");

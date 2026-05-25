@@ -192,6 +192,8 @@ pub fn run() {
                         }
                         api.prevent_close();
                     }
+                    #[cfg(target_os = "macos")]
+                    crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
                 } else {
                     api.prevent_close();
                     let window_ = window.clone();
@@ -206,12 +208,21 @@ pub fn run() {
                     });
                 }
             }
+            WindowEvent::Destroyed => {
+                #[cfg(target_os = "macos")]
+                crate::utils::app::platform::update_macos_dock_visibility(&window.app_handle());
+            }
             #[cfg(desktop)]
             WindowEvent::Focused(true) => {
-                if let Some(win) = window.app_handle().get_webview_window("main")
-                    && let Err(e) = win.show()
-                {
-                    log::error!("Failed to show window: {e}");
+                if let Some(win) = window.app_handle().get_webview_window("main") {
+                    if let Err(e) = win.show() {
+                        log::error!("Failed to show window: {e}");
+                    } else {
+                        #[cfg(target_os = "macos")]
+                        crate::utils::app::platform::update_macos_dock_visibility(
+                            &window.app_handle(),
+                        );
+                    }
                 }
             }
             _ => {}
@@ -416,6 +427,9 @@ fn setup_app(
         log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
     }
+
+    #[cfg(target_os = "macos")]
+    crate::utils::app::platform::update_macos_dock_visibility(app.handle());
 
     Ok(())
 }

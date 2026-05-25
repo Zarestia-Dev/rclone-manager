@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 
+- **macOS Dock Visibility Control**: Added functionality to control the macOS dock visibility based on the presence of visible windows. The dock icon will now hide when there are no visible windows and show when there is at least one visible window. This is the default behavior for macOS apps that don't have a dock icon. This is a macOS-specific change. #208
 
 ### Fixed
 - Fixed missing language values on some sections of the application and remove the non-used language keys.
