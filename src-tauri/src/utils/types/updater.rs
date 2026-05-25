@@ -108,6 +108,7 @@ pub struct AppUpdaterData {
     pub pending_action: Option<Update>,
     pub signature: Option<Vec<u8>>,
     pub last_metadata: Option<UpdateMetadata>,
+    pub download_handle: Option<tauri::async_runtime::JoinHandle<()>>,
 }
 
 impl Default for AppUpdaterState {
@@ -179,6 +180,7 @@ pub struct RcloneUpdaterState {
 pub struct RcloneUpdaterData {
     pub state: UpdateState,
     pub pending_update: Option<UpdateMetadata>,
+    pub cancel_token: Option<tokio_util::sync::CancellationToken>,
 }
 
 impl Default for RcloneUpdaterState {

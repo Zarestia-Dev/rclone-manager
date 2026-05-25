@@ -305,6 +305,12 @@ pub async fn update_rclone(
 
     let latest_version = &update_check.metadata.version;
 
+    let cancel_token = tokio_util::sync::CancellationToken::new();
+    {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        state.data.lock().cancel_token = Some(cancel_token.clone());
+    }
+
     {
         let backend_manager = app_handle.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
@@ -316,7 +322,18 @@ pub async fn update_rclone(
                 }),
             );
 
-            let result = perform_rclone_selfupdate(&app_handle, None, channel_enum.clone()).await;
+            let result = perform_rclone_selfupdate(
+                &app_handle,
+                None,
+                channel_enum.clone(),
+                cancel_token.clone(),
+            )
+            .await;
+
+            {
+                let state = app_handle.state::<RcloneUpdaterState>();
+                state.data.lock().cancel_token = None;
+            }
 
             return match result {
                 Ok(res) => {
@@ -378,11 +395,15 @@ pub async fn update_rclone(
         state.data.lock().state = UpdateState::Downloading;
     }
     info!("Downloading update to: {new_path:?}");
-    let update_result = perform_rclone_selfupdate(&app_handle, Some(&new_path), channel_enum).await;
+    let update_result =
+        perform_rclone_selfupdate(&app_handle, Some(&new_path), channel_enum, cancel_token).await;
 
     {
         let state = app_handle.state::<RcloneUpdaterState>();
-        state.data.lock().state = UpdateState::Idle;
+        let mut data = state.data.lock();
+        data.state = UpdateState::Idle;
+        // Don't leave the token hanging around after completion
+        data.cancel_token = None;
     }
 
     match &update_result {
@@ -409,6 +430,28 @@ pub async fn update_rclone(
     }
 
     update_result
+}
+
+/// Cancels an in-progress rclone update download.
+#[tauri::command]
+pub async fn cancel_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
+    let updater_state = app_handle.state::<RcloneUpdaterState>();
+    let mut data = updater_state.data.lock();
+
+    if data.state == UpdateState::Downloading {
+        if let Some(token) = data.cancel_token.take() {
+            info!("Cancelling rclone update download");
+            token.cancel();
+        }
+
+        data.state = if data.pending_update.is_some() {
+            UpdateState::Available
+        } else {
+            UpdateState::Idle
+        };
+    }
+
+    Ok(())
 }
 
 /// Apply a previously downloaded rclone update and restart the engine.
@@ -793,12 +836,14 @@ async fn perform_rclone_selfupdate(
     app_handle: &AppHandle,
     output_path: Option<&Path>,
     channel: UpdateChannel,
+    cancel_token: tokio_util::sync::CancellationToken,
 ) -> Result<UpdateResult> {
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let client = &app_handle.state::<RcloneState>().client;
 
     let mut args = vec![];
+    // ... rest up to post_json ...
     if let Some(output) = output_path {
         args.push("--output".to_string());
         args.push(output.to_string_lossy().to_string());
@@ -814,10 +859,14 @@ async fn perform_rclone_selfupdate(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload = backend.build_core_command_payload("selfupdate", args, false, os);
 
-    let response = backend
-        .post_json(client, core::COMMAND, Some(&payload))
-        .await
-        .map_err(Error::RcloneSelfUpdate)?;
+    let response = tokio::select! {
+        _ = cancel_token.cancelled() => {
+            return Err(Error::RcloneSelfUpdate("Download cancelled by user".to_string()));
+        }
+        res = backend.post_json(client, core::COMMAND, Some(&payload)) => {
+            res.map_err(|e| Error::RcloneSelfUpdate(e.to_string()))?
+        }
+    };
 
     let error = response
         .get("error")

@@ -222,6 +222,8 @@
     }
   },
   "rcloneUpdate": {
+    "cancelled": "Descarga de actualización de Rclone cancelada.",
+    "cancelFailed": "Error al cancelar la descarga de actualización de Rclone.",
     "failed": "Error al actualizar: {{error}}",
     "channelChanged": "Canal de actualización de Rclone cambiado a {{channel}}",
     "skipped": "Versión de Rclone {{version}} omitida",
@@ -1286,6 +1288,7 @@
     "restoreSuccess": "Ajustes restaurados correctamente"
   },
   "updates": {
+    "cancelFailed": "Error al cancelar la descarga de actualización.",
     "installSuccess": "Actualización instalada. Reinicia la aplicación.",
     "checkFailed": "Error al buscar actualizaciones: {{error}}",
     "installFailed": "Error al instalar la actualización: {{error}}",

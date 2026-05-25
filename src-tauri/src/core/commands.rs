@@ -50,6 +50,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
             (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
+            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
             (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
             (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
 
@@ -326,6 +327,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (fetch_update, $crate::utils::app::updater::app_updates::fetch_update, [channel: String]);
             (get_app_update_info, $crate::utils::app::updater::app_updates::get_app_update_info, []);
             (install_update, $crate::utils::app::updater::app_updates::install_update, []);
+            (cancel_app_update, $crate::utils::app::updater::app_updates::cancel_app_update, []);
             (apply_app_update, $crate::utils::app::updater::app_updates::apply_app_update, []);
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
 

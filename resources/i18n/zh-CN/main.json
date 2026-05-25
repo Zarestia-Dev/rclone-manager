@@ -222,6 +222,8 @@
     }
   },
   "rcloneUpdate": {
+    "cancelled": "Rclone 更新下载已取消。",
+    "cancelFailed": "取消 Rclone 更新下载失败。",
     "failed": "更新失败：{{error}}",
     "channelChanged": "Rclone 更新通道已切换为 {{channel}}",
     "skipped": "已跳过 Rclone 版本 {{version}}",
@@ -1286,6 +1288,7 @@
     "restoreSuccess": "设置恢复成功"
   },
   "updates": {
+    "cancelFailed": "取消更新下载失败。",
     "installSuccess": "更新已安装，请重启应用",
     "checkFailed": "检查更新失败：{{error}}",
     "installFailed": "安装更新失败：{{error}}",

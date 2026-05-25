@@ -222,6 +222,8 @@
     }
   },
   "rcloneUpdate": {
+    "cancelled": "Rclone update download cancelled.",
+    "cancelFailed": "Failed to cancel Rclone update download.",
     "failed": "Update failed: {{error}}",
     "channelChanged": "Rclone update channel changed to {{channel}}",
     "skipped": "Rclone version {{version}} skipped",
@@ -1286,6 +1288,7 @@
     "restoreSuccess": "Settings restored successfully"
   },
   "updates": {
+    "cancelFailed": "Failed to cancel the update download.",
     "installSuccess": "Update installed. Please restart the app.",
     "checkFailed": "Failed to check for updates: {{error}}",
     "installFailed": "Failed to install update: {{error}}",

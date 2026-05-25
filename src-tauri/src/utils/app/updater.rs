@@ -238,11 +238,11 @@ pub mod app_updates {
         let updater_state = app.state::<AppUpdaterState>();
 
         let update = {
-            let mut data = updater_state.data.lock();
+            let data = updater_state.data.lock();
             if data.state == UpdateState::Downloading {
                 return Ok(());
             }
-            data.pending_action.take().ok_or(Error::NoPendingUpdate)?
+            data.pending_action.clone().ok_or(Error::NoPendingUpdate)?
         };
 
         // Reset progress and set updating flag
@@ -266,7 +266,7 @@ pub mod app_updates {
         let app_clone = app.clone();
         let update_clone = update.clone();
 
-        tauri::async_runtime::spawn(async move {
+        let handle = tauri::async_runtime::spawn(async move {
             let res = update
                 .download(
                     {
@@ -376,6 +376,32 @@ pub mod app_updates {
                 }
             }
         });
+
+        updater_state.data.lock().download_handle = Some(handle);
+
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn cancel_app_update(app: AppHandle) -> Result<()> {
+        let updater_state = app.state::<AppUpdaterState>();
+        let mut data = updater_state.data.lock();
+
+        if data.state == UpdateState::Downloading {
+            if let Some(handle) = data.download_handle.take() {
+                info!("Cancelling app update download");
+                handle.abort();
+            }
+
+            data.state = if data.last_metadata.is_some() {
+                UpdateState::Available
+            } else {
+                UpdateState::Idle
+            };
+            data.downloaded_bytes = 0;
+            data.total_bytes = 0;
+            data.failure_message = Some("Download cancelled by user".to_string());
+        }
 
         Ok(())
     }

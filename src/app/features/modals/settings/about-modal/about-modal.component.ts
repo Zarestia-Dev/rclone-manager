@@ -312,6 +312,10 @@ export class AboutModalComponent implements OnInit {
     await this.appUpdaterService.installUpdate();
   }
 
+  async cancelAppUpdate(): Promise<void> {
+    await this.appUpdaterService.cancelUpdate();
+  }
+
   async finishUpdate(): Promise<void> {
     if (this.restartingApp()) return;
     this.restartingApp.set(true);
@@ -382,6 +386,10 @@ export class AboutModalComponent implements OnInit {
   async installRcloneUpdate(): Promise<void> {
     if (this.rcloneUpdateInProgress()) return;
     await this.rcloneUpdateService.performUpdate();
+  }
+
+  async cancelRcloneUpdate(): Promise<void> {
+    await this.rcloneUpdateService.cancelUpdate();
   }
 
   async applyRcloneUpdate(): Promise<void> {

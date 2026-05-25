@@ -333,13 +333,15 @@
                         {{ 'modals.about.installUpdate' | translate }}
                       }
                     </button>
-                    <button
-                      mat-stroked-button
-                      (click)="skipUpdate()"
-                      [disabled]="appDownloadInProgress()"
-                    >
-                      {{ 'modals.about.skipVersion' | translate }}
-                    </button>
+                    @if (appDownloadInProgress()) {
+                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
+                        {{ 'common.cancel' | translate }}
+                      </button>
+                    } @else {
+                      <button mat-stroked-button (click)="skipUpdate()">
+                        {{ 'modals.about.skipVersion' | translate }}
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -621,13 +623,15 @@
                       {{ 'modals.about.updateRclone' | translate }}
                     }
                   </button>
-                  <button
-                    mat-button
-                    (click)="skipRcloneUpdate()"
-                    [disabled]="rcloneUpdateInProgress()"
-                  >
-                    {{ 'modals.about.skipVersion' | translate }}
-                  </button>
+                  @if (rcloneUpdateInProgress()) {
+                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
+                      {{ 'common.cancel' | translate }}
+                    </button>
+                  } @else {
+                    <button mat-button (click)="skipRcloneUpdate()">
+                      {{ 'modals.about.skipVersion' | translate }}
+                    </button>
+                  }
                 </div>
               </div>
             } @else {

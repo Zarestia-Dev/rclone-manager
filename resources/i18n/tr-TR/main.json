@@ -222,6 +222,8 @@
     }
   },
   "rcloneUpdate": {
+    "cancelled": "Rclone güncelleme indirmesi iptal edildi.",
+    "cancelFailed": "Rclone güncelleme indirmesi iptal edilemedi.",
     "failed": "Güncelleme başarısız: {{error}}",
     "channelChanged": "Rclone güncelleme kanalı {{channel}} olarak değiştirildi",
     "skipped": "Rclone sürümü {{version}} atlandı",
@@ -1286,6 +1288,7 @@
     "restoreSuccess": "Ayarlar başarıyla geri yüklendi"
   },
   "updates": {
+    "cancelFailed": "Güncelleme indirmesi iptal edilemedi.",
     "installSuccess": "Güncelleme kuruldu. Lütfen uygulamayı yeniden başlatın.",
     "checkFailed": "Güncellemeler kontrol edilemedi: {{error}}",
     "installFailed": "Güncelleme kurulamadı: {{error}}",
