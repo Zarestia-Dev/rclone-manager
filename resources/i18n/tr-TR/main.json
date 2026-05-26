@@ -1537,7 +1537,8 @@
       "showShortcuts": "Klavye Kısayollarını Göster",
       "openPreferences": "Tercihleri Aç",
       "openFlags": "Rclone Bayraklarını Aç",
-      "forceCheck": "Bağlı Sunucuları Zorla Kontrol Et",
+      "forceCheck": "Bağlantıları Zorla Kontrol Et",
+      "forceCheckServes": "Sunulan Uzak Bağlantıları Zorla Kontrol Et",
       "newRemoteDetailed": "Yeni Uzak Sunucu Oluştur (Detaylı)",
       "newRemoteQuick": "Yeni Uzak Sunucu Oluştur (Hızlı)",
       "loadConfig": "Yapılandırmayı Yükle",
@@ -1556,7 +1557,11 @@
     },
     "quitError": "Uygulama kapatılamadı: {{error}}",
     "refreshError": "Kısayollar yenilenemedi: {{error}}",
-    "refreshSuccess": "Kısayollar başarıyla yenilendi"
+    "refreshSuccess": "Kısayollar başarıyla yenilendi",
+    "mountsRefreshSuccess": "Bağlantılar başarıyla yenilendi",
+    "mountsRefreshError": "Bağlantılar yenilenemedi: {{error}}",
+    "servesRefreshSuccess": "Sunulan bağlantılar başarıyla yenilendi",
+    "servesRefreshError": "Sunulan bağlantılar yenilenemedi: {{error}}"
   },
   "app": {
     "shutdown": {

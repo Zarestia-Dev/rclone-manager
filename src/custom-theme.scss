@@ -1027,6 +1027,34 @@ button {
 // SECTION 6: COMPONENT STYLES
 // ============================================================================
 
+mat-tab-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  ::ng-deep {
+    .mat-mdc-tab-body-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .mat-mdc-tab-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .mat-mdc-tab-body-content {
+      height: 100%;
+      overflow-y: auto;
+    }
+  }
+}
+
 .mat-mdc-autocomplete-panel {
   border-radius: var(--input-border-radius) !important;
 }

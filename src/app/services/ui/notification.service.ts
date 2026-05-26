@@ -96,8 +96,8 @@ export class NotificationService {
     const dialogData: ConfirmDialogData = {
       title,
       message,
-      cancelText: cancelText ?? this.translate.instant('common.no'),
-      confirmText: confirmText ?? this.translate.instant('common.yes'),
+      cancelText: cancelText ?? 'common.no',
+      confirmText: confirmText ?? 'common.yes',
       ...options,
     };
 

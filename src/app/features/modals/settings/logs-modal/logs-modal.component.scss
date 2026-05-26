@@ -1,78 +1,71 @@
-.log-modal-wrapper {
+// Toolbar
+.toolbar-section {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: var(--header-gap);
+  padding: var(--space-md);
+  background: var(--window-bg-color);
+  border-bottom: 1px solid var(--card-shade-color);
+  align-items: center;
+  flex-shrink: 0;
 
-  // Toolbar
-  .toolbar-section {
+  .filter-controls {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--header-gap);
-    padding: var(--space-md);
-    background: var(--window-bg-color);
-    border-bottom: 1px solid var(--card-shade-color);
-    align-items: center;
-    flex-shrink: 0;
+    flex: 1;
+    gap: var(--space-sm);
+    min-width: 280px;
 
-    .filter-controls {
-      display: flex;
-      flex: 1;
-      gap: var(--space-sm);
-      min-width: 280px;
-
-      .compact {
-        font-size: var(--font-size-md);
-      }
-    }
-
-    .action-controls {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xxs);
-
-      .warn-btn {
-        color: var(--warn-color);
-        &:hover {
-          background: rgba(var(--warn-color-rgb), 0.1);
-        }
-      }
-
-      .spinning {
-        animation: spin 1s linear infinite;
-      }
-    }
-
-    @media (max-width: 540px) {
-      flex-direction: column;
-      align-items: stretch;
-
-      .filter-controls {
-        flex-direction: column;
-      }
-
-      .action-controls {
-        justify-content: flex-end;
-        border-top: 1px solid var(--card-shade-color);
-        padding-top: var(--space-sm);
-        margin-top: var(--space-sm);
-      }
+    .compact {
+      font-size: var(--font-size-md);
     }
   }
 
-  // Terminal Area
-  .terminal-viewport {
-    flex: 1;
-    background: var(--gnome-dark-4);
-    overflow: hidden;
+  .action-controls {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xxs);
 
-    .log-scroller {
-      flex: 1;
-      overflow-y: auto;
-      padding: var(--space-xxs) 0;
+    .warn-btn {
+      color: var(--warn-color);
+      &:hover {
+        background: rgba(var(--warn-color-rgb), 0.1);
+      }
     }
+
+    .spinning {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  @media (max-width: 540px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    .filter-controls {
+      flex-direction: column;
+    }
+
+    .action-controls {
+      justify-content: flex-end;
+      border-top: 1px solid var(--card-shade-color);
+      padding-top: var(--space-sm);
+      margin-top: var(--space-sm);
+    }
+  }
+}
+
+// Terminal Area
+.terminal-viewport {
+  flex: 1;
+  background: var(--gnome-dark-4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .log-scroller {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-xxs) 0;
   }
 }
 

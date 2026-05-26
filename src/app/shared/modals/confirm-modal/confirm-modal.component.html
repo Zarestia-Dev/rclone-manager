@@ -4,8 +4,8 @@
     <div class="modal-icon" [class]="getModalColor()">
       <mat-icon [svgIcon]="getModalIcon()" [class]="getModalColor()" aria-hidden="true"></mat-icon>
     </div>
-    <h2 class="modal-title">{{ data.title }}</h2>
-    <p class="modal-message">{{ data.message }}</p>
+    <h2 class="modal-title">{{ data.title | translate }}</h2>
+    <p class="modal-message">{{ data.message | translate }}</p>
   </div>
 
   <div class="modal-actions">

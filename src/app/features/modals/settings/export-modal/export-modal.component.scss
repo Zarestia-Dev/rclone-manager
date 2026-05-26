@@ -1,21 +1,3 @@
-// Modal Container
-.export-modal {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex: 1;
-}
-
-// Content Area
-.modal-content {
-  flex: 1;
-  padding: var(--space-md);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
-}
-
 // Sections
 .section-group {
   display: flex;
@@ -137,7 +119,6 @@
   box-shadow: var(--shadow-gnome);
 
   .field-icon {
-    margin-right: var(--space-sm);
     color: var(--dim-color);
   }
 
@@ -231,9 +212,7 @@
     }
 
     .secrets-checkbox {
-      margin-top: var(--space-lg);
-      padding-top: var(--space-md);
-      border-top: 1px dashed rgba(var(--yellow-rgb), 0.3);
+      border-top: 1px dashed var(--dim-color);
       width: 100%;
 
       .checkbox-label-content {
@@ -254,24 +233,6 @@
         }
       }
     }
-  }
-}
-
-// Footer
-.modal-actions {
-  padding: var(--space-lg) var(--space-xl);
-  border-top: 1px solid var(--card-shade-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-md);
-  background: var(--view-bg-color);
-
-  button {
-    min-width: 100px;
-  }
-
-  .button-spinner {
-    margin-right: var(--space-sm);
   }
 }
 

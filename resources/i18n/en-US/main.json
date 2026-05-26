@@ -1537,7 +1537,8 @@
       "showShortcuts": "Show Keyboard Shortcuts",
       "openPreferences": "Open Preferences",
       "openFlags": "Open Rclone Flags",
-      "forceCheck": "Force Check Mounted Remotes",
+      "forceCheck": "Force Check Mounts",
+      "forceCheckServes": "Force Check Served Remotes",
       "newRemoteDetailed": "Create New Remote (Detailed)",
       "newRemoteQuick": "Create New Remote (Quick)",
       "loadConfig": "Load Configuration",
@@ -1556,7 +1557,11 @@
     },
     "quitError": "Failed to quit application: {{error}}",
     "refreshError": "Failed to refresh shortcuts: {{error}}",
-    "refreshSuccess": "Shortcuts refreshed successfully"
+    "refreshSuccess": "Shortcuts refreshed successfully",
+    "mountsRefreshSuccess": "Mounts refreshed successfully",
+    "mountsRefreshError": "Failed to refresh mounts: {{error}}",
+    "servesRefreshSuccess": "Served remotes refreshed successfully",
+    "servesRefreshError": "Failed to refresh served remotes: {{error}}"
   },
   "app": {
     "shutdown": {

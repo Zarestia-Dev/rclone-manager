@@ -2,7 +2,7 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDialogRef } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { AlertService, ModalService } from '@app/services';
@@ -17,7 +17,6 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
-    MatDialogModule,
     TranslateModule,
     AlertHistoryComponent,
     AlertRulesComponent,
@@ -25,7 +24,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="modal-header" data-tauri-drag-region>
+    <header data-tauri-drag-region>
       <button>
         <mat-icon svgIcon="bell"></mat-icon>
       </button>
@@ -35,73 +34,50 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       </button>
     </header>
 
-    <div class="modal-container">
-      <mat-tab-group class="alerts-tabs" [animationDuration]="'150ms'">
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="bell" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.history' | translate }}</span>
-            @if (alerts.unacknowledged() > 0) {
-              <span class="tab-badge">{{ alerts.unacknowledged() }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-history></app-alert-history>
-          </div>
-        </mat-tab>
+    <mat-tab-group>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="bell" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.history' | translate }}</span>
+          @if (alerts.unacknowledged() > 0) {
+            <span class="tab-badge">{{ alerts.unacknowledged() }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-history></app-alert-history>
+        </div>
+      </mat-tab>
 
-        <!-- Rules -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="filter" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.rules' | translate }}</span>
-            @if (alerts.rules().length > 0) {
-              <span class="tab-count">{{ alerts.rules().length }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-rules></app-alert-rules>
-          </div>
-        </mat-tab>
+      <!-- Rules -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="filter" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.rules' | translate }}</span>
+          @if (alerts.rules().length > 0) {
+            <span class="tab-count">{{ alerts.rules().length }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-rules></app-alert-rules>
+        </div>
+      </mat-tab>
 
-        <!-- Actions -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon svgIcon="bolt" class="tab-icon"></mat-icon>
-            <span>{{ 'alerts.actions' | translate }}</span>
-            @if (alerts.actions().length > 0) {
-              <span class="tab-count">{{ alerts.actions().length }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
-            <app-alert-actions></app-alert-actions>
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    </div>
+      <!-- Actions -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon svgIcon="bolt" class="tab-icon"></mat-icon>
+          <span>{{ 'alerts.actions' | translate }}</span>
+          @if (alerts.actions().length > 0) {
+            <span class="tab-count">{{ alerts.actions().length }}</span>
+          }
+        </ng-template>
+        <div class="tab-content">
+          <app-alert-actions></app-alert-actions>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   `,
   styles: `
-    .alerts-tabs {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-
-      ::ng-deep .mat-mdc-tab-body-wrapper {
-        flex: 1;
-        min-height: 0;
-      }
-
-      ::ng-deep .mat-mdc-tab-body {
-        height: 100%;
-      }
-
-      ::ng-deep .mat-mdc-tab-body-content {
-        height: 100%;
-        overflow: hidden;
-      }
-    }
-
     .tab-content {
       height: 100%;
       overflow: hidden;

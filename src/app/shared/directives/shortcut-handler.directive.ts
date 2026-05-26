@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 // Services
 import {
   MountManagementService,
+  ServeManagementService,
   NautilusService,
   WindowService,
   BackupRestoreUiService,
@@ -25,6 +26,7 @@ export class ShortcutHandlerDirective {
   private readonly windowService = inject(WindowService);
   private readonly onboardingStateService = inject(OnboardingStateService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
   private readonly nautilusService = inject(NautilusService);
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
 
@@ -69,6 +71,11 @@ export class ShortcutHandlerDirective {
     // Remote management shortcuts
     if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === 'm') {
       this.forceRefreshMountedRemotes();
+      return true;
+    }
+
+    if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === 's') {
+      this.forceRefreshServes();
       return true;
     }
 
@@ -194,10 +201,25 @@ export class ShortcutHandlerDirective {
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
       await this.mountManagementService.forceCheckMountedRemotes();
-      this.notificationService.showSuccess(this.translate.instant('shortcuts.refreshSuccess'));
+      this.notificationService.showSuccess(
+        this.translate.instant('shortcuts.mountsRefreshSuccess')
+      );
     } catch (error) {
       this.notificationService.showError(
-        this.translate.instant('shortcuts.refreshError', { error })
+        this.translate.instant('shortcuts.mountsRefreshError', { error })
+      );
+    }
+  }
+
+  private async forceRefreshServes(): Promise<void> {
+    try {
+      await this.serveManagementService.forceCheckServes();
+      this.notificationService.showSuccess(
+        this.translate.instant('shortcuts.servesRefreshSuccess')
+      );
+    } catch (error) {
+      this.notificationService.showError(
+        this.translate.instant('shortcuts.servesRefreshError', { error })
       );
     }
   }

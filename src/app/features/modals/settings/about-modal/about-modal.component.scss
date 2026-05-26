@@ -8,64 +8,47 @@
 // ----------------------------------------------------------------------------
 // Main Modal Layout
 // ----------------------------------------------------------------------------
-.about-modal {
-  position: relative;
-  height: 100%;
+// Navigation List & Items
+.about-list {
+  margin-top: var(--space-md);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: var(--space-sm);
+  width: 100%;
+}
 
-  // Navigation List & Items
-  .about-list {
-    margin-top: var(--space-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    width: 100%;
+.about-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-md);
+  flex-direction: row-reverse !important;
+  background: var(--card-bg-color);
+  height: 54px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
+  color: var(--window-fg-color);
+
+  ::ng-deep .mat-mdc-button-persistent-ripple::before {
+    background-color: var(--dim-color) !important;
   }
 
-  .about-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 var(--space-md);
-    flex-direction: row-reverse !important;
-    background: var(--card-bg-color);
-    height: 54px;
-    border-radius: var(--radius-sm);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
-    color: var(--window-fg-color);
-
-    ::ng-deep .mat-mdc-button-persistent-ripple::before {
-      background-color: var(--dim-color) !important;
-    }
-
-    ::ng-deep .mat-ripple-element {
-      background-color: var(--shadow-color) !important;
-    }
-  }
-
-  .stacked-buttons {
-    display: flex;
-    flex-direction: column;
-    box-shadow: var(--shadow-gnome);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-
-    .about-item {
-      border-radius: 0;
-      box-shadow: none;
-    }
+  ::ng-deep .mat-ripple-element {
+    background-color: var(--shadow-color) !important;
   }
 }
 
-// ----------------------------------------------------------------------------
-// Header spacer
-// ----------------------------------------------------------------------------
-.ghost-header-spacer {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
+.stacked-buttons {
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-gnome);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+
+  .about-item {
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -173,7 +156,7 @@
   flex-direction: column;
   overflow: hidden;
 
-  > *:not(.modal-header) {
+  > *:not(header) {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;

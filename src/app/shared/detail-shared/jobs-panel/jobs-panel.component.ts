@@ -16,7 +16,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule } from '@angular/material/dialog';
+import {} from '@angular/material/dialog';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { ModalService, JobManagementService } from '@app/services';
@@ -38,7 +38,6 @@ import { ModalService, JobManagementService } from '@app/services';
     MatTooltipModule,
     FormatFileSizePipe,
     TranslateModule,
-    MatDialogModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `

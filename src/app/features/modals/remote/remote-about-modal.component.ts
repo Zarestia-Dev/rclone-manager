@@ -9,7 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -40,7 +40,7 @@ interface RemoteAboutData {
   standalone: true,
   imports: [
     TitleCasePipe,
-    MatDialogModule,
+
     MatDividerModule,
     MatIconModule,
     MatButtonModule,

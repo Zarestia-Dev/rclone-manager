@@ -7,7 +7,7 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,7 +29,6 @@ export interface ArchiveCreateData {
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
@@ -39,7 +38,7 @@ export interface ArchiveCreateData {
     TranslateModule,
   ],
   template: `
-    <header class="modal-header" data-tauri-drag-region>
+    <header data-tauri-drag-region>
       <button>
         <mat-icon svgIcon="box-archive"></mat-icon>
       </button>
@@ -51,7 +50,7 @@ export interface ArchiveCreateData {
       </button>
     </header>
 
-    <mat-dialog-content>
+    <main>
       <form [formGroup]="form">
         <mat-form-field>
           <mat-label>{{ 'nautilus.modals.archiveCreate.filenameLabel' | translate }}</mat-label>
@@ -80,13 +79,13 @@ export interface ArchiveCreateData {
           {{ 'nautilus.modals.archiveCreate.fullPathHint' | translate }}
         </div>
       </form>
-    </mat-dialog-content>
+    </main>
 
-    <mat-dialog-actions>
+    <footer>
       <button mat-flat-button [disabled]="form.invalid" (click)="onConfirm()">
         {{ 'nautilus.modals.archiveCreate.compress' | translate }}
       </button>
-    </mat-dialog-actions>
+    </footer>
   `,
   styles: [
     `

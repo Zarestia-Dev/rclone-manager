@@ -119,6 +119,7 @@ pub struct WindowOptions {
 #[tauri::command]
 pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
+        let _ = existing.show();
         let _ = existing.unminimize();
         let _ = existing.set_focus();
 

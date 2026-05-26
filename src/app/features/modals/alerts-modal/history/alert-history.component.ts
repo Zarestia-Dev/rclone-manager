@@ -7,7 +7,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService, NotificationService } from '@app/services';
 import { AlertHistoryFilter, AlertSeverity } from '@app/types';
 import { SearchContainerComponent } from '@app/shared/components';
 
@@ -517,7 +517,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 })
 export class AlertHistoryComponent {
   readonly alerts = inject(AlertService);
-  private modalService = inject(ModalService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly searchVisible = signal(false);
   readonly displayedColumns = ['severity', 'time', 'content', 'meta', 'actions'];
@@ -570,17 +570,15 @@ export class AlertHistoryComponent {
     await this.alerts.acknowledgeAllAlerts();
   }
 
-  clearHistory(): void {
-    this.modalService
-      .openConfirm({
-        title: 'alerts.clearHistory',
-        message: 'alerts.clearHistoryConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.clearAlertHistory();
-      });
+  async clearHistory(): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'alerts.clearHistory',
+      'alerts.clearHistoryConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      await this.alerts.clearAlertHistory();
+    }
   }
 }

@@ -7,7 +7,7 @@ import {
   effect,
 } from '@angular/core';
 import { CommonModule, DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -26,7 +26,6 @@ import { CopyToClipboardDirective } from '@app/directives';
   standalone: true,
   imports: [
     CommonModule,
-    MatDialogModule,
     MatIconModule,
     MatButtonModule,
     MatDividerModule,

@@ -1,27 +1,3 @@
-.modal {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.modal-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  .loading-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    background: color-mix(in srgb, var(--window-bg-color) 80%, transparent);
-  }
-}
-
 // ============================================================================
 // Copy Options Section
 // ============================================================================
@@ -34,10 +10,6 @@
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
-    }
-
-    mat-form-field {
-      width: 100%;
     }
   }
 
@@ -58,7 +30,6 @@
   gap: var(--space-md);
   background: var(--view-bg-color);
   padding: var(--space-md) var(--space-lg);
-  margin: var(--space-md) var(--space-md) 0 var(--space-md);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-gnome);
   transition: var(--transition-standart);
@@ -132,20 +103,6 @@
     }
   }
 }
-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  height: 100%;
-}
-
-.form-header {
-  h3 {
-    margin: 0;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-  }
-}
 
 .form-row {
   display: flex;
@@ -154,12 +111,8 @@ form {
 
   .field-wrapper {
     flex: 1;
-    display: flex; // FIX: was duplicated
+    display: flex;
     flex-direction: column;
-
-    mat-form-field {
-      width: 100%;
-    }
 
     &.host-field {
       flex: 2;
@@ -263,17 +216,6 @@ form {
 }
 
 // ============================================================================
-// Footer
-// ============================================================================
-.modal-footer {
-  display: flex;
-  gap: var(--space-md);
-  justify-content: flex-end;
-  padding: var(--space-md);
-  border-top: 1px solid var(--border-color);
-}
-
-// ============================================================================
 // Security Tab Elements
 // ============================================================================
 .status-banner {
@@ -364,10 +306,5 @@ form {
       border-top: 1px solid var(--border-color);
       opacity: 1;
     }
-  }
-
-  .modal-footer {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

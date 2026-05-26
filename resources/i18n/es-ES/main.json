@@ -1537,7 +1537,8 @@
       "showShortcuts": "Mostrar atajos de teclado",
       "openPreferences": "Abrir preferencias",
       "openFlags": "Abrir banderas de Rclone",
-      "forceCheck": "Forzar la comprobación de los remotos montados",
+      "forceCheck": "Forzar comprobación de montajes",
+      "forceCheckServes": "Forzar comprobación de remotos servidos",
       "newRemoteDetailed": "Crear nuevo remoto (detallado)",
       "newRemoteQuick": "Crear nuevo remoto (rápido)",
       "loadConfig": "Cargar configuración",
@@ -1556,7 +1557,11 @@
     },
     "quitError": "Error al salir de la aplicación: {{error}}",
     "refreshError": "Error al actualizar los atajos: {{error}}",
-    "refreshSuccess": "Atajos actualizados correctamente"
+    "refreshSuccess": "Atajos actualizados correctamente",
+    "mountsRefreshSuccess": "Montajes actualizados con éxito",
+    "mountsRefreshError": "Error al actualizar los montajes: {{error}}",
+    "servesRefreshSuccess": "Remotos servidos actualizados con éxito",
+    "servesRefreshError": "Error al actualizar los remotos servidos: {{error}}"
   },
   "app": {
     "shutdown": {

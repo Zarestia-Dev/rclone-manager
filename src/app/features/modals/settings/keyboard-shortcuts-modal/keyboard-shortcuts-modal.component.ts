@@ -82,6 +82,11 @@ export class KeyboardShortcutsModalComponent {
       category: 'shortcuts.categories.remoteManagement',
     },
     {
+      keys: 'Ctrl + Shift + S',
+      description: 'shortcuts.actions.forceCheckServes',
+      category: 'shortcuts.categories.remoteManagement',
+    },
+    {
       keys: 'Ctrl + N',
       description: 'shortcuts.actions.newRemoteDetailed',
       category: 'shortcuts.categories.remoteManagement',

@@ -1,19 +1,3 @@
-.restore-preview-modal {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-// Content
-.modal-content {
-  flex: 1;
-  padding: var(--space-xl);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-}
-
 // Info Cards
 .info-card {
   background: var(--view-bg-color);
@@ -21,6 +5,7 @@
   padding: var(--space-md);
   box-shadow: var(--shadow-gnome);
   transition: box-shadow var(--transition-fast);
+  margin-bottom: var(--space-md);
 }
 
 .card-header {
@@ -351,33 +336,5 @@
     font-size: var(--font-size-sm);
     line-height: 1.5;
     color: var(--secondary-text-color);
-  }
-}
-
-// Actions
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-xl);
-  border-top: 1px solid var(--card-shade-color);
-}
-
-// Responsive
-@media (max-width: 540px) {
-  .modal-content {
-    padding: var(--space-lg);
-
-    .info-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .modal-actions {
-    padding: var(--space-md) var(--space-lg);
-
-    button {
-      flex: 1;
-    }
   }
 }

@@ -1,127 +1,108 @@
-.modal-container {
-  display: flex;
-  flex-direction: column;
+.shortcut-table {
+  border-radius: 0;
   overflow: hidden;
-  height: 100%;
-  position: relative;
 
-  .modal-content {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    z-index: 1;
+  .mat-mdc-row {
+    transition: var(--transition-fast);
 
-    .shortcut-table {
-      border-radius: 0;
-      overflow: hidden;
+    &:hover {
+      background: var(--hover-bg-color);
 
-      .mat-mdc-row {
+      .key {
+        animation: keyPress 0.2s ease-out;
+      }
+    }
+  }
+
+  .mat-mdc-cell {
+    padding: var(--space-lg) var(--space-xl);
+    border: none;
+    vertical-align: middle;
+
+    &.shortcut-key {
+      width: 45%;
+
+      .key {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        min-width: 28px;
+        padding: 0 var(--space-sm);
+        background: var(--view-bg-color);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+        color: var(--window-fg-color);
+        text-transform: uppercase;
+        box-shadow: var(--shadow-gnome);
         transition: var(--transition-fast);
 
-        &:hover {
-          background: var(--hover-bg-color);
-
-          .key {
-            animation: keyPress 0.2s ease-out;
-          }
-        }
-      }
-
-      .mat-mdc-cell {
-        padding: var(--space-lg) var(--space-xl);
-        border: none;
-        vertical-align: middle;
-
-        &.shortcut-key {
-          width: 45%;
-
-          .key {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: 28px;
-            min-width: 28px;
-            padding: 0 var(--space-sm);
-            background: var(--view-bg-color);
-            border-radius: var(--radius-sm);
-            font-family: var(--font-mono);
-            font-weight: 600;
-            font-size: var(--font-size-sm);
-            color: var(--window-fg-color);
-            text-transform: uppercase;
-            box-shadow: var(--shadow-gnome);
-            transition: var(--transition-fast);
-
-            &:last-child {
-              margin-right: 0;
-            }
-
-            // Modifier keys
-            &[data-key*="Ctrl"],
-            &[data-key*="Alt"],
-            &[data-key*="Cmd"],
-            &[data-key*="Shift"] {
-              background: rgba(var(--primary-color-rgb), 0.1);
-              color: var(--primary-color);
-            }
-
-            // Function keys
-            &[data-key^="F"] {
-              background: rgba(var(--accent-color-rgb), 0.1);
-              color: var(--accent-color);
-            }
-
-            // Action keys
-            &[data-key="Enter"],
-            &[data-key="Space"],
-            &[data-key="Tab"],
-            &[data-key="Escape"],
-            &[data-key="Delete"] {
-              background: rgba(var(--accent-color-rgb), 0.08);
-              color: var(--accent-color);
-            }
-          }
+        &:last-child {
+          margin-right: 0;
         }
 
-        &.shortcut-desc {
-          width: 60%;
-          font-weight: 400;
-          color: var(--dim-color);
-          line-height: 1.5;
+        // Modifier keys
+        &[data-key*="Ctrl"],
+        &[data-key*="Alt"],
+        &[data-key*="Cmd"],
+        &[data-key*="Shift"] {
+          background: rgba(var(--primary-color-rgb), 0.1);
+          color: var(--primary-color);
+        }
+
+        // Function keys
+        &[data-key^="F"] {
+          background: rgba(var(--accent-color-rgb), 0.1);
+          color: var(--accent-color);
+        }
+
+        // Action keys
+        &[data-key="Enter"],
+        &[data-key="Space"],
+        &[data-key="Tab"],
+        &[data-key="Escape"],
+        &[data-key="Delete"] {
+          background: rgba(var(--accent-color-rgb), 0.08);
+          color: var(--accent-color);
         }
       }
     }
 
-    .key-separator {
-      display: inline-flex;
-      align-items: center;
-      margin: 0 var(--space-xs);
-      font-size: var(--font-size-sm);
-      color: var(--dim-color);
+    &.shortcut-desc {
+      width: 60%;
       font-weight: 400;
+      color: var(--dim-color);
+      line-height: 1.5;
     }
   }
 }
 
+.key-separator {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+  font-weight: 400;
+}
+
 // Responsive
 @media (max-width: 540px) {
-  .modal-container {
-    .modal-content .shortcut-table {
-      .mat-mdc-cell {
-        padding: var(--space-md) var(--space-lg);
+  .shortcut-table {
+    .mat-mdc-cell {
+      padding: var(--space-md) var(--space-lg);
 
-        &.shortcut-key .key {
-          height: 24px;
-          min-width: 24px;
-          padding: 0 var(--space-xs);
-          font-size: var(--font-size-xs);
-        }
+      &.shortcut-key .key {
+        height: 24px;
+        min-width: 24px;
+        padding: 0 var(--space-xs);
+        font-size: var(--font-size-xs);
+      }
 
-        &.shortcut-desc {
-          font-size: var(--font-size-sm);
-        }
+      &.shortcut-desc {
+        font-size: var(--font-size-sm);
       }
     }
   }

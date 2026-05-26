@@ -1537,7 +1537,8 @@
       "showShortcuts": "显示键盘快捷键",
       "openPreferences": "打开偏好设置",
       "openFlags": "打开 Rclone 标志",
-      "forceCheck": "强制检查已挂载远程",
+      "forceCheck": "强制检查挂载",
+      "forceCheckServes": "强制检查已服务远程",
       "newRemoteDetailed": "新建远程存储（详细）",
       "newRemoteQuick": "新建远程存储（快速）",
       "loadConfig": "加载配置",
@@ -1556,7 +1557,11 @@
     },
     "quitError": "退出应用失败：{{error}}",
     "refreshError": "刷新快捷键失败：{{error}}",
-    "refreshSuccess": "快捷键刷新成功"
+    "refreshSuccess": "快捷键刷新成功",
+    "mountsRefreshSuccess": "挂载刷新成功",
+    "mountsRefreshError": "刷新挂载失败：{{error}}",
+    "servesRefreshSuccess": "已服务远程刷新成功",
+    "servesRefreshError": "刷新已服务远程失败：{{error}}"
   },
   "app": {
     "shutdown": {

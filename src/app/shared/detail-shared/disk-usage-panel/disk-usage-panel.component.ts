@@ -32,7 +32,9 @@ import { FormatFileSizePipe } from '@app/pipes';
 
         <div class="header-actions">
           @if (!cfg.notSupported && !cfg.error) {
-            @if (!cfg.loading) {
+            @if (cfg.loading) {
+              <span class="usage-badge skeleton animate-shimmer" aria-hidden="true"></span>
+            } @else {
               <span class="usage-badge" [ngClass]="usageSeverity()">
                 {{ usagePercentageLabel() }}
               </span>
@@ -64,7 +66,7 @@ import { FormatFileSizePipe } from '@app/pipes';
             <span>{{ 'detailShared.diskUsage.errorLoading' | translate }}</span>
           </div>
         } @else {
-          <div class="progress-track" aria-hidden="true">
+          <div class="progress-track" [class.loading]="cfg.loading" aria-hidden="true">
             <div
               class="progress-fill"
               [class.loading]="cfg.loading"
@@ -80,8 +82,25 @@ import { FormatFileSizePipe } from '@app/pipes';
             ></div>
           </div>
 
-          @if (!cfg.loading) {
-            <div class="legend">
+          <div class="legend" [class.loading]="cfg.loading">
+            @if (cfg.loading) {
+              <div class="legend-item">
+                <span class="legend-dot skeleton animate-shimmer" aria-hidden="true"></span>
+                <span class="skeleton-text animate-shimmer" style="width: 36px;"></span>
+                <span class="skeleton-text animate-shimmer" style="width: 54px;"></span>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-dot skeleton animate-shimmer" aria-hidden="true"></span>
+                <span class="skeleton-text animate-shimmer" style="width: 36px;"></span>
+                <span class="skeleton-text animate-shimmer" style="width: 54px;"></span>
+              </div>
+
+              <div class="legend-item total-item">
+                <span class="skeleton-text animate-shimmer" style="width: 32px;"></span>
+                <span class="skeleton-text animate-shimmer" style="width: 54px;"></span>
+              </div>
+            } @else {
               <div class="legend-item">
                 <span class="legend-dot used" [ngClass]="usageSeverity()" aria-hidden="true"></span>
                 <span class="legend-label">{{ 'detailShared.diskUsage.used' | translate }}</span>
@@ -98,8 +117,8 @@ import { FormatFileSizePipe } from '@app/pipes';
                 <span class="legend-label">{{ 'detailShared.diskUsage.total' | translate }}</span>
                 <span class="legend-value">{{ cfg.total_space ?? 0 | formatFileSize }}</span>
               </div>
-            </div>
-          }
+            }
+          </div>
         }
       </mat-card-content>
     </mat-card>

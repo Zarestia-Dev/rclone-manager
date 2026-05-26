@@ -8,7 +8,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService, ModalService, NotificationService } from '@app/services';
 import { AlertRule } from '@app/types';
 import { SearchContainerComponent } from '@app/shared/components';
 
@@ -427,6 +427,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 export class AlertRulesComponent {
   readonly alerts = inject(AlertService);
   private modalService = inject(ModalService);
+  private readonly notificationService = inject(NotificationService);
 
   searchVisible = signal(false);
   displayedColumns = ['severity', 'name', 'filters', 'triggers', 'status', 'actions'];
@@ -453,18 +454,16 @@ export class AlertRulesComponent {
       });
   }
 
-  deleteRule(rule: AlertRule): void {
-    this.modalService
-      .openConfirm({
-        title: 'common.delete',
-        message: 'alerts.deleteRuleConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.deleteAlertRule(rule.id);
-      });
+  async deleteRule(rule: AlertRule): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'common.delete',
+      'alerts.deleteRuleConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      await this.alerts.deleteAlertRule(rule.id);
+    }
   }
 
   async toggleRule(rule: AlertRule): Promise<void> {

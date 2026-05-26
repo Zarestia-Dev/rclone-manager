@@ -1,260 +1,255 @@
-<div class="rclone-flags-modal">
-  <div class="modal-header" data-tauri-drag-region>
-    <button
-      mat-icon-button
-      (click)="toggleSearchVisibility()"
-      [attr.aria-label]="'modals.rcloneFlags.search.toggle' | translate"
-    >
-      <mat-icon svgIcon="search"></mat-icon>
-    </button>
-    <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
-    <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
-    </button>
+<header data-tauri-drag-region>
+  <button
+    mat-icon-button
+    (click)="toggleSearchVisibility()"
+    [attr.aria-label]="'modals.rcloneFlags.search.toggle' | translate"
+  >
+    <mat-icon svgIcon="search"></mat-icon>
+  </button>
+  <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
+  <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<app-search-container
+  [visible]="isSearchVisible()"
+  [searchText]="searchQuery()"
+  (searchTextChange)="onSearchInput($event)"
+  [placeholder]="getSearchPlaceholder() | translate"
+  [ariaLabel]="'modals.rcloneFlags.search.label' | translate"
+></app-search-container>
+
+@if (isLoading()) {
+  <div class="loading-overlay">
+    <mat-spinner diameter="50"></mat-spinner>
   </div>
-
-  <app-search-container
-    [visible]="isSearchVisible()"
-    [searchText]="searchQuery()"
-    (searchTextChange)="onSearchInput($event)"
-    [placeholder]="getSearchPlaceholder() | translate"
-    [ariaLabel]="'modals.rcloneFlags.search.label' | translate"
-  ></app-search-container>
-
-  @if (isLoading()) {
-    <div class="loading-overlay">
-      <mat-spinner diameter="50"></mat-spinner>
-    </div>
-  }
-
-  <!-- HOME PAGE -->
-  @if (!isLoading() && currentPage() === 'home') {
-    <div class="modal-content">
-      @if (searchQuery()) {
-        @if (globalSearchResults().length > 0) {
-          <cdk-virtual-scroll-viewport itemSize="25" class="virtual-scroll-viewport">
-            <div class="virtual-scroll-content">
-              @for (result of globalSearchResults(); track trackBySearchResult($index, result)) {
-                <div
-                  class="config-item"
-                  role="button"
-                  (click)="navigateTo(result.service, result.category, result.option.Name)"
-                  (keydown)="
-                    handleKeyboardNavigation(
-                      $event,
-                      result.service,
-                      result.category,
-                      result.option.Name
-                    )
-                  "
-                  [tabindex]="0"
-                  [attr.aria-label]="
-                    'Navigate to ' + result.option.FieldName + ' in ' + result.service
-                  "
-                >
-                  <div class="config-item-content">
-                    <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
-                    <div class="config-item-text">
-                      <span class="config-item-title">{{ result.option.FieldName }}</span>
-                      <small class="config-item-description">
-                        {{ result.service | titlecase }} > {{ result.category }}
-                      </small>
-                      <small class="config-item-description result-help">{{
-                        result.option.Help
-                      }}</small>
-                    </div>
+} @else if (currentPage() === 'home') {
+  <main>
+    @if (searchQuery()) {
+      @if (globalSearchResults().length > 0) {
+        <cdk-virtual-scroll-viewport itemSize="25" class="virtual-scroll-viewport">
+          <div class="virtual-scroll-content">
+            @for (result of globalSearchResults(); track trackBySearchResult($index, result)) {
+              <div
+                class="config-item"
+                role="button"
+                (click)="navigateTo(result.service, result.category, result.option.Name)"
+                (keydown)="
+                  handleKeyboardNavigation(
+                    $event,
+                    result.service,
+                    result.category,
+                    result.option.Name
+                  )
+                "
+                [tabindex]="0"
+                [attr.aria-label]="
+                  'Navigate to ' + result.option.FieldName + ' in ' + result.service
+                "
+              >
+                <div class="config-item-content">
+                  <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                  <div class="config-item-text">
+                    <span class="config-item-title">{{ result.option.FieldName }}</span>
+                    <small class="config-item-description">
+                      {{ result.service | titlecase }} > {{ result.category }}
+                    </small>
+                    <small class="config-item-description result-help">{{
+                      result.option.Help
+                    }}</small>
                   </div>
-                  <mat-icon svgIcon="chevron-right"></mat-icon>
                 </div>
-              }
-            </div>
-          </cdk-virtual-scroll-viewport>
-        } @else {
-          <div class="empty-state">
-            <mat-icon svgIcon="search"></mat-icon>
-            <span>{{ 'modals.rcloneFlags.search.emptyResult' | translate }}</span>
+                <mat-icon svgIcon="chevron-right"></mat-icon>
+              </div>
+            }
           </div>
-        }
+        </cdk-virtual-scroll-viewport>
       } @else {
-        <mat-accordion>
-          @for (
-            mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
-            track mainCategory
-          ) {
-            @if (servicesByMainCategory()[mainCategory].length > 0) {
-              <mat-expansion-panel [expanded]="false" class="main-category-panel">
-                <mat-expansion-panel-header>
-                  <mat-panel-title class="main-category-title-text">
-                    <div class="main-category-header">
-                      <span class="category-name">{{
-                        getMainCategoryTitle(mainCategory) | translate
-                      }}</span>
-                      <small class="category-desc">{{
-                        getMainCategoryDescription(mainCategory) | translate
-                      }}</small>
-                    </div>
-                  </mat-panel-title>
-                </mat-expansion-panel-header>
-
-                <div class="main-category-services">
-                  @for (service of servicesByMainCategory()[mainCategory]; track service.name) {
-                    <mat-expansion-panel
-                      [expanded]="service.expanded"
-                      (opened)="setServiceExpanded(service.name, true)"
-                      (closed)="setServiceExpanded(service.name, false)"
-                      class="service-panel"
-                    >
-                      <mat-expansion-panel-header>
-                        <mat-panel-title>
-                          <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
-                          <div class="category-header-text">
-                            <span class="category-title">{{ service.name | titlecase }}</span>
-                            <small class="category-description">{{
-                              getServiceDescription(service.name) | translate
-                            }}</small>
-                          </div>
-                        </mat-panel-title>
-                      </mat-expansion-panel-header>
-
-                      <div class="category-items">
-                        @for (categoryName of service.categories; track categoryName) {
-                          <div
-                            class="config-item"
-                            role="button"
-                            (click)="navigateTo(service.name, categoryName)"
-                            (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
-                            [tabindex]="0"
-                            [attr.aria-label]="
-                              'Navigate to ' + categoryName + ' in ' + service.name
-                            "
-                          >
-                            <div class="config-item-content">
-                              <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
-                              <div class="config-item-text">
-                                <span class="config-item-title">{{ categoryName }}</span>
-                                <small class="config-item-description">{{
-                                  getCategoryDescription(categoryName) | translate
-                                }}</small>
-                              </div>
-                            </div>
-                            <mat-icon svgIcon="chevron-right"></mat-icon>
-                          </div>
-                        }
-                      </div>
-                    </mat-expansion-panel>
-                  }
-                </div>
-              </mat-expansion-panel>
-            }
-          }
-        </mat-accordion>
-
-        <div class="actions">
-          <button
-            mat-raised-button
-            class="warn"
-            (click)="resetAllOptions()"
-            [disabled]="isResetting()"
-            [attr.aria-label]="'modals.rcloneFlags.reset.aria' | translate"
-          >
-            @if (isResetting()) {
-              <mat-spinner diameter="16"></mat-spinner>
-            } @else {
-              <mat-icon svgIcon="rotate-right"></mat-icon>
-            }
-            {{ 'modals.rcloneFlags.reset.button' | translate }}
-          </button>
+        <div class="empty-state">
+          <mat-icon svgIcon="search"></mat-icon>
+          <span>{{ 'modals.rcloneFlags.search.emptyResult' | translate }}</span>
         </div>
       }
-    </div>
-  }
+    } @else {
+      <mat-accordion>
+        @for (
+          mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
+          track mainCategory
+        ) {
+          @if (servicesByMainCategory()[mainCategory].length > 0) {
+            <mat-expansion-panel [expanded]="false" class="main-category-panel">
+              <mat-expansion-panel-header>
+                <mat-panel-title class="main-category-title-text">
+                  <div class="main-category-header">
+                    <span class="category-name">{{
+                      getMainCategoryTitle(mainCategory) | translate
+                    }}</span>
+                    <small class="category-desc">{{
+                      getMainCategoryDescription(mainCategory) | translate
+                    }}</small>
+                  </div>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
 
-  <!-- SETTINGS PAGE (overlay) -->
-  @if (currentPage() !== 'home' && !isLoading()) {
-    <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
-      <div class="modal-header" data-tauri-drag-region>
-        <button
-          mat-icon-button
-          (click)="navigateTo('home')"
-          [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
-        >
-          <mat-icon svgIcon="chevron-left"></mat-icon>
-        </button>
-        <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
-        <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      </div>
+              <div class="main-category-services">
+                @for (service of servicesByMainCategory()[mainCategory]; track service.name) {
+                  <mat-expansion-panel
+                    [expanded]="service.expanded"
+                    (opened)="setServiceExpanded(service.name, true)"
+                    (closed)="setServiceExpanded(service.name, false)"
+                    class="service-panel"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
+                        <div class="category-header-text">
+                          <span class="category-title">{{ service.name | titlecase }}</span>
+                          <small class="category-description">{{
+                            getServiceDescription(service.name) | translate
+                          }}</small>
+                        </div>
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
 
-      <div class="modal-content">
-        <div class="dynamic-fields-header">
-          <span class="fields-count">
-            {{ filteredOptionsCount() }}
-            {{ 'wizards.remoteConfig.fields' | translate }}
-          </span>
-          <button
-            type="button"
-            mat-icon-button
-            class="json-toggle-btn"
-            [class.active]="showJsonMode()"
-            (click)="toggleJsonMode()"
-            [matTooltip]="
-              (showJsonMode()
-                ? 'wizards.remoteConfig.switchToForm'
-                : 'wizards.remoteConfig.switchToJson'
-              ) | translate
-            "
-            [attr.aria-pressed]="showJsonMode()"
-          >
-            <mat-icon svgIcon="code" />
-          </button>
-        </div>
-
-        @if (hasSearchQuery()) {
-          <div class="search-results-info">
-            <small>{{
-              'modals.rcloneFlags.search.showing'
-                | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
-            }}</small>
-          </div>
-        }
-
-        @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
-          <div class="empty-state">
-            <mat-icon svgIcon="search"></mat-icon>
-            <span>{{ 'modals.rcloneFlags.search.emptySettings' | translate }}</span>
-            <p>{{ 'modals.rcloneFlags.search.adjustTerms' | translate }}</p>
-          </div>
-        } @else {
-          @if (showJsonMode()) {
-            <app-json-editor
-              [formGroup]="rcloneOptionsForm"
-              [fieldDefs]="categoryOptions()"
-              [searchQuery]="searchQuery()"
-              [keyPrefix]="editorKeyPrefix()"
-            />
-          } @else {
-            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
-              <form [formGroup]="rcloneOptionsForm">
-                @for (option of virtualScrollData(); track trackByOption($index, option)) {
-                  <app-setting-control
-                    [id]="'setting-' + option.Name"
-                    [option]="option"
-                    [formControlName]="getUniqueControlKey(option)"
-                    (valueCommit)="
-                      saveRCloneOption(
-                        getUniqueControlKey(option),
-                        isOptionAtDefault(getUniqueControlKey(option))
-                      )
-                    "
-                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                  ></app-setting-control>
+                    <div class="category-items">
+                      @for (categoryName of service.categories; track categoryName) {
+                        <div
+                          class="config-item"
+                          role="button"
+                          (click)="navigateTo(service.name, categoryName)"
+                          (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
+                          [tabindex]="0"
+                          [attr.aria-label]="'Navigate to ' + categoryName + ' in ' + service.name"
+                        >
+                          <div class="config-item-content">
+                            <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
+                            <div class="config-item-text">
+                              <span class="config-item-title">{{ categoryName }}</span>
+                              <small class="config-item-description">{{
+                                getCategoryDescription(categoryName) | translate
+                              }}</small>
+                            </div>
+                          </div>
+                          <mat-icon svgIcon="chevron-right"></mat-icon>
+                        </div>
+                      }
+                    </div>
+                  </mat-expansion-panel>
                 }
-              </form>
-            </cdk-virtual-scroll-viewport>
+              </div>
+            </mat-expansion-panel>
           }
         }
-      </div>
-    </div>
+      </mat-accordion>
+    }
+  </main>
+
+  @if (!searchQuery()) {
+    <footer>
+      <button
+        mat-raised-button
+        class="warn"
+        (click)="resetAllOptions()"
+        [disabled]="isResetting()"
+        [attr.aria-label]="'modals.rcloneFlags.reset.aria' | translate"
+      >
+        @if (isResetting()) {
+          <mat-spinner diameter="16"></mat-spinner>
+        } @else {
+          <mat-icon svgIcon="rotate-right"></mat-icon>
+        }
+        {{ 'modals.rcloneFlags.reset.button' | translate }}
+      </button>
+    </footer>
   }
-</div>
+}
+
+<!-- SETTINGS PAGE (overlay) -->
+@if (currentPage() !== 'home' && !isLoading()) {
+  <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
+    <header data-tauri-drag-region>
+      <button
+        mat-icon-button
+        (click)="navigateTo('home')"
+        [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
+      >
+        <mat-icon svgIcon="chevron-left"></mat-icon>
+      </button>
+      <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
+      <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </header>
+
+    <main class="dull">
+      <div class="dynamic-fields-header">
+        <span class="fields-count">
+          {{ filteredOptionsCount() }}
+          {{ 'wizards.remoteConfig.fields' | translate }}
+        </span>
+        <button
+          type="button"
+          mat-icon-button
+          class="json-toggle-btn"
+          [class.active]="showJsonMode()"
+          (click)="toggleJsonMode()"
+          [matTooltip]="
+            (showJsonMode()
+              ? 'wizards.remoteConfig.switchToForm'
+              : 'wizards.remoteConfig.switchToJson'
+            ) | translate
+          "
+          [attr.aria-pressed]="showJsonMode()"
+        >
+          <mat-icon svgIcon="code" />
+        </button>
+      </div>
+
+      @if (hasSearchQuery()) {
+        <div class="search-results-info">
+          <small>{{
+            'modals.rcloneFlags.search.showing'
+              | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
+          }}</small>
+        </div>
+      }
+
+      @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
+        <div class="empty-state">
+          <mat-icon svgIcon="search"></mat-icon>
+          <span>{{ 'modals.rcloneFlags.search.emptySettings' | translate }}</span>
+          <p>{{ 'modals.rcloneFlags.search.adjustTerms' | translate }}</p>
+        </div>
+      } @else {
+        @if (showJsonMode()) {
+          <app-json-editor
+            [formGroup]="rcloneOptionsForm"
+            [fieldDefs]="categoryOptions()"
+            [searchQuery]="searchQuery()"
+            [keyPrefix]="editorKeyPrefix()"
+          />
+        } @else {
+          <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+            <form [formGroup]="rcloneOptionsForm">
+              @for (option of virtualScrollData(); track trackByOption($index, option)) {
+                <app-setting-control
+                  [id]="'setting-' + option.Name"
+                  [option]="option"
+                  [formControlName]="getUniqueControlKey(option)"
+                  (valueCommit)="
+                    saveRCloneOption(
+                      getUniqueControlKey(option),
+                      isOptionAtDefault(getUniqueControlKey(option))
+                    )
+                  "
+                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                ></app-setting-control>
+              }
+            </form>
+          </cdk-virtual-scroll-viewport>
+        }
+      }
+    </main>
+  </div>
+}

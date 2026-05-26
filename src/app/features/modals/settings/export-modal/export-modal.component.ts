@@ -1,7 +1,7 @@
 import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -63,7 +63,6 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
   standalone: true,
   imports: [
     MatIconModule,
-    MatDialogModule,
     MatFormFieldModule,
     MatSelectModule,
     FormsModule,

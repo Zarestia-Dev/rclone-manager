@@ -115,7 +115,7 @@ type JobMap = Record<string, JobProfile>;
     RemoteConfigCliImporterService,
   ],
   templateUrl: './remote-config-modal.component.html',
-  styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  styleUrls: ['../../../../styles/_shared-modal.scss', './remote-config-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigModalComponent implements OnInit {

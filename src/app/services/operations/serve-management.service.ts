@@ -114,6 +114,14 @@ export class ServeManagementService extends TauriBaseService {
   }
 
   /**
+   * Force check running serves
+   */
+  public async forceCheckServes(): Promise<void> {
+    await this.invokeCommand('force_check_serves');
+    await this.refreshServes();
+  }
+
+  /**
    * Start a serve using a named profile
    * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */

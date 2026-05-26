@@ -55,7 +55,7 @@ import { TransferActivityPanelConfig } from '../../types';
 
       <mat-card-content class="panel-content">
         @if (config().showHistory && config().completedTransfers.length > 0) {
-          <mat-tab-group class="transfer-tabs" animationDuration="200ms">
+          <mat-tab-group>
             <mat-tab>
               <ng-template mat-tab-label>
                 <span>{{

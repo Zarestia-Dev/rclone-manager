@@ -4,12 +4,10 @@
       @defer {
         <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
-    } @else if (isDialogStandalone()) {
-      <div class="standalone-dialog-window">
-        <ng-container
-          *ngComponentOutlet="dialogComponent(); injector: dialogInjector"
-        ></ng-container>
-      </div>
+    } @else if (modalService.isDialogStandalone()) {
+      <ng-container
+        *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
+      ></ng-container>
     } @else if (nautilusService.isStandaloneWindow()) {
       <app-nautilus></app-nautilus>
     } @else {

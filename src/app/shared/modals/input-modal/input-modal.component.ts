@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, OnInit, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -48,7 +48,6 @@ export interface InputModalData {
   selector: 'app-input-modal',
   standalone: true,
   imports: [
-    MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,

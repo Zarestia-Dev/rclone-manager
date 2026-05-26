@@ -1,33 +1,7 @@
-.modal {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  height: 100vh;
-  overflow: hidden;
-}
-
-// Loading Overlay
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-// Search Results Title
-.search-title {
-  flex: 1;
-  text-align: center;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
 // Floating Pending Indicator - Simplified GNOME style
 .floating-pending-indicator {
-  position: fixed;
-  top: var(--space-lg);
+  position: absolute;
+  bottom: var(--space-lg);
   right: var(--space-lg);
   display: flex;
   align-items: center;
@@ -63,7 +37,7 @@
   }
 
   @media (max-width: 540px) {
-    top: var(--space-sm);
+    bottom: var(--space-sm);
     right: var(--space-sm);
     padding: var(--space-xs) var(--space-sm);
   }
@@ -101,7 +75,6 @@
 .desktop-tabs {
   gap: var(--space-xs);
   justify-content: center;
-  flex: 1;
 
   button {
     gap: var(--space-xs);
@@ -117,20 +90,6 @@
 // ============================================================================
 // Main Content Area
 // ============================================================================
-.modal-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-}
-
-.tab-content {
-  width: 100%;
-  margin: 0 auto;
-}
-
 .settings-list {
   display: flex;
   flex-direction: column;
@@ -372,6 +331,10 @@
   .change-category {
     margin-bottom: var(--space-xxs);
   }
+
+  .app-pill {
+    align-self: flex-start;
+  }
 }
 
 .change-value {
@@ -380,13 +343,17 @@
   flex-shrink: 0;
 
   .text-value {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
     color: var(--window-fg-color);
-    font-weight: 500;
-    max-width: 200px;
+    font-weight: 600;
+    background: rgba(var(--window-fg-color-rgb), 0.05);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-family: var(--font-mono);
   }
 }
 

@@ -1,6 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy, signal, HostListener } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -24,7 +24,6 @@ export interface KindOption {
   styleUrls: ['./alert-action-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
   imports: [
     ReactiveFormsModule,
-    MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,

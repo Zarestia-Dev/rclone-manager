@@ -2,8 +2,15 @@
 // Use this file to maintain consistent styling across all modal components
 // Import this file in each modal component SCSS: @use '../../styles/shared-modal';
 
-// Modal Header
-.modal-header {
+:host {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+}
+
+header {
   padding: var(--space-xs);
   gap: var(--space-xs);
   display: flex;
@@ -19,10 +26,10 @@
     opacity: 1 !important;
   }
 
-  .ghost-header-btn {
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
+  .ghost-header-spacer {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
   .header-title-ghost {
@@ -50,4 +57,37 @@
   @media (max-width: 480px) {
     font-size: var(--font-size-sm);
   }
+}
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  &.dull {
+    gap: 0;
+    padding: 0;
+  }
+}
+
+footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-xs);
+}
+
+// Loading Overlay
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background: color-mix(in srgb, var(--window-bg-color) 80%, transparent);
 }

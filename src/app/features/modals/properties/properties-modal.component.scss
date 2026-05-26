@@ -1,27 +1,12 @@
-.properties-modal {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-
-  .modal-header {
-    button[mat-icon-button] {
-      mat-icon {
-        transition: transform var(--transition-cubic);
-        &.starred {
-          transform: rotate(72deg);
-        }
+header {
+  button[mat-icon-button] {
+    mat-icon {
+      transition: transform var(--transition-cubic);
+      &.starred {
+        transform: rotate(72deg);
       }
     }
   }
-}
-
-.modal-content {
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  overflow-y: auto;
 }
 
 .loading-container {

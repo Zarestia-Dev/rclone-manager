@@ -280,7 +280,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 export class AlertActionsComponent {
   readonly alerts = inject(AlertService);
   private readonly modalService = inject(ModalService);
-  private readonly notifications = inject(NotificationService);
+  private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
 
   searchVisible = signal(false);
@@ -308,18 +308,16 @@ export class AlertActionsComponent {
       });
   }
 
-  deleteAction(action: AlertAction): void {
-    this.modalService
-      .openConfirm({
-        title: 'common.delete',
-        message: 'alerts.deleteActionConfirm',
-        confirmText: 'common.delete',
-        cancelText: 'common.cancel',
-      })
-      .afterClosed()
-      .subscribe(async confirmed => {
-        if (confirmed) await this.alerts.deleteAlertAction(action.id);
-      });
+  async deleteAction(action: AlertAction): Promise<void> {
+    const confirmed = await this.notificationService.confirmModal(
+      'common.delete',
+      'alerts.deleteActionConfirm',
+      'common.delete',
+      'common.cancel'
+    );
+    if (confirmed) {
+      await this.alerts.deleteAlertAction(action.id);
+    }
   }
 
   async toggleAction(action: AlertAction): Promise<void> {
@@ -330,14 +328,14 @@ export class AlertActionsComponent {
     try {
       const success = await this.alerts.testAlertAction(action.id);
       if (success) {
-        this.notifications.showSuccess(this.translate.instant('alerts.testActionSuccess'));
+        this.notificationService.showSuccess(this.translate.instant('alerts.testActionSuccess'));
       } else {
-        this.notifications.showError(
+        this.notificationService.showError(
           this.translate.instant('alerts.testActionFailed', { error: 'Unknown failure' })
         );
       }
     } catch (err) {
-      this.notifications.showError(
+      this.notificationService.showError(
         this.translate.instant('alerts.testActionError', { error: err })
       );
       console.error('Test failed', err);

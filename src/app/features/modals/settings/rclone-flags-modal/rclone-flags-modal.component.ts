@@ -17,7 +17,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ReactiveFormsModule, FormGroup, FormBuilder, FormControl } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { Subject, debounceTime, distinctUntilChanged, firstValueFrom } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
@@ -570,14 +570,12 @@ export class RcloneFlagsModalComponent implements OnInit {
   }
 
   async resetAllOptions(): Promise<void> {
-    const dialogRef = this.modalService.openConfirm({
-      title: this.translate.instant('modals.rcloneFlags.reset.title'),
-      message: this.translate.instant('modals.rcloneFlags.reset.message'),
-      confirmText: this.translate.instant('modals.rcloneFlags.reset.confirm'),
-      cancelText: this.translate.instant('common.cancel'),
-    });
-
-    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    const confirmed = await this.notificationService.confirmModal(
+      'modals.rcloneFlags.reset.title',
+      'modals.rcloneFlags.reset.message',
+      'modals.rcloneFlags.reset.confirm',
+      'common.cancel'
+    );
     if (!confirmed) return;
 
     this.isResetting.set(true);

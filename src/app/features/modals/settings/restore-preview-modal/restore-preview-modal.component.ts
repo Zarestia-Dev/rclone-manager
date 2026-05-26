@@ -1,6 +1,6 @@
 import { Component, inject, signal, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -18,7 +18,6 @@ const MIN_PASSWORD_LENGTH = 4;
   selector: 'app-restore-preview-modal',
   standalone: true,
   imports: [
-    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,

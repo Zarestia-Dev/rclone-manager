@@ -1,10 +1,8 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs/operators';
-import { firstValueFrom } from 'rxjs';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
-import { ModalService } from '@app/services';
 import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
@@ -22,7 +20,6 @@ const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
 @Injectable({ providedIn: 'root' })
 export class AppUpdaterService extends TauriBaseService {
   private readonly uiStateService = inject(UiStateService);
-  private readonly modalService = inject(ModalService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly appSettingsService = inject(AppSettingsService);
 
@@ -146,15 +143,11 @@ export class AppUpdaterService extends TauriBaseService {
 
     try {
       if (this.uiStateService.platform === 'windows') {
-        const confirmed = await firstValueFrom(
-          this.modalService
-            .openConfirm({
-              title: this.translate.instant('updates.confirmInstall.title'),
-              message: this.translate.instant('updates.confirmInstall.message'),
-              confirmText: this.translate.instant('updates.confirmInstall.confirm'),
-              cancelText: this.translate.instant('updates.confirmInstall.cancel'),
-            })
-            .afterClosed()
+        const confirmed = await this.notificationService.confirmModal(
+          'updates.confirmInstall.title',
+          'updates.confirmInstall.message',
+          'updates.confirmInstall.confirm',
+          'updates.confirmInstall.cancel'
         );
         if (!confirmed) return;
       }
