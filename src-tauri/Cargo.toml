@@ -1,3 +1,7 @@
+[workspace]
+resolver = "2"
+members = [".", "rman-file-provider"]
+
 [package]
 name = "rclone-manager"
 version = "0.2.7"
@@ -77,6 +81,18 @@ notify = "8.2.0"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", features = ["std"] }
+objc2-foundation = { version = "0.3", features = [
+    "NSArray", "NSData", "NSDate", "NSDictionary", "NSError", "NSFileManager",
+    "NSEnumerator", "NSObject", "NSProgress", "NSString", "NSURL",
+    "NSValue", "NSRunLoop"
+] }
+objc2-file-provider = { version = "0.3", features = [
+    "Extension", "NSFileProviderDomain", "NSFileProviderEnumerating",
+] }
+block2 = "0.6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"

@@ -112,7 +112,7 @@ fn build_tooltip(snapshot: &TraySnapshot) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tauri::test::mock_builder;
+    use tauri::test::{mock_builder, mock_context, noop_assets};
 
     #[tokio::test]
     async fn test_tray_update_concurrency_safety() {
@@ -132,7 +132,7 @@ mod tests {
             .manage(crate::rclone::backend::BackendManager::new())
             .manage(settings_manager)
             .manage(TrayMenuState::default())
-            .build(tauri::generate_context!())
+            .build(mock_context(noop_assets()))
             .unwrap();
         let handle = app.handle();
 

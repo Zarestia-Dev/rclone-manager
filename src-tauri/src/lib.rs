@@ -193,7 +193,7 @@ pub fn run() {
                         api.prevent_close();
                     }
                     #[cfg(target_os = "macos")]
-                    crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
+                    crate::utils::app::platform::update_macos_dock_visibility(app_handle);
                 } else {
                     api.prevent_close();
                     let window_ = window.clone();
@@ -210,7 +210,7 @@ pub fn run() {
             }
             WindowEvent::Destroyed => {
                 #[cfg(target_os = "macos")]
-                crate::utils::app::platform::update_macos_dock_visibility(&window.app_handle());
+                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
             }
             #[cfg(desktop)]
             WindowEvent::Focused(true) => {
@@ -220,7 +220,7 @@ pub fn run() {
                     } else {
                         #[cfg(target_os = "macos")]
                         crate::utils::app::platform::update_macos_dock_visibility(
-                            &window.app_handle(),
+                            window.app_handle(),
                         );
                     }
                 }
@@ -357,6 +357,9 @@ fn setup_app(
     app.manage(RcloneUpdaterState::default());
     #[cfg(all(desktop, feature = "tray"))]
     app.manage(crate::core::tray::TrayMenuState::default());
+
+    #[cfg(target_os = "macos")]
+    app.manage(crate::rclone::commands::apple_file::AppleFileState::default());
 
     let history_cache = AlertHistoryCache::new(10000);
     app.manage(history_cache);

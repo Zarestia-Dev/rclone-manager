@@ -1,0 +1,28 @@
+[package]
+name = "rman-file-provider"
+version = "0.1.0"
+edition = "2021"
+description = "RClone Manager FileProvider Extension - macOS only"
+
+[[bin]]
+name = "rman-file-provider"
+path = "src/main.rs"
+
+[dependencies]
+objc2 = { version = "0.6", features = ["std"] }
+objc2-file-provider = { version = "0.3", features = ["Extension"] }
+objc2-foundation = { version = "0.3", features = [
+    "NSArray", "NSData", "NSDate", "NSDictionary", "NSError", "NSFileManager",
+    "NSEnumerator", "NSObject", "NSProgress", "NSString", "NSURL",
+    "NSValue", "NSRunLoop"
+] }
+block2 = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking", "multipart"] }
+parking_lot = "0.12"
+log = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+ctor = "0.2"
+
