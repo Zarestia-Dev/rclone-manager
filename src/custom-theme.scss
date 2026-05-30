@@ -772,6 +772,8 @@ body {
   height: 100%;
   border-radius: var(--app-border-radius);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 body {
@@ -847,12 +849,10 @@ body {
 }
 
 * {
-  user-select: none;
   transition:
     background 0.5s ease,
     background-color 0.5s ease,
     color 0.05s ease;
-  -webkit-user-drag: none;
 }
 
 pre,
@@ -862,11 +862,7 @@ textarea,
 [contenteditable="true"] {
   user-select: text;
   cursor: text;
-
-  span {
-    user-select: text;
-    cursor: text;
-  }
+  -webkit-user-drag: auto;
 }
 
 // Global mat-icon defaults

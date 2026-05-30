@@ -943,7 +943,14 @@
       "pollIntervalPlaceholder": "Enter poll interval (seconds)"
     },
     "jsonEditor": {
-      "noFields": "No fields to display in JSON mode"
+      "noFields": "No fields to display in JSON mode",
+      "parseError": "Invalid JSON syntax. Please check your formatting.",
+      "cliArgumentWithSuggestion": "CLI-style arguments (like '{{key}}') are not supported in rclone RC. Did you mean '{{suggestion}}'?",
+      "camelCaseSuggestionWarning": "Option '{{key}}' is not valid in this format. Did you mean '{{suggestion}}'?",
+      "fixSuggestion": "Change to '{{suggestion}}'",
+      "wrongBlockWarning": "Option(s) {{keys}} belong to the '{{block}}' configuration block and may not work here.",
+      "unknownWarning": "Unknown option(s): {{keys}}. These might be ignored by rclone.",
+      "invalidArrayPath": "Property '{{key}}' does not support multiple paths. Please provide a single string path instead."
     },
     "passwordManager": {
       "placeholder": "Enter your rclone config password",
@@ -970,6 +977,7 @@
       "macroDetected": "Shell Macros Detected",
       "macroDesc": "The backend will resolve these values at runtime when starting the job. Supported macros: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Unrecognized Flags (Ignored)",
+      "wrongBlockGuidance": "Option belongs to the '{{block}}' configuration block and is not supported in {{verb}} profile.",
       "applyConfig": "Apply to Profile",
       "newProfile": "Create New Profile",
       "overrideProfile": "Override Existing Profile",
@@ -979,7 +987,12 @@
       "serveType": "Serve Type",
       "mountPoint": "Mount Point",
       "remote": "Remote",
-      "invalidCommand": "Invalid rclone command. Please provide a command with a supported operation (e.g. sync, copy, mount) or flags."
+      "invalidCommand": "Invalid rclone command. Please provide a command with a supported operation (e.g. sync, copy, mount) or flags.",
+      "patch": "Patch / Apply to Active",
+      "patchProfile": "Patch Active Profile(s)",
+      "patchInfo": "No operation (sync, serve, or mount) was specified. The imported flags will be applied as a patch directly to your active configuration profile(s).",
+      "patchInfoRemoteStep": "No operation (sync, serve, or mount) was specified. To apply these flags as a patch, please navigate to a specific configuration step (e.g., Sync, Mount, or Serve) instead of the Remote step.",
+      "applyPatch": "Apply Patch"
     },
     "remoteConfig": {
       "remoteName": "Remote Name",
@@ -996,6 +1009,17 @@
       "fields": "Fields",
       "switchToForm": "Switch to Form Mode",
       "switchToJson": "Switch to JSON Mode",
+      "unknownTopLevelProperty": "Warning: '{{key}}' is not a standard top-level property for this profile and might be ignored.",
+      "jsonEditorInfo": {
+        "sync": "Sync/Copy/Move Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and place all rclone flags inside '_config'.",
+        "bisync": "Bisync Profile: Set 'path1' and 'path2' paths, profile-level fields, and place all rclone flags inside '_config'.",
+        "mount": "Mount Profile: Set 'fs' and 'mountPoint' paths, 'mountType', profile-level fields, and place all mount options inside 'mountOpt'.",
+        "serve": "Serve Profile: Set 'fs' path, 'serveType', profile-level fields, and place all serve options inside '_config'.",
+        "vfs": "VFS Profile: Set custom Virtual File System caching, buffering, and compatibility options as key-value pairs.",
+        "filter": "Filter Profile: Set glob patterns, inclusion/exclusion rules, and file filtering options as key-value pairs.",
+        "backend": "Backend Profile: Configure advanced protocol options and remote-specific connection settings as key-value pairs.",
+        "runtimeRemote": "Runtime Remote: Set dynamic connection overrides and performance tweaks as key-value pairs."
+      },
       "showAdvanced": "Show Advanced Options",
       "hideAdvanced": "Hide Advanced Options",
       "emptyStateTitle": "What's your next cloud adventure?",

@@ -20,6 +20,22 @@ type ProvidersResponse = Record<string, RawProvider[]>;
 
 @Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
+  private providersCache: ProvidersResponse | null = null;
+  private providersPromise: Promise<ProvidersResponse> | null = null;
+
+  private async fetchProviders(): Promise<ProvidersResponse> {
+    if (this.providersCache) return this.providersCache;
+    if (this.providersPromise) return this.providersPromise;
+
+    this.providersPromise = this.invokeCommand<ProvidersResponse>('get_remote_types');
+    try {
+      this.providersCache = await this.providersPromise;
+      return this.providersCache;
+    } finally {
+      this.providersPromise = null;
+    }
+  }
+
   isInteractiveRemote(type: string): boolean {
     return INTERACTIVE_REMOTES.has(type.toLowerCase());
   }
@@ -35,7 +51,7 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async getRemoteTypes(): Promise<RemoteProvider[]> {
-    return this.mapProviders(await this.invokeCommand<ProvidersResponse>('get_remote_types'));
+    return this.mapProviders(await this.fetchProviders());
   }
 
   async getOAuthSupportedRemotes(): Promise<RemoteProvider[]> {
@@ -45,7 +61,7 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async getRemoteConfigFields(type: string): Promise<RcConfigOption[]> {
-    const response = await this.invokeCommand<ProvidersResponse>('get_remote_types');
+    const response = await this.fetchProviders();
     const match = Object.values(response)
       .flat()
       .find(p => p.Name === type);

@@ -33,9 +33,9 @@ use crate::{
 
 /// Groups that belong to the global backend / daemon settings panel.
 ///
-/// Includes `Performance` (checkers, transfers, buffer_size) because those
+/// Includes `Performance` (checkers, transfers, `buffer_size`) because those
 /// are global concurrency knobs, not per-operation flags.
-/// Includes `Important` (dry_run, interactive) so they appear as global
+/// Includes `Important` (`dry_run`, interactive) so they appear as global
 /// defaults even though they also show up on operation panels via `Config`.
 const BACKEND_INCLUDE: &[&str] = &[
     "Performance", // checkers, transfers, buffer_size
@@ -49,24 +49,24 @@ const BACKEND_INCLUDE: &[&str] = &[
 ];
 
 /// Groups that are hard-excluded from the backend panel regardless of
-/// BACKEND_INCLUDE. Prevents operation-specific flags from leaking in.
+/// `BACKEND_INCLUDE`. Prevents operation-specific flags from leaking in.
 const BACKEND_EXCLUDE: &[&str] = &["Copy", "Sync", "Filter", "Mount", "VFS", "RC", "WebDAV"];
 
 /// Groups for copy (and move) operations.
 ///
 /// Matches the "Copy Options" section in `rclone copy --help` /
-/// https://rclone.org/commands/rclone_copy/#copy-options
+/// <https://rclone.org/commands/rclone_copy/#copy-options>
 ///
-/// NOTE: `Performance` is intentionally absent. checkers/transfers/buffer_size
+/// NOTE: `Performance` is intentionally absent. `checkers/transfers/buffer_size`
 /// are global daemon settings; they must not double-appear here.
 const COPY_GROUPS: &[&str] = &["Copy"];
 
 /// Groups for sync operations — a superset of copy.
 ///
 /// Matches "Copy Options" + "Sync Options" in `rclone sync --help` /
-/// https://rclone.org/commands/rclone_sync/#sync-options
+/// <https://rclone.org/commands/rclone_sync/#sync-options>
 ///
-/// NOTE: `Performance` is intentionally absent — same reason as COPY_GROUPS.
+/// NOTE: `Performance` is intentionally absent — same reason as `COPY_GROUPS`.
 const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 
 /// Returns the flag's groups as a `Vec<&str>`, trimmed.
@@ -307,9 +307,9 @@ pub async fn get_flags_by_category(
 }
 
 /// Copy flags — matches `rclone copy --help` "Copy Options" section.
-/// https://rclone.org/commands/rclone_copy/#copy-options
+/// <https://rclone.org/commands/rclone_copy/#copy-options>
 ///
-/// Does NOT include Performance (checkers/transfers/buffer_size) — those are
+/// Does NOT include Performance (`checkers/transfers/buffer_size`) — those are
 /// global daemon settings shown in the backend panel instead.
 #[tauri::command]
 pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
@@ -329,9 +329,9 @@ pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 }
 
 /// Sync flags — matches `rclone sync --help` "Copy Options" + "Sync Options".
-/// https://rclone.org/commands/rclone_sync/#sync-options
+/// <https://rclone.org/commands/rclone_sync/#sync-options>
 ///
-/// Does NOT include Performance — same reasoning as get_copy_flags.
+/// Does NOT include Performance — same reasoning as `get_copy_flags`.
 #[tauri::command]
 pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(app).await?;
@@ -371,7 +371,7 @@ pub async fn get_filter_flags(app: AppHandle) -> Result<Vec<Value>, String> {
 ///
 /// These are settings that apply to the rclone process as a whole, regardless
 /// of which operation is running. Includes Performance (checkers, transfers,
-/// buffer_size), Networking, Config, Logging, Debugging, Listing, and Metadata.
+/// `buffer_size`), Networking, Config, Logging, Debugging, Listing, and Metadata.
 ///
 /// Flags that carry a Copy or Sync group are explicitly excluded so that
 /// operation-specific options never appear here.

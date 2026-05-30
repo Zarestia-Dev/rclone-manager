@@ -180,6 +180,7 @@ pub struct RenderedContent {
 }
 
 impl NotificationEvent {
+    #[must_use]
     pub fn render(&self) -> RenderedContent {
         use crate::utils::i18n::{t, t_with_params};
 

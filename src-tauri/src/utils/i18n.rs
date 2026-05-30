@@ -50,12 +50,11 @@ impl Translations {
 
     /// Load a language directory into the cache
     fn load_language(&self, lang: &str) -> bool {
-        let base_path = match self.base_path.read() {
-            Ok(p) => p.clone(),
-            Err(_) => {
-                log::error!("❌ i18n base_path lock poisoned in load_language");
-                None
-            }
+        let base_path = if let Ok(p) = self.base_path.read() {
+            p.clone()
+        } else {
+            log::error!("❌ i18n base_path lock poisoned in load_language");
+            None
         };
 
         if let Some(path) = base_path {
@@ -145,20 +144,18 @@ impl Translations {
     }
 
     fn resolve(&self, key: &str) -> String {
-        let lang = match self.current_lang.read() {
-            Ok(l) => l.clone(),
-            Err(_) => {
-                log::error!("❌ i18n current_lang lock poisoned in resolve");
-                DEFAULT_LANG.to_string()
-            }
+        let lang = if let Ok(l) = self.current_lang.read() {
+            l.clone()
+        } else {
+            log::error!("❌ i18n current_lang lock poisoned in resolve");
+            DEFAULT_LANG.to_string()
         };
 
-        let cache = match self.cache.read() {
-            Ok(c) => c,
-            Err(_) => {
-                log::error!("❌ i18n cache lock poisoned in resolve");
-                return key.to_string();
-            }
+        let cache = if let Ok(c) = self.cache.read() {
+            c
+        } else {
+            log::error!("❌ i18n cache lock poisoned in resolve");
+            return key.to_string();
         };
 
         let dict = match cache.get(&lang).or_else(|| cache.get(DEFAULT_LANG)) {

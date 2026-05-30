@@ -6,7 +6,6 @@ import {
   ElementRef,
   HostListener,
   inject,
-  OnInit,
   viewChild,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -23,6 +22,7 @@ import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remo
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { JSON_EDITOR_LOOKUP_TABLE } from '../../../../shared/components/json-editor/json-editor.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
 import { JobManagementService } from '../../../../services/operations/job-management.service';
@@ -37,17 +37,8 @@ import { RemoteManagementService } from '../../../../services/remote/remote-mana
 import {
   RemoteConfigStateService,
   DialogData,
-} from '../../../../services/remote/remote-config-state.service';
-import {
-  RemoteConfigFormBuilderService,
   PendingRemoteData,
-} from '../../../../services/remote/remote-config-form-builder.service';
-import {
-  RemoteConfigProfileManagerService,
-  PROFILE_TYPES,
-  LINKED_PROFILE_TYPES,
-} from '../../../../services/remote/remote-config-profile-manager.service';
-import { RemoteConfigCliImporterService } from '../../../../services/remote/remote-config-cli-importer.service';
+} from '../../../../services/remote/remote-config-state.service';
 import {
   FLAG_TYPES,
   RemoteConfigSections,
@@ -78,8 +69,12 @@ import {
 
 interface JobProfile {
   autoStart?: boolean;
-  source?: string;
-  dest?: string;
+  srcFs?: string | string[];
+  dstFs?: string;
+  path1?: string;
+  path2?: string;
+  fs?: string;
+  mountPoint?: string;
 }
 
 type JobMap = Record<string, JobProfile>;
@@ -110,15 +105,17 @@ type JobMap = Record<string, JobProfile>;
   ],
   providers: [
     RemoteConfigStateService,
-    RemoteConfigFormBuilderService,
-    RemoteConfigProfileManagerService,
-    RemoteConfigCliImporterService,
+    {
+      provide: JSON_EDITOR_LOOKUP_TABLE,
+      useFactory: (state: RemoteConfigStateService) => state.lookupTable,
+      deps: [RemoteConfigStateService],
+    },
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['../../../../styles/_shared-modal.scss', './remote-config-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RemoteConfigModalComponent implements OnInit {
+export class RemoteConfigModalComponent {
   readonly state = inject(RemoteConfigStateService);
 
   // ── Injections ────────────────────────────────────────────────────────────────
@@ -143,7 +140,6 @@ export class RemoteConfigModalComponent implements OnInit {
   // ── Static config ─────────────────────────────────────────────────────────────
 
   readonly FLAG_TYPES = FLAG_TYPES;
-  readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
   readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
     mount: 'hard-drive',
@@ -190,19 +186,15 @@ export class RemoteConfigModalComponent implements OnInit {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
-    this.state.setStepInvalidFn((stepType: string) => this.isStepInvalid(stepType));
+    this.initializeState();
   }
 
-  async ngOnInit(): Promise<void> {
+  private async initializeState(): Promise<void> {
     try {
       await this.state.init(this.dialogData);
     } finally {
       this.state.isInitializing.set(false);
     }
-  }
-
-  isStepInvalid(stepType: string): boolean {
-    return this.state.remoteConfigForm.get(`${stepType}Config`)?.invalid ?? false;
   }
 
   // ── Step navigation ───────────────────────────────────────────────────────────
@@ -273,17 +265,17 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
+  private get requiresInteractiveFlow(): boolean {
+    return this.state.commandOptions().some(o => o.key === 'nonInteractive' && o.value === true);
+  }
+
   private async handleCreateMode(): Promise<{ success: boolean }> {
-    PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
+    this.state.PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
     const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    const requiresInteractiveFlow = this.state
-      .commandOptions()
-      .some(o => o.key === 'nonInteractive' && o.value === true);
-
-    if (!requiresInteractiveFlow) {
+    if (!this.requiresInteractiveFlow) {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
@@ -302,13 +294,9 @@ export class RemoteConfigModalComponent implements OnInit {
     const remoteName = this.state.currentRemoteName();
     await this.authStateService.startAuth(remoteName, true);
 
-    const requiresInteractiveFlow = this.state
-      .commandOptions()
-      .some(o => o.key === 'nonInteractive' && o.value === true);
-
     if (this.state.editTarget() === 'remote') {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
-      if (requiresInteractiveFlow) {
+      if (this.requiresInteractiveFlow) {
         this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
         return await this.startInteractiveRemoteConfig(remoteData);
       }
@@ -472,43 +460,33 @@ export class RemoteConfigModalComponent implements OnInit {
     const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
     if (mountConfigs) {
       for (const [profileName, config] of Object.entries(mountConfigs)) {
-        if (config.autoStart && config.dest) {
+        const appCfg = (config as any).app || config;
+        const rcloneCfg = (config as any).rclone || config;
+        if (appCfg.autoStart && rcloneCfg.mountPoint) {
           void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
         }
       }
     }
 
-    const jobStarters: Record<string, (remote: string, profile: string) => Promise<number>> = {
-      copy: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Copy', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      sync: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Sync', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      bisync: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Bisync', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-      move: (remote, profile) =>
-        this.jobManagementService.startProfileBatch('Move', {
-          remoteName: remote,
-          profileName: profile,
-        }),
-    };
-
-    for (const [jobType, starter] of Object.entries(jobStarters)) {
-      const configs = finalConfig[
-        REMOTE_CONFIG_KEYS[jobType as keyof typeof REMOTE_CONFIG_KEYS]
-      ] as JobMap | undefined;
+    const JOB_TYPES = ['copy', 'sync', 'bisync', 'move'] as const;
+    for (const jobType of JOB_TYPES) {
+      const configs = finalConfig[REMOTE_CONFIG_KEYS[jobType]] as JobMap | undefined;
       if (!configs) continue;
       for (const [profileName, config] of Object.entries(configs)) {
-        if (config.autoStart && config.source && config.dest) {
-          void starter(remoteName, profileName);
+        const appCfg = (config as any).app || config;
+        const rcloneCfg = (config as any).rclone || config;
+        const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
+        const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
+        if (appCfg.autoStart && hasSource && hasDest) {
+          const batchType = (jobType.charAt(0).toUpperCase() + jobType.slice(1)) as
+            | 'Copy'
+            | 'Sync'
+            | 'Bisync'
+            | 'Move';
+          void this.jobManagementService.startProfileBatch(batchType, {
+            remoteName,
+            profileName,
+          });
         }
       }
     }
@@ -516,7 +494,8 @@ export class RemoteConfigModalComponent implements OnInit {
     const serveConfigs = finalConfig[REMOTE_CONFIG_KEYS.serve];
     if (serveConfigs) {
       for (const [profileName, config] of Object.entries(serveConfigs)) {
-        if (config.autoStart && (config as Record<string, unknown>)['options']) {
+        const appCfg = (config as any).app || config;
+        if (appCfg.autoStart) {
           void this.serveManagementService.startServeProfile(remoteName, profileName);
         }
       }

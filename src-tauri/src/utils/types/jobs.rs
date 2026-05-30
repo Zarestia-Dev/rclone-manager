@@ -91,6 +91,7 @@ pub enum JobStatus {
 }
 
 impl JobStatus {
+    #[must_use]
     pub fn is_finished(&self) -> bool {
         matches!(
             self,
@@ -98,6 +99,7 @@ impl JobStatus {
         )
     }
 
+    #[must_use]
     pub fn is_running(&self) -> bool {
         matches!(self, JobStatus::Running)
     }

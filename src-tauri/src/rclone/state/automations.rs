@@ -20,8 +20,7 @@ use crate::utils::types::events::AUTOMATIONS_CACHE_CHANGED;
 // CONFIGURATION STRUCTS
 // ============================================================================
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[derive(Default, Debug, PartialEq, Clone)]
 struct ProfileConfig {
     cron_enabled: Option<bool>,
     cron_expression: Option<String>,
@@ -29,6 +28,54 @@ struct ProfileConfig {
     watch_delay: Option<u64>,
     source: Option<Value>,
     dest: Option<Value>,
+}
+
+impl<'de> Deserialize<'de> for ProfileConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mut map = match Value::deserialize(deserializer)? {
+            Value::Object(mut m) => {
+                if let Some(Value::Object(app)) = m.remove("app") {
+                    m.extend(app);
+                }
+                if let Some(Value::Object(rclone)) = m.remove("rclone") {
+                    m.extend(rclone);
+                }
+                m
+            }
+            _ => return Err(serde::de::Error::custom("Expected JSON object")),
+        };
+
+        let source = map
+            .remove("source")
+            .or_else(|| map.remove("srcFs"))
+            .or_else(|| map.remove("path1"))
+            .or_else(|| map.remove("fs"));
+
+        let dest = map
+            .remove("dest")
+            .or_else(|| map.remove("dstFs"))
+            .or_else(|| map.remove("path2"))
+            .or_else(|| map.remove("mountPoint"));
+
+        let cron_enabled = map.remove("cronEnabled").and_then(|v| v.as_bool());
+        let cron_expression = map
+            .remove("cronExpression")
+            .and_then(|v| v.as_str().map(String::from));
+        let watch_enabled = map.remove("watchEnabled").and_then(|v| v.as_bool());
+        let watch_delay = map.remove("watchDelay").and_then(|v| v.as_u64());
+
+        Ok(ProfileConfig {
+            cron_enabled,
+            cron_expression,
+            watch_enabled,
+            watch_delay,
+            source,
+            dest,
+        })
+    }
 }
 
 fn normalize_paths(val: Option<&Value>) -> Vec<String> {
@@ -620,6 +667,54 @@ mod tests {
         assert_eq!(p.cron_expression.as_deref(), Some("0 0 * * *"));
         assert_eq!(p.source.as_ref().and_then(|v| v.as_str()), Some("/src"));
         assert_eq!(p.dest.as_ref().and_then(|v| v.as_str()), Some("/dst"));
+    }
+
+    #[test]
+    fn test_profile_config_deserialization_aliases() {
+        // Sync / Copy / Move aliases
+        let json_sync = json!({
+            "srcFs": "/src-sync",
+            "dstFs": "/dst-sync"
+        });
+        let p_sync: ProfileConfig = serde_json::from_value(json_sync).unwrap();
+        assert_eq!(
+            p_sync.source.as_ref().and_then(|v| v.as_str()),
+            Some("/src-sync")
+        );
+        assert_eq!(
+            p_sync.dest.as_ref().and_then(|v| v.as_str()),
+            Some("/dst-sync")
+        );
+
+        // Bisync aliases
+        let json_bisync = json!({
+            "path1": "/src-bisync",
+            "path2": "/dst-bisync"
+        });
+        let p_bisync: ProfileConfig = serde_json::from_value(json_bisync).unwrap();
+        assert_eq!(
+            p_bisync.source.as_ref().and_then(|v| v.as_str()),
+            Some("/src-bisync")
+        );
+        assert_eq!(
+            p_bisync.dest.as_ref().and_then(|v| v.as_str()),
+            Some("/dst-bisync")
+        );
+
+        // Mount / Serve aliases
+        let json_mount = json!({
+            "fs": "/src-mount",
+            "mountPoint": "/dst-mount"
+        });
+        let p_mount: ProfileConfig = serde_json::from_value(json_mount).unwrap();
+        assert_eq!(
+            p_mount.source.as_ref().and_then(|v| v.as_str()),
+            Some("/src-mount")
+        );
+        assert_eq!(
+            p_mount.dest.as_ref().and_then(|v| v.as_str()),
+            Some("/dst-mount")
+        );
     }
 
     // -----------------------------------------------------------------------

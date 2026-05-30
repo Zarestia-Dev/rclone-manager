@@ -76,6 +76,7 @@
         <mat-nav-list class="step-indicator">
           <button
             mat-list-item
+            [disabled]="state.isActiveStepInvalid()"
             (click)="returnFromShared.emit()"
             [attr.aria-label]="translatedPrevTarget"
             [matTooltip]="translatedPrevTarget"
@@ -101,6 +102,7 @@
             <button
               mat-list-item
               [activated]="isActive"
+              [disabled]="state.isActiveStepInvalid()"
               (click)="profileSelected.emit({ type: targetType, name: profile.name })"
               [attr.aria-selected]="isActive"
               [matTooltip]="profile.name"
@@ -127,6 +129,7 @@
           @for (item of state.sharedSidebarTypes(); track item.type) {
             <button
               mat-list-item
+              [disabled]="state.isActiveStepInvalid()"
               (click)="sharedNavigated.emit(item.type)"
               [activated]="state.editTarget() === item.type"
               [matTooltip]="item.label | translate"

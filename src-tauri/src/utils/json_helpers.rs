@@ -5,8 +5,8 @@ use std::collections::HashMap;
 /// Returns None if the input is not a JSON object.
 #[must_use]
 pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
-    json.and_then(|v| v.as_object())
-        .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+    let obj = json?.as_object()?;
+    Some(obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
 }
 
 /// Resolve profile options from a settings object.
@@ -22,30 +22,18 @@ pub fn resolve_profile_options(
     let name = profile_name?;
     let configs = settings.get(configs_key)?.as_object()?;
     let profile_cfg = configs.get(name)?;
-    json_to_hashmap(profile_cfg.get("options"))
-}
-
-/// Unwraps nested "options" key if it exists in a `HashMap`.
-/// This handles the case where frontend sends { "options": { "key": "value" } }
-/// and we need just { "key": "value" }.
-#[must_use]
-pub fn unwrap_nested_options(opts: HashMap<String, Value>) -> HashMap<String, Value> {
-    if let Some(Value::Object(nested)) = opts.get("options") {
-        nested.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-    } else {
-        opts
-    }
+    json_to_hashmap(Some(profile_cfg))
 }
 
 /// Safely extracts a string value from a nested JSON path.
 /// Returns an empty string if any key is not found or the final value is not a string.
 #[must_use]
 pub fn get_string(json: &Value, path: &[&str]) -> String {
-    let mut current = Some(json);
-    for key in path {
-        current = current.and_then(|c| c.get(key));
-    }
-    current.and_then(|v| v.as_str()).unwrap_or("").to_string()
+    path.iter()
+        .try_fold(json, |acc, &key| acc.get(key))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string()
 }
 
 /// Evaluates safe macros wrapped in either backticks — `` `macro` `` — or
@@ -111,18 +99,11 @@ fn interpolate_pattern(s: &str, open_delim: &str, close_delim: &str) -> String {
 fn resolve_macro(cmd: &str) -> Option<String> {
     let cmd = cmd.trim();
 
-    if cmd.starts_with("date") {
-        let format = if cmd.len() > 4 && cmd.as_bytes()[4] == b' ' {
-            let arg = cmd[5..].trim();
-            if let Some(stripped) = arg.strip_prefix('+') {
-                stripped
-            } else {
-                arg
-            }
-        } else {
-            "%Y-%m-%d"
-        };
-        // Use chrono for cross-platform, safe date formatting
+    if cmd == "date" {
+        return Some(chrono::Local::now().format("%Y-%m-%d").to_string());
+    } else if let Some(args) = cmd.strip_prefix("date ") {
+        let arg = args.trim();
+        let format = arg.strip_prefix('+').unwrap_or(arg);
         return Some(chrono::Local::now().format(format).to_string());
     }
 
@@ -153,7 +134,8 @@ pub fn interpolate_value(value: &Value) -> Value {
     }
 }
 
-/// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
+/// Utility to normalize Windows extended-length paths (e.g., //?/<<C:/path>> or \\?\C:\path) to <<C:/path>>, only on Windows
+#[must_use]
 pub fn normalize_windows_path(path: &str) -> String {
     let mut p = path;
     if p.starts_with("//?/") || p.starts_with(r"\\?\") {
@@ -165,6 +147,62 @@ pub fn normalize_windows_path(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_json_to_hashmap() {
+        assert!(json_to_hashmap(None).is_none());
+        assert!(json_to_hashmap(Some(&json!(123))).is_none());
+        assert!(json_to_hashmap(Some(&json!("string"))).is_none());
+
+        let v = json!({ "a": 1, "b": "hello" });
+        let map = json_to_hashmap(Some(&v)).unwrap();
+        assert_eq!(map.get("a").unwrap(), &json!(1));
+        assert_eq!(map.get("b").unwrap(), &json!("hello"));
+    }
+
+    #[test]
+    fn test_resolve_profile_options() {
+        let settings = json!({
+            "vfsConfigs": {
+                "profile1": {
+                    "vfs-cache-mode": "writes",
+                    "read-only": true
+                }
+            }
+        });
+
+        assert!(resolve_profile_options(&settings, None, "vfsConfigs").is_none());
+        assert!(resolve_profile_options(&settings, Some("profile2"), "vfsConfigs").is_none());
+        assert!(resolve_profile_options(&settings, Some("profile1"), "missingConfigs").is_none());
+
+        let opts = resolve_profile_options(&settings, Some("profile1"), "vfsConfigs").unwrap();
+        assert_eq!(opts.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(opts.get("read-only").unwrap(), &json!(true));
+    }
+
+    #[test]
+    fn test_get_string() {
+        let v = json!({
+            "nested": {
+                "target": "found_me",
+                "number": 42
+            }
+        });
+
+        assert_eq!(get_string(&v, &["nested", "target"]), "found_me");
+        assert_eq!(get_string(&v, &["nested", "number"]), "");
+        assert_eq!(get_string(&v, &["nested", "missing"]), "");
+        assert_eq!(get_string(&v, &["nonexistent"]), "");
+    }
+
+    #[test]
+    fn test_normalize_windows_path() {
+        assert_eq!(normalize_windows_path("//?/C:/foo/bar"), "C:/foo/bar");
+        assert_eq!(normalize_windows_path(r"\\?\C:\foo\bar"), r"C:\foo\bar");
+        assert_eq!(normalize_windows_path("C:/foo/bar"), "C:/foo/bar");
+        assert_eq!(normalize_windows_path(""), "");
+    }
 
     #[test]
     fn test_no_backtick_is_passthrough() {
@@ -183,7 +221,6 @@ mod tests {
         let result = interpolate_shell_commands("backup_`date` ");
         assert!(result.starts_with("backup_"));
         assert!(!result.contains('`'));
-        // Default is YYYY-MM-DD (10 chars)
         assert_eq!(result.trim().len(), "backup_".len() + 10);
     }
 
@@ -191,7 +228,7 @@ mod tests {
     fn test_date_expands_custom_format() {
         let result = interpolate_shell_commands("year_`date +%Y`_month_`date +%m` ");
         assert!(!result.contains('`'));
-        assert!(result.contains("year_20")); // Assuming year is 20xx
+        assert!(result.contains("year_20"));
         assert!(result.contains("_month_"));
     }
 
@@ -199,7 +236,6 @@ mod tests {
     fn test_date_complex_format() {
         let result = interpolate_shell_commands("`date +%A, %d %B %Y` ");
         assert!(!result.contains('`'));
-        // Example: "Saturday, 02 May 2026"
         assert!(result.len() > 10);
     }
 
@@ -220,7 +256,7 @@ mod tests {
     fn test_dollar_paren_syntax() {
         let result = interpolate_shell_commands("pCloud_$(date +%Y-%m-%d)");
         assert!(!result.contains("$("));
-        assert!(result.starts_with("pCloud_20")); // Assuming 20xx
+        assert!(result.starts_with("pCloud_20"));
     }
 
     #[test]

@@ -24,6 +24,15 @@ export const DEFAULT_PROFILE_NAME = 'default';
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 
+export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set([
+  'mount',
+  'serve',
+  'sync',
+  'copy',
+  'move',
+  'bisync',
+]);
+
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
   'iclouddrive',
@@ -195,9 +204,8 @@ export interface RemoteConfigStepVisibility {
 }
 
 // Shared fields for all rclone operations
-interface RcloneBaseConfig {
+export interface RcloneBaseConfig {
   autoStart: boolean;
-  options?: any;
   name?: string;
   filterProfile?: string;
   backendProfile?: string;
@@ -205,60 +213,53 @@ interface RcloneBaseConfig {
   [key: string]: any;
 }
 
-// For operations that support multiple sources (Sync, Copy, Move)
-export interface MultiSourceConfig extends RcloneBaseConfig {
+// Extends base with scheduling (cron/watch) support
+export interface SchedulableConfig extends RcloneBaseConfig {
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;
   watchDelay?: number;
-  source?: string[];
-  dest?: string;
 }
 
-// For operations that are strictly 1:1 (Mount, Bisync)
-export interface SingleSourceConfig extends RcloneBaseConfig {
-  cronEnabled?: boolean;
-  cronExpression?: string | null;
-  watchEnabled?: boolean;
-  watchDelay?: number;
-  source?: string;
-  dest?: string;
-}
-
-export interface MountConfig extends SingleSourceConfig {
-  type: string;
+export interface MountConfig extends RcloneBaseConfig {
+  fs?: string;
+  mountPoint?: string;
+  mountType?: string;
+  mountOpt?: Record<string, unknown>;
   vfsProfile?: string;
 }
 
-export interface CopyConfig extends MultiSourceConfig {
+export interface CopyConfig extends SchedulableConfig {
+  srcFs?: string | string[];
+  dstFs?: string;
   createEmptySrcDirs?: boolean;
+  _config?: Record<string, unknown>;
 }
 
-export interface SyncConfig extends MultiSourceConfig {
+export interface SyncConfig extends SchedulableConfig {
+  srcFs?: string | string[];
+  dstFs?: string;
   createEmptySrcDirs?: boolean;
+  _config?: Record<string, unknown>;
 }
 
-export interface FilterConfig {
-  options?: any;
-  [key: string]: any;
-}
+export type FilterConfig = Record<string, any>;
 
-export interface VfsConfig {
-  options?: any;
-  [key: string]: any;
-}
+export type VfsConfig = Record<string, any>;
 
-export interface BackendConfig {
-  options?: any;
-  [key: string]: any;
-}
+export type BackendConfig = Record<string, any>;
 
-export interface MoveConfig extends MultiSourceConfig {
+export interface MoveConfig extends SchedulableConfig {
+  srcFs?: string | string[];
+  dstFs?: string;
   createEmptySrcDirs?: boolean;
   deleteEmptySrcDirs?: boolean;
+  _config?: Record<string, unknown>;
 }
 
-export interface BisyncConfig extends SingleSourceConfig {
+export interface BisyncConfig extends SchedulableConfig {
+  path1?: string;
+  path2?: string;
   dryRun?: boolean;
   resync?: boolean;
   checkAccess?: boolean;
@@ -271,19 +272,19 @@ export interface BisyncConfig extends SingleSourceConfig {
   filtersFile?: string;
   ignoreListingChecksum?: boolean;
   resilient?: boolean;
-  workdir?: string;
-  backupdir1?: string;
-  backupdir2?: string;
+  workDir?: string;
+  backupDir1?: string;
+  backupDir2?: string;
   noCleanup?: boolean;
+  _config?: Record<string, unknown>;
 }
 
-export interface RuntimeRemoteConfig {
-  options?: Record<string, unknown>;
-  [key: string]: any;
-}
+export type RuntimeRemoteConfig = Record<string, any>;
 
-export interface ServeConfig extends SingleSourceConfig {
-  type: string;
+export interface ServeConfig extends SchedulableConfig {
+  fs?: string;
+  type?: string;
+  _config?: Record<string, unknown>;
   vfsProfile?: string;
 }
 

@@ -46,7 +46,7 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
     })
 }
 
-/// Open WebView developer tools
+/// Open `WebView` developer tools
 #[tauri::command]
 #[cfg(not(feature = "web-server"))]
 pub fn open_devtools(window: tauri::WebviewWindow) -> Result<String, String> {

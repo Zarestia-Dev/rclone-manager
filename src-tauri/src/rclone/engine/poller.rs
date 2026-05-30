@@ -126,8 +126,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
 
             if interval.period() != new_duration {
                 debug!(
-                    "Adjusting poller interval to {:?} (burst_ticks: {})",
-                    new_duration, burst_ticks
+                    "Adjusting poller interval to {new_duration:?} (burst_ticks: {burst_ticks})"
                 );
                 interval = time::interval_at(time::Instant::now() + new_duration, new_duration);
             }
@@ -181,7 +180,7 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
     let response = backend
         .post_json(client, job::BATCH, Some(&batch_payload))
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.clone())?;
 
     if let Some(error) = response.get("error") {
         return Err(error.as_str().unwrap_or("Unknown batch error").to_string());

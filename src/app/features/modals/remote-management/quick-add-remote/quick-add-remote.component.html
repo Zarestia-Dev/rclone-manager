@@ -13,66 +13,61 @@
   </button>
 </header>
 
-<main [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
+<main class="dull" [formGroup]="quickAddForm" novalidate>
   @let flow = interactiveFlowState();
-  <div class="modal-content">
-    @switch (currentStep()) {
-      @case ('setup') {
-        <div class="step-content">
-          <app-remote-config-step
-            [form]="setupFormGroup"
-            [remoteTypes]="remoteTypes()"
-            [existingRemotes]="existingRemotes()"
-            [visibility]="{ advanced: false }"
-            [initialCommandOptions]="commandOptions()"
-            (commandOptionsChanged)="commandOptions.set($event)"
-          />
-        </div>
-      }
+  @switch (currentStep()) {
+    @case ('setup') {
+      <app-remote-config-step
+        class="operation-config"
+        [form]="setupFormGroup"
+        [remoteTypes]="remoteTypes()"
+        [existingRemotes]="existingRemotes()"
+        [visibility]="{ advanced: false }"
+        [initialCommandOptions]="commandOptions()"
+        (commandOptionsChanged)="commandOptions.set($event)"
+      />
+    }
 
-      @case ('operations') {
-        <div formGroupName="operations">
-          <div class="section-group">
-            <div class="operations-header">
-              <h3 class="section-label">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
-              <p class="section-description">
-                {{ 'modals.quickAdd.operations.description' | translate }}
-              </p>
-            </div>
-
-            <mat-tab-group>
-              @for (tab of operationTabs; track tab.type) {
-                <mat-tab [label]="tab.label | translate">
-                  <div class="operation-config">
-                    <app-operation-config
-                      [opFormGroup]="operationFormGroups.get(tab.type)!"
-                      [operationType]="tab.type"
-                      [currentRemoteName]="setupNameValue() || 'remote'"
-                      [existingRemotes]="existingRemotes()"
-                      [description]="tab.description | translate"
-                    ></app-operation-config>
-                  </div>
-                </mat-tab>
-              }
-            </mat-tab-group>
+    @case ('operations') {
+      <div formGroupName="operations">
+        <div class="section-group">
+          <div class="operations-header">
+            <h3 class="section-label">{{ 'modals.quickAdd.operations.title' | translate }}</h3>
+            <p class="section-description">
+              {{ 'modals.quickAdd.operations.description' | translate }}
+            </p>
           </div>
-        </div>
-      }
 
-      @case ('interactive') {
-        <div class="step-content">
-          @if (flow.isActive && flow.question) {
-            <app-interactive-config-step
-              [question]="flow.question"
-              [canceling]="isAuthCancelled()"
-              [processing]="flow.isProcessing"
-              (answerChange)="handleInteractiveAnswerUpdate($event)"
-            />
-          }
+          <mat-tab-group>
+            @for (tab of operationTabs; track tab.type) {
+              <mat-tab [label]="tab.label | translate">
+                <div class="operation-config">
+                  <app-operation-config
+                    [opFormGroup]="operationFormGroups.get(tab.type)!"
+                    [operationType]="tab.type"
+                    [currentRemoteName]="setupNameValue() || 'remote'"
+                    [existingRemotes]="existingRemotes()"
+                    [description]="tab.description | translate"
+                  ></app-operation-config>
+                </div>
+              </mat-tab>
+            }
+          </mat-tab-group>
         </div>
+      </div>
+    }
+
+    @case ('interactive') {
+      @if (flow.isActive && flow.question) {
+        <app-interactive-config-step
+          [question]="flow.question"
+          [canceling]="isAuthCancelled()"
+          [processing]="flow.isProcessing"
+          (answerChange)="handleInteractiveAnswerUpdate($event)"
+        />
       }
     }
-  </div>
+  }
 
   <div class="message-area" aria-live="polite">
     @if (oauthHelperUrl(); as oauthUrlValue) {
@@ -159,11 +154,11 @@
         </button>
       }
 
-      <!-- type="submit" triggers ngSubmit — no (click) handler needed -->
       <button
         mat-flat-button
         class="primary"
-        type="submit"
+        type="button"
+        (click)="onSubmit()"
         [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
       >
         @if (isAuthInProgress() && !isAuthCancelled()) {

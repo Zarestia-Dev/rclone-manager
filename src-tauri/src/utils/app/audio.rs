@@ -10,6 +10,7 @@ pub struct PictureData {
 }
 
 /// Extracts the first picture from a local audio file
+#[must_use]
 pub fn extract_picture_from_path(path: &str) -> Option<PictureData> {
     let file_path = Path::new(path);
 
@@ -40,10 +41,10 @@ pub fn extract_picture_from_path(path: &str) -> Option<PictureData> {
     {
         return Some(PictureData {
             data: pic.data().to_vec(),
-            mime_type: pic
-                .mime_type()
-                .map(|m| m.to_string())
-                .unwrap_or_else(|| "image/jpeg".to_string()),
+            mime_type: pic.mime_type().map_or_else(
+                || "image/jpeg".to_string(),
+                std::string::ToString::to_string,
+            ),
         });
     }
 
@@ -51,6 +52,7 @@ pub fn extract_picture_from_path(path: &str) -> Option<PictureData> {
 }
 
 /// Extracts the first picture from an in-memory byte slice
+#[must_use]
 pub fn extract_picture_from_bytes(data: &[u8], extension: Option<&str>) -> Option<PictureData> {
     let mut cursor = Cursor::new(data);
 
@@ -66,7 +68,7 @@ pub fn extract_picture_from_bytes(data: &[u8], extension: Option<&str>) -> Optio
     let tagged_file = match probe.read() {
         Ok(t) => t,
         Err(e) => {
-            log::warn!("Failed to read tags from bytes (ext={:?}): {e}", extension);
+            log::warn!("Failed to read tags from bytes (ext={extension:?}): {e}");
             return None;
         }
     };
@@ -80,10 +82,10 @@ pub fn extract_picture_from_bytes(data: &[u8], extension: Option<&str>) -> Optio
     {
         return Some(PictureData {
             data: pic.data().to_vec(),
-            mime_type: pic
-                .mime_type()
-                .map(|m| m.to_string())
-                .unwrap_or_else(|| "image/jpeg".to_string()),
+            mime_type: pic.mime_type().map_or_else(
+                || "image/jpeg".to_string(),
+                std::string::ToString::to_string,
+            ),
         });
     }
 

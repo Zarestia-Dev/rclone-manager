@@ -8,7 +8,6 @@ use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_serves},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
-        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::serve,
         types::{logs::LogLevel, remotes::ProfileParams, state::RcloneState},
@@ -24,88 +23,90 @@ use super::common::{
 pub struct ServeParams {
     pub remote_name: String,
     pub source: String,
-    pub serve_options: Option<HashMap<String, Value>>,
+    pub rclone_config: Value,
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
-}
-
-/// Internal struct for Rclone API serialization
-#[derive(serde::Serialize)]
-struct RcloneServeBody {
-    #[serde(flatten)]
-    pub serve_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "vfsOpt", skip_serializing_if = "Option::is_none")]
-    pub vfs_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "_config", skip_serializing_if = "Option::is_none")]
-    pub config: Option<HashMap<String, Value>>,
-    #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
-    pub filter: Option<HashMap<String, Value>>,
+    pub serve_type: String,
 }
 
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
         let common = parse_common_config(config, settings)?;
+        let rclone_config = config.get("rclone").unwrap_or(config);
+        let serve_type = rclone_config
+            .get("type")
+            .or_else(|| rclone_config.get("serveType"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("http")
+            .to_string();
 
         Some(Self {
             remote_name,
             source: common.first_source(),
-            serve_options: common.options,
+            rclone_config: common.rclone_config.clone(),
             backend_options: common.backend_options,
             filter_options: common.filter_options,
             vfs_options: common.vfs_options,
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
+            serve_type,
         })
     }
 
     pub fn to_rclone_body(&self) -> Value {
-        // Pre-process serve options to handle "addr" array issue
-        let processed_serve_opts = self
-            .serve_options
-            .clone()
-            .map(|mut opts| {
-                if let Some(addr_val) = opts.get("addr") {
-                    let final_val = match addr_val {
-                        Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                        _ => addr_val.clone(),
-                    };
-                    opts.insert("addr".to_string(), final_val);
-                }
-                // Use the explicit source as 'fs'
-                opts.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(
-                        &self.source,
-                        self.runtime_remote_options.as_ref(),
-                    ),
-                );
-                opts
-            })
-            .or_else(|| {
-                // If no serve_options, create one with at least 'fs'
-                let mut opts = HashMap::new();
-                opts.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(
-                        &self.source,
-                        self.runtime_remote_options.as_ref(),
-                    ),
-                );
-                Some(opts)
-            });
-
-        let body = RcloneServeBody {
-            serve_options: processed_serve_opts,
-            vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
-            config: self.backend_options.clone().map(unwrap_nested_options),
-            filter: self.filter_options.clone().map(unwrap_nested_options),
+        let mut body = match self.rclone_config.clone() {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
         };
 
-        serde_json::to_value(body).unwrap_or(json!({}))
+        // 1. Pre-process serve options to handle "addr" array issue
+        if let Some(addr_val) = body.get("addr") {
+            let final_val = match addr_val {
+                Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
+                _ => addr_val.clone(),
+            };
+            body.insert("addr".to_string(), final_val);
+        }
+
+        // 2. Inject runtime remote overrides
+        body.insert(
+            "fs".to_string(),
+            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
+        );
+
+        // 3. Inject serve type
+        body.insert("type".to_string(), json!(self.serve_type));
+
+        // 4. Merge resolved profile blocks
+        if let Some(vfs_opts) = &self.vfs_options {
+            body.insert(
+                "vfsOpt".to_string(),
+                serde_json::to_value(vfs_opts).unwrap(),
+            );
+        }
+        if let Some(filter_opts) = &self.filter_options {
+            body.insert(
+                "_filter".to_string(),
+                serde_json::to_value(filter_opts).unwrap(),
+            );
+        }
+        if let Some(backend_opts) = &self.backend_options {
+            let mut final_backend = backend_opts.clone();
+            final_backend
+                .retain(|_, v| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()));
+            if !final_backend.is_empty() {
+                body.insert(
+                    "_config".to_string(),
+                    serde_json::to_value(final_backend).unwrap(),
+                );
+            }
+        }
+
+        Value::Object(body)
     }
 }
 
@@ -128,17 +129,24 @@ pub async fn start_serve(
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
 
-    let serve_type = params
-        .serve_options
-        .as_ref()
-        .and_then(|opts| opts.get("type"))
-        .ok_or_else(|| crate::localized_error!("backendErrors.serve.typeRequired"))?;
+    let serve_type = &params.serve_type;
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
+    let serve_opts_map = params
+        .rclone_config
+        .as_object()
+        .map(|obj| {
+            obj.clone()
+                .into_iter()
+                .filter(|(k, _)| k != "fs" && k != "type")
+                .collect()
+        })
+        .unwrap_or_default();
+
     let log_context = json!({
         "remote_name": params.remote_name,
-        "serve_options": redact_sensitive_values(&params.serve_options.clone().unwrap_or_default(), &app),
+        "serve_options": redact_sensitive_values(&serve_opts_map, &app),
     });
 
     log_operation(
@@ -152,8 +160,7 @@ pub async fn start_serve(
     let mut payload = params.to_rclone_body();
 
     // Auto-inject our custom template for web-based protocols if not already specified
-    let serve_type_str = serve_type.as_str().unwrap_or("");
-    if serve_type_str == "http" || serve_type_str == "webdav" {
+    if serve_type == "http" || serve_type == "webdav" {
         let app_paths = app.state::<AppPaths>();
         let template_path = app_paths.serve_template_path();
 
@@ -195,7 +202,7 @@ pub async fn start_serve(
                     backend: backend_name_for_err.clone(),
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
-                    protocol: serve_type.as_str().unwrap_or("unknown").to_string(),
+                    protocol: serve_type.clone(),
                     error: e.clone(),
                 }),
             );
@@ -415,4 +422,88 @@ pub async fn start_serve_profile(
     serve_params.profile = Some(params.profile_name.clone());
 
     start_serve(app, serve_params).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_serve_params_from_config() {
+        let config = json!({
+            "app": {
+                "vfsProfile": "vfs_profile",
+                "backendProfile": "backend_profile"
+            },
+            "rclone": {
+                "fs": "my_remote:bucket",
+                "serveType": "webdav",
+                "addr": ["127.0.0.1:8080"]
+            }
+        });
+
+        let settings = json!({
+            "vfsConfigs": {
+                "vfs_profile": {
+                    "vfs-cache-mode": "full"
+                }
+            },
+            "backendConfigs": {
+                "backend_profile": {
+                    "buffer-size": "16M"
+                }
+            }
+        });
+
+        let params = ServeParams::from_config("my_remote".to_string(), &config, &settings).unwrap();
+        assert_eq!(params.remote_name, "my_remote");
+        assert_eq!(params.source, "my_remote:bucket");
+        assert_eq!(params.serve_type, "webdav");
+        assert!(params.vfs_options.is_some());
+        assert_eq!(
+            params.vfs_options.unwrap().get("vfs-cache-mode").unwrap(),
+            "full"
+        );
+    }
+
+    #[test]
+    fn test_serve_to_rclone_body() {
+        let params = ServeParams {
+            remote_name: "my_remote".to_string(),
+            source: "my_remote:bucket".to_string(),
+            rclone_config: json!({
+                "addr": ["127.0.0.1:8080"],
+                "user": "admin"
+            }),
+            backend_options: Some(HashMap::from([("buffer-size".to_string(), json!("16M"))])),
+            filter_options: Some(HashMap::from([("exclude".to_string(), json!("secret/*"))])),
+            vfs_options: Some(HashMap::from([(
+                "vfs-cache-mode".to_string(),
+                json!("full"),
+            )])),
+            runtime_remote_options: None,
+            profile: Some("serve_profile".to_string()),
+            serve_type: "webdav".to_string(),
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("fs").unwrap(), "my_remote:bucket");
+        assert_eq!(obj.get("type").unwrap(), "webdav");
+        assert_eq!(obj.get("user").unwrap(), "admin");
+
+        // Verify "addr" array unwrapping
+        assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
+
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "full");
+
+        let filter = obj.get("_filter").unwrap().as_object().unwrap();
+        assert_eq!(filter.get("exclude").unwrap(), "secret/*");
+
+        let config = obj.get("_config").unwrap().as_object().unwrap();
+        assert_eq!(config.get("buffer-size").unwrap(), "16M");
+    }
 }

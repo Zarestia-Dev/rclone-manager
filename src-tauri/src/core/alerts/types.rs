@@ -63,7 +63,7 @@ impl AlertSeverity {
 pub enum AlertEventKind {
     /// Manual rclone jobs (Sync, Copy, Move, Delete, etc.)
     Job,
-    /// Background server processes (DLNA, WebDAV, etc.)
+    /// Background server processes (DLNA, `WebDAV`, etc.)
     Serve,
     /// FUSE drive mounting operations
     Mount,
@@ -606,7 +606,7 @@ pub struct AlertRecord {
     pub ack_at: Option<DateTime<Utc>>,
 }
 
-/// Details of an alert firing, grouped to avoid clippy::too_many_arguments.
+/// Details of an alert firing, grouped to avoid `clippy::too_many_arguments`.
 #[derive(Debug, Clone)]
 pub struct AlertDetails {
     pub event_kind: AlertEventKind,

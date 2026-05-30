@@ -21,6 +21,7 @@ pub struct AlertMeta {
 }
 
 impl NotificationEvent {
+    #[must_use]
     pub fn alert_meta(&self) -> AlertMeta {
         match self {
             Self::Job(stage) => match stage {

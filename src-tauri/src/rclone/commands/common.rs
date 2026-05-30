@@ -23,17 +23,14 @@ pub async fn resolve_profile_settings(
     config_key: &str,
 ) -> Result<(Value, Value), String> {
     let manager = app.state::<AppSettingsManager>();
-    let cache = &app.state::<BackendManager>().remote_cache;
-    let remote_names = cache.get_remotes().await;
+    let remotes = manager
+        .inner()
+        .sub_settings("remotes")
+        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
 
-    let settings_map = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
-
-    let settings = settings_map
-        .get(remote_name)
-        .ok_or_else(|| format!("Remote '{remote_name}' not found in settings"))?;
+    let settings = remotes
+        .get_value(remote_name)
+        .map_err(|_| format!("Remote '{remote_name}' not found in settings"))?;
 
     let config = settings
         .get(config_key)
@@ -42,7 +39,7 @@ pub async fn resolve_profile_settings(
             format!("{config_key} profile '{profile_name}' for '{remote_name}' not found")
         })?;
 
-    Ok((config.clone(), settings.clone()))
+    Ok((config.clone(), settings))
 }
 
 // ============================================================================
@@ -66,7 +63,7 @@ pub async fn is_directory(
     let backend = app.state::<BackendManager>().get_active().await;
     let state = app.state::<RcloneState>();
 
-    let (base, remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), "".to_string()));
+    let (base, remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), String::new()));
 
     let resp = backend
         .inject_auth(
@@ -92,7 +89,7 @@ pub async fn is_directory(
     let is_dir = val
         .get("item")
         .and_then(|item| item.get("IsDir"))
-        .and_then(|is_dir| is_dir.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
 
     Ok(is_dir)
@@ -120,7 +117,7 @@ pub trait FromConfig: Sized {
 pub struct CommonConfigParams {
     pub source: Vec<String>,
     pub dest: String,
-    pub options: Option<HashMap<String, Value>>,
+    pub rclone_config: Value,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
@@ -161,8 +158,10 @@ pub fn fs_value_with_runtime_overrides(
         return json!(fs);
     };
 
-    let lookup_keys = [base.clone(), base.trim_end_matches(':').to_string()];
-    let matched_key = lookup_keys.iter().find(|key| overrides.contains_key(*key));
+    let trimmed_base = base.trim_end_matches(':');
+    let matched_key = [&base, trimmed_base]
+        .into_iter()
+        .find(|&key| overrides.contains_key(key));
 
     let remote_override = matched_key.and_then(|key| {
         let val = overrides.get(key);
@@ -171,9 +170,7 @@ pub fn fs_value_with_runtime_overrides(
                 v.as_object()
             } else {
                 log::warn!(
-                    "⚠️ Runtime override for '{}' ignored: expected JSON object, found {:?}",
-                    key,
-                    v
+                    "⚠️ Runtime override for '{key}' ignored: expected JSON object, found {v:?}"
                 );
                 None
             }
@@ -198,22 +195,28 @@ pub fn fs_value_with_runtime_overrides(
 // Removed ParsedFs enum
 
 /// Parses an rclone fs string into (base, root).
-/// Example: "remote:path" -> ("remote:", "path"), ":s3:/bucket" -> (":s3:", "/bucket")
+/// Example: "remote:path" -> ("remote:", "path"), ":<s3:/bucket>" -> (":s3:", "/bucket")
 pub fn parse_fs(fs: &str) -> Option<(String, String)> {
     if fs.is_empty() {
         return None;
     }
 
     // Avoid treating Windows paths (C:\) as remotes
-    let is_windows_drive = fs.len() > 2
-        && fs.chars().nth(1) == Some(':')
-        && matches!(fs.chars().nth(2), Some('\\' | '/'));
+    let bytes = fs.as_bytes();
+    let is_windows_drive =
+        bytes.len() > 2 && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/');
 
     if is_windows_drive || fs.starts_with('/') {
-        return Some((fs.to_string(), "".to_string()));
+        return Some((fs.to_string(), String::new()));
     }
 
-    match fs.find(':') {
+    let split_idx = if let Some(stripped) = fs.strip_prefix(':') {
+        stripped.find(':').map(|idx| idx + 1)
+    } else {
+        fs.find(':')
+    };
+
+    match split_idx {
         Some(split_idx) => {
             let base = &fs[..=split_idx];
             let root = &fs[split_idx + 1..];
@@ -226,69 +229,95 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
                 if backend_type.is_empty() {
                     return None;
                 }
-            } else if base.len() <= 1 {
-                // Single character before colon (not a windows drive) - treat as local
-                return Some((fs.to_string(), "".to_string()));
+            } else if base.len() <= 2 {
+                // Single character before colon (e.g., C: or a:) - treat as local
+                return Some((fs.to_string(), String::new()));
             }
 
             Some((base.to_string(), root.to_string()))
         }
         None => {
             // No colon found - treat as local path
-            Some((fs.to_string(), "".to_string()))
+            Some((fs.to_string(), String::new()))
         }
     }
 }
 
-/// Helper to parse common configuration fields
 pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let config = &interpolate_value(config);
 
+    let app_config = config.get("app").unwrap_or(config);
+    let rclone_config = config.get("rclone").unwrap_or(config);
+
     let get_paths = |key: &str| -> Vec<String> {
-        match config.get(key) {
+        match rclone_config.get(key) {
             Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
             Some(Value::Array(arr)) => arr
                 .iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                 .filter(|s| !s.is_empty())
                 .collect(),
             _ => vec![],
         }
     };
 
-    let source = get_paths("source");
+    let source = ["srcFs", "path1", "fs"]
+        .iter()
+        .find_map(|&key| {
+            let paths = get_paths(key);
+            if paths.is_empty() { None } else { Some(paths) }
+        })
+        .unwrap_or_default();
+
     if source.is_empty() {
         return None;
     }
 
-    let dest = get_paths("dest").into_iter().next().unwrap_or_default();
+    let dest = get_paths("dstFs")
+        .into_iter()
+        .next()
+        .or_else(|| get_paths("path2").into_iter().next())
+        .or_else(|| get_paths("mountPoint").into_iter().next())
+        .unwrap_or_default();
 
     let get_opts = |key: &str, section: &str| {
-        resolve_profile_options(settings, config.get(key).and_then(|v| v.as_str()), section)
+        resolve_profile_options(
+            settings,
+            app_config.get(key).and_then(|v| v.as_str()),
+            section,
+        )
     };
 
     Some(CommonConfigParams {
         source,
         dest,
-        options: json_to_hashmap(config.get("options")),
+        rclone_config: rclone_config.clone(),
         vfs_options: get_opts("vfsProfile", "vfsConfigs"),
         filter_options: get_opts("filterProfile", "filterConfigs"),
         backend_options: get_opts("backendProfile", "backendConfigs"),
-        runtime_remote_options: resolve_runtime_remote_options(config, settings, "remotes"),
+        runtime_remote_options: resolve_runtime_remote_options(
+            app_config,
+            rclone_config,
+            settings,
+            "remotes",
+        ),
         profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
     })
 }
 
 pub fn resolve_runtime_remote_options(
-    config: &Value,
+    app_config: &Value,
+    rclone_config: &Value,
     settings: &Value,
     inline_remotes_key: &str,
 ) -> Option<HashMap<String, Value>> {
-    let profile = config.get("runtimeRemoteProfile").and_then(|v| v.as_str());
+    let profile = app_config
+        .get("runtimeRemoteProfile")
+        .and_then(|v| v.as_str());
     let mut opts =
         resolve_profile_options(settings, profile, "runtimeRemoteConfigs").unwrap_or_default();
 
-    if let Some(inline) = json_to_hashmap(config.get(inline_remotes_key)) {
+    if let Some(inline) = json_to_hashmap(rclone_config.get(inline_remotes_key)) {
         opts.extend(inline);
     }
 
@@ -324,4 +353,88 @@ pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle)
         .collect();
 
     Value::Object(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_parse_fs_local() {
+        assert_eq!(parse_fs(""), None);
+        assert_eq!(
+            parse_fs("/var/tmp"),
+            Some(("/var/tmp".to_string(), "".to_string()))
+        );
+        assert_eq!(
+            parse_fs("C:\\Users\\admin"),
+            Some(("C:\\Users\\admin".to_string(), "".to_string()))
+        );
+        assert_eq!(
+            parse_fs("C:/Users/admin"),
+            Some(("C:/Users/admin".to_string(), "".to_string()))
+        );
+        assert_eq!(
+            parse_fs("C:Users/admin"),
+            Some(("C:Users/admin".to_string(), "".to_string()))
+        );
+        assert_eq!(parse_fs("a:"), Some(("a:".to_string(), "".to_string())));
+    }
+
+    #[test]
+    fn test_parse_fs_remote() {
+        assert_eq!(
+            parse_fs("my_remote:bucket/path"),
+            Some(("my_remote:".to_string(), "bucket/path".to_string()))
+        );
+        assert_eq!(
+            parse_fs(":s3:bucket"),
+            Some((":s3:".to_string(), "bucket".to_string()))
+        );
+        assert_eq!(
+            parse_fs("remote:"),
+            Some(("remote:".to_string(), "".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_fs_value_with_runtime_overrides() {
+        let overrides = HashMap::from([
+            (
+                "my_remote:".to_string(),
+                json!({ "type": "s3", "provider": "AWS" }),
+            ),
+            (
+                "s3_backend".to_string(),
+                json!({ "type": "s3", "env_auth": true }),
+            ),
+        ]);
+
+        // No overrides
+        assert_eq!(
+            fs_value_with_runtime_overrides("my_remote:bucket", None),
+            json!("my_remote:bucket")
+        );
+
+        // Match with colon
+        let overridden1 = fs_value_with_runtime_overrides("my_remote:bucket", Some(&overrides));
+        let obj1 = overridden1.as_object().unwrap();
+        assert_eq!(obj1.get("_name").unwrap(), "my_remote");
+        assert_eq!(obj1.get("_root").unwrap(), "bucket");
+        assert_eq!(obj1.get("provider").unwrap(), "AWS");
+
+        // Match without colon
+        let overridden2 = fs_value_with_runtime_overrides("s3_backend:bucket", Some(&overrides));
+        let obj2 = overridden2.as_object().unwrap();
+        assert_eq!(obj2.get("_name").unwrap(), "s3_backend");
+        assert_eq!(obj2.get("_root").unwrap(), "bucket");
+        assert_eq!(obj2.get("env_auth").unwrap(), &json!(true));
+
+        // No match in overrides
+        assert_eq!(
+            fs_value_with_runtime_overrides("other:bucket", Some(&overrides)),
+            json!("other:bucket")
+        );
+    }
 }

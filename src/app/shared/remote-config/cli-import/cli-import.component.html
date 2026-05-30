@@ -55,7 +55,7 @@
               <div class="info-item">
                 <span class="label">{{ 'wizards.cliImport.operation' | translate }}:</span>
                 <span class="value capitalize" [class.highlight]="verb">
-                  {{ verb || ('wizards.cliImport.none' | translate) }}
+                  {{ verb || ('wizards.cliImport.patch' | translate) }}
                 </span>
               </div>
               @if (result.serveSubtype) {
@@ -143,8 +143,11 @@
               </h5>
               <div class="flag-list">
                 @for (item of unknownFlags(); track item.flag.raw) {
-                  <div class="flag-row font-mono unmapped-item">
-                    {{ item.flag.raw }}
+                  <div class="flag-row unmapped-item">
+                    <span class="flag-raw-text">{{ item.flag.raw }}</span>
+                    @if (item.guidance) {
+                      <span class="flag-guidance-text font-sans">{{ item.guidance }}</span>
+                    }
                   </div>
                 }
               </div>
@@ -155,13 +158,33 @@
           <div class="profile-apply-section">
             <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
 
+            @if (!result.verb) {
+              @if (!activeStep() || activeStep() === 'remote') {
+                <div class="patch-info-box warning">
+                  <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                  <span>{{ 'wizards.cliImport.patchInfoRemoteStep' | translate }}</span>
+                </div>
+              } @else {
+                <div class="patch-info-box">
+                  <mat-icon svgIcon="info"></mat-icon>
+                  <span>{{ 'wizards.cliImport.patchInfo' | translate }}</span>
+                </div>
+              }
+            }
+
             <div class="radio-group-container">
               <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
-                <mat-radio-button value="new">{{
-                  'wizards.cliImport.newProfile' | translate
-                }}</mat-radio-button>
-                <mat-radio-button value="override" [disabled]="detectedVerbProfiles().length === 0">
+                <mat-radio-button value="new" [disabled]="!result.verb">
+                  {{ 'wizards.cliImport.newProfile' | translate }}
+                </mat-radio-button>
+                <mat-radio-button
+                  value="override"
+                  [disabled]="!result.verb || detectedVerbProfiles().length === 0"
+                >
                   {{ 'wizards.cliImport.overrideProfile' | translate }}
+                </mat-radio-button>
+                <mat-radio-button value="patch">
+                  {{ 'wizards.cliImport.patchProfile' | translate }}
                 </mat-radio-button>
               </mat-radio-group>
             </div>
@@ -197,7 +220,12 @@
             <div class="apply-actions">
               <button mat-raised-button [disabled]="isApplyDisabled()" (click)="onApply()">
                 <mat-icon svgIcon="circle-check"></mat-icon>
-                {{ 'wizards.cliImport.applyToProfile' | translate }}
+                {{
+                  (profileMode() === 'patch'
+                    ? 'wizards.cliImport.applyPatch'
+                    : 'wizards.cliImport.applyToProfile'
+                  ) | translate
+                }}
               </button>
             </div>
           </div>

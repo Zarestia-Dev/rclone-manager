@@ -7,7 +7,6 @@ use crate::{
     rclone::{backend::BackendManager, state::watcher::force_check_mounted_remotes},
     utils::{
         app::notification::{MountStage, NotificationEvent, notify},
-        json_helpers::unwrap_nested_options,
         logging::log::log_operation,
         rclone::endpoints::mount,
         types::{jobs::JobType, logs::LogLevel, remotes::ProfileParams, state::RcloneState},
@@ -27,7 +26,7 @@ pub struct MountParams {
     pub source: String,
     pub mount_point: String,
     pub mount_type: String,
-    pub mount_options: Option<HashMap<String, Value>>,
+    pub rclone_config: Value,
     pub vfs_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
@@ -35,26 +34,6 @@ pub struct MountParams {
     pub profile: Option<String>,
     pub origin: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
-}
-
-/// Internal struct for Rclone API serialization
-#[derive(serde::Serialize)]
-struct RcloneMountBody {
-    pub fs: Value,
-    #[serde(rename = "mountPoint")]
-    pub mount_point: String,
-    #[serde(rename = "mountType", skip_serializing_if = "Option::is_none")]
-    pub mount_type: Option<String>,
-    #[serde(rename = "mountOpt", skip_serializing_if = "Option::is_none")]
-    pub mount_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "vfsOpt", skip_serializing_if = "Option::is_none")]
-    pub vfs_options: Option<HashMap<String, Value>>,
-    #[serde(rename = "_async", skip_serializing_if = "Option::is_none")]
-    pub async_flag: Option<bool>,
-    #[serde(rename = "_config", skip_serializing_if = "Option::is_none")]
-    pub config: Option<HashMap<String, Value>>,
-    #[serde(rename = "_filter", skip_serializing_if = "Option::is_none")]
-    pub filter: Option<HashMap<String, Value>>,
 }
 
 impl FromConfig for MountParams {
@@ -66,16 +45,18 @@ impl FromConfig for MountParams {
             return None;
         }
 
+        let rclone_config = config.get("rclone").unwrap_or(config);
+
         Some(Self {
             remote_name,
             source: common.first_source(),
             mount_point,
-            mount_type: config
-                .get("type")
+            mount_type: rclone_config
+                .get("mountType")
                 .and_then(|v| v.as_str())
                 .unwrap_or("mount")
                 .to_string(),
-            mount_options: common.options,
+            rclone_config: common.rclone_config.clone(),
             vfs_options: common.vfs_options,
             filter_options: common.filter_options,
             backend_options: common.backend_options,
@@ -89,34 +70,46 @@ impl FromConfig for MountParams {
 
 impl MountParams {
     pub fn to_rclone_body(&self) -> Value {
-        // Flatten backend options
-        let backend_opts = self.backend_options.clone().map(unwrap_nested_options);
-        // Clean implementation detail: filter out empty/null values from backend options
-        let final_backend_opts = backend_opts
-            .map(|opts| {
-                opts.into_iter()
-                    .filter(|(_, v)| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()))
-                    .collect()
-            })
-            .filter(|m: &HashMap<String, Value>| !m.is_empty());
-
-        let body = RcloneMountBody {
-            fs: fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
-            mount_point: self.mount_point.clone(),
-            mount_type: if self.mount_type.is_empty() {
-                None
-            } else {
-                Some(self.mount_type.clone())
-            },
-            mount_options: self.mount_options.clone(),
-            vfs_options: self.vfs_options.clone().map(unwrap_nested_options),
-            // Request async job so rclone returns a job id we can track
-            async_flag: Some(true),
-            config: final_backend_opts,
-            filter: self.filter_options.clone().map(unwrap_nested_options),
+        let mut body = match self.rclone_config.clone() {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
         };
 
-        serde_json::to_value(body).unwrap_or(json!({}))
+        // 1. Inject runtime remote overrides directly into the "fs" key
+        body.insert(
+            "fs".to_string(),
+            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
+        );
+
+        // 2. Merge resolved profile blocks if they exist
+        if let Some(vfs_opts) = &self.vfs_options {
+            body.insert(
+                "vfsOpt".to_string(),
+                serde_json::to_value(vfs_opts).unwrap(),
+            );
+        }
+        if let Some(filter_opts) = &self.filter_options {
+            body.insert(
+                "_filter".to_string(),
+                serde_json::to_value(filter_opts).unwrap(),
+            );
+        }
+        if let Some(backend_opts) = &self.backend_options {
+            let mut final_backend = backend_opts.clone();
+            final_backend
+                .retain(|_, v| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()));
+            if !final_backend.is_empty() {
+                body.insert(
+                    "_config".to_string(),
+                    serde_json::to_value(final_backend).unwrap(),
+                );
+            }
+        }
+
+        // 3. Mark it async
+        body.insert("_async".to_string(), json!(true));
+
+        Value::Object(body)
     }
 }
 
@@ -140,11 +133,18 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         return Err(error_msg);
     }
 
+    let mount_opts_map = params
+        .rclone_config
+        .get("mountOpt")
+        .and_then(|v| v.as_object())
+        .map(|obj| obj.clone().into_iter().collect())
+        .unwrap_or_default();
+
     let log_context = json!({
         "mount_point": params.mount_point,
         "remote_name": params.remote_name,
         "mount_type": params.mount_type,
-        "options": redact_sensitive_values(&params.mount_options.clone().unwrap_or_default(), &app),
+        "options": redact_sensitive_values(&mount_opts_map, &app),
     });
 
     log_operation(
@@ -376,24 +376,23 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
     };
 
     let mut mount_params =
-        match MountParams::from_config(params.remote_name.clone(), &config, &settings) {
-            Some(p) => p,
-            None => {
-                let error_msg = crate::localized_error!(
-                    "backendErrors.mount.configIncomplete",
-                    "profile" => &params.profile_name
-                );
-                notify(
-                    &app,
-                    NotificationEvent::Mount(MountStage::Failed {
-                        backend: app.state::<BackendManager>().get_active_name().await,
-                        remote: params.remote_name.clone(),
-                        profile: Some(params.profile_name.clone()),
-                        error: error_msg.clone(),
-                    }),
-                );
-                return Err(error_msg);
-            }
+        if let Some(p) = MountParams::from_config(params.remote_name.clone(), &config, &settings) {
+            p
+        } else {
+            let error_msg = crate::localized_error!(
+                "backendErrors.mount.configIncomplete",
+                "profile" => &params.profile_name
+            );
+            notify(
+                &app,
+                NotificationEvent::Mount(MountStage::Failed {
+                    backend: app.state::<BackendManager>().get_active_name().await,
+                    remote: params.remote_name.clone(),
+                    profile: Some(params.profile_name.clone()),
+                    error: error_msg.clone(),
+                }),
+            );
+            return Err(error_msg);
         };
 
     // Ensure profile is set from the function parameter, not the config object
@@ -402,4 +401,99 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_mount_params_from_config() {
+        let config = json!({
+            "app": {
+                "vfsProfile": "vfs_writes",
+                "filterProfile": "my_filters",
+                "backendProfile": "my_backend"
+            },
+            "rclone": {
+                "fs": "pCloud:backups",
+                "mountPoint": "/mnt/pcloud",
+                "mountType": "cmount",
+                "mountOpt": {
+                    "read-only": true
+                }
+            }
+        });
+
+        let settings = json!({
+            "vfsConfigs": {
+                "vfs_writes": {
+                    "vfs-cache-mode": "writes"
+                }
+            },
+            "filterConfigs": {
+                "my_filters": {
+                    "exclude": ".*"
+                }
+            },
+            "backendConfigs": {
+                "my_backend": {
+                    "chunk-size": "10M"
+                }
+            }
+        });
+
+        let params = MountParams::from_config("pCloud".to_string(), &config, &settings).unwrap();
+        assert_eq!(params.remote_name, "pCloud");
+        assert_eq!(params.source, "pCloud:backups");
+        assert_eq!(params.mount_point, "/mnt/pcloud");
+        assert_eq!(params.mount_type, "cmount");
+        assert!(params.vfs_options.is_some());
+        assert_eq!(
+            params.vfs_options.unwrap().get("vfs-cache-mode").unwrap(),
+            "writes"
+        );
+    }
+
+    #[test]
+    fn test_mount_to_rclone_body() {
+        let params = MountParams {
+            remote_name: "pCloud".to_string(),
+            source: "pCloud:backups".to_string(),
+            mount_point: "/mnt/pcloud".to_string(),
+            mount_type: "cmount".to_string(),
+            rclone_config: json!({
+                "mountType": "cmount",
+                "mountOpt": {
+                    "read-only": true
+                }
+            }),
+            vfs_options: Some(HashMap::from([(
+                "vfs-cache-mode".to_string(),
+                json!("writes"),
+            )])),
+            filter_options: Some(HashMap::from([("exclude".to_string(), json!(".*"))])),
+            backend_options: Some(HashMap::from([("chunk-size".to_string(), json!("10M"))])),
+            runtime_remote_options: None,
+            profile: Some("my_profile".to_string()),
+            origin: None,
+            no_cache: None,
+        };
+
+        let body = params.to_rclone_body();
+        let obj = body.as_object().unwrap();
+
+        assert_eq!(obj.get("fs").unwrap(), "pCloud:backups");
+        assert_eq!(obj.get("_async").unwrap(), &json!(true));
+
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "writes");
+
+        let filter = obj.get("_filter").unwrap().as_object().unwrap();
+        assert_eq!(filter.get("exclude").unwrap(), ".*");
+
+        let config = obj.get("_config").unwrap().as_object().unwrap();
+        assert_eq!(config.get("chunk-size").unwrap(), "10M");
+    }
 }

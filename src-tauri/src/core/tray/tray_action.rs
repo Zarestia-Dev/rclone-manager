@@ -79,7 +79,7 @@ impl TrayAction {
     }
 
     /// Parses a unique string ID back into a `TrayAction`.
-    /// Example: "mount_profile__myRemote__profile1" -> Some(TrayAction::MountProfile("myRemote", "profile1"))
+    /// Example: "`mount_profile__myRemote__profile1`" -> `Some(TrayAction::MountProfile("myRemote`", "profile1"))
     pub fn from_id(id: &str) -> Option<Self> {
         // Check for global actions first (single word, no separators)
         match id {

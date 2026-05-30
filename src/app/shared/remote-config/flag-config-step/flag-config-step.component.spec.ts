@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { FlagType, RcConfigOption } from '@app/types';
 
 import { FlagConfigStepComponent } from './flag-config-step.component';
@@ -12,8 +11,8 @@ describe('FlagConfigStepComponent', () => {
   const buildForm = (flagType: FlagType, typeValue = ''): FormGroup => {
     return new FormGroup({
       [`${flagType}Config`]: new FormGroup({
-        type: new FormControl(typeValue),
         options: new FormGroup({
+          type: new FormControl(typeValue),
           test_option: new FormControl(''),
           test_option_two: new FormControl(''),
         }),
@@ -25,14 +24,11 @@ describe('FlagConfigStepComponent', () => {
     fixture.componentRef.setInput('form', form);
     fixture.componentRef.setInput('flagType', flagType);
     fixture.componentRef.setInput('currentRemoteName', 'demo-remote');
-    fixture.componentRef.setInput('getControlKey', (_t: FlagType, field: RcConfigOption) => {
-      return field.FieldName;
-    });
   };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [FlagConfigStepComponent, NoopAnimationsModule],
+      imports: [FlagConfigStepComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FlagConfigStepComponent);

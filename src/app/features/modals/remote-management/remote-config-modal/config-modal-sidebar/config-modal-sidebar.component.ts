@@ -45,6 +45,10 @@ export class ConfigModalSidebarComponent {
 
   isStepDisabled(step: number): boolean {
     if (this.state.isStepNavigationLocked()) return true;
-    return !this.state.editTarget() && step > 1 && this.state.remoteFormStatus?.() === 'INVALID';
+    if (step > this.state.currentStep()) {
+      if (this.state.isActiveStepInvalid()) return true;
+      if (!this.state.editTarget() && this.state.remoteFormStatus?.() === 'INVALID') return true;
+    }
+    return false;
   }
 }

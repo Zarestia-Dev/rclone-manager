@@ -149,7 +149,7 @@ pub fn cleanup_webkit_zombies() {
     for process in system.processes().values() {
         let name = process.name().to_string_lossy();
         if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
-            && process.parent().map(|p| p.as_u32()) == Some(my_pid)
+            && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
         {
             let _ = process.kill();
         }

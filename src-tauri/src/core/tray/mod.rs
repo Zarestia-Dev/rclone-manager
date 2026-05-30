@@ -11,7 +11,6 @@ use crate::rclone::backend::BackendManager;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::{MountedRemote, ServeInstance};
 use menu::MenuPlan;
-use std::collections::HashSet;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -72,18 +71,7 @@ impl TraySnapshot {
 
         let remotes_settings = settings_manager.inner().sub_settings("remotes").ok();
 
-        // O(1) lookup sets.
-        let active_job_set: HashSet<(String, Option<String>, JobType)> = active_jobs_raw
-            .iter()
-            .map(|j| (j.remote_name.clone(), j.profile.clone(), j.job_type.clone()))
-            .collect();
-
-        let mounted_set: HashSet<(String, Option<String>)> = mounted_remotes
-            .iter()
-            .map(|m| (m.mount_point.clone(), m.profile.clone()))
-            .collect();
-
-        let active_serves_set: HashSet<(String, Option<String>)> = active_serves
+        let active_serves_list: Vec<(String, Option<String>)> = active_serves
             .iter()
             .map(|srv| {
                 let fs = srv.params["fs"].as_str().unwrap_or("");
@@ -112,7 +100,7 @@ impl TraySnapshot {
                 let show_on_tray = s
                     .as_ref()
                     .and_then(|v| v.get("showOnTray"))
-                    .and_then(|v| v.as_bool())
+                    .and_then(serde_json::Value::as_bool)
                     .unwrap_or(false);
 
                 let primary_actions = s
@@ -135,11 +123,11 @@ impl TraySnapshot {
                         .map(|m| {
                             m.keys()
                                 .map(|pname| TrayProfileSummary {
-                                    is_active: active_job_set.contains(&(
-                                        name.clone(),
-                                        Some(pname.clone()),
-                                        jtype.clone(),
-                                    )),
+                                    is_active: active_jobs_raw.iter().any(|j| {
+                                        j.remote_name == name
+                                            && j.profile.as_ref() == Some(pname)
+                                            && j.job_type == *jtype
+                                    }),
                                     name: pname.clone(),
                                 })
                                 .collect()
@@ -154,10 +142,15 @@ impl TraySnapshot {
                     .map(|m| {
                         m.iter()
                             .map(|(pname, cfg)| {
-                                let dest = cfg.get("dest").and_then(|v| v.as_str()).unwrap_or("");
+                                let rclone_cfg = cfg.get("rclone").unwrap_or(cfg);
+                                let dest = rclone_cfg
+                                    .get("mountPoint")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
                                 TrayProfileSummary {
-                                    is_active: mounted_set
-                                        .contains(&(dest.to_string(), Some(pname.clone()))),
+                                    is_active: mounted_remotes.iter().any(|mt| {
+                                        mt.mount_point == dest && mt.profile.as_ref() == Some(pname)
+                                    }),
                                     name: pname.clone(),
                                 }
                             })
@@ -172,8 +165,9 @@ impl TraySnapshot {
                     .map(|m| {
                         m.keys()
                             .map(|pname| TrayProfileSummary {
-                                is_active: active_serves_set
-                                    .contains(&(target_remote.clone(), Some(pname.clone()))),
+                                is_active: active_serves_list.iter().any(|(remote, profile)| {
+                                    remote == &target_remote && profile.as_ref() == Some(pname)
+                                }),
                                 name: pname.clone(),
                             })
                             .collect()

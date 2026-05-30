@@ -382,15 +382,15 @@ impl Backend {
             };
             // Ensure path doesn't have double slashes if it starts with one
             let separator = if path.starts_with('/') { "" } else { "/" };
-            format!("{}{}{}", r_name, separator, path)
+            format!("{r_name}{separator}{path}")
         };
 
         let mut args = vec![full_path];
         if let Some(o) = offset {
-            args.push(format!("--offset={}", o));
+            args.push(format!("--offset={o}"));
         }
         if let Some(c) = count {
-            args.push(format!("--count={}", c));
+            args.push(format!("--count={c}"));
         }
 
         let payload = self.build_core_command_payload("cat", args, false, os);
@@ -401,7 +401,7 @@ impl Backend {
         // Check if the command itself reported an error (rclone core/command returns {error: true, result: "..."})
         if response
             .get("error")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
         {
             let err_msg = response
@@ -481,12 +481,11 @@ impl Backend {
                     .replace('|', "^|")
                     .replace('<', "^<")
                     .replace('>', "^>");
-                args.push(format!("--password-command=cmd /C echo {}", escaped_pass));
+                args.push(format!("--password-command=cmd /C echo {escaped_pass}"));
             } else {
                 let escaped_pass = pass.replace('\'', "'\\''");
                 args.push(format!(
-                    "--password-command=sh -c \"printf '%s' '{}'\"",
-                    escaped_pass
+                    "--password-command=sh -c \"printf '%s' '{escaped_pass}'\""
                 ));
             }
         }

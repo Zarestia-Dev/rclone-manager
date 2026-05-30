@@ -53,10 +53,10 @@ pub fn process(app: &AppHandle, event: &NotificationEvent, title: String, body: 
         };
 
         if let Err(e) = tx.try_send(req) {
-            warn!("Alert queue full, dropping alert: {}. Error: {}", title, e);
+            warn!("Alert queue full, dropping alert: {title}. Error: {e}");
         }
     } else {
-        warn!("Alert engine not initialized, dropping alert: {}", title);
+        warn!("Alert engine not initialized, dropping alert: {title}");
     }
 }
 
@@ -281,9 +281,7 @@ async fn execute_action(
         AlertAction::OsToast(_) => dispatch::os_toast::dispatch(app, ctx),
         AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx, client).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
-        AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client)
-            .await
-            .map(|_| ()),
+        AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client).await,
         AlertAction::Mqtt(a) => dispatch::mqtt::dispatch(a, ctx, dispatch_ctx).await,
         AlertAction::Email(a) => dispatch::email::dispatch(a, ctx).await,
     }

@@ -91,31 +91,30 @@ pub fn handle_stop_job_profile(
                     && j.status == JobStatus::Running
             });
 
-        match running_job {
-            Some(job) => match stop_job(app.clone(), job.jobid, remote.clone()).await {
+        if let Some(job) = running_job {
+            match stop_job(app.clone(), job.jobid, remote.clone()).await {
                 Ok(()) => info!(
                     "Stopped {job_type} job {} for {remote} / {profile}",
                     job.jobid
                 ),
                 Err(e) => error!("Failed to stop {job_type} job {}: {e}", job.jobid),
-            },
-            None => {
-                error!("No active {job_type} job found for {remote} / {profile}");
-                let backend_name = backend_manager.get_active_name().await;
-                notify(
-                    &app,
-                    NotificationEvent::Job(JobStage::Failed {
-                        backend: backend_name,
-                        remote,
-                        profile: Some(profile),
-                        job_type,
-                        error: "no active job".to_string(),
-                        origin: Origin::Dashboard,
-                        source: None,
-                        destination: None,
-                    }),
-                );
             }
+        } else {
+            error!("No active {job_type} job found for {remote} / {profile}");
+            let backend_name = backend_manager.get_active_name().await;
+            notify(
+                &app,
+                NotificationEvent::Job(JobStage::Failed {
+                    backend: backend_name,
+                    remote,
+                    profile: Some(profile),
+                    job_type,
+                    error: "no active job".to_string(),
+                    origin: Origin::Dashboard,
+                    source: None,
+                    destination: None,
+                }),
+            );
         }
     });
 }
@@ -196,8 +195,10 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
             .iter()
             .find(|s| s.id == serve_id)
             .and_then(|s| s.params["fs"].as_str())
-            .map(|fs| fs.split(':').next().unwrap_or("").to_string())
-            .unwrap_or_else(|| "unknown_remote".to_string());
+            .map_or_else(
+                || "unknown_remote".to_string(),
+                |fs| fs.split(':').next().unwrap_or("").to_string(),
+            );
 
         match stop_serve(app.clone(), serve_id.clone(), remote_name.clone()).await {
             Ok(_) => info!("Stopped serve {serve_id} for {remote_name}"),
@@ -245,7 +246,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
             .unwrap_or_default();
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
-            Ok(_) => info!("Opened file manager for {remote}"),
+            Ok(()) => info!("Opened file manager for {remote}"),
             Err(e) => error!("Failed to open file manager for {remote}: {e}"),
         }
     });
@@ -287,7 +288,7 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
             title: "RClone Nautilus".to_string(),
             width: Some(1024.0),
             height: Some(768.0),
-            remote: remote_name.map(|s| s.to_string()),
+            remote: remote_name.map(std::string::ToString::to_string),
             path: None,
         },
     );

@@ -1,3 +1,10 @@
+@if (infoBanner(); as banner) {
+  <div class="json-info-banner" role="status">
+    <mat-icon svgIcon="circle-info" />
+    <span>{{ banner | translate }}</span>
+  </div>
+}
+
 <div class="chips-row" aria-label="Config fields overview">
   @if (chips().length === 0) {
     <span class="chips-empty">
@@ -34,10 +41,17 @@
 <div class="editor-wrapper">
   <div #editorContainer class="editor-container"></div>
 
-  @if (parseError()) {
+  @if (parseError(); as err) {
     <div class="parse-error" role="alert" aria-live="polite">
       <mat-icon svgIcon="circle-xmark" />
-      <span>{{ parseError() | translate }}</span>
+      <span>{{ err.key | translate: err.params }}</span>
+    </div>
+  }
+
+  @if (parseWarning(); as warn) {
+    <div class="parse-warning" role="alert" aria-live="polite">
+      <mat-icon svgIcon="circle-exclamation" />
+      <span>{{ warn.key | translate: warn.params }}</span>
     </div>
   }
 </div>

@@ -28,13 +28,13 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 .headers()
                 .get("Range")
                 .and_then(|v| v.to_str().ok())
-                .map(|s| s.to_string());
+                .map(std::string::ToString::to_string);
 
             let uri = request.uri().to_string();
             // On Linux/macOS (WebKit) the URI is "rclone://remote/path".
             // On Windows (WebView2), frontend sends "http://rclone.localhost/remote/path"
             // but WebView2 transforms it to "rclone://localhost/remote/path" when routing to handler.
-            debug!("🔍 rclone protocol handler received URI: {}", uri);
+            debug!("🔍 rclone protocol handler received URI: {uri}");
             let path_part = if let Some(stripped) = uri.strip_prefix("rclone://localhost/") {
                 // Windows WebView2 format after transformation
                 stripped
@@ -55,31 +55,28 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             };
 
             let app_handle = app.app_handle().clone();
-            let remote = match urlencoding::decode(remote) {
-                Ok(decoded) => {
-                    let mut r = decoded.into_owned();
-                    // Restore the trailing colon stripped from the URL host by the frontend
-                    // (rclone remote names have the format "name:", but colons are invalid
-                    // in URL hostnames so the frontend omits it)
-                    if !r.ends_with(':') {
-                        r.push(':');
-                    }
-                    r
+            let remote = if let Ok(decoded) = urlencoding::decode(remote) {
+                let mut r = decoded.into_owned();
+                // Restore the trailing colon stripped from the URL host by the frontend
+                // (rclone remote names have the format "name:", but colons are invalid
+                // in URL hostnames so the frontend omits it)
+                if !r.ends_with(':') {
+                    r.push(':');
                 }
-                Err(_) => {
-                    let mut r = remote.to_string();
-                    if !r.ends_with(':') {
-                        r.push(':');
-                    }
-                    r
+                r
+            } else {
+                let mut r = remote.to_string();
+                if !r.ends_with(':') {
+                    r.push(':');
                 }
+                r
             };
             let path = match urlencoding::decode(path) {
                 Ok(decoded) => decoded.into_owned(),
                 Err(_) => path.to_string(),
             };
 
-            debug!("🔍 Parsed remote: '{}', path: '{}'", remote, path);
+            debug!("🔍 Parsed remote: '{remote}', path: '{path}'");
 
             tauri::async_runtime::spawn(async move {
                 use crate::rclone::backend::BackendManager;
@@ -108,12 +105,12 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             .headers()
                             .get(reqwest::header::CONTENT_RANGE)
                             .and_then(|v| v.to_str().ok())
-                            .map(|s| s.to_string());
+                            .map(std::string::ToString::to_string);
                         let content_length = response
                             .headers()
                             .get(reqwest::header::CONTENT_LENGTH)
                             .and_then(|v| v.to_str().ok())
-                            .map(|s| s.to_string());
+                            .map(std::string::ToString::to_string);
                         let accept_ranges = response
                             .headers()
                             .get(reqwest::header::ACCEPT_RANGES)
@@ -139,12 +136,12 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                                 responder.respond(builder.body(bytes.to_vec()).unwrap());
                             }
                             Err(e) => {
-                                error!("❌ Stream read error for {}: {}", remote, e);
+                                error!("❌ Stream read error for {remote}: {e}");
                                 responder.respond(
                                     tauri::http::Response::builder()
                                         .status(500)
                                         .header("Access-Control-Allow-Origin", "*")
-                                        .body(format!("Stream read error: {}", e).into_bytes())
+                                        .body(format!("Stream read error: {e}").into_bytes())
                                         .unwrap(),
                                 );
                             }
@@ -153,13 +150,11 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     _ => {
                         // Fallback to cat via core/command
                         debug!(
-                            "⚠️ Standard stream failed, attempting cat fallback for {}:{}",
-                            remote, path
+                            "⚠️ Standard stream failed, attempting cat fallback for {remote}:{path}"
                         );
                         let (offset, count) = range_header
                             .as_ref()
-                            .map(|rh| parse_range_header(rh))
-                            .unwrap_or((None, None));
+                            .map_or((None, None), |rh| parse_range_header(rh));
 
                         let os = backend_manager.get_runtime_os(&backend.name).await;
 
@@ -185,10 +180,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                                 responder.respond(builder.body(bytes).unwrap());
                             }
                             Err(e) => {
-                                error!(
-                                    "❌ Cat fallback also failed for {}:{} - {}",
-                                    remote, path, e
-                                );
+                                error!("❌ Cat fallback also failed for {remote}:{path} - {e}");
 
                                 let status = if e.contains("not found")
                                     || e.contains("directory not found")
@@ -237,7 +229,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
         }
 
         let uri = request.uri().to_string();
-        debug!("🔍 local-asset protocol handler received URI: {}", uri);
+        debug!("🔍 local-asset protocol handler received URI: {uri}");
 
         // Handle the prefix mapping across different OS webviews
         let path_part = if let Some(stripped) = uri.strip_prefix("local-asset://localhost") {
@@ -264,11 +256,11 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             final_path = final_path[1..].to_string();
         }
 
-        debug!("🔍 Final decoded path: '{}'", final_path);
+        debug!("🔍 Final decoded path: '{final_path}'");
 
         // SECURITY 1: Prevent basic path traversal attacks
         if final_path.contains("..") {
-            error!("❌ Path traversal attempt blocked: '{}'", final_path);
+            error!("❌ Path traversal attempt blocked: '{final_path}'");
             responder.respond(tauri::http::Response::builder()
                 .status(403)
                 .header("Access-Control-Allow-Origin", "*")
@@ -282,8 +274,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
         // SECURITY 2: Ensure the target is actually a file
         if file_path.is_dir() {
             error!(
-                "❌ Attempted to access directory as asset: '{}'",
-                final_path
+                "❌ Attempted to access directory as asset: '{final_path}'"
             );
             responder.respond(tauri::http::Response::builder()
                 .status(403)
@@ -317,8 +308,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 Ok(mut file) => {
                     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
                     debug!(
-                        "✅ Opened local asset: {} (size: {} bytes)",
-                        final_path_clone, file_size
+                        "✅ Opened local asset: {final_path_clone} (size: {file_size} bytes)"
                     );
 
                     // Handle HTTP 206 Partial Content
@@ -350,7 +340,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                         responder.respond(tauri::http::Response::builder()
                             .status(416) // Range Not Satisfiable
                             .header("Access-Control-Allow-Origin", "*")
-                            .header("Content-Range", format!("bytes */{}", file_size))
+                            .header("Content-Range", format!("bytes */{file_size}"))
                             .body(vec![])
                             .unwrap());
                         return;
@@ -373,11 +363,11 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     let mut buffer = vec![0; chunk_size];
                     if file_size > 0 {
                         if let Err(e) = file.seek(SeekFrom::Start(start)) {
-                            error!("❌ Seek error in local asset '{}': {}", final_path_clone, e);
+                            error!("❌ Seek error in local asset '{final_path_clone}': {e}");
                             responder.respond(tauri::http::Response::builder()
                                 .status(500)
                                 .header("Access-Control-Allow-Origin", "*")
-                                .body(format!("Seek error: {}", e).into_bytes())
+                                .body(format!("Seek error: {e}").into_bytes())
                                 .unwrap());
                             return;
                         }
@@ -395,7 +385,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             .status(206)
                             .header(
                                 "Content-Range",
-                                format!("bytes {}-{}/{}", start, end, file_size),
+                                format!("bytes {start}-{end}/{file_size}"),
                             )
                             .body(buffer)
                             .unwrap());
@@ -405,7 +395,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 }
                 Err(e) => {
                     // Fallback to rclone cat
-                    debug!("⚠️ Standard open failed for local asset {}, attempting cat fallback: {}", final_path_clone, e);
+                    debug!("⚠️ Standard open failed for local asset {final_path_clone}, attempting cat fallback: {e}");
 
                     let backend_manager = app_handle.state::<BackendManager>();
                     let backend = backend_manager.get_active().await;
@@ -414,8 +404,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     // Parse range for cat if available
                     let (offset, count) = request.headers().get("Range")
                         .and_then(|v| v.to_str().ok())
-                        .map(parse_range_header)
-                        .unwrap_or((None, None));
+                        .map_or((None, None), parse_range_header);
 
                     let os = backend_manager.get_runtime_os(&backend.name).await;
 
@@ -433,7 +422,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             responder.respond(builder.body(bytes).unwrap());
                         }
                         Err(cat_err) => {
-                            error!("❌ Local cat fallback failed for {}: {}", final_path_clone, cat_err);
+                            error!("❌ Local cat fallback failed for {final_path_clone}: {cat_err}");
 
                             let status = if cat_err.contains("not found") || cat_err.contains("directory not found") {
                                 tauri::http::StatusCode::NOT_FOUND
@@ -478,7 +467,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             }
 
             let uri = request.uri().to_string();
-            debug!("🔍 audio-cover protocol handler received URI: {}", uri);
+            debug!("🔍 audio-cover protocol handler received URI: {uri}");
 
             // Expected formats:
             // audio-cover://localhost/local/<path>

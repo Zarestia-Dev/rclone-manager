@@ -101,7 +101,7 @@ pub async fn open_in_files(
         .ok_or_else(|| format!("Invalid path: {}", path.display()))?
         .to_string();
     match app.opener().open_path(path_str, None::<String>) {
-        Ok(_) => Ok(format!("Opened file manager at {}", path.display())),
+        Ok(()) => Ok(format!("Opened file manager at {}", path.display())),
         Err(e) => Err(crate::localized_error!(
             "backendErrors.file.failedToOpen",
             "error" => e.to_string()

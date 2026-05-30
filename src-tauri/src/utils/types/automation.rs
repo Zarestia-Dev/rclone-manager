@@ -65,10 +65,12 @@ pub struct AutomationArgs {
 
 impl AutomationArgs {
     /// Returns a display string for the source paths (comma-joined).
+    #[must_use]
     pub fn src_display(&self) -> String {
         self.src_paths.join(", ")
     }
     /// Returns a display string for the dest paths (comma-joined).
+    #[must_use]
     pub fn dst_display(&self) -> String {
         self.dst_paths.join(", ")
     }
@@ -146,38 +148,35 @@ pub struct Automation {
 }
 
 impl Automation {
+    #[must_use]
     pub fn display_name(&self) -> String {
         format!("{} ({})", self.profile_name, self.backend_name)
     }
 
     /// Validate and transition automation state
     pub fn transition_to(&mut self, new_status: AutomationStatus) -> Result<(), String> {
-        let valid_transition = match (&self.status, &new_status) {
-            // From Enabled
-            (AutomationStatus::Enabled, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Enabled, AutomationStatus::Running) => true,
-
-            // From Disabled
+        let valid = match (&self.status, &new_status) {
+            (AutomationStatus::Enabled, AutomationStatus::Disabled | AutomationStatus::Running) => {
+                true
+            }
             (AutomationStatus::Disabled, AutomationStatus::Enabled) => true,
-
-            // From Running
-            (AutomationStatus::Running, AutomationStatus::Enabled) => true, // Success
-            (AutomationStatus::Running, AutomationStatus::Failed) => true,
-            (AutomationStatus::Running, AutomationStatus::Stopping) => true,
-
-            // From Stopping
-            (AutomationStatus::Stopping, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Stopping, AutomationStatus::Enabled) => true,
-
-            // From Failed
-            (AutomationStatus::Failed, AutomationStatus::Enabled) => true,
-            (AutomationStatus::Failed, AutomationStatus::Disabled) => true,
-            (AutomationStatus::Failed, AutomationStatus::Running) => true,
-
+            (
+                AutomationStatus::Running,
+                AutomationStatus::Enabled | AutomationStatus::Failed | AutomationStatus::Stopping,
+            ) => true,
+            (
+                AutomationStatus::Stopping,
+                AutomationStatus::Disabled | AutomationStatus::Enabled,
+            ) => true,
+            (
+                AutomationStatus::Failed,
+                AutomationStatus::Enabled | AutomationStatus::Disabled | AutomationStatus::Running,
+            ) => true,
+            (s, n) if s == n => true,
             _ => false,
         };
 
-        if !valid_transition {
+        if !valid {
             return Err(format!(
                 "Invalid state transition from {:?} to {:?}",
                 self.status, new_status
@@ -194,15 +193,11 @@ impl Automation {
         self.last_error = None;
         self.current_job_id = None;
         self.success_count += 1;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Enabled
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_success: unexpected state transition failure: {e}");
-        }
     }
 
     /// Update the automation after a failed run
@@ -211,15 +206,11 @@ impl Automation {
         self.last_error = Some(error);
         self.current_job_id = None;
         self.failure_count += 1;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Failed
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_failure: unexpected state transition failure: {e}");
-        }
     }
 
     /// Mark automation as starting execution
@@ -231,7 +222,7 @@ impl Automation {
             ));
         }
 
-        self.transition_to(AutomationStatus::Running)?;
+        self.status = AutomationStatus::Running;
         self.current_job_id = None;
         self.last_run = Some(Utc::now());
         self.run_count += 1;
@@ -252,15 +243,11 @@ impl Automation {
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
-
-        let next = if self.status == AutomationStatus::Stopping {
+        self.status = if self.status == AutomationStatus::Stopping {
             AutomationStatus::Disabled
         } else {
             AutomationStatus::Enabled
         };
-        if let Err(e) = self.transition_to(next) {
-            log::warn!("mark_stopped: unexpected state transition failure: {e}");
-        }
     }
 
     /// Check if automation can transition to running

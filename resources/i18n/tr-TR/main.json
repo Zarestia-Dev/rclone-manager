@@ -937,7 +937,14 @@
       "pollIntervalPlaceholder": "Anket aralığını girin (saniye)"
     },
     "jsonEditor": {
-      "noFields": "JSON modunda gösterilecek alan yok"
+      "noFields": "JSON modunda gösterilecek alan yok",
+      "parseError": "Geçersiz JSON sözdizimi. Lütfen biçimlendirmenizi kontrol edin.",
+      "cliArgumentWithSuggestion": "CLI tarzı argümanlar ('{{key}}' gibi) rclone RC'de desteklenmez. Şunu mu demek istediniz: '{{suggestion}}'?",
+      "camelCaseSuggestionWarning": "'{{key}}' seçeneği bu biçimde geçerli değil. Şunu mu demek istediniz: '{{suggestion}}'?",
+      "fixSuggestion": "Şuna değiştir: '{{suggestion}}'",
+      "wrongBlockWarning": "{{keys}} seçeneği/seçenekleri '{{block}}' yapılandırma bloğuna ait ve burada çalışmayabilir.",
+      "unknownWarning": "Bilinmeyen seçenek(ler): {{keys}}. Bunlar rclone tarafından yoksayılabilir.",
+      "invalidArrayPath": "'{{key}}' özelliği birden fazla yolu desteklemez. Lütfen tek bir metin yolu girin."
     },
     "passwordManager": {
       "placeholder": "Rclone yapılandırma şifrenizi girin",
@@ -970,6 +977,7 @@
       "macroDetected": "Kabuk Makroları Algılandı",
       "macroDesc": "Arka uç, işi başlatırken bu değerleri çalışma zamanında çözecektir. Desteklenen makrolar: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Tanınmayan Bayraklar (Yoksayıldı)",
+      "wrongBlockGuidance": "Seçenek '{{block}}' yapılandırma bloğuna ait ve {{verb}} profilinde desteklenmiyor.",
       "applyConfig": "Profile Uygula",
       "newProfile": "Yeni Profil Oluştur",
       "overrideProfile": "Mevcut Profilin Üzerine Yaz",
@@ -979,7 +987,12 @@
       "serveType": "Sunucu Türü",
       "mountPoint": "Bağlama Noktası",
       "remote": "Uzak Bağlantı",
-      "invalidCommand": "Geçersiz rclone komutu. Lütfen desteklenen bir işlem (örneğin sync, copy, mount) veya bayraklar içeren bir komut girin."
+      "invalidCommand": "Geçersiz rclone komutu. Lütfen desteklenen bir işlem (örneğin sync, copy, mount) or bayraklar içeren bir komut girin.",
+      "patch": "Aktif Olana Yama Yap / Uygula",
+      "patchProfile": "Aktif Profili/Profilleri Yamala",
+      "patchInfo": "Herhangi bir işlem (sync, serve veya mount) belirtilmedi. İçe aktarılan bayraklar doğrudan aktif yapılandırma profilinize yama olarak uygulanacaktır.",
+      "patchInfoRemoteStep": "Herhangi bir işlem (sync, serve veya mount) belirtilmedi. Bu bayrakları yama olarak uygulamak için lütfen Uzak Bağlantı (Remote) adımı yerine değiştirmek istediğiniz özel bir yapılandırma adımına (ör. Sync, Mount veya Serve) gidin.",
+      "applyPatch": "Yamayı Uygula"
     },
     "remoteConfig": {
       "remoteName": "Uzak Bağlantı Adı",
@@ -996,6 +1009,17 @@
       "fields": "Alanlar",
       "switchToForm": "Form Moduna Geç",
       "switchToJson": "JSON Moduna Geç",
+      "unknownTopLevelProperty": "Uyarı: '{{key}}' bu profil için standart bir üst düzey özellik değildir ve yoksayılabilir.",
+      "jsonEditorInfo": {
+        "sync": "Senkronizasyon/Kopyalama/Taşıma Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
+        "bisync": "Çift Yönlü Senkronizasyon (Bisync) Profili: 'path1' ve 'path2' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
+        "mount": "Bağlama (Mount) Profili: 'fs' ve 'mountPoint' yollarını, 'mountType' değerini, profil düzeyindeki alanları ayarlayın ve tüm bağlama seçeneklerini 'mountOpt' içine yerleştirin.",
+        "serve": "Sunma (Serve) Profili: 'fs' yolunu, 'serveType' değerini, profil düzeyindeki alanları ayarlayın ve tüm sunma seçeneklerini '_config' içine yerleştirin.",
+        "vfs": "VFS Profili: Özel Sanal Dosya Sistemi önbellekleme, arabelleğe alma ve uyumluluk seçeneklerini anahtar-değer çiftleri olarak ayarlayın.",
+        "filter": "Filtre Profili: Dosya filtreleme seçeneklerini, dahil etme/hariç tutma kurallarını anahtar-değer çiftleri olarak ayarlayın.",
+        "backend": "Arka Uç Profili: Gelişmiş protokol seçeneklerini ve uzak bağlantıya özel bağlantı ayarlarını anahtar-değer çiftleri olarak yapılandırın.",
+        "runtimeRemote": "Çalışma Zamanı Uzak Bağlantısı: Dinamik bağlantı geçersiz kılmalarını ve performans ayarlarını anahtar-değer çiftleri olarak ayarlayın."
+      },
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
       "hideAdvanced": "Gelişmiş Seçenekleri Gizle",
       "emptyStateTitle": "Sıradaki bulut maceranız nedir?",

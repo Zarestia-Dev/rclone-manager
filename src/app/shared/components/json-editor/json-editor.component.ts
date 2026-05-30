@@ -10,17 +10,27 @@ import {
   viewChild,
   afterNextRender,
   effect,
+  InjectionToken,
+  Signal,
 } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, FormArray } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
-import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
+import { RcConfigOption, SENSITIVE_KEYS, SharedProfileType } from '@app/types';
 import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
-import { RcloneValueMapperService, matchesConfigSearch, AppSettingsService } from '@app/services';
+import {
+  RcloneValueMapperService,
+  matchesConfigSearch,
+  AppSettingsService,
+  OPERATION_PATH_MAPPINGS,
+  getTopLevelKeysForProfile,
+} from '@app/services';
+import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
+import { PathService } from '../../../services/infrastructure/platform/path.service';
 
 import {
   EditorView,
@@ -32,7 +42,7 @@ import {
 import { EditorState, EditorSelection } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
-import { linter, lintGutter } from '@codemirror/lint';
+import { linter, lintGutter, Diagnostic } from '@codemirror/lint';
 import {
   autocompletion,
   CompletionContext,
@@ -42,6 +52,15 @@ import {
 } from '@codemirror/autocomplete';
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
+
+export interface TranslationResult {
+  key: string;
+  params?: Record<string, unknown>;
+}
+
+export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<
+  Signal<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>>
+>('JSON_EDITOR_LOOKUP_TABLE');
 
 interface ChipDef {
   controlKey: string;
@@ -54,42 +73,57 @@ interface ChipDef {
   field: RcConfigOption;
 }
 
-function isDefaultValue(
-  value: unknown,
-  field: RcConfigOption,
-  mapper?: RcloneValueMapperService
-): boolean {
-  if (value === null || value === undefined) return true;
-
-  if (field.Type === 'Tristate' && mapper) {
-    const valBool = mapper.parseTristate(value);
-    const defBool = mapper.parseTristate(field.Default);
-    if (valBool === defBool) return true;
-    const defStrBool = mapper.parseTristate(field.DefaultStr);
-    if (valBool === defStrBool) return true;
-    if (valBool === null && (defBool === null || defStrBool === null)) return true;
-    return false;
-  }
-
-  if (Array.isArray(value)) {
-    const arrDef = field.Default;
-    if (Array.isArray(arrDef)) return value.length === 0 && arrDef.length === 0;
-    return value.length === 0;
-  }
-
-  const strVal = String(value);
-  if (strVal === String(field.Default)) return true;
-  if (strVal === String(field.DefaultStr)) return true;
-  if (strVal === '') return true;
-
-  return false;
+function toCamelCase(str: string): string {
+  return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
+const PROFILE_TYPES: SharedProfileType[] = ['sync', 'copy', 'move', 'bisync', 'mount', 'serve'];
+const NESTED_OPTIONS_TYPES: SharedProfileType[] = ['vfs', 'filter', 'backend'];
+const HAS_OPTIONS_GROUP_TYPES: SharedProfileType[] = [...PROFILE_TYPES, ...NESTED_OPTIONS_TYPES];
+
+function isProfileType(type: string | null): boolean {
+  return !!type && PROFILE_TYPES.includes(type as SharedProfileType);
+}
+
+function isNestedOptionsType(type: string | null): boolean {
+  return !!type && NESTED_OPTIONS_TYPES.includes(type as SharedProfileType);
+}
+
+function hasOptionsGroup(type: string | null): boolean {
+  return !!type && HAS_OPTIONS_GROUP_TYPES.includes(type as SharedProfileType);
+}
+
+function buildRcloneCompletionSource(
+  getFieldDefs: () => RcConfigOption[],
+  getFlagType: () => SharedProfileType | null
+) {
   return (context: CompletionContext): CompletionResult | null => {
     const tree = syntaxTree(context.state);
     const nodeBefore = tree.resolveInner(context.pos, -1);
     const fieldDefs = getFieldDefs();
+    const flagType = getFlagType();
+    const isProfile = isProfileType(flagType);
+
+    // Check if we are inside the nested options object (_config or mountOpt)
+    let insideConfig = false;
+    let parent = nodeBefore.parent;
+    while (parent) {
+      if (parent.name === 'Property') {
+        const propKeyNode = parent.getChild('PropertyName') ?? parent.firstChild;
+        if (propKeyNode) {
+          const propKey = context.state
+            .sliceDoc(propKeyNode.from, propKeyNode.to)
+            .replace(/^"|"$/g, '');
+          if (propKey === '_config' || propKey === 'mountOpt') {
+            if (parent !== nodeBefore.parent) {
+              insideConfig = true;
+              break;
+            }
+          }
+        }
+      }
+      parent = parent.parent;
+    }
 
     const isPropertyName =
       nodeBefore.name === 'PropertyName' ||
@@ -107,20 +141,41 @@ function buildRcloneCompletionSource(getFieldDefs: () => RcConfigOption[]) {
           : word.from
         : context.pos;
 
-      return {
-        from,
-        to: nodeBefore.name === 'String' ? nodeBefore.to - 1 : context.pos,
-        options: fieldDefs.map(f => ({
-          label: f.FieldName || f.Name,
-          type: 'property',
-          detail: f.Type,
-          info: f.Help || undefined,
-          boost: 1,
-        })),
-        validFor: /^[^"]*$/,
-      };
+      const to = nodeBefore.name === 'String' ? nodeBefore.to - 1 : context.pos;
+
+      if (isProfile && !insideConfig && flagType) {
+        // Autocomplete top-level properties
+        const topLevelKeys = getTopLevelKeysForProfile(flagType);
+
+        return {
+          from,
+          to,
+          options: topLevelKeys.map(k => ({
+            label: k,
+            type: 'property',
+            detail: 'Top-Level key',
+            boost: 2,
+          })),
+          validFor: /^[^"]*$/,
+        };
+      } else {
+        // Autocomplete dynamic option names
+        return {
+          from,
+          to,
+          options: fieldDefs.map(f => ({
+            label: f.FieldName || f.Name,
+            type: 'property',
+            detail: f.Type,
+            info: f.Help || undefined,
+            boost: 1,
+          })),
+          validFor: /^[^"]*$/,
+        };
+      }
     }
 
+    // Handle value completion inside config
     let cursor = nodeBefore;
     while (cursor.parent && cursor.name !== 'Property') cursor = cursor.parent;
     if (cursor.name !== 'Property') return null;
@@ -167,10 +222,46 @@ export class JsonEditorComponent {
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
 
+  readonly flagType = input<SharedProfileType | null>(null);
+  readonly currentRemoteName = input<string>('');
+  readonly existingRemotes = input<string[]>([]);
+
+  readonly infoBanner = computed(() => {
+    const type = this.flagType();
+    if (!type) return null;
+    switch (type) {
+      case 'vfs':
+        return 'wizards.remoteConfig.jsonEditorInfo.vfs';
+      case 'filter':
+        return 'wizards.remoteConfig.jsonEditorInfo.filter';
+      case 'backend':
+        return 'wizards.remoteConfig.jsonEditorInfo.backend';
+      case 'runtimeRemote':
+        return 'wizards.remoteConfig.jsonEditorInfo.runtimeRemote';
+      case 'sync':
+      case 'copy':
+      case 'move':
+        return 'wizards.remoteConfig.jsonEditorInfo.sync';
+      case 'bisync':
+        return 'wizards.remoteConfig.jsonEditorInfo.bisync';
+      case 'mount':
+        return 'wizards.remoteConfig.jsonEditorInfo.mount';
+      case 'serve':
+        return 'wizards.remoteConfig.jsonEditorInfo.serve';
+      default:
+        return null;
+    }
+  });
+
   private readonly destroyRef = inject(DestroyRef);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly pathService = inject(PathService);
+  private readonly translateService = inject(TranslateService);
+  private readonly sharedLookupTable = inject(JSON_EDITOR_LOOKUP_TABLE, { optional: true });
+
+  readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
 
   readonly restrictMode = toSignal(
     this.appSettingsService
@@ -185,7 +276,8 @@ export class JsonEditorComponent {
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly explicitKeys = signal<ReadonlySet<string>>(new Set());
   private readonly customControlKeys = signal<ReadonlySet<string>>(new Set());
-  readonly parseError = signal<string | null>(null);
+  readonly parseError = signal<TranslationResult | null>(null);
+  readonly parseWarning = signal<TranslationResult | null>(null);
 
   private readonly formValue = toSignal(
     toObservable(this.formGroup).pipe(
@@ -207,7 +299,11 @@ export class JsonEditorComponent {
   });
 
   readonly chips = computed<ChipDef[]>(() => {
-    const value = this.formValue() as Record<string, unknown>;
+    const type = this.flagType();
+    const optionsGroup = hasOptionsGroup(type)
+      ? (this.formGroup().get('options') as FormGroup)
+      : this.formGroup();
+    const value = optionsGroup ? (optionsGroup.getRawValue() as Record<string, unknown>) : {};
     const defs = this.fieldDefs();
     const query = this.searchQuery().trim().toLowerCase();
     const prefix = this.keyPrefix();
@@ -220,7 +316,7 @@ export class JsonEditorComponent {
     return filteredDefs.map(field => {
       const controlKey = prefix + (field.FieldName || field.Name);
       const currentValue = value[controlKey] ?? null;
-      const isChanged = !isDefaultValue(currentValue, field, this.valueMapper);
+      const isChanged = !this.valueMapper.isDefaultValue(currentValue, field);
       const isActive = isChanged || explicit.has(controlKey);
 
       let displayVal = currentValue;
@@ -261,7 +357,6 @@ export class JsonEditorComponent {
 
     this.destroyRef.onDestroy(() => {
       this.editorView?.destroy();
-      if (this._debounceTimer) clearTimeout(this._debounceTimer);
     });
   }
 
@@ -273,7 +368,175 @@ export class JsonEditorComponent {
       this.hostEl.nativeElement.closest('[data-theme="dark"]') !== null ||
       window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    const completionSource = buildRcloneCompletionSource(() => this.fieldDefs());
+    const completionSource = buildRcloneCompletionSource(
+      () => this.fieldDefs(),
+      () => this.flagType()
+    );
+
+    const rcloneLinter = linter(view => {
+      const diagnostics: Diagnostic[] = [];
+      const validFieldNames = new Set(this.fieldDefs().map(f => f.FieldName || f.Name));
+      const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
+      const flagType = this.flagType();
+      const isProfile = isProfileType(flagType);
+
+      let topLevelKeys = new Set<string>();
+      if (isProfile && flagType) {
+        topLevelKeys = new Set(getTopLevelKeysForProfile(flagType));
+      }
+
+      const buildCliArgumentDiagnostic = (kText: string, from: number, to: number): Diagnostic => {
+        const matched = this.lookupOption(kText);
+        const suggestion = matched
+          ? matched.option.FieldName || matched.option.Name
+          : toCamelCase(kText);
+        return {
+          from,
+          to,
+          severity: 'error',
+          message: this.translateService.instant('shared.jsonEditor.cliArgumentWithSuggestion', {
+            key: kText,
+            suggestion,
+          }),
+          actions: [
+            {
+              name: this.translateService.instant('shared.jsonEditor.fixSuggestion', {
+                suggestion,
+              }),
+              apply(v: EditorView, fPos: number, tPos: number): void {
+                v.dispatch({
+                  changes: { from: fPos, to: tPos, insert: JSON.stringify(suggestion) },
+                });
+              },
+            },
+          ],
+        };
+      };
+
+      syntaxTree(view.state).iterate({
+        enter: node => {
+          if (node.name === 'PropertyName') {
+            const rawKey = view.state.sliceDoc(node.from, node.to);
+            const keyText = rawKey.replace(/^"|"$/g, '');
+
+            // Check if we are inside the nested options object (_config or mountOpt)
+            let insideConfig = false;
+            let parent = node.node.parent;
+            while (parent) {
+              if (parent.name === 'Property') {
+                const propKeyNode = parent.getChild('PropertyName') ?? parent.firstChild;
+                if (propKeyNode) {
+                  const propKey = view.state
+                    .sliceDoc(propKeyNode.from, propKeyNode.to)
+                    .replace(/^"|"$/g, '');
+                  if (propKey === '_config' || propKey === 'mountOpt') {
+                    if (parent !== node.node.parent) {
+                      insideConfig = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              parent = parent.parent;
+            }
+
+            const validateOptionKey = (kText: string, nd: { from: number; to: number }): void => {
+              if (kText.startsWith('-')) {
+                diagnostics.push(buildCliArgumentDiagnostic(kText, nd.from, nd.to));
+              } else if (!validFieldNames.has(kText)) {
+                const matched = this.lookupOption(kText);
+
+                if (matched && !this.isCompatible(matched.block, currentBlock)) {
+                  diagnostics.push({
+                    from: nd.from,
+                    to: nd.to,
+                    severity: 'warning',
+                    message: this.translateService.instant('shared.jsonEditor.wrongBlockWarning', {
+                      keys: `'${kText}'`,
+                      block: matched.block,
+                    }),
+                  });
+                } else {
+                  const suggestion = matched
+                    ? matched.option.FieldName || matched.option.Name
+                    : null;
+                  const message = suggestion
+                    ? this.translateService.instant(
+                        'shared.jsonEditor.camelCaseSuggestionWarning',
+                        { key: kText, suggestion }
+                      )
+                    : this.translateService.instant('shared.jsonEditor.unknownWarning', {
+                        keys: `'${kText}'`,
+                      });
+                  const actions = suggestion
+                    ? [
+                        {
+                          name: this.translateService.instant('shared.jsonEditor.fixSuggestion', {
+                            suggestion,
+                          }),
+                          apply(v: EditorView, from: number, to: number): void {
+                            v.dispatch({
+                              changes: { from, to, insert: JSON.stringify(suggestion) },
+                            });
+                          },
+                        },
+                      ]
+                    : undefined;
+
+                  diagnostics.push({
+                    from: nd.from,
+                    to: nd.to,
+                    severity: 'warning',
+                    message,
+                    actions,
+                  });
+                }
+              }
+            };
+
+            if (isProfile && !insideConfig) {
+              const mapping = flagType ? OPERATION_PATH_MAPPINGS[flagType] : null;
+              const propertyNode = node.node.parent;
+              const valueNode =
+                propertyNode && propertyNode.name === 'Property' ? propertyNode.lastChild : null;
+              const isArrayValue = valueNode && valueNode.name === 'Array';
+
+              if (keyText.startsWith('-')) {
+                diagnostics.push(buildCliArgumentDiagnostic(keyText, node.from, node.to));
+              } else if (
+                mapping &&
+                isArrayValue &&
+                valueNode &&
+                ((keyText === mapping.sourceKey && !mapping.isSourceArray) ||
+                  keyText === mapping.destKey)
+              ) {
+                diagnostics.push({
+                  from: valueNode.from,
+                  to: valueNode.to,
+                  severity: 'error',
+                  message: this.translateService.instant('shared.jsonEditor.invalidArrayPath', {
+                    key: keyText,
+                  }),
+                });
+              } else if (!topLevelKeys.has(keyText)) {
+                diagnostics.push({
+                  from: node.from,
+                  to: node.to,
+                  severity: 'warning',
+                  message: this.translateService.instant(
+                    'wizards.remoteConfig.unknownTopLevelProperty',
+                    { key: keyText }
+                  ),
+                });
+              }
+            } else {
+              validateOptionKey(keyText, node);
+            }
+          }
+        },
+      });
+      return diagnostics;
+    });
 
     const extensions = [
       history(),
@@ -287,6 +550,7 @@ export class JsonEditorComponent {
       json(),
       lintGutter(),
       linter(jsonParseLinter()),
+      rcloneLinter,
       autocompletion({ override: [completionSource] }),
       ...(isDark ? [oneDark] : []),
       EditorView.baseTheme({
@@ -313,36 +577,109 @@ export class JsonEditorComponent {
     });
   }
 
-  private applyEditorChanges(text: string): void {
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      this.parseError.set('shared.jsonEditor.parseError');
-      return;
+  private checkCliArguments(obj: Record<string, any>): { key: string; suggestion: string } | null {
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith('-')) {
+        const matched = this.lookupOption(key);
+        const suggestion = matched
+          ? matched.option.FieldName || matched.option.Name
+          : toCamelCase(key);
+        return { key, suggestion };
+      }
     }
-
-    this.parseError.set(null);
-    this.reconcileFormFromEditor(parsed);
+    return null;
   }
 
-  private reconcileFormFromEditor(parsed: Record<string, unknown>): void {
-    const prefix = this.keyPrefix();
-    const fg = this.formGroup();
-    const defs = this.fieldDefs();
-    const excluded = this.excludedSet();
-    const restored = this.restorePrefix(parsed);
-    this.explicitKeys.set(new Set(Object.keys(restored)));
+  private validateOptions(
+    options: Record<string, any>,
+    validFieldNames: Set<string>,
+    currentBlock: string
+  ): {
+    cliArg?: { key: string; suggestion: string };
+    suggestion?: { key: string; suggestion: string };
+    wrongBlock?: { key: string; block: string };
+    unknown?: string[];
+  } {
+    const unknown: string[] = [];
+    const wrongBlocks: { key: string; block: string }[] = [];
+    const suggestions: { key: string; suggestion: string }[] = [];
 
-    const existingControls = new Set(Object.keys(fg.getRawValue()));
+    for (const key of Object.keys(options)) {
+      if (key.startsWith('-')) {
+        const matched = this.lookupOption(key);
+        const suggestion = matched
+          ? matched.option.FieldName || matched.option.Name
+          : toCamelCase(key);
+        return { cliArg: { key, suggestion } };
+      }
+
+      if (!validFieldNames.has(key)) {
+        const matched = this.lookupOption(key);
+        if (matched) {
+          if (this.isCompatible(matched.block, currentBlock)) {
+            const suggestion = matched.option.FieldName || matched.option.Name;
+            suggestions.push({ key, suggestion });
+          } else {
+            wrongBlocks.push({ key, block: matched.block });
+          }
+        } else {
+          unknown.push(key);
+        }
+      }
+    }
+
+    return {
+      suggestion: suggestions[0],
+      wrongBlock: wrongBlocks[0],
+      unknown,
+    };
+  }
+
+  private applyValidationResult(valRes: ReturnType<typeof this.validateOptions>): boolean {
+    if (valRes.cliArg) {
+      this.parseError.set({
+        key: 'shared.jsonEditor.cliArgumentWithSuggestion',
+        params: valRes.cliArg,
+      });
+      this.formGroup().setErrors({ cliArgument: true });
+      return false;
+    }
+
+    if (valRes.suggestion) {
+      this.parseWarning.set({
+        key: 'shared.jsonEditor.camelCaseSuggestionWarning',
+        params: valRes.suggestion,
+      });
+    } else if (valRes.wrongBlock) {
+      this.parseWarning.set({
+        key: 'shared.jsonEditor.wrongBlockWarning',
+        params: { keys: `'${valRes.wrongBlock.key}'`, block: valRes.wrongBlock.block },
+      });
+    } else if (valRes.unknown && valRes.unknown.length > 0) {
+      this.parseWarning.set({
+        key: 'shared.jsonEditor.unknownWarning',
+        params: { keys: valRes.unknown.map(k => `'${k}'`).join(', ') },
+      });
+    } else {
+      this.parseWarning.set(null);
+    }
+    return true;
+  }
+
+  private syncFormControls(
+    group: FormGroup,
+    incoming: Record<string, any>,
+    excludeFilter: (key: string) => boolean = () => false
+  ): void {
+    const existingControls = new Set(Object.keys(group.controls));
     const prevCustom = new Set(this.customControlKeys());
     const nextCustom = new Set<string>();
 
-    for (const [controlKey, val] of Object.entries(restored)) {
-      if (excluded.has(controlKey)) continue;
+    for (const [controlKey, val] of Object.entries(incoming)) {
+      if (excludeFilter(controlKey)) continue;
 
       if (!existingControls.has(controlKey)) {
-        fg.addControl(controlKey, new FormControl(val), { emitEvent: false });
+        group.addControl(controlKey, new FormControl(val), { emitEvent: false });
         nextCustom.add(controlKey);
       } else if (prevCustom.has(controlKey)) {
         nextCustom.add(controlKey);
@@ -351,14 +688,347 @@ export class JsonEditorComponent {
 
     for (const key of prevCustom) {
       if (!nextCustom.has(key)) {
-        fg.removeControl(key, { emitEvent: false });
+        group.removeControl(key, { emitEvent: false });
       }
     }
 
     this.customControlKeys.set(nextCustom);
+  }
+
+  private applyEditorChanges(text: string): void {
+    let parsed: Record<string, any>;
+    try {
+      parsed = JSON.parse(text) as Record<string, any>;
+    } catch {
+      this.parseError.set({ key: 'shared.jsonEditor.parseError' });
+      this.formGroup().setErrors({ jsonParse: true });
+      return;
+    }
+
+    const type = this.flagType();
+    const isProfile = isProfileType(type);
+    const validFieldNames = new Set(this.fieldDefs().map(f => f.FieldName || f.Name));
+    const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
+
+    if (isProfile) {
+      // Validate top level keys (excluding _config/mountOpt, srcFs/dstFs, etc.)
+      const topLevelKeys = type ? new Set(getTopLevelKeysForProfile(type)) : new Set<string>();
+
+      // Check CLI arguments at top level
+      const cliCheck = this.checkCliArguments(parsed);
+      if (cliCheck) {
+        this.parseError.set({
+          key: 'shared.jsonEditor.cliArgumentWithSuggestion',
+          params: cliCheck,
+        });
+        this.formGroup().setErrors({ cliArgument: true });
+        return;
+      }
+
+      // Check for array values where they are not supported
+      const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
+      if (mapping) {
+        for (const [key, val] of Object.entries(parsed)) {
+          if (
+            (key === mapping.sourceKey && !mapping.isSourceArray && Array.isArray(val)) ||
+            (key === mapping.destKey && Array.isArray(val))
+          ) {
+            this.parseError.set({
+              key: 'shared.jsonEditor.invalidArrayPath',
+              params: { key },
+            });
+            this.formGroup().setErrors({ invalidArrayPath: true });
+            return;
+          }
+        }
+      }
+
+      // Check unknown top level keys
+      for (const key of Object.keys(parsed)) {
+        if (!topLevelKeys.has(key)) {
+          this.parseWarning.set({
+            key: 'wizards.remoteConfig.unknownTopLevelProperty',
+            params: { key },
+          });
+          this.parseError.set(null);
+          this.formGroup().setErrors(null);
+          this.reconcileFormFromEditor(parsed);
+          return;
+        }
+      }
+
+      // Validate options inside nested object (_config or mountOpt)
+      const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
+      const nestedOptions = parsed[nestedKey] || {};
+      if (typeof nestedOptions === 'object' && nestedOptions !== null) {
+        const valRes = this.validateOptions(nestedOptions, validFieldNames, currentBlock);
+        if (!this.applyValidationResult(valRes)) return;
+      } else {
+        this.parseWarning.set(null);
+      }
+    } else {
+      // Fallback/standard check for flat profiles
+      const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
+      if (!this.applyValidationResult(valRes)) return;
+    }
+
+    this.parseError.set(null);
+    this.formGroup().setErrors(null);
+    this.reconcileFormFromEditor(parsed);
+  }
+
+  private reconcileFormFromEditor(parsed: Record<string, any>): void {
+    const type = this.flagType();
+    const fg = this.formGroup();
+    const currentRemote = this.currentRemoteName();
+    const existing = this.existingRemotes();
+
+    if (isNestedOptionsType(type)) {
+      const optionsGroup = fg.get('options') as FormGroup;
+      if (optionsGroup) {
+        this.explicitKeys.set(new Set(Object.keys(parsed)));
+
+        this.syncFormControls(optionsGroup, parsed);
+
+        const latestRaw = optionsGroup.getRawValue() as Record<string, unknown>;
+        const patch = this.buildPatchFromIncoming(latestRaw, parsed);
+
+        optionsGroup.patchValue(patch, { emitEvent: false });
+      }
+      return;
+    }
+
+    if (isProfileType(type)) {
+      const rcloneParsed = parsed;
+
+      const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
+      if (mapping) {
+        // 1. Reconcile source path
+        const sourceCtrl = fg.get('source');
+        const srcVal = rcloneParsed[mapping.sourceKey];
+
+        if (srcVal !== undefined) {
+          if (sourceCtrl instanceof FormArray) {
+            sourceCtrl.clear();
+            const paths = Array.isArray(srcVal) ? srcVal : [srcVal].filter(Boolean);
+            if (paths.length > 0) {
+              for (const p of paths) {
+                sourceCtrl.push(
+                  new FormGroup({
+                    type: new FormControl('local'),
+                    path: new FormControl(''),
+                    remote: new FormControl(''),
+                  })
+                );
+                const lastGroup = sourceCtrl.at(sourceCtrl.length - 1) as FormGroup;
+                lastGroup.patchValue(
+                  this.pathService.parseFsString(p, 'currentRemote', currentRemote, existing)
+                );
+              }
+            } else {
+              sourceCtrl.push(
+                new FormGroup({
+                  type: new FormControl('currentRemote'),
+                  path: new FormControl(''),
+                  remote: new FormControl(currentRemote),
+                })
+              );
+            }
+          } else if (sourceCtrl instanceof FormGroup) {
+            sourceCtrl.patchValue(
+              this.pathService.parseFsString(srcVal || '', 'currentRemote', currentRemote, existing)
+            );
+          }
+        }
+
+        // 2. Reconcile destination path
+        if (mapping.destKey) {
+          const destCtrl = fg.get('dest');
+          const dstVal = rcloneParsed[mapping.destKey];
+
+          if (destCtrl instanceof FormGroup && dstVal !== undefined) {
+            destCtrl.patchValue(
+              this.pathService.parseFsString(dstVal || '', 'local', currentRemote, existing)
+            );
+          }
+        }
+      }
+
+      // 3. Reconcile type (mountType / type)
+      if (type === 'mount') {
+        const typeCtrl = fg.get('options.mountType');
+        if (typeCtrl && rcloneParsed['mountType'] !== undefined) {
+          typeCtrl.setValue(rcloneParsed['mountType'], { emitEvent: true });
+        }
+      } else if (type === 'serve') {
+        const typeCtrl = fg.get('options.type');
+        if (typeCtrl && rcloneParsed['type'] !== undefined) {
+          typeCtrl.setValue(rcloneParsed['type'], { emitEvent: true });
+        }
+      }
+
+      // 4. Reconcile options
+      const optionsGroup = fg.get('options') as FormGroup;
+      if (optionsGroup) {
+        const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
+        const nestedOptions = rcloneParsed[nestedKey] || {};
+
+        const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
+        const flatOptionNames = new Set(flatDefs.map(f => f.FieldName || f.Name));
+
+        // Gather all incoming options (flat + nested)
+        const incomingOptions: Record<string, any> = {};
+
+        // Pull flat options from top-level of rcloneParsed JSON
+        for (const name of flatOptionNames) {
+          if (rcloneParsed[name] !== undefined) {
+            incomingOptions[name] = rcloneParsed[name];
+          }
+        }
+
+        // Pull nested options
+        if (typeof nestedOptions === 'object' && nestedOptions !== null) {
+          for (const [k, v] of Object.entries(nestedOptions)) {
+            incomingOptions[k] = v;
+          }
+        }
+
+        this.explicitKeys.set(new Set(Object.keys(incomingOptions)));
+
+        this.syncFormControls(optionsGroup, incomingOptions);
+
+        const latestRaw = optionsGroup.getRawValue() as Record<string, unknown>;
+        const patch = this.buildPatchFromIncoming(latestRaw, incomingOptions);
+
+        optionsGroup.patchValue(patch, { emitEvent: false });
+      }
+
+      return;
+    }
+
+    // Fallback/standard reconcile for flat profiles
+    const prefix = this.keyPrefix();
+    const excluded = this.excludedSet();
+    const restored = this.restorePrefix(parsed);
+    this.explicitKeys.set(new Set(Object.keys(restored)));
+
+    this.syncFormControls(fg, restored, k => excluded.has(k));
 
     const latestRaw = fg.getRawValue() as Record<string, unknown>;
+    const patch = this.buildPatchFromIncoming(latestRaw, restored, prefix, excluded);
+
+    fg.patchValue(patch, { emitEvent: false });
+  }
+
+  private serializeForm(): string {
+    try {
+      const type = this.flagType();
+      const raw = this.formGroup().getRawValue() as Record<string, any>;
+      const currentRemote = this.currentRemoteName();
+
+      if (isNestedOptionsType(type)) {
+        let out: Record<string, any> = {};
+        const optionsGroup = this.formGroup().get('options') as FormGroup;
+        if (optionsGroup) {
+          out = this.serializeOptions(optionsGroup.getRawValue(), '', new Set(), false);
+        }
+        return JSON.stringify(out, null, 2);
+      }
+
+      if (isProfileType(type)) {
+        const rclone: Record<string, any> = {};
+
+        const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
+        if (mapping) {
+          // 1. Map source paths to srcFs / path1 / fs
+          if (raw['source']) {
+            const srcPaths = Array.isArray(raw['source'])
+              ? raw['source']
+                  .map((s: any) => this.pathService.buildPathString(s, currentRemote))
+                  .filter(Boolean)
+              : [this.pathService.buildPathString(raw['source'], currentRemote)].filter(Boolean);
+
+            rclone[mapping.sourceKey] = mapping.isSourceArray
+              ? srcPaths.length > 1
+                ? srcPaths
+                : (srcPaths[0] ?? '')
+              : (srcPaths[0] ?? '');
+          }
+
+          // 2. Map destination paths to dstFs / path2 / mountPoint
+          if (mapping.destKey && raw['dest']) {
+            const dstPath = this.pathService.buildPathString(raw['dest'], currentRemote);
+            rclone[mapping.destKey] = dstPath;
+          }
+        }
+
+        // 3. Map mountType / type
+        if (type === 'mount') {
+          const val = raw['options']?.['mountType'];
+          if (val && val.trim() !== '') {
+            rclone['mountType'] = val;
+          }
+        } else if (type === 'serve') {
+          const val = raw['options']?.['type'];
+          if (val && val.trim() !== '') {
+            rclone['type'] = val;
+          }
+        }
+
+        // 4. Map options (flat vs _config/mountOpt)
+        if (raw['options']) {
+          const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
+          const flatOptionNames = new Set(flatDefs.map(f => f.FieldName || f.Name));
+
+          const flatOptions: Record<string, any> = {};
+          const nestedOptions: Record<string, any> = {};
+
+          const serialized = this.serializeOptions(
+            raw['options'],
+            '',
+            new Set(['mountType', 'type']),
+            false
+          );
+          for (const [displayKey, finalVal] of Object.entries(serialized)) {
+            if (flatOptionNames.has(displayKey)) {
+              flatOptions[displayKey] = finalVal;
+            } else {
+              nestedOptions[displayKey] = finalVal;
+            }
+          }
+
+          // Merge flat options directly into rclone
+          Object.assign(rclone, flatOptions);
+
+          // Merge nested options under _config or mountOpt
+          if (Object.keys(nestedOptions).length > 0) {
+            const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
+            rclone[nestedKey] = nestedOptions;
+          }
+        }
+
+        return JSON.stringify(rclone, null, 2);
+      }
+
+      // Fallback/standard serialization for flat profiles
+      const prefix = this.keyPrefix();
+      const excluded = this.excludedSet();
+      const out = this.serializeOptions(raw, prefix, excluded, true);
+
+      return JSON.stringify(out, null, 2);
+    } catch {
+      return '{}';
+    }
+  }
+
+  private buildPatchFromIncoming(
+    latestRaw: Record<string, unknown>,
+    incoming: Record<string, unknown>,
+    prefix = '',
+    excluded = new Set<string>()
+  ): Record<string, unknown> {
     const patch: Record<string, unknown> = {};
+    const defs = this.fieldDefs();
 
     for (const controlKey of Object.keys(latestRaw)) {
       if (excluded.has(controlKey)) {
@@ -366,9 +1036,9 @@ export class JsonEditorComponent {
         continue;
       }
 
-      if (controlKey in restored) {
-        const incoming = restored[controlKey];
-        patch[controlKey] = incoming === '••••••••' ? latestRaw[controlKey] : incoming;
+      if (controlKey in incoming) {
+        const val = incoming[controlKey];
+        patch[controlKey] = val === '••••••••' ? latestRaw[controlKey] : val;
       } else if (!prefix || controlKey.startsWith(prefix)) {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
         const field = defs.find(f => f.Name === displayKey || f.FieldName === displayKey);
@@ -377,45 +1047,44 @@ export class JsonEditorComponent {
         patch[controlKey] = latestRaw[controlKey];
       }
     }
-
-    fg.patchValue(patch, { emitEvent: false });
+    return patch;
   }
 
-  private serializeForm(): string {
-    try {
-      const raw = this.formGroup().getRawValue() as Record<string, unknown>;
-      const defs = this.fieldDefs();
-      const prefix = this.keyPrefix();
-      const explicit = this.explicitKeys();
-      const excluded = this.excludedSet();
-      const out: Record<string, unknown> = {};
+  private serializeOptions(
+    rawOptions: Record<string, any>,
+    prefix = '',
+    excluded = new Set<string>(),
+    maskSensitive = false
+  ): Record<string, any> {
+    const out: Record<string, any> = {};
+    const defs = this.fieldDefs();
+    const explicit = this.explicitKeys();
 
-      for (const [controlKey, val] of Object.entries(raw)) {
-        if (prefix && !controlKey.startsWith(prefix)) continue;
-        if (excluded.has(controlKey)) continue;
+    for (const [controlKey, val] of Object.entries(rawOptions)) {
+      if (prefix && !controlKey.startsWith(prefix)) continue;
+      if (excluded.has(controlKey)) continue;
 
-        const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-        const field = defs.find(f => f.Name === displayKey || f.FieldName === displayKey);
-        const isExplicit = explicit.has(controlKey);
+      const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
+      const field = defs.find(f => f.Name === displayKey || f.FieldName === displayKey);
+      const isExplicit = explicit.has(controlKey);
 
-        if (field && isDefaultValue(val, field, this.valueMapper) && !isExplicit) continue;
-        if (!field && (val === null || val === undefined || val === '')) continue;
+      if (field && this.valueMapper.isDefaultValue(val, field) && !isExplicit) continue;
+      if (!field && (val === null || val === undefined || val === '')) continue;
 
-        out[displayKey] = field?.Type === 'Tristate' ? this.valueMapper.parseTristate(val) : val;
+      const finalVal = field?.Type === 'Tristate' ? this.valueMapper.parseTristate(val) : val;
 
-        if (this.restrictMode() && this.isSensitive(field)) {
-          out[displayKey] = '••••••••';
-        }
+      if (maskSensitive && this.restrictMode() && this.isSensitive(field)) {
+        out[displayKey] = '••••••••';
+      } else {
+        out[displayKey] = finalVal;
       }
-
-      return JSON.stringify(out, null, 2);
-    } catch {
-      return '{}';
     }
+    return out;
   }
 
   private pushFormToEditor(): void {
     if (!this.editorView) return;
+    if (this.editorView.hasFocus) return;
     const newText = this.serializeForm();
     const currentText = this.editorView.state.doc.toString();
     if (newText === currentText) return;
@@ -435,6 +1104,13 @@ export class JsonEditorComponent {
     });
   }
 
+  private getOptionsTarget(): FormGroup {
+    const type = this.flagType();
+    return hasOptionsGroup(type)
+      ? (this.formGroup().get('options') as FormGroup)
+      : this.formGroup();
+  }
+
   toggleChip(chip: ChipDef): void {
     if (chip.isActive) {
       this.resetChip(chip);
@@ -443,7 +1119,8 @@ export class JsonEditorComponent {
 
     this.explicitKeys.update(s => new Set([...s, chip.controlKey]));
 
-    const ctrl = this.formGroup().get(chip.controlKey);
+    const targetGroup = this.getOptionsTarget();
+    const ctrl = targetGroup?.get(chip.controlKey);
     if (ctrl) {
       let defaultVal: unknown = chip.field.Default ?? chip.field.DefaultStr;
       if (defaultVal === undefined || defaultVal === null) {
@@ -465,7 +1142,8 @@ export class JsonEditorComponent {
       return next;
     });
 
-    const ctrl = this.formGroup().get(chip.controlKey);
+    const targetGroup = this.getOptionsTarget();
+    const ctrl = targetGroup?.get(chip.controlKey);
     if (!ctrl) return;
 
     ctrl.setValue(chip.field.Default ?? chip.field.DefaultStr ?? null);
@@ -482,5 +1160,43 @@ export class JsonEditorComponent {
     if (!field) return false;
     if (field.IsPassword || field.Sensitive) return true;
     return SENSITIVE_KEYS.some(key => field.Name.toLowerCase().includes(key.toLowerCase()));
+  }
+
+  private lookupOption(key: string): { option: RcConfigOption; block: string } | null {
+    const cleanKey = key.toLowerCase();
+    const table = this.lookupTable();
+
+    // try exact match
+    let found = table[cleanKey];
+    if (found) return { option: found.option, block: found.flagType };
+
+    // try stripping leading hyphens
+    const noHyphensPrefix = cleanKey.replace(/^--?/, '');
+    found = table[noHyphensPrefix];
+    if (found) return { option: found.option, block: found.flagType };
+
+    // try stripping all hyphens
+    const fullyCleaned = noHyphensPrefix.replace(/-/g, '').replace(/_/g, '');
+    found = table[fullyCleaned];
+    if (found) return { option: found.option, block: found.flagType };
+
+    return null;
+  }
+
+  private isCompatible(optionBlock: string, currentBlock: string): boolean {
+    if (!currentBlock) {
+      return optionBlock === 'runtimeRemote';
+    }
+
+    const cb = currentBlock.toLowerCase();
+    const ob = optionBlock.toLowerCase();
+
+    if (cb === ob) return true;
+
+    if (['sync', 'copy', 'move', 'bisync', 'backend'].includes(cb) && ob === 'main') {
+      return true;
+    }
+
+    return false;
   }
 }

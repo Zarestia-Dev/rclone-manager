@@ -78,9 +78,9 @@
 
       <app-cli-import
         [visible]="state.showCliImport()"
-        [flagFields]="state.allFlagFields()"
         [remoteType]="state.remoteTypeSignal()"
         [existingProfiles]="state.profileNamesMap()"
+        [activeStep]="state.editTarget()"
         (apply)="state.applyImportResult($event)"
       ></app-cli-import>
 
@@ -135,7 +135,21 @@
         @switch (state.currentStep()) {
           @case (1) {
             <section class="step-container">
-              <app-remote-config-step class="step" />
+              <app-remote-config-step
+                class="step"
+                [form]="state.remoteForm"
+                [remoteFields]="state.dynamicRemoteFields()"
+                [isLoading]="state.isRemoteConfigLoading()"
+                [existingRemotes]="state.existingRemotes()"
+                [remoteTypes]="state.remoteTypes()"
+                [searchQuery]="state.searchQuery()"
+                [showAdvancedOptions]="state.showAdvancedOptions()"
+                [initialCommandOptions]="state.commandOptions()"
+                (remoteTypeChanged)="state.onRemoteTypeChange()"
+                (advancedOptionsToggled)="state.showAdvancedOptions.set($event)"
+                (fieldChanged)="state.onRemoteFieldChanged($event.fieldName, $event.isChanged)"
+                (commandOptionsChanged)="state.commandOptions.set($event)"
+              />
             </section>
           }
 
@@ -145,7 +159,7 @@
               <section class="step-container">
                 <app-profile-header [flagType]="flagType" />
 
-                @if (LINKED_PROFILE_TYPES.has(flagType)) {
+                @if (state.LINKED_PROFILE_TYPES.has(flagType)) {
                   @let showVfs = flagType === 'mount' || flagType === 'serve';
                   <mat-expansion-panel class="linked-profiles-panel">
                     <mat-expansion-panel-header>
@@ -225,7 +239,23 @@
                   </mat-expansion-panel>
                 }
 
-                <app-flag-config-step class="step" [flagType]="flagType" />
+                <app-flag-config-step
+                  class="step"
+                  [flagType]="flagType"
+                  [form]="state.remoteConfigForm"
+                  [existingRemotes]="state.existingRemotes()"
+                  [currentRemoteName]="state.currentRemoteName()"
+                  [isNewRemote]="!state.editTarget()"
+                  [searchQuery]="state.searchQuery()"
+                  [dynamicFlagFields]="
+                    flagType === 'serve'
+                      ? state.dynamicServeFields()
+                      : state.dynamicFlagFields()[flagType]
+                  "
+                  [isLoadingServeFields]="state.isLoadingServeFields()"
+                  [highlightedFields]="state.highlightedFieldsForActiveProfiles()"
+                  (serveTypeChange)="state.onServeTypeChange($event)"
+                />
               </section>
             } @else {
               <!-- Final step: runtime remote configuration -->
@@ -249,6 +279,7 @@
                   }"
                   [showAdvancedOptions]="true"
                   [initialCommandOptions]="state.commandOptions()"
+                  (commandOptionsChanged)="state.commandOptions.set($event)"
                 />
               </section>
             }

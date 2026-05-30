@@ -221,28 +221,27 @@ pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Opti
         UpdateState::Idle
     };
 
-    let mut metadata = match pending_metadata {
-        Some(m) => m,
-        None => {
-            let current_version = get_cached_rclone_version(&app_handle)
+    let mut metadata = if let Some(m) = pending_metadata {
+        m
+    } else {
+        let current_version = get_cached_rclone_version(&app_handle)
+            .await
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let version = if let Some((_, new_path)) = find_pending_new_binary(&app_handle) {
+            get_binary_version(&new_path)
                 .await
-                .unwrap_or_else(|| "unknown".to_string());
+                .unwrap_or_else(|| "unknown".to_string())
+        } else {
+            "unknown".to_string()
+        };
 
-            let version = if let Some((_, new_path)) = find_pending_new_binary(&app_handle) {
-                get_binary_version(&new_path)
-                    .await
-                    .unwrap_or_else(|| "unknown".to_string())
-            } else {
-                "unknown".to_string()
-            };
-
-            UpdateMetadata {
-                current_version,
-                version,
-                update_available: false,
-                channel: Some("stable".into()),
-                ..Default::default()
-            }
+        UpdateMetadata {
+            current_version,
+            version,
+            update_available: false,
+            channel: Some("stable".into()),
+            ..Default::default()
         }
     };
 
@@ -501,13 +500,12 @@ pub async fn activate_pending_rclone_update(
     resume: bool,
 ) -> Result<String> {
     debug!("Activating rclone update (native binary swap)");
-    let (current_path, new_path) = match find_pending_new_binary(app_handle) {
-        Some(paths) => paths,
-        None => {
-            let state = app_handle.state::<RcloneUpdaterState>();
-            state.data.lock().pending_update = None;
-            return Err(Error::BinaryNotFound);
-        }
+    let (current_path, new_path) = if let Some(paths) = find_pending_new_binary(app_handle) {
+        paths
+    } else {
+        let state = app_handle.state::<RcloneUpdaterState>();
+        state.data.lock().pending_update = None;
+        return Err(Error::BinaryNotFound);
     };
 
     info!("Stopping rclone engine for binary swap...");
@@ -854,17 +852,17 @@ async fn perform_rclone_selfupdate(
         UpdateChannel::Stable => args.push("--stable".to_string()),
     }
 
-    info!("Executing rclone selfupdate via RC ({} channel)", channel);
+    info!("Executing rclone selfupdate via RC ({channel} channel)");
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload = backend.build_core_command_payload("selfupdate", args, false, os);
 
     let response = tokio::select! {
-        _ = cancel_token.cancelled() => {
+        () = cancel_token.cancelled() => {
             return Err(Error::RcloneSelfUpdate("Download cancelled by user".to_string()));
         }
         res = backend.post_json(client, core::COMMAND, Some(&payload)) => {
-            res.map_err(|e| Error::RcloneSelfUpdate(e.to_string()))?
+            res.map_err(|e| Error::RcloneSelfUpdate(e.clone()))?
         }
     };
 

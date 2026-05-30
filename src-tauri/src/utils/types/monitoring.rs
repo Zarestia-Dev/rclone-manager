@@ -34,6 +34,7 @@ pub struct SystemStatusPayload {
 }
 
 impl SystemStatusPayload {
+    #[must_use]
     pub fn inactive() -> Self {
         Self {
             rclone_info: None,
@@ -45,6 +46,7 @@ impl SystemStatusPayload {
         }
     }
 
+    #[must_use]
     pub fn error() -> Self {
         Self {
             rclone_info: None,

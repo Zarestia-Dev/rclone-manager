@@ -9,8 +9,6 @@ import {
   WritableSignal,
   signal,
 } from '@angular/core';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { startWith, switchMap } from 'rxjs';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormArray, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -53,7 +51,6 @@ interface PathItem {
 
 @Component({
   selector: 'app-operation-config',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     NgTemplateOutlet,
@@ -98,19 +95,20 @@ export class OperationConfigComponent {
     this.existingRemotes().filter(r => r !== this.currentRemoteName())
   );
 
-  private readonly formValue = toSignal(
-    toObservable(this.opFormGroup).pipe(
-      switchMap(form => form.valueChanges.pipe(startWith(form.value)))
-    )
-  );
-
+  private readonly formVersion = signal(0);
   private readonly pathStructureVersion = signal(0);
 
-  readonly cronExpression = computed(() => this.formValue()?.cronExpression);
+  readonly cronExpression = computed(() => {
+    this.formVersion();
+    return this.opFormGroup().get('cronExpression')?.value;
+  });
   readonly isWatchSupported = computed(() =>
     ['sync', 'copy', 'move', 'bisync'].includes(this.operationType() as string)
   );
-  readonly isWatchEnabled = computed(() => !!this.formValue()?.watchEnabled);
+  readonly isWatchEnabled = computed(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('watchEnabled')?.value;
+  });
 
   readonly sourceItems = computed(() => {
     this.pathStructureVersion();
@@ -188,16 +186,22 @@ export class OperationConfigComponent {
 
   readonly isSourcePickerDisabled = computed(() => {
     if (!this.isNewRemote()) return false;
-    this.formValue();
+    this.formVersion();
     return this.sourceItems().some(i => i.type === 'currentRemote' && !i.pathControl.value);
   });
   readonly isDestPickerDisabled = computed(() => {
     if (!this.isNewRemote()) return false;
-    this.formValue();
+    this.formVersion();
     return this.destItem()?.type === 'currentRemote' && !this.destItem()?.pathControl.value;
   });
 
   constructor() {
+    effect(onCleanup => {
+      const form = this.opFormGroup();
+      const sub = form.valueChanges.subscribe(() => this.formVersion.update(v => v + 1));
+      onCleanup(() => sub.unsubscribe());
+    });
+
     effect(() => {
       if (this.isNewRemote()) {
         this.clearAutocomplete();
@@ -338,7 +342,7 @@ export class OperationConfigComponent {
   }
 
   private async selectLocal(item: PathItem, target: FilePickerSelection): Promise<void> {
-    const allowNonEmpty = this.opFormGroup().get('options.mount---allow_non_empty')?.value;
+    const allowNonEmpty = this.opFormGroup().get('options.AllowNonEmpty')?.value;
     const requireEmpty = this.isMount() && item.group === 'dest' && !allowNonEmpty;
 
     try {

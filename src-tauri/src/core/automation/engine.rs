@@ -180,10 +180,7 @@ impl AutomationScheduler {
             "{}: {}-{}.{}",
             automation.backend_name, automation.remote_name, automation.profile_name, automation.id
         );
-        info!(
-            "Scheduled '{}' ({}) — job ID: {}",
-            automation_name, cron_expr_6_field, job_id
-        );
+        info!("Scheduled '{automation_name}' ({cron_expr_6_field}) — job ID: {job_id}");
 
         Ok(job_id)
     }
@@ -215,7 +212,7 @@ impl AutomationScheduler {
             && let Ok(job_id) = Uuid::parse_str(job_id_str)
         {
             match self.unschedule_automation(job_id).await {
-                Ok(()) => info!("Removed old job {} for '{}'", job_id, automation_name),
+                Ok(()) => info!("Removed old job {job_id} for '{automation_name}'"),
                 Err(e) => warn!("Failed to remove old job {job_id}: {e}"),
             }
         }
@@ -223,13 +220,13 @@ impl AutomationScheduler {
         let is_active = automation.status == AutomationStatus::Enabled
             || automation.status == AutomationStatus::Failed;
         if is_active && automation.cron_expression != "realtime" {
-            info!("Scheduling active automation '{}'…", automation_name);
+            info!("Scheduling active automation '{automation_name}'…");
             match self.schedule_automation(automation, cache.clone()).await {
                 Ok(new_job_id) => {
-                    info!("Rescheduled '{}' → job {}", automation_name, new_job_id);
+                    info!("Rescheduled '{automation_name}' → job {new_job_id}");
                 }
                 Err(e) => {
-                    error!("Failed to reschedule '{}': {}", automation_name, e);
+                    error!("Failed to reschedule '{automation_name}': {e}");
                     cache
                         .update_automation(&automation.id, |t| t.mark_failure(e.clone()), None)
                         .await?;
@@ -237,10 +234,7 @@ impl AutomationScheduler {
                 }
             }
         } else {
-            info!(
-                "Automation '{}' is disabled or realtime-only — clearing job ID.",
-                automation_name
-            );
+            info!("Automation '{automation_name}' is disabled or realtime-only — clearing job ID.");
             cache
                 .update_automation(
                     &automation.id,

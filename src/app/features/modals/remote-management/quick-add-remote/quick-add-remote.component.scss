@@ -1,24 +1,3 @@
-.form-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-// =============================================
-// CONTENT AREA
-// =============================================
-.step-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-sm) var(--space-lg);
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 // =============================================
 // OPERATIONS STEP
 // =============================================

@@ -105,6 +105,7 @@ impl LinkChecker {
 }
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]
+#[must_use]
 pub fn is_metered() -> bool {
     use zbus::blocking::{Connection, Proxy};
 

@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Local filesystem watchers for sync, copy, move, and bisync automations. Sync, copy, and move require at least one local source path; bisync watches local paths from both sides.
 - Net-change debounce: create/delete pairs on the same path within the debounce window cancel each other out, suppressing temp files and atomic saves without explicit exclude rules.
-- Added support for detached windows for dialogs (like progress, logs etc.). If you close the main window, dialogs will stay open. Some helper dialogs not open as a new window. Note there: Since there is a `Memory Optimization` enabled by default, These windows takes some times to open. Even open and close one time!
+- Added support for detached windows for dialogs (like progress, logs etc.). If you close the main window, dialogs will stay open. Some helper dialogs not open as a new window.
 - Added a cancel support for While updates downloading.
 
 ### Changed

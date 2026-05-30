@@ -182,30 +182,35 @@ pub fn run() {
                 #[cfg(not(feature = "tray"))]
                 let tray_enabled = false;
 
-                if tray_enabled {
-                    if destroy_on_close {
-                        log::debug!("♻️ Optimization Enabled: Destroying window to free RAM");
-                    } else {
-                        #[cfg(desktop)]
-                        if let Err(e) = window.hide() {
-                            log::error!("Failed to hide window: {e}");
+                if window.label() == "main" {
+                    if tray_enabled {
+                        if destroy_on_close {
+                            log::debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                        } else {
+                            #[cfg(desktop)]
+                            if let Err(e) = window.hide() {
+                                log::error!("Failed to hide window: {e}");
+                            }
+                            api.prevent_close();
                         }
+                        #[cfg(target_os = "macos")]
+                        crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
+                    } else {
                         api.prevent_close();
+                        let window_ = window.clone();
+                        tauri::async_runtime::spawn(async move {
+                            window_
+                                .app_handle()
+                                .state::<RcloneState>()
+                                .set_shutting_down();
+                            let _ = core::lifecycle::shutdown::shutdown_app(
+                                window_.app_handle().clone(),
+                            )
+                            .await;
+                        });
                     }
-                    #[cfg(target_os = "macos")]
-                    crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
                 } else {
-                    api.prevent_close();
-                    let window_ = window.clone();
-                    tauri::async_runtime::spawn(async move {
-                        window_
-                            .app_handle()
-                            .state::<RcloneState>()
-                            .set_shutting_down();
-                        let _ =
-                            core::lifecycle::shutdown::shutdown_app(window_.app_handle().clone())
-                                .await;
-                    });
+                    // Allow the OS to naturally destroy secondary windows like modals
                 }
             }
             WindowEvent::Destroyed => {

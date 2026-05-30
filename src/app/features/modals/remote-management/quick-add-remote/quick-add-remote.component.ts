@@ -5,6 +5,7 @@ import {
   signal,
   ChangeDetectionStrategy,
   DestroyRef,
+  HostListener,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -17,8 +18,7 @@ import {
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { fromEvent, merge, startWith, Observable } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { merge, startWith, Observable } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -55,9 +55,9 @@ import {
 import {
   getDefaultAnswerFromQuestion,
   createInitialInteractiveFlowState,
-  isInteractiveContinueDisabled,
   convertBoolAnswerToString,
   updateInteractiveAnswer,
+  mapFormToConfigProfile,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -197,9 +197,13 @@ export class QuickAddRemoteComponent {
       : 'modals.quickAdd.buttons.create'
   );
 
-  readonly isInteractiveContinueDisabled = computed(() =>
-    isInteractiveContinueDisabled(this.interactiveFlowState(), this.isAuthCancelled())
-  );
+  readonly isInteractiveContinueDisabled = computed(() => {
+    const state = this.interactiveFlowState();
+    if (this.isAuthCancelled() || state.isProcessing) return true;
+    if (!state.question?.Option?.Required) return false;
+    const { answer } = state;
+    return answer == null || (typeof answer === 'string' && answer.trim() === '');
+  });
 
   private pendingConfig: {
     remoteData: { name: string; type: string };
@@ -208,17 +212,6 @@ export class QuickAddRemoteComponent {
 
   constructor() {
     this.setupFormListeners();
-
-    fromEvent<KeyboardEvent>(document, 'keydown')
-      .pipe(
-        filter(e => e.key === 'Escape'),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        if (!this.nautilusService.isNautilusOverlayOpen()) {
-          this.modalService.animatedClose(this.dialogRef);
-        }
-      });
 
     this.destroyRef.onDestroy(() => {
       void this.authStateService.cancelAuth();
@@ -504,63 +497,35 @@ export class QuickAddRemoteComponent {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createBaseOpConfig = (op: any, isMultiSource = false) => {
-      const config: any = {
-        autoStart: op.autoStart ?? false,
-        cronEnabled: op.cronEnabled ?? false,
-        cronExpression: op.cronExpression ?? null,
-        watchEnabled: op.watchEnabled ?? false,
-        watchDelay: op.watchDelay ?? 5,
-        filterProfile: DEFAULT_PROFILE_NAME,
-        backendProfile: DEFAULT_PROFILE_NAME,
-      };
-
-      const getPathValue = (p: any) => {
-        if (!p) return null;
-        return typeof p === 'string' ? p : this.pathService.buildPathString(p, remoteName);
-      };
-
-      // Handle singular or plural
-      if (op.source) {
-        if (isMultiSource) {
-          config.source = this.pathService.buildPathStrings(op.source, remoteName);
-        } else {
-          const first = Array.isArray(op.source) ? op.source[0] : op.source;
-          config.source = getPathValue(first);
-        }
-      }
-
-      if (op.dest) {
-        config.dest = getPathValue(op.dest);
-      }
-
-      return config;
+    const buildProfile = (type: string, opData: any) => {
+      return mapFormToConfigProfile(type, opData, {
+        remoteName,
+        pathService: this.pathService,
+      });
     };
 
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...createBaseOpConfig(operations.mount, false),
-          type: 'mount',
+          ...buildProfile('mount', operations.mount),
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
       [REMOTE_CONFIG_KEYS.copy]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.copy, true),
+        [DEFAULT_PROFILE_NAME]: buildProfile('copy', operations.copy),
       },
       [REMOTE_CONFIG_KEYS.sync]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.sync, true),
+        [DEFAULT_PROFILE_NAME]: buildProfile('sync', operations.sync),
       },
       [REMOTE_CONFIG_KEYS.bisync]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.bisync, false),
+        [DEFAULT_PROFILE_NAME]: buildProfile('bisync', operations.bisync),
       },
       [REMOTE_CONFIG_KEYS.move]: {
-        [DEFAULT_PROFILE_NAME]: createBaseOpConfig(operations.move, true),
+        [DEFAULT_PROFILE_NAME]: buildProfile('move', operations.move),
       },
       [REMOTE_CONFIG_KEYS.serve]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...createBaseOpConfig(operations.serve, false),
-          type: 'http', // Default to HTTP serve type
+          ...buildProfile('serve', operations.serve),
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
@@ -578,7 +543,7 @@ export class QuickAddRemoteComponent {
       },
       [REMOTE_CONFIG_KEYS.backend]: { [DEFAULT_PROFILE_NAME]: {} },
       showOnTray: true,
-    } as RemoteConfigSections;
+    } as unknown as RemoteConfigSections;
   }
 
   // ── Interactive OAuth flow ─────────────────────────────────────────────────
@@ -673,12 +638,16 @@ export class QuickAddRemoteComponent {
     finalConfig: RemoteConfigSections
   ): Promise<void> {
     const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
-    if (mountConfig?.autoStart && mountConfig?.dest) {
-      void this.mountManagementService.mountRemoteProfile(
-        remoteName,
-        DEFAULT_PROFILE_NAME,
-        'dashboard'
-      );
+    if (mountConfig) {
+      const appCfg = mountConfig.app || mountConfig;
+      const rcloneCfg = mountConfig.rclone || mountConfig;
+      if (appCfg.autoStart && rcloneCfg.mountPoint) {
+        void this.mountManagementService.mountRemoteProfile(
+          remoteName,
+          DEFAULT_PROFILE_NAME,
+          'dashboard'
+        );
+      }
     }
 
     const jobOps = [
@@ -722,8 +691,16 @@ export class QuickAddRemoteComponent {
 
     for (const { key, start } of jobOps) {
       const cfg = finalConfig[key]?.[DEFAULT_PROFILE_NAME] as any;
-      if (cfg?.autoStart && cfg?.source && cfg?.dest) {
-        void start();
+      if (cfg) {
+        const appCfg = cfg.app || cfg;
+        const rcloneCfg = cfg.rclone || cfg;
+        if (appCfg.autoStart) {
+          const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
+          const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
+          if (hasSource && hasDest) {
+            void start();
+          }
+        }
       }
     }
   }
@@ -734,6 +711,7 @@ export class QuickAddRemoteComponent {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
+  @HostListener('document:keydown.escape')
   close(): void {
     if (this.nautilusService.isNautilusOverlayOpen()) return;
     this.modalService.animatedClose(this.dialogRef);

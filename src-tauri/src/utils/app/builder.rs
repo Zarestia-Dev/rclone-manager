@@ -54,9 +54,9 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
 }
 
 #[cfg(not(feature = "web-server"))]
-fn apply_platform_config<'a>(
-    builder: tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
-) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
+fn apply_platform_config(
+    builder: tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle>,
+) -> tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle> {
     #[allow(unused_mut)]
     let mut b = builder
         .inner_size(800.0, 630.0)
@@ -133,7 +133,7 @@ pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
                 }
                 (Some(r), None) => r,
                 (None, Some(p)) => p,
-                _ => "".to_string(),
+                _ => String::new(),
             };
             use crate::utils::types::events::BROWSE;
             let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);

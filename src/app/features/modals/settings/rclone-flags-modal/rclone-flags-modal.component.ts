@@ -26,9 +26,13 @@ import {
   NotificationService,
   ModalService,
 } from '@app/services';
-import { RcConfigOption } from '@app/types';
+import { RcConfigOption, SharedProfileType } from '@app/types';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { SettingControlComponent, JsonEditorComponent } from 'src/app/shared/components';
+import {
+  SettingControlComponent,
+  JsonEditorComponent,
+  JSON_EDITOR_LOOKUP_TABLE,
+} from 'src/app/shared/components';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -183,6 +187,13 @@ const MAIN_CATEGORY_CONFIG: Record<
   templateUrl: './rclone-flags-modal.component.html',
   styleUrls: ['./rclone-flags-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    {
+      provide: JSON_EDITOR_LOOKUP_TABLE,
+      useFactory: (modal: RcloneFlagsModalComponent) => modal.lookupTable,
+      deps: [RcloneFlagsModalComponent],
+    },
+  ],
 })
 export class RcloneFlagsModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<RcloneFlagsModalComponent>);
@@ -209,6 +220,32 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly changedOptions = signal(new Set<string>());
 
   private readonly expandedServices = signal(new Set<string>());
+
+  readonly lookupTable = computed(() => {
+    const table: Record<string, { option: RcConfigOption; flagType: SharedProfileType }> = {};
+    const options = this.groupedOptions();
+    for (const service in options) {
+      for (const category in options[service]) {
+        for (const option of options[service][category]) {
+          const nameRaw = (option.Name ?? '').toLowerCase();
+          const nameHyphen = nameRaw.replace(/_/g, '-');
+          const keyCamel = (option.FieldName ?? '').toLowerCase();
+          const flagType = service as SharedProfileType;
+
+          if (nameRaw) {
+            table[nameRaw] = { option, flagType };
+          }
+          if (nameHyphen && nameHyphen !== nameRaw) {
+            table[nameHyphen] = { option, flagType };
+          }
+          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) {
+            table[keyCamel] = { option, flagType };
+          }
+        }
+      }
+    }
+    return table;
+  });
 
   // ── Form ───────────────────────────────────────────────────────────────────
   rcloneOptionsForm: FormGroup = this.fb.group({});

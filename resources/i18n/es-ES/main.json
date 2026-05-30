@@ -937,7 +937,14 @@
       "pollIntervalPlaceholder": "Introduzca el intervalo de sondeo (segundos)"
     },
     "jsonEditor": {
-      "noFields": "No hay campos para mostrar en modo JSON"
+      "noFields": "No hay campos para mostrar en modo JSON",
+      "parseError": "Sintaxis JSON no válida. Compruebe el formato.",
+      "cliArgumentWithSuggestion": "Los argumentos de tipo CLI (como '{{key}}') no son compatibles con rclone RC. ¿Quiso decir '{{suggestion}}'?",
+      "camelCaseSuggestionWarning": "La opción '{{key}}' no es válida en este formato. ¿Quiso decir '{{suggestion}}'?",
+      "fixSuggestion": "Cambiar a '{{suggestion}}'",
+      "wrongBlockWarning": "La(s) opción(es) {{keys}} pertenece(n) al bloque de configuración '{{block}}' y es posible que no funcione(n) aquí.",
+      "unknownWarning": "Opción(es) desconocida(s): {{keys}}. Rclone podría omitirlas.",
+      "invalidArrayPath": "La propiedad '{{key}}' no admite múltiples rutas. Proporcione una única ruta de cadena de texto."
     },
     "passwordManager": {
       "placeholder": "Ingrese su contraseña de configuración de rclone",
@@ -970,6 +977,7 @@
       "macroDetected": "Macros de shell detectadas",
       "macroDesc": "El backend resolverá estos valores en tiempo de ejecución al iniciar el trabajo. Macros compatibles: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Banderas no reconocidas (omitidas)",
+      "wrongBlockGuidance": "La opción pertenece al bloque de configuración '{{block}}' y no es compatible con el perfil de {{verb}}.",
       "applyConfig": "Aplicar al perfil",
       "newProfile": "Crear nuevo perfil",
       "overrideProfile": "Sobrescribir perfil existente",
@@ -979,7 +987,12 @@
       "serveType": "Tipo de servicio",
       "mountPoint": "Punto de montaje",
       "remote": "Remoto",
-      "invalidCommand": "Comando rclone no válido. Proporcione un comando con una operación admitida (por ejemplo, sync, copy, mount) o indicadores."
+      "invalidCommand": "Comando rclone no válido. Proporcione un comando con una operación admitida (por ejemplo, sync, copy, mount) o indicadores.",
+      "patch": "Parchear / Aplicar al activo",
+      "patchProfile": "Parchear perfil(es) activo(s)",
+      "patchInfo": "No se especificó ninguna operación (sync, serve o mount). Las opciones importadas se aplicarán como un parche directamente a sus perfiles de configuración activos.",
+      "patchInfoRemoteStep": "No se especificó ninguna operación (sync, serve o mount). Para aplicar estas opciones como un parche, navegue a un paso de configuración específico (por ejemplo, Sincronización, Montaje o Servir) en lugar del paso de Conexión.",
+      "applyPatch": "Aplicar parche"
     },
     "remoteConfig": {
       "remoteName": "Nombre remoto",
@@ -996,6 +1009,17 @@
       "fields": "Campos",
       "switchToForm": "Cambiar a modo formulario",
       "switchToJson": "Cambiar a modo JSON",
+      "unknownTopLevelProperty": "Advertencia: '{{key}}' no es una propiedad de nivel superior estándar para este perfil y podría ignorarse.",
+      "jsonEditorInfo": {
+        "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
+        "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
+        "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y coloque todas las opciones de montaje dentro de 'mountOpt'.",
+        "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y coloque todas las opciones de servicio dentro de '_config'.",
+        "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor.",
+        "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor.",
+        "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor.",
+        "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor."
+      },
       "showAdvanced": "Mostrar opciones avanzadas",
       "hideAdvanced": "Ocultar opciones avanzadas",
       "emptyStateTitle": "¿Cuál es tu próxima aventura en la nube?",

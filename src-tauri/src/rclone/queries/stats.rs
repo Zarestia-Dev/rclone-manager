@@ -62,8 +62,7 @@ pub async fn get_completed_transfers(
             let rclone_count = value
                 .get("transferred")
                 .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
+                .map_or(0, std::vec::Vec::len);
             if completed.len() > rclone_count {
                 value["transferred"] = json!(completed);
             }

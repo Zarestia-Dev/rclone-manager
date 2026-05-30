@@ -17,7 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { RcConfigOption, SharedProfileType } from '@app/types';
+import { SharedProfileType, EditTarget } from '@app/types';
 import { CliFlagMapperService, ImportResult } from '@app/services';
 
 @Component({
@@ -40,17 +40,21 @@ export class CliImportComponent {
   private readonly mapper = inject(CliFlagMapperService);
 
   readonly visible = input(false);
-  readonly flagFields = input.required<Record<SharedProfileType, RcConfigOption[]>>();
   readonly remoteType = input('');
+  readonly activeStep = input<EditTarget>(null);
   readonly existingProfiles = input<Record<SharedProfileType, string[]>>(
     {} as Record<SharedProfileType, string[]>
   );
 
-  readonly apply = output<{ result: ImportResult; profileName: string; isNew: boolean }>();
+  readonly apply = output<{
+    result: ImportResult;
+    profileName: string;
+    mode: 'new' | 'override' | 'patch';
+  }>();
 
   readonly cliInput = signal('');
   readonly importResult = signal<ImportResult | null>(null);
-  readonly profileMode = signal<'new' | 'override'>('new');
+  readonly profileMode = signal<'new' | 'override' | 'patch'>('new');
   readonly newProfileName = signal('');
   readonly validationError = signal<string | null>(null);
 
@@ -100,34 +104,16 @@ export class CliImportComponent {
 
   readonly isApplyDisabled = computed(() => {
     if (!this.importResult()) return true;
+    if (this.profileMode() === 'patch') {
+      const step = this.activeStep();
+      return !step || step === 'remote';
+    }
     return this.profileMode() === 'new'
       ? !this.newProfileName().trim()
       : !this.selectedOverrideProfile();
   });
 
-  private readonly lookupTable = computed(() =>
-    this.mapper.buildLookupTable(this.flagFields(), this.remoteType())
-  );
-
-  private readonly booleanFlags = computed(() => {
-    const bools = new Set<string>();
-
-    for (const fields of Object.values(this.flagFields())) {
-      for (const f of fields) {
-        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
-
-        const names = [f.Name, f.FieldName].filter(Boolean) as string[];
-        for (const name of names) {
-          const lower = name.toLowerCase();
-          bools.add(lower);
-          bools.add(lower.replace(/_/g, '-'));
-        }
-      }
-    }
-    return bools;
-  });
-
-  previewImport(): void {
+  async previewImport(): Promise<void> {
     const text = this.cliInput().trim();
     if (!text) {
       this.importResult.set(null);
@@ -135,15 +121,26 @@ export class CliImportComponent {
       return;
     }
 
-    const parsed = this.mapper.parse(text, this.booleanFlags());
-    if (!parsed.verb && parsed.flags.length === 0) {
+    try {
+      const result = await this.mapper.importCliCommand(text, this.remoteType());
+      if (!result.verb && result.classified.length === 0) {
+        this.validationError.set('wizards.cliImport.invalidCommand');
+        this.importResult.set(null);
+        return;
+      }
+
+      this.validationError.set(null);
+      this.importResult.set(result);
+      if (!result.verb) {
+        this.profileMode.set('patch');
+      } else {
+        this.profileMode.set('new');
+      }
+    } catch (error) {
+      console.error('Failed to parse CLI import command:', error);
       this.validationError.set('wizards.cliImport.invalidCommand');
       this.importResult.set(null);
-      return;
     }
-
-    this.validationError.set(null);
-    this.importResult.set(this.mapper.classify(parsed, this.lookupTable()));
   }
 
   clearInput(): void {
@@ -156,11 +153,18 @@ export class CliImportComponent {
     const result = this.importResult();
     if (!result) return;
 
-    const isNew = this.profileMode() === 'new';
+    const mode = this.profileMode();
+    const profileName =
+      mode === 'new'
+        ? this.newProfileName().trim()
+        : mode === 'override'
+          ? this.selectedOverrideProfile()
+          : '';
+
     this.apply.emit({
       result,
-      profileName: isNew ? this.newProfileName().trim() : this.selectedOverrideProfile(),
-      isNew,
+      profileName,
+      mode,
     });
   }
 }

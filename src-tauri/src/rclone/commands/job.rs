@@ -508,9 +508,9 @@ pub async fn handle_job_completion(
                 let has_error = res.get("error").is_some()
                     || res
                         .get("status")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .is_some_and(|s| s >= 400)
-                    || res.get("success").and_then(|v| v.as_bool()) == Some(false);
+                    || res.get("success").and_then(serde_json::Value::as_bool) == Some(false);
 
                 if has_error {
                     success = false;
@@ -531,11 +531,11 @@ pub async fn handle_job_completion(
                             .and_then(|v| v.as_str())
                             .unwrap_or(&metadata.source);
 
-                        let full_err = format!("{}: {}", item_name, err);
+                        let full_err = format!("{item_name}: {err}");
                         if error_msg.is_empty() {
                             error_msg = full_err;
                         } else if !error_msg.contains(&full_err) {
-                            error_msg = format!("{}; {}", error_msg, full_err);
+                            error_msg = format!("{error_msg}; {full_err}");
                         }
                     }
                 }
@@ -546,7 +546,7 @@ pub async fn handle_job_completion(
         if success
             && output
                 .get("error")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false)
         {
             success = false;

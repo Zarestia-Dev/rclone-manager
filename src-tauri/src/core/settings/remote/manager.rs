@@ -35,14 +35,15 @@ pub async fn save_remote_settings(
         |e| crate::localized_error!("backendErrors.settings.subSettingsFailed", "error" => e),
     )?;
 
+    // Fetch existing settings once
+    let existing = remotes.get_value(&remote_name).ok();
+
     // Check if remote already exists and merge settings
-    if let Ok(existing) = remotes.get_value(&remote_name)
-        && let (Some(existing_obj), Some(new_obj)) = (existing.as_object(), settings.as_object())
+    if let Some(existing_obj) = existing.as_ref().and_then(|v| v.as_object())
+        && let Some(new_obj) = settings.as_object_mut()
     {
         let mut merged = existing_obj.clone();
-        for (key, value) in new_obj {
-            merged.insert(key.clone(), value.clone());
-        }
+        merged.append(new_obj);
         settings = Value::Object(merged);
     }
 
@@ -54,7 +55,7 @@ pub async fn save_remote_settings(
     info!("Remote settings saved for '{remote_name}'");
 
     // Detect deleted profiles
-    if let Ok(existing) = remotes.get_value(&remote_name) {
+    if let Some(ref existing_val) = existing {
         let config_keys = [
             "syncConfigs",
             "copyConfigs",
@@ -65,13 +66,10 @@ pub async fn save_remote_settings(
         ];
 
         for key in config_keys {
-            if let Some(old_configs) = existing.get(key).and_then(|v| v.as_object()) {
+            if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
                 let new_configs = settings.get(key).and_then(|v| v.as_object());
                 for profile_name in old_configs.keys() {
-                    let was_deleted = match new_configs {
-                        Some(new) => !new.contains_key(profile_name),
-                        None => true,
-                    };
+                    let was_deleted = new_configs.is_none_or(|new| !new.contains_key(profile_name));
 
                     if was_deleted {
                         info!(
@@ -188,9 +186,7 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
         ];
 
         for (old_key, new_key) in migration_map {
-            if obj.contains_key(old_key)
-                && let Some(mut old_config) = obj.remove(old_key)
-            {
+            if let Some(mut old_config) = obj.remove(old_key) {
                 if obj.contains_key(new_key) {
                     warn!("Removed legacy {old_key} as {new_key} already exists");
                 } else {
@@ -213,6 +209,478 @@ pub fn migrate_to_multi_profile(mut settings: Value) -> Value {
                 }
             }
         }
+
+        migrate_profiles_format(obj);
     }
     settings
+}
+
+fn promote_options(profile: &mut serde_json::Map<String, Value>, keys: &[&str]) {
+    if let Some(mut options) = profile.remove("options")
+        && let Some(opts_obj) = options.as_object_mut()
+    {
+        for &key in keys {
+            if let Some(val) = opts_obj.remove(key) {
+                profile.insert(key.to_string(), val);
+            }
+        }
+        if !opts_obj.is_empty() {
+            profile.insert("_config".to_string(), Value::Object(opts_obj.clone()));
+        }
+    }
+}
+
+fn migrate_profiles_format(obj: &mut serde_json::Map<String, Value>) {
+    // 1. Sync, Copy, Move
+    for config_key in &["syncConfigs", "copyConfigs", "moveConfigs"] {
+        if let Some(configs) = obj.get_mut(*config_key).and_then(|v| v.as_object_mut()) {
+            for profile in configs.values_mut() {
+                if let Some(p_obj) = profile.as_object_mut() {
+                    if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
+                        continue;
+                    }
+                    if let Some(source) = p_obj.remove("source") {
+                        let src_val = match source {
+                            Value::Array(arr) if arr.len() == 1 => arr[0].clone(),
+                            other => other,
+                        };
+                        p_obj.insert("srcFs".to_string(), src_val);
+                    }
+                    if let Some(dest) = p_obj.remove("dest") {
+                        p_obj.insert("dstFs".to_string(), dest);
+                    }
+                    promote_options(p_obj, &["createEmptySrcDirs", "deleteEmptySrcDirs"]);
+                }
+            }
+        }
+    }
+
+    // 2. Bisync
+    if let Some(configs) = obj.get_mut("bisyncConfigs").and_then(|v| v.as_object_mut()) {
+        for profile in configs.values_mut() {
+            if let Some(p_obj) = profile.as_object_mut() {
+                if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
+                    continue;
+                }
+                if let Some(source) = p_obj.remove("source") {
+                    p_obj.insert("path1".to_string(), source);
+                }
+                if let Some(dest) = p_obj.remove("dest") {
+                    p_obj.insert("path2".to_string(), dest);
+                }
+                promote_options(
+                    p_obj,
+                    &[
+                        "dryRun",
+                        "resync",
+                        "checkAccess",
+                        "checkFilename",
+                        "maxDelete",
+                        "force",
+                        "checkSync",
+                        "createEmptySrcDirs",
+                        "removeEmptyDirs",
+                        "filtersFile",
+                        "ignoreListingChecksum",
+                        "resilient",
+                        "workDir",
+                        "backupDir1",
+                        "backupDir2",
+                        "noCleanup",
+                    ],
+                );
+            }
+        }
+    }
+
+    // 3. Mount
+    if let Some(configs) = obj.get_mut("mountConfigs").and_then(|v| v.as_object_mut()) {
+        for profile in configs.values_mut() {
+            if let Some(p_obj) = profile.as_object_mut() {
+                if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
+                    continue;
+                }
+                if let Some(source) = p_obj.remove("source") {
+                    p_obj.insert("fs".to_string(), source);
+                }
+                if let Some(dest) = p_obj.remove("dest") {
+                    p_obj.insert("mountPoint".to_string(), dest);
+                }
+                if let Some(t) = p_obj.remove("type") {
+                    p_obj.insert("mountType".to_string(), t);
+                }
+                if let Some(options) = p_obj.remove("options") {
+                    p_obj.insert("mountOpt".to_string(), options);
+                }
+            }
+        }
+    }
+
+    // 4. Serve
+    if let Some(configs) = obj.get_mut("serveConfigs").and_then(|v| v.as_object_mut()) {
+        for profile in configs.values_mut() {
+            if let Some(p_obj) = profile.as_object_mut() {
+                if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
+                    continue;
+                }
+                if let Some(source) = p_obj.remove("source") {
+                    p_obj.insert("fs".to_string(), source);
+                }
+                if let Some(t) = p_obj.remove("serveType") {
+                    p_obj.insert("type".to_string(), t);
+                }
+                if let Some(mut options) = p_obj.remove("options")
+                    && let Some(opts_obj) = options.as_object_mut()
+                {
+                    if let Some(fs_val) = opts_obj.remove("fs")
+                        && !p_obj.contains_key("fs")
+                    {
+                        p_obj.insert("fs".to_string(), fs_val);
+                    }
+                    if let Some(type_val) = opts_obj.remove("type")
+                        && !p_obj.contains_key("type")
+                    {
+                        p_obj.insert("type".to_string(), type_val);
+                    }
+                    if !opts_obj.is_empty() {
+                        p_obj.insert("_config".to_string(), Value::Object(opts_obj.clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. VFS, Filter, Backend, and Runtime Remote (Helper profiles)
+    for configs_key in &[
+        "vfsConfigs",
+        "filterConfigs",
+        "backendConfigs",
+        "runtimeRemoteConfigs",
+    ] {
+        if let Some(configs) = obj.get_mut(*configs_key).and_then(|v| v.as_object_mut()) {
+            for profile in configs.values_mut() {
+                if let Some(p_obj) = profile.as_object_mut()
+                    && let Some(options) = p_obj.remove("options")
+                    && let Some(opts_obj) = options.as_object()
+                {
+                    for (k, v) in opts_obj {
+                        p_obj.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // 6. Partition operational profiles to {"app": ..., "rclone": ...}
+    for config_key in &[
+        "syncConfigs",
+        "copyConfigs",
+        "moveConfigs",
+        "bisyncConfigs",
+        "mountConfigs",
+        "serveConfigs",
+    ] {
+        if let Some(configs) = obj.get_mut(*config_key).and_then(|v| v.as_object_mut()) {
+            for profile in configs.values_mut() {
+                partition_profile_to_app_and_rclone(profile);
+            }
+        }
+    }
+}
+
+fn partition_profile_to_app_and_rclone(profile: &mut Value) {
+    let Some(p_obj) = profile.as_object_mut() else {
+        return;
+    };
+
+    if p_obj.contains_key("app") || p_obj.contains_key("rclone") {
+        return;
+    }
+
+    let app_keys = [
+        "autoStart",
+        "cronEnabled",
+        "cronExpression",
+        "watchEnabled",
+        "watchDelay",
+        "vfsProfile",
+        "filterProfile",
+        "backendProfile",
+        "runtimeRemoteProfile",
+    ];
+
+    let mut app_map = serde_json::Map::new();
+    let mut rclone_map = serde_json::Map::new();
+
+    for (k, v) in std::mem::take(p_obj) {
+        if app_keys.contains(&k.as_str()) {
+            app_map.insert(k, v);
+        } else {
+            rclone_map.insert(k, v);
+        }
+    }
+
+    p_obj.insert("app".to_string(), Value::Object(app_map));
+    p_obj.insert("rclone".to_string(), Value::Object(rclone_map));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Production format from the released version
+    fn production_config() -> Value {
+        json!({
+            "name": "Google Drive",
+            "serveConfigs": {
+                "default": {
+                    "autoStart": true,
+                    "backendProfile": "default",
+                    "cronEnabled": false,
+                    "cronExpression": null,
+                    "filterProfile": "default",
+                    "options": {
+                        "fs": "Google Drive:",
+                        "type": "dlna"
+                    },
+                    "runtimeRemoteProfile": "default",
+                    "source": "Google Drive:",
+                    "vfsProfile": "default"
+                }
+            },
+            "syncConfigs": {
+                "default": {
+                    "autoStart": false,
+                    "backendProfile": "default",
+                    "cronEnabled": true,
+                    "cronExpression": "0 18 * * *",
+                    "dest": "/home/test/Documents",
+                    "filterProfile": "default",
+                    "options": {
+                        "CheckSum": true,
+                        "Checkers": 11,
+                        "Transfers": 8,
+                        "createEmptySrcDirs": true
+                    },
+                    "runtimeRemoteProfile": "default",
+                    "source": ["Google Drive:"],
+                    "vfsProfile": "default"
+                }
+            },
+            "mountConfigs": {
+                "default": {
+                    "autoStart": false,
+                    "backendProfile": "default",
+                    "dest": "/home/test/Documents/34467",
+                    "filterProfile": "default",
+                    "options": {
+                        "AttrTimeout": 100044000000_i64,
+                    },
+                    "runtimeRemoteProfile": "default",
+                    "source": "Google Drive:",
+                    "type": "mount2",
+                    "vfsProfile": "default"
+                }
+            },
+            "vfsConfigs": {
+                "default": {
+                    "options": {
+                        "CacheMode": "full",
+                        "NoChecksum": true,
+                    }
+                }
+            },
+            "runtimeRemoteConfigs": {
+                "default": {
+                    "options": {
+                        "Google Drive": {
+                            "scope": "drive.readonly"
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    #[test]
+    fn test_migrate_from_production_format() {
+        let result = migrate_to_multi_profile(production_config());
+        let obj = result.as_object().unwrap();
+
+        // Serve: fs extracted from options, type extracted from options, no duplication in _config
+        let serve = &obj["serveConfigs"]["default"];
+        let rclone = &serve["rclone"];
+        assert_eq!(rclone["fs"], "Google Drive:");
+        assert_eq!(rclone["type"], "dlna");
+        // _config should NOT exist (fs and type were the only options)
+        assert!(
+            rclone.get("_config").is_none(),
+            "serve _config should be empty/absent, got: {:?}",
+            rclone.get("_config")
+        );
+
+        let app = &serve["app"];
+        assert_eq!(app["autoStart"], true);
+        assert_eq!(app["backendProfile"], "default");
+
+        // Sync: source -> srcFs, dest -> dstFs, createEmptySrcDirs flattened
+        let sync = &obj["syncConfigs"]["default"];
+        let rclone = &sync["rclone"];
+        assert_eq!(rclone["srcFs"], "Google Drive:");
+        assert_eq!(rclone["dstFs"], "/home/test/Documents");
+        assert_eq!(rclone["createEmptySrcDirs"], true);
+        // Remaining options go to _config
+        assert!(rclone["_config"]["CheckSum"].as_bool().unwrap());
+
+        let app = &sync["app"];
+        assert_eq!(app["cronEnabled"], true);
+        assert_eq!(app["cronExpression"], "0 18 * * *");
+
+        // Mount: source -> fs, dest -> mountPoint, type -> mountType, options -> mountOpt
+        let mount = &obj["mountConfigs"]["default"];
+        let rclone = &mount["rclone"];
+        assert_eq!(rclone["fs"], "Google Drive:");
+        assert_eq!(rclone["mountPoint"], "/home/test/Documents/34467");
+        assert_eq!(rclone["mountType"], "mount2");
+        assert!(rclone["mountOpt"].is_object());
+
+        // VFS: options flattened
+        let vfs = &obj["vfsConfigs"]["default"];
+        assert_eq!(vfs["CacheMode"], "full");
+        assert!(vfs.get("options").is_none());
+
+        // RuntimeRemote: options flattened
+        let rt = &obj["runtimeRemoteConfigs"]["default"];
+        assert!(rt["Google Drive"].is_object());
+        assert!(rt.get("options").is_none());
+    }
+
+    #[test]
+    fn test_migration_is_idempotent() {
+        let first = migrate_to_multi_profile(production_config());
+        let second = migrate_to_multi_profile(first.clone());
+        assert_eq!(first, second, "Migration should be idempotent");
+    }
+
+    #[test]
+    fn test_migrate_bisync_copy_move_configs() {
+        let input = json!({
+            "name": "Extended Remotes",
+            "bisyncConfigs": {
+                "default": {
+                    "autoStart": false,
+                    "source": "remote:path1",
+                    "dest": "remote:path2",
+                    "options": {
+                        "dryRun": true,
+                        "resync": true,
+                        "checkAccess": false,
+                        "maxDelete": 50,
+                        "customFlag": "hello"
+                    }
+                }
+            },
+            "copyConfigs": {
+                "default": {
+                    "autoStart": true,
+                    "source": ["remote:src"],
+                    "dest": "remote:dst",
+                    "options": {
+                        "createEmptySrcDirs": true,
+                        "customCopyFlag": 123
+                    }
+                }
+            },
+            "moveConfigs": {
+                "default": {
+                    "autoStart": false,
+                    "source": "remote:src",
+                    "dest": "remote:dst",
+                    "options": {
+                        "deleteEmptySrcDirs": true
+                    }
+                }
+            }
+        });
+
+        let result = migrate_to_multi_profile(input);
+        let obj = result.as_object().unwrap();
+
+        // 1. Bisync
+        let bisync = &obj["bisyncConfigs"]["default"];
+        let rclone = &bisync["rclone"];
+        assert_eq!(rclone["path1"], "remote:path1");
+        assert_eq!(rclone["path2"], "remote:path2");
+        assert_eq!(rclone["dryRun"], true);
+        assert_eq!(rclone["resync"], true);
+        assert_eq!(rclone["maxDelete"], 50);
+        assert_eq!(rclone["_config"]["customFlag"], "hello");
+        // dryRun, resync, checkAccess, maxDelete should NOT be in _config
+        assert!(rclone["_config"].get("dryRun").is_none());
+
+        let app = &bisync["app"];
+        assert_eq!(app["autoStart"], false);
+
+        // 2. Copy
+        let copy = &obj["copyConfigs"]["default"];
+        let rclone_copy = &copy["rclone"];
+        assert_eq!(rclone_copy["srcFs"], "remote:src");
+        assert_eq!(rclone_copy["dstFs"], "remote:dst");
+        assert_eq!(rclone_copy["createEmptySrcDirs"], true);
+        assert_eq!(rclone_copy["_config"]["customCopyFlag"], 123);
+
+        let app_copy = &copy["app"];
+        assert_eq!(app_copy["autoStart"], true);
+
+        // 3. Move
+        let move_config = &obj["moveConfigs"]["default"];
+        let rclone_move = &move_config["rclone"];
+        assert_eq!(rclone_move["srcFs"], "remote:src");
+        assert_eq!(rclone_move["dstFs"], "remote:dst");
+        assert_eq!(rclone_move["deleteEmptySrcDirs"], true);
+    }
+
+    #[test]
+    fn test_migrate_edge_cases() {
+        let input = json!({
+            "name": "Edge Cases",
+            "syncConfigs": {
+                "empty": {},
+                "only_app": {
+                    "autoStart": true,
+                    "cronEnabled": true
+                },
+                "unknown_keys": {
+                    "someCustomFlag": "val",
+                    "options": {
+                        "nestedFlag": 456
+                    }
+                }
+            }
+        });
+
+        let result = migrate_to_multi_profile(input);
+        let obj = result.as_object().unwrap();
+
+        // 1. Empty profile
+        let empty = &obj["syncConfigs"]["empty"];
+        assert!(empty["app"].as_object().unwrap().is_empty());
+        assert!(empty["rclone"].as_object().unwrap().is_empty());
+
+        // 2. Profile with only app keys (autoStart, cronEnabled)
+        let only_app = &obj["syncConfigs"]["only_app"];
+        let app = &only_app["app"];
+        assert_eq!(app["autoStart"], true);
+        assert_eq!(app["cronEnabled"], true);
+        // rclone should exist but be empty
+        let rclone = &only_app["rclone"];
+        assert!(rclone.as_object().unwrap().is_empty());
+
+        // 3. Unknown keys
+        let unknown = &obj["syncConfigs"]["unknown_keys"];
+        let rclone_unknown = &unknown["rclone"];
+        assert_eq!(rclone_unknown["someCustomFlag"], "val");
+        assert_eq!(rclone_unknown["_config"]["nestedFlag"], 456);
+    }
 }

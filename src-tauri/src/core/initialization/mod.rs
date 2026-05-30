@@ -20,7 +20,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         error!("🔥 Phase 0 Core Setup failed: {e}");
         let _ = app_handle.emit(
             APP_EVENT,
-            json!({ "status": "startup_failed", "message": e.to_string() }),
+            json!({ "status": "startup_failed", "message": e.clone() }),
         );
         return;
     }
@@ -29,7 +29,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         error!("🔥 Phase 1 Bootstrap failed: {e}");
         let _ = app_handle.emit(
             APP_EVENT,
-            json!({ "status": "startup_failed", "message": e.to_string() }),
+            json!({ "status": "startup_failed", "message": e.clone() }),
         );
         return;
     }

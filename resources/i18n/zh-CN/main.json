@@ -937,7 +937,14 @@
       "pollIntervalPlaceholder": "输入轮询间隔（秒）"
     },
     "jsonEditor": {
-      "noFields": "JSON 模式下没有可显示的字段"
+      "noFields": "JSON 模式下没有可显示的字段",
+      "parseError": "JSON 语法错误，请检查格式。",
+      "cliArgumentWithSuggestion": "rclone RC 不支持命令行（CLI）参数（如 '{{key}}'）。您是指 '{{suggestion}}' 吗？",
+      "camelCaseSuggestionWarning": "选项 '{{key}}' 在此格式下无效。您是指 '{{suggestion}}' 吗？",
+      "fixSuggestion": "更改为 '{{suggestion}}'",
+      "wrongBlockWarning": "选项 {{keys}} 属于 '{{block}}' 配置块，在此处可能无法正常工作。",
+      "unknownWarning": "未知选项：{{keys}}。这些选项可能被 rclone 忽略。",
+      "invalidArrayPath": "属性 '{{key}}' 不支持多路径，请提供单个字符串路径。"
     },
     "passwordManager": {
       "placeholder": "输入 rclone 配置密码",
@@ -970,6 +977,7 @@
       "macroDetected": "检测到 Shell 宏",
       "macroDesc": "后端将在启动任务时于运行时解析这些值。支持的宏：date、date +FORMAT、hostname、user、os。",
       "unrecognizedFlags": "未识别的标志（已忽略）",
+      "wrongBlockGuidance": "该选项属于 '{{block}}' 配置块，在 {{verb}} 配置中不受支持。",
       "applyConfig": "应用到配置文件",
       "newProfile": "创建新配置文件",
       "overrideProfile": "覆盖现有配置文件",
@@ -979,7 +987,12 @@
       "serveType": "服务类型",
       "mountPoint": "挂载点",
       "remote": "远程存储",
-      "invalidCommand": "无效的 rclone 命令。请提供包含受支持操作（例如 sync, copy, mount）或标志的命令。"
+      "invalidCommand": "无效的 rclone 命令。请提供包含受支持操作（例如 sync, copy, mount）或标志的命令。",
+      "patch": "修补 / 应用到当前活动配置",
+      "patchProfile": "修补当前活动配置文件",
+      "patchInfo": "未指定操作（sync、serve 或 mount）。导入的参数将作为补丁直接应用到您当前活动的配置文件中。",
+      "patchInfoRemoteStep": "未指定操作（sync、serve 或 mount）。要将这些参数作为补丁应用，请先导航到具体的配置步骤（例如“同步”、“挂载”或“服务”），而不是“远程连接”步骤。",
+      "applyPatch": "应用补丁"
     },
     "remoteConfig": {
       "remoteName": "远程存储名称",
@@ -996,6 +1009,17 @@
       "fields": "字段",
       "switchToForm": "切换到表单模式",
       "switchToJson": "切换到 JSON 模式",
+      "unknownTopLevelProperty": "警告：'{{key}}' 不是此配置文件的标准顶级属性，可能会被忽略。",
+      "jsonEditorInfo": {
+        "sync": "同步/复制/移动配置文件：设置 'srcFs' 和 'dstFs' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
+        "bisync": "双向同步 (Bisync) 配置文件：设置 'path1' 和 'path2' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
+        "mount": "挂载 (Mount) 配置文件：设置 'fs' 和 'mountPoint' 路径、'mountType' 及配置文件级字段，并将所有挂载选项放置在 'mountOpt' 中。",
+        "serve": "服务 (Serve) 配置文件：设置 'fs' 路径、'serveType' 及配置文件级字段，并将所有服务选项放置在 '_config' 中。",
+        "vfs": "VFS 配置文件：以键值对形式设置自定义虚拟文件系统（VFS）缓存、缓冲和兼容性选项。",
+        "filter": "过滤配置文件：以键值对形式设置通配符模式、包含/排除规则以及文件过滤选项。",
+        "backend": "后端配置文件：以键值对形式配置高级协议选项和特定远程存储的连接设置。",
+        "runtimeRemote": "运行时远程存储：以键值对形式设置动态连接覆盖及性能调整项。"
+      },
       "showAdvanced": "显示高级选项",
       "hideAdvanced": "隐藏高级选项",
       "emptyStateTitle": "您的下一个云端冒险是什么？",

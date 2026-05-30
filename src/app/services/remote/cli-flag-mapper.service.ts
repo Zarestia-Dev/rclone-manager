@@ -1,5 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { RcConfigOption, SharedProfileType } from '@app/types';
+import { FlagConfigService } from './flag-config.service';
+import { RemoteManagementService } from './remote-management.service';
+import { TranslateService } from '@ngx-translate/core';
 
 export interface ParsedCLIFlag {
   raw: string; // e.g. "--max-delete"
@@ -41,6 +44,15 @@ export interface ImportResult {
   providedIn: 'root',
 })
 export class CliFlagMapperService {
+  private readonly flagConfigService = inject(FlagConfigService);
+  private readonly remoteManagementService = inject(RemoteManagementService);
+  private readonly translateService = inject(TranslateService);
+
+  private booleanFlagsCache: Set<string> | null = null;
+  private readonly lookupTablesCache = new Map<
+    string,
+    Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
+  >();
   /**
    * Tokenizes a raw shell command line into tokens, respecting quotes.
    */
@@ -259,20 +271,49 @@ export class CliFlagMapperService {
         }
 
         prefixes.forEach(p => {
-          if (nameRaw) {
-            table[p + nameRaw] = { option: field, flagType };
-          }
-          if (nameHyphen && nameHyphen !== nameRaw) {
-            table[p + nameHyphen] = { option: field, flagType };
-          }
-          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) {
-            table[p + keyCamel] = { option: field, flagType };
-          }
+          const addEntry = (key: string) => {
+            const fullKey = p + key;
+            table[fullKey] = { option: field, flagType };
+            // Pre-register stripped keys (without hyphens and underscores) for O(1) fallback
+            const stripped = key.replace(/[-_]/g, '');
+            if (stripped && stripped !== key) {
+              table[p + stripped] = { option: field, flagType };
+            }
+          };
+
+          if (nameRaw) addEntry(nameRaw);
+          if (nameHyphen && nameHyphen !== nameRaw) addEntry(nameHyphen);
+          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) addEntry(keyCamel);
         });
       });
     });
 
     return table;
+  }
+
+  isImportCompatible(flagType: SharedProfileType, verb?: string): boolean {
+    if (!verb) return true;
+    const v = verb.toLowerCase();
+    const ft = flagType.toLowerCase();
+
+    switch (ft) {
+      case 'vfs':
+        return v === 'mount' || v === 'serve';
+      case 'mount':
+      case 'serve':
+        return v === ft;
+      case 'sync':
+      case 'copy':
+      case 'move':
+      case 'bisync':
+        return v === ft;
+      case 'filter':
+      case 'backend':
+      case 'runtimeRemote':
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**
@@ -283,17 +324,32 @@ export class CliFlagMapperService {
     lookupTable: Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
   ): ImportResult {
     const classified: ClassifiedFlag[] = parsed.flags.map(flag => {
-      const match = lookupTable[flag.key.toLowerCase()];
+      const keyLower = flag.key.toLowerCase();
+      // Try exact lookup or stripped lookup in O(1)
+      const match = lookupTable[keyLower] || lookupTable[keyLower.replace(/[-_]/g, '')];
+
       if (match) {
-        return {
-          flag,
-          status: 'mapped' as FlagStatus,
-          flagType: match.flagType,
-          fieldName: match.option.FieldName || match.option.Name,
-          coercedValue: this.coerceValue(flag.value, match.option.Type),
-        };
+        const verb = parsed.verb || 'sync';
+        if (this.isImportCompatible(match.flagType, verb)) {
+          return {
+            flag,
+            status: 'mapped',
+            flagType: match.flagType,
+            fieldName: match.option.FieldName || match.option.Name,
+            coercedValue: this.coerceValue(flag.value, match.option.Type),
+          } satisfies ClassifiedFlag;
+        } else {
+          return {
+            flag,
+            status: 'unknown',
+            guidance: this.translateService.instant('wizards.cliImport.wrongBlockGuidance', {
+              block: match.flagType,
+              verb,
+            }),
+          } satisfies ClassifiedFlag;
+        }
       }
-      return { flag, status: 'unknown' as FlagStatus };
+      return { flag, status: 'unknown' } satisfies ClassifiedFlag;
     });
 
     return {
@@ -306,27 +362,90 @@ export class CliFlagMapperService {
     };
   }
 
+  private static readonly INT_TYPES = new Set([
+    'int',
+    'int64',
+    'int32',
+    'uint',
+    'uint32',
+    'uint64',
+  ]);
+  private static readonly FLOAT_TYPES = new Set(['float', 'float32', 'float64']);
+
   private coerceValue(val: string | boolean, type: string): unknown {
     if (typeof val === 'boolean') return val;
     if (type === 'bool' || type === 'Tristate') {
       const s = val.toLowerCase().trim();
       return s === 'true' || s === '1' || s === 'yes';
     }
-    if (
-      type === 'int' ||
-      type === 'int64' ||
-      type === 'int32' ||
-      type === 'uint' ||
-      type === 'uint32' ||
-      type === 'uint64'
-    ) {
+    if (CliFlagMapperService.INT_TYPES.has(type)) {
       const num = parseInt(val, 10);
       return isNaN(num) ? val : num;
     }
-    if (type === 'float' || type === 'float32' || type === 'float64') {
+    if (CliFlagMapperService.FLOAT_TYPES.has(type)) {
       const num = parseFloat(val);
       return isNaN(num) ? val : num;
     }
     return val;
+  }
+
+  async getGlobalLookupTable(
+    remoteType?: string
+  ): Promise<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>> {
+    const cacheKey = remoteType || '__none__';
+    const cached = this.lookupTablesCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const flagFields = await this.flagConfigService.loadAllFlagFields();
+    let runtimeRemoteFields: RcConfigOption[] = [];
+
+    if (remoteType) {
+      try {
+        runtimeRemoteFields = await this.remoteManagementService.getRemoteConfigFields(remoteType);
+      } catch (error) {
+        console.error('Failed to load remote config fields for lookup table:', error);
+      }
+    }
+
+    const mergedFields = {
+      ...flagFields,
+      runtimeRemote: runtimeRemoteFields,
+    } as Record<SharedProfileType, RcConfigOption[]>;
+
+    const table = this.buildLookupTable(mergedFields, remoteType);
+    this.lookupTablesCache.set(cacheKey, table);
+    return table;
+  }
+
+  async getBooleanFlags(): Promise<Set<string>> {
+    if (this.booleanFlagsCache) {
+      return this.booleanFlagsCache;
+    }
+    const flagFields = await this.flagConfigService.loadAllFlagFields();
+    const bools = new Set<string>();
+
+    for (const fields of Object.values(flagFields)) {
+      for (const f of fields) {
+        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
+
+        const names = [f.Name, f.FieldName].filter(Boolean) as string[];
+        for (const name of names) {
+          const lower = name.toLowerCase();
+          bools.add(lower);
+          bools.add(lower.replace(/_/g, '-'));
+        }
+      }
+    }
+    this.booleanFlagsCache = bools;
+    return bools;
+  }
+
+  async importCliCommand(cliString: string, remoteType?: string): Promise<ImportResult> {
+    const boolFlags = await this.getBooleanFlags();
+    const parsed = this.parse(cliString, boolFlags);
+    const lookupTable = await this.getGlobalLookupTable(remoteType);
+    return this.classify(parsed, lookupTable);
   }
 }

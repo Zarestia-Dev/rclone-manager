@@ -103,10 +103,7 @@ pub async fn backup_settings(
     let include_secrets_flag = include_secrets.unwrap_or(false);
     if include_secrets_flag {
         // If user requested including secrets, require a valid password to avoid plaintext secrets
-        let pw_ok = password
-            .as_ref()
-            .map(|s| s.trim().len() >= 4)
-            .unwrap_or(false);
+        let pw_ok = password.as_ref().is_some_and(|s| s.trim().len() >= 4);
         if !pw_ok {
             return Err(crate::localized_error!(
                 "backendErrors.backup.secretRequirePassword"

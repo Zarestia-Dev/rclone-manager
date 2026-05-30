@@ -19,10 +19,7 @@ pub async fn archive_create(
     full_path: Option<bool>,
     include: Option<Vec<String>>,
 ) -> Result<Value, String> {
-    debug!(
-        "archive_create: source={source} destination={destination} include={:?}",
-        include
-    );
+    debug!("archive_create: source={source} destination={destination} include={include:?}");
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -175,7 +172,7 @@ pub async fn archive_list(
 
     let error = response
         .get("error")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let result = response
         .get("result")

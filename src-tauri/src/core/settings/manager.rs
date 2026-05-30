@@ -3,7 +3,7 @@ use crate::core::settings::schema::AppSettings;
 use log::info;
 use std::path::Path;
 
-/// Creates a new AppSettingsManager with all necessary sub-settings and migrators.
+/// Creates a new `AppSettingsManager` with all necessary sub-settings and migrators.
 ///
 /// This does NOT perform slow migrations (like keyring migration).
 pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, String> {

@@ -239,22 +239,47 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private valuesEqual(current: unknown, defaultVal: unknown): boolean {
-    if (Array.isArray(current) || Array.isArray(defaultVal)) {
-      const currArr = Array.isArray(current) ? current : [];
-      const defArr = Array.isArray(defaultVal) ? defaultVal : [];
+    const optType = this.mergedOption()?.Type;
+
+    if (optType === 'Tristate') {
+      return current === defaultVal;
+    }
+
+    if (
+      optType &&
+      (this.COMMA_ARRAY_TYPES.includes(optType) ||
+        optType === 'SpaceSepList' ||
+        optType === 'stringArray')
+    ) {
+      const toArray = (v: unknown): string[] => {
+        if (Array.isArray(v)) return v.map(String);
+        if (typeof v === 'string') {
+          const delimiter = optType === 'SpaceSepList' ? /\s+/ : ',';
+          return v
+            .split(delimiter)
+            .map(s => s.trim())
+            .filter(Boolean);
+        }
+        if (v === null || v === undefined) return [];
+        return [String(v)];
+      };
+
+      const currArr = toArray(current);
+      const defArr = toArray(defaultVal);
       if (currArr.length !== defArr.length) return false;
       const sortedCurr = [...currArr].sort();
       const sortedDef = [...defArr].sort();
       return sortedCurr.every((val, idx) => val === sortedDef[idx]);
     }
 
-    const isEmpty = (v: unknown): boolean => v === null || v === undefined || v === '';
-    if (isEmpty(current) && isEmpty(defaultVal)) return true;
-
-    if (typeof current === 'boolean' || typeof defaultVal === 'boolean') {
+    if (optType === 'bool') {
       const toBool = (v: unknown): boolean => v === true || String(v).toLowerCase() === 'true';
       return toBool(current) === toBool(defaultVal);
     }
+
+    const isEmpty = (v: unknown): boolean =>
+      v === null || v === undefined || String(v).trim() === '';
+    if (isEmpty(current) && isEmpty(defaultVal)) return true;
 
     return String(current).toLowerCase() === String(defaultVal).toLowerCase();
   }
@@ -319,6 +344,10 @@ export class SettingControlComponent implements ControlValueAccessor {
   private prepareValueForControl(value: unknown): unknown {
     const opt = this.mergedOption();
     if (!opt) return value;
+
+    if ((value === null || value === undefined) && opt.Type !== 'Tristate') {
+      value = this.uiDefaultValue();
+    }
 
     if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
       return typeof value === 'number'
@@ -527,14 +556,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     const opt = this.mergedOption();
     if (!opt) return value;
 
-    let machineValue = this.valueMapper.humanToMachine(value, opt.Type);
-
-    if (opt.Type === 'FileMode' && typeof machineValue === 'string') {
-      const parsed = parseInt(machineValue, 8);
-      if (!isNaN(parsed)) machineValue = parsed;
-    }
-
-    return machineValue;
+    return this.valueMapper.humanToMachine(value, opt.Type);
   }
 
   // Stepper

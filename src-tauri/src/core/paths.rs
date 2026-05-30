@@ -66,7 +66,7 @@ impl AppPaths {
         })
     }
 
-    /// Create AppPaths for standard mode
+    /// Create `AppPaths` for standard mode
     ///
     /// Uses system directories via Tauri's path resolver.
     #[cfg(not(feature = "portable"))]
@@ -84,7 +84,7 @@ impl AppPaths {
         } else {
             app.path()
                 .app_cache_dir()
-                .map_err(|e| format!("Failed to get cache directory: {}", e))?
+                .map_err(|e| format!("Failed to get cache directory: {e}"))?
         };
 
         // Get config directory (CLI > ENV > DEFAULT)
@@ -97,7 +97,7 @@ impl AppPaths {
         } else {
             app.path()
                 .app_data_dir()
-                .map_err(|e| format!("Failed to get config directory: {}", e))?
+                .map_err(|e| format!("Failed to get config directory: {e}"))?
         };
 
         // Get logs directory (CLI > ENV > DEFAULT_NATIVE)
@@ -122,7 +122,7 @@ impl AppPaths {
         // Resource directory
         let resource_dir = tauri::Manager::path(app)
             .resource_dir()
-            .map_err(|e| format!("Failed to get resource directory: {}", e))?;
+            .map_err(|e| format!("Failed to get resource directory: {e}"))?;
 
         #[cfg(feature = "web-server")]
         {

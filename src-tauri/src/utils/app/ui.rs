@@ -19,6 +19,7 @@ pub async fn set_theme(theme: String, window: tauri::Window) -> Result<(), Strin
 }
 
 #[tauri::command]
+#[must_use]
 pub fn get_system_theme() -> String {
     match detect_system_theme() {
         Theme::Dark => "dark".to_string(),

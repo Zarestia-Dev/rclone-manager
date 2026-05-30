@@ -5,6 +5,30 @@
   min-height: 0;
 }
 
+.json-info-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(var(--primary-color-rgb), 0.06);
+  border: 1px solid rgba(var(--primary-color-rgb), 0.15);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: var(--shadow-sm);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    flex-shrink: 0;
+    color: var(--primary-color);
+  }
+}
+
 // ============================================================================
 // CHIP ROW
 // ============================================================================
@@ -86,7 +110,7 @@
 }
 
 // ============================================================================
-// PARSE ERROR BAR
+// PARSE ERROR & WARNING BARS
 // ============================================================================
 
 .parse-error {
@@ -98,6 +122,24 @@
   color: var(--warn-color);
   font-size: var(--font-size-xs);
   border-top: 1px solid rgba(var(--warn-color-rgb), 0.25);
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+.parse-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(var(--orange-rgb), 0.08);
+  color: var(--orange);
+  font-size: var(--font-size-xs);
+  border-top: 1px solid rgba(var(--orange-rgb), 0.25);
 
   mat-icon {
     width: 14px;

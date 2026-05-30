@@ -221,7 +221,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                 if let (Some(kname), Some(label)) = (parts.next(), parts.next()) {
                     let label = label.trim();
                     if !label.is_empty() {
-                        map.insert(format!("/dev/{}", kname), label.to_string());
+                        map.insert(format!("/dev/{kname}"), label.to_string());
                     }
                 }
             }
@@ -239,10 +239,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                 // This ensures rclone lists the root directory instead of the current working directory of the drive.
                 if p.len() == 2
                     && p.ends_with(':')
-                    && p.chars()
-                        .next()
-                        .map(|c| c.is_ascii_alphabetic())
-                        .unwrap_or(false)
+                    && p.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
                 {
                     p.push('\\');
                 }
@@ -309,19 +306,19 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
             let id = sys_disk
                 .map(|d| d.name().to_string_lossy().into_owned())
                 .filter(|n| !n.is_empty())
-                .unwrap_or_else(|| normalized_path.to_string());
+                .unwrap_or_else(|| normalized_path.clone());
 
             LocalDrive {
                 id,
-                name: normalized_path.to_string(),
+                name: normalized_path.clone(),
                 label,
                 show_name,
-                total_space: sys_disk.map(|d| d.total_space()).unwrap_or(0),
-                available_space: sys_disk.map(|d| d.available_space()).unwrap_or(0),
+                total_space: sys_disk.map_or(0, sysinfo::Disk::total_space),
+                available_space: sys_disk.map_or(0, sysinfo::Disk::available_space),
                 file_system: sys_disk
                     .map(|d| d.file_system().to_string_lossy().into_owned())
                     .unwrap_or_default(),
-                is_removable: sys_disk.map(|d| d.is_removable()).unwrap_or(false),
+                is_removable: sys_disk.is_some_and(sysinfo::Disk::is_removable),
                 mount_point: normalized_path,
             }
         })

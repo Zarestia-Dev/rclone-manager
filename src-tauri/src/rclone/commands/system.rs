@@ -445,7 +445,7 @@ pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<
             info!(
                 "Stats reset for group: {}",
                 group.as_deref().unwrap_or("all")
-            )
+            );
         })
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }

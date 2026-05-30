@@ -209,4 +209,28 @@ export const staticFlagDefinitions: Record<string, RcConfigOption[]> = {
       FieldName: 'noCleanup',
     },
   ],
+  mount: [
+    {
+      Name: 'mountType',
+      FieldName: 'mountType',
+      Help: 'Mount type to use.',
+      Default: 'mount',
+      DefaultStr: 'mount',
+      Value: 'mount',
+      Type: 'string',
+      Advanced: false,
+    },
+  ],
+  serve: [
+    {
+      Name: 'type',
+      FieldName: 'type',
+      Help: 'Serve type to use.',
+      Default: 'http',
+      DefaultStr: 'http',
+      Value: 'http',
+      Type: 'string',
+      Advanced: false,
+    },
+  ],
 };

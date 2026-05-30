@@ -44,6 +44,8 @@ import {
   TransferFile,
   REMOTE_CONFIG_KEYS,
   OPERATION_METADATA,
+  ACTION_ANIMATION_CLASS,
+  OPERATION_COLOR_VAR,
 } from '@app/types';
 import {
   JobInfoPanelComponent,
@@ -69,13 +71,15 @@ interface JobStatsWithCompleted extends GlobalStats {
 }
 
 interface ProfileConfig {
-  source?: string;
-  dest?: string;
-  destination?: string;
-  options?: { type?: string; addr?: string; [key: string]: unknown };
+  srcFs?: string | string[];
+  dstFs?: string;
+  path1?: string;
+  path2?: string;
+  fs?: string;
+  mountPoint?: string;
+  type?: string;
+  _config?: { addr?: string; [key: string]: unknown };
 }
-
-import { ACTION_ANIMATION_CLASS, OPERATION_COLOR_VAR } from '@app/types';
 
 @Component({
   selector: 'app-app-detail',
@@ -273,7 +277,6 @@ export class AppDetailComponent {
       this.activeGroupJob()?.status === 'Running'
   );
 
-  /** True when dryRun is active based on operation type */
   readonly isDryRun = computed(() => {
     const opType = this.currentOpType();
     if (opType === 'bisync') {
@@ -282,7 +285,7 @@ export class AppDetailComponent {
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
       if (!cfg) return false;
-      return !!(cfg.dryRun ?? cfg.options?.['dryRun'] ?? cfg.options?.['DryRun']);
+      return !!cfg?.['dryRun'];
     } else if (['sync', 'copy', 'move'].includes(opType)) {
       const configKey = REMOTE_CONFIG_KEYS[
         opType as keyof typeof REMOTE_CONFIG_KEYS
@@ -296,10 +299,10 @@ export class AppDetailComponent {
       const backendProfileName = cfg?.backendProfile || 'default';
 
       const backendConfigs = this.remoteSettings()['backendConfigs'] as
-        | Record<string, { options?: Record<string, unknown> }>
+        | Record<string, Record<string, any>>
         | undefined;
       const backendCfg = backendConfigs?.[backendProfileName];
-      return !!backendCfg?.options?.['DryRun'];
+      return !!backendCfg?.['DryRun'];
     }
     return false;
   });
@@ -644,12 +647,7 @@ export class AppDetailComponent {
       const configKey = 'bisyncConfigs';
       const profiles = (settings[configKey] as Record<string, any>) ?? {};
       const existing = profiles[profile] ?? {};
-      const existingOptions = (existing.options ?? {}) as Record<string, unknown>;
-      const currentDryRun = !!(
-        existing.dryRun ??
-        existingOptions['dryRun'] ??
-        existingOptions['DryRun']
-      );
+      const currentDryRun = !!existing.dryRun;
       const newDryRun = !currentDryRun;
 
       const updatedProfiles = {
@@ -657,10 +655,6 @@ export class AppDetailComponent {
         [profile]: {
           ...existing,
           dryRun: newDryRun,
-          options: {
-            ...existingOptions,
-            dryRun: newDryRun,
-          },
         },
       };
 
@@ -679,18 +673,17 @@ export class AppDetailComponent {
 
       const backendConfigs = (settings['backendConfigs'] as Record<string, any>) ?? {};
       const existingBackend = backendConfigs[backendProfileName] ?? {};
-      const existingOptions = (existingBackend.options ?? {}) as Record<string, unknown>;
-      const newDryRun = !existingOptions['DryRun'];
+      const currentDryRun = !!existingBackend['DryRun'];
+      const newDryRun = !currentDryRun;
+
+      const updatedBackend = {
+        ...existingBackend,
+        DryRun: newDryRun,
+      };
 
       const updatedBackendConfigs = {
         ...backendConfigs,
-        [backendProfileName]: {
-          ...existingBackend,
-          options: {
-            ...existingOptions,
-            DryRun: newDryRun,
-          },
-        },
+        [backendProfileName]: updatedBackend,
       };
 
       await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
@@ -791,28 +784,32 @@ export class AppDetailComponent {
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
+    const resolvedSource = config.srcFs ?? config.path1 ?? config.fs;
+
+    const resolvedDest = config.dstFs ?? config.path2 ?? config.mountPoint;
+
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
-            source: config.source ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((config.options?.type as string) ?? 'http').toUpperCase()} at ${config.options?.addr ?? t('dashboard.appDetail.default')}`,
+            source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
+            destination: `${((config.type as string) ?? 'http').toUpperCase()} at ${config._config?.addr ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,
-            hasSource: !!config.source,
+            hasSource: !!resolvedSource,
             hasDestination: false,
             isDestinationActive: isActive,
           }
         : {
-            source: config.source ?? t('dashboard.appDetail.notConfigured'),
+            source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
             destination: this.normalizeSinglePath(
-              config.dest ?? config.destination ?? t('dashboard.appDetail.notConfigured')
+              resolvedDest ?? t('dashboard.appDetail.notConfigured')
             ),
             showOpenButtons: true,
             isDestinationActive: type === 'mount' ? isActive : true,
             actionInProgress: (actionType as RemoteAction) ?? undefined,
-            hasSource: !!config.source,
-            hasDestination: !!(config.dest ?? config.destination),
+            hasSource: !!resolvedSource,
+            hasDestination: !!resolvedDest,
           };
 
     return {

@@ -171,12 +171,12 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
             } else {
                 &dispatch_ctx.insecure_client
             };
-            dispatch::webhook::dispatch(a, &ctx, client).await?
+            dispatch::webhook::dispatch(a, &ctx, client).await?;
         }
         AlertAction::Script(ref a) => dispatch::script::dispatch(a, &ctx).await?,
-        AlertAction::Telegram(ref a) => dispatch::telegram::dispatch(a, &ctx, &dispatch_ctx.client)
-            .await
-            .map(|_| ())?,
+        AlertAction::Telegram(ref a) => {
+            dispatch::telegram::dispatch(a, &ctx, &dispatch_ctx.client).await?
+        }
         AlertAction::Mqtt(ref a) => dispatch::mqtt::dispatch(a, &ctx, &dispatch_ctx).await?,
         AlertAction::Email(ref a) => dispatch::email::dispatch(a, &ctx).await?,
     }

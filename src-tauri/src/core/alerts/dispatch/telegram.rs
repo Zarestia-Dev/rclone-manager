@@ -35,7 +35,7 @@ pub async fn dispatch(
 
             async move {
                 let resp = client
-                    .post(format!("{}sendMessage", api_url))
+                    .post(format!("{api_url}sendMessage"))
                     .json(&json!({
                         "chat_id": action.chat_id,
                         "text": body,

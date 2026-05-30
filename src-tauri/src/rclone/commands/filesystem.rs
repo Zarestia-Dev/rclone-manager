@@ -232,7 +232,7 @@ pub async fn transfer(
     group: Option<String>,
 ) -> Result<String, String> {
     let dst_path = if dst_path == "/" {
-        "".to_string()
+        String::new()
     } else {
         dst_path
     };
@@ -385,7 +385,7 @@ async fn discover_upload_entries(
             for entry in walkdir::WalkDir::new(&p)
                 .min_depth(1)
                 .into_iter()
-                .filter_map(|e| e.ok())
+                .filter_map(std::result::Result::ok)
                 .filter(|e| e.file_type().is_file())
             {
                 let rel = entry
@@ -461,7 +461,7 @@ pub async fn execute_upload_batch(
         futures::future::join_all(file_entries.iter().map(|(p, _)| tokio::fs::metadata(p)))
             .await
             .into_iter()
-            .filter_map(|m| m.ok())
+            .filter_map(std::result::Result::ok)
             .map(|m| m.len())
             .sum();
 
@@ -663,11 +663,11 @@ pub async fn upload_file(
 
     let client = &state.client;
     let remote_dir = if path.is_empty() {
-        "".to_string()
+        String::new()
     } else if path.ends_with('/') {
         path.clone()
     } else {
-        format!("{}/", path)
+        format!("{path}/")
     };
 
     let part = reqwest::multipart::Part::bytes(content)
