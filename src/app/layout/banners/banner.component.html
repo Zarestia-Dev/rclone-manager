@@ -52,17 +52,14 @@
       @case ('password') {
         <mat-icon svgIcon="key" class="error-icon"></mat-icon>
       }
-      @case ('path') {
-        <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-      }
-      @case ('generic') {
+      @default {
         <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
       }
     }
 
     <span class="banner-message">{{ 'banners.engine.' + errorType + '.title' | translate }}</span>
     <span class="banner-subtitle">{{
-      'banners.engine.' + errorType + '.subtitle' | translate
+      'banners.engine.' + errorType + '.subtitle' | translate: { required: minRcloneVersion() }
     }}</span>
   </mat-toolbar>
 }

@@ -184,25 +184,16 @@
   min-width: 0;
 }
 
-// Stepper Control
-.stepper {
+// Stepper Control Wrapper
+.stepper-wrapper {
   display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xxs);
 
-  .number-input.mat-mdc-form-field {
-    width: 120px;
-    flex-grow: 0;
-
-    input {
-      text-align: center;
-    }
-  }
-
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  .preferences-stepper-error {
+    font-size: var(--font-size-xs);
+    margin-top: var(--space-xxs);
   }
 }
 

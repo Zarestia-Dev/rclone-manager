@@ -29,6 +29,7 @@ export class BannerComponent {
   private readonly appUpdaterService = inject(AppUpdaterService);
 
   readonly showDevelopmentBanner = signal(isDevMode());
+  readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
   private readonly flatpakDismissed = signal(false);
 
   readonly showFlatpakWarning = toSignal(
@@ -58,18 +59,10 @@ export class BannerComponent {
     { initialValue: false }
   );
 
-  // Merges all engine state events into one typed signal.
-  readonly engineError = toSignal(
-    merge(
-      this.eventListenersService
-        .listenToRcloneEnginePasswordError()
-        .pipe(map(() => 'password' as const)),
-      this.eventListenersService.listenToRcloneEnginePathError().pipe(map(() => 'path' as const)),
-      this.eventListenersService.listenToRcloneEngineError().pipe(map(() => 'generic' as const)),
-      this.eventListenersService.listenToRcloneEngineReady().pipe(map(() => null))
-    ),
-    { initialValue: null }
-  );
+  // Listens to the consolidated engine status stream.
+  readonly engineError = toSignal(this.eventListenersService.listenToEngineErrorState(), {
+    initialValue: null,
+  });
 
   async dismissFlatpakWarning(): Promise<void> {
     this.flatpakDismissed.set(true);

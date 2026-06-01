@@ -562,6 +562,10 @@
         "title": "No se encontró el binario de Rclone",
         "subtitle": "Compruebe la ruta de instalación de rclone en la configuración"
       },
+      "version": {
+        "title": "Versión de Rclone obsoleta",
+        "subtitle": "Por favor, actualice su instalación de rclone a al menos la versión {{required}}"
+      },
       "generic": {
         "title": "Error al iniciar el motor",
         "subtitle": "Consulte los registros para obtener más detalles"
@@ -1102,7 +1106,7 @@
       "watchRequiresLocalSource": "El monitoreo en tiempo real requiere al menos un directorio de origen local.",
       "watchRequiresLocal": "El monitoreo en tiempo real requiere al menos un directorio de origen o destino local.",
       "watchMixedSourcesNote": "Solo los directorios de origen locales se monitorearán en tiempo real. Los cambios en los orígenes remotos no activarán la sincronización automáticamente.",
-      "watchFilterNote": "Nota: El Perfil de filtro se aplica al monitor de archivos. Los cambios en archivos o directorios excluidos (por patrón, tamaño o antigüedad) no iniciarán la sincronización.",
+      "watchFilterNote": "El Perfil de filtro se aplica al monitor de archivos. Los cambios en archivos o directorios excluidos (por patrón, tamaño o antigüedad) no iniciarán la sincronización.",
       "scheduleDescription": "Cuando está habilitada, esta operación se ejecutará de forma <strong>recurrente</strong> según la programación de cron a continuación.",
       "notConfigured": "No configurado",
       "sourcePaths": "Rutas de origen",
@@ -1115,7 +1119,7 @@
       "otherRemotes": "Otros controles remotos",
       "enterDestPath": "Introducir ruta de destino...",
       "mountDestMustBeLocal": "El destino del montaje debe ser una carpeta local",
-      "completionNote": "Nota: La finalización de la ruta remota está disponible después de la creación del control remoto.",
+      "completionNote": "La finalización de la ruta remota está disponible después de la creación del control remoto.",
       "loading": "Cargando...",
       "upFolder": "Carpeta superior",
       "noItemsFound": "No se encontraron elementos en este directorio.",
@@ -2470,6 +2474,7 @@
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
       "unsupportedOS": "Sistema operativo no soportado.",
       "binaryNotFound": "Binario de Rclone no encontrado.",
+      "versionTooOld": "La versión de rclone {{version}} es demasiado antigua. La versión mínima requerida es {{required}}. Por favor, actualice rclone.",
       "versionCheckFailed": "Error al obtener la versión actual de rclone: {{error}}",
       "restartFailed": "Error al reiniciar el motor después de la actualización: {{error}}",
       "selfupdateFailed": "rclone selfupdate --check falló: {{error}}",
@@ -2768,7 +2773,8 @@
       "corruptConfig": "Configuración corrupta",
       "backendError": "Error de backend",
       "passwordRequired": "Se requiere contraseña",
-      "systemIssue": "Problema del sistema"
+      "systemIssue": "Problema del sistema",
+      "versionTooOld": "Rclone obsoleto"
     },
     "messages": {
       "missingRclone": "No se pudo encontrar el binario de rclone. Por favor instálelo para continuar.",
@@ -2776,6 +2782,7 @@
       "corruptConfig": "El archivo de configuración de rclone parece estar corrupto. ¿Restaurar desde una copia de seguridad?",
       "backendError": "El backend de rclone es inalcanzable. Reiniciar el motor puede solucionar esto.",
       "passwordRequired": "Su configuración de rclone está encriptada. Por favor ingrese su contraseña.",
+      "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Por favor actualice para continuar.",
       "defaultParams": "Un componente del sistema no funciona correctamente.",
       "mountPluginStatusChecked": "Estado verificado a las {{time}}",
       "mountPluginStatusError": "Error al verificar el estado"
@@ -2803,6 +2810,10 @@
       "rclonePath": {
         "issue": "Binario no encontrado",
         "action": "Descargar e instalar"
+      },
+      "rcloneVersion": {
+        "issue": "Versión obsoleta (< {{required}})",
+        "action": "Descargar y actualizar"
       },
       "mountPlugin": {
         "issue": "Complemento faltante",

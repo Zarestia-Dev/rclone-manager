@@ -5,3 +5,4 @@ export * from './setting-control/setting-control.component';
 export * from '../remote-config/cron-input/cron-input.component';
 export * from './json-editor/json-editor.component';
 export * from './window-controls/window-controls.component';
+export * from './number-input/number-input.component';

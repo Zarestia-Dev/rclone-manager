@@ -180,15 +180,10 @@ export class AppSettingsService extends TauriBaseService {
 
   private setupLanguageChangeListener(): void {
     this.eventListeners
-      .listenToAppEvents()
+      .listenToLanguageChanged()
       .pipe(takeUntilDestroyed())
-      .subscribe(event => {
-        if (typeof event !== 'object' || event?.status !== 'language_changed') {
-          return;
-        }
-
-        const lang = event.language as string | undefined;
-        if (lang && lang !== this.translate.getCurrentLang()) {
+      .subscribe(lang => {
+        if (lang !== this.translate.getCurrentLang()) {
           this.translate.use(lang);
         }
       });

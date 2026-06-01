@@ -1,0 +1,21 @@
+.stepper-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.stepper-input.mat-mdc-form-field {
+  width: 100px;
+  flex-grow: 0;
+
+  input {
+    text-align: center !important;
+  }
+}
+
+// Hide native number spinners
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

@@ -36,6 +36,7 @@ import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
 import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { NumberInputComponent } from '../number-input/number-input.component';
 import {
   RcloneValueMapperService,
   AppSettingsService,
@@ -60,6 +61,7 @@ import {
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
     TranslateModule,
+    NumberInputComponent,
   ],
   templateUrl: './setting-control.component.html',
   styleUrl: './setting-control.component.scss',
@@ -165,12 +167,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     return opt ? this.calculateDefaultValue(opt) : '';
   });
 
-  // Hold (stepper long-press)
-  private holdInterval: ReturnType<typeof setInterval> | null = null;
-  private holdTimeout: ReturnType<typeof setTimeout> | null = null;
-  private readonly HOLD_DELAY = 400;
-  private readonly HOLD_INTERVAL = 80;
-
   // ControlValueAccessor
   private onChange: (value: unknown) => void = () => {
     /* empty */
@@ -197,7 +193,6 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     this.destroyRef.onDestroy(() => {
       this.controlSubscriptions.unsubscribe();
-      this.stopHold(false);
     });
   }
 
@@ -558,63 +553,6 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     return this.valueMapper.humanToMachine(value, opt.Type);
   }
-
-  // Stepper
-
-  stepChange(direction: 1 | -1, step: number | 'any' = 1, commit = true): void {
-    const ctrl = this.control();
-    if (!ctrl) return;
-    const isFloat = this.mergedOption()?.Type === 'float64';
-    const current = isFloat ? parseFloat(ctrl.value) : parseInt(ctrl.value, 10);
-    const num = isNaN(current) ? 0 : current;
-    const next = num + (step === 'any' ? 1.0 : step) * direction;
-    ctrl.setValue(isFloat ? parseFloat(next.toPrecision(15)) : next);
-    if (commit) this.commitValue();
-  }
-
-  onIntegerInput(event: KeyboardEvent): void {
-    const type = this.mergedOption()?.Type;
-    if (!type || !['int', 'int64', 'int32', 'uint', 'uint32', 'uint64'].includes(type)) return;
-
-    const navigationKeys = [
-      'Backspace',
-      'Delete',
-      'Tab',
-      'Escape',
-      'Enter',
-      'Home',
-      'End',
-      'ArrowLeft',
-      'ArrowRight',
-      'ArrowUp',
-      'ArrowDown',
-    ];
-    if (navigationKeys.includes(event.key) || event.ctrlKey || event.metaKey) return;
-
-    if (event.key === '-' && !type.startsWith('uint')) {
-      const input = event.target as HTMLInputElement;
-      if (input.selectionStart === 0 && !input.value.includes('-')) return;
-    }
-
-    if (!/^\d$/.test(event.key)) event.preventDefault();
-  }
-
-  startHold(action: 'increment' | 'decrement', step: number | 'any'): void {
-    this.stopHold(false);
-    const dir = action === 'increment' ? 1 : -1;
-    this.stepChange(dir, step, false);
-    this.holdTimeout = setTimeout(() => {
-      this.holdInterval = setInterval(() => this.stepChange(dir, step, false), this.HOLD_INTERVAL);
-    }, this.HOLD_DELAY);
-  }
-
-  stopHold(commit = true): void {
-    if (this.holdTimeout) clearTimeout(this.holdTimeout);
-    if (this.holdInterval) clearInterval(this.holdInterval);
-    this.holdTimeout = this.holdInterval = null;
-    if (commit) this.commitValue();
-  }
-
   // Array controls
 
   addArrayItem(): void {

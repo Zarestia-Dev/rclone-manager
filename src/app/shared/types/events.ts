@@ -4,14 +4,7 @@ import { GlobalStats } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
 // Core engine events
-export const ENGINE_RESTARTED = 'engine_restarted';
-
-// Dedicated engine state events (no payload needed - event name indicates state)
-export const RCLONE_ENGINE_READY = 'rclone_engine_ready';
-export const RCLONE_ENGINE_ERROR = 'rclone_engine_error';
-export const RCLONE_ENGINE_PASSWORD_ERROR = 'rclone_engine_password_error';
-export const RCLONE_ENGINE_PATH_ERROR = 'rclone_engine_path_error';
-export const RCLONE_ENGINE_UPDATING = 'rclone_engine_updating';
+export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed';
 export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
 
 // Remote management events
@@ -76,3 +69,14 @@ export interface SystemStatusPayload {
   status: RcloneStatus;
   hasActiveJobs: boolean;
 }
+
+export type EngineStatus =
+  | { status: 'ready' }
+  | { status: 'error'; payload: { message: string } }
+  | { status: 'passwordError' }
+  | { status: 'pathError' }
+  | { status: 'versionError'; payload: { version: string; required: string } }
+  | { status: 'updating' }
+  | { status: 'restarted'; payload: { reason: string } };
+
+export type EngineErrorType = 'password' | 'path' | 'version' | 'generic' | null;

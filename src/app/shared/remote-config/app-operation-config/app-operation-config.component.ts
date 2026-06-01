@@ -34,7 +34,7 @@ import {
   PathSelectionState,
   PathService,
 } from '@app/services';
-import { CronInputComponent } from '@app/shared/components';
+import { CronInputComponent, NumberInputComponent } from '@app/shared/components';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -62,6 +62,7 @@ interface PathItem {
     MatDividerModule,
     CdkMenuModule,
     CronInputComponent,
+    NumberInputComponent,
     MatProgressSpinner,
     MatTooltipModule,
     TranslateModule,

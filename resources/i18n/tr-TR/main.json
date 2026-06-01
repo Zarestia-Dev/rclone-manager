@@ -562,6 +562,10 @@
         "title": "Rclone İkili Dosyası Bulunamadı",
         "subtitle": "Lütfen ayarlarda rclone kurulum yolunuzu kontrol edin"
       },
+      "version": {
+        "title": "Rclone Sürümü Eski",
+        "subtitle": "Lütfen rclone kurulumunuzu en az {{required}} sürümüne güncelleyin"
+      },
       "generic": {
         "title": "Motor Başlatılamadı",
         "subtitle": "Daha fazla detay için lütfen logları kontrol edin"
@@ -1102,7 +1106,7 @@
       "watchRequiresLocalSource": "Gerçek zamanlı izleme en az bir yerel kaynak dizini gerektirir.",
       "watchRequiresLocal": "Gerçek zamanlı izleme en az bir yerel kaynak veya hedef dizini gerektirir.",
       "watchMixedSourcesNote": "Sadece yerel kaynak dizinleri gerçek zamanlı olarak izlenecektir. Uzak kaynaklardaki değişiklikler senkronizasyonu otomatik olarak tetiklemez.",
-      "watchFilterNote": "Not: Dosya izleyici Filtre Profilinize uyar. Hariç tutulan dosyalar veya dizinlerdeki (örneğin örüntü, boyut veya yaşa göre) değişiklikler senkronizasyonu tetiklemez.",
+      "watchFilterNote": "Dosya izleyici Filtre Profilinize uyar. Hariç tutulan dosyalar veya dizinlerdeki (örneğin örüntü, boyut veya yaşa göre) değişiklikler senkronizasyonu tetiklemez.",
       "scheduleDescription": "Etkinleştirildiğinde, bu işlem aşağıdaki cron zamanlamasına göre <strong>tekrarlı</strong> olarak çalışır.",
       "notConfigured": "Yapılandırılmadı",
       "sourcePaths": "Kaynak Yolları",
@@ -1115,7 +1119,7 @@
       "otherRemotes": "Diğer Uzak Bağlantılar",
       "enterDestPath": "Hedef yolunu girin...",
       "mountDestMustBeLocal": "Bağlama hedefi yerel bir klasör olmalıdır",
-      "completionNote": "Not: Uzak yol tamamlama, uzak bağlantı oluşturulduktan sonra kullanılabilir.",
+      "completionNote": "Uzak yol tamamlama, uzak bağlantı oluşturulduktan sonra kullanılabilir.",
       "loading": "Yükleniyor...",
       "upFolder": "Üst Klasör",
       "noItemsFound": "Bu dizinde öğe bulunamadı.",
@@ -2470,6 +2474,7 @@
       "configEncrypted": "Yapılandırma şifrelenmiş ve şifre sağlanmadı",
       "unsupportedOS": "Desteklenmeyen işletim sistemi.",
       "binaryNotFound": "Rclone ikili dosyası bulunamadı.",
+      "versionTooOld": "Rclone sürümü {{version}} çok eski. Gerekli minimum sürüm {{required}}. Lütfen rclone'u güncelleyin.",
       "versionCheckFailed": "Mevcut rclone sürümü alınamadı: {{error}}",
       "restartFailed": "Güncellemeden sonra motor yeniden başlatılamadı: {{error}}",
       "selfupdateFailed": "rclone selfupdate --check başarısız: {{error}}",
@@ -2768,7 +2773,8 @@
       "corruptConfig": "Yapılandırma Bozuk",
       "backendError": "Arka Uç Hatası",
       "passwordRequired": "Parola Gerekli",
-      "systemIssue": "Sistem Sorunu"
+      "systemIssue": "Sistem Sorunu",
+      "versionTooOld": "Rclone Eski"
     },
     "messages": {
       "missingRclone": "Rclone ikili dosyası bulunamadı. Devam etmek için lütfen kurun.",
@@ -2776,6 +2782,7 @@
       "corruptConfig": "Rclone yapılandırma dosyası bozuk görünüyor. Yedekten geri yüklensin mi?",
       "backendError": "Rclone arka ucuna ulaşılamıyor. Motoru yeniden başlatmak bunu düzeltebilir.",
       "passwordRequired": "Rclone yapılandırmanız şifrelenmiş. Lütfen parolanızı girin.",
+      "versionTooOld": "Rclone sürümünüz {{required}} sürümünden daha eski. Devam etmek için lütfen güncelleyin.",
       "defaultParams": "Bir sistem bileşeni düzgün çalışmıyor.",
       "mountPluginStatusChecked": "Durum {{time}} tarihinde kontrol edildi",
       "mountPluginStatusError": "Durum kontrol edilemedi"
@@ -2803,6 +2810,10 @@
       "rclonePath": {
         "issue": "İkili dosya bulunamadı",
         "action": "İndir ve Kur"
+      },
+      "rcloneVersion": {
+        "issue": "Sürüm eski (< {{required}})",
+        "action": "İndir ve Güncelle"
       },
       "mountPlugin": {
         "issue": "Eklenti eksik",

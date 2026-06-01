@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
-import { RCLONE_ENGINE_READY } from '@app/types';
+import { RCLONE_ENGINE_STATUS_CHANGED } from '@app/types';
 import { ApiClientService } from './api-client.service';
 
 export interface SseEvent {
@@ -62,7 +62,7 @@ export class SseClientService {
 
     this.source.onopen = (): void => {
       this.reconnectAttempt = 0;
-      this.events$.next({ event: RCLONE_ENGINE_READY, payload: null });
+      this.events$.next({ event: RCLONE_ENGINE_STATUS_CHANGED, payload: { status: 'ready' } });
     };
 
     this.source.onerror = (): void => {

@@ -110,7 +110,6 @@
         <div class="accordion-body">
           @if (!isWatchPossible()) {
             <div class="message warning" role="alert">
-              <mat-icon svgIcon="info" class="orange"></mat-icon>
               <span>{{
                 (operationType() === 'bisync'
                   ? 'wizards.appOperation.watchRequiresLocal'
@@ -123,27 +122,42 @@
           @if (isWatchPossible()) {
             @if (hasMixedSources()) {
               <div class="message info" role="alert">
-                <mat-icon svgIcon="info" class="primary"></mat-icon>
                 <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
               </div>
             }
 
             <div class="message info" role="alert">
-              <mat-icon svgIcon="info" class="primary"></mat-icon>
               <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
             </div>
 
             <div class="watch-delay-section">
-              <mat-form-field appearance="fill" class="watch-delay-field">
-                <mat-label>{{ 'wizards.appOperation.watchDelay' | translate }}</mat-label>
-                <input matInput type="number" formControlName="watchDelay" min="1" />
-                @if (opFormGroup().get('watchDelay')?.hasError('required')) {
-                  <mat-error>{{ 'shared.validation.required' | translate }}</mat-error>
-                }
-                @if (opFormGroup().get('watchDelay')?.hasError('min')) {
-                  <mat-error>{{ 'shared.validation.min' | translate: { val: 1 } }}</mat-error>
-                }
-              </mat-form-field>
+              <div class="watch-delay-wrapper">
+                <span class="watch-delay-label">{{
+                  'wizards.appOperation.watchDelay' | translate
+                }}</span>
+                <app-number-input
+                  formControlName="watchDelay"
+                  [min]="0"
+                  [allowNegative]="false"
+                  [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
+                />
+              </div>
+              @if (
+                opFormGroup().get('watchDelay')?.hasError('required') &&
+                opFormGroup().get('watchDelay')?.touched
+              ) {
+                <mat-error class="validation-error">{{
+                  'shared.validation.required' | translate
+                }}</mat-error>
+              }
+              @if (
+                opFormGroup().get('watchDelay')?.hasError('min') &&
+                opFormGroup().get('watchDelay')?.touched
+              ) {
+                <mat-error class="validation-error">{{
+                  'shared.validation.min' | translate: { val: 1 }
+                }}</mat-error>
+              }
             </div>
           }
         </div>
@@ -153,6 +167,12 @@
 
   <!-- Paths -->
   <div class="paths-container">
+    @if (isNewRemote()) {
+      <div class="message warning" role="alert">
+        <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>
+      </div>
+    }
+
     @if (showSourcePath()) {
       <div class="section-header">
         <span class="section-title">
@@ -191,13 +211,6 @@
         @if (destItem(); as item) {
           <ng-container *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: true }" />
         }
-      </div>
-    }
-
-    @if (isNewRemote()) {
-      <div class="message warning" role="alert">
-        <mat-icon svgIcon="info" class="orange"></mat-icon>
-        <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>
       </div>
     }
   </div>

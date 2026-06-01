@@ -1,0 +1,49 @@
+<div class="stepper-container">
+  <button
+    mat-icon-button
+    class="stepper-btn"
+    [disabled]="
+      disabled() ||
+      (min() !== undefined && innerControl.value !== null && +innerControl.value <= min()!)
+    "
+    [attr.aria-label]="('shared.settingControl.decrease' | translate) + ' ' + ariaLabel()"
+    (mousedown)="startHold('decrement')"
+    (touchstart.prevent)="startHold('decrement')"
+    (mouseup)="stopHold()"
+    (mouseleave)="stopHold()"
+    (touchend)="stopHold()"
+  >
+    <mat-icon svgIcon="remove" />
+  </button>
+  <mat-form-field class="input-field stepper-input no-subscript" appearance="fill">
+    <input
+      matInput
+      [type]="isSensitive() ? 'password' : 'text'"
+      [formControl]="innerControl"
+      [attr.aria-label]="ariaLabel()"
+      [placeholder]="placeholder()"
+      [attr.autocomplete]="isSensitive() ? 'off' : null"
+      (paste)="preventClipboardOnSensitive($event)"
+      (copy)="preventClipboardOnSensitive($event)"
+      (cut)="preventClipboardOnSensitive($event)"
+      (keydown)="onNumberInput($event)"
+      (blur)="onBlur()"
+    />
+  </mat-form-field>
+  <button
+    mat-icon-button
+    class="stepper-btn"
+    [disabled]="
+      disabled() ||
+      (max() !== undefined && innerControl.value !== null && +innerControl.value >= max()!)
+    "
+    [attr.aria-label]="('shared.settingControl.increase' | translate) + ' ' + ariaLabel()"
+    (mousedown)="startHold('increment')"
+    (touchstart.prevent)="startHold('increment')"
+    (mouseup)="stopHold()"
+    (mouseleave)="stopHold()"
+    (touchend)="stopHold()"
+  >
+    <mat-icon svgIcon="plus" />
+  </button>
+</div>

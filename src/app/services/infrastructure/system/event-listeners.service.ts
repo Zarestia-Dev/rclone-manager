@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, fromEvent } from 'rxjs';
+import { Observable, fromEvent, filter, map } from 'rxjs';
 import {
   AppEventPayloadType,
-  ENGINE_RESTARTED,
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_CHANGED,
   JOB_CACHE_CHANGED,
@@ -12,11 +11,8 @@ import {
   BANDWIDTH_LIMIT_CHANGED,
   SERVE_STATE_CHANGED,
   SYSTEM_STATUS,
-  RCLONE_ENGINE_READY,
-  RCLONE_ENGINE_ERROR,
-  RCLONE_ENGINE_PASSWORD_ERROR,
-  RCLONE_ENGINE_PATH_ERROR,
-  RCLONE_ENGINE_UPDATING,
+  RCLONE_ENGINE_STATUS_CHANGED,
+  EngineStatus,
   RCLONE_PASSWORD_STORED,
   BROWSE,
   SYSTEM_SETTINGS_CHANGED,
@@ -27,6 +23,9 @@ import {
   OAuthUrlEvent,
   JobChangeEvent,
   SystemStatusPayload,
+  UpdateInfo,
+  DownloadStatus,
+  EngineErrorType,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -39,8 +38,105 @@ export class EventListenersService extends TauriBaseService {
     return this.listenToEvent<unknown>('tauri://resize');
   }
 
-  listenToEngineRestarted(): Observable<{ reason: string }> {
-    return this.listenToEvent<{ reason: string }>(ENGINE_RESTARTED);
+  listenToEngineStatus(): Observable<EngineStatus> {
+    return this.listenToEvent<EngineStatus>(RCLONE_ENGINE_STATUS_CHANGED);
+  }
+
+  listenToRcloneEngineReady(): Observable<void> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'ready'),
+      map(() => undefined)
+    );
+  }
+
+  listenToRcloneEngineUpdating(): Observable<void> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'updating'),
+      map(() => undefined)
+    );
+  }
+
+  listenToEngineRestarted(reason?: string): Observable<{ reason: string }> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'restarted'),
+      map(event => event.payload as { reason: string }),
+      filter(payload => !reason || payload.reason === reason)
+    );
+  }
+
+  listenToRcloneEnginePathError(): Observable<void> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'pathError'),
+      map(() => undefined)
+    );
+  }
+
+  listenToRcloneEngineVersionError(): Observable<{ version: string; required: string }> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'versionError'),
+      map(event => event.payload as { version: string; required: string })
+    );
+  }
+
+  listenToRcloneEnginePasswordError(): Observable<void> {
+    return this.listenToEngineStatus().pipe(
+      filter(event => event.status === 'passwordError'),
+      map(() => undefined)
+    );
+  }
+
+  listenToEngineErrorState(): Observable<EngineErrorType> {
+    return this.listenToEngineStatus().pipe(
+      map(state => {
+        switch (state.status) {
+          case 'passwordError':
+            return 'password' as const;
+          case 'pathError':
+            return 'path' as const;
+          case 'versionError':
+            return 'version' as const;
+          case 'error':
+            return 'generic' as const;
+          default:
+            return null;
+        }
+      })
+    );
+  }
+
+  listenToAppUpdateFound(): Observable<UpdateInfo> {
+    return this.listenToAppEvents().pipe(
+      filter(event => event.status === 'update_found' && !!event.data),
+      map(event => event.data as UpdateInfo)
+    );
+  }
+
+  listenToAppDownloadProgress(): Observable<DownloadStatus> {
+    return this.listenToAppEvents().pipe(
+      filter(event => event.status === 'download_progress' && !!event.data),
+      map(event => event.data as DownloadStatus)
+    );
+  }
+
+  listenToRcloneUpdateFound(): Observable<UpdateInfo> {
+    return this.listenToAppEvents().pipe(
+      filter(event => event.status === 'rclone_update_found' && !!event.data),
+      map(event => event.data as UpdateInfo)
+    );
+  }
+
+  listenToAppShuttingDown(): Observable<void> {
+    return this.listenToAppEvents().pipe(
+      filter(event => event.status === 'shutting_down'),
+      map(() => undefined)
+    );
+  }
+
+  listenToLanguageChanged(): Observable<string> {
+    return this.listenToAppEvents().pipe(
+      filter(event => event.status === 'language_changed' && !!event.language),
+      map(event => event.language as string)
+    );
   }
 
   listenToMountCacheUpdated(): Observable<unknown> {
@@ -61,26 +157,6 @@ export class EventListenersService extends TauriBaseService {
 
   listenToMountPluginInstalled(): Observable<unknown> {
     return this.listenToEvent<unknown>(MOUNT_PLUGIN_INSTALLED);
-  }
-
-  listenToRcloneEngineReady(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_ENGINE_READY);
-  }
-
-  listenToRcloneEngineError(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_ENGINE_ERROR);
-  }
-
-  listenToRcloneEnginePasswordError(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_ENGINE_PASSWORD_ERROR);
-  }
-
-  listenToRcloneEnginePathError(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_ENGINE_PATH_ERROR);
-  }
-
-  listenToRcloneEngineUpdating(): Observable<void> {
-    return this.listenToEvent<void>(RCLONE_ENGINE_UPDATING);
   }
 
   listenToRclonePasswordStored(): Observable<void> {

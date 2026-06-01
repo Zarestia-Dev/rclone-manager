@@ -5,7 +5,6 @@ import {
   ChangeDetectionStrategy,
   signal,
   computed,
-  OnDestroy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
@@ -31,6 +30,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { NumberInputComponent } from '../../../../shared/components/number-input/number-input.component';
 
 import { ValidatorRegistryService, ModalService } from '@app/services';
 import { AppSettingsService, FileSystemService } from '@app/services';
@@ -66,12 +66,13 @@ interface PendingChangeDisplay {
     SearchContainerComponent,
     TranslateModule,
     NgTemplateOutlet,
+    NumberInputComponent,
   ],
   templateUrl: './preferences-modal.component.html',
   styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreferencesModalComponent implements OnDestroy {
+export class PreferencesModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
@@ -147,24 +148,6 @@ export class PreferencesModalComponent implements OnDestroy {
     }))
   );
 
-  private readonly HOLD_DELAY = 300;
-  private readonly HOLD_INTERVAL = 75;
-  private readonly ALLOWED_INTEGER_KEYS = new Set([
-    'Backspace',
-    'Delete',
-    'Tab',
-    'Escape',
-    'Enter',
-    'Home',
-    'End',
-    'ArrowLeft',
-    'ArrowRight',
-    'ArrowUp',
-    'ArrowDown',
-  ]);
-  private holdTimeout: ReturnType<typeof setTimeout> | null = null;
-  private holdInterval: ReturnType<typeof setInterval> | null = null;
-
   constructor() {
     this.appSettingsService.options$
       .pipe(
@@ -180,10 +163,6 @@ export class PreferencesModalComponent implements OnDestroy {
 
     this.populateSearchSuggestions();
     this.onResize();
-  }
-
-  ngOnDestroy(): void {
-    this.stopHold(undefined, undefined, false);
   }
 
   // ── Init Helpers ──────────────────────────────────────────────────────────
@@ -222,7 +201,7 @@ export class PreferencesModalComponent implements OnDestroy {
     if (meta.options?.length) return 'select';
     if (key.includes('bandwidth')) return 'bandwidth';
     if (key.endsWith('_urls') || key.endsWith('_apps')) return 'string[]';
-    if (key.includes('path') || key.includes('file')) return 'file';
+    if (key.includes('path') || key.includes('file') || key.includes('binary')) return 'file';
     if (key.includes('folder') || key.includes('directory')) return 'folder';
 
     const def = meta.default;
@@ -608,49 +587,7 @@ export class PreferencesModalComponent implements OnDestroy {
     if (result) this.getFormControl(category, key).setValue(result);
   }
 
-  // ── Integer Stepper ───────────────────────────────────────────────────────
-
-  onIntegerInput(event: KeyboardEvent): void {
-    if (this.ALLOWED_INTEGER_KEYS.has(event.key) || event.ctrlKey || event.metaKey) return;
-    if (!/^\d$/.test(event.key)) event.preventDefault();
-  }
-
-  startHold(
-    action: 'increment' | 'decrement',
-    category: string,
-    key: string,
-    meta: SettingMetadata
-  ): void {
-    this.stopHold(undefined, undefined, false);
-    const performAction = () => this.stepNumber(action, category, key, meta);
-    performAction();
-    this.holdTimeout = setTimeout(() => {
-      this.holdInterval = setInterval(performAction, this.HOLD_INTERVAL);
-    }, this.HOLD_DELAY);
-  }
-
-  stopHold(category?: string, key?: string, _commit = true): void {
-    if (this.holdTimeout) clearTimeout(this.holdTimeout);
-    if (this.holdInterval) clearInterval(this.holdInterval);
-    this.holdTimeout = null;
-    this.holdInterval = null;
-    if (_commit && category && key) this.commitSetting(category, key);
-  }
-
-  private stepNumber(
-    action: 'increment' | 'decrement',
-    category: string,
-    key: string,
-    meta: SettingMetadata
-  ): void {
-    const control = this.getFormControl(category, key) as FormControl;
-    const step = meta.step || 1;
-    const current = Number(control.value) || 0;
-    const newValue = action === 'increment' ? current + step : current - step;
-    const min = meta.min ?? -Infinity;
-    const max = meta.max ?? Infinity;
-    if (newValue >= min && newValue <= max) control.setValue(newValue);
-  }
+  // Array Actions
 
   addArrayItem(category: string, key: string): void {
     const control = this.getFormControl(category, key) as FormArray;

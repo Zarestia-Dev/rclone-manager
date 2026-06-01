@@ -26,24 +26,14 @@ export class GlobalLoadingService {
 
     this.shutdownListenerInitialized = true;
     this.eventListenersService
-      .listenToAppEvents()
+      .listenToAppShuttingDown()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        if (typeof event !== 'object' || !event?.status) {
-          return;
-        }
-
-        switch (event.status) {
-          case 'shutting_down':
-            this.show({
-              title: this.translateService.instant('app.shutdown.title'),
-              message: this.translateService.instant('app.shutdown.message'),
-              icon: 'refresh',
-            });
-            break;
-          default:
-            break;
-        }
+      .subscribe(() => {
+        this.show({
+          title: this.translateService.instant('app.shutdown.title'),
+          message: this.translateService.instant('app.shutdown.message'),
+          icon: 'refresh',
+        });
       });
   }
 

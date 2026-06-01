@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { UpdateInfo, UpdateResult, BackendUpdateStatus } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
@@ -161,11 +161,7 @@ export class RcloneUpdateService extends TauriBaseService {
         showSuccess: false,
       });
 
-      await firstValueFrom(
-        this.eventListenersService
-          .listenToEngineRestarted()
-          .pipe(filter(event => event.reason === 'rclone_update'))
-      );
+      await firstValueFrom(this.eventListenersService.listenToEngineRestarted('rclone_update'));
 
       this._updateState.set(null);
       return true;
@@ -235,21 +231,15 @@ export class RcloneUpdateService extends TauriBaseService {
       );
 
     this.eventListenersService
-      .listenToEngineRestarted()
+      .listenToEngineRestarted('rclone_update')
       .pipe(takeUntilDestroyed())
-      .subscribe(event => {
-        if (event.reason === 'rclone_update') {
-          void this.checkForUpdates();
-        }
+      .subscribe(() => {
+        void this.checkForUpdates();
       });
 
     this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event.status === 'rclone_update_found' && !!event.data),
-        map(event => event.data as unknown as UpdateInfo)
-      )
+      .listenToRcloneUpdateFound()
+      .pipe(takeUntilDestroyed())
       .subscribe(data => this.processUpdateResult(data));
   }
 

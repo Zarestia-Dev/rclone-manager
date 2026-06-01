@@ -8,6 +8,7 @@ pub const DEFAULT_OAUTH_PORT: u16 = 51901;
 pub enum PauseReason {
     Password,
     Path,
+    Version,
     Updating,
 }
 
@@ -16,6 +17,7 @@ impl fmt::Display for PauseReason {
         match self {
             PauseReason::Password => write!(f, "Password Error"),
             PauseReason::Path => write!(f, "Path Error"),
+            PauseReason::Version => write!(f, "Version Error"),
             PauseReason::Updating => write!(f, "Updating"),
         }
     }
@@ -30,6 +32,7 @@ impl Default for RcApiEngine {
             updating: false,
             path_error: false,
             password_error: false,
+            version_error: false,
             current_api_port: DEFAULT_API_PORT,
         }
     }
@@ -48,9 +51,14 @@ impl RcApiEngine {
         self.password_error = error;
     }
 
+    pub fn set_version_error(&mut self, error: bool) {
+        self.version_error = error;
+    }
+
     pub fn clear_errors(&mut self) {
         self.path_error = false;
         self.password_error = false;
+        self.version_error = false;
     }
 
     #[must_use]
@@ -61,6 +69,8 @@ impl RcApiEngine {
             Some(PauseReason::Password)
         } else if self.path_error {
             Some(PauseReason::Path)
+        } else if self.version_error {
+            Some(PauseReason::Version)
         } else {
             None
         }
@@ -86,5 +96,9 @@ mod tests {
         engine.password_error = false;
         engine.path_error = true;
         assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Path));
+
+        engine.path_error = false;
+        engine.version_error = true;
+        assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Version));
     }
 }

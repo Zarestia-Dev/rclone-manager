@@ -196,6 +196,7 @@ export enum RepairSheetType {
   MOUNT_PLUGIN = 'mount_plugin',
   RCLONE_PASSWORD = 'rclone_password',
   RCLONE_BINARY = 'rclone_binary',
+  RCLONE_VERSION = 'rclone_version',
 }
 
 export interface LocalDiskUsage {

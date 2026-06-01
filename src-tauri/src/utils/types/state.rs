@@ -40,6 +40,7 @@ pub struct RcApiEngine {
     pub updating: bool,
     pub path_error: bool,
     pub password_error: bool,
+    pub version_error: bool,
     pub current_api_port: u16,
 }
 

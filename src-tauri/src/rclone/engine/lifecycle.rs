@@ -7,10 +7,7 @@ use crate::rclone::engine::poller::stop_system_poller;
 use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
-        events::{
-            ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
-            RCLONE_ENGINE_PATH_ERROR,
-        },
+        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
         state::{EngineState, RcApiEngine, RcloneState},
     },
 };
@@ -96,10 +93,24 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         debug!("Engine cannot start: {reason}");
         match reason {
             super::core::PauseReason::Password => {
-                app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()).ok();
+                app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PasswordError)
+                    .ok();
             }
             super::core::PauseReason::Path => {
-                app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
+                app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError)
+                    .ok();
+            }
+            super::core::PauseReason::Version => {
+                let required = crate::core::check_binaries::MIN_RCLONE_VERSION.to_string();
+                let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
+                let version = crate::core::check_binaries::get_rclone_version(&rclone_binary)
+                    .await
+                    .unwrap_or_else(|| "unknown".to_string());
+                app.emit(
+                    RCLONE_ENGINE_STATUS_CHANGED,
+                    EngineStatus::VersionError { version, required },
+                )
+                .ok();
             }
             super::core::PauseReason::Updating => {}
         }
@@ -141,30 +152,40 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = false;
                 engine.process = None;
                 let _ = engine.kill_process(app).await;
-                handle_start_failure(engine, app, "Timeout waiting for API readiness".to_string());
+                handle_start_failure(engine, app, "Timeout waiting for API readiness".to_string())
+                    .await;
             }
         }
         Err(e) => {
-            handle_start_failure(engine, app, e.to_string());
+            handle_start_failure(engine, app, e.to_string()).await;
         }
     }
 }
 
-fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
+async fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     error!("Failed to spawn Rclone process: {e}");
 
-    if engine.path_error {
-        app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
+    let status = if engine.path_error {
         notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
+        EngineStatus::PathError
+    } else if engine.version_error {
+        let required = crate::core::check_binaries::MIN_RCLONE_VERSION.to_string();
+        let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
+        let version = crate::core::check_binaries::get_rclone_version(&rclone_binary)
+            .await
+            .unwrap_or_else(|| "unknown".to_string());
+        EngineStatus::VersionError { version, required }
     } else if engine.password_error {
-        app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()).ok();
         notify(
             app,
             NotificationEvent::Engine(EngineStage::PasswordRequired),
         );
+        EngineStatus::PasswordError
     } else {
-        app.emit(RCLONE_ENGINE_ERROR, ()).ok();
-    }
+        EngineStatus::Error { message: e }
+    };
+
+    app.emit(RCLONE_ENGINE_STATUS_CHANGED, &status).ok();
 }
 
 pub fn restart_for_config_change(
@@ -177,28 +198,29 @@ pub fn restart_for_config_change(
 
     let app = app.clone();
     let change_type = change_type.to_string();
-    let old_value = old_value.to_string();
-    let new_value = new_value.to_string();
 
     tauri::async_runtime::spawn(async move {
         match restart_engine(&app, &change_type).await {
             Ok(()) => {
                 info!("Engine restarted for {change_type} change");
                 app.emit(
-                    ENGINE_RESTARTED,
-                    serde_json::json!({
-                        "reason": change_type,
-                        "old_value": old_value,
-                        "new_value": new_value,
-                        "success": true,
-                    }),
+                    RCLONE_ENGINE_STATUS_CHANGED,
+                    EngineStatus::Restarted {
+                        reason: change_type,
+                    },
                 )
                 .ok();
                 notify(&app, NotificationEvent::Engine(EngineStage::Restarted));
             }
             Err(e) => {
                 error!("Failed to restart engine for {change_type} change: {e}");
-                app.emit(RCLONE_ENGINE_ERROR, ()).ok();
+                app.emit(
+                    RCLONE_ENGINE_STATUS_CHANGED,
+                    EngineStatus::Error {
+                        message: e.to_string(),
+                    },
+                )
+                .ok();
                 notify(
                     &app,
                     NotificationEvent::Engine(EngineStage::RestartFailed {

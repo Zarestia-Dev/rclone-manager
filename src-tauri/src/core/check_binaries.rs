@@ -5,6 +5,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::utils::rclone::util::RCLONE_EXECUTABLE;
 
+pub const MIN_RCLONE_VERSION: &str = "1.70.0";
+
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
     if let Some(path) = override_path
         .filter(|p| !p.to_string_lossy().is_empty() && *p != std::path::Path::new("system"))
@@ -16,6 +18,49 @@ fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path
         return path;
     }
     read_rclone_binary(app)
+}
+
+pub async fn get_rclone_version(rclone_binary: &std::path::Path) -> Option<String> {
+    match crate::utils::process::command::Command::new(rclone_binary)
+        .arg("version")
+        .output()
+        .await
+    {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            stdout.lines().next().and_then(|line| {
+                line.split_whitespace()
+                    .nth(1)
+                    .map(|v| v.trim_start_matches('v').to_string())
+            })
+        }
+        _ => None,
+    }
+}
+
+pub fn is_version_at_least(current: &str, required: &str) -> bool {
+    let parse_parts = |v: &str| -> Vec<u32> {
+        let main_part = v.split(['-', '+', '_']).next().unwrap_or(v);
+        main_part
+            .split('.')
+            .map(|s| s.parse::<u32>().unwrap_or(0))
+            .collect()
+    };
+
+    let curr_parts = parse_parts(current);
+    let req_parts = parse_parts(required);
+
+    for i in 0..std::cmp::max(curr_parts.len(), req_parts.len()) {
+        let curr = curr_parts.get(i).copied().unwrap_or(0);
+        let req = req_parts.get(i).copied().unwrap_or(0);
+        if curr > req {
+            return true;
+        }
+        if curr < req {
+            return false;
+        }
+    }
+    true
 }
 
 #[tauri::command]
@@ -31,21 +76,27 @@ pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool
     debug!("Checking rclone at: {}", rclone_binary.display());
 
     if rclone_binary.exists() && rclone_binary.is_file() {
-        match crate::utils::process::command::Command::new(rclone_binary)
-            .arg("--version")
-            .output()
-            .await
-        {
-            Ok(output) => Ok(output.status.success()),
-            Err(e) => Err(crate::localized_error!(
+        match get_rclone_version(&rclone_binary).await {
+            Some(version) => {
+                if is_version_at_least(&version, MIN_RCLONE_VERSION) {
+                    Ok(true)
+                } else {
+                    Err(crate::localized_error!(
+                        "backendErrors.rclone.versionTooOld",
+                        "version" => version,
+                        "required" => MIN_RCLONE_VERSION
+                    ))
+                }
+            }
+            None => Err(crate::localized_error!(
                 "backendErrors.rclone.executionFailed",
-                "error" => e
+                "error" => "Could not determine rclone version"
             )),
         }
     } else {
-        use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
+        use crate::utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED};
         use tauri::Emitter;
-        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+        if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError) {
             error!("Failed to emit path error event: {e}");
         }
         Err(crate::localized_error!(
@@ -110,5 +161,20 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
     } else {
         error!("rclone binary not found in PATH or at configured location");
         PathBuf::from("rclone")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_version_at_least() {
+        assert!(is_version_at_least("1.70.0", "1.70.0"));
+        assert!(is_version_at_least("1.70.1", "1.70.0"));
+        assert!(is_version_at_least("1.71.0", "1.70.0"));
+        assert!(is_version_at_least("1.70.0-DEV", "1.70.0"));
+        assert!(!is_version_at_least("1.69.9", "1.70.0"));
+        assert!(!is_version_at_least("1.66.0", "1.70.0"));
     }
 }

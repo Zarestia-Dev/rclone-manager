@@ -2,14 +2,7 @@
 
 // Core engine events
 
-pub const ENGINE_RESTARTED: &str = "engine_restarted";
-
-// Dedicated engine state events (no payload needed - event name indicates state)
-pub const RCLONE_ENGINE_READY: &str = "rclone_engine_ready";
-pub const RCLONE_ENGINE_ERROR: &str = "rclone_engine_error";
-pub const RCLONE_ENGINE_PASSWORD_ERROR: &str = "rclone_engine_password_error";
-pub const RCLONE_ENGINE_PATH_ERROR: &str = "rclone_engine_path_error";
-pub const RCLONE_ENGINE_UPDATING: &str = "rclone_engine_updating";
+pub const RCLONE_ENGINE_STATUS_CHANGED: &str = "rclone_engine_status_changed";
 pub const RCLONE_PASSWORD_STORED: &str = "rclone_password_stored";
 pub const BACKEND_SWITCHED: &str = "backend_switched";
 
@@ -49,12 +42,7 @@ pub const BROWSE: &str = "browse";
 
 /// List of all events that should be forwarded to SSE clients in headless mode
 pub const SSE_FORWARD_EVENTS: &[&str] = &[
-    ENGINE_RESTARTED,
-    RCLONE_ENGINE_READY,
-    RCLONE_ENGINE_ERROR,
-    RCLONE_ENGINE_PASSWORD_ERROR,
-    RCLONE_ENGINE_PATH_ERROR,
-    RCLONE_ENGINE_UPDATING,
+    RCLONE_ENGINE_STATUS_CHANGED,
     RCLONE_PASSWORD_STORED,
     BACKEND_SWITCHED,
     REMOTE_CACHE_CHANGED,
@@ -76,6 +64,19 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     ALERT_FIRED,
     SYSTEM_STATUS,
 ];
+
+/// Strongly typed payload for consolidated engine status events
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(tag = "status", content = "payload", rename_all = "camelCase")]
+pub enum EngineStatus {
+    Ready,
+    Error { message: String },
+    PasswordError,
+    PathError,
+    VersionError { version: String, required: String },
+    Updating,
+    Restarted { reason: String },
+}
 
 /// Strongly typed payload for settings change events
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]

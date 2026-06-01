@@ -2,10 +2,13 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
+    core::{
+        check_binaries::{MIN_RCLONE_VERSION, build_rclone_command},
+        security::SafeEnvironmentManager,
+    },
     rclone::backend::BackendManager,
     utils::types::{
-        events::{RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR, RCLONE_ENGINE_PATH_ERROR},
+        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
         state::RcApiEngine,
     },
 };
@@ -16,11 +19,25 @@ impl RcApiEngine {
     pub async fn validate_config_before_start(&self, app: &AppHandle) -> EngineResult<()> {
         info!("Validating rclone configuration before engine start");
 
-        if !crate::core::check_binaries::check_rclone_available(app.clone(), String::new())
-            .await
-            .unwrap_or(false)
-        {
+        let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
+        if !rclone_binary.exists() || !rclone_binary.is_file() {
             return Err(EngineError::RcloneNotFound);
+        }
+
+        match crate::core::check_binaries::get_rclone_version(&rclone_binary).await {
+            Some(version) => {
+                if !crate::core::check_binaries::is_version_at_least(&version, MIN_RCLONE_VERSION) {
+                    return Err(EngineError::VersionTooOld {
+                        version,
+                        required: MIN_RCLONE_VERSION.to_string(),
+                    });
+                }
+            }
+            None => {
+                return Err(EngineError::ConfigValidationFailed(crate::t!(
+                    "backendErrors.rclone.executionFailed"
+                )));
+            }
         }
 
         let is_encrypted = match crate::core::security::is_config_encrypted(app.clone()).await {
@@ -111,25 +128,40 @@ impl RcApiEngine {
                     EngineError::RcloneNotFound => {
                         self.set_password_error(false);
                         self.set_path_error(true);
+                        self.set_version_error(false);
+                    }
+                    EngineError::VersionTooOld { .. } => {
+                        self.set_password_error(false);
+                        self.set_path_error(false);
+                        self.set_version_error(true);
                     }
                     EngineError::WrongPassword | EngineError::PasswordRequired => {
                         self.set_password_error(true);
                         self.set_path_error(false);
+                        self.set_version_error(false);
                     }
                     _ => {
                         self.clear_errors();
                     }
                 }
 
-                let event = if self.path_error {
-                    RCLONE_ENGINE_PATH_ERROR
-                } else if self.password_error {
-                    RCLONE_ENGINE_PASSWORD_ERROR
-                } else {
-                    RCLONE_ENGINE_ERROR
+                let status = match e {
+                    EngineError::RcloneNotFound => EngineStatus::PathError,
+                    EngineError::VersionTooOld { version, required } => {
+                        EngineStatus::VersionError {
+                            version: version.clone(),
+                            required: required.clone(),
+                        }
+                    }
+                    EngineError::WrongPassword | EngineError::PasswordRequired => {
+                        EngineStatus::PasswordError
+                    }
+                    other => EngineStatus::Error {
+                        message: other.to_string(),
+                    },
                 };
 
-                if let Err(emit_err) = app.emit(event, ()) {
+                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, &status) {
                     error!("Failed to emit validation error event: {emit_err}");
                 }
 

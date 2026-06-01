@@ -38,6 +38,25 @@ export class RepairService extends TauriBaseService {
         },
       ],
     },
+    rclone_version: {
+      titleKey: 'repairSheet.titles.versionTooOld',
+      messageKey: 'repairSheet.messages.versionTooOld',
+      progressKey: 'repairSheet.progress.installingRclone',
+      buttonTextKey: 'repairSheet.actions.installRclone',
+      icon: 'download',
+      details: [
+        {
+          icon: 'circle-info',
+          labelKey: 'repairSheet.details.issueLabel',
+          valueKey: 'repairSheet.details.rcloneVersion.issue',
+        },
+        {
+          icon: 'download',
+          labelKey: 'repairSheet.details.actionLabel',
+          valueKey: 'repairSheet.details.rcloneVersion.action',
+        },
+      ],
+    },
     mount_plugin: {
       titleKey: 'repairSheet.titles.missingMountPlugin',
       messageKey: 'repairSheet.messages.missingMountPlugin',
@@ -163,6 +182,7 @@ export class RepairService extends TauriBaseService {
   async executeRepair(repairData: RepairData): Promise<string | void> {
     switch (repairData.type) {
       case 'rclone_binary':
+      case 'rclone_version':
         return this.repairRclonePath();
       case 'mount_plugin':
         return this.repairMountPlugin();

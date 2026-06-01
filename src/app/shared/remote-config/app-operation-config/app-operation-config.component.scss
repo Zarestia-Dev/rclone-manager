@@ -383,15 +383,37 @@
 .message {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xs);
   font-size: var(--font-size-md);
-  margin-top: var(--space-md);
+  margin-bottom: var(--space-xs);
 
   &.warning {
-    background: rgba(var(--orange-rgb), 0.1);
     color: var(--orange);
-    border: 1px solid rgba(var(--orange-rgb), 0.3);
+  }
+}
+
+.watch-delay-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-xs);
+
+  .watch-delay-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+  }
+
+  .watch-delay-label {
+    font-size: var(--font-size-md);
+    font-weight: 500;
+    color: var(--window-fg-color);
+  }
+
+  .validation-error {
+    font-size: var(--font-size-xs);
+    color: var(--warn-color);
   }
 }

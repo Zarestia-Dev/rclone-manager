@@ -25,6 +25,7 @@ import {
   RepairService,
   InstallationService,
   AppSettingsService,
+  SystemInfoService,
 } from '@app/services';
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -89,10 +90,14 @@ export class RepairSheetComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
+  private readonly systemInfoService = inject(SystemInfoService);
 
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
+  readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
 
-  readonly isRcloneBinaryRepair = computed(() => this.data.type === 'rclone_binary');
+  readonly isRcloneBinaryRepair = computed(
+    () => this.data.type === 'rclone_binary' || this.data.type === 'rclone_version'
+  );
   readonly isMountPluginRepair = computed(() => this.data.type === 'mount_plugin');
   readonly requiresPassword = computed(
     () => this.data.type === 'rclone_password' || this.data.requiresPassword === true
@@ -115,14 +120,18 @@ export class RepairSheetComponent {
   readonly displayTitle = computed(
     () =>
       this.data.title ??
-      this.translate.instant(this.repairService.getRepairTitleKey(this.data.type))
+      this.translate.instant(this.repairService.getRepairTitleKey(this.data.type), {
+        required: this.minRcloneVersion(),
+      })
   );
 
   readonly displayMessage = computed(
     () =>
       this.messageOverride() ??
       this.data.message ??
-      this.translate.instant(this.repairService.getRepairMessageKey(this.data.type))
+      this.translate.instant(this.repairService.getRepairMessageKey(this.data.type), {
+        required: this.minRcloneVersion(),
+      })
   );
 
   readonly canRepair = computed(() => {

@@ -61,48 +61,18 @@
   <ng-template #stepperInput let-opt let-inputType="inputType" let-inputStep="inputStep">
     <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
     <div class="setting-control">
-      <div class="stepper-container">
-        <button
-          mat-icon-button
-          class="stepper-btn"
-          [attr.aria-label]="('shared.settingControl.decrease' | translate) + ' ' + opt.Name"
-          (mousedown)="startHold('decrement', inputStep)"
-          (touchstart.prevent)="startHold('decrement', inputStep)"
-          (mouseup)="stopHold()"
-          (mouseleave)="stopHold()"
-          (touchend)="stopHold()"
-        >
-          <mat-icon svgIcon="remove" />
-        </button>
-        <mat-form-field class="input-field stepper-input no-subscript" appearance="fill">
-          <input
-            matInput
-            [type]="isSensitiveField() ? 'password' : inputType"
-            [step]="inputStep"
-            [formControl]="$any(control())"
-            [attr.aria-label]="opt.Name"
-            [placeholder]="opt.DefaultStr || ''"
-            [attr.autocomplete]="isSensitiveField() ? 'off' : null"
-            (paste)="preventClipboardOnSensitive($event)"
-            (copy)="preventClipboardOnSensitive($event)"
-            (cut)="preventClipboardOnSensitive($event)"
-            (keydown)="onIntegerInput($event)"
-            (blur)="commitValue()"
-          />
-        </mat-form-field>
-        <button
-          mat-icon-button
-          class="stepper-btn"
-          [attr.aria-label]="('shared.settingControl.increase' | translate) + ' ' + opt.Name"
-          (mousedown)="startHold('increment', inputStep)"
-          (touchstart.prevent)="startHold('increment', inputStep)"
-          (mouseup)="stopHold()"
-          (mouseleave)="stopHold()"
-          (touchend)="stopHold()"
-        >
-          <mat-icon svgIcon="plus" />
-        </button>
-      </div>
+      <app-number-input
+        [formControl]="$any(control())"
+        [placeholder]="opt.DefaultStr || ''"
+        [step]="inputStep"
+        [min]="opt.Min !== undefined ? opt.Min : undefined"
+        [max]="opt.Max !== undefined ? opt.Max : undefined"
+        [isFloat]="opt.Type === 'float64'"
+        [isSensitive]="isSensitiveField()"
+        [allowNegative]="!opt.Type?.startsWith('uint')"
+        [ariaLabel]="opt.Name"
+        (blur)="commitValue()"
+      />
     </div>
   </ng-template>
 

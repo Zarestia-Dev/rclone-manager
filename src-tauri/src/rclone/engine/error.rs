@@ -13,6 +13,7 @@ pub enum EngineError {
     PasswordRequired,
     RcloneNotFound,
     WrongPassword,
+    VersionTooOld { version: String, required: String },
 }
 
 impl fmt::Display for EngineError {
@@ -46,6 +47,13 @@ impl fmt::Display for EngineError {
             Self::RcloneNotFound => crate::localized_error!("backendErrors.rclone.binaryNotFound"),
             Self::WrongPassword => {
                 crate::localized_error!("backendErrors.security.incorrectPassword")
+            }
+            Self::VersionTooOld { version, required } => {
+                crate::localized_error!(
+                    "backendErrors.rclone.versionTooOld",
+                    "version" => version,
+                    "required" => required
+                )
             }
         };
         write!(f, "{msg}")

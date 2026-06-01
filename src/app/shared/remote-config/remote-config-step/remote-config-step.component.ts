@@ -164,10 +164,7 @@ export class RemoteConfigStepComponent {
   );
 
   readonly jsonExcludeKeys = computed(() => {
-    const keys: string[] = [];
-    if (this.isTypeLocked() || !this.showTypeField()) keys.push('type');
-    if (!this.showNameField()) keys.push('name');
-    return keys;
+    return ['name', 'type'];
   });
 
   readonly availablePredefinedOptions = computed(() => {

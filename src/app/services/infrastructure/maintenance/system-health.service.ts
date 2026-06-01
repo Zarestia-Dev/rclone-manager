@@ -23,6 +23,7 @@ export class SystemHealthService {
 
   private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
   private hasReportedRclonePathError = false;
+  private hasReportedRcloneVersionError = false;
   private onboardingCompleted = false;
 
   readonly rcloneInstalled = signal<boolean | null>(null);
@@ -204,6 +205,11 @@ export class SystemHealthService {
     this.showRepairSheet({ type: RepairSheetType.RCLONE_BINARY });
   }
 
+  handleRcloneVersionError(alreadyReported: boolean): void {
+    if (alreadyReported) return;
+    this.showRepairSheet({ type: RepairSheetType.RCLONE_VERSION });
+  }
+
   async handlePasswordRequired(isPromptInProgress: boolean): Promise<boolean> {
     if (isPromptInProgress || this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)) {
       return false;
@@ -284,16 +290,34 @@ export class SystemHealthService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.hasReportedRclonePathError = false;
-        this.closeSheetsByType(RepairSheetType.RCLONE_BINARY, RepairSheetType.RCLONE_PASSWORD);
+        this.hasReportedRcloneVersionError = false;
+        this.closeSheetsByType(
+          RepairSheetType.RCLONE_BINARY,
+          RepairSheetType.RCLONE_VERSION,
+          RepairSheetType.RCLONE_PASSWORD
+        );
       });
 
     this.eventListenersService
       .listenToRcloneEnginePathError()
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe(() => {
-        if (!this.onboardingCompleted) return;
         this.handleRclonePathError(this.hasReportedRclonePathError);
         this.hasReportedRclonePathError = true;
+      });
+
+    this.eventListenersService
+      .listenToRcloneEngineVersionError()
+      .pipe(
+        filter(() => this.onboardingCompleted),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.handleRcloneVersionError(this.hasReportedRcloneVersionError);
+        this.hasReportedRcloneVersionError = true;
       });
 
     this.eventListenersService

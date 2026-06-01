@@ -18,7 +18,7 @@
             <mat-icon [svgIcon]="detail.icon"></mat-icon>
             <span>
               <strong>{{ detail.labelKey | translate }}:</strong>
-              {{ detail.valueKey | translate }}
+              {{ detail.valueKey | translate: { required: minRcloneVersion() } }}
             </span>
           </div>
         }

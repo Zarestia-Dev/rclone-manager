@@ -265,46 +265,24 @@
               ></mat-slide-toggle>
             }
             @case ('int') {
-              <div class="stepper">
-                <button
-                  mat-icon-button
-                  class="stepper-btn"
-                  (mousedown)="startHold('decrement', category, key, meta)"
-                  (touchstart.prevent)="startHold('decrement', category, key, meta)"
-                  (mouseup)="stopHold(category, key)"
-                  (mouseleave)="stopHold(category, key)"
-                  (touchend)="stopHold(category, key)"
-                  [disabled]="(+getFormControl(category, key).value || 0) <= (meta.min ?? 0)"
-                >
-                  <mat-icon svgIcon="remove"></mat-icon>
-                </button>
-                <mat-form-field appearance="fill" class="number-input no-subscript">
-                  <input
-                    matInput
-                    type="number"
-                    [formControl]="$any(getFormControl(category, key))"
-                    (keydown)="onIntegerInput($event)"
-                    (blur)="onBlur(category, key)"
-                    [attr.aria-label]="meta.metadata?.display_name"
-                  />
-                  @if (isControlInvalid(category, key)) {
-                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-                  }
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  class="stepper-btn"
-                  (mousedown)="startHold('increment', category, key, meta)"
-                  (touchstart.prevent)="startHold('increment', category, key, meta)"
-                  (mouseup)="stopHold(category, key)"
-                  (mouseleave)="stopHold(category, key)"
-                  (touchend)="stopHold(category, key)"
-                  [disabled]="
-                    (+getFormControl(category, key).value || 0) >= (meta.max ?? 1000000000000)
-                  "
-                >
-                  <mat-icon svgIcon="plus"></mat-icon>
-                </button>
+              <div class="stepper-wrapper">
+                <app-number-input
+                  [formControl]="$any(getFormControl(category, key))"
+                  [placeholder]="(meta.metadata?.placeholder | translate) || ''"
+                  [step]="meta.step || 1"
+                  [min]="meta.min !== undefined ? meta.min : undefined"
+                  [max]="meta.max !== undefined ? meta.max : undefined"
+                  [isFloat]="false"
+                  [isSensitive]="false"
+                  [allowNegative]="meta.min === undefined || meta.min < 0"
+                  [ariaLabel]="meta.metadata?.display_name || ''"
+                  (blur)="onBlur(category, key)"
+                />
+                @if (isControlInvalid(category, key)) {
+                  <mat-error class="preferences-stepper-error">{{
+                    getValidationMessage(category, key)
+                  }}</mat-error>
+                }
               </div>
             }
             @case ('string') {

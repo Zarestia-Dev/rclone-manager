@@ -17,8 +17,7 @@ use crate::rclone::engine::lifecycle::{resume_engine, set_engine_updating, shutd
 use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::events::APP_EVENT;
-use crate::utils::types::events::RCLONE_ENGINE_UPDATING;
+use crate::utils::types::events::{APP_EVENT, EngineStatus, RCLONE_ENGINE_STATUS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use crate::utils::types::updater::{
     RcloneUpdaterState, Result, UpdateInfo, UpdateMetadata, UpdateResult, UpdateState,
@@ -370,7 +369,7 @@ pub async fn update_rclone(
         return Err(Error::BinaryNotFound);
     }
 
-    if let Err(e) = app_handle.emit(RCLONE_ENGINE_UPDATING, ()) {
+    if let Err(e) = app_handle.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Updating) {
         return Err(Error::Backend(format!("Failed to emit update event: {e}")));
     }
 

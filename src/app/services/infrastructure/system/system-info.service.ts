@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { BandwidthLimitResponse, LocalDiskUsage, SystemStatusPayload } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -10,6 +10,7 @@ import { TauriBaseService } from '../platform/tauri-base.service';
   providedIn: 'root',
 })
 export class SystemInfoService extends TauriBaseService {
+  readonly minRcloneVersion = signal<string>('1.70.0');
   /**
    * Check if network is metered
    */

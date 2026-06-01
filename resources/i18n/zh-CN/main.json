@@ -562,6 +562,10 @@
         "title": "未找到 Rclone 程序",
         "subtitle": "请在设置中检查 Rclone 安装路径"
       },
+      "version": {
+        "title": "Rclone 版本过旧",
+        "subtitle": "请将 rclone 更新至 {{required}} 或更高版本"
+      },
       "generic": {
         "title": "引擎启动失败",
         "subtitle": "请查看日志获取详细信息"
@@ -1102,7 +1106,7 @@
       "watchRequiresLocalSource": "实时监控需要至少一个本地源目录。",
       "watchRequiresLocal": "实时监控需要至少一个本地源或目标目录。",
       "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
-      "watchFilterNote": "注意：文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
+      "watchFilterNote": "文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
       "scheduleDescription": "启用后，此操作将根据下方的 cron 计划<strong>定期</strong>运行",
       "notConfigured": "未配置",
       "sourcePaths": "源路径列表",
@@ -1115,7 +1119,7 @@
       "otherRemotes": "其他远程存储",
       "enterDestPath": "输入目标路径...",
       "mountDestMustBeLocal": "挂载目标必须是本地文件夹",
-      "completionNote": "注意：远程路径补全功能在创建远程存储后可用",
+      "completionNote": "远程路径补全功能在创建远程存储后可用",
       "loading": "加载中...",
       "upFolder": "上一级文件夹",
       "noItemsFound": "此目录中无项目",
@@ -2470,6 +2474,7 @@
       "configEncrypted": "配置已加密，未提供密码",
       "unsupportedOS": "不支持的操作系统。",
       "binaryNotFound": "未找到 Rclone 可执行文件。",
+      "versionTooOld": "Rclone 版本 {{version}} 过旧。要求的最低版本为 {{required}}。请更新 rclone。",
       "versionCheckFailed": "获取当前 rclone 版本失败：{{error}}",
       "restartFailed": "更新后重启引擎失败：{{error}}",
       "selfupdateFailed": "rclone selfupdate --check 失败：{{error}}",
@@ -2768,7 +2773,8 @@
       "corruptConfig": "配置已损坏",
       "backendError": "后端错误",
       "passwordRequired": "需要密码",
-      "systemIssue": "系统问题"
+      "systemIssue": "系统问题",
+      "versionTooOld": "Rclone 版本过旧"
     },
     "messages": {
       "missingRclone": "未找到 rclone 可执行文件，请安装后继续。",
@@ -2776,6 +2782,7 @@
       "corruptConfig": "rclone 配置文件似乎已损坏，是否从备份恢复？",
       "backendError": "rclone 后端无法访问，重启引擎可能修复此问题。",
       "passwordRequired": "rclone 配置已加密，请输入密码。",
+      "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
       "mountPluginStatusChecked": "状态检查时间：{{time}}",
       "mountPluginStatusError": "状态检查失败"
@@ -2803,6 +2810,10 @@
       "rclonePath": {
         "issue": "未找到可执行文件",
         "action": "下载并安装"
+      },
+      "rcloneVersion": {
+        "issue": "版本过旧 (< {{required}})",
+        "action": "下载并更新"
       },
       "mountPlugin": {
         "issue": "缺少插件",

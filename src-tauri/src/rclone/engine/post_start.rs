@@ -3,7 +3,7 @@ use crate::rclone::engine::lifecycle::clear_engine_errors;
 use crate::utils::types::state::RcloneState;
 use crate::{
     core::initialization::apply_settings::apply_core_settings,
-    utils::types::events::RCLONE_ENGINE_READY,
+    utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
 };
 use log::{debug, error};
 use tauri::{AppHandle, Emitter, Manager};
@@ -22,7 +22,7 @@ pub fn trigger_post_start_setup(app: AppHandle) {
             }
         }
 
-        if let Err(e) = app.emit(RCLONE_ENGINE_READY, ()) {
+        if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready) {
             error!("Failed to emit ready event: {e}");
         }
     });

@@ -1,6 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs/operators';
 import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
@@ -259,12 +258,8 @@ export class AppUpdaterService extends TauriBaseService {
 
   private setupEventListeners(): void {
     this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event.status === 'update_found' && !!event.data),
-        map(event => event.data as UpdateInfo)
-      )
+      .listenToAppUpdateFound()
+      .pipe(takeUntilDestroyed())
       .subscribe(metadata => {
         const current = this._updateState();
         if (current?.version === metadata.version) return;
@@ -281,12 +276,8 @@ export class AppUpdaterService extends TauriBaseService {
       });
 
     this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event.status === 'download_progress' && !!event.data),
-        map(event => event.data as DownloadStatus)
-      )
+      .listenToAppDownloadProgress()
+      .pipe(takeUntilDestroyed())
       .subscribe(status => {
         this._downloadStatus.set(status);
 
