@@ -562,6 +562,10 @@
         "title": "Rclone Binary Not Found",
         "subtitle": "Please check your rclone installation path in settings"
       },
+      "version": {
+        "title": "Rclone Version Outdated",
+        "subtitle": "Please update your rclone installation to at least version {{required}}"
+      },
       "generic": {
         "title": "Engine Failed to Start",
         "subtitle": "Please check logs for more details"
@@ -1102,7 +1106,7 @@
       "watchRequiresLocalSource": "Real-time monitoring requires at least one local source directory.",
       "watchRequiresLocal": "Real-time monitoring requires at least one local source or destination directory.",
       "watchMixedSourcesNote": "Only local source directories will be monitored in real-time. Changes on remote sources will not trigger sync automatically.",
-      "watchFilterNote": "Note: The file watcher respects your Filter Profile. Changes to files or directories that match your exclusions (e.g. by pattern, size, or age) will not trigger a sync.",
+      "watchFilterNote": "The file watcher respects your Filter Profile. Changes to files or directories that match your exclusions (e.g. by pattern, size, or age) will not trigger a sync.",
       "scheduleDescription": "When enabled, this operation will run <strong>recurring</strong> based on the cron schedule below.",
       "notConfigured": "Not configured",
       "sourcePaths": "Source Paths",
@@ -1115,7 +1119,7 @@
       "otherRemotes": "Other Remotes",
       "enterDestPath": "Enter destination path...",
       "mountDestMustBeLocal": "Mount destination must be a local folder",
-      "completionNote": "Note: Remote path completion available after creation of the remote.",
+      "completionNote": "Remote path completion available after creation of the remote.",
       "loading": "Loading...",
       "upFolder": "Up Folder",
       "noItemsFound": "No items found in this directory.",
@@ -2470,6 +2474,7 @@
       "configEncrypted": "Configuration is encrypted and no password provided",
       "unsupportedOS": "Unsupported OS.",
       "binaryNotFound": "Rclone binary not found.",
+      "versionTooOld": "Rclone version {{version}} is too old. Minimum required version is {{required}}. Please update rclone.",
       "versionCheckFailed": "Failed to get current rclone version: {{error}}",
       "restartFailed": "Failed to restart engine after update: {{error}}",
       "selfupdateFailed": "rclone selfupdate --check failed: {{error}}",
@@ -2768,7 +2773,8 @@
       "corruptConfig": "Configuration Corrupt",
       "backendError": "Backend Error",
       "passwordRequired": "Password Required",
-      "systemIssue": "System Issue"
+      "systemIssue": "System Issue",
+      "versionTooOld": "Rclone Outdated"
     },
     "messages": {
       "missingRclone": "The rclone binary could not be found. Please install it to continue.",
@@ -2776,6 +2782,7 @@
       "corruptConfig": "The rclone configuration file appears to be corrupt. Restore from backup?",
       "backendError": "The rclone backend is unreachable. Restarting the engine may fix this.",
       "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
+      "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
       "mountPluginStatusChecked": "Status checked at {{time}}",
       "mountPluginStatusError": "Failed to check status"
@@ -2803,6 +2810,10 @@
       "rclonePath": {
         "issue": "Binary not found",
         "action": "Download & Install"
+      },
+      "rcloneVersion": {
+        "issue": "Version outdated (< {{required}})",
+        "action": "Download & Update"
       },
       "mountPlugin": {
         "issue": "Plugin missing",
