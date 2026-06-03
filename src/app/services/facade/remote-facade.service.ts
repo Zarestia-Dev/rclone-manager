@@ -43,6 +43,7 @@ import {
   REMOTE_CONFIG_KEYS,
   BackendsRemotesLayout,
   RemotesLayout,
+  RCLONE_PATH_KEYS,
 } from '@app/types';
 
 type ProfileConfigMap = Record<string, Record<string, unknown>>;
@@ -779,10 +780,13 @@ function buildStatusEntry<T, V>(
 
 function buildProfileBrowsePaths(profileMap: ProfileConfigMap): Record<string, string[]> {
   const result: Record<string, string[]> = {};
-  for (const [name, config] of Object.entries(profileMap)) {
-    const paths = [config['dest'], config['path']].filter(
-      v => typeof v === 'string' && v.length > 0
-    ) as string[];
+  for (const [name, profile] of Object.entries(profileMap)) {
+    const rclone = (profile['rclone'] as Record<string, unknown>) || profile;
+    const rawPaths = RCLONE_PATH_KEYS.map(key => rclone[key]);
+
+    const paths = rawPaths
+      .flat()
+      .filter((val): val is string => typeof val === 'string' && val.length > 0);
 
     if (paths.length > 0) {
       result[name] = Array.from(new Set(paths));

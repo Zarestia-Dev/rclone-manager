@@ -1,7 +1,7 @@
 /**
  * Type of automation
  */
-export type AutomationType = 'copy' | 'sync' | 'move' | 'delete' | 'purge' | 'bisync';
+export type AutomationType = 'copy' | 'sync' | 'move' | 'bisync';
 
 /**
  * Status of an automation
@@ -12,11 +12,10 @@ export type AutomationStatus = 'enabled' | 'disabled' | 'running' | 'failed' | '
  * Arguments for an automation
  */
 export interface AutomationArgs {
-  /** All source paths from the profile. Always an array after Rust serialization,
-   *  but accept string too for robustness against cached/legacy state. */
-  srcPaths: string | string[];
-  /** All destination paths from the profile. Same note as srcPaths. */
-  dstPaths: string | string[];
+  /** All source paths from the profile. */
+  srcPaths: string[];
+  /** All destination paths from the profile. */
+  dstPaths: string[];
   /** Core parameters for the profile operation */
   remoteName: string;
   profileName: string;
@@ -42,8 +41,8 @@ export interface Automation {
   /** Profile name within the remote */
   profileName: string;
 
-  /** Cron expression (e.g., "0 0 * * *" for daily at midnight) or "realtime" */
-  cronExpression: string;
+  /** Cron expression (e.g., "0 0 * * *" for daily at midnight) */
+  cronExpression?: string;
 
   /** Current status */
   status: AutomationStatus;
@@ -78,6 +77,9 @@ export interface Automation {
   /** Number of failed runs */
   failureCount: number;
 
+  /** Number of stopped runs */
+  stoppedCount: number;
+
   /** Enable real-time filesystem monitoring */
   watchEnabled?: boolean;
 
@@ -106,27 +108,5 @@ export interface AutomationStats {
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
-}
-
-/**
- * Event payload when an automation completes
- */
-export interface AutomationCompletedEvent {
-  automationId: string;
-}
-
-/**
- * Event payload when an automation encounters an error
- */
-export interface AutomationErrorEvent {
-  automationId: string;
-  error: string;
-}
-
-/**
- * Event payload when an automation is manually stopped
- */
-export interface AutomationStoppedEvent {
-  automationId: string;
-  jobId: number;
+  stoppedRuns: number;
 }

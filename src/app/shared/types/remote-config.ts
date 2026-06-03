@@ -203,6 +203,18 @@ export interface RemoteConfigStepVisibility {
   commands?: boolean;
 }
 
+export interface AppConfig {
+  autoStart: boolean;
+  cronEnabled?: boolean;
+  cronExpression?: string | null;
+  watchEnabled?: boolean;
+  watchDelay?: number;
+  vfsProfile?: string;
+  filterProfile?: string;
+  backendProfile?: string;
+  runtimeRemoteProfile?: string;
+}
+
 // Shared fields for all rclone operations
 export interface RcloneBaseConfig {
   autoStart: boolean;
@@ -387,3 +399,15 @@ export interface ExplorerRoot {
   fileSystem?: string;
   isRemovable?: boolean;
 }
+
+export const RCLONE_PATH_KEYS = [
+  'dstFs',
+  'path2',
+  'mountPoint',
+  'dest',
+  'srcFs',
+  'path1',
+  'fs',
+  'source',
+  'path',
+] as const;

@@ -1,8 +1,16 @@
-import { Injectable, inject } from '@angular/core';
-import { AbstractControl, ValidatorFn, ValidationErrors } from '@angular/forms';
+import { Injectable, inject, DestroyRef } from '@angular/core';
+import {
+  AbstractControl,
+  ValidatorFn,
+  ValidationErrors,
+  FormGroup,
+  FormArray,
+} from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { UiStateService } from '../state/ui-state.service';
 import { REMOTE_NAME_REGEX } from '@app/types';
+import { Observable, merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root',
@@ -187,17 +195,60 @@ export class ValidatorRegistryService {
     };
   }
 
-  requiredIfLocal(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const pathGroup = control.parent;
-      const opGroup = pathGroup?.parent;
-      if (!pathGroup || !opGroup) return null;
+  setupOperationValidation(opGroup: FormGroup, destroyRef: DestroyRef): void {
+    const autoStartCtrl = opGroup.get('autoStart');
+    const cronEnabledCtrl = opGroup.get('cronEnabled');
+    const cronExpressionCtrl = opGroup.get('cronExpression');
+    const watchEnabledCtrl = opGroup.get('watchEnabled');
+    const watchDelayCtrl = opGroup.get('watchDelay');
+    const sourceCtrl = opGroup.get('source');
+    const destCtrl = opGroup.get('dest');
 
-      const autoStart = opGroup.get('autoStart')?.value;
-      const type = pathGroup.get('type')?.value;
-      if (autoStart && type === 'local' && !control.value) return { required: true };
-      return null;
+    if (cronExpressionCtrl) {
+      cronExpressionCtrl.setValidators(this.requiredIfCronEnabled());
+    }
+    if (watchDelayCtrl) {
+      watchDelayCtrl.setValidators(this.requiredIfWatchEnabled());
+    }
+
+    const updatePathsValidity = () => {
+      if (sourceCtrl instanceof FormArray) {
+        sourceCtrl.controls.forEach((c: AbstractControl) =>
+          c.get('path')?.updateValueAndValidity()
+        );
+      } else if (sourceCtrl instanceof FormGroup) {
+        sourceCtrl.get('path')?.updateValueAndValidity();
+      }
+      if (destCtrl instanceof FormGroup) {
+        destCtrl.get('path')?.updateValueAndValidity();
+      }
     };
+
+    const triggers: Observable<any>[] = [];
+    if (autoStartCtrl) triggers.push(autoStartCtrl.valueChanges);
+    if (cronEnabledCtrl) triggers.push(cronEnabledCtrl.valueChanges);
+    if (watchEnabledCtrl) triggers.push(watchEnabledCtrl.valueChanges);
+
+    const addTypeListener = (group: AbstractControl | null) => {
+      if (group instanceof FormGroup) {
+        const typeCtrl = group.get('type');
+        if (typeCtrl) triggers.push(typeCtrl.valueChanges);
+      } else if (group instanceof FormArray) {
+        triggers.push(group.valueChanges);
+      }
+    };
+    addTypeListener(sourceCtrl);
+    addTypeListener(destCtrl);
+
+    if (triggers.length > 0) {
+      merge(...triggers)
+        .pipe(takeUntilDestroyed(destroyRef))
+        .subscribe(() => {
+          cronExpressionCtrl?.updateValueAndValidity();
+          watchDelayCtrl?.updateValueAndValidity();
+          updatePathsValidity();
+        });
+    }
   }
 
   requiredIfCronEnabled(): ValidatorFn {
@@ -267,6 +318,50 @@ export class ValidatorRegistryService {
           passwordMismatch: { message: this.translate.instant('validators.passwordMismatch') },
         };
       }
+      return null;
+    };
+  }
+
+  operationPathValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const pathGroup = control.parent;
+      if (!pathGroup) return null;
+
+      // Find the operation group (the one with autoStart)
+      let opGroup = pathGroup.parent;
+      if (opGroup instanceof FormArray) {
+        opGroup = opGroup.parent;
+      }
+      if (!opGroup) return null;
+
+      const autoStart = opGroup.get('autoStart')?.value === true;
+      const cronEnabled = opGroup.get('cronEnabled')?.value === true;
+      const watchEnabled = opGroup.get('watchEnabled')?.value === true;
+      const isActive = autoStart || cronEnabled || watchEnabled;
+
+      if (!isActive) return null;
+
+      const type = pathGroup.get('type')?.value;
+      if (type === 'local') {
+        const value = control.value;
+        if (!value || String(value).trim() === '') {
+          return { required: true };
+        }
+
+        // Run crossPlatformPath check
+        if (this.uiStateService.platform === 'windows') {
+          const winAbs =
+            /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
+          if (!winAbs.test(value)) {
+            return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
+          }
+        } else {
+          if (!/^(\/[^\0]*)$/.test(value)) {
+            return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
+          }
+        }
+      }
+
       return null;
     };
   }

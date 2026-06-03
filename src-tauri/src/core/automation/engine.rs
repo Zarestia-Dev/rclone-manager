@@ -97,12 +97,9 @@ impl AutomationScheduler {
             && let Err(e) = self.unschedule_automation(old_job_id).await
         {
             warn!(
-                "Failed to remove old scheduler job {} for automation '{}: {}-{}.{}: {}",
+                "Failed to remove old scheduler job {} for automation '{}': {}",
                 old_job_id,
-                automation.backend_name,
-                automation.remote_name,
-                automation.profile_name,
-                automation.id,
+                automation.log_name(),
                 e
             );
         }
@@ -127,7 +124,10 @@ impl AutomationScheduler {
             automation.backend_name, automation.remote_name, automation.profile_name
         );
         let automation_type = automation.automation_type.clone();
-        let cron_expr_5_field = automation.cron_expression.clone();
+        let cron_expr_5_field = automation
+            .cron_expression
+            .as_deref()
+            .ok_or_else(|| "Automation has no cron expression".to_string())?;
         let cron_expr_6_field = format!("0 {cron_expr_5_field}");
 
         let app_handle_for_job = app_handle.clone();
@@ -176,10 +176,7 @@ impl AutomationScheduler {
             .await
             .ok();
 
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
+        let automation_name = automation.log_name();
         info!("Scheduled '{automation_name}' ({cron_expr_6_field}) — job ID: {job_id}");
 
         Ok(job_id)
@@ -204,10 +201,7 @@ impl AutomationScheduler {
         automation: &Automation,
         cache: State<'_, AutomationsCache>,
     ) -> Result<(), String> {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
+        let automation_name = automation.log_name();
         if let Some(job_id_str) = &automation.scheduler_job_id
             && let Ok(job_id) = Uuid::parse_str(job_id_str)
         {
@@ -219,7 +213,7 @@ impl AutomationScheduler {
 
         let is_active = automation.status == AutomationStatus::Enabled
             || automation.status == AutomationStatus::Failed;
-        if is_active && automation.cron_expression != "realtime" {
+        if is_active && automation.cron_expression.is_some() {
             info!("Scheduling active automation '{automation_name}'…");
             match self.schedule_automation(automation, cache.clone()).await {
                 Ok(new_job_id) => {
@@ -260,13 +254,7 @@ impl AutomationScheduler {
 
         let mut errors: Vec<String> = Vec::new();
         for automation in automations {
-            let automation_name = format!(
-                "{}: {}-{}.{}",
-                automation.backend_name,
-                automation.remote_name,
-                automation.profile_name,
-                automation.id
-            );
+            let automation_name = automation.log_name();
             if let Err(e) = self.reschedule_automation(&automation, cache.clone()).await {
                 error!(
                     "Failed to reload '{}' ({}): {}",
@@ -308,13 +296,7 @@ impl AutomationScheduler {
 
         let mut errors: Vec<String> = Vec::new();
         for automation in result.added.iter().chain(result.updated.iter()) {
-            let automation_name = format!(
-                "{}: {}-{}.{}",
-                automation.backend_name,
-                automation.remote_name,
-                automation.profile_name,
-                automation.id
-            );
+            let automation_name = automation.log_name();
             if let Err(e) = self.reschedule_automation(automation, cache.clone()).await {
                 error!(
                     "Failed to reschedule '{}' ({}): {}",
@@ -383,13 +365,6 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
         .await
         .ok_or_else(|| crate::localized_error!("backendErrors.automation.automationNotFound"))?;
 
-    if !automation.can_run() {
-        return Err(crate::localized_error!(
-            "backendErrors.automation.automationCannotRun",
-            "status" => format!("{:?}", automation.status)
-        ));
-    }
-
     use crate::rclone::backend::BackendManager;
     let backend_manager = app_handle.state::<BackendManager>();
     let job_cache = &backend_manager.job_cache;
@@ -398,21 +373,27 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
     let job_type = automation.automation_type.as_job_type();
     let profile = Some(automation.args.params.profile_name.as_str());
 
-    if automation.status == crate::utils::types::automation::AutomationStatus::Running
-        || automation.status == crate::utils::types::automation::AutomationStatus::Stopping
+    let is_running = automation.status == AutomationStatus::Running
+        || automation.status == AutomationStatus::Stopping
+        || automation.current_job_id.is_some()
         || job_cache
             .is_job_running(&remote_name, job_type.clone(), profile)
-            .await
-    {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
+            .await;
+
+    if is_running {
+        let automation_name = automation.log_name();
         warn!(
             "Skipping '{}': a '{}' job for '{}' (profile: {:?}) is already running (automation status: {:?}).",
             automation_name, job_type, remote_name, profile, automation.status
         );
         return Ok(());
+    }
+
+    if automation.status == AutomationStatus::Disabled {
+        return Err(crate::localized_error!(
+            "backendErrors.automation.automationCannotRun",
+            "status" => format!("{:?}", automation.status)
+        ));
     }
 
     cache
@@ -440,11 +421,7 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
 
     match result {
         Ok(job_id) => {
-            let next_run = if automation.watch_enabled && automation.cron_expression == "realtime" {
-                None
-            } else {
-                get_next_run(&automation.cron_expression).ok()
-            };
+            let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
             cache
                 .update_automation(
                     automation_id,
@@ -469,11 +446,7 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
             Ok(())
         }
         Err(e) => {
-            let next_run = if automation.watch_enabled && automation.cron_expression == "realtime" {
-                None
-            } else {
-                get_run_expr_or_none(automation.watch_enabled, &automation.cron_expression)
-            };
+            let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
             cache
                 .update_automation(
                     automation_id,
@@ -489,12 +462,9 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
     }
 }
 
-fn get_run_expr_or_none(watch_enabled: bool, cron_expr: &str) -> Option<chrono::DateTime<Utc>> {
-    if watch_enabled && cron_expr == "realtime" {
-        None
-    } else {
-        get_next_run(cron_expr).ok()
-    }
+fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>> {
+    let expr = cron_expr?;
+    get_next_run(expr).ok()
 }
 
 // ============================================================================

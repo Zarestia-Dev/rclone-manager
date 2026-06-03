@@ -8,9 +8,10 @@ import {
   DestroyRef,
   WritableSignal,
   signal,
+  linkedSignal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { FormGroup, ReactiveFormsModule, FormArray, FormControl, Validators } from '@angular/forms';
+import { FormGroup, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,6 +34,7 @@ import {
   PathSelectionService,
   PathSelectionState,
   PathService,
+  ValidatorRegistryService,
 } from '@app/services';
 import { CronInputComponent, NumberInputComponent } from '@app/shared/components';
 
@@ -80,8 +82,14 @@ export class OperationConfigComponent {
   readonly isNewRemote = input(true);
   readonly searchQuery = input('');
 
-  readonly cronPanelExpanded = signal(false);
-  readonly watchPanelExpanded = signal(false);
+  readonly cronPanelExpanded = linkedSignal<boolean>(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('cronEnabled')?.value;
+  });
+  readonly watchPanelExpanded = linkedSignal<boolean>(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('watchEnabled')?.value;
+  });
 
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
@@ -89,6 +97,7 @@ export class OperationConfigComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
@@ -212,28 +221,6 @@ export class OperationConfigComponent {
       this.syncAutocomplete(items);
     });
 
-    effect(onCleanup => {
-      const form = this.opFormGroup();
-      const cronEnabledCtrl = form.get('cronEnabled');
-      const watchEnabledCtrl = form.get('watchEnabled');
-      if (!cronEnabledCtrl || !watchEnabledCtrl) return;
-
-      this.cronPanelExpanded.set(!!cronEnabledCtrl.value);
-      this.watchPanelExpanded.set(!!watchEnabledCtrl.value);
-
-      const sub1 = cronEnabledCtrl.valueChanges.subscribe(val => {
-        this.cronPanelExpanded.set(!!val);
-      });
-      const sub2 = watchEnabledCtrl.valueChanges.subscribe(val => {
-        this.watchPanelExpanded.set(!!val);
-      });
-
-      onCleanup(() => {
-        sub1.unsubscribe();
-        sub2.unsubscribe();
-      });
-    });
-
     effect(() => {
       const watchEnabledCtrl = this.opFormGroup().get('watchEnabled');
       if (!watchEnabledCtrl) return;
@@ -288,6 +275,7 @@ export class OperationConfigComponent {
 
     item.typeControl.setValue(typeValue);
     item.pathControl.setValue('', { emitEvent: false });
+    item.pathControl.updateValueAndValidity();
 
     if (typeValue.startsWith('otherRemote:')) {
       const remoteName = this.pathService.getRemoteNameFromValue(
@@ -309,7 +297,9 @@ export class OperationConfigComponent {
     array.push(
       new FormGroup({
         type: new FormControl(initial?.type ?? 'currentRemote'),
-        path: new FormControl(initial?.path ?? '', Validators.required),
+        path: new FormControl(initial?.path ?? '', [
+          this.validatorRegistry.operationPathValidator(),
+        ]),
         remote: new FormControl(initial?.remote ?? ''),
       })
     );

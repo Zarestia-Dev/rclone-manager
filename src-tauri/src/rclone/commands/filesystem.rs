@@ -53,7 +53,6 @@ pub async fn mkdir(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
         backend.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
@@ -101,7 +100,6 @@ pub async fn cleanup(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
         backend.inject_auth(state.client.post(&url)),
         json!(payload),
         JobMetadata {
@@ -151,7 +149,6 @@ pub async fn copy_url(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
         backend.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
@@ -198,7 +195,6 @@ pub async fn remove_empty_dirs(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        state.client.clone(),
         backend.inject_auth(state.client.post(&url)),
         payload,
         JobMetadata {
@@ -295,11 +291,16 @@ pub async fn transfer(
         JobType::Copy
     };
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to transfer".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = first_item.path.clone();
 
     crate::rclone::commands::job::submit_batch_job(
         app,
@@ -308,7 +309,7 @@ pub async fn transfer(
             remote_name,
             job_type,
             source,
-            destination: dst_path,
+            destination: build_full_path(&dst_remote, &dst_path),
             profile: None,
             origin,
             group,
@@ -338,11 +339,16 @@ pub async fn delete(
         inputs.push(json!({ "_path": endpoint, "fs": item.remote, "remote": item.path }));
     }
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to delete".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = first_item.path.clone();
 
     crate::rclone::commands::job::submit_batch_job(
         app,
@@ -625,11 +631,17 @@ pub async fn rename(
         }
     }
 
-    let (remote_name, source) = if items.len() == 1 {
-        (items[0].remote.clone(), items[0].src_path.clone())
+    let first_item = items
+        .first()
+        .ok_or_else(|| "No items to rename".to_string())?;
+    let all_same_remote = items.iter().all(|item| item.remote == first_item.remote);
+    let remote_name = if all_same_remote {
+        first_item.remote.clone()
     } else {
-        ("multiple".to_string(), format!("{} items", items.len()))
+        "multiple".to_string()
     };
+    let source = first_item.src_path.clone();
+    let destination = first_item.dst_path.clone();
 
     crate::rclone::commands::job::submit_batch_job(
         app,
@@ -638,7 +650,7 @@ pub async fn rename(
             remote_name,
             job_type: JobType::Rename,
             source,
-            destination: "multiple items".to_string(),
+            destination,
             profile: None,
             origin,
             group,

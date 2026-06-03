@@ -95,7 +95,11 @@
                       [class]="iconAnimationClass()"
                     ></mat-icon>
                   } @else if (profile.status === 'scheduled') {
-                    <mat-icon svgIcon="clock"></mat-icon>
+                    @if (profile.hasWatcher && !profile.hasSchedule) {
+                      <mat-icon svgIcon="eye"></mat-icon>
+                    } @else {
+                      <mat-icon svgIcon="clock"></mat-icon>
+                    }
                   }
                   <span>{{ profile.label }}</span>
                 </button>
@@ -154,6 +158,28 @@
                 <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
                   schedule.humanReadable
                 }}</span>
+              </div>
+            }
+          }
+
+          @if (hasWatcher()) {
+            @let watcher = selectedWatcher();
+            @if (watcher) {
+              <div
+                class="cron-human-readable"
+                [ngClass]="{
+                  'operation-sync': selectedSyncOperation() === 'sync',
+                  'operation-bisync': selectedSyncOperation() === 'bisync',
+                  'operation-move': selectedSyncOperation() === 'move',
+                  'operation-copy': selectedSyncOperation() === 'copy',
+                }"
+              >
+                <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
+                <span class="cron-schedule">
+                  {{ 'automation.monitoring.realtimeSchedule' | translate }}
+                  ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
+                  {{ 'automation.monitoring.seconds' | translate }})
+                </span>
               </div>
             }
           }

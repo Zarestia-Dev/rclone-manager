@@ -684,14 +684,16 @@ export class NautilusTabService {
         const { status, remote, source, destination } = event;
         if ((status === 'Completed' || status === 'Failed' || status === 'Stopped') && remote) {
           const affected: { remote: string; path: string }[] = [];
-          if (source) {
-            affected.push({ remote, path: source });
-            affected.push({ remote, path: this.pathService.getParentPath(source) });
-          }
-          if (destination) {
-            affected.push({ remote, path: destination });
-            affected.push({ remote, path: this.pathService.getParentPath(destination) });
-          }
+          const addAffected = (pathStr: string) => {
+            const parsed = this.pathService.splitFsPath(pathStr);
+            const r = parsed.remote || remote;
+            affected.push({ remote: r, path: parsed.path });
+            affected.push({ remote: r, path: this.pathService.getParentPath(parsed.path) });
+          };
+
+          if (source) addAffected(source);
+          if (destination) addAffected(destination);
+
           if (affected.length > 0) {
             this.refreshAffectedPaths(affected);
           }
@@ -793,7 +795,7 @@ export class NautilusTabService {
             const currentRemote = ref.remote();
             const actualRemoteName = item.meta.remote ?? currentRemote?.name;
             if (actualRemoteName) {
-              const isLocal = this.pathService.isLocalPath(actualRemoteName);
+              const isLocal = item.meta.isLocal;
               const idx = files.findIndex(f => f.entry.Path === item.entry.Path);
               if (idx !== -1) {
                 this.fileViewerSvc.open(

@@ -214,13 +214,15 @@ export class GeneralDetailComponent {
     displayedColumns: GeneralDetailComponent.DISPLAYED_COLUMNS,
   }));
 
+  private readonly selectedRemoteName = computed(() => this.selectedRemote().name);
+
   constructor() {
     void this.automationService
       .getAutomations()
       .catch(err => console.error('Error loading automations:', err));
 
     effect(() => {
-      this.selectedRemote();
+      this.selectedRemoteName();
       untracked(() => this.currentAutomationCardIndex.set(0));
     });
   }

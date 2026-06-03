@@ -127,7 +127,7 @@ export class NautilusActionsService {
       return;
     }
 
-    const isLocal = this.pathSvc.isLocalPath(actualRemoteName);
+    const isLocal = item.meta.isLocal;
 
     const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
     if (idx === -1) return;

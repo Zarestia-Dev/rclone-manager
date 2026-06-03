@@ -20,21 +20,30 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
         return Ok(());
     }
 
+    let state = app.state::<TrayMenuState>();
+    // Serialize execution to prevent concurrent snapshot fetches and out-of-order execution.
+    let _lock = state.update_lock.lock().await;
+
     let snapshot = TraySnapshot::fetch(&app).await?;
+
     let is_active = !snapshot.active_jobs.is_empty();
     let tooltip = build_tooltip(&snapshot);
     let max_tray_items = settings.core.max_tray_items;
 
     let plan = MenuPlan::build(&snapshot, max_tray_items);
 
-    {
-        let state = app.state::<TrayMenuState>();
+    // Track whether the menu plan structure actually changed.
+    // This allows us to skip rebuilding the menu (avoiding hover loss/flashing) but still
+    // update the icon/tooltip if needed.
+    let plan_changed = {
         let mut last = state.last_plan.lock().unwrap();
         if last.as_ref() == Some(&plan) {
-            return Ok(());
+            false
+        } else {
+            *last = Some(plan.clone());
+            true
         }
-        *last = Some(plan.clone());
-    }
+    };
 
     let icon = super::icon::get_icon(is_active).ok();
 
@@ -45,15 +54,18 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
             return;
         };
 
-        match create_tray_menu_from_plan(&app_clone, &plan) {
-            Ok(menu) => {
-                if let Err(e) = tray.set_menu(Some(menu)) {
-                    error!("Failed to set tray menu: {e}");
-                    return;
+        // Only rebuild and set the menu if the plan changed
+        if plan_changed {
+            match create_tray_menu_from_plan(&app_clone, &plan) {
+                Ok(menu) => {
+                    if let Err(e) = tray.set_menu(Some(menu)) {
+                        error!("Failed to set tray menu: {e}");
+                        return;
+                    }
                 }
-            }
-            Err(e) => {
-                error!("Failed to build tray menu: {e}");
+                Err(e) => {
+                    error!("Failed to build tray menu: {e}");
+                }
             }
         }
 
@@ -62,7 +74,7 @@ pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()
         }
 
         let _ = tray.set_tooltip(Some(tooltip));
-        info!("Tray menu and icon updated on main thread");
+        info!("Tray menu (changed={plan_changed}) and icon updated on main thread");
     })?;
 
     Ok(())

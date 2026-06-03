@@ -27,10 +27,7 @@ pub async fn toggle_automation(
     {
         error!("Failed to reload automations after toggle: {e}");
     } else {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
+        let automation_name = automation.log_name();
 
         info!(
             "Automation {} {}",

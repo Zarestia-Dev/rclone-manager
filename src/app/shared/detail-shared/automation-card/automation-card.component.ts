@@ -21,7 +21,7 @@ const STATUS_TOGGLE: Record<string, { icon: string; tooltip: string }> = {
   enabled: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   running: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   disabled: { icon: 'play', tooltip: 'automation.toggle.enable' },
-  failed: { icon: 'play', tooltip: 'automation.toggle.enable' },
+  failed: { icon: 'pause', tooltip: 'automation.toggle.disable' },
   stopping: { icon: 'stop', tooltip: 'automation.toggle.stopping' },
 };
 
@@ -68,7 +68,7 @@ export class AutomationCardComponent {
       return this.translate.instant('automation.nextRun.disabled');
     if (automation.status === 'stopping')
       return this.translate.instant('automation.nextRun.stopping');
-    if (automation.watchEnabled && automation.cronExpression === 'realtime') {
+    if (automation.watchEnabled && !automation.cronExpression) {
       return this.translate.instant('automation.monitoring.watcherActive');
     }
     return automation.nextRun
@@ -86,7 +86,7 @@ export class AutomationCardComponent {
   protected readonly cronDescription = computed(() => {
     try {
       const cronExpr = this.automation().cronExpression;
-      if (cronExpr === 'realtime') {
+      if (!cronExpr) {
         return (
           this.translate.instant('automation.monitoring.realtimeSchedule') ||
           'Real-time File Watcher'

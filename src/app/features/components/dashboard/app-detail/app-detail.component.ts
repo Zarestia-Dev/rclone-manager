@@ -2,13 +2,12 @@ import { NgClass, TitleCasePipe } from '@angular/common';
 import {
   Component,
   inject,
-  signal,
   computed,
   effect,
   input,
   model,
   output,
-  untracked,
+  linkedSignal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
@@ -46,6 +45,7 @@ import {
   OPERATION_METADATA,
   ACTION_ANIMATION_CLASS,
   OPERATION_COLOR_VAR,
+  AppConfig,
 } from '@app/types';
 import {
   JobInfoPanelComponent,
@@ -71,14 +71,17 @@ interface JobStatsWithCompleted extends GlobalStats {
 }
 
 interface ProfileConfig {
-  srcFs?: string | string[];
-  dstFs?: string;
-  path1?: string;
-  path2?: string;
-  fs?: string;
-  mountPoint?: string;
-  type?: string;
-  _config?: { addr?: string; [key: string]: unknown };
+  app?: AppConfig;
+  rclone?: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    path1?: string;
+    path2?: string;
+    fs?: string;
+    mountPoint?: string;
+    type?: string;
+    _config?: { addr?: string; [key: string]: unknown };
+  };
 }
 
 @Component({
@@ -145,7 +148,9 @@ export class AppDetailComponent {
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  private readonly _selectedProfiles = signal<Record<string, string>>({});
+  private readonly _selectedProfiles = linkedSignal<Record<string, string>>(() => {
+    return (this.remoteSettings()['selectedProfiles'] as Record<string, string>) ?? {};
+  });
 
   readonly selectedProfile = computed(() => {
     const op = this.currentOpType();
@@ -226,18 +231,31 @@ export class AppDetailComponent {
 
   readonly enrichedProfiles = computed(() => {
     const configs = this.getProfileConfigMap(this.currentOpType()) as
-      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
+      | Record<
+          string,
+          {
+            app?: {
+              cronEnabled?: boolean;
+              cronExpression?: string | null;
+              watchEnabled?: boolean;
+              watchDelay?: number;
+            };
+          }
+        >
       | undefined;
 
     return this.profiles().map(p => {
       const cfg = configs?.[p.name];
       const isActive = this.isOperationActive(this.currentOpType(), p.name);
-      const hasSchedule = !!(cfg?.cronEnabled && cfg?.cronExpression);
+      const hasSchedule = !!(cfg?.app?.cronEnabled && cfg?.app?.cronExpression);
+      const hasWatcher = !!cfg?.app?.watchEnabled;
+      const isMonitored = hasSchedule || hasWatcher;
       return {
         ...p,
         isActive,
         hasSchedule,
-        status: isActive ? 'running' : hasSchedule ? 'scheduled' : 'idle',
+        hasWatcher,
+        status: isActive ? 'running' : isMonitored ? 'scheduled' : 'idle',
       };
     });
   });
@@ -285,18 +303,19 @@ export class AppDetailComponent {
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
       if (!cfg) return false;
-      return !!cfg?.['dryRun'];
+      const rclone = cfg?.rclone ?? cfg;
+      return !!rclone?.['dryRun'];
     } else if (['sync', 'copy', 'move'].includes(opType)) {
       const configKey = REMOTE_CONFIG_KEYS[
         opType as keyof typeof REMOTE_CONFIG_KEYS
       ] as keyof RemoteSettings;
       if (!configKey) return false;
       const profiles = this.remoteSettings()[configKey] as
-        | Record<string, { backendProfile?: string }>
+        | Record<string, { app?: { backendProfile?: string }; backendProfile?: string }>
         | undefined;
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
-      const backendProfileName = cfg?.backendProfile || 'default';
+      const backendProfileName = cfg?.app?.backendProfile || cfg?.backendProfile || 'default';
 
       const backendConfigs = this.remoteSettings()['backendConfigs'] as
         | Record<string, Record<string, any>>
@@ -362,19 +381,20 @@ export class AppDetailComponent {
   readonly cronSchedules = computed<
     { profileName: string; cronExpression: string; humanReadable: string }[]
   >(() => {
+    this._lang();
     const configKey = REMOTE_CONFIG_KEYS[
       this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
     const configs = this.remoteSettings()[configKey] as
-      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
+      | Record<string, { app?: { cronEnabled?: boolean; cronExpression?: string | null } }>
       | undefined;
     if (!configs) return [];
 
     return Object.entries(configs)
-      .filter(([, cfg]) => cfg?.cronEnabled && cfg?.cronExpression)
+      .filter(([, cfg]) => cfg?.app?.cronEnabled && cfg?.app?.cronExpression)
       .map(([profileName, cfg]) => {
         let humanReadable = 'Invalid schedule';
-        const cronExpression = cfg.cronExpression ?? '';
+        const cronExpression = cfg.app?.cronExpression ?? '';
         try {
           humanReadable = cronstrue(cronExpression, {
             locale: getCronstrueLocale(this.translate.getCurrentLang()),
@@ -395,6 +415,29 @@ export class AppDetailComponent {
   });
 
   readonly hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
+
+  readonly selectedWatcher = computed(() => {
+    const configKey = REMOTE_CONFIG_KEYS[
+      this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
+    ] as keyof RemoteSettings;
+    const configs = this.remoteSettings()[configKey] as
+      | Record<string, { app?: { watchEnabled?: boolean; watchDelay?: number } }>
+      | undefined;
+    if (!configs) return null;
+
+    const selected = this.selectedProfile();
+    const profileName = selected || 'default';
+    const cfg = configs[profileName];
+    if (cfg?.app?.watchEnabled) {
+      return {
+        profileName,
+        watchDelay: cfg.app.watchDelay ?? 5,
+      };
+    }
+    return null;
+  });
+
+  readonly hasWatcher = computed(() => this.selectedWatcher() !== null);
 
   // --- Derived: Settings Sections ---
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
@@ -563,19 +606,6 @@ export class AppDetailComponent {
   }));
 
   constructor() {
-    // Load persistent preferences when the remote or its settings change
-    effect(() => {
-      const settings = this.remoteSettings();
-      untracked(() => {
-        if (settings['selectedSyncOperation']) {
-          this.selectedSyncOperation.set(settings['selectedSyncOperation'] as SyncOperationType);
-        }
-        if (settings['selectedProfiles']) {
-          this._selectedProfiles.set(settings['selectedProfiles'] as Record<string, string>);
-        }
-      });
-    });
-
     // Delegate group polling to the service while the current job is running.
     effect(onCleanup => {
       if (!this.shouldPoll()) return;
@@ -647,14 +677,18 @@ export class AppDetailComponent {
       const configKey = 'bisyncConfigs';
       const profiles = (settings[configKey] as Record<string, any>) ?? {};
       const existing = profiles[profile] ?? {};
-      const currentDryRun = !!existing.dryRun;
+      const rclone = existing.rclone ?? existing;
+      const currentDryRun = !!rclone.dryRun;
       const newDryRun = !currentDryRun;
 
       const updatedProfiles = {
         ...profiles,
         [profile]: {
           ...existing,
-          dryRun: newDryRun,
+          rclone: {
+            ...rclone,
+            dryRun: newDryRun,
+          },
         },
       };
 
@@ -667,9 +701,13 @@ export class AppDetailComponent {
       ] as keyof RemoteSettings;
       if (!configKey) return;
 
-      const profiles = (settings[configKey] as Record<string, { backendProfile?: string }>) ?? {};
+      const profiles =
+        (settings[configKey] as Record<
+          string,
+          { app?: { backendProfile?: string }; backendProfile?: string }
+        >) ?? {};
       const cfg = profiles[profile];
-      const backendProfileName = cfg?.backendProfile || 'default';
+      const backendProfileName = cfg?.app?.backendProfile || cfg?.backendProfile || 'default';
 
       const backendConfigs = (settings['backendConfigs'] as Record<string, any>) ?? {};
       const existingBackend = backendConfigs[backendProfileName] ?? {};
@@ -784,15 +822,16 @@ export class AppDetailComponent {
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
-    const resolvedSource = config.srcFs ?? config.path1 ?? config.fs;
+    const rclone = config.rclone || {};
+    const resolvedSource = rclone.srcFs ?? rclone.path1 ?? rclone.fs;
 
-    const resolvedDest = config.dstFs ?? config.path2 ?? config.mountPoint;
+    const resolvedDest = rclone.dstFs ?? rclone.path2 ?? rclone.mountPoint;
 
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((config.type as string) ?? 'http').toUpperCase()} at ${config._config?.addr ?? t('dashboard.appDetail.default')}`,
+            destination: `${((rclone.type as string) ?? 'http').toUpperCase()} at ${rclone._config?.addr ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,

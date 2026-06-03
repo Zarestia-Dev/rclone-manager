@@ -380,9 +380,7 @@ impl Backend {
             } else {
                 format!("{remote}:")
             };
-            // Ensure path doesn't have double slashes if it starts with one
-            let separator = if path.starts_with('/') { "" } else { "/" };
-            format!("{r_name}{separator}{path}")
+            crate::utils::rclone::util::build_full_path(&r_name, path)
         };
 
         let mut args = vec![full_path];

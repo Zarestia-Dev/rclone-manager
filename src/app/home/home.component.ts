@@ -1,12 +1,11 @@
 import {
   Component,
   afterNextRender,
-  effect,
   inject,
   signal,
   computed,
-  untracked,
   DestroyRef,
+  linkedSignal,
 } from '@angular/core';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
@@ -102,7 +101,10 @@ export class HomeComponent {
 
   readonly isSidebarOpen = signal(false);
   readonly sidebarMode = signal<MatDrawerMode>('side');
-  readonly selectedSyncOperation = signal<SyncOperationType>('sync');
+  readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
+    const settings = this.selectedRemoteSettings();
+    return (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
+  });
 
   private readonly _isLoading = signal(false);
   readonly isLoading = this._isLoading.asReadonly();
@@ -110,14 +112,6 @@ export class HomeComponent {
   private resizeObserver?: ResizeObserver;
 
   constructor() {
-    effect(() => {
-      const settings = this.selectedRemoteSettings();
-      if (this.selectedRemote()) {
-        const saved = (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
-        untracked(() => this.selectedSyncOperation.set(saved));
-      }
-    });
-
     afterNextRender(() => this.setupResponsiveLayout());
 
     void this.loadInitialData();

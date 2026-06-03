@@ -17,10 +17,6 @@ use crate::{
     },
 };
 
-fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: &str) -> Result<T, String> {
-    serde_json::from_str(payload).map_err(|e| e.to_string())
-}
-
 #[cfg(feature = "tray")]
 fn trigger_tray_update(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -95,7 +91,7 @@ fn handle_settings_changed(app: &AppHandle) {
         let app = app_clone.clone();
         debug!("Settings saved. Payload: {:?}", event.payload());
 
-        match parse_payload::<SettingsChangeEvent>(event.payload()) {
+        match serde_json::from_str::<SettingsChangeEvent>(event.payload()) {
             Ok(change) => match (change.category.as_str(), change.key.as_str()) {
                 ("general", "notifications") => {
                     if let Some(enabled) = change.value.as_bool() {
@@ -246,13 +242,10 @@ fn handle_restrict_mode_change(app: &AppHandle, enabled: bool) {
 fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
     debug!("Bandwidth limit changed to: {value}");
     let app = app.clone();
-    let limit = if value.is_null() {
-        None
-    } else if let Some(s) = value.as_str() {
-        Some(s.to_string())
-    } else {
-        value.as_u64().map(|n| n.to_string())
-    };
+    let limit = value
+        .as_str()
+        .map(String::from)
+        .or_else(|| value.as_u64().map(|n| n.to_string()));
 
     tauri::async_runtime::spawn(async move {
         if let Err(e) = bandwidth_limit(app, limit).await {
@@ -292,18 +285,21 @@ fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(JOB_CACHE_CHANGED, move |event| {
         let app = app_clone.clone();
-        let payload = event.payload().trim_matches('"').to_string();
+        let payload = event.payload().to_string();
 
         tauri::async_runtime::spawn(async move {
-            if let Ok(jobid) = payload.parse::<u64>() {
+            use crate::utils::types::events::JobChangeEvent;
+            if let Ok(ev) = serde_json::from_str::<JobChangeEvent>(&payload)
+                && let Ok(id) = ev.job_id.parse::<u64>()
+            {
                 use crate::rclone::backend::BackendManager;
-                let cache = &app.state::<BackendManager>().job_cache;
-                if let Some(job) = cache.get_job(jobid).await
+                if let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
                     && !job.job_type.is_tray_relevant()
                 {
                     return;
                 }
             }
+
             #[cfg(feature = "tray")]
             trigger_tray_update(app);
         });

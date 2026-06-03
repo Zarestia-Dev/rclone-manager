@@ -1,5 +1,5 @@
 import { Injectable, Signal, computed, signal, inject, DestroyRef, effect } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormGroup,
   Validators,
@@ -501,7 +501,11 @@ export class RemoteConfigStateService {
       autoStart: [false],
       cronEnabled: [false],
       cronExpression: [null],
-      source: this.fb.group({ type: ['currentRemote'], path: [''], remote: [''] }),
+      source: this.fb.group({
+        type: ['currentRemote'],
+        path: ['', [this.validatorRegistry.operationPathValidator()]],
+        remote: [''],
+      }),
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
       backendProfile: [DEFAULT_PROFILE_NAME],
@@ -526,7 +530,11 @@ export class RemoteConfigStateService {
     }
 
     if (fields.includes('source')) {
-      const sourceGroup = this.fb.group({ type: ['currentRemote'], path: [''], remote: [''] });
+      const sourceGroup = this.fb.group({
+        type: ['currentRemote'],
+        path: ['', [this.validatorRegistry.operationPathValidator()]],
+        remote: [''],
+      });
       group['source'] =
         flagType === 'mount' || flagType === 'serve' || flagType === 'bisync'
           ? sourceGroup
@@ -534,7 +542,11 @@ export class RemoteConfigStateService {
     }
 
     if (fields.includes('dest')) {
-      group['dest'] = this.fb.group({ type: ['local'], path: [''], remote: [''] });
+      group['dest'] = this.fb.group({
+        type: ['local'],
+        path: ['', [this.validatorRegistry.operationPathValidator()]],
+        remote: [''],
+      });
     }
 
     if (fields.includes('autoStart') && !fields.includes('type')) {
@@ -889,7 +901,13 @@ export class RemoteConfigStateService {
     nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
   }
 
-  private static readonly AUTO_START_OP_TYPES = new Set(['sync', 'copy', 'move', 'bisync']);
+  private static readonly AUTO_START_OP_TYPES = new Set([
+    'serve',
+    'sync',
+    'copy',
+    'move',
+    'bisync',
+  ]);
 
   private setupAutoStartValidators(): void {
     if (this.editTarget() === 'remote' || !this.editTarget() || this.cloneTarget()) {
@@ -897,52 +915,8 @@ export class RemoteConfigStateService {
         if (type !== 'mount' && !RemoteConfigStateService.AUTO_START_OP_TYPES.has(type)) continue;
 
         const opGroup = this.remoteConfigForm.get(`${type}Config`);
-        if (!opGroup) continue;
-
-        if (type === 'mount') {
-          const autoStartCtrl = opGroup.get('autoStart');
-          const destCtrl = opGroup.get('dest');
-          autoStartCtrl?.valueChanges
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(enabled => {
-              if (enabled) {
-                const validator = this.validatorRegistry.getValidator('crossPlatformPath');
-                destCtrl?.setValidators([Validators.required, ...(validator ? [validator] : [])]);
-              } else {
-                destCtrl?.clearValidators();
-              }
-              destCtrl?.updateValueAndValidity();
-            });
-        } else {
-          const sourceControl = opGroup.get('source');
-          const destControl = opGroup.get('dest');
-          const autoStartCtrl = opGroup.get('autoStart');
-          const cronEnabledCtrl = opGroup.get('cronEnabled');
-          const cronExpressionCtrl = opGroup.get('cronExpression');
-          const watchEnabledCtrl = opGroup.get('watchEnabled');
-          const watchDelayCtrl = opGroup.get('watchDelay');
-
-          cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
-          watchDelayCtrl?.setValidators(this.validatorRegistry.requiredIfWatchEnabled());
-
-          autoStartCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            if (sourceControl instanceof FormArray) {
-              sourceControl.controls.forEach((c: AbstractControl) =>
-                c.get('path')?.updateValueAndValidity()
-              );
-            } else if (sourceControl instanceof FormGroup) {
-              sourceControl.get('path')?.updateValueAndValidity();
-            }
-            if (destControl instanceof FormGroup) {
-              destControl.get('path')?.updateValueAndValidity();
-            }
-          });
-          cronEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            cronExpressionCtrl?.updateValueAndValidity();
-          });
-          watchEnabledCtrl?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            watchDelayCtrl?.updateValueAndValidity();
-          });
+        if (opGroup instanceof FormGroup) {
+          this.validatorRegistry.setupOperationValidation(opGroup, this.destroyRef);
         }
       }
     }
@@ -951,14 +925,16 @@ export class RemoteConfigStateService {
   private setFormState(disabled: boolean): void {
     const opts = { emitEvent: false } as const;
     if (disabled) {
-      this.remoteForm.disable(opts);
-      this.remoteConfigForm.disable(opts);
+      if (this.remoteForm.enabled) this.remoteForm.disable(opts);
+      if (this.remoteConfigForm.enabled) this.remoteConfigForm.disable(opts);
     } else {
-      this.remoteForm.enable(opts);
-      this.remoteConfigForm.enable(opts);
-      if (this.editTarget() && this.editTarget() !== 'remote') {
-        this.remoteForm.disable(opts);
+      const shouldEnableRemote = !(this.editTarget() && this.editTarget() !== 'remote');
+      if (shouldEnableRemote) {
+        if (this.remoteForm.disabled) this.remoteForm.enable(opts);
+      } else {
+        if (this.remoteForm.enabled) this.remoteForm.disable(opts);
       }
+      if (this.remoteConfigForm.disabled) this.remoteConfigForm.enable(opts);
     }
   }
 

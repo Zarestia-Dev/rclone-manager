@@ -36,7 +36,6 @@ async fn run_fs_command_as_job(
 
     let (jobid, _, _) = submit_job_with_options(
         app.clone(),
-        state.client.clone(),
         backend.inject_auth(state.client.clone().post(&url)),
         payload,
         metadata,

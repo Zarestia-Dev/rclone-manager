@@ -552,13 +552,6 @@
     }
 
     &.error-state {
-      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
-      background: linear-gradient(
-        to bottom,
-        var(--card-bg-color),
-        rgba(var(--warn-color-rgb), 0.02)
-      );
-
       .icon-wrapper.error {
         background: rgba(var(--warn-color-rgb), 0.1);
         mat-icon {

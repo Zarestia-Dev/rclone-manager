@@ -6,7 +6,6 @@ use tauri::{AppHandle, Manager};
 use crate::core::alerts::{
     cache::{self, AlertHistoryCache},
     dispatch::{self, DispatchContext},
-    event_ext::NotificationEventExt,
     template::TemplateContext,
     types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
 };

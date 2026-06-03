@@ -18,8 +18,8 @@ import {
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { merge, startWith, Observable } from 'rxjs';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { startWith } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslateModule } from '@ngx-translate/core';
@@ -255,7 +255,7 @@ export class QuickAddRemoteComponent {
   ): FormGroup {
     return this.fb.group({
       type: new FormControl(defaultType),
-      path: new FormControl(''),
+      path: new FormControl('', [this.validatorRegistry.operationPathValidator()]),
       remote: new FormControl(''),
     });
   }
@@ -339,62 +339,8 @@ export class QuickAddRemoteComponent {
   private setupFormListeners(): void {
     for (const opName of this.operationNames) {
       const opGroup = this.quickAddForm.get(`operations.${opName}`);
-      if (!opGroup) continue;
-
-      if (opName === 'mount') {
-        const destControl = opGroup.get('dest');
-        opGroup
-          .get('autoStart')
-          ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(enabled => {
-            if (enabled) {
-              destControl?.setValidators(Validators.required);
-            } else {
-              destControl?.clearValidators();
-            }
-            destControl?.updateValueAndValidity();
-          });
-      } else if (QuickAddRemoteComponent.SOURCE_DEST_OP_TYPES.has(opName)) {
-        const getGroup = (path: string) => {
-          const ctrl = opGroup.get(path);
-          if (ctrl instanceof FormGroup) return ctrl;
-          if (ctrl instanceof FormArray && ctrl.length > 0) return ctrl.at(0) as FormGroup;
-          return null;
-        };
-
-        const sourceG = getGroup('source');
-        const destG = getGroup('dest');
-
-        const sourcePath = sourceG?.get('path');
-        const destPath = destG?.get('path');
-
-        sourcePath?.setValidators(this.validatorRegistry.requiredIfLocal());
-        destPath?.setValidators(this.validatorRegistry.requiredIfLocal());
-
-        const cronEnabledCtrl = opGroup.get('cronEnabled');
-        const cronExpressionCtrl = opGroup.get('cronExpression');
-        const watchEnabledCtrl = opGroup.get('watchEnabled');
-        const watchDelayCtrl = opGroup.get('watchDelay');
-
-        cronExpressionCtrl?.setValidators(this.validatorRegistry.requiredIfCronEnabled());
-        watchDelayCtrl?.setValidators(this.validatorRegistry.requiredIfWatchEnabled());
-
-        const watch$: Observable<any>[] = [
-          opGroup.get('autoStart')!.valueChanges,
-          cronEnabledCtrl!.valueChanges,
-          watchEnabledCtrl!.valueChanges,
-        ];
-        if (sourceG) watch$.push(sourceG.get('type')!.valueChanges);
-        if (destG) watch$.push(destG.get('type')!.valueChanges);
-
-        merge(...watch$)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => {
-            sourcePath?.updateValueAndValidity();
-            destPath?.updateValueAndValidity();
-            cronExpressionCtrl?.updateValueAndValidity();
-            watchDelayCtrl?.updateValueAndValidity();
-          });
+      if (opGroup instanceof FormGroup) {
+        this.validatorRegistry.setupOperationValidation(opGroup, this.destroyRef);
       }
     }
   }

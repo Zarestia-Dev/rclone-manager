@@ -141,7 +141,6 @@ pub struct SubmitJobOptions {
 
 pub async fn submit_job_with_options(
     app: AppHandle,
-    client: reqwest::Client,
     request: reqwest::RequestBuilder,
     payload: Value,
     metadata: JobMetadata,
@@ -151,14 +150,13 @@ pub async fn submit_job_with_options(
         initialize_and_register_job(&app, request, payload, metadata.clone()).await?;
 
     if options.wait_for_completion {
-        monitor_job(backend_name, metadata, jobid, app.clone(), client.clone())
+        monitor_job(backend_name, metadata, jobid, app.clone())
             .await
             .map_err(|e| e.to_string())?;
     } else {
         let app = app.clone();
-        let client = client.clone();
         tauri::async_runtime::spawn(async move {
-            let _ = monitor_job(backend_name, metadata, jobid, app, client).await;
+            let _ = monitor_job(backend_name, metadata, jobid, app).await;
         });
     }
 
@@ -334,8 +332,8 @@ pub async fn monitor_job(
     metadata: JobMetadata,
     jobid: u64,
     app: AppHandle,
-    client: reqwest::Client,
 ) -> Result<Value, RcloneError> {
+    let client = app.state::<RcloneState>().client.clone();
     let backend_manager = app.state::<BackendManager>();
 
     let backend = backend_manager
@@ -427,11 +425,7 @@ pub async fn monitor_job(
                         }
                     }
 
-                    if let Ok(job_status) = serde_json::from_value::<
-                        crate::utils::types::jobs::JobStatusResponse,
-                    >(status_result.clone())
-                        && job_status.finished
-                    {
+                    if status_result["finished"].as_bool().unwrap_or(false) {
                         return handle_job_completion(
                             backend_name.clone(),
                             jobid,
@@ -451,18 +445,26 @@ pub async fn monitor_job(
                 );
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                    let error_msg =
+                        format!("Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts: {e}");
+
                     if !metadata.no_cache {
-                        let _ = job_cache
-                            .complete_job(
-                                jobid,
-                                false,
-                                Some(format!(
-                                    "Monitoring failed after {MAX_CONSECUTIVE_ERRORS} attempts"
-                                )),
-                                Some(&app),
-                            )
-                            .await;
+                        let dummy_status = json!({
+                            "finished": true,
+                            "success": false,
+                            "error": error_msg
+                        });
+                        let _ = handle_job_completion(
+                            backend_name.clone(),
+                            jobid,
+                            &metadata,
+                            dummy_status,
+                            &app,
+                            None,
+                        )
+                        .await;
                     }
+
                     return Err(RcloneError::JobError(
                         crate::localized_error!("backendErrors.job.monitoringFailed", "error" => e),
                     ));
@@ -561,9 +563,11 @@ pub async fn handle_job_completion(
     let automation = automations_cache
         .get_automation_by_job_id(jobid.to_string())
         .await;
-    let next_run = automation
-        .as_ref()
-        .and_then(|t| get_next_run(&t.cron_expression).ok());
+    let next_run = automation.as_ref().and_then(|t| {
+        t.cron_expression
+            .as_ref()
+            .and_then(|expr| get_next_run(expr).ok())
+    });
 
     if !metadata.no_cache {
         let final_stats = collect_final_stats(app, metadata, last_stats).await;
@@ -584,10 +588,7 @@ pub async fn handle_job_completion(
     }
 
     if let Some(automation) = automation {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
+        let automation_name = automation.log_name();
 
         info!("Job {jobid} associated with automation '{automation_name}', updating status.");
 
@@ -607,6 +608,29 @@ pub async fn handle_job_completion(
             notify(
                 app,
                 NotificationEvent::Automation(AutomationStage::Completed {
+                    backend: automation.backend_name.clone(),
+                    remote: automation.remote_name.clone(),
+                    profile: automation.profile_name.clone(),
+                    automation_name: automation.display_name(),
+                    automation_type: automation.automation_type.clone(),
+                }),
+            );
+        } else if stopped {
+            automations_cache
+                .update_automation(
+                    &automation.id,
+                    |t| {
+                        t.mark_stopped();
+                        t.next_run = next_run;
+                    },
+                    Some(app),
+                )
+                .await
+                .map_err(RcloneError::JobError)?;
+
+            notify(
+                app,
+                NotificationEvent::Automation(AutomationStage::Stopped {
                     backend: automation.backend_name.clone(),
                     remote: automation.remote_name.clone(),
                     profile: automation.profile_name.clone(),
@@ -751,7 +775,6 @@ fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
 
 #[tauri::command]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
-    let automations_cache = app.state::<AutomationsCache>();
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
     let job_cache = &backend_manager.job_cache;
@@ -789,25 +812,6 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
         .stop_job(jobid, Some(&app))
         .await
         .map_err(|e| e.clone())?;
-
-    if let Some(automation) = automations_cache
-        .get_automation_by_job_id(jobid.to_string())
-        .await
-    {
-        let automation_name = format!(
-            "{}: {}-{}.{}",
-            automation.backend_name, automation.remote_name, automation.profile_name, automation.id
-        );
-        info!("Job {jobid} associated with automation '{automation_name}', marking as stopped");
-        automations_cache
-            .update_automation(
-                &automation.id,
-                crate::utils::types::automation::Automation::mark_stopped,
-                Some(&app),
-            )
-            .await
-            .map_err(|e| format!("Failed to update automation state: {e}"))?;
-    }
 
     log_operation(
         LogLevel::Info,
@@ -937,10 +941,9 @@ pub async fn submit_batch_job(
         }
     }
 
-    let client = state.client.clone();
     let backend_name = backend.name.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(backend_name, metadata, jobid, app, client).await;
+        let _ = monitor_job(backend_name, metadata, jobid, app).await;
     });
 
     Ok(jobid.to_string())

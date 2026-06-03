@@ -57,6 +57,7 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 tauri-plugin-shell = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true }
 tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-clipboard-manager = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
 rcman = { version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
@@ -99,7 +100,7 @@ container = ["web-server"]
 
 # For GUI features
 default = ["desktop", "tray"]
-desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools"]
+desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools", "tauri-plugin-clipboard-manager"]
 tray = ["tauri/tray-icon", "tauri/image-png"]
 
 # Managed by package managers or not compatible with updater

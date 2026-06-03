@@ -26,7 +26,15 @@ pub fn build_full_path(remote: &str, path: &str) -> String {
     if path.is_empty() {
         remote.to_string()
     } else if remote.ends_with(':') {
-        format!("{}/{}", remote, path.trim_start_matches('/'))
+        // Check if it's a Windows drive letter (e.g. "C:")
+        let is_drive_letter =
+            remote.len() == 2 && remote.chars().next().unwrap().is_ascii_alphabetic();
+
+        if is_drive_letter {
+            format!("{}/{}", remote, path.trim_start_matches('/'))
+        } else {
+            format!("{}{}", remote, path.trim_start_matches('/'))
+        }
     } else {
         // Local path - ensure we join with a slash
         format!(

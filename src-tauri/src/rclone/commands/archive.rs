@@ -68,7 +68,6 @@ pub async fn archive_create(
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        client.clone(),
         backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
         payload,
         metadata,
@@ -118,7 +117,6 @@ pub async fn archive_extract(
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        client.clone(),
         backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
         payload,
         metadata,

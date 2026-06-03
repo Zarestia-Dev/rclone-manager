@@ -16,12 +16,14 @@ use tauri::{AppHandle, Manager, Runtime};
 
 pub struct TrayMenuState {
     pub last_plan: Mutex<Option<MenuPlan>>,
+    pub update_lock: tokio::sync::Mutex<()>,
 }
 
 impl Default for TrayMenuState {
     fn default() -> Self {
         Self {
             last_plan: Mutex::new(None),
+            update_lock: tokio::sync::Mutex::new(()),
         }
     }
 }
@@ -98,18 +100,16 @@ impl TraySnapshot {
                 let s = all_remote_settings.get(&name);
 
                 let show_on_tray = s
-                    .as_ref()
                     .and_then(|v| v.get("showOnTray"))
-                    .and_then(serde_json::Value::as_bool)
+                    .and_then(|v| v.as_bool())
                     .unwrap_or(false);
 
                 let primary_actions = s
-                    .as_ref()
                     .and_then(|v| v.get("primaryActions"))
                     .and_then(|v| v.as_array())
                     .map(|arr| {
                         arr.iter()
-                            .filter_map(|v| v.as_str().map(str::to_string))
+                            .filter_map(|v| v.as_str().map(String::from))
                             .collect()
                     })
                     .unwrap_or_else(|| vec!["mount".into(), "sync".into(), "bisync".into()]);
@@ -117,8 +117,7 @@ impl TraySnapshot {
                 let target_remote = crate::utils::rclone::util::normalize_remote_name(&name);
 
                 let build_job_profiles = |key: &str, jtype: &JobType| -> Vec<TrayProfileSummary> {
-                    s.as_ref()
-                        .and_then(|v| v.get(key))
+                    s.and_then(|v| v.get(key))
                         .and_then(|v| v.as_object())
                         .map(|m| {
                             m.keys()
@@ -136,7 +135,6 @@ impl TraySnapshot {
                 };
 
                 let mount_profiles = s
-                    .as_ref()
                     .and_then(|v| v.get("mountConfigs"))
                     .and_then(|v| v.as_object())
                     .map(|m| {
@@ -159,7 +157,6 @@ impl TraySnapshot {
                     .unwrap_or_default();
 
                 let serve_profiles = s
-                    .as_ref()
                     .and_then(|v| v.get("serveConfigs"))
                     .and_then(|v| v.as_object())
                     .map(|m| {

@@ -63,7 +63,12 @@ pub async fn is_directory(
     let backend = app.state::<BackendManager>().get_active().await;
     let state = app.state::<RcloneState>();
 
-    let (base, remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), String::new()));
+    let (base, mut remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), String::new()));
+
+    // Normalize remote path: rclone remote paths should not start with a slash.
+    if base.ends_with(':') {
+        remote = remote.trim_start_matches('/').to_string();
+    }
 
     let resp = backend
         .inject_auth(

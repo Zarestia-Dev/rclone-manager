@@ -56,6 +56,11 @@ export class JobDetailModalComponent {
     () => this.jobService.jobs().find(j => j.jobid === this.initialData.jobid) ?? this.initialData
   );
 
+  private readonly watchGroup = computed(() => {
+    const job = this.jobData();
+    return job.status === 'Running' ? job.group : null;
+  });
+
   public readonly transferActivityConfig = computed<TransferActivityPanelConfig>(() => {
     const job = this.jobData();
     const stats = job.stats;
@@ -89,11 +94,11 @@ export class JobDetailModalComponent {
   constructor() {
     // Watch the group while the job is running so completed transfers stay live.
     effect(onCleanup => {
-      const job = this.jobData();
-      if (!job.group || job.status !== 'Running') return;
+      const group = this.watchGroup();
+      if (!group) return;
 
-      this.jobService.watchGroup(job.group);
-      onCleanup(() => this.jobService.unwatchGroup(job.group!));
+      this.jobService.watchGroup(group);
+      onCleanup(() => this.jobService.unwatchGroup(group));
     });
   }
 

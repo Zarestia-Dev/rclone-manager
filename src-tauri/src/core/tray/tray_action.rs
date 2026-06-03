@@ -154,7 +154,8 @@ mod tests {
 
         for action in actions {
             let id = action.to_id();
-            let parsed = TrayAction::from_id(&id).expect(&format!("Should parse back: {id}"));
+            let parsed =
+                TrayAction::from_id(&id).unwrap_or_else(|| panic!("Should parse back: {id}"));
             assert_eq!(action, parsed);
         }
     }

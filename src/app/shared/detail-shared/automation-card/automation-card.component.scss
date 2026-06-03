@@ -209,13 +209,6 @@
       height: 14px;
       font-size: 14px;
       color: var(--dim-color);
-
-      &.success {
-        color: var(--primary-color);
-      }
-      &.error {
-        color: var(--warn-color);
-      }
     }
   }
 
@@ -351,7 +344,7 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--space-md);
   }
 
@@ -379,6 +372,9 @@
     }
     &.failed .stat-value {
       color: var(--warn-color);
+    }
+    &.stopped .stat-value {
+      color: var(--orange);
     }
   }
 
@@ -428,7 +424,6 @@
     .error-message {
       font-size: var(--font-size-sm);
       color: var(--warn-color);
-      margin-top: var(--space-xs);
     }
   }
 

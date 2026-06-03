@@ -1141,6 +1141,7 @@ mat-accordion {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 200px;
   max-width: 320px;
   overflow-y: auto;
 
@@ -1233,6 +1234,40 @@ mat-accordion {
     font-weight: 600;
     color: var(--dim-color);
     opacity: 0.8;
+  }
+}
+
+.floating-paste-button {
+  position: fixed;
+  inset: auto;
+  z-index: 100000;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--popover-bg-color);
+  color: var(--primary-color);
+  border: none;
+  box-shadow: var(--shadow-popover);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.1s ease;
+
+  &:hover {
+    background: var(--hover-bg-color);
+  }
+
+  &.visible {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

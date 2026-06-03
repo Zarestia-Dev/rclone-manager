@@ -86,6 +86,13 @@ pub enum AutomationStage {
         automation_type: crate::utils::types::automation::AutomationType,
         error: String,
     },
+    Stopped {
+        backend: String,
+        remote: String,
+        profile: String,
+        automation_name: String,
+        automation_type: crate::utils::types::automation::AutomationType,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,6 +358,29 @@ impl NotificationEvent {
                         ],
                     ),
                     level: LogLevel::Error,
+                },
+                AutomationStage::Stopped {
+                    automation_name,
+                    backend,
+                    remote,
+                    profile,
+                    automation_type,
+                } => RenderedContent {
+                    title: t_with_params(
+                        "notification.title.automationStopped",
+                        &[("type", &automation_type.to_string())],
+                    ),
+                    body: t_with_params(
+                        "notification.body.automationStopped",
+                        &[
+                            ("automation", automation_name),
+                            ("backend", backend),
+                            ("remote", remote),
+                            ("profile", profile),
+                            ("type", &automation_type.to_string().to_lowercase()),
+                        ],
+                    ),
+                    level: LogLevel::Warn,
                 },
             },
 

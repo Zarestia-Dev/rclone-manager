@@ -179,7 +179,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     // Submit as a job and wait for completion for mount operations.
     let _ = submit_job_with_options(
         app.clone(),
-        client,
         request,
         payload,
         metadata,

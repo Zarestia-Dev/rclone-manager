@@ -11,6 +11,7 @@ use log::info;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
@@ -112,9 +113,6 @@ impl CacheUpdateResult {
         !self.added.is_empty() || !self.updated.is_empty() || !self.removed.is_empty()
     }
 }
-
-// ============================================================================
-use std::sync::Arc;
 
 // SCHEDULED TASK CACHE
 // ============================================================================
@@ -308,19 +306,19 @@ impl AutomationsCache {
         let cron_enabled = config.cron_enabled.unwrap_or(false);
         let watch_enabled = config.watch_enabled.unwrap_or(false);
 
-        if !cron_enabled && !watch_enabled {
-            return None;
-        }
-
         let cron = if cron_enabled {
             config
                 .cron_expression
                 .as_ref()
-                .filter(|s| !s.is_empty())?
-                .clone()
+                .filter(|s| !s.is_empty())
+                .cloned()
         } else {
-            "realtime".to_string()
+            None
         };
+
+        if cron.is_none() && !watch_enabled {
+            return None;
+        }
 
         let src_paths = normalize_paths(config.source.as_ref());
         let dst_paths = normalize_paths(config.dest.as_ref());
@@ -359,11 +357,7 @@ impl AutomationsCache {
             dst_paths,
         };
 
-        let next_run = if cron_enabled {
-            get_next_run(&cron).ok()
-        } else {
-            None
-        };
+        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
 
         Some(Automation {
             id: automation_id,
@@ -383,6 +377,7 @@ impl AutomationsCache {
             run_count: 0,
             success_count: 0,
             failure_count: 0,
+            stopped_count: 0,
             watch_enabled,
             watch_delay: config.watch_delay.unwrap_or(5),
         })
@@ -524,8 +519,8 @@ impl AutomationsCache {
 
     /// Toggle an automation status.
     ///
-    /// - `Enabled` -> `Disabled`
-    /// - `Disabled`/`Failed` -> `Enabled`
+    /// - `Enabled`/`Failed` -> `Disabled`
+    /// - `Disabled` -> `Enabled`
     /// - `Running` -> `Stopping` (let the current run finish, then disable)
     /// - `Stopping` -> no-op
     pub async fn toggle_automation_status(
@@ -537,12 +532,15 @@ impl AutomationsCache {
             automation_id,
             |automation| {
                 automation.status = match automation.status {
-                    AutomationStatus::Enabled => {
+                    AutomationStatus::Enabled | AutomationStatus::Failed => {
                         automation.next_run = None;
                         AutomationStatus::Disabled
                     }
-                    AutomationStatus::Disabled | AutomationStatus::Failed => {
-                        automation.next_run = get_next_run(&automation.cron_expression).ok();
+                    AutomationStatus::Disabled => {
+                        automation.next_run = automation
+                            .cron_expression
+                            .as_ref()
+                            .and_then(|expr| get_next_run(expr).ok());
                         AutomationStatus::Enabled
                     }
                     AutomationStatus::Running => AutomationStatus::Stopping,
@@ -564,6 +562,7 @@ impl AutomationsCache {
             total_runs: 0,
             successful_runs: 0,
             failed_runs: 0,
+            stopped_runs: 0,
         };
         for t in automations.values() {
             match t.status {
@@ -575,6 +574,7 @@ impl AutomationsCache {
             stats.total_runs += t.run_count;
             stats.successful_runs += t.success_count;
             stats.failed_runs += t.failure_count;
+            stats.stopped_runs += t.stopped_count;
         }
         stats
     }
@@ -783,6 +783,27 @@ mod tests {
     }
 
     #[test]
+    fn test_create_automation_struct_empty_cron_but_watcher_enabled_returns_some() {
+        let cache = make_cache();
+        let cfg = ProfileConfig {
+            cron_enabled: Some(true),
+            cron_expression: Some(String::new()),
+            watch_enabled: Some(true),
+            source: Some(json!("/src")),
+            dest: Some(json!("/dst")),
+            ..Default::default()
+        };
+        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        assert!(
+            result.is_some(),
+            "empty cron with watcher enabled should return Some"
+        );
+        let automation = result.unwrap();
+        assert!(automation.watch_enabled);
+        assert!(automation.cron_expression.is_none());
+    }
+
+    #[test]
     fn test_create_automation_struct_missing_source_returns_none() {
         let cache = make_cache();
         let cfg = ProfileConfig {
@@ -869,7 +890,7 @@ mod tests {
             .expect("should produce an automation");
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
-        assert_eq!(automation.cron_expression, "*/5 * * * *");
+        assert_eq!(automation.cron_expression.as_deref(), Some("*/5 * * * *"));
         assert_eq!(automation.automation_type, AutomationType::Copy);
         assert!(automation.scheduler_job_id.is_none());
         assert!(automation.current_job_id.is_none());
@@ -1020,7 +1041,7 @@ mod tests {
             automation_type: AutomationType::Sync,
             remote_name: "r".to_string(),
             profile_name: "p".to_string(),
-            cron_expression: "* * * * *".to_string(),
+            cron_expression: Some("* * * * *".to_string()),
             status: AutomationStatus::Enabled,
             args: AutomationArgs {
                 params: ProfileParams {
@@ -1042,6 +1063,7 @@ mod tests {
             run_count: 0,
             success_count: 0,
             failure_count: 0,
+            stopped_count: 0,
             watch_enabled: false,
             watch_delay: 5,
         }
@@ -1060,7 +1082,7 @@ mod tests {
         let cache = make_cache();
         let a = base_automation();
         let mut b = base_automation();
-        b.cron_expression = "0 9 * * 1-5".to_string();
+        b.cron_expression = Some("0 9 * * 1-5".to_string());
         assert!(cache.automation_config_changed(&a, &b));
     }
 
@@ -1240,6 +1262,19 @@ mod tests {
         let cache = make_cache();
         let mut automation = base_automation();
         automation.status = AutomationStatus::Enabled;
+        let id = automation.id.clone();
+        cache.add_automation(automation, None).await.unwrap();
+
+        let toggled = cache.toggle_automation_status(&id, None).await.unwrap();
+        assert_eq!(toggled.status, AutomationStatus::Disabled);
+        assert!(toggled.next_run.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_toggle_failed_to_disabled() {
+        let cache = make_cache();
+        let mut automation = base_automation();
+        automation.status = AutomationStatus::Failed;
         let id = automation.id.clone();
         cache.add_automation(automation, None).await.unwrap();
 
