@@ -122,9 +122,8 @@
 // RESPONSIVE ADJUSTMENTS
 // =============================================
 
-@media (max-width: 768px) {
+@media (max-width: 599px) {
   .layout-actions-blossom {
-    bottom: var(--space-sm);
-    right: var(--space-sm);
+    bottom: calc(56px);
   }
 }

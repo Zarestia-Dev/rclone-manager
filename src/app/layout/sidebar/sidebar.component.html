@@ -28,97 +28,88 @@
   <!-- Scrollable Content Area -->
   <div class="content-area">
     @if (filteredRemotes().length > 0) {
-      <ul>
-        @for (remote of filteredRemotes(); track remote.name) {
-          <mat-card
-            class="remote-card"
-            (click)="selectRemote(remote)"
-            [class.selected]="selectedRemote()?.name === remote.name"
-            [class.is-hidden-on-dashboard]="hiddenRemotes().includes(remote.name)"
-          >
-            <mat-card-content class="card-content">
-              <!-- Remote Name with Status Indicators -->
-              <div class="remote-header">
-                <div class="remote-name-wrapper">
-                  <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
-                    {{ remote.name }}
-                  </h4>
-                  @if (hiddenRemotes().includes(remote.name)) {
-                    <mat-icon
-                      svgIcon="eye-slash"
-                      class="hidden-indicator"
-                      [matTooltip]="'sidebar.hiddenOnDashboard' | translate"
-                    ></mat-icon>
-                  }
-                </div>
-                <div class="status-indicators">
-                  @if (remote.status.mount) {
-                    <div
-                      class="status-dot mount"
-                      [class.active]="statusService.getMountProfileCount(remote) > 0"
-                      [matTooltip]="statusService.getMountTooltip(remote)"
-                      matTooltipShowDelay="500"
-                      [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
-                    >
-                      <mat-icon svgIcon="mount"></mat-icon>
-                      @if (statusService.getMountProfileCount(remote) > 1) {
-                        <span class="count-badge">{{
-                          statusService.getMountProfileCount(remote)
-                        }}</span>
-                      }
-                    </div>
-                  }
-
+      @for (remote of filteredRemotes(); track remote.name) {
+        <mat-card
+          class="remote-card"
+          (click)="selectRemote(remote)"
+          [class.selected]="selectedRemote()?.name === remote.name"
+          [class.is-hidden-on-dashboard]="hiddenRemotes().includes(remote.name)"
+        >
+          <mat-card-content class="card-content">
+            <div class="remote-header">
+              <div class="remote-name-wrapper">
+                <h4 matTooltipShowDelay="500" [matTooltip]="remote.name">
+                  {{ remote.name }}
+                </h4>
+                @if (hiddenRemotes().includes(remote.name)) {
+                  <mat-icon
+                    svgIcon="eye-slash"
+                    class="hidden-indicator"
+                    [matTooltip]="'sidebar.hiddenOnDashboard' | translate"
+                  ></mat-icon>
+                }
+              </div>
+              <div class="status-indicators">
+                @if (remote.status.mount) {
                   <div
-                    class="status-dot sync-operations"
-                    [class.active]="statusService.getSyncProfileCount(remote) > 0"
-                    [class.sync]="statusService.getActiveSyncOperationType(remote) === 'sync'"
-                    [class.copy]="statusService.getActiveSyncOperationType(remote) === 'copy'"
-                    [class.move]="statusService.getActiveSyncOperationType(remote) === 'move'"
-                    [class.bisync]="statusService.getActiveSyncOperationType(remote) === 'bisync'"
-                    [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
+                    class="status-dot mount"
+                    [class.active]="statusService.getMountProfileCount(remote) > 0"
+                    [matTooltip]="statusService.getMountTooltip(remote)"
                     matTooltipShowDelay="500"
-                    [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
+                    [attr.aria-label]="'sidebar.aria.mountStatus' | translate"
                   >
-                    <mat-icon
-                      [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"
-                    ></mat-icon>
-                    @if (statusService.getSyncProfileCount(remote) > 1) {
+                    <mat-icon svgIcon="mount"></mat-icon>
+                    @if (statusService.getMountProfileCount(remote) > 1) {
                       <span class="count-badge">{{
-                        statusService.getSyncProfileCount(remote)
+                        statusService.getMountProfileCount(remote)
                       }}</span>
                     }
                   </div>
+                }
 
-                  @if (remote.status.serve.active) {
-                    <div
-                      class="status-dot serve active"
-                      [matTooltip]="statusService.getServeTooltip(remote)"
-                      matTooltipShowDelay="500"
-                      [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
-                    >
-                      <mat-icon svgIcon="satellite-dish"></mat-icon>
-                      @if (statusService.getServeProfileCount(remote) > 1) {
-                        <span class="count-badge">{{
-                          statusService.getServeProfileCount(remote)
-                        }}</span>
-                      }
-                    </div>
+                <div
+                  class="status-dot sync-operations"
+                  [class.active]="statusService.getSyncProfileCount(remote) > 0"
+                  [class.sync]="statusService.getActiveSyncOperationType(remote) === 'sync'"
+                  [class.copy]="statusService.getActiveSyncOperationType(remote) === 'copy'"
+                  [class.move]="statusService.getActiveSyncOperationType(remote) === 'move'"
+                  [class.bisync]="statusService.getActiveSyncOperationType(remote) === 'bisync'"
+                  [matTooltip]="statusService.getSyncOperationsTooltip(remote)"
+                  matTooltipShowDelay="500"
+                  [attr.aria-label]="'sidebar.aria.syncStatus' | translate"
+                >
+                  <mat-icon [svgIcon]="statusService.getActiveSyncOperationIcon(remote)"></mat-icon>
+                  @if (statusService.getSyncProfileCount(remote) > 1) {
+                    <span class="count-badge">{{ statusService.getSyncProfileCount(remote) }}</span>
                   }
                 </div>
-              </div>
 
-              <!-- Remote Type -->
-              <div class="remote-type">
-                <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-                {{ remote.type | titlecase }}
+                @if (remote.status.serve.active) {
+                  <div
+                    class="status-dot serve active"
+                    [matTooltip]="statusService.getServeTooltip(remote)"
+                    matTooltipShowDelay="500"
+                    [attr.aria-label]="'sidebar.aria.serveStatus' | translate"
+                  >
+                    <mat-icon svgIcon="satellite-dish"></mat-icon>
+                    @if (statusService.getServeProfileCount(remote) > 1) {
+                      <span class="count-badge">{{
+                        statusService.getServeProfileCount(remote)
+                      }}</span>
+                    }
+                  </div>
+                }
               </div>
-            </mat-card-content>
-          </mat-card>
-        }
-      </ul>
+            </div>
+
+            <div class="remote-type">
+              <mat-icon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              {{ remote.type | titlecase }}
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
     } @else {
-      <!-- No Remotes State -->
       <div class="no-remotes">
         <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm().trim()) {

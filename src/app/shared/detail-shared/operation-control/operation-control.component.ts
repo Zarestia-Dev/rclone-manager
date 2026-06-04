@@ -68,6 +68,15 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
                 <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
               </span>
             }
+            @if (resync() && config().operationType === 'bisync') {
+              <span
+                class="app-pill p-warn"
+                [matTooltip]="'dashboard.appDetail.resyncActive' | translate"
+              >
+                <mat-icon svgIcon="right-left" class="warn"></mat-icon>
+                <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
+              </span>
+            }
           </div>
         </mat-panel-title>
 
@@ -134,14 +143,26 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         }
 
         @if (isSyncType()) {
-          <div class="dry-run-control">
+          <div class="controls">
             <mat-slide-toggle
+              class="control"
               [checked]="dryRun()"
               (change)="toggleDryRun.emit()"
               [disabled]="config().isActive || config().isLoading"
             >
               {{ 'dashboard.appDetail.dryRun' | translate }}
             </mat-slide-toggle>
+
+            @if (config().operationType === 'bisync') {
+              <mat-slide-toggle
+                class="control"
+                [checked]="resync()"
+                (change)="toggleResync.emit()"
+                [disabled]="config().isActive || config().isLoading"
+              >
+                {{ 'dashboard.appDetail.resync' | translate }}
+              </mat-slide-toggle>
+            }
           </div>
         }
 
@@ -242,8 +263,16 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         }
       }
 
-      .dry-run-control {
+      .controls {
         margin-top: var(--space-md);
+        display: flex;
+        flex-direction: row;
+        gap: var(--space-sm);
+        justify-content: space-between;
+      }
+
+      .control {
+        flex: 1;
         padding: var(--space-sm);
         background: var(--sidebar-bg-color);
         border-radius: var(--radius-sm);
@@ -255,10 +284,12 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
 export class OperationControlComponent {
   readonly config = input.required<OperationControlConfig>();
   readonly dryRun = input<boolean>(false);
+  readonly resync = input<boolean>(false);
   readonly startJob = output<PrimaryActionType>();
   readonly stopJob = output<PrimaryActionType>();
   readonly openPath = output<string>();
   readonly toggleDryRun = output<void>();
+  readonly toggleResync = output<void>();
 
   private readonly systemInfo = inject(SystemInfoService);
 

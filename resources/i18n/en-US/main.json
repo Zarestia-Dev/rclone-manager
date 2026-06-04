@@ -1525,7 +1525,9 @@
       "listed": "Listed",
       "transferStatistics": "{{op}} Statistics",
       "dryRun": "Dry Run",
-      "dryRunActive": "Dry run is active — no changes will be made"
+      "dryRunActive": "Dry run is active — no changes will be made",
+      "resync": "Resync",
+      "resyncActive": "Resync is active — performing full resynchronization"
     },
     "generalDetail": {
       "automations": "Automations",

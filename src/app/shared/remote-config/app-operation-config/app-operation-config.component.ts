@@ -29,6 +29,7 @@ import {
   FilePickerSelection,
 } from '@app/types';
 import {
+  BackendService,
   FileSystemService,
   NotificationService,
   PathSelectionService,
@@ -98,6 +99,7 @@ export class OperationConfigComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
+  private readonly backendService = inject(BackendService);
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
@@ -112,8 +114,10 @@ export class OperationConfigComponent {
     this.formVersion();
     return this.opFormGroup().get('cronExpression')?.value;
   });
-  readonly isWatchSupported = computed(() =>
-    ['sync', 'copy', 'move', 'bisync'].includes(this.operationType() as string)
+  readonly isWatchSupported = computed(
+    () =>
+      this.backendService.isLocalBackend() &&
+      ['sync', 'copy', 'move', 'bisync'].includes(this.operationType() as string)
   );
   readonly isWatchEnabled = computed(() => {
     this.formVersion();
@@ -256,7 +260,8 @@ export class OperationConfigComponent {
     const controls = ctrl instanceof FormArray ? ctrl.controls : [ctrl];
 
     return (controls as FormGroup[]).filter(Boolean).map((control, index) => {
-      const typeValue = control.get('type')?.value || 'local';
+      const typeValue =
+        control.get('type')?.value || (group === 'source' ? 'currentRemote' : 'local');
       return {
         control,
         index,

@@ -24,6 +24,12 @@ export class BackendService extends TauriBaseService {
     return active?.runtimeConfigPath ?? null;
   });
 
+  /** Whether the currently active backend is a local rclone instance. */
+  readonly isLocalBackend = computed(() => {
+    const active = this.backends().find(b => b.name === this.activeBackend());
+    return active?.isLocal ?? true;
+  });
+
   async getBackendSchema(): Promise<Record<string, BackendSettingMetadata>> {
     return this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
   }

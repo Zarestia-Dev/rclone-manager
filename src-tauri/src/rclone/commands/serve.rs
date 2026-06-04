@@ -32,6 +32,60 @@ pub struct ServeParams {
     pub serve_type: String,
 }
 
+fn to_serve_vfs_key(s: &str) -> String {
+    // 1. Convert camelCase/PascalCase to snake_case and replace '-' with '_'
+    let mut cleaned = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c == '-' {
+            cleaned.push('_');
+        } else if c.is_uppercase() {
+            if i > 0 && s.chars().nth(i - 1) != Some('-') {
+                cleaned.push('_');
+            }
+            cleaned.push(c.to_ascii_lowercase());
+        } else {
+            cleaned.push(c);
+        }
+    }
+
+    if cleaned.starts_with("vfs_") {
+        return cleaned;
+    }
+
+    // Special VFS read chunk cases
+    if cleaned == "chunk_size" {
+        return "vfs_read_chunk_size".to_string();
+    }
+    if cleaned == "chunk_size_limit" {
+        return "vfs_read_chunk_size_limit".to_string();
+    }
+    if cleaned == "chunk_streams" {
+        return "vfs_read_chunk_streams".to_string();
+    }
+
+    // VFS flags that do not get the vfs_ prefix on the CLI
+    let non_prefixed = [
+        "no_modtime",
+        "no_checksum",
+        "no_seek",
+        "dir_cache_time",
+        "poll_interval",
+        "read_only",
+        "dir_perms",
+        "file_perms",
+        "link_perms",
+        "umask",
+        "uid",
+        "gid",
+    ];
+
+    if non_prefixed.contains(&cleaned.as_str()) {
+        cleaned
+    } else {
+        format!("vfs_{cleaned}")
+    }
+}
+
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
@@ -83,10 +137,10 @@ impl ServeParams {
 
         // 4. Merge resolved profile blocks
         if let Some(vfs_opts) = &self.vfs_options {
-            body.insert(
-                "vfsOpt".to_string(),
-                serde_json::to_value(vfs_opts).unwrap(),
-            );
+            for (key, val) in vfs_opts {
+                let flat_key = to_serve_vfs_key(key);
+                body.insert(flat_key, val.clone());
+            }
         }
         if let Some(filter_opts) = &self.filter_options {
             body.insert(
@@ -497,8 +551,8 @@ mod tests {
         // Verify "addr" array unwrapping
         assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
 
-        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
-        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "full");
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
+        assert!(obj.get("vfsOpt").is_none());
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
         assert_eq!(filter.get("exclude").unwrap(), "secret/*");

@@ -496,16 +496,20 @@ export class RemoteConfigStateService {
     });
   }
 
+  createSourcePathGroup(initial?: { type?: string; path?: string; remote?: string }): FormGroup {
+    return this.fb.group({
+      type: [initial?.type ?? 'currentRemote'],
+      path: [initial?.path ?? '', [this.validatorRegistry.operationPathValidator()]],
+      remote: [initial?.remote ?? ''],
+    });
+  }
+
   private createServeConfigGroup(): FormGroup {
     return this.fb.group({
       autoStart: [false],
       cronEnabled: [false],
       cronExpression: [null],
-      source: this.fb.group({
-        type: ['currentRemote'],
-        path: ['', [this.validatorRegistry.operationPathValidator()]],
-        remote: [''],
-      }),
+      source: this.createSourcePathGroup(),
       vfsProfile: [DEFAULT_PROFILE_NAME],
       filterProfile: [DEFAULT_PROFILE_NAME],
       backendProfile: [DEFAULT_PROFILE_NAME],
@@ -530,11 +534,7 @@ export class RemoteConfigStateService {
     }
 
     if (fields.includes('source')) {
-      const sourceGroup = this.fb.group({
-        type: ['currentRemote'],
-        path: ['', [this.validatorRegistry.operationPathValidator()]],
-        remote: [''],
-      });
+      const sourceGroup = this.createSourcePathGroup();
       group['source'] =
         flagType === 'mount' || flagType === 'serve' || flagType === 'bisync'
           ? sourceGroup
@@ -625,7 +625,7 @@ export class RemoteConfigStateService {
     for (const field of this.dynamicServeFields()) {
       if (field.FieldName === 'type' || field.Name === 'type') continue;
       optionsGroup.addControl(
-        field.FieldName || field.Name,
+        getControlKey(field, 'serve'),
         new FormControl(field.Value ?? field.Default, field.Required ? [Validators.required] : [])
       );
     }
@@ -633,15 +633,19 @@ export class RemoteConfigStateService {
 
   private cleanData(
     formData: Record<string, unknown>,
-    fieldDefinitions: RcConfigOption[]
+    fieldDefinitions: RcConfigOption[],
+    type?: string
   ): Record<string, unknown> {
-    const fieldMap = new Map(fieldDefinitions.map(f => [getControlKey(f), f]));
+    const fieldMap = new Map(fieldDefinitions.map(f => [getControlKey(f, type), f]));
 
     return Object.entries(formData).reduce(
       (acc, [key, value]) => {
         const field = fieldMap.get(key);
         if (field) {
-          if (!this.valueMapper.isDefaultValue(value, field)) acc[field.FieldName] = value;
+          if (!this.valueMapper.isDefaultValue(value, field)) {
+            const outKey = type === 'serve' ? field.Name || field.FieldName : field.FieldName;
+            acc[outKey] = value;
+          }
         } else if (value !== undefined && value !== null && value !== '') {
           acc[key] = value;
         }
@@ -694,7 +698,8 @@ export class RemoteConfigStateService {
     if (type === 'vfs' || type === 'filter' || type === 'backend') {
       return this.cleanData(
         (configData['options'] as Record<string, unknown>) ?? {},
-        this.dynamicFlagFields()[type as FlagType] ?? []
+        this.dynamicFlagFields()[type as FlagType] ?? [],
+        type
       );
     }
 
@@ -705,7 +710,7 @@ export class RemoteConfigStateService {
       remoteName,
       pathService: this.pathService,
       runtimeRemoteProfileNames: this.profileOptions().runtimeRemote,
-      cleanData: (opts, fields) => this.cleanData(opts, fields),
+      cleanData: (opts, fields) => this.cleanData(opts, fields, type),
       dynamicFields:
         type === 'serve'
           ? this.dynamicServeFields()
@@ -1321,6 +1326,10 @@ export class RemoteConfigStateService {
 
   // ── Event Handlers ──
   async onServeTypeChange(type: string): Promise<void> {
+    const currentType = this.selectedServeType();
+    if (currentType === type && this.dynamicServeFields().length > 0) {
+      return;
+    }
     this.selectedServeType.set(type || 'http');
     this.remoteConfigForm.get('serveConfig.options.type')?.setValue(type, { emitEvent: false });
     await this.loadServeFields();
@@ -1439,7 +1448,7 @@ export class RemoteConfigStateService {
 
       if (sourceCtrl instanceof FormArray) {
         sourceCtrl.clear();
-        sourceCtrl.push(this.fb.group(parsedSource));
+        sourceCtrl.push(this.createSourcePathGroup(parsedSource));
       } else {
         sourceCtrl?.patchValue(parsedSource);
       }
@@ -1533,7 +1542,9 @@ export class RemoteConfigStateService {
       );
       if (!matchedField) continue;
 
-      const uniqueKey = isRuntimeRemote ? matchedField.Name : getControlKey(matchedField);
+      const uniqueKey = isRuntimeRemote
+        ? matchedField.Name
+        : getControlKey(matchedField, targetFlagType);
       const control = targetOptionsGroup.get(uniqueKey);
       if (!control) continue;
 
@@ -1723,8 +1734,12 @@ export class RemoteConfigStateService {
     if (sourceCtrl instanceof FormArray) {
       sourceCtrl.clear();
       const sources = (formValues['source'] || []) as any[];
-      for (const s of sources) {
-        sourceCtrl.push(this.fb.group(s));
+      if (sources.length === 0) {
+        sourceCtrl.push(this.createSourcePathGroup());
+      } else {
+        for (const s of sources) {
+          sourceCtrl.push(this.createSourcePathGroup(s));
+        }
       }
     } else if (sourceCtrl instanceof FormGroup) {
       sourceCtrl.patchValue(formValues['source']);
@@ -1762,13 +1777,13 @@ export class RemoteConfigStateService {
           field.Name === 'mountType'
         )
           continue;
-        const uniqueKey = getControlKey(field);
+        const uniqueKey = getControlKey(field, type);
         optionsGroup.addControl(uniqueKey, new FormControl(field.Value ?? field.Default));
       }
 
       for (const [key, value] of Object.entries(formValues['options'] || {})) {
         if (key === 'fs') continue;
-        const controlKey = getControlKey({ FieldName: key, Name: key } as RcConfigOption);
+        const controlKey = getControlKey({ FieldName: key, Name: key } as RcConfigOption, type);
         const existing = optionsGroup.get(controlKey);
         if (existing) {
           existing.setValue(value, { emitEvent: false });

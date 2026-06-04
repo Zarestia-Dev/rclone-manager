@@ -38,16 +38,10 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-  }
-
-  // Remote List
-  ul {
-    list-style: none;
     padding: 0 0 var(--space-xl) 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    min-height: min-content;
   }
 
   // Remote Card
@@ -58,7 +52,8 @@
     border-radius: var(--modal-radius);
     background: var(--window-bg-color);
     box-shadow: var(--box-shadow);
-    overflow: hidden;
+    flex-shrink: 0;
+    cursor: pointer;
 
     &:hover {
       background: var(--hover-bg-color);
@@ -75,6 +70,7 @@
       &:hover {
         opacity: 0.85;
       }
+
       &.selected {
         opacity: 1;
       }
@@ -104,13 +100,14 @@
 
           h4 {
             margin: 0;
+            flex: 1 1 0;
+            min-width: 0;
             font-size: 1.1rem;
             font-weight: 600;
             color: var(--window-fg-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            flex: 0 1 auto;
             letter-spacing: -0.1px;
           }
 
@@ -125,15 +122,15 @@
         }
 
         .status-indicators {
+          position: absolute;
           top: 0;
-          gap: 6px;
           right: 0;
           display: flex;
-          max-width: 58px;
-          flex-wrap: wrap;
-          position: absolute;
           align-items: center;
           justify-content: center;
+          flex-wrap: wrap;
+          gap: 6px;
+          max-width: 58px;
         }
       }
 
@@ -147,17 +144,17 @@
         font-weight: 500;
       }
 
-      // Modern Status Dots
+      // Status Dots
       .status-dot {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
         width: var(--icon-size-md);
         height: var(--icon-size-md);
         border-radius: 50%;
-        transition: var(--transition-fast);
         background: rgba(var(--window-fg-color-rgb), 0.06);
-        position: relative;
+        transition: var(--transition-fast);
 
         mat-icon {
           width: var(--icon-size-xs);
@@ -167,7 +164,6 @@
           transition: color var(--transition-fast);
         }
 
-        // Count Badge for multiple profiles
         .count-badge {
           position: absolute;
           top: -8px;
@@ -184,116 +180,52 @@
           border-radius: 7px;
         }
 
-        // Hover effect
         &:hover {
           background: rgba(var(--window-fg-color-rgb), 0.1);
           border-color: rgba(var(--window-fg-color-rgb), 0.2);
-          transform: scale(1.08);
         }
 
-        // Mount Status
+        &.active {
+          background: rgba(var(--status-color-rgb), 0.12);
+          border-color: rgba(var(--status-color-rgb), 0.4);
+          box-shadow: 0 0 0 1px rgba(var(--status-color-rgb), 0.15);
+
+          mat-icon {
+            color: var(--status-color);
+          }
+          .count-badge {
+            animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+            background: var(--status-color);
+          }
+
+          &:hover {
+            background: rgba(var(--status-color-rgb), 0.18);
+            box-shadow: 0 0 0 2px rgba(var(--status-color-rgb), 0.25);
+          }
+        }
+
+        &.serve,
         &.mount {
-          &.active {
-            background: rgba(var(--accent-color-rgb), 0.12);
-            border-color: rgba(var(--accent-color-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
-
-            mat-icon {
-              color: var(--accent-color);
-            }
-
-            .count-badge {
-              background: var(--accent-color);
-              animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
-            }
-
-            &:hover {
-              background: rgba(var(--accent-color-rgb), 0.18);
-              box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
-              transform: scale(1.12);
-            }
-          }
+          --status-color: var(--accent-color);
+          --status-color-rgb: var(--accent-color-rgb);
         }
 
-        // Sync Operations Status
         &.sync-operations {
-          &.sync.active {
-            background: rgba(var(--primary-color-rgb), 0.12);
-            border-color: rgba(var(--primary-color-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.15);
-
-            mat-icon {
-              color: var(--primary-color);
-            }
-
-            .count-badge {
-              background: var(--primary-color);
-            }
+          &.sync {
+            --status-color: var(--primary-color);
+            --status-color-rgb: var(--primary-color-rgb);
           }
-
-          &.copy.active {
-            background: rgba(var(--yellow-rgb), 0.12);
-            border-color: rgba(var(--yellow-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--yellow-rgb), 0.15);
-
-            mat-icon {
-              color: var(--yellow);
-            }
-
-            .count-badge {
-              background: var(--yellow);
-            }
+          &.copy {
+            --status-color: var(--yellow);
+            --status-color-rgb: var(--yellow-rgb);
           }
-
-          &.move.active {
-            background: rgba(var(--orange-rgb), 0.12);
-            border-color: rgba(var(--orange-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--orange-rgb), 0.15);
-
-            mat-icon {
-              color: var(--orange);
-            }
-
-            .count-badge {
-              background: var(--orange);
-            }
+          &.move {
+            --status-color: var(--orange);
+            --status-color-rgb: var(--orange-rgb);
           }
-
-          &.bisync.active {
-            background: rgba(var(--purple-rgb), 0.12);
-            border-color: rgba(var(--purple-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--purple-rgb), 0.15);
-
-            mat-icon {
-              color: var(--purple);
-            }
-
-            .count-badge {
-              background: var(--purple);
-            }
-          }
-        }
-
-        // Serve Status
-        &.serve {
-          &.active {
-            background: rgba(var(--accent-color-rgb), 0.12);
-            border-color: rgba(var(--accent-color-rgb), 0.4);
-            box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
-
-            mat-icon {
-              color: var(--accent-color);
-            }
-
-            .count-badge {
-              background: var(--accent-color);
-            }
-
-            &:hover {
-              background: rgba(var(--accent-color-rgb), 0.18);
-              box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
-              transform: scale(1.12);
-            }
+          &.bisync {
+            --status-color: var(--purple);
+            --status-color-rgb: var(--purple-rgb);
           }
         }
       }

@@ -20,6 +20,8 @@ main {
 .init-skeleton {
   display: flex;
   flex: 1;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 
   &__sidebar {
@@ -38,6 +40,7 @@ main {
   &__nav-item {
     height: 40px;
     border-radius: var(--radius-sm);
+    background: rgba(var(--window-fg-color-rgb), 0.08);
   }
 
   &__content {
@@ -56,12 +59,14 @@ main {
     height: 18px;
     width: 38%;
     border-radius: var(--radius-xs);
+    background: rgba(var(--window-fg-color-rgb), 0.08);
   }
 
   &__field {
     height: 56px;
     width: 100%;
     border-radius: var(--radius-md);
+    background: rgba(var(--window-fg-color-rgb), 0.08);
 
     &--short {
       width: 55%;
@@ -76,6 +81,7 @@ main {
     height: 112px;
     width: 100%;
     border-radius: var(--radius-md);
+    background: rgba(var(--window-fg-color-rgb), 0.08);
   }
 }
 

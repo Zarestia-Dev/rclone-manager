@@ -1525,6 +1525,8 @@
       "transferStatistics": "{{op}} Estadísticas",
       "dryRun": "Simulacro",
       "dryRunActive": "Simulacro activo: no se realizarán cambios",
+      "resync": "Resincronizar",
+      "resyncActive": "Resincronización activa: realizando resincronización completa",
       "selectOperationMode": "Seleccionar modo de operación"
     },
     "generalDetail": {

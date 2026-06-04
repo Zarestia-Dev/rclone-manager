@@ -1525,7 +1525,9 @@
       "listed": "Listelenenler",
       "transferStatistics": "{{op}} İstatistikleri",
       "dryRun": "Simülasyon",
-      "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak"
+      "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak",
+      "resync": "Yeniden Senkronize Et",
+      "resyncActive": "Yeniden senkronizasyon etkin — tam yeniden senkronizasyon gerçekleştiriliyor"
     },
     "generalDetail": {
       "automations": "Otomasyonlar",

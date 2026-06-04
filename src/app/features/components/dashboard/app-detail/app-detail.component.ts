@@ -80,7 +80,8 @@ interface ProfileConfig {
     fs?: string;
     mountPoint?: string;
     type?: string;
-    _config?: { addr?: string; [key: string]: unknown };
+    addr?: string;
+    _config?: Record<string, unknown>;
   };
 }
 
@@ -322,6 +323,20 @@ export class AppDetailComponent {
         | undefined;
       const backendCfg = backendConfigs?.[backendProfileName];
       return !!backendCfg?.['DryRun'];
+    }
+    return false;
+  });
+
+  readonly isResync = computed(() => {
+    const opType = this.currentOpType();
+    if (opType === 'bisync') {
+      const configKey = 'bisyncConfigs';
+      const profiles = this.remoteSettings()[configKey] as Record<string, any> | undefined;
+      const profile = this.selectedProfile();
+      const cfg = profiles?.[profile];
+      if (!cfg) return false;
+      const rclone = cfg?.rclone ?? cfg;
+      return !!rclone?.['resync'];
     }
     return false;
   });
@@ -730,6 +745,36 @@ export class AppDetailComponent {
     }
   }
 
+  async toggleResync(): Promise<void> {
+    const opType = this.currentOpType();
+    const profile = this.selectedProfile();
+    const settings = this.remoteSettings();
+
+    if (opType === 'bisync') {
+      const configKey = 'bisyncConfigs';
+      const profiles = (settings[configKey] as Record<string, any>) ?? {};
+      const existing = profiles[profile] ?? {};
+      const rclone = existing.rclone ?? existing;
+      const currentResync = !!rclone.resync;
+      const newResync = !currentResync;
+
+      const updatedProfiles = {
+        ...profiles,
+        [profile]: {
+          ...existing,
+          rclone: {
+            ...rclone,
+            resync: newResync,
+          },
+        },
+      };
+
+      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+        [configKey]: updatedProfiles,
+      });
+    }
+  }
+
   // --- Private Helpers ---
 
   private getOpState(
@@ -831,7 +876,7 @@ export class AppDetailComponent {
       type === 'serve'
         ? {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((rclone.type as string) ?? 'http').toUpperCase()} at ${rclone._config?.addr ?? t('dashboard.appDetail.default')}`,
+            destination: `${((rclone.type as string) ?? 'http').toUpperCase()} at ${rclone.addr ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,

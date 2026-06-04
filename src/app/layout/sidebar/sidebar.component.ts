@@ -1,13 +1,12 @@
 import { TitleCasePipe } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
-  HostListener,
+  inject,
   input,
   signal,
   viewChild,
-  inject,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,11 +14,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
-// Services & Utils
 import { Remote } from '@app/types';
-import { IconService } from '@app/services';
-import { UiStateService } from '@app/services';
-import { RemoteStatusService } from '@app/services';
+
+import { IconService, UiStateService, RemoteStatusService } from '@app/services';
 import { RemoteFacadeService } from '../../services/facade/remote-facade.service';
 
 @Component({
@@ -36,30 +33,30 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.control.f)': 'onCtrlF($event)',
+  },
 })
 export class SidebarComponent {
-  remotes = input.required<Remote[]>();
+  readonly remotes = input.required<Remote[]>();
+
   readonly iconService = inject(IconService);
-  private readonly uiStateService = inject(UiStateService);
   readonly statusService = inject(RemoteStatusService);
+  private readonly uiStateService = inject(UiStateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
 
+  readonly selectedRemote = this.uiStateService.selectedRemote;
   readonly hiddenRemotes = this.remoteFacade.hiddenRemoteNames;
-  selectedRemote = this.uiStateService.selectedRemote;
 
-  searchTerm = signal('');
-  searchVisible = signal(false);
-  searchContainer = viewChild(SearchContainerComponent);
+  readonly searchTerm = signal('');
+  readonly searchVisible = signal(false);
+  private readonly searchContainer = viewChild(SearchContainerComponent);
 
-  onSearchTextChange(searchText: string): void {
-    this.searchTerm.set(searchText);
-  }
-
-  filteredRemotes = computed(() => {
+  readonly filteredRemotes = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
     if (!term) return this.remotes();
     return this.remotes().filter(
-      remote => remote.name.toLowerCase().includes(term) || remote.type.toLowerCase().includes(term)
+      r => r.name.toLowerCase().includes(term) || r.type.toLowerCase().includes(term)
     );
   });
 
@@ -67,13 +64,8 @@ export class SidebarComponent {
     this.uiStateService.setSelectedRemote(remote);
   }
 
-  @HostListener('document:keydown.control.f', ['$event'])
-  onControlF(event: Event): void {
-    (event as KeyboardEvent).preventDefault();
-    this.toggleSearch();
-    if (this.searchVisible()) {
-      this.searchContainer()?.focus();
-    }
+  onSearchTextChange(text: string): void {
+    this.searchTerm.set(text);
   }
 
   toggleSearch(): void {
@@ -84,6 +76,16 @@ export class SidebarComponent {
   }
 
   clearSearch(): void {
+    this.searchTerm.set('');
     this.searchContainer()?.clear();
+  }
+
+  onCtrlF(event: Event): void {
+    (event as KeyboardEvent).preventDefault();
+    if (!this.searchVisible()) {
+      this.toggleSearch();
+    } else {
+      this.searchContainer()?.focus();
+    }
   }
 }

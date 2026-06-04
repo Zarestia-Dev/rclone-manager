@@ -106,45 +106,36 @@ export class HomeComponent {
     return (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
   });
 
-  private readonly _isLoading = signal(false);
-  readonly isLoading = this._isLoading.asReadonly();
-
-  private resizeObserver?: ResizeObserver;
+  readonly isLoading = signal(false);
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
-
     void this.loadInitialData();
-
-    this.destroyRef.onDestroy(() => {
-      this.resizeObserver?.disconnect();
-      this.uiStateService.resetSelectedRemote();
-    });
+    this.destroyRef.onDestroy(() => this.uiStateService.resetSelectedRemote());
   }
 
   // --- Layout ---
 
   private setupResponsiveLayout(): void {
-    this.updateSidebarMode();
-    this.resizeObserver = new ResizeObserver(() => this.updateSidebarMode());
-    this.resizeObserver.observe(document.body);
-  }
+    const mql = window.matchMedia('(min-width: 900px)');
+    const update = (matches: boolean) => this.sidebarMode.set(matches ? 'side' : 'over');
+    const handler = (e: MediaQueryListEvent) => update(e.matches);
 
-  private updateSidebarMode(): void {
-    const next: MatDrawerMode = window.innerWidth < 900 ? 'over' : 'side';
-    if (next !== this.sidebarMode()) this.sidebarMode.set(next);
+    update(mql.matches);
+    mql.addEventListener('change', handler);
+    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   // --- Data ---
 
   private async loadInitialData(): Promise<void> {
-    this._isLoading.set(true);
+    this.isLoading.set(true);
     try {
       await this.remoteFacadeService.refreshAll();
     } catch (error) {
       this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
     } finally {
-      this._isLoading.set(false);
+      this.isLoading.set(false);
     }
   }
 
@@ -219,28 +210,24 @@ export class HomeComponent {
 
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
+
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('home.deleteRemote.title'),
+      this.translate.instant('home.deleteRemote.message', { name: remoteName }),
+      this.translate.instant('common.delete'),
+      this.translate.instant('common.cancel'),
+      { icon: 'trash', color: 'warn' }
+    );
+    if (!confirmed) return;
+
     try {
-      this.notificationService
-        .confirmModal(
-          this.translate.instant('home.deleteRemote.title'),
-          this.translate.instant('home.deleteRemote.message', { name: remoteName }),
-          this.translate.instant('common.delete'),
-          this.translate.instant('common.cancel'),
-          {
-            icon: 'trash',
-            color: 'warn',
-          }
-        )
-        .then(async confirmed => {
-          if (!confirmed) return;
-          await this.remoteFacadeService.deleteRemote(remoteName);
-          this.remoteFacadeService.loadRemotes();
-          if (this.selectedRemote()?.name === remoteName) {
-            this.uiStateService.resetSelectedRemote();
-          }
-        });
+      await this.remoteFacadeService.deleteRemote(remoteName);
+      void this.remoteFacadeService.loadRemotes();
+      if (this.selectedRemote()?.name === remoteName) {
+        this.uiStateService.resetSelectedRemote();
+      }
     } catch (error) {
-      console.error('Delete remote failed:', error);
+      this.handleError(this.translate.instant('home.errors.deleteRemoteFailed'), error);
     }
   }
 
@@ -282,18 +269,18 @@ export class HomeComponent {
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
     if (!remoteName) return;
+
+    // Same pattern as deleteRemote — confirmModal out of try/catch
+    const confirmed = await this.notificationService.confirmModal(
+      this.translate.instant('home.resetRemote.title'),
+      this.translate.instant('home.resetRemote.message', { name: remoteName }),
+      undefined,
+      undefined,
+      { icon: 'rotate-right', color: 'warn' }
+    );
+    if (!confirmed) return;
+
     try {
-      const confirmed = await this.notificationService.confirmModal(
-        this.translate.instant('home.resetRemote.title'),
-        this.translate.instant('home.resetRemote.message', { name: remoteName }),
-        undefined,
-        undefined,
-        {
-          icon: 'rotate-right',
-          color: 'warn',
-        }
-      );
-      if (!confirmed) return;
       await this.appSettingsService.resetRemoteSettings(remoteName);
       await this.remoteFacadeService.loadRemotes();
       this.notificationService.showSuccess(
@@ -311,9 +298,7 @@ export class HomeComponent {
       .openQuickAddRemote()
       .afterClosed()
       .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
+        if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
 
@@ -337,9 +322,7 @@ export class HomeComponent {
       })
       .afterClosed()
       .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
+        if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
 
@@ -359,9 +342,7 @@ export class HomeComponent {
       })
       .afterClosed()
       .subscribe(saved => {
-        if (saved) {
-          void this.remoteFacadeService.refreshAll();
-        }
+        if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
 

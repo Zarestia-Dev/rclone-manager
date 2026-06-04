@@ -121,7 +121,9 @@
           <app-operation-control
             [config]="opConfig"
             [dryRun]="isDryRun()"
+            [resync]="isResync()"
             (toggleDryRun)="toggleDryRun()"
+            (toggleResync)="toggleResync()"
             (startJob)="
               startJob.emit({
                 type: $event,

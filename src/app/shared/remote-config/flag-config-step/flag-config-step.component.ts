@@ -87,7 +87,7 @@ export class FlagConfigStepComponent {
 
     return fields.map(field => ({
       field,
-      controlKey: getControlKey(field),
+      controlKey: getControlKey(field, this.flagType()),
       trackKey: field.FieldName ?? field.Name ?? '',
     }));
   });

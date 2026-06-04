@@ -28,6 +28,7 @@ import {
   AppSettingsService,
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
+  getControlKey,
 } from '@app/services';
 import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
 import { PathService } from '../../../services/infrastructure/platform/path.service';
@@ -145,7 +146,10 @@ function buildRcloneCompletionSource(
 
       if (isProfile && !insideConfig && flagType) {
         // Autocomplete top-level properties
-        const topLevelKeys = getTopLevelKeysForProfile(flagType);
+        let topLevelKeys = getTopLevelKeysForProfile(flagType);
+        if (flagType === 'serve') {
+          topLevelKeys = ['fs', 'type', ...fieldDefs.map(f => f.Name)];
+        }
 
         return {
           from,
@@ -164,7 +168,7 @@ function buildRcloneCompletionSource(
           from,
           to,
           options: fieldDefs.map(f => ({
-            label: f.FieldName || f.Name,
+            label: getControlKey(f, flagType || undefined),
             type: 'property',
             detail: f.Type,
             info: f.Help || undefined,
@@ -185,7 +189,7 @@ function buildRcloneCompletionSource(
 
     const rawKey = context.state.sliceDoc(keyNode.from, keyNode.to);
     const keyText = rawKey.replace(/^"|"$/g, '');
-    const fieldDef = fieldDefs.find(f => f.FieldName === keyText || f.Name === keyText);
+    const fieldDef = fieldDefs.find(f => getControlKey(f, flagType || undefined) === keyText);
     if (!fieldDef?.Examples?.length) return null;
 
     const word = context.matchBefore(/"[^"]*/) ?? context.matchBefore(/\w*/);
@@ -310,11 +314,11 @@ export class JsonEditorComponent {
     const explicit = this.explicitKeys();
     const excluded = this.excludedSet();
 
-    const baseDefs = defs.filter(f => !excluded.has(prefix + (f.FieldName || f.Name)));
+    const baseDefs = defs.filter(f => !excluded.has(prefix + getControlKey(f, type || undefined)));
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
     return filteredDefs.map(field => {
-      const controlKey = prefix + (field.FieldName || field.Name);
+      const controlKey = prefix + getControlKey(field, type || undefined);
       const currentValue = value[controlKey] ?? null;
       const isChanged = !this.valueMapper.isDefaultValue(currentValue, field);
       const isActive = isChanged || explicit.has(controlKey);
@@ -337,7 +341,7 @@ export class JsonEditorComponent {
 
       return {
         controlKey,
-        displayKey: field.FieldName || field.Name,
+        displayKey: getControlKey(field, type || undefined),
         currentValue,
         displayValue,
         fullValue: rawDisplay,
@@ -375,20 +379,26 @@ export class JsonEditorComponent {
 
     const rcloneLinter = linter(view => {
       const diagnostics: Diagnostic[] = [];
-      const validFieldNames = new Set(this.fieldDefs().map(f => f.FieldName || f.Name));
-      const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
       const flagType = this.flagType();
+      const validFieldNames = new Set(
+        this.fieldDefs().map(f => getControlKey(f, flagType || undefined))
+      );
+      const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
       const isProfile = isProfileType(flagType);
 
       let topLevelKeys = new Set<string>();
       if (isProfile && flagType) {
-        topLevelKeys = new Set(getTopLevelKeysForProfile(flagType));
+        if (flagType === 'serve') {
+          topLevelKeys = new Set(['fs', 'type', ...this.fieldDefs().map(f => f.Name)]);
+        } else {
+          topLevelKeys = new Set(getTopLevelKeysForProfile(flagType));
+        }
       }
 
       const buildCliArgumentDiagnostic = (kText: string, from: number, to: number): Diagnostic => {
         const matched = this.lookupOption(kText);
         const suggestion = matched
-          ? matched.option.FieldName || matched.option.Name
+          ? getControlKey(matched.option, flagType || undefined)
           : toCamelCase(kText);
         return {
           from,
@@ -458,7 +468,7 @@ export class JsonEditorComponent {
                   });
                 } else {
                   const suggestion = matched
-                    ? matched.option.FieldName || matched.option.Name
+                    ? getControlKey(matched.option, flagType || undefined)
                     : null;
                   const message = suggestion
                     ? this.translateService.instant(
@@ -578,11 +588,12 @@ export class JsonEditorComponent {
   }
 
   private checkCliArguments(obj: Record<string, any>): { key: string; suggestion: string } | null {
+    const flagType = this.flagType();
     for (const key of Object.keys(obj)) {
       if (key.startsWith('-')) {
         const matched = this.lookupOption(key);
         const suggestion = matched
-          ? matched.option.FieldName || matched.option.Name
+          ? getControlKey(matched.option, flagType || undefined)
           : toCamelCase(key);
         return { key, suggestion };
       }
@@ -603,12 +614,13 @@ export class JsonEditorComponent {
     const unknown: string[] = [];
     const wrongBlocks: { key: string; block: string }[] = [];
     const suggestions: { key: string; suggestion: string }[] = [];
+    const flagType = this.flagType();
 
     for (const key of Object.keys(options)) {
       if (key.startsWith('-')) {
         const matched = this.lookupOption(key);
         const suggestion = matched
-          ? matched.option.FieldName || matched.option.Name
+          ? getControlKey(matched.option, flagType || undefined)
           : toCamelCase(key);
         return { cliArg: { key, suggestion } };
       }
@@ -617,7 +629,7 @@ export class JsonEditorComponent {
         const matched = this.lookupOption(key);
         if (matched) {
           if (this.isCompatible(matched.block, currentBlock)) {
-            const suggestion = matched.option.FieldName || matched.option.Name;
+            const suggestion = getControlKey(matched.option, flagType || undefined);
             suggestions.push({ key, suggestion });
           } else {
             wrongBlocks.push({ key, block: matched.block });
@@ -707,7 +719,7 @@ export class JsonEditorComponent {
 
     const type = this.flagType();
     const isProfile = isProfileType(type);
-    const validFieldNames = new Set(this.fieldDefs().map(f => f.FieldName || f.Name));
+    const validFieldNames = new Set(this.fieldDefs().map(f => getControlKey(f, type || undefined)));
     const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
 
     if (isProfile) {
@@ -870,26 +882,48 @@ export class JsonEditorComponent {
       // 4. Reconcile options
       const optionsGroup = fg.get('options') as FormGroup;
       if (optionsGroup) {
-        const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
-        const nestedOptions = rcloneParsed[nestedKey] || {};
-
-        const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
-        const flatOptionNames = new Set(flatDefs.map(f => f.FieldName || f.Name));
-
         // Gather all incoming options (flat + nested)
         const incomingOptions: Record<string, any> = {};
 
-        // Pull flat options from top-level of rcloneParsed JSON
-        for (const name of flatOptionNames) {
-          if (rcloneParsed[name] !== undefined) {
-            incomingOptions[name] = rcloneParsed[name];
+        if (type === 'serve') {
+          // Serve is fully flat
+          const serveDefs = this.fieldDefs();
+          const serveDefNames = new Set(serveDefs.map(f => f.Name));
+          for (const field of serveDefs) {
+            const name = field.Name;
+            if (rcloneParsed[name] !== undefined) {
+              incomingOptions[name] = rcloneParsed[name];
+            }
           }
-        }
+          // Also pull custom options (any key not in serveDefs, and not type/fs)
+          const mapping = OPERATION_PATH_MAPPINGS['serve'];
+          const excludeKeys = new Set(
+            ['type', mapping?.sourceKey, mapping?.destKey].filter(Boolean) as string[]
+          );
+          for (const [key, val] of Object.entries(rcloneParsed)) {
+            if (!serveDefNames.has(key) && !excludeKeys.has(key)) {
+              incomingOptions[key] = val;
+            }
+          }
+        } else {
+          const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
+          const nestedOptions = rcloneParsed[nestedKey] || {};
 
-        // Pull nested options
-        if (typeof nestedOptions === 'object' && nestedOptions !== null) {
-          for (const [k, v] of Object.entries(nestedOptions)) {
-            incomingOptions[k] = v;
+          const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
+          const flatOptionNames = new Set(flatDefs.map(f => getControlKey(f, type || undefined)));
+
+          // Pull flat options from top-level of rcloneParsed JSON
+          for (const name of flatOptionNames) {
+            if (rcloneParsed[name] !== undefined) {
+              incomingOptions[name] = rcloneParsed[name];
+            }
+          }
+
+          // Pull nested options
+          if (typeof nestedOptions === 'object' && nestedOptions !== null) {
+            for (const [k, v] of Object.entries(nestedOptions)) {
+              incomingOptions[k] = v;
+            }
           }
         }
 
@@ -977,33 +1011,39 @@ export class JsonEditorComponent {
 
         // 4. Map options (flat vs _config/mountOpt)
         if (raw['options']) {
-          const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
-          const flatOptionNames = new Set(flatDefs.map(f => f.FieldName || f.Name));
-
-          const flatOptions: Record<string, any> = {};
-          const nestedOptions: Record<string, any> = {};
-
           const serialized = this.serializeOptions(
             raw['options'],
             '',
             new Set(['mountType', 'type']),
             false
           );
-          for (const [displayKey, finalVal] of Object.entries(serialized)) {
-            if (flatOptionNames.has(displayKey)) {
-              flatOptions[displayKey] = finalVal;
-            } else {
-              nestedOptions[displayKey] = finalVal;
+
+          if (type === 'serve') {
+            // Serve is fully flat, merge all options directly into rclone
+            Object.assign(rclone, serialized);
+          } else {
+            const flatDefs = type ? staticFlagDefinitions[type] || [] : [];
+            const flatOptionNames = new Set(flatDefs.map(f => getControlKey(f, type || undefined)));
+
+            const flatOptions: Record<string, any> = {};
+            const nestedOptions: Record<string, any> = {};
+
+            for (const [displayKey, finalVal] of Object.entries(serialized)) {
+              if (flatOptionNames.has(displayKey)) {
+                flatOptions[displayKey] = finalVal;
+              } else {
+                nestedOptions[displayKey] = finalVal;
+              }
             }
-          }
 
-          // Merge flat options directly into rclone
-          Object.assign(rclone, flatOptions);
+            // Merge flat options directly into rclone
+            Object.assign(rclone, flatOptions);
 
-          // Merge nested options under _config or mountOpt
-          if (Object.keys(nestedOptions).length > 0) {
-            const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
-            rclone[nestedKey] = nestedOptions;
+            // Merge nested options under _config or mountOpt
+            if (Object.keys(nestedOptions).length > 0) {
+              const nestedKey = type === 'mount' ? 'mountOpt' : '_config';
+              rclone[nestedKey] = nestedOptions;
+            }
           }
         }
 
@@ -1041,7 +1081,8 @@ export class JsonEditorComponent {
         patch[controlKey] = val === '••••••••' ? latestRaw[controlKey] : val;
       } else if (!prefix || controlKey.startsWith(prefix)) {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-        const field = defs.find(f => f.Name === displayKey || f.FieldName === displayKey);
+        const type = this.flagType();
+        const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
         patch[controlKey] = field?.Default ?? field?.DefaultStr ?? null;
       } else {
         patch[controlKey] = latestRaw[controlKey];
@@ -1065,7 +1106,8 @@ export class JsonEditorComponent {
       if (excluded.has(controlKey)) continue;
 
       const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-      const field = defs.find(f => f.Name === displayKey || f.FieldName === displayKey);
+      const type = this.flagType();
+      const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
       const isExplicit = explicit.has(controlKey);
 
       if (field && this.valueMapper.isDefaultValue(val, field) && !isExplicit) continue;

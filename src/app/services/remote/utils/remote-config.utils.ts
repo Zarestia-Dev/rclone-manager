@@ -103,7 +103,10 @@ export function groupBy<T, K extends PropertyKey>(
 /**
  * Gets the standard control key for a given config option.
  */
-export function getControlKey(field: RcConfigOption): string {
+export function getControlKey(field: RcConfigOption, type?: string): string {
+  if (type === 'serve') {
+    return field.Name || field.FieldName;
+  }
   return field.FieldName || field.Name;
 }
 
@@ -156,7 +159,7 @@ export function getTopLevelKeysForProfile(type: string): string[] {
   if (type === 'mount') {
     keys.push('mountType', 'mountOpt');
   } else if (type === 'serve') {
-    keys.push('type', '_config');
+    keys.push('type');
   } else {
     keys.push('_config');
     const flatDefs = staticFlagDefinitions[type] || [];
@@ -256,7 +259,7 @@ export function mapFormToConfigProfile(
       }
     } else if (type === 'serve') {
       if (Object.keys(cleanedOptions).length > 0) {
-        rclone['_config'] = cleanedOptions;
+        Object.assign(rclone, cleanedOptions);
       }
     } else if (ctx.flatOptionNames) {
       const flatOptions: Record<string, any> = {};

@@ -1525,7 +1525,9 @@
       "listed": "已列出",
       "transferStatistics": "{{op}} 统计",
       "dryRun": "模拟运行",
-      "dryRunActive": "模拟运行已激活 — 不会进行任何更改"
+      "dryRunActive": "模拟运行已激活 — 不会进行任何更改",
+      "resync": "重新同步",
+      "resyncActive": "重新同步已激活 — 正在执行完整重新同步"
     },
     "generalDetail": {
       "automations": "自动化",

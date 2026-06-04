@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Fixed missing language values on some sections of the application and remove the non-used language keys.
 - Fixed the issue on wrong mapped rclone flags on backend and sync types.
+- **Serve VFS Options**: Fixed VFS options being silently ignored on serve startup by dynamically flattening and mapping PascalCase VFS option keys to flat, CLI-style snake_case keys (e.g. `vfs_cache_mode`). This is a temporary backend workaround until upstream [rclone/rclone#9492](https://github.com/rclone/rclone/issues/9492) is resolved.
+
 
 ## [v0.2.6] - 2026-05-19
 

@@ -192,8 +192,16 @@ export class RemoteConfigModalComponent {
   private async initializeState(): Promise<void> {
     try {
       await this.state.init(this.dialogData);
-    } finally {
       this.state.isInitializing.set(false);
+    } catch (error) {
+      console.error('Failed to initialize remote config state:', error);
+      const errorMsg = this.translate.instant('modals.remoteConfig.errors.loadFailed');
+      this.notificationService.showError(
+        errorMsg !== 'modals.remoteConfig.errors.loadFailed'
+          ? errorMsg
+          : 'Failed to load remote configuration settings'
+      );
+      this.close();
     }
   }
 

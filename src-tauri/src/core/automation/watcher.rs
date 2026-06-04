@@ -27,7 +27,20 @@ impl WatcherManager {
     }
 
     /// Sync active watchers with the automations cache.
+    /// File watchers only work on local backends — on remote backends we stop all sessions.
     pub async fn sync_watchers(&self, app_handle: AppHandle) -> Result<(), String> {
+        // File watchers can only monitor the local filesystem.
+        // On remote backends, stop any existing sessions and return early.
+        let backend_manager = app_handle.state::<BackendManager>();
+        if !backend_manager.is_active_local().await {
+            let mut sessions = self.sessions.write().await;
+            if !sessions.is_empty() {
+                log::info!("Active backend is remote — stopping all file watchers");
+                sessions.clear();
+            }
+            return Ok(());
+        }
+
         let cache = app_handle.state::<AutomationsCache>();
         let automations = cache.get_all_automations().await;
         let mut sessions = self.sessions.write().await;

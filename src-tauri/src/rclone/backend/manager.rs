@@ -88,6 +88,11 @@ impl BackendManager {
         self.state.read().await.active_name().to_string()
     }
 
+    /// Check if the active backend is a local backend
+    pub async fn is_active_local(&self) -> bool {
+        self.state.read().await.active().is_local
+    }
+
     /// Get a specific backend by name
     pub async fn get(&self, name: &str) -> Option<Backend> {
         self.state
