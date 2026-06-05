@@ -19,6 +19,8 @@ import {
   DebugService,
   GlobalLoadingService,
   ModalService,
+  AppUpdaterService,
+  RcloneUpdateService,
 } from '@app/services';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
@@ -50,6 +52,8 @@ export class AppComponent implements OnInit {
   private readonly backendService = inject(BackendService);
   private readonly sseClient = inject(SseClientService);
   private readonly loadingService = inject(GlobalLoadingService);
+  private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly rcloneUpdateService = inject(RcloneUpdateService);
 
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
 
@@ -78,6 +82,8 @@ export class AppComponent implements OnInit {
         this.modalService.resolveDialogWindow();
       } else if (!this.nautilusService.isStandaloneWindow()) {
         this.backendService.runStartupChecks();
+        void this.appUpdaterService.initialize();
+        void this.rcloneUpdateService.initialize();
       }
     } catch (error) {
       console.error('App initialization failed:', error);

@@ -52,7 +52,6 @@ export class RcloneUpdateService extends TauriBaseService {
   constructor() {
     super();
     this.setupEventListeners();
-    void this.initialize();
   }
 
   // ---------------------------------------------------------------------------
@@ -209,7 +208,7 @@ export class RcloneUpdateService extends TauriBaseService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private async initialize(): Promise<void> {
+  async initialize(): Promise<void> {
     try {
       await this.settings.initialize();
       if (this.settings.autoCheckEnabled()) {

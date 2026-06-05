@@ -254,11 +254,7 @@ pub async fn start_profile_batch(
         return Err("No valid jobs generated".to_string());
     }
 
-    let job_source = if common.source.len() > 1 {
-        format!("{} (+...)", common.source[0])
-    } else {
-        common.source[0].clone()
-    };
+    let job_source = common.source.join(", ");
 
     // Detect if DryRun was set in the resolved options
     let dry_run = if transfer_type == TransferType::Bisync {

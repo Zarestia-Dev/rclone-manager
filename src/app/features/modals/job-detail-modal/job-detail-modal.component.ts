@@ -6,11 +6,10 @@ import {
   computed,
   effect,
 } from '@angular/core';
-import { CommonModule, DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
+import { DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
@@ -25,10 +24,8 @@ import { CopyToClipboardDirective } from '@app/directives';
   selector: 'app-job-detail-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatButtonModule,
-    MatDividerModule,
     MatProgressBarModule,
     MatTooltipModule,
     TranslateModule,
@@ -91,27 +88,18 @@ export class JobDetailModalComponent {
     };
   });
 
-  constructor() {
-    // Watch the group while the job is running so completed transfers stay live.
-    effect(onCleanup => {
-      const group = this.watchGroup();
-      if (!group) return;
-
-      this.jobService.watchGroup(group);
-      onCleanup(() => this.jobService.unwatchGroup(group));
-    });
-  }
-
-  getProgress(job: JobInfo): number {
+  public readonly progress = computed(() => {
+    const job = this.jobData();
     if (!job.stats?.totalBytes) return 0;
     return (job.stats.bytes / job.stats.totalBytes) * 100;
-  }
+  });
 
-  getJobStatus(job: JobInfo): string {
-    return job.status.toLowerCase();
-  }
+  public readonly jobStatus = computed(() => {
+    return this.jobData().status.toLowerCase();
+  });
 
-  getJobDurationSeconds(job: JobInfo): number {
+  public readonly durationSeconds = computed(() => {
+    const job = this.jobData();
     try {
       if (job.start_time && job.end_time) {
         const start = Date.parse(job.start_time as unknown as string);
@@ -122,42 +110,42 @@ export class JobDetailModalComponent {
       return 0;
     }
     return (job.stats as any)?.transferTime ?? job.stats?.elapsedTime ?? 0;
-  }
+  });
 
-  get showStatistics(): boolean {
+  public readonly showStatistics = computed(() => {
     const type = this.jobData().job_type;
     return type !== 'mount' && type !== 'serve';
-  }
+  });
 
-  get statisticsTitle(): string {
+  public readonly statisticsTitle = computed(() => {
     return this.jobData().job_type === 'mount'
       ? 'modals.jobDetail.sections.statistics'
       : 'dashboard.appDetail.transferStatistics';
-  }
+  });
 
-  get isMount(): boolean {
+  public readonly isMount = computed(() => {
     return this.jobData().job_type === 'mount';
-  }
+  });
 
-  get lastError(): string | null {
+  public readonly lastError = computed(() => {
     const job = this.jobData();
     return (job.stats as any)?.lastError || job.error || null;
-  }
+  });
 
-  get speedAvg(): number {
+  public readonly speedAvg = computed(() => {
     return (this.jobData().stats as any)?.speedAvg ?? 0;
-  }
+  });
 
-  get healthStatus() {
+  public readonly healthStatus = computed(() => {
     const job = this.jobData();
     return {
       errors: job.stats?.errors ?? 0,
       retryError: job.stats?.retryError ?? false,
       fatalError: job.stats?.fatalError ?? false,
     };
-  }
+  });
 
-  get fileCounters() {
+  public readonly fileCounters = computed(() => {
     const s = this.jobData().stats;
     if (!s) return null;
     return {
@@ -167,9 +155,9 @@ export class JobDetailModalComponent {
       renames: s.renames,
       listed: s.listed,
     };
-  }
+  });
 
-  get identifiers() {
+  public readonly identifiers = computed(() => {
     const job = this.jobData();
     return {
       executeId: (job as any).execute_id ?? null,
@@ -178,6 +166,17 @@ export class JobDetailModalComponent {
       origin: job.origin ?? null,
       profile: (job as any).profile ?? 'default',
     };
+  });
+
+  constructor() {
+    // Watch the group while the job is running so completed transfers stay live.
+    effect(onCleanup => {
+      const group = this.watchGroup();
+      if (!group) return;
+
+      this.jobService.watchGroup(group);
+      onCleanup(() => this.jobService.unwatchGroup(group));
+    });
   }
 
   @HostListener('keydown.escape')

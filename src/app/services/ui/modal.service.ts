@@ -90,19 +90,10 @@ const sanitizeLabel = (str: string): string => {
   return str.replace(/[^a-zA-Z0-9_-]/g, '-');
 };
 
-class MockDialogRef<R = any> {
-  private readonly afterClosedSubject = new Subject<R | undefined>();
-
+abstract class StandaloneDialogRef<R = any> {
   constructor(public id: string) {}
 
-  afterClosed(): Observable<R | undefined> {
-    return this.afterClosedSubject.asObservable();
-  }
-
-  close(result?: R): void {
-    this.afterClosedSubject.next(result);
-    this.afterClosedSubject.complete();
-  }
+  abstract close(result?: R): void;
 
   backdropClick(): Observable<MouseEvent> {
     return new Subject<MouseEvent>().asObservable();
@@ -120,9 +111,20 @@ class MockDialogRef<R = any> {
   }
 }
 
-class ChildDialogRef<R = any> {
-  constructor(public id: string) {}
+class MockDialogRef<R = any> extends StandaloneDialogRef<R> {
+  private readonly afterClosedSubject = new Subject<R | undefined>();
 
+  afterClosed(): Observable<R | undefined> {
+    return this.afterClosedSubject.asObservable();
+  }
+
+  close(result?: R): void {
+    this.afterClosedSubject.next(result);
+    this.afterClosedSubject.complete();
+  }
+}
+
+class ChildDialogRef<R = any> extends StandaloneDialogRef<R> {
   close(result?: R): void {
     getCurrentWindow()
       .emit(`dialog-result-${this.id}`, result)
@@ -134,22 +136,26 @@ class ChildDialogRef<R = any> {
         getCurrentWindow().close();
       });
   }
-
-  backdropClick(): Observable<MouseEvent> {
-    return new Subject<MouseEvent>().asObservable();
-  }
-
-  keydownEvents(): Observable<KeyboardEvent> {
-    return new Subject<KeyboardEvent>().asObservable();
-  }
-
-  updatePosition(): this {
-    return this;
-  }
-  updateSize(): this {
-    return this;
-  }
 }
+
+const componentsMap: Record<string, any> = {
+  'quick-add-remote': QuickAddRemoteComponent,
+  'remote-config': RemoteConfigModalComponent,
+  logs: LogsModalComponent,
+  export: ExportModalComponent,
+  backend: BackendModalComponent,
+  preferences: PreferencesModalComponent,
+  'rclone-flags': RcloneFlagsModalComponent,
+  'job-detail': JobDetailModalComponent,
+  properties: PropertiesModalComponent,
+  'remote-about': RemoteAboutModalComponent,
+  'keyboard-shortcuts': KeyboardShortcutsModalComponent,
+  about: AboutModalComponent,
+  'restore-preview': RestorePreviewModalComponent,
+  alerts: AlertsModalComponent,
+  'alert-action-editor': AlertActionEditorComponent,
+  'alert-rule-editor': AlertRuleEditorComponent,
+};
 
 @Injectable({
   providedIn: 'root',
@@ -177,26 +183,6 @@ export class ModalService {
   resolveDialogWindow(): void {
     const urlParams = new URLSearchParams(window.location.search);
     const dialogType = urlParams.get('dialogType');
-    const rawData = urlParams.get('data');
-
-    const componentsMap: Record<string, any> = {
-      'quick-add-remote': QuickAddRemoteComponent,
-      'remote-config': RemoteConfigModalComponent,
-      logs: LogsModalComponent,
-      export: ExportModalComponent,
-      backend: BackendModalComponent,
-      preferences: PreferencesModalComponent,
-      'rclone-flags': RcloneFlagsModalComponent,
-      'job-detail': JobDetailModalComponent,
-      properties: PropertiesModalComponent,
-      'remote-about': RemoteAboutModalComponent,
-      'keyboard-shortcuts': KeyboardShortcutsModalComponent,
-      about: AboutModalComponent,
-      'restore-preview': RestorePreviewModalComponent,
-      alerts: AlertsModalComponent,
-      'alert-action-editor': AlertActionEditorComponent,
-      'alert-rule-editor': AlertRuleEditorComponent,
-    };
 
     const componentClass = dialogType ? componentsMap[dialogType] : null;
     if (!componentClass) {
@@ -207,15 +193,17 @@ export class ModalService {
     this.dialogComponent.set(componentClass);
 
     let parsedData: any = null;
-    if (rawData) {
+    const currentWindowLabel = getCurrentWindow().label;
+    const localData = localStorage.getItem(`dialogData-${currentWindowLabel}`);
+    if (localData) {
       try {
-        parsedData = JSON.parse(decodeURIComponent(rawData));
+        parsedData = JSON.parse(localData);
+        localStorage.removeItem(`dialogData-${currentWindowLabel}`);
       } catch (e) {
-        console.error('[ModalService] Failed to parse query parameter data:', e);
+        console.error('[ModalService] Failed to parse localStorage data:', e);
       }
     }
 
-    const currentWindowLabel = getCurrentWindow().label;
     const mockRef = new ChildDialogRef(currentWindowLabel);
 
     this.dialogInjector = Injector.create({
@@ -252,58 +240,74 @@ export class ModalService {
     const label = `dialog-${dialogType}${suffix}`;
     const mockRef = new MockDialogRef<R>(label);
 
-    let url = `index.html?standalone=dialog&dialogType=${dialogType}`;
+    const url = `index.html?standalone=dialog&dialogType=${dialogType}`;
     if (data) {
-      url += `&data=${encodeURIComponent(JSON.stringify(data))}`;
+      try {
+        localStorage.setItem(`dialogData-${label}`, JSON.stringify(data));
+      } catch (e) {
+        console.error('[ModalService] Failed to store dialog data in localStorage:', e);
+      }
     }
 
-    this.apiClient
-      .invoke('new_window', {
-        opts: {
-          label,
-          url,
-          title,
-          width,
-          height,
-        },
-      })
-      .catch(err => {
-        console.error('Failed to open standalone dialog window:', err);
+    this.setupStandaloneWindow(label, url, title, width, height, mockRef);
+
+    return mockRef as unknown as MatDialogRef<T, R>;
+  }
+
+  private async setupStandaloneWindow<R>(
+    label: string,
+    url: string,
+    title: string,
+    width: number | undefined,
+    height: number | undefined,
+    mockRef: MockDialogRef<R>
+  ): Promise<void> {
+    let created: boolean;
+    try {
+      created = await this.apiClient.invoke<boolean>('new_window', {
+        opts: { label, url, title, width, height },
       });
+    } catch (err) {
+      console.error('Failed to open standalone dialog window:', err);
+      // Clean up on error to prevent dangling data
+      localStorage.removeItem(`dialogData-${label}`);
+      return;
+    }
+
+    if (!created) {
+      // Window already existed and was focused — clean up orphaned localStorage
+      localStorage.removeItem(`dialogData-${label}`);
+      return;
+    }
 
     const targetWin = new Window(label);
-
     let resultReceived = false;
+
     let unlistenResult: (() => void) | undefined;
     let unlistenDestroyed: (() => void) | undefined;
 
-    const cleanup = () => {
+    const cleanup = (): void => {
       if (unlistenResult) unlistenResult();
       if (unlistenDestroyed) unlistenDestroyed();
     };
 
-    targetWin
-      .listen<R>(`dialog-result-${label}`, event => {
+    try {
+      unlistenResult = await targetWin.listen<R>(`dialog-result-${label}`, event => {
         resultReceived = true;
         mockRef.close(event.payload);
         cleanup();
-      })
-      .then(u => {
-        unlistenResult = u;
       });
 
-    targetWin
-      .once('tauri://destroyed', () => {
+      unlistenDestroyed = await targetWin.once('tauri://destroyed', () => {
         cleanup();
         if (!resultReceived) {
           mockRef.close();
         }
-      })
-      .then(u => {
-        unlistenDestroyed = u;
       });
-
-    return mockRef as unknown as MatDialogRef<T, R>;
+    } catch (err) {
+      console.error('[ModalService] Failed to set up standalone window event listeners:', err);
+      cleanup();
+    }
   }
 
   // ============================================================================
@@ -389,10 +393,22 @@ export class ModalService {
 
   openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
     if (this.shouldOpenStandalone()) {
+      // Strip heavy stats and uploaded files arrays to prevent large payloads.
+      // Child window will fetch complete live job details via JobManagementService.
+      const { stats, uploaded_files: _, ...baseJob } = job as any;
+      const lightStats = stats
+        ? {
+            ...stats,
+            transferring: [],
+            completed: [],
+          }
+        : undefined;
+      const data = { ...baseJob, stats: lightStats };
+
       return this.openStandaloneDialog<JobDetailModalComponent>(
         'job-detail',
         this.translate.instant('settings.jobDetail.title', { id: job.jobid }),
-        job,
+        data,
         680,
         600,
         job.jobid.toString()

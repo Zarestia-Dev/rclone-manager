@@ -66,7 +66,6 @@ export class AppUpdaterService extends TauriBaseService {
   constructor() {
     super();
     this.setupEventListeners();
-    void this.initialize();
   }
 
   // ---------------------------------------------------------------------------
@@ -239,7 +238,7 @@ export class AppUpdaterService extends TauriBaseService {
     }
   }
 
-  private async initialize(): Promise<void> {
+  async initialize(): Promise<void> {
     try {
       await this.settings.initialize();
       this._buildType.set(await this.invokeCommand<string>('get_build_type'));

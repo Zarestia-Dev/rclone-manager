@@ -117,7 +117,7 @@ pub struct WindowOptions {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
+pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
         let _ = existing.show();
         let _ = existing.unminimize();
@@ -138,7 +138,7 @@ pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
             use crate::utils::types::events::BROWSE;
             let _ = tauri::Emitter::emit(&existing, BROWSE, full_path);
         }
-        return;
+        return false;
     }
 
     let w = opts.width.unwrap_or(360.0);
@@ -158,7 +158,11 @@ pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) {
             let _ = window.show();
             #[cfg(target_os = "macos")]
             crate::utils::app::platform::update_macos_dock_visibility(&app_handle);
+            true
         }
-        Err(e) => log::error!("Failed to build window {}: {e}", opts.label),
+        Err(e) => {
+            log::error!("Failed to build window {}: {e}", opts.label);
+            false
+        }
     }
 }

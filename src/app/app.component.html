@@ -9,7 +9,9 @@
         *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
       ></ng-container>
     } @else if (nautilusService.isStandaloneWindow()) {
-      <app-nautilus></app-nautilus>
+      @defer {
+        <app-nautilus></app-nautilus>
+      }
     } @else {
       @defer {
         <app-titlebar data-tauri-drag-region></app-titlebar>

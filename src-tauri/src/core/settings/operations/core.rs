@@ -1,7 +1,7 @@
 //! Core settings operations using rcman
 
 use crate::core::settings::AppSettingsManager;
-use log::info;
+use log::{debug, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -20,7 +20,7 @@ pub async fn load_settings(app: AppHandle) -> Result<serde_json::Value, String> 
         "options": metadata
     });
 
-    info!("Settings loaded and merged successfully.");
+    debug!("Settings loaded and merged successfully.");
     Ok(response)
 }
 

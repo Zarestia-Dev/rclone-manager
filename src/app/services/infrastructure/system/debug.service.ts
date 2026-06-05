@@ -279,9 +279,10 @@ export class DebugService extends TauriBaseService {
         ? inputEl.value.substring(inputEl.selectionStart ?? 0, inputEl.selectionEnd ?? 0)
         : (window.getSelection()?.toString() ?? '');
 
+    const isInput = !!(inputEl || editableEl);
     const items: MenuEntry[] = [];
 
-    if (inputEl || editableEl) {
+    if (isInput) {
       if (selectedText) {
         if (!isPassword && !isReadOnly && !isDisabled) {
           items.push({
@@ -320,18 +321,24 @@ export class DebugService extends TauriBaseService {
       });
     }
 
-    if (items.length) items.push('divider');
+    const isStandalone = new URLSearchParams(window.location.search).get('standalone') === 'dialog';
+    const hasBottomItems = (!isStandalone && !isInput) || isDevMode();
 
-    items.push(
-      {
-        label: this.t('developerTools.refreshUi'),
-        action: () => this.refreshUI(),
-      },
-      {
-        label: this.t('developerTools.clearCache'),
-        action: () => this.clearCache(),
-      }
-    );
+    if (items.length && hasBottomItems) items.push('divider');
+
+    if (!isStandalone && !isInput) {
+      items.push(
+        {
+          label: this.t('developerTools.refreshUi'),
+          action: () => this.refreshUI(),
+        },
+        {
+          label: this.t('developerTools.clearCache'),
+          action: () => this.clearCache(),
+        }
+      );
+    }
+
     if (isDevMode()) {
       items.push({
         label: this.t('developerTools.openDevTools'),
