@@ -3,8 +3,8 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, from, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { LocalStorageService } from './state/local-storage.service';
 import {
-  AppSettingsService,
   NotificationService,
   PathService,
   RemoteFileOperationsService,
@@ -63,7 +63,7 @@ export class NautilusTabService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly pathService = inject(PathService);
-  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly localStorage = inject(LocalStorageService);
   private readonly nautilusService = inject(NautilusService);
   private readonly fileViewerSvc = inject(FileViewerService);
 
@@ -98,7 +98,9 @@ export class NautilusTabService {
   readonly tabs = signal<Tab[]>([]);
   readonly activeTabIndex = signal(0);
   readonly activePaneIndex = signal<0 | 1>(0);
-  readonly splitDividerPos = signal(50);
+  readonly splitDividerPos = signal(
+    this.localStorage.get<number>('nautilus.split_divider_pos', 50)
+  );
 
   // -- Computeds --
   readonly mappedTabs = computed((): TabItem[] =>
@@ -157,7 +159,6 @@ export class NautilusTabService {
   constructor() {
     this.loadFilesForPane(0);
     this.loadFilesForPane(1);
-    this._loadSplitDividerPos();
 
     this.destroyRef.onDestroy(() => {
       void this.stopListReadJobs();
@@ -439,7 +440,24 @@ export class NautilusTabService {
       paneState.error.set(pIdx === 0 ? this.errorState() : this.errorStateRight());
     }
 
+    const isInitial = this.tabs().length === 0;
+    const isSplitPersisted = this.localStorage.get<boolean>('nautilus.is_split_enabled', false);
+
     const t: Tab = { id, title, left: paneState };
+    if (isInitial && isSplitPersisted) {
+      const rightRemoteName = this.localStorage.get<string | null>(
+        'nautilus.right_remote_name',
+        null
+      );
+      const rightPath = this.localStorage.get<string>('nautilus.right_path', '');
+      let rightRemote: ExplorerRoot | null = null;
+      if (rightRemoteName) {
+        rightRemote =
+          this.nautilusService.allRemotesLookup().find(r => r.name === rightRemoteName) ?? null;
+      }
+      t.right = this.createPaneState(rightRemote ?? remote, rightRemote ? rightPath : path);
+    }
+
     this.tabs.update(list => [...list, t]);
     this.switchTab(this.tabs().length - 1);
   }
@@ -467,6 +485,7 @@ export class NautilusTabService {
     } else {
       this.activePaneIndex.set(0);
     }
+    this.persistSplitState(t);
   }
 
   closeOtherTabs(index: number): void {
@@ -530,6 +549,7 @@ export class NautilusTabService {
     } else {
       this.activePaneIndex.set(0);
     }
+    this.persistSplitState(updatedTab);
   }
 
   syncPaneSignals(paneIndex: 0 | 1, state: PaneState): void {
@@ -657,6 +677,10 @@ export class NautilusTabService {
     ref.remote.set(remote);
     ref.path.set(path);
     ref.selection.set(new Set<string>());
+
+    if (pIdx === 1) {
+      this.persistSplitState(this.tabs()[index]);
+    }
   }
 
   async stopListReadJobs(): Promise<void> {
@@ -684,7 +708,7 @@ export class NautilusTabService {
         const { status, remote, source, destination } = event;
         if ((status === 'Completed' || status === 'Failed' || status === 'Stopped') && remote) {
           const affected: { remote: string; path: string }[] = [];
-          const addAffected = (pathStr: string) => {
+          const addAffected = (pathStr: string): void => {
             const parsed = this.pathService.splitFsPath(pathStr);
             const r = parsed.remote || remote;
             affected.push({ remote: r, path: parsed.path });
@@ -701,13 +725,18 @@ export class NautilusTabService {
       });
   }
 
-  private _loadSplitDividerPos(): void {
-    this.appSettingsService
-      .selectSetting('nautilus.split_divider_pos')
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(v => {
-        if (v?.value !== undefined) this.splitDividerPos.set(v.value);
-      });
+  private persistSplitState(tab: Tab): void {
+    const isSplit = !!tab.right;
+    this.localStorage.set('nautilus.is_split_enabled', isSplit);
+    if (tab.right) {
+      const rightRemote = tab.right.remote;
+      if (rightRemote) {
+        this.localStorage.set('nautilus.right_remote_name', rightRemote.name);
+      } else {
+        this.localStorage.remove('nautilus.right_remote_name');
+      }
+      this.localStorage.set('nautilus.right_path', tab.right.path);
+    }
   }
 
   private loadFilesForPane(paneIndex: 0 | 1): void {

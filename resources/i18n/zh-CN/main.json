@@ -498,37 +498,6 @@
       }
     },
     "nautilus": {
-      "default_layout": {
-        "label": "默认布局",
-        "description": "文件浏览器默认视图",
-        "options": {
-          "grid": "网格",
-          "list": "列表"
-        }
-      },
-      "grid_icon_size": {
-        "label": "网格图标大小",
-        "description": "网格视图图标大小（像素）"
-      },
-      "list_icon_size": {
-        "label": "列表图标大小",
-        "description": "列表视图图标大小（像素）"
-      },
-      "show_hidden_items": {
-        "label": "显示隐藏文件",
-        "description": "默认显示以点开头的隐藏文件"
-      },
-      "sort_key": {
-        "label": "默认排序",
-        "options": {
-          "name-asc": "名称（A–Z）",
-          "name-desc": "名称（Z–A）",
-          "size-asc": "大小（小→大）",
-          "size-desc": "大小（大→小）",
-          "date-asc": "日期（旧→新）",
-          "date-desc": "日期（新→旧）"
-        }
-      },
       "starred": {
         "label": "收藏项目",
         "description": "文件浏览器中收藏的文件和文件夹列表"

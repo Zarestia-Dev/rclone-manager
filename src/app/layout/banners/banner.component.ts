@@ -66,6 +66,8 @@ export class BannerComponent {
 
   async dismissFlatpakWarning(): Promise<void> {
     this.flatpakDismissed.set(true);
-    await this.appSettingsService.saveSetting('runtime', 'flatpak_warn', false);
+    if (this.appUpdaterService.buildType() === 'flatpak') {
+      await this.appSettingsService.saveSetting('runtime', 'flatpak_warn', false);
+    }
   }
 }

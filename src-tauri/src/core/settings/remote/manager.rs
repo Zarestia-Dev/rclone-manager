@@ -47,9 +47,16 @@ pub async fn save_remote_settings(
         settings = Value::Object(merged);
     }
 
+    // Validate the settings structure and canonicalize it
+    let parsed: crate::utils::types::remotes::RemoteSettings = serde_json::from_value(settings)
+        .map_err(|e| format!("Invalid remote settings structure: {e}"))?;
+
+    let cleaned_settings = serde_json::to_value(&parsed)
+        .map_err(|e| format!("Failed to serialize remote settings: {e}"))?;
+
     // Save to rcman sub-settings
     remotes
-        .set(&remote_name, &settings)
+        .set(&remote_name, &cleaned_settings)
         .map_err(|e| crate::localized_error!("backendErrors.settings.saveFailed", "error" => e))?;
 
     info!("Remote settings saved for '{remote_name}'");
@@ -67,7 +74,7 @@ pub async fn save_remote_settings(
 
         for key in config_keys {
             if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
-                let new_configs = settings.get(key).and_then(|v| v.as_object());
+                let new_configs = cleaned_settings.get(key).and_then(|v| v.as_object());
                 for profile_name in old_configs.keys() {
                     let was_deleted = new_configs.is_none_or(|new| !new.contains_key(profile_name));
 
@@ -89,7 +96,7 @@ pub async fn save_remote_settings(
     let backend_name = backend_manager.get_active_name().await;
 
     match cache
-        .add_or_update_automation_for_remote(&backend_name, &remote_name, &settings)
+        .add_or_update_automation_for_remote(&backend_name, &remote_name, &cleaned_settings)
         .await
     {
         Ok(result) if result.has_changes() => {
@@ -143,17 +150,13 @@ pub async fn get_remote_settings(
     remote_name: String,
 ) -> Result<serde_json::Value, String> {
     let manager = app.state::<AppSettingsManager>();
-    let remotes = manager
-        .inner()
-        .sub_settings("remotes")
-        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
-
-    let settings = remotes.get_value(&remote_name).map_err(
-        |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
-    )?;
+    let settings =
+        crate::utils::types::remotes::RemoteSettings::load(manager.inner(), &remote_name).map_err(
+            |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
+        )?;
 
     info!("Loaded settings for remote '{remote_name}'.");
-    Ok(settings)
+    serde_json::to_value(settings).map_err(|e| e.to_string())
 }
 
 /// **Get all remote settings as a map (for internal use)**
@@ -161,13 +164,8 @@ pub fn get_all_remote_settings_sync(
     manager: &AppSettingsManager,
     remote_names: &[String],
 ) -> serde_json::Value {
-    let remotes = match manager.sub_settings("remotes") {
-        Ok(r) => r,
-        Err(_) => return serde_json::json!({}),
-    };
-
-    let mut all_settings = remotes.get_all_values().unwrap_or_default();
-    all_settings.retain(|name, _| remote_names.contains(name));
+    let all_settings =
+        crate::utils::types::remotes::RemoteSettings::load_all(manager, remote_names);
     serde_json::to_value(all_settings).unwrap_or_default()
 }
 

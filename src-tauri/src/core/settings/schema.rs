@@ -247,6 +247,7 @@ pub struct RuntimeSettings {
     pub rclone_update_channel: String,
 
     #[setting(label = "settings.runtime.flatpak_warn.label")]
+    #[cfg(feature = "flatpak")]
     pub flatpak_warn: bool,
 
     #[setting(
@@ -279,6 +280,7 @@ impl Default for RuntimeSettings {
             rclone_auto_check_updates: true,
             rclone_skipped_updates: vec![],
             rclone_update_channel: "stable".to_string(),
+            #[cfg(feature = "flatpak")]
             flatpak_warn: true,
             dashboard_layout: Value::Object(Default::default()),
             remote_layouts: Value::Object(Default::default()),
@@ -288,44 +290,9 @@ impl Default for RuntimeSettings {
 }
 
 /// Nautilus (file browser) specific preferences
-#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]
 #[schema(category = "nautilus")]
 pub struct NautilusSettings {
-    #[setting(label = "settings.nautilus.default_layout.label", description = "settings.nautilus.default_layout.description", options(("grid", "settings.nautilus.default_layout.options.grid"), ("list", "settings.nautilus.default_layout.options.list")))]
-    pub default_layout: String,
-
-    #[setting(
-        label = "settings.nautilus.grid_icon_size.label",
-        description = "settings.nautilus.grid_icon_size.description",
-        min = 16,
-        max = 512
-    )]
-    pub grid_icon_size: i32,
-
-    #[setting(
-        label = "settings.nautilus.list_icon_size.label",
-        description = "settings.nautilus.list_icon_size.description",
-        min = 16,
-        max = 256
-    )]
-    pub list_icon_size: i32,
-
-    #[setting(
-        label = "settings.nautilus.show_hidden_items.label",
-        description = "settings.nautilus.show_hidden_items.description"
-    )]
-    pub show_hidden_items: bool,
-
-    #[setting(label = "settings.nautilus.sort_key.label", options(
-        ("name-asc", "settings.nautilus.sort_key.options.name-asc"),
-        ("name-desc", "settings.nautilus.sort_key.options.name-desc"),
-        ("size-asc", "settings.nautilus.sort_key.options.size-asc"),
-        ("size-desc", "settings.nautilus.sort_key.options.size-desc"),
-        ("date-asc", "settings.nautilus.sort_key.options.date-asc"),
-        ("date-desc", "settings.nautilus.sort_key.options.date-desc")
-    ))]
-    pub sort_key: String,
-
     #[setting(
         label = "settings.nautilus.starred.label",
         description = "settings.nautilus.starred.description"
@@ -337,29 +304,6 @@ pub struct NautilusSettings {
         description = "settings.nautilus.bookmarks.description"
     )]
     pub bookmarks: Vec<Value>,
-
-    #[setting(
-        label = "settings.nautilus.split_divider_pos.label",
-        description = "settings.nautilus.split_divider_pos.description",
-        min = 10,
-        max = 90
-    )]
-    pub split_divider_pos: i32,
-}
-
-impl Default for NautilusSettings {
-    fn default() -> Self {
-        Self {
-            default_layout: "grid".to_string(),
-            grid_icon_size: 96,
-            list_icon_size: 32,
-            show_hidden_items: false,
-            sort_key: "name-asc".to_string(),
-            starred: vec![],
-            bookmarks: vec![],
-            split_divider_pos: 50,
-        }
-    }
 }
 
 // =============================================================================

@@ -71,7 +71,12 @@ impl TraySnapshot {
             backend_manager.remote_cache.get_remotes(),
         );
 
-        let remotes_settings = settings_manager.inner().sub_settings("remotes").ok();
+        let active_jobs = active_jobs_raw
+            .iter()
+            .map(|j| TrayJobSummary {
+                remote_name: j.remote_name.clone(),
+            })
+            .collect();
 
         let active_serves_list: Vec<(String, Option<String>)> = active_serves
             .iter()
@@ -82,43 +87,32 @@ impl TraySnapshot {
             })
             .collect();
 
-        let active_jobs = active_jobs_raw
-            .iter()
-            .map(|j| TrayJobSummary {
-                remote_name: j.remote_name.clone(),
-            })
-            .collect();
-
-        let all_remote_settings = remotes_settings
-            .as_ref()
-            .and_then(|rs| rs.get_all_values().ok())
-            .unwrap_or_default();
+        let all_remote_settings = crate::utils::types::remotes::RemoteSettings::load_all(
+            settings_manager.inner(),
+            &remote_names,
+        );
 
         let remotes = remote_names
             .into_iter()
             .map(|name| {
-                let s = all_remote_settings.get(&name);
+                let s_parsed = all_remote_settings.get(&name).cloned().unwrap_or_default();
 
-                let show_on_tray = s
-                    .and_then(|v| v.get("showOnTray"))
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let show_on_tray = s_parsed.show_on_tray;
 
-                let primary_actions = s
-                    .and_then(|v| v.get("primaryActions"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(String::from))
-                            .collect()
-                    })
+                let primary_actions = s_parsed
+                    .primary_actions
+                    .clone()
                     .unwrap_or_else(|| vec!["mount".into(), "sync".into(), "bisync".into()]);
 
                 let target_remote = crate::utils::rclone::util::normalize_remote_name(&name);
 
-                let build_job_profiles = |key: &str, jtype: &JobType| -> Vec<TrayProfileSummary> {
-                    s.and_then(|v| v.get(key))
-                        .and_then(|v| v.as_object())
+                let build_job_profiles = |configs: &Option<
+                    std::collections::HashMap<String, crate::utils::types::remotes::ProfileConfig>,
+                >,
+                                          jtype: &JobType|
+                 -> Vec<TrayProfileSummary> {
+                    configs
+                        .as_ref()
                         .map(|m| {
                             m.keys()
                                 .map(|pname| TrayProfileSummary {
@@ -134,14 +128,14 @@ impl TraySnapshot {
                         .unwrap_or_default()
                 };
 
-                let mount_profiles = s
-                    .and_then(|v| v.get("mountConfigs"))
-                    .and_then(|v| v.as_object())
+                let mount_profiles = s_parsed
+                    .mount_configs
+                    .as_ref()
                     .map(|m| {
                         m.iter()
                             .map(|(pname, cfg)| {
-                                let rclone_cfg = cfg.get("rclone").unwrap_or(cfg);
-                                let dest = rclone_cfg
+                                let dest = cfg
+                                    .rclone
                                     .get("mountPoint")
                                     .and_then(|v| v.as_str())
                                     .unwrap_or("");
@@ -156,9 +150,9 @@ impl TraySnapshot {
                     })
                     .unwrap_or_default();
 
-                let serve_profiles = s
-                    .and_then(|v| v.get("serveConfigs"))
-                    .and_then(|v| v.as_object())
+                let serve_profiles = s_parsed
+                    .serve_configs
+                    .as_ref()
                     .map(|m| {
                         m.keys()
                             .map(|pname| TrayProfileSummary {
@@ -172,10 +166,10 @@ impl TraySnapshot {
                     .unwrap_or_default();
 
                 TrayRemoteSummary {
-                    sync_profiles: build_job_profiles("syncConfigs", &JobType::Sync),
-                    copy_profiles: build_job_profiles("copyConfigs", &JobType::Copy),
-                    move_profiles: build_job_profiles("moveConfigs", &JobType::Move),
-                    bisync_profiles: build_job_profiles("bisyncConfigs", &JobType::Bisync),
+                    sync_profiles: build_job_profiles(&s_parsed.sync_configs, &JobType::Sync),
+                    copy_profiles: build_job_profiles(&s_parsed.copy_configs, &JobType::Copy),
+                    move_profiles: build_job_profiles(&s_parsed.move_configs, &JobType::Move),
+                    bisync_profiles: build_job_profiles(&s_parsed.bisync_configs, &JobType::Bisync),
                     name,
                     show_on_tray,
                     primary_actions,

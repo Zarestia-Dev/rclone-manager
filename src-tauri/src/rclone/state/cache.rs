@@ -414,27 +414,15 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
 #[tauri::command]
 pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     use crate::rclone::backend::BackendManager;
-    use serde_json::json;
 
     let manager = app.state::<AppSettingsManager>();
-    let remotes = manager
-        .inner()
-        .sub_settings("remotes")
-        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
-
     let backend_manager = app.state::<BackendManager>();
     let remote_names = backend_manager.remote_cache.get_remotes().await;
 
-    let all_remote_settings = remotes.get_all_values().unwrap_or_default();
-    let mut all_settings = serde_json::Map::new();
+    let all_settings =
+        crate::utils::types::remotes::RemoteSettings::load_all(manager.inner(), &remote_names);
 
-    for remote_name in remote_names {
-        if let Some(settings) = all_remote_settings.get(&remote_name) {
-            all_settings.insert(remote_name, settings.clone());
-        }
-    }
-
-    Ok(json!(all_settings))
+    serde_json::to_value(all_settings).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

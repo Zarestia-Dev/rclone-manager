@@ -498,37 +498,6 @@
       }
     },
     "nautilus": {
-      "default_layout": {
-        "label": "Varsayılan Düzen",
-        "description": "Dosya tarayıcısı için varsayılan görünüm düzeni.",
-        "options": {
-          "grid": "Izgara",
-          "list": "Liste"
-        }
-      },
-      "grid_icon_size": {
-        "label": "Izgara Simge Boyutu",
-        "description": "Piksel cinsinden tercih edilen ızgara simge boyutu."
-      },
-      "list_icon_size": {
-        "label": "Liste Simge Boyutu",
-        "description": "Piksel cinsinden tercih edilen liste simge boyutu."
-      },
-      "show_hidden_items": {
-        "label": "Gizli Dosyaları Göster",
-        "description": "Dosya tarayıcısında varsayılan olarak nokta ile başlayan dosyaları gösterir."
-      },
-      "sort_key": {
-        "label": "Varsayılan Sıralama Düzeni",
-        "options": {
-          "name-asc": "Ad (A-Z)",
-          "name-desc": "Ad (Z-A)",
-          "size-asc": "Boyut (Küçük-Büyük)",
-          "size-desc": "Boyut (Büyük-Küçük)",
-          "date-asc": "Tarih (Eski-Yeni)",
-          "date-desc": "Tarih (Yeni-Eski)"
-        }
-      },
       "starred": {
         "label": "Yıldızlı Öğeler",
         "description": "Dosya tarayıcısındaki yıldızlı dosya ve klasörlerin listesi."

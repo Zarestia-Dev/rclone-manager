@@ -47,6 +47,7 @@ import {
   RemoteFacadeService,
   IconService,
   PathService,
+  LocalStorageService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 
@@ -139,6 +140,7 @@ export class GeneralOverviewComponent {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly translate = inject(TranslateService);
+  private readonly localStorage = inject(LocalStorageService);
 
   readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
@@ -164,13 +166,15 @@ export class GeneralOverviewComponent {
   // --- State ---
   readonly isEditingLayout = signal(false);
   readonly cardDisplayMode = signal<CardDisplayMode>('compact');
-  readonly panelOpenStates = signal<Record<string, boolean>>({
-    bandwidth: false,
-    system: false,
-    jobs: false,
-    automations: false,
-    serves: false,
-  });
+  readonly panelOpenStates = signal<Record<string, boolean>>(
+    this.localStorage.get<Record<string, boolean>>('dashboard.panelOpenStates', {
+      bandwidth: false,
+      system: false,
+      jobs: false,
+      automations: false,
+      serves: false,
+    })
+  );
   readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
@@ -291,7 +295,9 @@ export class GeneralOverviewComponent {
   }
 
   protected setPanelOpenState(id: string, isOpen: boolean): void {
-    this.panelOpenStates.update(states => ({ ...states, [id]: isOpen }));
+    const updated = { ...this.panelOpenStates(), [id]: isOpen };
+    this.panelOpenStates.set(updated);
+    this.localStorage.set('dashboard.panelOpenStates', updated);
   }
 
   protected getPanelOpenState(id: string): boolean {

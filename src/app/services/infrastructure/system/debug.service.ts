@@ -504,7 +504,15 @@ export class DebugService extends TauriBaseService {
 
   private async clearCache(): Promise<void> {
     sessionStorage.clear();
-    localStorage.clear();
+    // Preserve rcman.* keys (managed by LocalStorageService)
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !key.startsWith('rcman.')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
 
     if (this.doc.cookie) {
       for (const cookie of this.doc.cookie.split(';')) {

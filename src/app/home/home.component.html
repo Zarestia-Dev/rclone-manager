@@ -3,7 +3,7 @@
   <mat-sidenav
     #sidenav
     [opened]="isSidebarOpen()"
-    (openedChange)="isSidebarOpen.set($event)"
+    (openedChange)="setSidebarOpen($event)"
     [mode]="sidebarMode()"
   >
     <app-sidebar [remotes]="remotes()"></app-sidebar>

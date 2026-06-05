@@ -36,43 +36,44 @@ impl<'de> Deserialize<'de> for ProfileConfig {
     where
         D: serde::Deserializer<'de>,
     {
-        let mut map = match Value::deserialize(deserializer)? {
-            Value::Object(mut m) => {
-                if let Some(Value::Object(app)) = m.remove("app") {
-                    m.extend(app);
+        let val = Value::deserialize(deserializer)?;
+
+        // Deserialize using ProfileConfig or fall back if unpartitioned
+        let is_partitioned = val.get("app").is_some() || val.get("rclone").is_some();
+        let profile: crate::utils::types::remotes::ProfileConfig = if is_partitioned {
+            serde_json::from_value(val).unwrap_or_else(|_| {
+                crate::utils::types::remotes::ProfileConfig {
+                    app: crate::utils::types::remotes::AppConfig::default(),
+                    rclone: serde_json::Value::Null,
                 }
-                if let Some(Value::Object(rclone)) = m.remove("rclone") {
-                    m.extend(rclone);
-                }
-                m
-            }
-            _ => return Err(serde::de::Error::custom("Expected JSON object")),
+            })
+        } else {
+            let app: crate::utils::types::remotes::AppConfig =
+                serde_json::from_value(val.clone()).unwrap_or_default();
+            crate::utils::types::remotes::ProfileConfig { app, rclone: val }
         };
 
-        let source = map
-            .remove("source")
-            .or_else(|| map.remove("srcFs"))
-            .or_else(|| map.remove("path1"))
-            .or_else(|| map.remove("fs"));
+        let source = if let Value::Object(ref map) = profile.rclone {
+            crate::utils::types::remotes::SOURCE_KEYS
+                .iter()
+                .find_map(|&key| map.get(key).cloned())
+        } else {
+            None
+        };
 
-        let dest = map
-            .remove("dest")
-            .or_else(|| map.remove("dstFs"))
-            .or_else(|| map.remove("path2"))
-            .or_else(|| map.remove("mountPoint"));
-
-        let cron_enabled = map.remove("cronEnabled").and_then(|v| v.as_bool());
-        let cron_expression = map
-            .remove("cronExpression")
-            .and_then(|v| v.as_str().map(String::from));
-        let watch_enabled = map.remove("watchEnabled").and_then(|v| v.as_bool());
-        let watch_delay = map.remove("watchDelay").and_then(|v| v.as_u64());
+        let dest = if let Value::Object(ref map) = profile.rclone {
+            crate::utils::types::remotes::DEST_KEYS
+                .iter()
+                .find_map(|&key| map.get(key).cloned())
+        } else {
+            None
+        };
 
         Ok(ProfileConfig {
-            cron_enabled,
-            cron_expression,
-            watch_enabled,
-            watch_delay,
+            cron_enabled: profile.app.cron_enabled,
+            cron_expression: profile.app.cron_expression,
+            watch_enabled: profile.app.watch_enabled,
+            watch_delay: profile.app.watch_delay,
             source,
             dest,
         })

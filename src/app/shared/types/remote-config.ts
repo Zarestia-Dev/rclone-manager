@@ -215,44 +215,34 @@ export interface AppConfig {
   runtimeRemoteProfile?: string;
 }
 
-// Shared fields for all rclone operations
-export interface RcloneBaseConfig {
-  autoStart: boolean;
-  name?: string;
-  filterProfile?: string;
-  backendProfile?: string;
-  runtimeRemoteProfile?: string;
-  [key: string]: any;
+export interface MountConfig {
+  app: AppConfig;
+  rclone: {
+    fs?: string;
+    mountPoint?: string;
+    mountType?: string;
+    mountOpt?: Record<string, unknown>;
+  };
 }
 
-// Extends base with scheduling (cron/watch) support
-export interface SchedulableConfig extends RcloneBaseConfig {
-  cronEnabled?: boolean;
-  cronExpression?: string | null;
-  watchEnabled?: boolean;
-  watchDelay?: number;
+export interface CopyConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    _config?: Record<string, unknown>;
+  };
 }
 
-export interface MountConfig extends RcloneBaseConfig {
-  fs?: string;
-  mountPoint?: string;
-  mountType?: string;
-  mountOpt?: Record<string, unknown>;
-  vfsProfile?: string;
-}
-
-export interface CopyConfig extends SchedulableConfig {
-  srcFs?: string | string[];
-  dstFs?: string;
-  createEmptySrcDirs?: boolean;
-  _config?: Record<string, unknown>;
-}
-
-export interface SyncConfig extends SchedulableConfig {
-  srcFs?: string | string[];
-  dstFs?: string;
-  createEmptySrcDirs?: boolean;
-  _config?: Record<string, unknown>;
+export interface SyncConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    _config?: Record<string, unknown>;
+  };
 }
 
 export type FilterConfig = Record<string, any>;
@@ -261,43 +251,51 @@ export type VfsConfig = Record<string, any>;
 
 export type BackendConfig = Record<string, any>;
 
-export interface MoveConfig extends SchedulableConfig {
-  srcFs?: string | string[];
-  dstFs?: string;
-  createEmptySrcDirs?: boolean;
-  deleteEmptySrcDirs?: boolean;
-  _config?: Record<string, unknown>;
+export interface MoveConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    createEmptySrcDirs?: boolean;
+    deleteEmptySrcDirs?: boolean;
+    _config?: Record<string, unknown>;
+  };
 }
 
-export interface BisyncConfig extends SchedulableConfig {
-  path1?: string;
-  path2?: string;
-  dryRun?: boolean;
-  resync?: boolean;
-  checkAccess?: boolean;
-  checkFilename?: string;
-  maxDelete?: number;
-  force?: boolean;
-  checkSync?: boolean | 'only';
-  createEmptySrcDirs?: boolean;
-  removeEmptyDirs?: boolean;
-  filtersFile?: string;
-  ignoreListingChecksum?: boolean;
-  resilient?: boolean;
-  workDir?: string;
-  backupDir1?: string;
-  backupDir2?: string;
-  noCleanup?: boolean;
-  _config?: Record<string, unknown>;
+export interface BisyncConfig {
+  app: AppConfig;
+  rclone: {
+    path1?: string;
+    path2?: string;
+    dryRun?: boolean;
+    resync?: boolean;
+    checkAccess?: boolean;
+    checkFilename?: string;
+    maxDelete?: number;
+    force?: boolean;
+    checkSync?: boolean | 'only';
+    createEmptySrcDirs?: boolean;
+    removeEmptyDirs?: boolean;
+    filtersFile?: string;
+    ignoreListingChecksum?: boolean;
+    resilient?: boolean;
+    workDir?: string;
+    backupDir1?: string;
+    backupDir2?: string;
+    noCleanup?: boolean;
+    _config?: Record<string, unknown>;
+  };
 }
 
 export type RuntimeRemoteConfig = Record<string, any>;
 
-export interface ServeConfig extends SchedulableConfig {
-  fs?: string;
-  type?: string;
-  _config?: Record<string, unknown>;
-  vfsProfile?: string;
+export interface ServeConfig {
+  app: AppConfig;
+  rclone: {
+    fs?: string;
+    type?: string;
+    _config?: Record<string, unknown>;
+  };
 }
 
 // A single remote's settings broken into sections used by the UI

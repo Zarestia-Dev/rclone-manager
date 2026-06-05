@@ -685,7 +685,7 @@ export class RemoteFacadeService extends TauriBaseService {
     serves: ServeListItem[],
     settings: RemoteSettings
   ): Omit<Remote, 'features'> {
-    const getProfiles = (key: keyof typeof REMOTE_CONFIG_KEYS) =>
+    const getProfiles = (key: keyof typeof REMOTE_CONFIG_KEYS): ProfileConfigMap =>
       (settings[REMOTE_CONFIG_KEYS[key]] ?? {}) as ProfileConfigMap;
 
     const mountConfigs = getProfiles('mount');

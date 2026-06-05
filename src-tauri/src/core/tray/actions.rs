@@ -126,16 +126,18 @@ fn get_mount_dest(
     remote: &str,
     profile: Option<&str>,
 ) -> Option<String> {
-    let sub = manager.sub_settings("remotes").ok()?;
-    let settings = sub.get_value(remote).ok()?;
-    let mount_configs = settings.get("mountConfigs")?.as_object()?;
+    let settings = crate::utils::types::remotes::RemoteSettings::load(manager, remote).ok()?;
+    let settings_val = serde_json::to_value(&settings).ok()?;
+    let mount_configs = settings.mount_configs.as_ref()?;
 
-    let config = match profile {
+    let config_profile = match profile {
         Some(p) => mount_configs.get(p)?,
         None => mount_configs.values().next()?,
     };
 
-    crate::rclone::commands::common::parse_common_config(config, &settings).map(|p| p.dest)
+    let config = serde_json::to_value(config_profile).ok()?;
+
+    crate::rclone::commands::common::parse_common_config(&config, &settings_val).map(|p| p.dest)
 }
 
 pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {

@@ -33,7 +33,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { NumberInputComponent } from '../../../../shared/components/number-input/number-input.component';
 
 import { ValidatorRegistryService, ModalService } from '@app/services';
-import { AppSettingsService, FileSystemService } from '@app/services';
+import { AppSettingsService, FileSystemService, LocalStorageService } from '@app/services';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
 interface PendingChange {
@@ -75,6 +75,7 @@ interface PendingChangeDisplay {
 export class PreferencesModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly localStorageService = inject(LocalStorageService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly translate = inject(TranslateService);
@@ -386,6 +387,7 @@ export class PreferencesModalComponent {
   async resetSettings(): Promise<void> {
     try {
       await this.appSettingsService.resetSettings();
+      this.localStorageService.clearAll();
     } catch (error) {
       console.error('Error resetting settings:', error);
     }

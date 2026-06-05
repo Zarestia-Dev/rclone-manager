@@ -11,6 +11,7 @@ export * from './infrastructure/maintenance/system-health.service';
 export * from './infrastructure/system/backend.service';
 export * from './infrastructure/system/debug.service';
 export * from './ui/state/ui-state.service';
+export * from './ui/state/local-storage.service';
 export * from './ui/state/onboarding-state.service';
 export * from './ui/window.service';
 export * from './ui/global-loading.service';

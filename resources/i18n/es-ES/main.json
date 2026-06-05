@@ -498,37 +498,6 @@
       }
     },
     "nautilus": {
-      "default_layout": {
-        "label": "Diseño predeterminado",
-        "description": "Diseño de vista predeterminado para el explorador de archivos.",
-        "options": {
-          "grid": "Cuadrícula",
-          "list": "Lista"
-        }
-      },
-      "grid_icon_size": {
-        "label": "Tamaño del icono de cuadrícula",
-        "description": "Tamaño de icono de cuadrícula preferido en píxeles."
-      },
-      "list_icon_size": {
-        "label": "Tamaño del icono de lista",
-        "description": "Tamaño de icono de lista preferido en píxeles."
-      },
-      "show_hidden_items": {
-        "label": "Mostrar archivos ocultos",
-        "description": "Mostrar archivos que comienzan con un punto de forma predeterminada en el explorador de archivos."
-      },
-      "sort_key": {
-        "label": "Orden de clasificación predeterminado",
-        "options": {
-          "name-asc": "Nombre (A-Z)",
-          "name-desc": "Nombre (Z-A)",
-          "size-asc": "Tamaño (Pequeño-Grande)",
-          "size-desc": "Tamaño (Grande-Pequeño)",
-          "date-asc": "Fecha (Antiguo-Nuevo)",
-          "date-desc": "Fecha (Nuevo-Antiguo)"
-        }
-      },
       "starred": {
         "label": "Elementos destacados",
         "description": "Lista de archivos y carpetas destacados en el explorador de archivos."

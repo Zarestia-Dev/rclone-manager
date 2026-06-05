@@ -1,16 +1,13 @@
-import { inject, Injectable, signal, computed, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { combineLatest } from 'rxjs';
-import { AppSettingsService } from '@app/services';
+import { inject, Injectable, signal, computed } from '@angular/core';
+import { LocalStorageService } from './state/local-storage.service';
 
 /**
  * Owns all Nautilus view-state (layout, sort, icon size, show-hidden) and
- * handles persistence to/from AppSettingsService.
+ * handles persistence to/from LocalStorageService.
  */
 @Injectable()
 export class NautilusSettingsService {
-  private readonly appSettingsService = inject(AppSettingsService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly localStorage = inject(LocalStorageService);
 
   // ── Icon size tables ────────────────────────────────────────────────────────
   readonly GRID_ICON_SIZES = [48, 64, 96, 128, 160, 256] as const;
@@ -44,7 +41,7 @@ export class NautilusSettingsService {
   readonly decreaseIconDisabled = computed(() => this.iconSize() <= this._currentIconSizes()[0]);
 
   constructor() {
-    this._loadFromAppSettings();
+    this._loadFromLocalStorage();
   }
 
   // ── Sort ────────────────────────────────────────────────────────────────────
@@ -109,57 +106,48 @@ export class NautilusSettingsService {
   // ── Persistence (public so callers like split-divider can invoke directly) ──
 
   saveLayout(l: 'grid' | 'list'): void {
-    this.appSettingsService.saveSetting('nautilus', 'default_layout', l);
+    this.localStorage.set('nautilus.default_layout', l);
   }
 
   saveSortKey(k: string): void {
-    this.appSettingsService.saveSetting('nautilus', 'sort_key', k);
+    this.localStorage.set('nautilus.sort_key', k);
   }
 
   saveShowHidden(v: boolean): void {
-    this.appSettingsService.saveSetting('nautilus', 'show_hidden_items', v);
+    this.localStorage.set('nautilus.show_hidden_items', v);
   }
 
   saveGridIconSize(size: number): void {
-    this.appSettingsService.saveSetting('nautilus', 'grid_icon_size', size);
+    this.localStorage.set('nautilus.grid_icon_size', size);
   }
 
   saveListIconSize(size: number): void {
-    this.appSettingsService.saveSetting('nautilus', 'list_icon_size', size);
+    this.localStorage.set('nautilus.list_icon_size', size);
   }
 
   saveSplitDividerPos(pos: number): void {
-    this.appSettingsService.saveSetting('nautilus', 'split_divider_pos', Math.round(pos));
+    this.localStorage.set('nautilus.split_divider_pos', Math.round(pos));
   }
 
   // ── Private ─────────────────────────────────────────────────────────────────
 
-  private _loadFromAppSettings(): void {
-    combineLatest([
-      this.appSettingsService.selectSetting('nautilus.default_layout'),
-      this.appSettingsService.selectSetting('nautilus.sort_key'),
-      this.appSettingsService.selectSetting('nautilus.show_hidden_items'),
-      this.appSettingsService.selectSetting('nautilus.grid_icon_size'),
-      this.appSettingsService.selectSetting('nautilus.list_icon_size'),
-    ])
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(([layout, sortKey, showHidden, gridIconSize, listIconSize]) => {
-        if (layout?.value) this.layout.set(layout.value as 'grid' | 'list');
-        if (sortKey?.value) this.applySort(sortKey.value);
-        if (showHidden?.value !== undefined) this.showHidden.set(showHidden.value);
-        if (gridIconSize?.value) this.savedGridIconSize.set(gridIconSize.value);
-        if (listIconSize?.value) this.savedListIconSize.set(listIconSize.value);
+  private _loadFromLocalStorage(): void {
+    const layout = this.localStorage.get<'grid' | 'list'>('nautilus.default_layout', 'grid');
+    const sortKey = this.localStorage.get<string>('nautilus.sort_key', 'name-asc');
+    const showHidden = this.localStorage.get<boolean>('nautilus.show_hidden_items', false);
+    const gridIconSize = this.localStorage.get<number | null>('nautilus.grid_icon_size', null);
+    const listIconSize = this.localStorage.get<number | null>('nautilus.list_icon_size', null);
 
-        // Restore icon size for the current layout.
-        const currentLayout = layout?.value ?? this.layout();
-        const savedSize =
-          currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
-        const sizes =
-          currentLayout === 'grid'
-            ? (this.GRID_ICON_SIZES as readonly number[])
-            : (this.LIST_ICON_SIZES as readonly number[]);
-        this.iconSize.set(savedSize ?? sizes[Math.floor(sizes.length / 2)]);
-      });
+    this.layout.set(layout);
+    this.applySort(sortKey);
+    this.showHidden.set(showHidden);
+    if (gridIconSize) this.savedGridIconSize.set(gridIconSize);
+    if (listIconSize) this.savedListIconSize.set(listIconSize);
+
+    // Restore icon size for the current layout.
+    const savedSize = layout === 'grid' ? gridIconSize : listIconSize;
+    const sizes = layout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
+    this.iconSize.set(savedSize ?? sizes[Math.floor(sizes.length / 2)]);
   }
 
   private _changeIconSize(direction: 1 | -1): void {

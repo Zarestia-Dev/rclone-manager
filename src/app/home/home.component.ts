@@ -40,6 +40,7 @@ import {
   ModalService,
   BackendService,
   RcloneStatusService,
+  LocalStorageService,
 } from '@app/services';
 
 @Component({
@@ -99,11 +100,17 @@ export class HomeComponent {
     return tab === 'general' ? 'mount' : tab;
   });
 
-  readonly isSidebarOpen = signal(false);
+  private readonly localStorage = inject(LocalStorageService);
+  readonly isSidebarOpen = signal(this.localStorage.get('ui.sidebarOpen', false));
   readonly sidebarMode = signal<MatDrawerMode>('side');
   readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
-    const settings = this.selectedRemoteSettings();
-    return (settings['selectedSyncOperation'] as SyncOperationType) ?? 'sync';
+    const remote = this.selectedRemote();
+    if (!remote) return 'sync';
+    return this.localStorage.getScoped<SyncOperationType>(
+      `remote.${remote.name}`,
+      'selectedSyncOperation',
+      'sync'
+    );
   });
 
   readonly isLoading = signal(false);
@@ -115,6 +122,11 @@ export class HomeComponent {
   }
 
   // --- Layout ---
+
+  setSidebarOpen(open: boolean): void {
+    this.isSidebarOpen.set(open);
+    this.localStorage.set('ui.sidebarOpen', open);
+  }
 
   private setupResponsiveLayout(): void {
     const mql = window.matchMedia('(min-width: 900px)');
@@ -151,7 +163,7 @@ export class HomeComponent {
     this.selectedSyncOperation.set(operation);
     const remote = this.selectedRemote();
     if (remote?.name) {
-      void this.saveRemoteSettings(remote.name, { selectedSyncOperation: operation });
+      this.localStorage.setScoped(`remote.${remote.name}`, 'selectedSyncOperation', operation);
     }
   }
 

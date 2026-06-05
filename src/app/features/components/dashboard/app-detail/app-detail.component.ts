@@ -46,6 +46,10 @@ import {
   ACTION_ANIMATION_CLASS,
   OPERATION_COLOR_VAR,
   AppConfig,
+  SyncConfig,
+  CopyConfig,
+  MoveConfig,
+  BisyncConfig,
 } from '@app/types';
 import {
   JobInfoPanelComponent,
@@ -61,6 +65,7 @@ import {
   RawTransfer,
   mapRawTransfer,
   RemoteFacadeService,
+  LocalStorageService,
 } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
@@ -145,12 +150,17 @@ export class AppDetailComponent {
   private readonly translate = inject(TranslateService);
   private readonly formatFileSize = inject(FormatFileSizePipe);
   private readonly formatTime = inject(FormatTimePipe);
+  private readonly localStorage = inject(LocalStorageService);
 
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
   private readonly _selectedProfiles = linkedSignal<Record<string, string>>(() => {
-    return (this.remoteSettings()['selectedProfiles'] as Record<string, string>) ?? {};
+    return this.localStorage.getScoped<Record<string, string>>(
+      `remote.${this.selectedRemote().name}`,
+      'selectedProfiles',
+      {}
+    );
   });
 
   readonly selectedProfile = computed(() => {
@@ -300,23 +310,22 @@ export class AppDetailComponent {
     const opType = this.currentOpType();
     if (opType === 'bisync') {
       const configKey = 'bisyncConfigs';
-      const profiles = this.remoteSettings()[configKey] as Record<string, any> | undefined;
+      const profiles = this.remoteSettings()[configKey] as Record<string, BisyncConfig> | undefined;
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
       if (!cfg) return false;
-      const rclone = cfg?.rclone ?? cfg;
-      return !!rclone?.['dryRun'];
+      return !!cfg.rclone?.dryRun;
     } else if (['sync', 'copy', 'move'].includes(opType)) {
       const configKey = REMOTE_CONFIG_KEYS[
         opType as keyof typeof REMOTE_CONFIG_KEYS
       ] as keyof RemoteSettings;
       if (!configKey) return false;
       const profiles = this.remoteSettings()[configKey] as
-        | Record<string, { app?: { backendProfile?: string }; backendProfile?: string }>
+        | Record<string, SyncConfig | CopyConfig | MoveConfig>
         | undefined;
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
-      const backendProfileName = cfg?.app?.backendProfile || cfg?.backendProfile || 'default';
+      const backendProfileName = cfg?.app?.backendProfile || 'default';
 
       const backendConfigs = this.remoteSettings()['backendConfigs'] as
         | Record<string, Record<string, any>>
@@ -331,12 +340,11 @@ export class AppDetailComponent {
     const opType = this.currentOpType();
     if (opType === 'bisync') {
       const configKey = 'bisyncConfigs';
-      const profiles = this.remoteSettings()[configKey] as Record<string, any> | undefined;
+      const profiles = this.remoteSettings()[configKey] as Record<string, BisyncConfig> | undefined;
       const profile = this.selectedProfile();
       const cfg = profiles?.[profile];
       if (!cfg) return false;
-      const rclone = cfg?.rclone ?? cfg;
-      return !!rclone?.['resync'];
+      return !!cfg.rclone?.resync;
     }
     return false;
   });
@@ -401,7 +409,7 @@ export class AppDetailComponent {
       this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
     const configs = this.remoteSettings()[configKey] as
-      | Record<string, { app?: { cronEnabled?: boolean; cronExpression?: string | null } }>
+      | Record<string, SyncConfig | CopyConfig | MoveConfig | BisyncConfig>
       | undefined;
     if (!configs) return [];
 
@@ -409,7 +417,7 @@ export class AppDetailComponent {
       .filter(([, cfg]) => cfg?.app?.cronEnabled && cfg?.app?.cronExpression)
       .map(([profileName, cfg]) => {
         let humanReadable = 'Invalid schedule';
-        const cronExpression = cfg.app?.cronExpression ?? '';
+        const cronExpression = cfg.app.cronExpression ?? '';
         try {
           humanReadable = cronstrue(cronExpression, {
             locale: getCronstrueLocale(this.translate.getCurrentLang()),
@@ -436,7 +444,7 @@ export class AppDetailComponent {
       this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
     const configs = this.remoteSettings()[configKey] as
-      | Record<string, { app?: { watchEnabled?: boolean; watchDelay?: number } }>
+      | Record<string, SyncConfig | CopyConfig | MoveConfig | BisyncConfig>
       | undefined;
     if (!configs) return null;
 
@@ -632,22 +640,24 @@ export class AppDetailComponent {
 
   // --- Public Methods ---
 
-  async onProfileSelect(name: string): Promise<void> {
+  onProfileSelect(name: string): void {
     const op = this.currentOpType();
     const updatedMap = { ...this._selectedProfiles(), [op]: name };
     this._selectedProfiles.set(updatedMap);
-
-    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
-      selectedProfiles: updatedMap,
-    });
+    this.localStorage.setScoped(
+      `remote.${this.selectedRemote().name}`,
+      'selectedProfiles',
+      updatedMap
+    );
   }
 
-  async onSyncOpSelect(type: SyncOperationType): Promise<void> {
+  onSyncOpSelect(type: SyncOperationType): void {
     this.selectedSyncOperation.set(type);
-
-    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
-      selectedSyncOperation: type,
-    });
+    this.localStorage.setScoped(
+      `remote.${this.selectedRemote().name}`,
+      'selectedSyncOperation',
+      type
+    );
   }
 
   onAddProfile(): void {
@@ -690,10 +700,9 @@ export class AppDetailComponent {
 
     if (opType === 'bisync') {
       const configKey = 'bisyncConfigs';
-      const profiles = (settings[configKey] as Record<string, any>) ?? {};
-      const existing = profiles[profile] ?? {};
-      const rclone = existing.rclone ?? existing;
-      const currentDryRun = !!rclone.dryRun;
+      const profiles = (settings[configKey] as Record<string, BisyncConfig>) ?? {};
+      const existing = profiles[profile];
+      const currentDryRun = !!existing?.rclone?.dryRun;
       const newDryRun = !currentDryRun;
 
       const updatedProfiles = {
@@ -701,7 +710,7 @@ export class AppDetailComponent {
         [profile]: {
           ...existing,
           rclone: {
-            ...rclone,
+            ...existing?.rclone,
             dryRun: newDryRun,
           },
         },
@@ -717,12 +726,9 @@ export class AppDetailComponent {
       if (!configKey) return;
 
       const profiles =
-        (settings[configKey] as Record<
-          string,
-          { app?: { backendProfile?: string }; backendProfile?: string }
-        >) ?? {};
+        (settings[configKey] as Record<string, SyncConfig | CopyConfig | MoveConfig>) ?? {};
       const cfg = profiles[profile];
-      const backendProfileName = cfg?.app?.backendProfile || cfg?.backendProfile || 'default';
+      const backendProfileName = cfg?.app?.backendProfile || 'default';
 
       const backendConfigs = (settings['backendConfigs'] as Record<string, any>) ?? {};
       const existingBackend = backendConfigs[backendProfileName] ?? {};
@@ -752,10 +758,9 @@ export class AppDetailComponent {
 
     if (opType === 'bisync') {
       const configKey = 'bisyncConfigs';
-      const profiles = (settings[configKey] as Record<string, any>) ?? {};
-      const existing = profiles[profile] ?? {};
-      const rclone = existing.rclone ?? existing;
-      const currentResync = !!rclone.resync;
+      const profiles = (settings[configKey] as Record<string, BisyncConfig>) ?? {};
+      const existing = profiles[profile];
+      const currentResync = !!existing?.rclone?.resync;
       const newResync = !currentResync;
 
       const updatedProfiles = {
@@ -763,7 +768,7 @@ export class AppDetailComponent {
         [profile]: {
           ...existing,
           rclone: {
-            ...rclone,
+            ...existing?.rclone,
             resync: newResync,
           },
         },

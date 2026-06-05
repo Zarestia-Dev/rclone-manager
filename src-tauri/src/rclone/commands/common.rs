@@ -23,23 +23,18 @@ pub async fn resolve_profile_settings(
     config_key: &str,
 ) -> Result<(Value, Value), String> {
     let manager = app.state::<AppSettingsManager>();
-    let remotes = manager
-        .inner()
-        .sub_settings("remotes")
-        .map_err(|e| format!("Failed to get remotes sub-settings: {e}"))?;
+    let settings =
+        crate::utils::types::remotes::RemoteSettings::load(manager.inner(), remote_name)?;
+    let settings_val = serde_json::to_value(&settings).map_err(|e| e.to_string())?;
 
-    let settings = remotes
-        .get_value(remote_name)
-        .map_err(|_| format!("Remote '{remote_name}' not found in settings"))?;
-
-    let config = settings
+    let config = settings_val
         .get(config_key)
         .and_then(|v| v.get(profile_name))
         .ok_or_else(|| {
             format!("{config_key} profile '{profile_name}' for '{remote_name}' not found")
         })?;
 
-    Ok((config.clone(), settings))
+    Ok((config.clone(), settings_val))
 }
 
 // ============================================================================
@@ -251,8 +246,25 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
 pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let config = &interpolate_value(config);
 
-    let app_config = config.get("app").unwrap_or(config);
-    let rclone_config = config.get("rclone").unwrap_or(config);
+    // Deserialize using ProfileConfig or fall back if unpartitioned
+    let is_partitioned = config.get("app").is_some() || config.get("rclone").is_some();
+    let profile: crate::utils::types::remotes::ProfileConfig = if is_partitioned {
+        serde_json::from_value(config.clone()).unwrap_or_else(|_| {
+            crate::utils::types::remotes::ProfileConfig {
+                app: crate::utils::types::remotes::AppConfig::default(),
+                rclone: serde_json::Value::Null,
+            }
+        })
+    } else {
+        let app: crate::utils::types::remotes::AppConfig =
+            serde_json::from_value(config.clone()).unwrap_or_default();
+        crate::utils::types::remotes::ProfileConfig {
+            app,
+            rclone: config.clone(),
+        }
+    };
+
+    let rclone_config = &profile.rclone;
 
     let get_paths = |key: &str| -> Vec<String> {
         match rclone_config.get(key) {
@@ -266,7 +278,7 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
         }
     };
 
-    let source = ["srcFs", "path1", "fs"]
+    let source = crate::utils::types::remotes::SOURCE_KEYS
         .iter()
         .find_map(|&key| {
             let paths = get_paths(key);
@@ -278,30 +290,24 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
         return None;
     }
 
-    let dest = get_paths("dstFs")
-        .into_iter()
-        .next()
-        .or_else(|| get_paths("path2").into_iter().next())
-        .or_else(|| get_paths("mountPoint").into_iter().next())
+    let dest = crate::utils::types::remotes::DEST_KEYS
+        .iter()
+        .find_map(|&key| get_paths(key).into_iter().next())
         .unwrap_or_default();
 
-    let get_opts = |key: &str, section: &str| {
-        resolve_profile_options(
-            settings,
-            app_config.get(key).and_then(|v| v.as_str()),
-            section,
-        )
+    let get_opts = |profile_name: Option<&str>, section: &str| {
+        resolve_profile_options(settings, profile_name, section)
     };
 
     Some(CommonConfigParams {
         source,
         dest,
         rclone_config: rclone_config.clone(),
-        vfs_options: get_opts("vfsProfile", "vfsConfigs"),
-        filter_options: get_opts("filterProfile", "filterConfigs"),
-        backend_options: get_opts("backendProfile", "backendConfigs"),
+        vfs_options: get_opts(profile.app.vfs_profile.as_deref(), "vfsConfigs"),
+        filter_options: get_opts(profile.app.filter_profile.as_deref(), "filterConfigs"),
+        backend_options: get_opts(profile.app.backend_profile.as_deref(), "backendConfigs"),
         runtime_remote_options: resolve_runtime_remote_options(
-            app_config,
+            &profile.app,
             rclone_config,
             settings,
             "remotes",
@@ -311,14 +317,12 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
 }
 
 pub fn resolve_runtime_remote_options(
-    app_config: &Value,
+    app: &crate::utils::types::remotes::AppConfig,
     rclone_config: &Value,
     settings: &Value,
     inline_remotes_key: &str,
 ) -> Option<HashMap<String, Value>> {
-    let profile = app_config
-        .get("runtimeRemoteProfile")
-        .and_then(|v| v.as_str());
+    let profile = app.runtime_remote_profile.as_deref();
     let mut opts =
         resolve_profile_options(settings, profile, "runtimeRemoteConfigs").unwrap_or_default();
 

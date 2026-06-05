@@ -2,6 +2,7 @@ import { inject, Injectable, signal, effect } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote } from '@app/types';
 import { isHeadlessMode, PathService, WindowService } from '@app/services';
+import { LocalStorageService } from './local-storage.service';
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -12,11 +13,14 @@ import { isHeadlessMode, PathService, WindowService } from '@app/services';
 export class UiStateService {
   private pathService = inject(PathService);
   private windowService = inject(WindowService);
+  private localStorage = inject(LocalStorageService);
 
   public isMaximized = this.windowService.isMaximized;
   public readonly platform: string;
 
-  private readonly _currentTab = signal<AppTab>('general' as AppTab);
+  private readonly _currentTab = signal<AppTab>(
+    this.localStorage.get<AppTab>('ui.currentTab', 'general' as AppTab)
+  );
   public readonly currentTab = this._currentTab.asReadonly();
   // Selected remote state
   private readonly _selectedRemote = signal<Remote | null>(null);
@@ -58,6 +62,7 @@ export class UiStateService {
   // === Tab Management ===
   setTab(tab: AppTab): void {
     this._currentTab.set(tab);
+    this.localStorage.set('ui.currentTab', tab);
   }
 
   getCurrentTab(): AppTab {
