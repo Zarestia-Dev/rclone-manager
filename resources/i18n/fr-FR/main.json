@@ -42,7 +42,7 @@
     "fileMode": "Doit être au format octal (3 à 4 chiffres, chacun entre 0 et 7). Exemple : 755",
     "enum": "Doit être l’une des valeurs suivantes : {{values}}",
     "invalidPath": "Le chemin doit être absolu",
-    "urlArray": "Toutes les URL doivent être valides et commencer par http:// ou https://",
+    "urlArray": "Toutes les URLs doivent être valides et commencer par http:// ou https://",
     "bandwidth": "Format de bande passante invalide. Utilisez : 10M, 1G, 100K ou combinaisons",
     "passwordMismatch": "Les mots de passe ne correspondent pas",
     "remoteName": {
@@ -87,10 +87,10 @@
   },
   "serve": {
     "noActive": "Aucun service de partage actif",
-    "serving": "Partage réseau",
-    "servingWithProfile": "Partage réseau ({{profile}}): {{type}} sur {{addr}}",
+    "serving": "Partage réseau actif",
+    "servingWithProfile": "Partage réseau actif ({{profile}}): {{type}} sur {{addr}}",
     "servingMultiple": "Partages ({{count}}) : {{profiles}}",
-    "serveSummary": "Partage réseau ({{count}})",
+    "serveSummary": "Partage réseau actif ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "Activer/désactiver le service en tant qu'action rapide",
     "successStart": "Démarrage réussi du service pour {{remote}} ({{profile}}) sur {{addr}}",
@@ -177,7 +177,7 @@
       "bisyncing": "Bisynchronisation en cours",
       "moving": "Déplacement en cours",
       "copying": "Copie en cours",
-      "serving": "Partage réseau"
+      "serving": "Partage réseau actif"
     },
     "stats": {
       "emptyTitle": "Pas de statistiques disponibles",
@@ -747,7 +747,7 @@
         "noActive": "Aucun transfert actif",
         "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
         "noRecent": "Aucun transfert récemment terminé",
-        "recentHint": "Les transferts terminés apparaîtront ici à la fin des Jobs"
+        "recentHint": "Les transferts terminés apparaîtront ici à la fin des jobs"
       },
       "time": {
         "daysAgo": "Il y a {{count}} jour(s)",
@@ -1478,7 +1478,7 @@
       "stopping": "Arrêter {{op}}...",
       "stop": "Arrêt {{op}}",
       "notConfigured": "Non configuré",
-      "serving": "Partage réseau",
+      "serving": "Partage réseau actif",
       "accessibleVia": "Accessible via",
       "mounting": "Montage en cours...",
       "mount": "Monter",
@@ -2266,8 +2266,8 @@
       "trashEmptied": "Opération de nettoyage terminée",
       "rmdirsStarted": "Suppression des dossiers vides dans \"{{name}}\"...",
       "deleteStarted": "Suppression des éléments {{count}}...",
-      "copyStarted": "Copie des éléments {{count}}...",
-      "moveStarted": "Déplacement des éléments {{count}}...",
+      "copyStarted": "Copie des éléments en cours {{count}}...",
+      "moveStarted": "Déplacement des éléments en cours {{count}}...",
       "renameStarted": "Opération de renommage démarrée",
       "undoComplete": "Annulation réussie",
       "redoComplete": "Rétablissement réussi",
@@ -2395,7 +2395,7 @@
     "serves": {
       "activeCount": "{{count}} service{{s}} de partage actif",
       "noActive": "Aucun service de partage actif",
-      "noRunning": "Aucun service actif. Démarrez un service de partage pour rendre un dépôt accessible via HTTP, WebDAV, FTP ou SFTP."
+      "noRunning": "Aucun partage actif. Démarrez un service de partage pour rendre un dépôt accessible via HTTP, WebDAV, FTP ou SFTP."
     }
   },
   "appOverview": {
@@ -2630,7 +2630,7 @@
     "showApp": "Afficher l'application",
     "openFileBrowser": "Ouvrir le Gestionnaire de fichiers",
     "unmountAll": "Tout démonter",
-    "stopAllJobs": "Arrêter tous les Jobs",
+    "stopAllJobs": "Arrêter tous les jobs",
     "stopAllServes": "Arrêter tous les services de partage",
     "quit": "Quitter",
     "mount": "Monter",
@@ -2671,7 +2671,7 @@
       "automationCompleted": "{{type}} Automatisation terminée",
       "automationFailed": "Erreur d'automatisation {{type}}",
       "automationStopped": "{{type}} Automatisation arrêtée",
-      "allJobsStopped": "Touts les Jobs sont arrêtées",
+      "allJobsStopped": "Touts les jobs sont arrêtées",
       "allServesStopped": "Tous les serveurs sont arrêtés",
       "allUnmounted": "Tous les dépôts distants déconnectés",
       "updateFound": "Nouvelle version disponible",
