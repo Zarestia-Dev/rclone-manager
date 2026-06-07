@@ -222,13 +222,13 @@
     }
   },
   "rcloneUpdate": {
-    "cancelled": "Téléchargement de la mise à jour de Rclone annulé.",
-    "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de Rclone.",
+    "cancelled": "Téléchargement de la mise à jour de rclone annulé.",
+    "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",
     "failed": "Échec de la mise à jour: {{error}}",
-    "channelChanged": "Le canal de mise à jour de Rclone a été changé en {{channel}}",
+    "channelChanged": "Le canal de mise à jour de rclone a été changé en {{channel}}",
     "skipped": "Version de rclone {{version}} ignorée",
-    "restored": "Version de Rclone {{version}} restaurée",
-    "autoCheckEnabled": "Activer les mises à jour de vérification automatique de Rclone",
+    "restored": "Version de rclone {{version}} restaurée",
+    "autoCheckEnabled": "Activer les mises à jour de vérification automatique de rclone",
     "autoCheckDisabled": "Rclone auto-vérification des mises à jour désactivée",
     "manualRestartRequired": "Rclone a été mis à jour sur le serveur distant. Veuillez redémarrer le service de Rclone distant manuellement pour appliquer la nouvelle version."
   },
@@ -404,20 +404,20 @@
         "description": "Liste des URLs utilisées pour vérifier la connectivité Internet. L'application vérifie périodiquement ces URLs."
       },
       "rclone_binary": {
-        "label": "Chemin binaire de Rclone",
-        "description": "Chemin vers le fichier binaire Rclone. Laisser vide pour l'auto-détection."
+        "label": "Chemin binaire de rclone",
+        "description": "Chemin vers le fichier binaire rclone. Laisser vide pour l'auto-détection."
       },
       "rclone_flags": {
-        "label": "Flags supplémentaires pour Rclone",
+        "label": "Flags supplémentaires pour rclone",
         "description": "Ajouter des flaqs supplémentaires au processus de rclone (ex. --cache-dir=/path/to/cache). Certains drapeaux sont réservés."
       },
       "rclone_env_vars": {
-        "label": "Variables d'environnement Rclone",
-        "description": "Ajouter des variables d'environnement personnalisées aux processus de Rclone. Format: KEY=VALUE (ex. RCLONE_NO_UPDATE_MODTIME=true)."
+        "label": "Variables d'environnement rclone",
+        "description": "Ajouter des variables d'environnement personnalisées aux processus de rclone. Format: KEY=VALUE (ex. rclone_NO_UPDATE_MODTIME=true)."
       },
       "bandwidth_limit": {
         "label": "Limitation de la bande passante",
-        "description": "Limiter la bande passante utilisée par les transferts de Rclone. Format : 'upload:download'",
+        "description": "Limiter la bande passante utilisée par les transferts de rclone. Format : 'upload:download'",
         "placeholder": "Par exemple 10M:5M ou 1G"
       },
       "completed_onboarding": {
@@ -467,15 +467,15 @@
         }
       },
       "rclone_auto_check_updates": {
-        "label": "Vérification automatique des mises à jour de Rclone",
-        "description": "Vérifier automatiquement les mises à jour de Rclone."
+        "label": "Vérification automatique des mises à jour de rclone",
+        "description": "Vérifier automatiquement les mises à jour de rclone."
       },
       "rclone_skipped_updates": {
         "label": "Mises à jour de rclone ignorées",
-        "description": "Liste des versions de Rclone qui ont été ignorées."
+        "description": "Liste des versions de rclone qui ont été ignorées."
       },
       "rclone_update_channel": {
-        "label": "Canal de mise à jour de Rclone",
+        "label": "Canal de mise à jour de rclone",
         "options": {
           "stable": "Stable",
           "beta": "Bêta"
@@ -524,16 +524,16 @@
     },
     "engine": {
       "password": {
-        "title": "Mot de passe de configuration de Rclone requis",
+        "title": "Mot de passe de configuration de rclone requis",
         "subtitle": "Veuillez déverrouiller votre configuration pour démarrer le moteur"
       },
       "path": {
-        "title": "Binaire de Rclone introuvable",
-        "subtitle": "Veuillez vérifier le chemin de votre installation Rclone dans les paramètres"
+        "title": "Binaire de rclone introuvable",
+        "subtitle": "Veuillez vérifier le chemin de votre installation rclone dans les paramètres"
       },
       "version": {
-        "title": "Version de Rclone obsolète",
-        "subtitle": "Veuillez mettre à jour votre installation de Rclone vers la version {{required}} au moins"
+        "title": "Version de rclone obsolète",
+        "subtitle": "Veuillez mettre à jour votre installation de rclone vers la version {{required}} au moins"
       },
       "generic": {
         "title": "Échec du démarrage du moteur",
@@ -561,9 +561,9 @@
       "offline": "Impossible de se connecter à : {{services}}. Certaines fonctionnalités peuvent ne pas fonctionner comme prévu. Cliquez pour réessayer."
     },
     "updates": {
-      "all": "Mises à jour de l'application et de Rclone disponibles",
+      "all": "Mises à jour de l'application et de rclone disponibles",
       "app": "Mise à jour de l'application disponible",
-      "rclone": "Mise à jour de Rclone disponible",
+      "rclone": "Mise à jour de rclone disponible",
       "restart": "Redémarrage nécessaire pour terminer la mise à jour"
     },
     "menu": {
@@ -574,45 +574,45 @@
       "import": "Importer",
       "export": "Exporter",
       "preferences": "Préférences",
-      "flags": "Flags Rclone",
+      "flags": "Rclone Flags",
       "fileBrowser": "Explorateur de fichiers",
       "shortcuts": "Raccourcis clavier",
-      "about": "À propos de RClone Manager",
+      "about": "À propos de rclone Manager",
       "quickRemote": "Dépôt distant rapide",
       "detailedRemote": "Vue détaillée du dépôt distant"
     }
   },
   "onboarding": {
-    "loadingTitle": "Initialisation RClone Manager",
+    "loadingTitle": "Initialisation rclone Manager",
     "loadingMessage": "Vérification de la configuration du système...",
     "cards": {
       "welcome": {
-        "title": "Bienvenue dans RClone Manager",
-        "content": "Votre solution moderne de gestion de stockage cloud. RClone Manager offre une interface intuitive pour synchroniser, monter et gérer tous vos clouds sans effort."
+        "title": "Bienvenue dans rclone Manager",
+        "content": "Votre solution moderne de gestion de stockage cloud. rclone Manager offre une interface intuitive pour synchroniser, monter et gérer tous vos clouds sans effort."
       },
       "features": {
         "title": "Fonctionnalités avancées",
         "content": "Synchronisez facilement vos fichiers, montez votre stockage cloud comme des disques locaux, gérez plusieurs dépôts distants et surveillez vos transferts — le tout depuis une interface élégante."
       },
       "installRclone": {
-        "title": "Installer Rclone",
+        "title": "Installer rclone",
         "content": "Rclone est nécessaire pour les opérations de stockage dans le cloud. Choisissez votre emplacement d'installation préféré ou l'emplacement binaire, et nous gérerons l'installation automatiquement."
       },
       "installPlugin": {
         "title": "Installer le plugin de montage",
-        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de Rclone."
+        "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de rclone."
       },
       "selectConfig": {
-        "title": "Sélectionnez la configuration de Rclone",
-        "content": "Choisissez le fichier de configuration de Rclone à utiliser : l'emplacement par défaut ou un fichier de configuration personnalisé."
+        "title": "Sélectionnez la configuration de rclone",
+        "content": "Choisissez le fichier de configuration de rclone à utiliser : l'emplacement par défaut ou un fichier de configuration personnalisé."
       },
       "passwordRequired": {
         "title": "Mot de passe de configuration requis",
-        "content": "Votre configuration de Rclone est chiffrée. Veuillez entrer le mot de passe pour le déverrouiller pour cette session."
+        "content": "Votre configuration de rclone est chiffrée. Veuillez entrer le mot de passe pour le déverrouiller pour cette session."
       },
       "ready": {
         "title": "Prêt à commencer !",
-        "content": "Tout est configuré et prêt à être utilisé. RClone Manager vous aidera à gérer votre stockage cloud en toute simplicité. Cliquez sur 'Commencer' pour commencer votre voyage."
+        "content": "Tout est configuré et prêt à être utilisé. rclone Manager vous aidera à gérer votre stockage cloud en toute simplicité. Cliquez sur 'Commencer' pour commencer votre voyage."
       }
     },
     "installButton": {
@@ -624,7 +624,7 @@
       "testingBinary": "Test du binaire...",
       "useBinary": "Utiliser ce binaire",
       "testBinary": "Test Binaire en premier",
-      "install": "Installer Rclone"
+      "install": "Installer rclone"
     },
     "options": {
       "recommended": "Recommandé",
@@ -691,22 +691,22 @@
             "placeholder": "/chemin/vers/installer"
           },
           "existing": {
-            "description": "Utiliser un binaire Rclone existant.",
+            "description": "Utiliser un binaire rclone existant.",
             "label": "Chemin binaire"
           }
         },
         "config": {
           "default": {
-            "description": "Utilisez l'emplacement par défaut du fichier de configuration Rclone.",
+            "description": "Utilisez l'emplacement par défaut du fichier de configuration rclone.",
             "recommendation": "Sélectionnez cette option si vous n'avez pas de configuration personnalisée."
           },
           "custom": {
-            "description": "Sélectionnez un fichier de configuration Rclone personnalisé.",
+            "description": "Sélectionnez un fichier de configuration rclone personnalisé.",
             "label": "Fichier de configuration",
             "placeholder": "/chemin/vers/rclone.conf"
           },
           "existing": {
-            "description": "Utilisez un binaire Rclone existant (optionnel).",
+            "description": "Utilisez un binaire rclone existant (optionnel).",
             "label": "Chemin binaire"
           }
         }
@@ -829,7 +829,7 @@
       "vfsInstance": "Instance VFS",
       "queued": "file d'attente",
       "controlsUnavailable": "Contrôles VFS indisponibles",
-      "indexedWarning": "Cette instance VFS a un suffixe d'index (ex. {{suffix}}) qui n'est pas supporté par l'API VFS de Rclone. C'est une limitation connue quand plusieurs montages existent pour le même remote.",
+      "indexedWarning": "Cette instance VFS a un suffixe d'index (ex. {{suffix}}) qui n'est pas supporté par l'API VFS de rclone. C'est une limitation connue quand plusieurs montages existent pour le même remote.",
       "stats": {
         "metadata": "Métadonnées",
         "items": "éléments",
@@ -875,7 +875,7 @@
         "openFolder": "Ouvrir le dossier cache",
         "openMetaFolder": "Ouvrir le dossier des métadonnées",
         "note": "Note :",
-        "noteText": "\"Effacer les métadonnées\" supprime seulement le cache des listes de répertoires. Les fichiers mis en cache restent dans le répertoire du cache jusqu'à ce que Rclone les purge automatiquement."
+        "noteText": "\"Effacer les métadonnées\" supprime seulement le cache des listes de répertoires. Les fichiers mis en cache restent dans le répertoire du cache jusqu'à ce que rclone les purge automatiquement."
       },
       "advancedConfig": {
         "title": "Configuration avancée",
@@ -918,7 +918,7 @@
     "jsonEditor": {
       "noFields": "Aucun champ à afficher en mode JSON",
       "parseError": "Syntaxe JSON invalide. Veuillez vérifier votre formatage.",
-      "cliArgumentWithSuggestion": "Les arguments de style CLI, comme '{{key}}') ne sont pas pris en charge dans Rclone RC. Vouliez-vous dire '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "Les arguments de style CLI, comme '{{key}}') ne sont pas pris en charge dans rclone RC. Vouliez-vous dire '{{suggestion}}'?",
       "camelCaseSuggestionWarning": "L'option '{{key}}' n'est pas valide dans ce format. Vouliez-vous dire '{{suggestion}} ' ?",
       "fixSuggestion": "Changer pour '{{suggestion}}'",
       "wrongBlockWarning": "Les options {{keys}} appartiennent au bloc de configuration '{{block}}' et peuvent ne pas fonctionner ici.",
@@ -926,7 +926,7 @@
       "invalidArrayPath": "La propriété '{{key}}' n'accepte pas plusieurs chemins. Utilisez une seule chaîne de caractères."
     },
     "passwordManager": {
-      "placeholder": "Entrez votre mot de passe de configuration Rclone",
+      "placeholder": "Entrez votre mot de passe de configuration rclone",
       "label": "Mot de passe de configuration",
       "verifying": "Validation en cours...",
       "required": "Mot de passe requis",
@@ -937,8 +937,8 @@
   "wizards": {
     "cliImport": {
       "title": "Importer depuis CLI",
-      "description": "Collez votre chaîne de ligne de commande Rclone ci-dessous. Nous allons l'analyser et configurer les options de votre profil.",
-      "placeholder": "Commande Rclone",
+      "description": "Collez votre chaîne de ligne de commande rclone ci-dessous. Nous allons l'analyser et configurer les options de votre profil.",
+      "placeholder": "Commande rclone",
       "placeholderText": "par exemple rclone sync source:path dest:path --max-delete 50 --track-renames",
       "preview": "Aperçu",
       "detectedTitle": "Configuration détectée",
@@ -960,7 +960,7 @@
       "serveType": "Type de service",
       "mountPoint": "Point de montage",
       "remote": "Dépôt distant",
-      "invalidCommand": "Commande de Rclone invalide. Veuillez fournir une commande avec une opération prise en charge (ex. synchronisation, copie, montage) ou flags.",
+      "invalidCommand": "Commande de rclone invalide. Veuillez fournir une commande avec une opération prise en charge (ex. synchronisation, copie, montage) ou flags.",
       "patch": "Correctif / Appliquer à Actif",
       "patchProfile": "Correctif pour profil(s) actif(s)",
       "patchInfo": "Aucune opération (synchronisation, service ou montage) n'a été spécifiée. Les flags importés seront appliqués en tant que correctif directement à vos profils de configuration actifs.",
@@ -984,8 +984,8 @@
       "switchToJson": "Passer en mode JSON",
       "unknownTopLevelProperty": "Attention : '{{key}}' n'est pas une propriété standard de niveau supérieur pour ce profil et peut être ignorée.",
       "jsonEditorInfo": {
-        "sync": "Sync/Copy/Move Profil : Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les flags Rclone dans '_config'.",
-        "bisync": "Profil de Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil, et place tous les flags Rclone dans '_config'.",
+        "sync": "Sync/Copy/Move Profil : Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les flags rclone dans '_config'.",
+        "bisync": "Profil de Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil, et place tous les flags rclone dans '_config'.",
         "mount": "Profil de montage : Définissez les chemins 'fs' et 'mountPoint', 'mountType', les champs au niveau du profil, et placez toutes les options de montage dans 'mountOpt'.",
         "serve": "Partage Profile : Définissez le chemin 'fs', 'serveType', les champs au niveau du profil, et placez toutes les options de service dans '_config'.",
         "vfs": "Profil de VFS : Définissez les options de mise en cache du système de fichiers virtuels, de mise en mémoire tampon et de compatibilité comme paires de valeurs clés.",
@@ -1236,10 +1236,10 @@
       },
       "backendConfig": {
         "title": "Configuration du backend",
-        "description": "Options et paramètres du backend de Rclone"
+        "description": "Options et paramètres du backend de rclone"
       },
       "rcloneConfig": {
-        "title": "Configuration de Rclone",
+        "title": "Configuration de rclone",
         "description": "Fichier complet rclone.conf"
       },
       "remoteConfigs": {
@@ -1285,7 +1285,7 @@
     "restoreSuccess": "Les paramètres ont été restaurés avec succès"
   },
   "updates": {
-    "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de Rclone.",
+    "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",
     "installSuccess": "Mise à jour installée. Veuillez redémarrer l'application.",
     "checkFailed": "Échec de la vérification des mises à jour: {{error}}",
     "installFailed": "Échec de l'installation de la mise à jour: {{error}}",
@@ -1301,7 +1301,7 @@
     },
     "restored": "Mise à jour de {{version}} restaurée",
     "restoreFailed": "Échec de la restauration de la mise à jour",
-    "channelChanged": "Le canal de mise à jour de Rclone a été changé en {{channel}}."
+    "channelChanged": "Le canal de mise à jour de rclone a été changé en {{channel}}."
   },
   "fileBrowser": {
     "resolveRemoteFailed": "Impossible de résoudre le dépôt distant pour cet élément",
@@ -1536,7 +1536,7 @@
       "quit": "Quitter l'application",
       "showShortcuts": "Afficher les raccourcis clavier",
       "openPreferences": "Ouvrir les préférences",
-      "openFlags": "Flags de Rclone Ouvert",
+      "openFlags": "Flags de rclone Ouvert",
       "forceCheck": "Forcer le contrôle des montages",
       "forceCheckServes": "Forcer la vérification des dépôts distants",
       "newRemoteDetailed": "Créer un nouveau dépôt distant (détaillé)",
@@ -1614,17 +1614,17 @@
       "title": "À propos",
       "aboutApp": "À propos de l'application",
       "details": "Détails",
-      "aboutRclone": "À propos de Rclone",
+      "aboutRclone": "À propos de rclone",
       "credits": "Crédits",
       "legal": "Mentions légales",
       "website": "Site Web",
       "wiki": "Page Wiki",
       "reportIssues": "Signaler des problèmes",
-      "rcloneWebsite": "Site Web de Rclone",
+      "rcloneWebsite": "Site Web de rclone",
       "readyToRestart": "Redémarrage requis",
       "restartDescription": "Une mise à jour a été installée. Veuillez redémarrer l'application pour appliquer les modifications.",
-      "rcloneRestartRequired": "Redémarrage du Rclone requis",
-      "rcloneRestartDescription": "Une mise à jour de Rclone a été installée. Veuillez redémarrer le moteur pour appliquer les modifications.",
+      "rcloneRestartRequired": "Redémarrage du rclone requis",
+      "rcloneRestartDescription": "Une mise à jour de rclone a été installée. Veuillez redémarrer le moteur pour appliquer les modifications.",
       "restartNow": "Redémarrer maintenant",
       "updateAvailable": "Mise à jour disponible",
       "version": "Version",
@@ -1641,27 +1641,27 @@
       "autoCheck": "Vérification automatique des mises à jour",
       "releaseChannel": "Canal de publication",
       "skippedUpdates": "Mises à jour ignorées",
-      "loadingRclone": "Chargement des informations de Rclone ...",
+      "loadingRclone": "Chargement des informations de rclone ...",
       "os": "OS",
       "pid": "ID du processus",
       "killProcess": "Tuer le processus",
-      "quitRclone": "Quitter Rclone",
+      "quitRclone": "Quitter rclone",
       "goVersion": "Version Go",
-      "rcloneUpdateAvailable": "Mise à jour de Rclone disponible",
-      "whatsNewRclone": "Nouveautés de Rclone",
-      "updateRclone": "Télécharger la mise à jour de Rclone",
+      "rcloneUpdateAvailable": "Mise à jour de rclone disponible",
+      "whatsNewRclone": "Nouveautés de rclone",
+      "updateRclone": "Télécharger la mise à jour de rclone",
       "rcloneUpToDate": "Rclone à jour",
-      "checkRcloneUpdates": "Vérifier les mises à jour de Rclone",
-      "rcloneUpdateSettings": "Paramètres de mise à jour de Rclone",
+      "checkRcloneUpdates": "Vérifier les mises à jour de rclone",
+      "rcloneUpdateSettings": "Paramètres de mise à jour de rclone",
       "skippedRcloneUpdates": "Mises à jour de rclone ignorées",
       "devTeam": "Équipe de développement",
       "leadDeveloper": "Développeur Principal",
       "acknowledgments": "Remerciements",
-      "ackText": "Cette application est construite avec des technologies web modernes et repose sur l'excellent projet Rclone pour la gestion du stockage cloud.",
+      "ackText": "Cette application est construite avec des technologies web modernes et repose sur l'excellent projet rclone pour la gestion du stockage cloud.",
       "noReleaseNotes": "Aucune note de version disponible.",
-      "killSuccess": "Processus de Rclone  tué avec succès",
-      "killFailed": "Échec de la suppression du processus de Rclone",
-      "noProcessToKill": "Aucun processus de Rclone à tuer",
+      "killSuccess": "Processus de rclone  tué avec succès",
+      "killFailed": "Échec de la suppression du processus de rclone",
+      "noProcessToKill": "Aucun processus de rclone à tuer",
       "updateSettingFailed": "Échec de la mise à jour du paramètre",
       "channelStable": "Stable",
       "channelBeta": "Bêta",
@@ -1826,7 +1826,7 @@
         },
         "remotes": {
           "label": "Dépôts distants",
-          "description": "Configuration des données du dépôt distant Rclone"
+          "description": "Configuration des données du dépôt distant rclone"
         },
         "alerts": {
           "label": "Alertes",
@@ -1908,7 +1908,7 @@
         "updatePassword": "Mettre à jour le mot de passe",
         "removeEncryption": "Supprimer le chiffrement",
         "storePlainText": "Stocker les informations d'identification en texte brut",
-        "decryptWarning": "Ceci déchiffrera votre configuration de Rclone. Vos identifiants seront visibles pour toute personne ayant accès à vos fichiers.",
+        "decryptWarning": "Ceci déchiffrera votre configuration de rclone. Vos identifiants seront visibles pour toute personne ayant accès à vos fichiers.",
         "enableEncryption": "Activer le chiffrement",
         "protectCredentials": "Protégez vos informations d'identification avec un mot de passe",
         "passwordChanged": "Mot de passe changé",
@@ -2036,16 +2036,16 @@
     "rcloneFlags": {
       "search": {
         "toggle": "Activer/désactiver La recherche",
-        "label": "Rechercher les flags de Rclone",
+        "label": "Rechercher les flags de rclone",
         "placeholderHome": "Rechercher dans tous les services et flags...",
         "placeholderPage": "Rechercher dans {{page}}...",
-        "emptyResult": "Aucun flag de Rclone trouvé",
+        "emptyResult": "Aucun flag de rclone trouvé",
         "emptySettings": "Aucun flag trouvé",
         "adjustTerms": "Essayez d’ajuster vos termes de recherche",
         "showing": "Affichage des flags {{count}} de {{total}}"
       },
       "pageTitle": {
-        "home": "Flags de Rclone",
+        "home": "Flags de rclone",
         "category": "{{page}} - {{category}}",
         "backend": "Flags Backend"
       },
@@ -2053,21 +2053,21 @@
         "resetSuccess": "Rétablir par défaut : {{field}}",
         "saveSuccess": "Enregistré : {{field}}",
         "saveError": "Impossible d'enregistrer {{field}}: {{error}}",
-        "loadError": "Impossible de charger les flags de Rclone",
-        "resetAllSuccess": "Tous les flags de Rclone réinitialisés aux valeurs par défaut",
-        "resetAllError": "Échec de la réinitialisation des flags de Rclone"
+        "loadError": "Impossible de charger les flags de rclone",
+        "resetAllSuccess": "Tous les flags de rclone réinitialisés aux valeurs par défaut",
+        "resetAllError": "Échec de la réinitialisation des flags de rclone"
       },
       "reset": {
         "button": "Tout réinitialiser par défaut",
-        "aria": "Réinitialiser tous les falgs Rclone aux valeurs par défaut",
+        "aria": "Réinitialiser tous les falgs rclone aux valeurs par défaut",
         "title": "Réinitialiser les flags",
-        "message": "Cela réinitialisera tous les flags Rclone à leurs valeurs par défaut et redémarrera le moteur de rclone. Tous les paramètres personnalisés seront perdus. Continuer ?",
+        "message": "Cela réinitialisera tous les flags rclone à leurs valeurs par défaut et redémarrera le moteur de rclone. Tous les paramètres personnalisés seront perdus. Continuer ?",
         "confirm": "Réinitialiser & Redémarrer"
       },
       "mainCategories": {
         "generalSettings": {
           "title": "Paramètres généraux",
-          "description": "Options principales de Rclone et options de journalisation des flags"
+          "description": "Options principales de rclone et options de journalisation des flags"
         },
         "fileSystemAndStorage": {
           "title": "Système de fichiers et stockage",
@@ -2082,7 +2082,7 @@
         "vfs": "Cache du système de fichiers virtuels et performance flags",
         "mount": "Options spécifiques au montage et flags FUSE",
         "filter": "Règles et flags de filtrage des fichiers",
-        "main": "Flags généraux de RClone et transferts",
+        "main": "Flags généraux de rclone et transferts",
         "log": "Options de logs et de sortie",
         "http": "Flags HTTP du serveur",
         "rc": "Flags du serveur du dépôt dsitant",
@@ -2278,7 +2278,7 @@
   "home": {
     "emptyState": {
       "title": "RClone Manager",
-      "description": "Gérez facilement vos dépôts distants. Si vous débutez avec Rclone, utilisez \"Ajouter un dépôt rapide\" pour une configuration simple et guidée.",
+      "description": "Gérez facilement vos dépôts distants. Si vous débutez avec rclone, utilisez \"Ajouter un dépôt rapide\" pour une configuration simple et guidée.",
       "addQuickRemote": "Ajouter un dépôt distant rapide",
       "addDetailedRemote": "Ajouter un dépôt distant détaillé"
     },
@@ -2349,7 +2349,7 @@
         "loading": "Chargement des informations du système"
       },
       "loading": "Chargement des informations du système...",
-      "status": "Statut de Rclone :",
+      "status": "Statut de rclone :",
       "totalRemotes": "Total dépôts distants :",
       "activeJobs": "Jobs actifs :",
       "memoryUsage": "Utilisation de la mémoire :",
@@ -2442,38 +2442,38 @@
     },
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
-      "downloadError": "Erreur inconnue lors du téléchargement de Rclone",
+      "downloadError": "Erreur inconnue lors du téléchargement de rclone",
       "configEncrypted": "La configuration est chiffrée et aucun mot de passe n'est fourni",
       "unsupportedOS": "OS non pris en charge.",
-      "binaryNotFound": "Le binaire de Rclone est introuvable.",
-      "versionTooOld": "La version Rclone {{version}} est trop ancienne. La version minimale requise est {{required}}. Veuillez mettre à jour Rclone.",
+      "binaryNotFound": "Le binaire de rclone est introuvable.",
+      "versionTooOld": "La version rclone {{version}} est trop ancienne. La version minimale requise est {{required}}. Veuillez mettre à jour rclone.",
       "versionCheckFailed": "Impossible d'obtenir la version actuelle de rclone : {{error}}",
       "restartFailed": "Échec du redémarrage du moteur après mise à jour : {{error}}",
       "selfupdateFailed": "rclone selfupdate --check échoué: {{error}}",
       "downloadFailed": "Le téléchargement a échoué après 3 tentatives : {{error}}",
-      "executionFailed": "Échec de l'exécution de Rclone : {{error}}",
-      "notFound": "Le binaire de Rclone n'a pas été trouvé à {{path}}",
+      "executionFailed": "Échec de l'exécution de rclone : {{error}}",
+      "notFound": "Le binaire de rclone n'a pas été trouvé à {{path}}",
       "spawnFailed": "Impossible de démarrer le processus de rclone : {{error}}",
       "invalidPath": "Chemin spécifique de rclone invalide",
-      "killFailed": "Échec de la fin du processus de Rclone : {{error}}",
-      "portCleanupFailed": "Échec du nettoyage des ports de Rclone : {{error}}",
-      "configValidationFailed": "La validation de la configuration de Rclone a échoué : {{error}}",
-      "lockFailed": "Échec de l'acquisition du verrouillage de configuration Rclone : {{error}}",
+      "killFailed": "Échec de la fin du processus de rclone : {{error}}",
+      "portCleanupFailed": "Échec du nettoyage des ports de rclone : {{error}}",
+      "configValidationFailed": "La validation de la configuration de rclone a échoué : {{error}}",
+      "lockFailed": "Échec de l'acquisition du verrouillage de configuration rclone : {{error}}",
       "cacheRefreshFailed": "Échec de l'actualisation du cache de rclone : {{error}}",
-      "invalidFlags": "Flags Rclone non valides détectés : {{error}}",
-      "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de Rclone",
+      "invalidFlags": "Flags rclone non valides détectés : {{error}}",
+      "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}"
     },
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
       "noPasswordStored": "Aucun mot de passe enregistré",
       "passwordChangeUnavailable": "Le changement de mot de passe n'est pas disponible sur cette plateforme",
-      "incorrectPassword": "Mot de passe incorrect pour la configuration de Rclone",
+      "incorrectPassword": "Mot de passe incorrect pour la configuration de rclone",
       "storeFailed": "Échec de l'enregistrement du mot de passe : {{error}}",
       "encryptFailed": "Échec du chiffrement de la configuration : {{error}}",
       "decryptFailed": "Échec du déchiffrement de la configuration : {{error}}",
       "changeFailed": "Échec de la modification du mot de passe : {{error}}",
-      "rcloneError": "Erreur de Rclone : {{error}}"
+      "rcloneError": "Erreur de rclone : {{error}}"
     },
     "backup": {
       "unknownFormat": "Format de sauvegarde inconnu",
@@ -2520,7 +2520,7 @@
       "themeSetFailed": "Impossible de définir le thème de l'application : {{error}}",
       "unlockFailed": "Échec du déblocage : {{error}}",
       "killFailed": "Impossible de tuer le processus : {{error}}",
-      "quitFailed": "Impossible de quitter le moteur de Rclone : {{error}}"
+      "quitFailed": "Impossible de quitter le moteur de rclone : {{error}}"
     },
     "remote": {
       "configFailed": "Échec de la configuration du dépôt distant : {{error}}"
@@ -2680,12 +2680,12 @@
       "updateComplete": "Mise à jour terminée",
       "updateInstalled": "Mise à jour installée",
       "updateFailed": "Erreur lors de la mise à jour",
-      "rcloneUpdateFound": "Mise à jour de Rclone trouvée",
-      "rcloneUpdateStarted": "Mise à jour de Rclone démarrée",
-      "rcloneUpdateDownloaded": "Mise à jour de Rclone téléchargée",
-      "rcloneUpdateComplete": "Mise à jour de Rclone prête",
+      "rcloneUpdateFound": "Mise à jour de rclone trouvée",
+      "rcloneUpdateStarted": "Mise à jour de rclone démarrée",
+      "rcloneUpdateDownloaded": "Mise à jour de rclone téléchargée",
+      "rcloneUpdateComplete": "Mise à jour de rclone prête",
       "rcloneUpdateInstalled": "Rclone mis à jour",
-      "rcloneUpdateFailed": "Erreur de mise à jour de Rclone",
+      "rcloneUpdateFailed": "Erreur de mise à jour de rclone",
       "engineRestarted": "Moteur redémarré",
       "engineRestartFailed": "Échec du redémarrage du moteur",
       "engineConnectionFailed": "Erreur de connexion au moteur",
@@ -2710,22 +2710,22 @@
       "automationCompleted": "Automatisation {{type}} '{{automation}}' terminée avec succès.",
       "automationFailed": "L'automatisation {{type}} '{{automation}}' a rencontré une erreur : {{error}}",
       "automationStopped": "L'automatisation {{type}} '{{automation}}' a été arrêtée sur {{backend}}.",
-      "updateFound": "Une nouvelle version {{version}} de RClone Manager est disponible.",
+      "updateFound": "Une nouvelle version {{version}} de rclone Manager est disponible.",
       "updateStarted": "Téléchargement et installation de la version {{version}}...",
-      "updateDownloaded": "Une nouvelle version {{version}} de RClone Manager a été téléchargée et est prête à être installée.",
+      "updateDownloaded": "Une nouvelle version {{version}} de rclone Manager a été téléchargée et est prête à être installée.",
       "updateComplete": "Mise à jour téléchargée avec succès. L'application va redémarrer.",
       "updateInstalled": "Nouvelle version installée avec succès.",
       "updateFailed": "Une erreur s'est produite lors de la mise à jour : {{error}}",
-      "rcloneUpdateFound": "Une nouvelle version de Rclone {{version}} est disponible.",
-      "rcloneUpdateStarted": "Mise à jour de Rclone vers la version {{version}}...",
-      "rcloneUpdateDownloaded": "La version Rclone {{version}} a été téléchargée et est prête à être installée.",
-      "rcloneUpdateComplete": "La mise à jour de Rclone est prête.",
+      "rcloneUpdateFound": "Une nouvelle version de rclone {{version}} est disponible.",
+      "rcloneUpdateStarted": "Mise à jour de rclone vers la version {{version}}...",
+      "rcloneUpdateDownloaded": "La version rclone {{version}} a été téléchargée et est prête à être installée.",
+      "rcloneUpdateComplete": "La mise à jour de rclone est prête.",
       "rcloneUpdateInstalled": "Rclone {{version}} installé avec succès.",
-      "rcloneUpdateFailed": "Une erreur s'est produite lors de la mise à jour du Rclone : {{error}}",
+      "rcloneUpdateFailed": "Une erreur s'est produite lors de la mise à jour du rclone : {{error}}",
       "engineRestarted": "Les paramètres du moteur ont été mis à jour avec succès.",
       "engineRestartFailed": "Erreur de redémarrage du moteur : {{error}}",
-      "engineConnectionFailed": "Impossible de se connecter au moteur de Rclone : {{error}}",
-      "engineBinaryNotFound": "Le binaire Rclone n'a pas été trouvé, veuillez vérifier vos paramètres.",
+      "engineConnectionFailed": "Impossible de se connecter au moteur de rclone : {{error}}",
+      "engineBinaryNotFound": "Le binaire rclone n'a pas été trouvé, veuillez vérifier vos paramètres.",
       "enginePasswordRequired": "Le mot de passe est requis pour accéder au fichier de configuration."
     }
   },
@@ -2751,18 +2751,18 @@
       "versionTooOld": "Rclone obsolète"
     },
     "messages": {
-      "missingRclone": "Le binaire Rclone n'a pas été trouvé. Veuillez l'installer pour continuer.",
+      "missingRclone": "Le binaire rclone n'a pas été trouvé. Veuillez l'installer pour continuer.",
       "missingMountPlugin": "Le plugin de montage est requis pour le montage des dépôts distants. Installez-le pour activer cette fonctionnalité.",
-      "corruptConfig": "Le fichier de configuration de Rclone semble corrompu. Restaurer à partir de la sauvegarde ?",
-      "backendError": "Le backend de Rclone est inaccessible. Redémarrer le moteur peut corriger cela.",
+      "corruptConfig": "Le fichier de configuration de rclone semble corrompu. Restaurer à partir de la sauvegarde ?",
+      "backendError": "Le backend de rclone est inaccessible. Redémarrer le moteur peut corriger cela.",
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
-      "versionTooOld": "Votre version de Rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
+      "versionTooOld": "Votre version de rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
       "defaultParams": "Un composant système ne fonctionne pas correctement.",
       "mountPluginStatusChecked": "Statut vérifié à {{time}}",
       "mountPluginStatusError": "Échec de la vérification du statut"
     },
     "progress": {
-      "installingRclone": "Installation de Rclone...",
+      "installingRclone": "Installation de rclone...",
       "installingPlugin": "Installation du Plugin...",
       "restoringBackup": "Restauration de la configuration...",
       "restartingEngine": "Redémarrage du Moteur...",
@@ -2771,7 +2771,7 @@
       "configuring": "Configuration..."
     },
     "actions": {
-      "installRclone": "Installer Rclone",
+      "installRclone": "Installer rclone",
       "installPlugin": "Installer un plugin",
       "restoreBackup": "Restaurer la sauvegarde",
       "restartEngine": "Redémarrez le moteur",
@@ -2825,7 +2825,7 @@
     "errors": {
       "passwordRequired": "Mot de passe requis",
       "mountPluginInstallFailed": "L'installation du plugin a échoué : {{error}}",
-      "rcloneInstallFailed": "Échec de l'installation de Rclone : {{error}}"
+      "rcloneInstallFailed": "Échec de l'installation de rclone : {{error}}"
     },
     "configTabs": {
       "default": "Par défaut",
