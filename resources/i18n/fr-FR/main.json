@@ -75,13 +75,13 @@
     "bisyncActive": "Bisync Actif",
     "syncSummary": "Synchronisation en cours ({{count}})",
     "syncWithProfile": "Sync: {{profiles}}",
-    "copyWithProfile": "Copy: {{profiles}}",
-    "moveWithProfile": "Move: {{profiles}}",
-    "bisyncWithProfile": "BiSync: {{profiles}}",
+    "copyWithProfile": "Copy : {{profiles}}",
+    "moveWithProfile": "Move : {{profiles}}",
+    "bisyncWithProfile": "BiSync : {{profiles}}",
     "toggleSync": "Activer/désactiver Sync comme action rapide",
     "toggleCopy": "Activer/désactiver Copy comme action rapide",
     "toggleMove": "Activer/désactiver Move comme action rapide",
-    "toggleBisync": "Activer/Désactiver la synchronisation bidirectionnelle comme action rapide",
+    "toggleBisync": "Activer/Désactiver BiSync comme action rapide",
     "successStart": "A démarré avec succès {{type}} pour {{remote}} ({{profile}})",
     "failedStart": "Échec du démarrage de {{type}} pour {{remote}}: {{error}}"
   },
@@ -133,7 +133,7 @@
     "sync": "Synchroniser",
     "copy": "Copier",
     "move": "Déplacer",
-    "bisync": "Bysync",
+    "bisync": "Bisync",
     "serve": "Service de partage",
     "start": "Démarrer",
     "stop": "Arrêter"
@@ -154,10 +154,10 @@
   },
   "detailShared": {
     "jobInfo": {
-      "title": "Informations du Job",
-      "type": "Type de Job",
-      "id": "ID du Job",
-      "status": "Statut du Job",
+      "title": "Informations du job",
+      "type": "Type de job",
+      "id": "ID du job",
+      "status": "Statut du job",
       "started": "Démarré",
       "finished": "Terminé",
       "duration": "Durée"
@@ -165,16 +165,16 @@
     "diskUsage": {
       "title": "Utilisation du disque",
       "notSupported": "Non supporté",
-      "total": "Total:",
-      "used": "Utilisé:",
-      "free": "Libre:",
+      "total": "Total :",
+      "used": "Utilisé :",
+      "free": "Libre :",
       "loading": "Chargement...",
       "errorLoading": "Problème lors du chargement de l'utilisation de disque"
     },
     "status": {
       "mounted": "Monté",
       "syncing": "Synchronisation en cours",
-      "bisyncing": "Bisynchronisation en cours",
+      "bisyncing": "Synchronisation bidirectionnelle en cours",
       "moving": "Déplacement en cours",
       "copying": "Copie en cours",
       "serving": "Partage réseau actif"
@@ -207,10 +207,10 @@
         "unknown": "Inconnu"
       },
       "actions": {
-        "stop": "Arrêter le Job",
-        "delete": "Supprimer le Job"
+        "stop": "Arrêter le job",
+        "delete": "Supprimer le job"
       },
-      "empty": "Aucun Job trouvé"
+      "empty": "Aucun job trouvé"
     },
     "settings": {
       "metrics": "Paramètres de {{count}}",
@@ -303,7 +303,7 @@
     "events": {
       "job": "Jobs & Opérations de fichiers",
       "serve": "Background Serveurs",
-      "mount": "Drive Montages",
+      "mount": "Montages",
       "engine": "Infrastructure backend",
       "update": "Mises à jour du logiciel",
       "automation": "Automatisations",
@@ -416,8 +416,8 @@
         "description": "Ajouter des variables d'environnement personnalisées aux processus de Rclone. Format: KEY=VALUE (par exemple, RCLONE_NO_UPDATE_MODTIME=true)."
       },
       "bandwidth_limit": {
-        "label": "Limitation de bande passante",
-        "description": "Limiter la bande passante utilisée par les transferts de rclone. Format: 'upload:download'",
+        "label": "Limitation de la bande passante",
+        "description": "Limiter la bande passante utilisée par les transferts de Rclone. Format : 'upload:download'",
         "placeholder": "Par exemple 10M:5M ou 1G"
       },
       "completed_onboarding": {
@@ -604,7 +604,7 @@
       },
       "selectConfig": {
         "title": "Sélectionnez la configuration de Rclone",
-        "content": "Choisissez le fichier de configuration de rclone à utiliser : l'emplacement par défaut ou un fichier de configuration personnalisé."
+        "content": "Choisissez le fichier de configuration de Rclone à utiliser : l'emplacement par défaut ou un fichier de configuration personnalisé."
       },
       "passwordRequired": {
         "title": "Mot de passe de configuration requis",
@@ -612,7 +612,7 @@
       },
       "ready": {
         "title": "Prêt à commencer !",
-        "content": "Tout est configuré et prêt à être utilisé. RClone Manager vous aidera à gérer votre stockage cloud en toute simplicité. Cliquez sur « Commencer » pour commencer votre voyage."
+        "content": "Tout est configuré et prêt à être utilisé. RClone Manager vous aidera à gérer votre stockage cloud en toute simplicité. Cliquez sur 'Commencer' pour commencer votre voyage."
       }
     },
     "installButton": {
@@ -922,7 +922,7 @@
       "camelCaseSuggestionWarning": "L'option '{{key}}' n'est pas valide dans ce format. Vouliez-vous dire '{{suggestion}} ' ?",
       "fixSuggestion": "Changer pour '{{suggestion}}'",
       "wrongBlockWarning": "Les options {{keys}} appartiennent au bloc de configuration '{{block}}' et peuvent ne pas fonctionner ici.",
-      "unknownWarning": "Option(s) inconnue(s): {{keys}}. Ces options peuvent être ignorées par rclone.",
+      "unknownWarning": "Option(s) inconnue(s) : {{keys}}. Ces options peuvent être ignorées par rclone.",
       "invalidArrayPath": "La propriété '{{key}}' n'accepte pas plusieurs chemins. Utilisez une seule chaîne de caractères."
     },
     "passwordManager": {
@@ -948,7 +948,7 @@
       "destination": "Destination",
       "mappedFlags": "Appliquera (champs mappés)",
       "macroDetected": "Macros Shell Détectées",
-      "macroDesc": "Le backend résoudra ces valeurs lors du démarrage du Job. Macros supportées : date, date + FORMAT, nom d'hôte, user, os.",
+      "macroDesc": "Le backend résoudra ces valeurs lors du démarrage du job. Macros supportées : date, date + FORMAT, nom d'hôte, user, os.",
       "unrecognizedFlags": "Flags non reconnus (ignorés)",
       "wrongBlockGuidance": "L'option appartient au bloc de configuration '{{block}}' et n'est pas prise en charge dans le profil {{verb}}.",
       "applyConfig": "Appliquer au profil",
@@ -964,7 +964,7 @@
       "patch": "Correctif / Appliquer à Actif",
       "patchProfile": "Correctif pour profil(s) actif(s)",
       "patchInfo": "Aucune opération (synchronisation, service ou montage) n'a été spécifiée. Les flags importés seront appliqués en tant que correctif directement à vos profils de configuration actifs.",
-      "patchInfoRemoteStep": "Aucune opération (sync, service ou montage) n'a été spécifiée. Pour appliquer ces options, veuillez vous rendre dans une étape de configuration spécifique (Sync, Montage ou Service) plutôt que dans l'étape Remote.",
+      "patchInfoRemoteStep": "Aucune opération (sync, serve ou montage) n'a été spécifiée. Pour appliquer ces options, veuillez vous rendre dans une étape de configuration spécifique (Sync, Montage ou Service) plutôt que dans l'étape Remote.",
       "applyPatch": "Appliquer le correctif"
     },
     "remoteConfig": {
@@ -1407,11 +1407,11 @@
       "previousFile": "Fichier précédent",
       "nextFile": "Fichier suivant",
       "loadingContent": "Chargement du contenu",
-      "videoLabel": "Vidéo: {{name}}",
-      "audioLabel": "Audio: {{name}}",
+      "videoLabel": "Vidéo : {{name}}",
+      "audioLabel": "Audio : {{name}}",
       "calculatingFolderSize": "Calcul de la taille du dossier...",
       "containsFiles": "Contient des fichiers {{count}}",
-      "totalSize": "Taille Totale: {{size}}",
+      "totalSize": "Taille Totale : {{size}}",
       "binaryFile": "Fichier binaire",
       "previewNotAvailable": "L’aperçu n’est pas disponible pour ce type de fichier.",
       "errorCalculateSize": "Échec du calcul de la taille du fichier",
@@ -1502,21 +1502,21 @@
       "automations": "Automatisations",
       "goToAutomation": "Accéder à l'automatisation {{index}}",
       "schedule": "Planification",
-      "cronExpression": "Expression Cron:",
+      "cronExpression": "Expression Cron :",
       "nextRunLabel": "Prochaine exécution :",
       "lastRunLabel": "Dernière exécution :",
-      "createdLabel": "Créé:",
+      "createdLabel": "Créé :",
       "statistics": "Statistiques",
       "successful": "Succès",
       "failedCount": "Échec",
       "stoppedCount": "Stoppé",
       "totalRuns": "Total des exécutions",
       "paths": "Chemins",
-      "sourceLabel": "Source:",
-      "destinationLabel": "Destination:",
+      "sourceLabel": "Source :",
+      "destinationLabel": "Destination :",
       "lastError": "Dernière erreur",
       "currentlyRunning": "En cours d'exécution",
-      "jobIdLabel": "ID du Job:",
+      "jobIdLabel": "ID du job :",
       "previousAutomationTooltip": "Automatisation précédente",
       "nextAutomationTooltip": "Prochaine automatisation",
       "remoteConfiguration": "Configurations du dépôt distant",
@@ -1573,16 +1573,16 @@
     "jobDetail": {
       "title": "Détails du job #{{id}}",
       "sections": {
-        "overview": "Informations du Job",
+        "overview": "Informations du job",
         "statistics": "Statistiques",
         "paths": "Chemins",
         "errors": "Erreurs",
         "profile": "Profil"
       },
       "fields": {
-        "type": "Type de Job",
+        "type": "Type de job",
         "profile": "Profil",
-        "status": "Statut du Job",
+        "status": "Statut du job",
         "started": "Démarré",
         "finished": "Terminé",
         "duration": "Durée",
@@ -1599,7 +1599,7 @@
         "remoteSource": "Source du dépôt distant",
         "mountPoint": "Point de montage",
         "executeId": "Exécution ID",
-        "group": "Group",
+        "group": "Groupe",
         "backend": "Backend",
         "origin": "Origine",
         "serverSideCopies": "Copies côté serveur",
@@ -1743,7 +1743,7 @@
       "noSettingsFound": "Aucun paramètre correspondant",
       "trySearching": "Essayez de rechercher :",
       "readyToRestartHeader": "Redémarrage des paramètres requis",
-      "readyToRestartDesc": "Les modifications suivantes nécessitent un redémarrage du moteur pour prendre effet:",
+      "readyToRestartDesc": "Les modifications suivantes nécessitent un redémarrage du moteur pour prendre effet :",
       "discardChanges": "Annuler les modifications",
       "saveAndRestart": "Enregistrer et redémarrer le moteur",
       "enabled": "Activé",
@@ -2207,12 +2207,12 @@
       "redoFailed": "Échec du rétablissement de {{count}} éléments",
       "rmdirsFailed": "Impossible de supprimer les dossiers vides dans \"{{name}}\" : {{error}}",
       "createFolderFailed": "Impossible de créer le dossier \"{{name}}\" : {{error}}",
-      "renameFailed": "Impossible de renommer '{{name}}': {{error}}",
+      "renameFailed": "Impossible de renommer '{{name}}' : {{error}}",
       "emptyTrashFailed": "Impossible de vider la corbeille dans {{remote}} : {{error}}",
       "openFileFailed": "Impossible d'ouvrir le fichier : contexte du serveur du dépôt distant manquant",
       "minSelection": "Veuillez sélectionner au moins un élément {{min}}{{s}}.",
-      "copyUrlFailed": "Impossible de télécharger depuis l'URL: {{error}}",
-      "archiveCreateFailed": "Impossible de créer l'archive: {{error}}",
+      "copyUrlFailed": "Impossible de télécharger depuis l'URL : {{error}}",
+      "archiveCreateFailed": "Impossible de créer l'archive : {{error}}",
       "externalDropFailed": "Échec du traitement du dépôt de fichier externe."
     },
     "contextMenu": {
@@ -2317,7 +2317,7 @@
       "remotes": "Accès rapide au dépôt distant",
       "bandwidth": "Limitation de bande passante",
       "system": "Informations système",
-      "jobs": "Informations du Job",
+      "jobs": "Informations du job",
       "automations": "Automatisations",
       "serves": "Services de partage en cours"
     },
@@ -2365,7 +2365,7 @@
       "aria": {
         "loading": "Chargement des informations du job"
       },
-      "progress": "Progression:",
+      "progress": "Progression :",
       "of": "de",
       "eta": "ETA :",
       "speed": "Vitesse de transfert :",
@@ -2431,13 +2431,13 @@
       "failed": "Échec de la requête : {{error}}"
     },
     "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
+      "error": "HTTP/S {{status}} : {{body}}"
     },
     "file": {
       "driveRoot": "Impossible de sélectionner la racine du lecteur (par exemple, D:\\) comme point de montage. Veuillez sélectionner ou créer un sous-dossier.",
       "folderNotEmpty": "Le dossier sélectionné n'est pas vide",
       "invalidPath": "Chemin invalide : le chemin ne peut pas être vide.",
-      "notFound": "Le chemin n'existe pas: {{path}}",
+      "notFound": "Le chemin n'existe pas : {{path}}",
       "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}"
     },
     "rclone": {
@@ -2451,7 +2451,7 @@
       "restartFailed": "Échec du redémarrage du moteur après mise à jour : {{error}}",
       "selfupdateFailed": "rclone selfupdate --check échoué: {{error}}",
       "downloadFailed": "Le téléchargement a échoué après 3 tentatives : {{error}}",
-      "executionFailed": "Échec de l'exécution de Rclone: {{error}}",
+      "executionFailed": "Échec de l'exécution de Rclone : {{error}}",
       "notFound": "Le binaire de Rclone n'a pas été trouvé à {{path}}",
       "spawnFailed": "Impossible de démarrer le processus de rclone : {{error}}",
       "invalidPath": "Chemin spécifique de rclone invalide",
@@ -2497,8 +2497,8 @@
     },
     "job": {
       "notFound": "JobInfo non trouvé",
-      "monitoringFailed": "Trop d'erreurs de surveillance du Job : {{error}}",
-      "executionFailed": "Échec de l'exécution du Job : {{error}}"
+      "monitoringFailed": "Trop d'erreurs de surveillance du job : {{error}}",
+      "executionFailed": "Échec de l'exécution du job : {{error}}"
     },
     "cache": {
       "fetchRemotesFailed": "Échec de récupération des dépôts distants",
@@ -2510,7 +2510,7 @@
       "automationNotEnabled": "L'automatisation est désactivée",
       "automationCannotRun": "L'automatisation ne peut pas s'exécuter (statut : {{status}})",
       "executionFailed": "L'exécution de l'automatisation a échoué : {{error}}",
-      "initFailed": "Impossible d'initialiser le moteur d'automatisation: {{error}}",
+      "initFailed": "Impossible d'initialiser le moteur d'automatisation : {{error}}",
       "startFailed": "Impossible de démarrer le moteur d’automatisation : {{error}}",
       "stopFailed": "Échec de l'arrêt du moteur d'automatisation: {{error}}",
       "invalidCron": "Expression cron invalide : {{error}}",
@@ -2569,7 +2569,7 @@
     },
     "job": {
       "stopped": "Job arrêté avec succès",
-      "deleted": "Le Job a été supprimé"
+      "deleted": "Le job a été supprimé"
     },
     "security": {
       "passwordRemoved": "Mot de passe supprimé avec succès",
@@ -2597,8 +2597,8 @@
       "labels": {
         "unmounted": "Démonté",
         "mounted": "Monté",
-        "syncing": "Synchroniser",
-        "offSync": "Non synchronisé",
+        "syncing": "Synchronisation en cours",
+        "offSync": "Pas synchronisation en cours",
         "active": "Actif",
         "inactive": "Inactif"
       }
@@ -2648,7 +2648,7 @@
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
     "serveCount": "Partage [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
-    "tooltipTask": "1 Job",
+    "tooltipTask": "1 job",
     "tooltipTasks": "Jobs {{count}}",
     "tooltipMount": "1 montage",
     "tooltipMounts": "Montages {{count}}",
@@ -2694,14 +2694,14 @@
     },
     "body": {
       "mountSucceeded": "Le profil {{remote}} '{{profile}}' a été monté avec succès depuis {{backend}} à {{mountPoint}}.",
-      "mountFailed": "Impossible de monter le profil {{remote}} '{{profile}}' depuis {{backend}}: {{error}}",
+      "mountFailed": "Impossible de monter le profil {{remote}} '{{profile}}' depuis {{backend}} : {{error}}",
       "unmountSucceeded": "Profil {{remote}} '{{profile}}' déconnecté de {{backend}}.",
       "jobStarted": "Démarrage de {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
       "jobCompleted": "{{type}} a été complété avec succès pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
-      "jobFailed": "Échec {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}}: {{error}}",
+      "jobFailed": "Échec {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}} : {{error}}",
       "jobStopped": "Arrêt de {{type}} pour le profil {{remote}} '{{profile}}' sur {{backend}}.",
       "serveStarted": "Service de partage démarré pour {{remote}}, profil « {{profile}} », sur {{backend}}.",
-      "serveFailed": "Impossible de démarrer le service de partage pour le profil {{remote}} '{{profile}}' sur {{backend}}: {{error}}",
+      "serveFailed": "Impossible de démarrer le service de partage pour le profil {{remote}} '{{profile}}' sur {{backend}} : {{error}}",
       "serveStopped": "Service de partage arrêté pour {{remote}}, profil « {{profile}} », sur {{backend}}.",
       "allJobsStopped": "Tous les jobs actifs ont été supprimés avec succès.",
       "allServesStopped": "Tous les serveurs actifs ont été fermés avec succès.",
@@ -2721,9 +2721,9 @@
       "rcloneUpdateDownloaded": "La version Rclone {{version}} a été téléchargée et est prête à être installée.",
       "rcloneUpdateComplete": "La mise à jour de Rclone est prête.",
       "rcloneUpdateInstalled": "Rclone {{version}} installé avec succès.",
-      "rcloneUpdateFailed": "Une erreur s'est produite lors de la mise à jour du Rclone: {{error}}",
+      "rcloneUpdateFailed": "Une erreur s'est produite lors de la mise à jour du Rclone : {{error}}",
       "engineRestarted": "Les paramètres du moteur ont été mis à jour avec succès.",
-      "engineRestartFailed": "Erreur de redémarrage du moteur: {{error}}",
+      "engineRestartFailed": "Erreur de redémarrage du moteur : {{error}}",
       "engineConnectionFailed": "Impossible de se connecter au moteur de Rclone : {{error}}",
       "engineBinaryNotFound": "Le binaire Rclone n'a pas été trouvé, veuillez vérifier vos paramètres.",
       "enginePasswordRequired": "Le mot de passe est requis pour accéder au fichier de configuration."
