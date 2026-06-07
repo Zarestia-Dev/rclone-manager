@@ -61,7 +61,7 @@
     "mounted": "Monté",
     "mountedWithProfile": "Monté : {{profile}}",
     "mountedMultiple": "Monté ({{count}}): {{profiles}}",
-    "toggleAction": "Activer/désactiver le montage comme action rapide",
+    "toggleAction": "Activer/désactiver Le montage comme action rapide",
     "successMount": "Monté avec succès {{remote}} ({{profile}})",
     "failedMount": "Échec du montage de {{remote}}: {{error}}",
     "successUnmount": "Démonté avec succès {{remote}}",
@@ -92,7 +92,7 @@
     "servingMultiple": "Partages ({{count}}) : {{profiles}}",
     "serveSummary": "Partage réseau actif ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
-    "toggleAction": "Activer/désactiver le service en tant qu'action rapide",
+    "toggleAction": "Activer/désactiver Le service en tant qu'action rapide",
     "successStart": "Démarrage réussi du service pour {{remote}} ({{profile}}) sur {{addr}}",
     "successStop": "Arrêt réussi du service {{id}}",
     "failedStop": "Impossible d'arrêter le service {{id}} : {{error}}",
@@ -1447,7 +1447,7 @@
       "activeServes": "Partages actifs",
       "sharedSettings": "Paramètres partagés",
       "sharedSettingsDesc": "S'applique à toutes les opérations, quel que soit le mode de synchronisation ou de montage.",
-      "vfsOptions": "Options VFS",
+      "vfsOptions": "Options de VFS",
       "filterOptions": "Options de filtrage",
       "backendConfig": "Configuration du backend",
       "runtimeRemoteOptions": "Exécution du dépôt distant",
@@ -1469,7 +1469,7 @@
       "move": "Déplacer",
       "moveDesc": "Déplacer les fichiers (supprimer à la source)",
       "copy": "Copier",
-      "copyDesc": "Copier les fichiers (conserver la source)",
+      "copyDesc": "Copier les fichiers (conserver à la source)",
       "default": "Défaut",
       "serveBehave": "Configurer les protocoles de partage (HTTP, FTP, WebDAV, SFTP, etc.). Multi-profil supporté.",
       "mountBehave": "Configurer le comportement du montage et le réglage du système de fichiers virtuel.",
@@ -1496,13 +1496,13 @@
       "dryRun": "Simulation",
       "dryRunActive": "La simulation est active — aucun changement ne sera effectué",
       "resync": "Resynchroniser",
-      "resyncActive": "Resynchronisation active — réynchronisation complète"
+      "resyncActive": "Resynchronisation active — synchronisation complète en cours"
     },
     "generalDetail": {
       "automations": "Automatisations",
       "goToAutomation": "Accéder à l'automatisation {{index}}",
       "schedule": "Planification",
-      "cronExpression": "Expression Cron :",
+      "cronExpression": "Expression cron :",
       "nextRunLabel": "Prochaine exécution :",
       "lastRunLabel": "Dernière exécution :",
       "createdLabel": "Créé :",
@@ -1522,7 +1522,7 @@
       "remoteConfiguration": "Configurations du dépôt distant",
       "editConfiguration": "Modifier la configuration",
       "toggleQuickAction": "Activer/désactiver {{label}} en tant qu'action rapide",
-      "quickActionSelected": "{{label}} a sélectionné comme action rapide {{position}}",
+      "quickActionSelected": "{{label}} sélectionné comme action rapide {{position}}",
       "remoteActionQuickSelection": "Sélection rapide des actions du dépôt distant"
     }
   },
@@ -1543,7 +1543,7 @@
       "newRemoteQuick": "Créer un nouveau dépôt distant (rapide)",
       "loadConfig": "Charger la configuration",
       "exportConfig": "Exporter la configuration",
-      "toggleBrowser": "Activer/désactiver le navigateur de fichiers",
+      "toggleBrowser": "Activer/désactiver Le navigateur de fichiers",
       "closeDialog": "Fermer la boîte de dialogue / Annuler l'action"
     },
     "categories": {
@@ -1693,18 +1693,18 @@
       "memAlloc": "Alloué",
       "memTotalAlloc": "Total alloué",
       "memSys": "Système",
-      "memMallocs": "Allocations mémoire",
-      "memFrees": "Libres",
-      "heapMemory": "Mémoire du tas",
-      "memHeapAlloc": "Allocation dans le tas",
-      "memHeapSys": "Mémoire du tas (système)",
+      "memMallocs": "Mallocs",
+      "memFrees": "Libérations",
+      "heapMemory": "Mémoire tas",
+      "memHeapAlloc": "Tas alloué",
+      "memHeapSys": "Tas système",
       "memHeapIdle": "Tas inactif",
       "memHeapInuse": "Tas utilisé",
       "memHeapReleased": "Tas libéré",
       "memHeapObjects": "Objets du tas",
-      "stackMemory": "Mémoire de la pile",
-      "memStackInuse": "Pile utilisée",
-      "memStackSys": "Mémoire de la pile (système)",
+      "stackMemory": "Mémoire pile",
+      "memStackInuse": "Pile en usage",
+      "memStackSys": "Pile système",
       "gc": "Garbage collector (GC)",
       "runningGc": "Exécution du GC...",
       "runGc": "Exécuter le GC",
@@ -1748,7 +1748,7 @@
       "saveAndRestart": "Enregistrer et redémarrer le moteur",
       "enabled": "Activé",
       "disabled": "Désactivé",
-      "items": "Éléments",
+      "items": "éléments",
       "resetToDefault": "Réinitialiser par défaut",
       "addItem": "Ajouter un élément",
       "validation": {
@@ -1963,7 +1963,7 @@
       "manualOpenPrompt": "Si le navigateur ne s'est pas ouvert automatiquement, utilisez ce lien d'authentification :",
       "openLink": "Ouvrir le lien",
       "copyLink": "Copier le Lien",
-      "remoteFallback": "Le lien manuel OAuth n'est pas disponible pour les backends distants ici. Vérifiez les logs/sorties des backend distants."
+      "remoteFallback": "Le lien manuel OAuth n'est pas disponible pour les backends distants ici. Vérifiez les logs/sorties des backend des dépôts distants."
     },
     "remoteConfig": {
       "aria": {
@@ -2054,7 +2054,7 @@
         "saveSuccess": "Enregistré : {{field}}",
         "saveError": "Impossible d'enregistrer {{field}}: {{error}}",
         "loadError": "Impossible de charger les flags de Rclone",
-        "resetAllSuccess": "Tous les falgs de Rclone réinitialisés aux valeurs par défaut",
+        "resetAllSuccess": "Tous les flags de Rclone réinitialisés aux valeurs par défaut",
         "resetAllError": "Échec de la réinitialisation des flags de Rclone"
       },
       "reset": {
@@ -2155,7 +2155,7 @@
     "modals": {
       "delete": {
         "title": "Supprimer les éléments",
-        "messageSingle": "Êtes-vous sûr de vouloir supprimer « {{name}} » ?",
+        "messageSingle": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ?",
         "messageMultiple": "Êtes-vous sûr de vouloir supprimer {{count}} éléments ?"
       },
       "newFolder": {
@@ -2175,7 +2175,7 @@
       },
       "rmdirs": {
         "title": "Supprimer les dossiers vides",
-        "message": "Êtes-vous sûr de vouloir supprimer tous les dossiers vides dans \"{{name}} \" ?",
+        "message": "Êtes-vous sûr de vouloir supprimer tous les dossiers vides dans \"{{name}}\" ?",
         "confirm": "Supprimer"
       },
       "copyUrl": {
@@ -2278,7 +2278,7 @@
   "home": {
     "emptyState": {
       "title": "RClone Manager",
-      "description": "Gérez facilement vos dépôt distants de Rclone. Si vous êtes nouveau à Rclone, utilisez \"Ajouter un dépôt distant rapide\" pour une installation simple et rapide.",
+      "description": "Gérez facilement vos dépôts distants. Si vous débutez avec Rclone, utilisez \"Ajouter un dépôt rapide\" pour une configuration simple et guidée.",
       "addQuickRemote": "Ajouter un dépôt distant rapide",
       "addDetailedRemote": "Ajouter un dépôt distant détaillé"
     },
@@ -2361,7 +2361,7 @@
     "jobs": {
       "activeCount": "Job {{count}} actif{{s}}",
       "noActive": "Aucun job actif",
-      "loading": "Chargement des informations du Job...",
+      "loading": "Chargement des informations du job...",
       "aria": {
         "loading": "Chargement des informations du job"
       },
@@ -2502,7 +2502,7 @@
     },
     "cache": {
       "fetchRemotesFailed": "Échec de récupération des dépôts distants",
-      "fetchConfigFailed": "Échec de récupération des dépôts distants",
+      "fetchConfigFailed": "Échec de la récupération de la configuration des dépôts distants",
       "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montés",
       "refreshServesFailed": "Échec de l’actualisation des services de partage"
     },
@@ -2512,7 +2512,7 @@
       "executionFailed": "L'exécution de l'automatisation a échoué : {{error}}",
       "initFailed": "Impossible d'initialiser le moteur d'automatisation : {{error}}",
       "startFailed": "Impossible de démarrer le moteur d’automatisation : {{error}}",
-      "stopFailed": "Échec de l'arrêt du moteur d'automatisation: {{error}}",
+      "stopFailed": "Échec de l'arrêt du moteur d'automatisation : {{error}}",
       "invalidCron": "Expression cron invalide : {{error}}",
       "automationNotFound": "Automatisation non trouvée"
     },
@@ -2626,7 +2626,7 @@
     }
   },
   "tray": {
-    "openWebUI": "Open Web UI",
+    "openWebUI": "Ouvrir Web UI",
     "showApp": "Afficher l'application",
     "openFileBrowser": "Ouvrir le Gestionnaire de fichiers",
     "unmountAll": "Tout démonter",
@@ -2651,7 +2651,7 @@
     "tooltipTask": "1 job",
     "tooltipTasks": "Jobs {{count}}",
     "tooltipMount": "1 montage",
-    "tooltipMounts": "Montages {{count}}",
+    "tooltipMounts": "{{count}} Montages",
     "tooltipServe": "1 Partage",
     "tooltipServes": "{{count}} Service de partage"
   },
@@ -2779,7 +2779,7 @@
       "repair": "Réparer"
     },
     "details": {
-      "issueLabel": "Issue",
+      "issueLabel": "Problème",
       "actionLabel": "Action",
       "rclonePath": {
         "issue": "Binaire introuvable",
