@@ -4,7 +4,7 @@ use crate::{
         automation::{
             Automation, AutomationArgs, AutomationStats, AutomationStatus, AutomationType,
         },
-        remotes::ProfileParams,
+        remotes::{OperationConfigKey, ProfileParams},
     },
 };
 use log::info;
@@ -39,19 +39,7 @@ impl<'de> Deserialize<'de> for ProfileConfig {
         let val = Value::deserialize(deserializer)?;
 
         // Deserialize using ProfileConfig or fall back if unpartitioned
-        let is_partitioned = val.get("app").is_some() || val.get("rclone").is_some();
-        let profile: crate::utils::types::remotes::ProfileConfig = if is_partitioned {
-            serde_json::from_value(val).unwrap_or_else(|_| {
-                crate::utils::types::remotes::ProfileConfig {
-                    app: crate::utils::types::remotes::AppConfig::default(),
-                    rclone: serde_json::Value::Null,
-                }
-            })
-        } else {
-            let app: crate::utils::types::remotes::AppConfig =
-                serde_json::from_value(val.clone()).unwrap_or_default();
-            crate::utils::types::remotes::ProfileConfig { app, rclone: val }
-        };
+        let profile = crate::utils::types::remotes::ProfileConfig::parse_from_value(&val);
 
         let source = if let Value::Object(ref map) = profile.rclone {
             crate::utils::types::remotes::SOURCE_KEYS
@@ -239,14 +227,14 @@ impl AutomationsCache {
         };
 
         let operations = [
-            ("syncConfigs", AutomationType::Sync),
-            ("copyConfigs", AutomationType::Copy),
-            ("moveConfigs", AutomationType::Move),
-            ("bisyncConfigs", AutomationType::Bisync),
+            (OperationConfigKey::Sync, AutomationType::Sync),
+            (OperationConfigKey::Copy, AutomationType::Copy),
+            (OperationConfigKey::Move, AutomationType::Move),
+            (OperationConfigKey::Bisync, AutomationType::Bisync),
         ];
 
-        for (key, automation_type) in operations {
-            if let Some(profiles) = obj.get(key).and_then(|v| v.as_object()) {
+        for (config_key, automation_type) in operations {
+            if let Some(profiles) = obj.get(config_key.as_str()).and_then(|v| v.as_object()) {
                 for (profile_name, profile_val) in profiles {
                     if let Ok(config) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
                         && let Some(automation) = self.create_automation_struct(
@@ -283,7 +271,7 @@ impl AutomationsCache {
             |t| {
                 t.cron_expression = new_config.cron_expression.clone();
                 t.args = new_config.args.clone();
-                t.automation_type = new_config.automation_type.clone();
+                t.automation_type = new_config.automation_type;
                 t.next_run = new_config.next_run;
                 t.watch_enabled = new_config.watch_enabled;
                 t.watch_delay = new_config.watch_delay;
@@ -362,7 +350,7 @@ impl AutomationsCache {
 
         Some(Automation {
             id: automation_id,
-            automation_type: automation_type.clone(),
+            automation_type: *automation_type,
             remote_name: remote_name.to_string(),
             profile_name: profile_name.to_string(),
             cron_expression: cron,

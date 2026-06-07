@@ -88,6 +88,7 @@ export class RemoteFacadeService extends TauriBaseService {
 
   private readonly remoteNames = signal<string[]>([]);
   private readonly remoteSettings = signal<Record<string, RemoteSettings>>({});
+
   private readonly isLoading = signal(false);
   private backgroundLoadGeneration = 0;
 

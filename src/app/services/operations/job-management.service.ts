@@ -74,6 +74,9 @@ export class JobManagementService extends TauriBaseService {
     super();
     this.initializeEventListeners();
     this.initializePolling();
+    this.refreshJobs().catch(() => {
+      /* empty */
+    });
   }
 
   private initializePolling(): void {

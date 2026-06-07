@@ -123,7 +123,7 @@ impl AutomationScheduler {
             "{}: {}-{}",
             automation.backend_name, automation.remote_name, automation.profile_name
         );
-        let automation_type = automation.automation_type.clone();
+        let automation_type = automation.automation_type;
         let cron_expr_5_field = automation
             .cron_expression
             .as_deref()
@@ -141,7 +141,7 @@ impl AutomationScheduler {
             .with_run_async(Box::new(move |_uuid, _l| {
                 let automation_id = automation_id.clone();
                 let automation_name = automation_name.clone();
-                let automation_type = automation_type.clone();
+                let automation_type = automation_type;
                 let app_handle = app_handle_for_job.clone();
 
                 Box::pin(async move {
@@ -440,7 +440,7 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
                     remote: automation.remote_name.clone(),
                     profile: automation.profile_name.clone(),
                     automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
+                    automation_type: automation.automation_type,
                 }),
             );
             Ok(())

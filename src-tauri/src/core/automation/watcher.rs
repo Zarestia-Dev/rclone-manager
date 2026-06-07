@@ -103,12 +103,7 @@ impl WatcherManager {
         let automation_id = automation.id.clone();
         let watch_delay = automation.watch_delay;
 
-        let config_key = match automation.automation_type {
-            AutomationType::Sync => "syncConfigs",
-            AutomationType::Copy => "copyConfigs",
-            AutomationType::Move => "moveConfigs",
-            AutomationType::Bisync => "bisyncConfigs",
-        };
+        let config_key = automation.automation_type.config_key().as_str();
 
         let filter_options = match crate::rclone::commands::common::resolve_profile_settings(
             &app_handle,
@@ -121,6 +116,7 @@ impl WatcherManager {
             Ok((config, settings)) => {
                 crate::rclone::commands::common::parse_common_config(&config, &settings)
                     .and_then(|c| c.filter_options)
+                    .map(|opts| resolve_filter_options(&opts))
             }
             Err(e) => {
                 log::debug!(
@@ -154,7 +150,6 @@ impl WatcherManager {
 
         let cache = app_handle.state::<AutomationsCache>().inner().clone();
         let paths_clone = paths.clone();
-        let filter_opts_clone = filter_options.clone();
 
         tokio::spawn(async move {
             // Net-change tracking within the current debounce window:
@@ -185,16 +180,8 @@ impl WatcherManager {
                                     continue;
                                 }
 
-                                let is_busy = match cache.get_automation(&automation_id).await {
-                                    Some(a) => is_automation_running_or_in_cooldown(&a, &app_handle).await,
-                                    None => false,
-                                };
-                                if is_busy {
-                                    continue;
-                                }
-
                                 for path in &ev.paths {
-                                    if is_path_filtered(path, &paths_clone, &filter_opts_clone) {
+                                    if is_path_filtered(path, &paths_clone, &filter_options) {
                                         continue;
                                     }
 
@@ -479,47 +466,59 @@ fn parse_rclone_duration(s: &str) -> Option<chrono::Duration> {
     }
 }
 
-fn is_path_filtered(
-    path: &std::path::Path,
-    src_paths: &[String],
-    filter_options: &Option<HashMap<String, Value>>,
-) -> bool {
-    let Some(opts) = filter_options else {
-        return false;
+#[derive(Clone, Debug, Default)]
+struct ResolvedFilterOptions {
+    ignore_case: bool,
+    max_depth: Option<u64>,
+    min_size: Option<u64>,
+    max_size: Option<u64>,
+    min_age: Option<chrono::Duration>,
+    max_age: Option<chrono::Duration>,
+    filter_rules: Vec<String>,
+    excludes: Vec<String>,
+    includes: Vec<String>,
+    files_from: Vec<String>,
+}
+
+fn resolve_filter_options(opts: &HashMap<String, Value>) -> ResolvedFilterOptions {
+    let normalized_opts: HashMap<String, &Value> =
+        opts.iter().map(|(k, v)| (k.to_lowercase(), v)).collect();
+
+    let get_opt = |keys: &[&str]| -> Option<&Value> {
+        keys.iter()
+            .find_map(|k| normalized_opts.get(&k.to_lowercase()).copied())
     };
 
-    // Compute the relative path under the matching source root.
-    let rel_path = src_paths
-        .iter()
-        .find_map(|src| path.strip_prefix(src).ok())
-        .map(|rel| rel.to_string_lossy().replace('\\', "/"));
-
-    let Some(rel_path) = rel_path else {
-        // Not under any watched source — ignore.
-        return true;
-    };
-
-    let rel_path = rel_path.trim_matches('/');
-    if rel_path.is_empty() {
-        return false;
-    }
-
-    let get_opt = |key: &str| {
-        let target = key.to_lowercase();
-        opts.iter()
-            .find(|(k, _)| k.to_lowercase() == target)
-            .map(|(_, v)| v)
-    };
-
-    let ignore_case = get_opt("IgnoreCase")
-        .and_then(serde_json::Value::as_bool)
+    let ignore_case = get_opt(&["IgnoreCase", "ignore_case"])
+        .and_then(Value::as_bool)
         .unwrap_or(false);
 
-    // Collect string patterns from a set of keys (array or single string value).
+    let max_depth = get_opt(&["MaxDepth", "max_depth"]).and_then(Value::as_u64);
+
+    let min_size = get_opt(&["MinSize", "min_size"]).and_then(|v| {
+        v.as_str()
+            .and_then(parse_rclone_size)
+            .or_else(|| v.as_u64())
+    });
+
+    let max_size = get_opt(&["MaxSize", "max_size"]).and_then(|v| {
+        v.as_str()
+            .and_then(parse_rclone_size)
+            .or_else(|| v.as_u64())
+    });
+
+    let min_age = get_opt(&["MinAge", "min_age"])
+        .and_then(|v| v.as_str())
+        .and_then(parse_rclone_duration);
+
+    let max_age = get_opt(&["MaxAge", "max_age"])
+        .and_then(|v| v.as_str())
+        .and_then(parse_rclone_duration);
+
     let patterns_for = |keys: &[&str]| -> Vec<String> {
         keys.iter()
             .filter_map(|&key| {
-                let val = get_opt(key)?;
+                let val = normalized_opts.get(&key.to_lowercase())?;
                 if let Some(arr) = val.as_array() {
                     Some(
                         arr.iter()
@@ -534,7 +533,6 @@ fn is_path_filtered(
             .collect()
     };
 
-    // Read patterns from filter files listed under `keys`.
     let patterns_from_files = |keys: &[&str]| -> Vec<String> {
         patterns_for(keys)
             .into_iter()
@@ -558,8 +556,64 @@ fn is_path_filtered(
             .collect()
     };
 
+    let mut filter_rules = patterns_for(&["FilterRule", "filter"]);
+    filter_rules.extend(patterns_from_files(&["FilterFrom", "filter_from"]));
+
+    let mut excludes = patterns_for(&[
+        "ExcludeRule",
+        "exclude",
+        "ExcludeFile",
+        "exclude_if_present",
+    ]);
+    excludes.extend(patterns_from_files(&["ExcludeFrom", "exclude_from"]));
+
+    let mut includes = patterns_for(&["IncludeRule", "include"]);
+    includes.extend(patterns_from_files(&["IncludeFrom", "include_from"]));
+
+    let mut files_from = patterns_for(&["FilesFrom", "files_from"]);
+    files_from.extend(patterns_from_files(&["FilesFrom", "files_from"]));
+
+    ResolvedFilterOptions {
+        ignore_case,
+        max_depth,
+        min_size,
+        max_size,
+        min_age,
+        max_age,
+        filter_rules,
+        excludes,
+        includes,
+        files_from,
+    }
+}
+
+fn is_path_filtered(
+    path: &std::path::Path,
+    src_paths: &[String],
+    filter_options: &Option<ResolvedFilterOptions>,
+) -> bool {
+    let Some(opts) = filter_options else {
+        return false;
+    };
+
+    // Compute the relative path under the matching source root.
+    let rel_path = src_paths
+        .iter()
+        .find_map(|src| path.strip_prefix(src).ok())
+        .map(|rel| rel.to_string_lossy().replace('\\', "/"));
+
+    let Some(rel_path) = rel_path else {
+        // Not under any watched source — ignore.
+        return true;
+    };
+
+    let rel_path = rel_path.trim_matches('/');
+    if rel_path.is_empty() {
+        return false;
+    }
+
     // MaxDepth
-    if let Some(max_depth) = get_opt("MaxDepth").and_then(serde_json::Value::as_u64) {
+    if let Some(max_depth) = opts.max_depth {
         let depth = rel_path.split('/').filter(|s| !s.is_empty()).count() as u64;
         if depth > max_depth {
             return true;
@@ -572,20 +626,14 @@ fn is_path_filtered(
     {
         let size = meta.len();
 
-        if let Some(min) = get_opt("MinSize").and_then(|v| {
-            v.as_str()
-                .and_then(parse_rclone_size)
-                .or_else(|| v.as_u64())
-        }) && size < min
+        if let Some(min) = opts.min_size
+            && size < min
         {
             return true;
         }
 
-        if let Some(max) = get_opt("MaxSize").and_then(|v| {
-            v.as_str()
-                .and_then(parse_rclone_size)
-                .or_else(|| v.as_u64())
-        }) && size > max
+        if let Some(max) = opts.max_size
+            && size > max
         {
             return true;
         }
@@ -593,17 +641,13 @@ fn is_path_filtered(
         if let Ok(modified) = meta.modified() {
             let age = Utc::now().signed_duration_since(chrono::DateTime::<Utc>::from(modified));
 
-            if let Some(min_age) = get_opt("MinAge")
-                .and_then(|v| v.as_str())
-                .and_then(parse_rclone_duration)
+            if let Some(min_age) = opts.min_age
                 && age < min_age
             {
                 return true;
             }
 
-            if let Some(max_age) = get_opt("MaxAge")
-                .and_then(|v| v.as_str())
-                .and_then(parse_rclone_duration)
+            if let Some(max_age) = opts.max_age
                 && age > max_age
             {
                 return true;
@@ -612,10 +656,7 @@ fn is_path_filtered(
     }
 
     // FilterRule / FilterFrom — ordered include/exclude rules.
-    let mut filter_rules = patterns_for(&["FilterRule"]);
-    filter_rules.extend(patterns_from_files(&["FilterFrom"]));
-
-    for rule in &filter_rules {
+    for rule in &opts.filter_rules {
         let rule = rule.trim();
         let (include, pattern) =
             if let Some(p) = rule.strip_prefix("+ ").or_else(|| rule.strip_prefix('+')) {
@@ -626,42 +667,36 @@ fn is_path_filtered(
                 continue;
             };
 
-        if glob_match(pattern, rel_path, ignore_case) {
+        if glob_match(pattern, rel_path, opts.ignore_case) {
             return !include;
         }
     }
 
     // ExcludeRule / ExcludeFrom / ExcludeFile.
-    let mut excludes = patterns_for(&["ExcludeRule", "ExcludeFile"]);
-    excludes.extend(patterns_from_files(&["ExcludeFrom"]));
-
-    if excludes
+    if opts
+        .excludes
         .iter()
-        .any(|p| glob_match(p, rel_path, ignore_case))
+        .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
 
     // IncludeRule / IncludeFrom — if any are set, the file must match at least one.
-    let mut includes = patterns_for(&["IncludeRule"]);
-    includes.extend(patterns_from_files(&["IncludeFrom"]));
-
-    if !includes.is_empty()
-        && !includes
+    if !opts.includes.is_empty()
+        && !opts
+            .includes
             .iter()
-            .any(|p| glob_match(p, rel_path, ignore_case))
+            .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
 
     // FilesFrom / FilesFromRaw — explicit allowlist.
-    let mut files_from = patterns_for(&["FilesFrom", "FilesFromRaw"]);
-    files_from.extend(patterns_from_files(&["FilesFrom"]));
-
-    if !files_from.is_empty()
-        && !files_from
+    if !opts.files_from.is_empty()
+        && !opts
+            .files_from
             .iter()
-            .any(|p| glob_match(p, rel_path, ignore_case))
+            .any(|p| glob_match(p, rel_path, opts.ignore_case))
     {
         return true;
     }
@@ -730,7 +765,7 @@ mod tests {
 
         let mut opts = HashMap::new();
         opts.insert("maxDepth".to_string(), serde_json::json!(2));
-        let filter_opts = Some(opts);
+        let filter_opts = Some(resolve_filter_options(&opts));
 
         assert!(!is_path_filtered(
             std::path::Path::new("/src/foo.txt"),
@@ -745,7 +780,7 @@ mod tests {
 
         let mut opts2 = HashMap::new();
         opts2.insert("excludeRule".to_string(), serde_json::json!(["*.log"]));
-        let filter_opts2 = Some(opts2);
+        let filter_opts2 = Some(resolve_filter_options(&opts2));
 
         assert!(is_path_filtered(
             std::path::Path::new("/src/error.log"),

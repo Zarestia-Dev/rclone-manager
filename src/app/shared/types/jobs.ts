@@ -75,8 +75,9 @@ import { Origin } from './origin';
 
 export interface JobInfo {
   jobid: number;
+  execute_id: string;
   job_type: JobActionType;
-  source: string;
+  source: string | string[];
   destination: string;
   start_time: string;
   end_time?: string;

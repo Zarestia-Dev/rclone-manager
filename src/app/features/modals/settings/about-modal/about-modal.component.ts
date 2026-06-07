@@ -5,7 +5,6 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-  DestroyRef,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -23,7 +22,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { CommonModule, NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet, DecimalPipe } from '@angular/common';
 
 import {
   SystemInfoService,
@@ -64,7 +63,9 @@ export interface OverlayView {
 @Component({
   selector: 'app-about-modal',
   imports: [
-    CommonModule,
+    NgClass,
+    DecimalPipe,
+    NgTemplateOutlet,
     MatDividerModule,
     MatIconModule,
     MatButtonModule,
@@ -77,7 +78,6 @@ export interface OverlayView {
     MatProgressBarModule,
     FormatFileSizePipe,
     TranslateModule,
-    NgTemplateOutlet,
     CopyToClipboardDirective,
   ],
   templateUrl: './about-modal.component.html',
@@ -96,11 +96,10 @@ export class AboutModalComponent implements OnInit {
   private readonly debugService = inject(DebugService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly translate = inject(TranslateService);
-  private readonly destroyRef = inject(DestroyRef);
 
-  readonly rcloneStatusService = inject(RcloneStatusService);
-  readonly backendService = inject(BackendService);
-  readonly modalService = inject(ModalService);
+  private readonly rcloneStatusService = inject(RcloneStatusService);
+  public readonly backendService = inject(BackendService);
+  private readonly modalService = inject(ModalService);
 
   // ---------------------------------------------------------------------------
   // Navigation state

@@ -4,6 +4,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
+use crate::utils::types::remotes::{ProfileConfig, helper_config_keys};
 
 /// Resolves profile settings for a given remote and profile name.
 ///
@@ -247,22 +248,7 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
     let config = &interpolate_value(config);
 
     // Deserialize using ProfileConfig or fall back if unpartitioned
-    let is_partitioned = config.get("app").is_some() || config.get("rclone").is_some();
-    let profile: crate::utils::types::remotes::ProfileConfig = if is_partitioned {
-        serde_json::from_value(config.clone()).unwrap_or_else(|_| {
-            crate::utils::types::remotes::ProfileConfig {
-                app: crate::utils::types::remotes::AppConfig::default(),
-                rclone: serde_json::Value::Null,
-            }
-        })
-    } else {
-        let app: crate::utils::types::remotes::AppConfig =
-            serde_json::from_value(config.clone()).unwrap_or_default();
-        crate::utils::types::remotes::ProfileConfig {
-            app,
-            rclone: config.clone(),
-        }
-    };
+    let profile = ProfileConfig::parse_from_value(config);
 
     let rclone_config = &profile.rclone;
 
@@ -303,9 +289,15 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
         source,
         dest,
         rclone_config: rclone_config.clone(),
-        vfs_options: get_opts(profile.app.vfs_profile.as_deref(), "vfsConfigs"),
-        filter_options: get_opts(profile.app.filter_profile.as_deref(), "filterConfigs"),
-        backend_options: get_opts(profile.app.backend_profile.as_deref(), "backendConfigs"),
+        vfs_options: get_opts(profile.app.vfs_profile.as_deref(), helper_config_keys::VFS),
+        filter_options: get_opts(
+            profile.app.filter_profile.as_deref(),
+            helper_config_keys::FILTER,
+        ),
+        backend_options: get_opts(
+            profile.app.backend_profile.as_deref(),
+            helper_config_keys::BACKEND,
+        ),
         runtime_remote_options: resolve_runtime_remote_options(
             &profile.app,
             rclone_config,
@@ -323,8 +315,8 @@ pub fn resolve_runtime_remote_options(
     inline_remotes_key: &str,
 ) -> Option<HashMap<String, Value>> {
     let profile = app.runtime_remote_profile.as_deref();
-    let mut opts =
-        resolve_profile_options(settings, profile, "runtimeRemoteConfigs").unwrap_or_default();
+    let mut opts = resolve_profile_options(settings, profile, helper_config_keys::RUNTIME_REMOTE)
+        .unwrap_or_default();
 
     if let Some(inline) = json_to_hashmap(rclone_config.get(inline_remotes_key)) {
         opts.extend(inline);

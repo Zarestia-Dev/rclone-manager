@@ -110,12 +110,29 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     return this.getJobTypeLabel(job);
   }
 
+  resolveSourceString(source: string | string[]): string {
+    if (Array.isArray(source)) {
+      if (source.length === 0) return '';
+      if (source.length === 1) return source[0];
+      return 'multiple items';
+    }
+    return source || '';
+  }
+
+  getFormattedSource(source: string | string[]): string {
+    if (Array.isArray(source)) {
+      return source.join(', ');
+    }
+    return source || '';
+  }
+
   getActualFileName(job: JobInfo): string {
-    if (job.source === 'multiple items' && job.stats && job.stats.totalTransfers > 0) {
+    const resolvedSource = this.resolveSourceString(job.source);
+    if (resolvedSource === 'multiple items' && job.stats && job.stats.totalTransfers > 0) {
       return `${job.stats.totalTransfers} files`;
     }
-    const path = job.destination || job.source || '';
-    return this.uiStateService.extractFilename(path) || job.source || job.destination;
+    const path = job.destination || resolvedSource || '';
+    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination;
   }
 
   /** Get icon for the job's operation type */

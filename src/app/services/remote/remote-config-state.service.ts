@@ -23,6 +23,7 @@ import {
   InteractiveFlowState,
   REMOTE_CONFIG_KEYS,
   LINKED_PROFILE_TYPES,
+  RemoteSettings,
 } from '@app/types';
 
 import { AuthStateService } from '../security/auth-state.service';
@@ -32,6 +33,7 @@ import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { FlagConfigService } from './flag-config.service';
 import { CliFlagMapperService, ImportResult } from './cli-flag-mapper.service';
+import { RemoteFacadeService } from '../facade/remote-facade.service';
 import {
   createInitialInteractiveFlowState,
   getControlKey,
@@ -54,12 +56,11 @@ export interface StepConfig {
 
 export interface DialogData {
   editTarget?: EditTarget;
-  cloneTarget?: boolean;
-  existingConfig?: RemoteConfigSections;
   name?: string;
   remoteType: string;
   targetProfile?: string;
   autoAddProfile?: boolean;
+  cloneFrom?: string;
 }
 
 export interface PendingRemoteData {
@@ -121,6 +122,8 @@ export class RemoteConfigStateService {
   private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
   private readonly valueMapper = inject(RcloneValueMapperService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
+  private existingConfig?: RemoteSettings | null;
 
   // ── Form References & Setup ──
   readonly remoteForm: FormGroup = this.fb.group({
@@ -748,11 +751,24 @@ export class RemoteConfigStateService {
     });
   }
 
-  // ── Initializer ──
   async init(dialogData: DialogData): Promise<void> {
     this.dialogData = dialogData;
+    if (dialogData?.cloneFrom) {
+      await this.remoteFacade.loadRemotes();
+      const clonedConfig = await this.remoteFacade.cloneRemote(dialogData.cloneFrom);
+      this.existingConfig = clonedConfig ?? undefined;
+    } else if (dialogData?.name) {
+      await this.remoteFacade.loadRemotes();
+      const appSettings = this.remoteFacade.getRemoteSettings(dialogData.name);
+      const remote = this.remoteFacade.activeRemotes().find(r => r.name === dialogData.name);
+      this.existingConfig = {
+        config: remote?.config,
+        ...appSettings,
+      };
+    }
+
     this.editTarget.set(dialogData?.editTarget ?? null);
-    this.cloneTarget.set(dialogData?.cloneTarget ?? false);
+    this.cloneTarget.set(!!dialogData?.cloneFrom);
 
     this.refreshRemoteNameValidator();
 
@@ -964,9 +980,7 @@ export class RemoteConfigStateService {
 
     this.PROFILE_TYPES.forEach(type => {
       const multiKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-      const multiVal = dialogData?.existingConfig?.[multiKey] as
-        | Record<string, unknown>
-        | undefined;
+      const multiVal = this.existingConfig?.[multiKey] as Record<string, unknown> | undefined;
 
       newProfiles[type] =
         multiVal && Object.keys(multiVal).length > 0
@@ -1589,12 +1603,13 @@ export class RemoteConfigStateService {
   }
 
   private async populateFormIfEditingOrCloning(): Promise<void> {
-    if (!this.dialogData?.existingConfig) return;
+    if (!this.existingConfig) return;
 
     if (this.editTarget() === 'remote' || this.cloneTarget()) {
-      const remoteSpecs = this.cloneTarget()
-        ? this.dialogData.existingConfig['config']
-        : this.dialogData.existingConfig;
+      const remoteSpecs = (this.existingConfig['config'] || this.existingConfig) as Record<
+        string,
+        unknown
+      >;
       await this.populateRemoteForm(remoteSpecs);
 
       if (this.cloneTarget()) {
@@ -1604,9 +1619,7 @@ export class RemoteConfigStateService {
           const configKey = REMOTE_CONFIG_KEYS[
             type as keyof typeof REMOTE_CONFIG_KEYS
           ] as keyof RemoteConfigSections;
-          const configs = this.dialogData.existingConfig?.[configKey] as
-            | Record<string, unknown>
-            | undefined;
+          const configs = this.existingConfig?.[configKey] as Record<string, unknown> | undefined;
           if (configs && Object.keys(configs).length > 0) {
             clonePromises.push(
               this.populateProfileForm(type, Object.values(configs)[0] as Record<string, unknown>)
@@ -1614,9 +1627,9 @@ export class RemoteConfigStateService {
           }
         }
 
-        const runtimeConfigs = this.dialogData.existingConfig?.[
-          REMOTE_CONFIG_KEYS.runtimeRemote
-        ] as Record<string, unknown> | undefined;
+        const runtimeConfigs = this.existingConfig?.[REMOTE_CONFIG_KEYS.runtimeRemote] as
+          | Record<string, unknown>
+          | undefined;
         if (runtimeConfigs && Object.keys(runtimeConfigs).length > 0) {
           clonePromises.push(
             this.populateProfileForm(

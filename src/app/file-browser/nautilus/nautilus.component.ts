@@ -377,13 +377,12 @@ export class NautilusComponent implements OnInit {
       if (this.isPickerMode()) return;
       const remote = this.tabSvc.activeRemote();
       const path = this.tabSvc.activePath();
-      const isOpen = this.nautilusService.isNautilusOverlayOpen();
       const isStandalone = this.nautilusService.isStandaloneWindow();
       const activeFile = this.fileViewerSvc.activeFileName();
 
       untracked(() => {
         let newPath = '/';
-        if (isOpen || isStandalone) {
+        if (isStandalone) {
           const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
           newPath = remote
             ? `/nautilus/${encodeURIComponent(remote.name)}${displayPath ? `/${displayPath}` : ''}`

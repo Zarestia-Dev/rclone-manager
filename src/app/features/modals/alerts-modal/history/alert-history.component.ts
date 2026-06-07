@@ -516,7 +516,7 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertHistoryComponent {
-  readonly alerts = inject(AlertService);
+  public readonly alerts = inject(AlertService);
   private readonly notificationService = inject(NotificationService);
 
   readonly searchVisible = signal(false);

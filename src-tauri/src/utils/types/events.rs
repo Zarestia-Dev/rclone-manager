@@ -103,7 +103,7 @@ impl From<&crate::utils::types::jobs::JobInfo> for JobChangeEvent {
             job_id: job.jobid.to_string(),
             status: job.status.clone(),
             remote: Some(job.remote_name.clone()),
-            source: Some(job.source.clone()),
+            source: Some(job.source.join(", ")),
             destination: Some(job.destination.clone()),
         }
     }

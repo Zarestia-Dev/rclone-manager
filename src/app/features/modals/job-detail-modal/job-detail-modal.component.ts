@@ -12,12 +12,23 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
-import { CompletedTransfer, JobInfo } from '@app/types';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { CompletedTransfer, JobInfo, PathDisplayConfig } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
-import { TransferActivityPanelComponent } from '../../../shared/detail-shared';
+import {
+  TransferActivityPanelComponent,
+  PathDisplayComponent,
+} from '../../../shared/detail-shared';
 import { TransferActivityPanelConfig } from '@app/types';
-import { IconService, JobManagementService, mapRawTransfer, ModalService } from '@app/services';
+import {
+  IconService,
+  JobManagementService,
+  mapRawTransfer,
+  ModalService,
+  FileSystemService,
+  NautilusService,
+  PathService,
+} from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 
 @Component({
@@ -36,6 +47,7 @@ import { CopyToClipboardDirective } from '@app/directives';
     DatePipe,
     TitleCasePipe,
     TransferActivityPanelComponent,
+    PathDisplayComponent,
     CopyToClipboardDirective,
   ],
   templateUrl: './job-detail-modal.component.html',
@@ -44,14 +56,75 @@ import { CopyToClipboardDirective } from '@app/directives';
 })
 export class JobDetailModalComponent {
   private readonly dialogRef = inject(MatDialogRef<JobDetailModalComponent>);
-  public readonly initialData: JobInfo = inject(MAT_DIALOG_DATA);
+  public readonly initialData: Partial<JobInfo> & { jobid: number } = inject(MAT_DIALOG_DATA);
   public readonly iconService = inject(IconService);
   private readonly modalService = inject(ModalService);
   private readonly jobService = inject(JobManagementService);
+  private readonly fileSystemService = inject(FileSystemService);
+  private readonly nautilusService = inject(NautilusService);
+  private readonly pathService = inject(PathService);
+  private readonly translate = inject(TranslateService);
 
-  public readonly jobData = computed(
-    () => this.jobService.jobs().find(j => j.jobid === this.initialData.jobid) ?? this.initialData
-  );
+  public readonly pathDisplayConfig = computed<PathDisplayConfig>(() => {
+    const job = this.jobData();
+    return {
+      source: job.source,
+      destination: job.destination,
+      sourceLabel: this.isMount()
+        ? this.translate.instant('modals.jobDetail.fields.remoteSource')
+        : undefined,
+      destinationLabel: this.isMount()
+        ? this.translate.instant('modals.jobDetail.fields.mountPoint')
+        : undefined,
+      showOpenButtons: true,
+      hasSource: true,
+      hasDestination: true,
+      isDestinationActive: true,
+    };
+  });
+
+  public readonly jobData = computed<JobInfo>(() => {
+    const job = this.jobService.jobs().find(j => j.jobid === this.initialData.jobid);
+    if (job) return job;
+
+    return {
+      jobid: this.initialData.jobid,
+      execute_id: (this.initialData as any).execute_id,
+      job_type: this.initialData.job_type ?? 'sync',
+      source: this.initialData.source ?? [],
+      destination: this.initialData.destination ?? '',
+      start_time: this.initialData.start_time ?? new Date().toISOString(),
+      status: this.initialData.status ?? 'Running',
+      remote_name: this.initialData.remote_name ?? '',
+      group: this.initialData.group ?? '',
+      backend_name: this.initialData.backend_name ?? 'Local',
+      stats: this.initialData.stats ?? {
+        bytes: 0,
+        totalBytes: 0,
+        speed: 0,
+        eta: 0,
+        totalTransfers: 0,
+        transfers: 0,
+        errors: 0,
+        checks: 0,
+        totalChecks: 0,
+        deletedDirs: 0,
+        deletes: 0,
+        renames: 0,
+        serverSideCopies: 0,
+        serverSideMoves: 0,
+        elapsedTime: 0,
+        lastError: '',
+        fatalError: false,
+        retryError: false,
+        serverSideCopyBytes: 0,
+        serverSideMoveBytes: 0,
+        transferTime: 0,
+        transferring: [],
+        listed: 0,
+      },
+    } as JobInfo;
+  });
 
   private readonly watchGroup = computed(() => {
     const job = this.jobData();
@@ -83,7 +156,7 @@ export class JobDetailModalComponent {
     return {
       activeTransfers: stats?.transferring ?? [],
       completedTransfers: combined,
-      remoteName: job.source || job.backend_name || 'Rclone',
+      remoteName: this.pathService.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
     };
   });
@@ -182,5 +255,15 @@ export class JobDetailModalComponent {
   @HostListener('keydown.escape')
   close(): void {
     this.modalService.animatedClose(this.dialogRef);
+  }
+
+  async onOpenPath(path: string): Promise<void> {
+    if (this.pathService.isLocalPath(path)) {
+      await this.fileSystemService.openInFiles(path);
+    } else {
+      const { remote: targetRemoteName, path: relativePath } = this.pathService.splitFsPath(path);
+      const defaultRemote = this.jobData().remote_name;
+      await this.nautilusService.newNautilusWindow(targetRemoteName || defaultRemote, relativePath);
+    }
   }
 }

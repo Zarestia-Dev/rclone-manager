@@ -60,8 +60,8 @@ export interface InputModalData {
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class InputModalComponent implements OnInit {
-  public dialogRef = inject(MatDialogRef<InputModalComponent>);
-  public data = inject<InputModalData>(MAT_DIALOG_DATA);
+  public readonly dialogRef = inject(MatDialogRef<InputModalComponent>);
+  public readonly data = inject<InputModalData>(MAT_DIALOG_DATA);
   protected readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);

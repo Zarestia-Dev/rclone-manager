@@ -9,7 +9,6 @@ import {
   JobsPanelConfig,
   PrimaryActionType,
   Remote,
-  RemoteSettings,
   SettingsPanelConfig,
 } from '@app/types';
 import {
@@ -125,7 +124,6 @@ export class GeneralDetailComponent {
 
   readonly openRemoteConfigModal = output<{
     editTarget?: string;
-    existingConfig?: RemoteSettings;
   }>();
   readonly stopJob = output<{
     type: PrimaryActionType;
@@ -239,7 +237,6 @@ export class GeneralDetailComponent {
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
       editTarget: 'remote',
-      existingConfig: this.selectedRemote().config as unknown as RemoteSettings,
     });
   }
 

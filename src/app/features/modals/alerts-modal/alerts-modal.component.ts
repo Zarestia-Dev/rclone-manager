@@ -126,8 +126,8 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
   styleUrl: '../../../styles/_shared-modal.scss',
 })
 export class AlertsModalComponent {
-  private dialogRef = inject(MatDialogRef<AlertsModalComponent>);
-  private modalService = inject(ModalService);
+  private readonly dialogRef = inject(MatDialogRef<AlertsModalComponent>);
+  private readonly modalService = inject(ModalService);
 
   readonly alerts = inject(AlertService);
 

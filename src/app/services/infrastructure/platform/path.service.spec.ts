@@ -108,7 +108,7 @@ describe('PathService', () => {
       expect(service.formatPathDisplay('a')).toBe('a');
       expect(service.formatPathDisplay([])).toBe('');
       expect(service.formatPathDisplay(['a'])).toBe('a');
-      expect(service.formatPathDisplay(['a', 'b', 'c'])).toBe('a (+2)');
+      expect(service.formatPathDisplay(['a', 'b', 'c'])).toBe('a, b, c');
     });
 
     it('should format tooltip text', () => {

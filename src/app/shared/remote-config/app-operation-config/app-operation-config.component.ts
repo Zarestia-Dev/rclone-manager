@@ -125,11 +125,13 @@ export class OperationConfigComponent {
   });
 
   readonly sourceItems = computed(() => {
+    this.formVersion();
     this.pathStructureVersion();
     this.opFormGroup();
     return this.getPathItems('source');
   });
   readonly destItem = computed(() => {
+    this.formVersion();
     this.pathStructureVersion();
     this.opFormGroup();
     return this.getPathItems('dest')[0] ?? null;
@@ -288,6 +290,8 @@ export class OperationConfigComponent {
         this.currentRemoteName()
       );
       item.control.get('remote')?.setValue(remoteName, { emitEvent: false });
+    } else {
+      item.control.get('remote')?.setValue('', { emitEvent: false });
     }
 
     this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
@@ -350,6 +354,8 @@ export class OperationConfigComponent {
       if (selected) {
         item.pathControl.setValue(selected);
         item.typeControl.setValue('local');
+        item.control.get('remote')?.setValue('');
+        this.pathStructureVersion.update(v => v + 1);
       }
     } catch (e) {
       console.error('Local picker error:', e);
@@ -376,6 +382,8 @@ export class OperationConfigComponent {
         if (i === 0) {
           item.pathControl.setValue(data.path);
           item.typeControl.setValue(data.type);
+          item.control.get('remote')?.setValue(data.remote || '');
+          this.pathStructureVersion.update(v => v + 1);
         } else {
           this.addPath(item.group, data);
         }

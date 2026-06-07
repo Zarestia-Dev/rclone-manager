@@ -1,6 +1,5 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { NgClass } from '@angular/common';
-import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -17,7 +16,6 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
-    MatTableModule,
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
@@ -28,130 +26,95 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
-        <table mat-table [dataSource]="transfers()" [trackBy]="trackByName" class="transfer-table">
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.file' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="name-cell">
-              <div class="file-info">
-                <mat-icon svgIcon="file" class="file-icon" [matTooltip]="transfer.name"></mat-icon>
-                <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
-                @if (transfer.isError) {
+        <div class="transfer-list">
+          @for (transfer of transfers(); track trackByName($index, transfer)) {
+            <div class="transfer-row-item">
+              <!-- Header Row: Icon, File Name, and Percentage -->
+              <div class="transfer-header">
+                <div class="file-info">
                   <mat-icon
-                    svgIcon="circle-exclamation"
-                    class="error-icon warn"
-                    [matTooltip]="'shared.transferActivity.status.transferError' | translate"
+                    svgIcon="file"
+                    class="file-icon"
+                    [matTooltip]="transfer.name"
                   ></mat-icon>
-                }
-                @if (transfer.isCompleted) {
-                  <mat-icon
-                    svgIcon="circle-check"
-                    class="success-icon primary"
-                    [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
-                  ></mat-icon>
-                }
-              </div>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="progress">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.progress' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="progress-cell">
-              <div class="progress-info">
-                <div class="progress-header">
+                  <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
+                  @if (transfer.isError) {
+                    <mat-icon
+                      svgIcon="circle-exclamation"
+                      class="error-badge-icon warn"
+                      [matTooltip]="
+                        transfer.error ||
+                        ('shared.transferActivity.status.transferError' | translate)
+                      "
+                    ></mat-icon>
+                  }
+                  @if (transfer.isCompleted) {
+                    <mat-icon
+                      svgIcon="circle-check"
+                      class="success-badge-icon primary"
+                      [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
+                    ></mat-icon>
+                  }
+                </div>
+                <div class="progress-badge">
                   @if (isPreparing(transfer.percentage)) {
-                    <span class="progress-text">{{
+                    <span class="percentage-text preparing">{{
                       'shared.transferActivity.status.preparing' | translate
                     }}</span>
                   } @else if (transfer.percentage === 100) {
-                    <span class="progress-text">{{
+                    <span class="percentage-text finalizing">{{
                       'shared.transferActivity.status.finalizing' | translate
                     }}</span>
                   } @else {
-                    <span class="progress-text">{{ transfer.percentage }}%</span>
+                    <span class="percentage-text">{{ transfer.percentage }}%</span>
                   }
-                  <span class="size-text">
-                    {{ transfer.bytes ?? 0 | formatFileSize }} /
-                    {{ transfer.size | formatFileSize }}
+                </div>
+              </div>
+
+              <!-- Path Display (srcFs -> dstFs) -->
+              @if (transfer.srcFs || transfer.dstFs) {
+                <div class="transfer-paths">
+                  <span class="path-pill src">
+                    {{ transfer.srcFs || '?' }}
+                  </span>
+                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                  <span class="path-badge dst">
+                    {{ transfer.dstFs || '?' }}
                   </span>
                 </div>
+              }
+
+              <!-- Progress Bar -->
+              <div class="transfer-progress">
                 <mat-progress-bar
                   [mode]="isPreparing(transfer.percentage) ? 'indeterminate' : 'determinate'"
                   [value]="isPreparing(transfer.percentage) ? 0 : transfer.percentage"
                 ></mat-progress-bar>
               </div>
-            </td>
-          </ng-container>
 
-          <ng-container matColumnDef="speed">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.speed' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="speed-cell">
-              <div class="speed-info">
-                @if (transfer.speed > 0) {
-                  <span class="speed-value">{{ transfer.speed | formatFileSize }}/s</span>
-                  <div class="speed-indicator" [ngClass]="getSpeedClass(transfer.speed)"></div>
-                } @else {
-                  <span class="speed-idle">-</span>
-                }
+              <!-- Stats Footer -->
+              <div class="transfer-footer">
+                <div class="stats-left">
+                  <span class="size-text">
+                    {{ transfer.bytes | formatFileSize }} /
+                    {{ transfer.size | formatFileSize }}
+                  </span>
+                </div>
+                <div class="stats-right">
+                  @if (transfer.speed > 0) {
+                    <span class="speed-text">
+                      <span class="speed-dot" [ngClass]="getSpeedClass(transfer.speed)"></span>
+                      {{ transfer.speed | formatFileSize }}/s
+                    </span>
+                  }
+                  @if (transfer.eta > 0 && !transfer.isCompleted) {
+                    <span class="eta-text">{{ transfer.eta | formatTime }}</span>
+                  }
+                </div>
               </div>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="eta">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.eta' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="eta-cell">
-              @if (transfer.eta > 0 && !transfer.isCompleted) {
-                <span class="eta-value">{{ transfer.eta | formatTime }}</span>
-              } @else {
-                <span class="eta-complete">-</span>
-              }
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="path">
-            <th mat-header-cell *matHeaderCellDef>
-              {{ 'shared.transferActivity.table.path' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let transfer" class="path-cell">
-              <div class="path-info">
-                @if (transfer.srcFs || transfer.dstFs) {
-                  <span
-                    class="src"
-                    [matTooltip]="pathService.joinFsPath(transfer.srcFs, transfer.name)"
-                    >{{ transfer.srcFs || '?' }}</span
-                  >
-                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <span
-                    class="dst"
-                    [matTooltip]="pathService.joinFsPath(transfer.dstFs, transfer.name)"
-                    >{{ transfer.dstFs || '?' }}</span
-                  >
-                } @else {
-                  <span class="no-path">-</span>
-                }
-              </div>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: displayedColumns"
-            class="transfer-row"
-            [ngClass]="{
-              completed: row.isCompleted,
-              error: row.isError,
-              active: !row.isCompleted && !row.isError,
-            }"
-          ></tr>
-        </table>
+            </div>
+          }
+        </div>
       } @else {
         <div class="empty-state">
           <mat-icon svgIcon="download" class="placeholder-icon"></mat-icon>
@@ -168,16 +131,16 @@ export class ActiveTransfersTableComponent {
 
   readonly transfers = input.required<TransferFile[]>();
 
-  readonly displayedColumns = ['name', 'path', 'progress', 'speed', 'eta'];
-
   trackByName(_index: number, transfer: TransferFile): string {
     return transfer.name;
   }
+
   getSpeedClass(speed: number): string {
     if (speed > 10 * 1024 * 1024) return 'speed-fast';
     if (speed > 1 * 1024 * 1024) return 'speed-medium';
     return 'speed-slow';
   }
+
   isPreparing(percentage: number | undefined | null): boolean {
     return percentage === undefined || percentage === null || isNaN(percentage);
   }

@@ -425,8 +425,8 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertRulesComponent {
-  readonly alerts = inject(AlertService);
-  private modalService = inject(ModalService);
+  public readonly alerts = inject(AlertService);
+  private readonly modalService = inject(ModalService);
   private readonly notificationService = inject(NotificationService);
 
   searchVisible = signal(false);
@@ -447,7 +447,7 @@ export class AlertRulesComponent {
 
   editRule(rule: AlertRule): void {
     this.modalService
-      .openAlertRuleEditor(rule)
+      .openAlertRuleEditor(rule.id)
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertRule(updated);

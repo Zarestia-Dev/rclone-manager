@@ -46,7 +46,10 @@
               <mat-icon class="job-type-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
               <div class="job-content">
                 <span class="job-name">{{ getFileName(job) }}</span>
-                <span class="job-subname" [matTooltip]="job.destination || job.source">
+                <span
+                  class="job-subname"
+                  [matTooltip]="job.destination || getFormattedSource(job.source)"
+                >
                   {{ getActualFileName(job) }}
                 </span>
               </div>
@@ -160,7 +163,7 @@
                     <span class="detail-label">{{
                       'fileBrowser.operations.details.source' | translate
                     }}</span>
-                    <span class="path-text">{{ job.source }}</span>
+                    <span class="path-text">{{ getFormattedSource(job.source) }}</span>
                   </div>
                 }
 

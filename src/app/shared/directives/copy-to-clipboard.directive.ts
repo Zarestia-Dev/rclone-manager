@@ -1,4 +1,4 @@
-import { Directive, HostListener, input, inject, HostBinding } from '@angular/core';
+import { Directive, HostListener, input, inject, HostBinding, ElementRef } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '@app/services';
@@ -18,6 +18,7 @@ export class CopyToClipboardDirective {
   private readonly clipboard = inject(Clipboard);
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
+  private readonly elementRef = inject(ElementRef);
 
   /** The text to be copied to the clipboard */
   copyText = input.required<string | null | undefined>({ alias: 'appCopyToClipboard' });
@@ -45,6 +46,17 @@ export class CopyToClipboardDirective {
   private performCopy(event: Event): void {
     const text = this.copyText();
     if (!text) return;
+
+    // Do not overwrite copy if user has manually selected some text inside the host element
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      const hostElement = this.elementRef.nativeElement;
+      const anchorInside = selection.anchorNode && hostElement.contains(selection.anchorNode);
+      const focusInside = selection.focusNode && hostElement.contains(selection.focusNode);
+      if (anchorInside || focusInside) {
+        return;
+      }
+    }
 
     event.stopPropagation();
     event.preventDefault();

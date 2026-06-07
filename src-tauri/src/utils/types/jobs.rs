@@ -112,7 +112,7 @@ pub struct JobInfo {
     pub execute_id: Option<String>,
     pub job_type: JobType,
     pub remote_name: String,
-    pub source: String,
+    pub source: Vec<String>,
     pub destination: String,
     pub start_time: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]

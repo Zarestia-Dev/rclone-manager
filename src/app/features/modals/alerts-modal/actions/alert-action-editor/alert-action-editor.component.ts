@@ -36,13 +36,14 @@ export interface KindOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionEditorComponent {
-  private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<AlertActionEditorComponent>);
-  private modalService = inject(ModalService);
-  public alertService = inject(AlertService);
-  private fileSystem = inject(FileSystemService);
+  private readonly fb = inject(FormBuilder);
+  private readonly dialogRef = inject(MatDialogRef<AlertActionEditorComponent>);
+  private readonly modalService = inject(ModalService);
+  public readonly alertService = inject(AlertService);
+  private readonly fileSystem = inject(FileSystemService);
 
-  data = inject(MAT_DIALOG_DATA) as AlertAction | undefined;
+  private readonly dialogData = inject(MAT_DIALOG_DATA) as { actionId?: string } | undefined;
+  readonly data?: AlertAction;
   templateKeys = signal<string[]>([]);
 
   readonly kinds: KindOption[] = [
@@ -96,6 +97,10 @@ export class AlertActionEditorComponent {
   });
 
   constructor() {
+    this.data = this.dialogData?.actionId
+      ? this.alertService.actions().find(a => a.id === this.dialogData!.actionId)
+      : undefined;
+
     if (this.data) {
       const patch: any = { ...this.data };
 

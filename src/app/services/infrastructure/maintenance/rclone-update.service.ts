@@ -155,12 +155,16 @@ export class RcloneUpdateService extends TauriBaseService {
 
   async applyUpdate(): Promise<boolean> {
     try {
+      const restarted$ = firstValueFrom(
+        this.eventListenersService.listenToEngineRestarted('rclone_update')
+      );
+
       await this.invokeWithNotification<void>('apply_rclone_update', undefined, {
         errorKey: 'rcloneUpdate.failed',
         showSuccess: false,
       });
 
-      await firstValueFrom(this.eventListenersService.listenToEngineRestarted('rclone_update'));
+      await restarted$;
 
       this._updateState.set(null);
       return true;

@@ -10,7 +10,11 @@ use crate::{
         app::notification::{NotificationEvent, ServeStage, notify},
         logging::log::log_operation,
         rclone::endpoints::serve,
-        types::{logs::LogLevel, remotes::ProfileParams, state::RcloneState},
+        types::{
+            logs::LogLevel,
+            remotes::{OperationConfigKey, ProfileParams},
+            state::RcloneState,
+        },
     },
 };
 
@@ -460,7 +464,7 @@ pub async fn start_serve_profile(
         &app,
         &params.remote_name,
         &params.profile_name,
-        "serveConfigs",
+        OperationConfigKey::Serve.as_str(),
     )
     .await?;
 

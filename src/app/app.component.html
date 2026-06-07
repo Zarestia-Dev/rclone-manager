@@ -1,4 +1,4 @@
-<div class="app-wrapper" appShortcutHandler>
+<div class="app-wrapper">
   @if (!initializing()) {
     @if (!completedOnboarding()) {
       @defer {
@@ -14,10 +14,12 @@
       }
     } @else {
       @defer {
-        <app-titlebar data-tauri-drag-region></app-titlebar>
-        <app-banner></app-banner>
-        <app-home></app-home>
-        <app-tabs data-tauri-drag-region></app-tabs>
+        <ng-container appShortcutHandler>
+          <app-titlebar data-tauri-drag-region></app-titlebar>
+          <app-banner></app-banner>
+          <app-home></app-home>
+          <app-tabs data-tauri-drag-region></app-tabs>
+        </ng-container>
       }
     }
   }

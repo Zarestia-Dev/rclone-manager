@@ -195,7 +195,8 @@ pub async fn perform_check_rclone_update(
 
 #[tauri::command]
 pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Option<UpdateInfo>> {
-    let has_pending_new = find_pending_new_binary(&app_handle).is_some();
+    let pending_new = find_pending_new_binary(&app_handle);
+    let has_pending_new = pending_new.is_some();
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let (state, pending_metadata) = {
         let d = updater_state.data.lock();
@@ -227,8 +228,8 @@ pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Opti
             .await
             .unwrap_or_else(|| "unknown".to_string());
 
-        let version = if let Some((_, new_path)) = find_pending_new_binary(&app_handle) {
-            get_binary_version(&new_path)
+        let version = if let Some((_, new_path)) = &pending_new {
+            get_binary_version(new_path)
                 .await
                 .unwrap_or_else(|| "unknown".to_string())
         } else {
@@ -380,12 +381,7 @@ pub async fn update_rclone(
         }),
     );
 
-    let target_path = match resolve_update_target_path(&current_path, &app_handle) {
-        Ok(path) => path,
-        Err(e) => {
-            return Err(e);
-        }
-    };
+    let target_path = resolve_update_target_path(&current_path, &app_handle)?;
     let new_path = PathBuf::from(format!("{}.new", target_path.display()));
 
     {
@@ -399,16 +395,20 @@ pub async fn update_rclone(
     {
         let state = app_handle.state::<RcloneUpdaterState>();
         let mut data = state.data.lock();
-        data.state = UpdateState::Idle;
-        // Don't leave the token hanging around after completion
         data.cancel_token = None;
+        match &update_result {
+            Ok(res) if res.success => {
+                data.state = UpdateState::ReadyToRestart;
+            }
+            _ => {
+                data.state = UpdateState::Idle;
+            }
+        }
     }
 
     match &update_result {
         Ok(res) => {
             if res.success {
-                let state = app_handle.state::<RcloneUpdaterState>();
-                state.data.lock().state = UpdateState::ReadyToRestart;
                 notify(
                     &app_handle,
                     NotificationEvent::RcloneUpdate(UpdateStage::Downloaded {

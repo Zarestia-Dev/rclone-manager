@@ -34,7 +34,6 @@ import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm
 import {
   AlertAction,
   AlertRule,
-  RemoteSettings,
   RemoteFeatures,
   STANDARD_MODAL_SIZE,
   CONFIG_MODAL_SIZE,
@@ -50,11 +49,10 @@ export interface RemoteConfigModalOptions {
   remoteName?: string;
   remoteType?: string;
   editTarget?: string;
-  existingConfig?: RemoteSettings;
   initialSection?: string;
   targetProfile?: string;
-  cloneTarget?: boolean;
   autoAddProfile?: boolean;
+  cloneFrom?: string;
 }
 
 export interface ExportModalOptions {
@@ -194,13 +192,12 @@ export class ModalService {
 
     let parsedData: any = null;
     const currentWindowLabel = getCurrentWindow().label;
-    const localData = localStorage.getItem(`dialogData-${currentWindowLabel}`);
-    if (localData) {
+    const rawData = urlParams.get('dialogData');
+    if (rawData) {
       try {
-        parsedData = JSON.parse(localData);
-        localStorage.removeItem(`dialogData-${currentWindowLabel}`);
+        parsedData = JSON.parse(decodeURIComponent(rawData));
       } catch (e) {
-        console.error('[ModalService] Failed to parse localStorage data:', e);
+        console.error('[ModalService] Failed to parse URL data:', e);
       }
     }
 
@@ -240,14 +237,8 @@ export class ModalService {
     const label = `dialog-${dialogType}${suffix}`;
     const mockRef = new MockDialogRef<R>(label);
 
-    const url = `index.html?standalone=dialog&dialogType=${dialogType}`;
-    if (data) {
-      try {
-        localStorage.setItem(`dialogData-${label}`, JSON.stringify(data));
-      } catch (e) {
-        console.error('[ModalService] Failed to store dialog data in localStorage:', e);
-      }
-    }
+    const encodedData = data ? encodeURIComponent(JSON.stringify(data)) : '';
+    const url = `index.html?standalone=dialog&dialogType=${dialogType}${encodedData ? `&dialogData=${encodedData}` : ''}`;
 
     this.setupStandaloneWindow(label, url, title, width, height, mockRef);
 
@@ -269,14 +260,10 @@ export class ModalService {
       });
     } catch (err) {
       console.error('Failed to open standalone dialog window:', err);
-      // Clean up on error to prevent dangling data
-      localStorage.removeItem(`dialogData-${label}`);
       return;
     }
 
     if (!created) {
-      // Window already existed and was focused — clean up orphaned localStorage
-      localStorage.removeItem(`dialogData-${label}`);
       return;
     }
 
@@ -321,11 +308,10 @@ export class ModalService {
       name: options.remoteName,
       remoteType: options.remoteType,
       editTarget: options.editTarget,
-      existingConfig: options.existingConfig,
       initialSection: options.initialSection,
       targetProfile: options.targetProfile,
-      cloneTarget: options.cloneTarget,
       autoAddProfile: options.autoAddProfile,
+      cloneFrom: options.cloneFrom,
     };
     if (this.shouldOpenStandalone()) {
       const suffixParts: string[] = [];
@@ -392,19 +378,8 @@ export class ModalService {
   }
 
   openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
+    const data = { jobid: job.jobid, execute_id: job.execute_id };
     if (this.shouldOpenStandalone()) {
-      // Strip heavy stats and uploaded files arrays to prevent large payloads.
-      // Child window will fetch complete live job details via JobManagementService.
-      const { stats, uploaded_files: _, ...baseJob } = job as any;
-      const lightStats = stats
-        ? {
-            ...stats,
-            transferring: [],
-            completed: [],
-          }
-        : undefined;
-      const data = { ...baseJob, stats: lightStats };
-
       return this.openStandaloneDialog<JobDetailModalComponent>(
         'job-detail',
         this.translate.instant('settings.jobDetail.title', { id: job.jobid }),
@@ -417,7 +392,7 @@ export class ModalService {
     return this.dialog.open(JobDetailModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
-      data: job,
+      data,
     });
   }
 
@@ -567,19 +542,19 @@ export class ModalService {
     });
   }
 
-  openAlertActionEditor(data?: AlertAction): MatDialogRef<AlertActionEditorComponent, AlertAction> {
+  openAlertActionEditor(actionId?: string): MatDialogRef<AlertActionEditorComponent, AlertAction> {
     return this.dialog.open(AlertActionEditorComponent, {
       width: '600px',
       disableClose: false,
-      data,
+      data: { actionId },
     });
   }
 
-  openAlertRuleEditor(data?: AlertRule): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
+  openAlertRuleEditor(ruleId?: string): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
     return this.dialog.open(AlertRuleEditorComponent, {
       width: '600px',
       disableClose: true,
-      data,
+      data: { ruleId },
     });
   }
 

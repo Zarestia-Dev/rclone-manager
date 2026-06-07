@@ -76,6 +76,85 @@ pub struct ProfileConfig {
     pub rclone: Value,
 }
 
+impl ProfileConfig {
+    /// Parse a profile config value, handling both partitioned `{app, rclone}` and flat formats.
+    pub fn parse_from_value(val: &serde_json::Value) -> Self {
+        let is_partitioned = val.get("app").is_some() || val.get("rclone").is_some();
+        if is_partitioned {
+            serde_json::from_value(val.clone()).unwrap_or_else(|_| Self {
+                app: AppConfig::default(),
+                rclone: serde_json::Value::Null,
+            })
+        } else {
+            let app: AppConfig = serde_json::from_value(val.clone()).unwrap_or_default();
+            Self {
+                app,
+                rclone: val.clone(),
+            }
+        }
+    }
+}
+
+/// All operational profile config section keys in `RemoteSettings`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OperationConfigKey {
+    Mount,
+    Sync,
+    Copy,
+    Move,
+    Bisync,
+    Serve,
+}
+
+impl OperationConfigKey {
+    /// The JSON key in `RemoteSettings` (e.g. `"mountConfigs"`)
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Mount => "mountConfigs",
+            Self::Sync => "syncConfigs",
+            Self::Copy => "copyConfigs",
+            Self::Move => "moveConfigs",
+            Self::Bisync => "bisyncConfigs",
+            Self::Serve => "serveConfigs",
+        }
+    }
+
+    /// All operational config keys (for iteration in migration, deletion detection, etc.)
+    pub const ALL: &[Self] = &[
+        Self::Mount,
+        Self::Sync,
+        Self::Copy,
+        Self::Move,
+        Self::Bisync,
+        Self::Serve,
+    ];
+}
+
+/// Helper profile config section keys.
+pub mod helper_config_keys {
+    pub const VFS: &str = "vfsConfigs";
+    pub const FILTER: &str = "filterConfigs";
+    pub const BACKEND: &str = "backendConfigs";
+    pub const RUNTIME_REMOTE: &str = "runtimeRemoteConfigs";
+
+    /// All helper config keys (for iteration in migration).
+    pub const ALL: &[&str] = &[VFS, FILTER, BACKEND, RUNTIME_REMOTE];
+}
+
+/// Keys that belong in the `app` partition (vs `rclone`).
+/// Used by `partition_profile_to_app_and_rclone` in migration.
+pub const APP_PARTITION_KEYS: &[&str] = &[
+    "autoStart",
+    "cronEnabled",
+    "cronExpression",
+    "watchEnabled",
+    "watchDelay",
+    "vfsProfile",
+    "filterProfile",
+    "backendProfile",
+    "runtimeRemoteProfile",
+];
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteSettings {

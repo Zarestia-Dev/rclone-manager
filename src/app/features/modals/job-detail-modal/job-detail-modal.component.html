@@ -88,41 +88,16 @@
   </div>
 
   <!-- Section 2: Paths -->
-  <div class="dashboard-grids">
-    <div class="counter-grid">
-      <span class="grid-header">
-        <mat-icon [svgIcon]="isMount() ? 'mount' : 'folder-open'"></mat-icon>
-        {{ 'modals.jobDetail.sections.paths' | translate }}
-      </span>
-      <div class="path-display-container">
-        <div class="path-item">
-          <span class="path-label">
-            {{
-              (isMount()
-                ? 'modals.jobDetail.fields.remoteSource'
-                : 'modals.jobDetail.fields.source'
-              ) | translate
-            }}
-          </span>
-          <div class="path-box">
-            <code>{{ jobData().source }}</code>
-          </div>
-        </div>
-        <div class="path-item">
-          <span class="path-label">
-            {{
-              (isMount()
-                ? 'modals.jobDetail.fields.mountPoint'
-                : 'modals.jobDetail.fields.destination'
-              ) | translate
-            }}
-          </span>
-          <div class="path-box">
-            <code>{{ jobData().destination }}</code>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="counter-grid">
+    <span class="grid-header">
+      <mat-icon [svgIcon]="isMount() ? 'mount' : 'folder-open'"></mat-icon>
+      {{ 'modals.jobDetail.sections.paths' | translate }}
+    </span>
+    <app-path-display
+      [config]="pathDisplayConfig()"
+      (openPath)="onOpenPath($event)"
+      style="display: block; padding: 10px"
+    ></app-path-display>
   </div>
 
   <!-- Section 3: Detailed Statistics -->

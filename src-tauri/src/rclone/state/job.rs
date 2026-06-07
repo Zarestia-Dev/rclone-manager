@@ -248,7 +248,7 @@ mod tests {
             jobid,
             remote_name: remote.to_string(),
             job_type,
-            source: format!("{}path", remote),
+            source: vec![format!("{}path", remote)],
             destination: "/local/path".to_string(),
             start_time: chrono::Utc::now(),
             end_time: None,

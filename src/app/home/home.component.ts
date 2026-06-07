@@ -316,7 +316,6 @@ export class HomeComponent {
 
   openRemoteConfigModal(
     editTarget?: string,
-    existingConfig?: RemoteSettings,
     initialSection?: string,
     targetProfile?: string,
     remoteType?: string,
@@ -327,7 +326,6 @@ export class HomeComponent {
         remoteName: this.selectedRemote()?.name,
         remoteType,
         editTarget,
-        existingConfig,
         initialSection,
         targetProfile,
         autoAddProfile,
@@ -343,14 +341,12 @@ export class HomeComponent {
   }
 
   async cloneRemote(remoteName: string): Promise<void> {
-    const config = await this.remoteFacadeService.cloneRemote(remoteName);
-    if (!config) return;
-    const remoteConfig = config as RemoteSettings & { name?: string };
+    const remote = this.remoteFacadeService.activeRemotes().find(r => r.name === remoteName);
+    if (!remote) return;
     this.modalService
       .openRemoteConfig({
-        remoteName: remoteConfig['name'],
-        cloneTarget: true,
-        existingConfig: remoteConfig,
+        cloneFrom: remoteName,
+        remoteType: remote.type,
       })
       .afterClosed()
       .subscribe(saved => {

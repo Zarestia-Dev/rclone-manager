@@ -124,7 +124,6 @@ export class AppDetailComponent {
   // --- Outputs ---
   readonly openRemoteConfigModal = output<{
     editTarget?: string;
-    existingConfig?: RemoteSettings;
     initialSection?: string;
     targetProfile?: string;
     remoteType?: string;
@@ -663,7 +662,6 @@ export class AppDetailComponent {
   onAddProfile(): void {
     this.openRemoteConfigModal.emit({
       editTarget: this.currentOpType(),
-      existingConfig: this.remoteSettings(),
       autoAddProfile: true,
       remoteType: this.selectedRemote().type,
     });
@@ -677,7 +675,6 @@ export class AppDetailComponent {
     const [type, profileName] = event.section.split(':');
     this.openRemoteConfigModal.emit({
       editTarget: type,
-      existingConfig: this.remoteSettings(),
       targetProfile: profileName,
       remoteType: this.selectedRemote().type,
     });

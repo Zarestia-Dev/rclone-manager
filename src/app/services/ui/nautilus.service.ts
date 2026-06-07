@@ -41,10 +41,6 @@ export class NautilusService extends TauriBaseService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
 
-  // --- Nautilus overlay ---
-  private readonly _isNautilusOverlayOpen = signal(false);
-  readonly isNautilusOverlayOpen = this._isNautilusOverlayOpen.asReadonly();
-
   // --- File Picker ---
   private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
     isOpen: false,
@@ -66,9 +62,6 @@ export class NautilusService extends TauriBaseService {
   readonly cloudRemotes = signal<ExplorerRoot[]>([]);
   readonly allRemotesLookup = computed(() => [...this.localDrives(), ...this.cloudRemotes()]);
 
-  // --- Overlay refs ---
-  private browserOverlayRef: OverlayRef | null = null;
-  private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
   private pickerOverlayRef: OverlayRef | null = null;
   private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
 
@@ -153,7 +146,10 @@ export class NautilusService extends TauriBaseService {
     const tauriWin = this.getCurrentTauriWindow();
     const isStandalone =
       urlParams.get('standalone') === 'nautilus' ||
-      (tauriWin?.label?.startsWith('nautilus') ?? false);
+      (tauriWin?.label?.startsWith('nautilus') ?? false) ||
+      pathName.includes('/nautilus') ||
+      hash.startsWith('#/nautilus') ||
+      urlParams.has('browse');
 
     this.isStandaloneWindow.set(isStandalone);
 
@@ -171,18 +167,9 @@ export class NautilusService extends TauriBaseService {
       }
 
       if (!isStandalone) {
-        this._isNautilusOverlayOpen.set(true);
-        this.createBrowserOverlay(false);
+        void this.newNautilusWindow(remoteName, remotePath);
       }
       return;
-    }
-
-    const isNautilusRoute =
-      pathName.includes('/nautilus') || hash.startsWith('#/nautilus') || urlParams.has('browse');
-
-    if (isNautilusRoute && !isStandalone && !this._isNautilusOverlayOpen()) {
-      this._isNautilusOverlayOpen.set(true);
-      this.createBrowserOverlay(false);
     }
   }
 
@@ -237,27 +224,13 @@ export class NautilusService extends TauriBaseService {
 
   // ========== BROWSER & PICKER CONTROL ==========
 
-  toggleNautilusOverlay(): void {
-    if (this._isNautilusOverlayOpen()) {
-      this.closeBrowser();
-    } else {
-      this._isNautilusOverlayOpen.set(true);
-      this.createBrowserOverlay();
-    }
+  openForRemote(remoteName: string): void {
+    void this.newNautilusWindow(remoteName, null);
   }
 
-  openForRemote(remoteName: string, showAnimation = true): void {
-    this.selectedNautilusRemote.set(remoteName);
-    if (this.browserOverlayRef) return;
-    this._isNautilusOverlayOpen.set(true);
-    this.createBrowserOverlay(showAnimation);
-  }
-
-  openPath(path: string, showAnimation = true): void {
-    this.targetPath.set(path);
-    if (this.browserOverlayRef) return;
-    this._isNautilusOverlayOpen.set(true);
-    this.createBrowserOverlay(showAnimation);
+  openPath(path: string): void {
+    const { remote, path: relativePath } = this.pathService.splitFsPath(path);
+    void this.newNautilusWindow(remote || null, relativePath || null);
   }
 
   openFilePicker(options: FilePickerConfig): void {
@@ -294,12 +267,7 @@ export class NautilusService extends TauriBaseService {
   closeBrowser(): void {
     if (this.isStandaloneWindow()) {
       this.getCurrentTauriWindow()?.close();
-      return;
     }
-    this._isNautilusOverlayOpen.set(false);
-    this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
-    this.browserComponentRef = null;
-    this.browserOverlayRef = null;
   }
 
   // ========== COLLECTIONS ==========
@@ -404,7 +372,14 @@ export class NautilusService extends TauriBaseService {
       .subscribe({
         next: (path: string) => {
           console.log('Browse in app event:', path);
-          if (path) this.targetPath.set(path);
+          if (path) {
+            if (this.isStandaloneWindow()) {
+              this.targetPath.set(path);
+            } else {
+              const { remote, path: relativePath } = this.pathService.splitFsPath(path);
+              void this.newNautilusWindow(remote || null, relativePath || null);
+            }
+          }
         },
         error: (error: unknown) => console.error('Browse in app event error:', error),
       });
@@ -462,15 +437,6 @@ export class NautilusService extends TauriBaseService {
     overlayRef.backdropClick().pipe(take(1)).subscribe(onClose);
 
     return { overlayRef, componentRef };
-  }
-
-  private createBrowserOverlay(showAnimation = true): void {
-    const { overlayRef, componentRef } = this.createNautilusOverlay(
-      () => this.closeBrowser(),
-      showAnimation
-    );
-    this.browserOverlayRef = overlayRef;
-    this.browserComponentRef = componentRef;
   }
 
   private createPickerOverlay(): void {

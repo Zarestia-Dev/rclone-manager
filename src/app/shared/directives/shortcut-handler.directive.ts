@@ -195,7 +195,7 @@ export class ShortcutHandlerDirective {
   }
 
   private toggleFileBrowser(): void {
-    this.nautilusService.toggleNautilusOverlay();
+    void this.nautilusService.newNautilusWindow(null, null);
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {

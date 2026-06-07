@@ -58,7 +58,7 @@ pub async fn mkdir(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Mkdir,
-            source: path.clone(),
+            source: vec![path.clone()],
             destination: String::new(),
             profile: None,
             origin,
@@ -105,7 +105,7 @@ pub async fn cleanup(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Cleanup,
-            source: path_str.to_string(),
+            source: vec![path_str.to_string()],
             destination: String::new(),
             profile: None,
             origin,
@@ -154,7 +154,7 @@ pub async fn copy_url(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::CopyUrl,
-            source: url_to_copy,
+            source: vec![url_to_copy],
             destination: path.clone(),
             profile: None,
             origin,
@@ -200,7 +200,7 @@ pub async fn remove_empty_dirs(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Rmdirs,
-            source: path.clone(),
+            source: vec![path.clone()],
             destination: String::new(),
             profile: None,
             origin,
@@ -300,7 +300,10 @@ pub async fn transfer(
     } else {
         "multiple".to_string()
     };
-    let source = first_item.path.clone();
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.path))
+        .collect::<Vec<String>>();
 
     crate::rclone::commands::job::submit_batch_job(
         app,
@@ -348,7 +351,10 @@ pub async fn delete(
     } else {
         "multiple".to_string()
     };
-    let source = first_item.path.clone();
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.path))
+        .collect::<Vec<String>>();
 
     crate::rclone::commands::job::submit_batch_job(
         app,
@@ -476,7 +482,7 @@ pub async fn execute_upload_batch(
     let metadata = JobMetadata {
         remote_name: remote.clone(),
         job_type: JobType::Upload,
-        source: "local paths".to_string(),
+        source: vec!["local paths".to_string()],
         destination,
         profile: None,
         origin: origin.clone(),
@@ -640,7 +646,10 @@ pub async fn rename(
     } else {
         "multiple".to_string()
     };
-    let source = first_item.src_path.clone();
+    let source = items
+        .iter()
+        .map(|item| build_full_path(&item.remote, &item.src_path))
+        .collect::<Vec<String>>();
     let destination = first_item.dst_path.clone();
 
     crate::rclone::commands::job::submit_batch_job(

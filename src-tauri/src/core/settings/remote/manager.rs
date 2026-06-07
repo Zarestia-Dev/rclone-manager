@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
+use crate::utils::types::remotes::OperationConfigKey;
 
 /// **Save remote settings (per remote)**
 #[tauri::command]
@@ -63,16 +64,8 @@ pub async fn save_remote_settings(
 
     // Detect deleted profiles
     if let Some(ref existing_val) = existing {
-        let config_keys = [
-            "syncConfigs",
-            "copyConfigs",
-            "moveConfigs",
-            "bisyncConfigs",
-            "mountConfigs",
-            "serveConfigs",
-        ];
-
-        for key in config_keys {
+        for config_key in OperationConfigKey::ALL {
+            let key = config_key.as_str();
             if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
                 let new_configs = cleaned_settings.get(key).and_then(|v| v.as_object());
                 for profile_name in old_configs.keys() {

@@ -122,7 +122,7 @@ pub async fn get_fs_info(
         JobMetadata {
             remote_name: remote,
             job_type: JobType::Info,
-            source,
+            source: vec![source],
             destination: String::new(),
             profile: None,
             origin,
@@ -172,7 +172,7 @@ pub async fn get_remote_paths(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::List,
-            source: build_full_path(&remote, path.as_deref().unwrap_or("")),
+            source: vec![build_full_path(&remote, path.as_deref().unwrap_or(""))],
             destination: String::new(),
             profile: None,
             origin,
@@ -366,7 +366,7 @@ pub async fn get_about_remote(
         JobMetadata {
             remote_name: remote,
             job_type: JobType::About,
-            source,
+            source: vec![source],
             destination: String::new(),
             profile: None,
             origin,
@@ -399,7 +399,7 @@ pub async fn get_size(
         JobMetadata {
             remote_name: remote,
             job_type: JobType::Size,
-            source: fs_with_path,
+            source: vec![fs_with_path],
             destination: String::new(),
             profile: None,
             origin,
@@ -430,7 +430,7 @@ pub async fn get_stat(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Stat,
-            source: build_full_path(&remote, &path),
+            source: vec![build_full_path(&remote, &path)],
             destination: String::new(),
             profile: None,
             origin,
@@ -465,7 +465,7 @@ pub async fn get_hashsum(
         JobMetadata {
             remote_name: remote,
             job_type: JobType::Hash,
-            source: fs_with_path,
+            source: vec![fs_with_path],
             destination: String::new(),
             profile: None,
             origin,
@@ -498,7 +498,7 @@ pub async fn get_hashsum_file(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Hash,
-            source: build_full_path(&remote, &path),
+            source: vec![build_full_path(&remote, &path)],
             destination: String::new(),
             profile: None,
             origin,
@@ -539,7 +539,7 @@ pub async fn get_public_link(
         JobMetadata {
             remote_name: remote.clone(),
             job_type: JobType::Info,
-            source: build_full_path(&remote, &path),
+            source: vec![build_full_path(&remote, &path)],
             destination: String::new(),
             profile: None,
             origin,

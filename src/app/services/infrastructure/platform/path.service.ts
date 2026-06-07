@@ -172,13 +172,6 @@ export class PathService {
     }
   }
 
-  joinFsPath(fs: string | undefined, path: string): string {
-    if (!fs) return path;
-    return fs.endsWith(':') || fs.endsWith('/') || fs.endsWith('\\')
-      ? `${fs}${path}`
-      : `${fs}/${path}`;
-  }
-
   buildPathStrings(
     pathGroups: PathGroup | PathGroup[] | null | undefined,
     currentRemoteName: string
@@ -245,8 +238,7 @@ export class PathService {
   formatPathDisplay(path: string | string[]): string {
     if (!Array.isArray(path)) return path;
     if (path.length === 0) return '';
-    if (path.length === 1) return path[0];
-    return `${path[0]} (+${path.length - 1})`;
+    return path.join(', ');
   }
 
   formatPathTooltip(path: string | string[]): string {

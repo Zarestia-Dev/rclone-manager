@@ -542,7 +542,6 @@ export class RemoteConfigModalComponent {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    if (this.nautilusService.isNautilusOverlayOpen()) return;
     this.modalService.animatedClose(this.dialogRef);
   }
 }

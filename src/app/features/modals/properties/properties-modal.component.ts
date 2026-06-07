@@ -61,8 +61,8 @@ interface ExpiryOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PropertiesModalComponent implements OnInit, OnDestroy {
-  private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
-  public data: {
+  private readonly dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
+  public readonly data: {
     remoteName: string;
     path: string;
     isLocal: boolean;

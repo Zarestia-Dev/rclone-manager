@@ -31,7 +31,7 @@ const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 pub struct JobMetadata {
     pub remote_name: String,
     pub job_type: JobType,
-    pub source: String,
+    pub source: Vec<String>,
     pub destination: String,
     pub profile: Option<String>,
     pub origin: Option<Origin>,
@@ -78,7 +78,7 @@ impl JobMetadata {
             self.profile.clone(),
             self.job_type.clone(),
             self.resolved_origin(),
-            Some(self.source.clone()),
+            Some(self.source.join(", ")),
             Some(self.destination.clone()),
         ))
     }
@@ -521,6 +521,7 @@ pub async fn handle_job_completion(
                         .and_then(|v| v.as_str())
                         .unwrap_or("Unknown error");
                     if !err.is_empty() {
+                        let source_str = metadata.source.join(", ");
                         let item_name = res
                             .get("input")
                             .and_then(|i| {
@@ -531,7 +532,7 @@ pub async fn handle_job_completion(
                                     .or_else(|| i.get("path2"))
                             })
                             .and_then(|v| v.as_str())
-                            .unwrap_or(&metadata.source);
+                            .unwrap_or(&source_str);
 
                         let full_err = format!("{item_name}: {err}");
                         if error_msg.is_empty() {
@@ -612,7 +613,7 @@ pub async fn handle_job_completion(
                     remote: automation.remote_name.clone(),
                     profile: automation.profile_name.clone(),
                     automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
+                    automation_type: automation.automation_type,
                 }),
             );
         } else if stopped {
@@ -635,7 +636,7 @@ pub async fn handle_job_completion(
                     remote: automation.remote_name.clone(),
                     profile: automation.profile_name.clone(),
                     automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
+                    automation_type: automation.automation_type,
                 }),
             );
         } else {
@@ -658,7 +659,7 @@ pub async fn handle_job_completion(
                     remote: automation.remote_name.clone(),
                     profile: automation.profile_name.clone(),
                     automation_name: automation.display_name(),
-                    automation_type: automation.automation_type.clone(),
+                    automation_type: automation.automation_type,
                     error: error_msg.clone(),
                 }),
             );
@@ -966,7 +967,7 @@ pub async fn register_preparing_job(
     let metadata = JobMetadata {
         remote_name: remote,
         job_type: JobType::Upload,
-        source: "preparing".to_string(),
+        source: vec!["preparing".to_string()],
         destination,
         profile: None,
         origin,
@@ -1014,7 +1015,7 @@ mod tests {
         JobMetadata {
             remote_name: "gdrive:".to_string(),
             job_type: JobType::Sync,
-            source: "src".to_string(),
+            source: vec!["src".to_string()],
             destination: "dst".to_string(),
             profile: profile.map(str::to_string),
             origin,

@@ -32,17 +32,18 @@ import { AlertService, ModalService, RemoteFacadeService, BackendService } from 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertRuleEditorComponent {
-  private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<AlertRuleEditorComponent>);
-  private modalService = inject(ModalService);
-  private alertService = inject(AlertService);
-  private remoteFacade = inject(RemoteFacadeService);
-  private backendService = inject(BackendService);
+  private readonly fb = inject(FormBuilder);
+  private readonly dialogRef = inject(MatDialogRef<AlertRuleEditorComponent>);
+  private readonly modalService = inject(ModalService);
+  private readonly alertService = inject(AlertService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly backendService = inject(BackendService);
 
-  data = inject(MAT_DIALOG_DATA) as AlertRule | undefined;
-  remotes = this.remoteFacade.activeRemotes;
-  backends = this.backendService.backends;
-  actions = this.alertService.actions;
+  private readonly dialogData = inject(MAT_DIALOG_DATA) as { ruleId?: string } | undefined;
+  readonly data?: AlertRule;
+  readonly remotes = this.remoteFacade.activeRemotes;
+  readonly backends = this.backendService.backends;
+  readonly actions = this.alertService.actions;
 
   allProfiles = computed(() => {
     const profiles = new Set<string>();
@@ -103,6 +104,10 @@ export class AlertRuleEditorComponent {
   });
 
   constructor() {
+    this.data = this.dialogData?.ruleId
+      ? this.alertService.rules().find(r => r.id === this.dialogData!.ruleId)
+      : undefined;
+
     if (this.data) this.form.patchValue(this.data);
   }
 

@@ -5,7 +5,10 @@ use tauri::AppHandle;
 
 use crate::utils::{
     rclone::endpoints::sync,
-    types::{jobs::JobType, remotes::ProfileParams},
+    types::{
+        jobs::JobType,
+        remotes::{OperationConfigKey, ProfileParams},
+    },
 };
 
 use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
@@ -41,6 +44,15 @@ impl TransferType {
             TransferType::Copy => JobType::Copy,
             TransferType::Move => JobType::Move,
             TransferType::Bisync => JobType::Bisync,
+        }
+    }
+
+    pub fn config_key(&self) -> OperationConfigKey {
+        match self {
+            TransferType::Sync => OperationConfigKey::Sync,
+            TransferType::Copy => OperationConfigKey::Copy,
+            TransferType::Move => OperationConfigKey::Move,
+            TransferType::Bisync => OperationConfigKey::Bisync,
         }
     }
 }
@@ -173,12 +185,7 @@ pub async fn start_profile_batch(
     transfer_type: TransferType,
     params: ProfileParams,
 ) -> Result<String, String> {
-    let config_key = match transfer_type {
-        TransferType::Sync => "syncConfigs",
-        TransferType::Copy => "copyConfigs",
-        TransferType::Move => "moveConfigs",
-        TransferType::Bisync => "bisyncConfigs",
-    };
+    let config_key = transfer_type.config_key().as_str();
 
     let (config, settings) = crate::rclone::commands::common::resolve_profile_settings(
         &app,
@@ -254,8 +261,6 @@ pub async fn start_profile_batch(
         return Err("No valid jobs generated".to_string());
     }
 
-    let job_source = common.source.join(", ");
-
     // Detect if DryRun was set in the resolved options
     let dry_run = if transfer_type == TransferType::Bisync {
         common
@@ -279,7 +284,7 @@ pub async fn start_profile_batch(
         JobMetadata {
             remote_name: params.remote_name.clone(),
             job_type: transfer_type.as_job_type(),
-            source: job_source,
+            source: common.source.clone(),
             destination: common.dest.clone(),
             profile: Some(params.profile_name.clone()),
             origin: params.source,

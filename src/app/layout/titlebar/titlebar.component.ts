@@ -209,6 +209,6 @@ export class TitlebarComponent implements OnInit {
   }
 
   onBrowseClick(): void {
-    this.nautilusService.toggleNautilusOverlay();
+    void this.nautilusService.newNautilusWindow(null, null);
   }
 }

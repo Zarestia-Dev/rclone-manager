@@ -4,80 +4,82 @@
   gap: var(--panel-gap);
 
   .path-item {
-    display: flex;
-    align-items: center;
-    gap: var(--header-gap);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: var(--space-sm);
     flex: 1;
     min-width: 0;
-    padding: var(--item-padding);
-    background: var(--sidebar-bg-color);
+    padding: var(--path-item-padding, var(--item-padding));
+    background: var(--path-item-bg, var(--sidebar-bg-color));
     border-radius: var(--item-radius);
     transition: var(--transition-fast);
 
-    .path-icon-container {
-      .folder-button {
-        position: relative;
+    .folder-button,
+    .path-icon {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      align-self: center;
+    }
 
-        &.active {
-          background: color-mix(
-            in srgb,
-            var(--mat-sys-primary, var(--accent-color)) 18%,
-            transparent
-          );
-          color: var(--mat-sys-primary, var(--accent-color));
-        }
+    .folder-button {
+      position: relative;
 
-        &.inactive {
-          background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
-          color: var(--dim-color);
-        }
+      &.active {
+        background: color-mix(
+          in srgb,
+          var(--mat-sys-primary, var(--accent-color)) 18%,
+          transparent
+        );
+        color: var(--mat-sys-primary, var(--accent-color));
+      }
 
-        /* Subtle visual hint when the button holds multiple paths */
-        &.multi-path {
-          .path-count {
-            position: absolute;
-            bottom: -8px;
-            right: -8px;
-            min-width: 16px;
-            height: 16px;
-            padding: 0 4px;
-            border-radius: 8px;
-            background: var(--mat-sys-primary, var(--accent-color));
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid var(--sidebar-bg-color);
-            line-height: 1;
-            pointer-events: none;
-            z-index: 1;
-          }
+      &.inactive {
+        background: rgba(var(--window-fg-color-rgb), var(--inactive-opacity));
+        color: var(--dim-color);
+      }
+
+      /* Subtle visual hint when the button holds multiple paths */
+      &.multi-path {
+        .path-count {
+          position: absolute;
+          bottom: -8px;
+          right: -8px;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          border-radius: 8px;
+          background: var(--mat-sys-primary, var(--accent-color));
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid var(--sidebar-bg-color);
+          line-height: 1;
+          pointer-events: none;
+          z-index: 1;
         }
       }
     }
 
-    .path-info {
-      flex: 1;
-      min-width: 0;
+    .path-label {
+      grid-column: 2;
+      grid-row: 1;
+      font-size: var(--font-size-md);
+      color: var(--dim-color);
+      font-weight: 500;
+    }
 
-      .path-label {
-        font-size: var(--font-size-sm);
-        color: var(--dim-color);
-        font-weight: 500;
-        margin-bottom: 4px;
-      }
-
-      .path-value {
-        font-size: var(--font-size-base);
-        color: var(--window-fg-color);
-        font-weight: 400;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-      }
+    .path-value {
+      grid-column: 2;
+      grid-row: 2;
+      color: var(--window-fg-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
   }
 

@@ -5,7 +5,7 @@ use crate::utils::types::jobs::JobType;
 use crate::utils::types::remotes::ProfileParams;
 
 /// Type of automation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum AutomationType {
     Copy,
@@ -33,6 +33,16 @@ impl AutomationType {
             AutomationType::Sync => JobType::Sync,
             AutomationType::Move => JobType::Move,
             AutomationType::Bisync => JobType::Bisync,
+        }
+    }
+
+    #[must_use]
+    pub fn config_key(&self) -> crate::utils::types::remotes::OperationConfigKey {
+        match self {
+            Self::Sync => crate::utils::types::remotes::OperationConfigKey::Sync,
+            Self::Copy => crate::utils::types::remotes::OperationConfigKey::Copy,
+            Self::Move => crate::utils::types::remotes::OperationConfigKey::Move,
+            Self::Bisync => crate::utils::types::remotes::OperationConfigKey::Bisync,
         }
     }
 }

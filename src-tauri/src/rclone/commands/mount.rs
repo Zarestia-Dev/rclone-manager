@@ -9,7 +9,12 @@ use crate::{
         app::notification::{MountStage, NotificationEvent, notify},
         logging::log::log_operation,
         rclone::endpoints::mount,
-        types::{jobs::JobType, logs::LogLevel, remotes::ProfileParams, state::RcloneState},
+        types::{
+            jobs::JobType,
+            logs::LogLevel,
+            remotes::{OperationConfigKey, ProfileParams},
+            state::RcloneState,
+        },
     },
 };
 
@@ -167,7 +172,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let metadata = JobMetadata {
         remote_name: params.remote_name.clone(),
         job_type: JobType::Mount,
-        source: params.source.clone(),
+        source: vec![params.source.clone()],
         destination: params.mount_point.clone(),
         profile: params.profile.clone(),
         origin: params.origin.clone(),
@@ -355,7 +360,7 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
         &app,
         &params.remote_name,
         &params.profile_name,
-        "mountConfigs",
+        OperationConfigKey::Mount.as_str(),
     )
     .await
     {

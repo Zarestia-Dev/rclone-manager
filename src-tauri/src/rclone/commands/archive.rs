@@ -57,7 +57,7 @@ pub async fn archive_create(
     let metadata = JobMetadata {
         remote_name: destination.clone(),
         job_type: JobType::ArchiveCreate,
-        source: source.clone(),
+        source: vec![source.clone()],
         destination: destination.clone(),
         profile: None,
         origin: Some(Origin::FileManager),
@@ -106,7 +106,7 @@ pub async fn archive_extract(
     let metadata = JobMetadata {
         remote_name: source.clone(),
         job_type: JobType::ArchiveExtract,
-        source: source.clone(),
+        source: vec![source.clone()],
         destination: destination.clone(),
         profile: None,
         origin: Some(Origin::FileManager),

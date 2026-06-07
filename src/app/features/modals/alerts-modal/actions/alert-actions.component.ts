@@ -278,7 +278,7 @@ import { SearchContainerComponent } from '@app/shared/components';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertActionsComponent {
-  readonly alerts = inject(AlertService);
+  public readonly alerts = inject(AlertService);
   private readonly modalService = inject(ModalService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
@@ -301,7 +301,7 @@ export class AlertActionsComponent {
 
   editAction(action: AlertAction): void {
     this.modalService
-      .openAlertActionEditor(action)
+      .openAlertActionEditor(action.id)
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertAction(updated);

@@ -1,248 +1,262 @@
 .transfer-table-container {
   background: var(--window-bg-color);
-  display: flex;
-  flex-direction: column;
-  overflow-y: hidden;
+  max-height: clamp(300px, 50vh, 600px);
+  overflow-y: auto;
+  position: relative;
 
-  .transfer-table {
-    // STICKY HEADER CONFIGURATION
-    .mat-mdc-header-row {
-      background-color: var(--view-bg-color); // Crucial for sticky header opacity
-    }
+  .transfer-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: transparent;
+    contain: layout style paint;
 
-    .mat-mdc-header-cell {
-      color: var(--window-fg-color);
-      font-weight: 600;
-      font-size: var(--font-size-sm);
+    .transfer-row-item {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
       padding: var(--space-sm) var(--space-md);
-      background-color: inherit; // Inherit from row to ensure opacity covers scrolling content
-      white-space: nowrap;
       border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
-
-      // Fix for sticky header z-index issues
-      z-index: 10 !important;
-    }
-
-    .transfer-row {
-      transition: background-color 0.2s ease;
-      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
-      height: 50px; // Fixed height for consistency
+      transition: var(--transition-fast);
 
       &:hover {
-        background: rgba(var(--window-fg-color-rgb), var(--hover-opacity));
+        background: rgba(var(--primary-color-rgb), var(--background-opacity));
       }
 
       &:last-child {
         border-bottom: none;
       }
 
-      // --- STATUS INDICATORS (Left Border) ---
-
-      // Active
-      &.active {
-        background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
-      }
-
-      // Completed / Success
-      &.completed,
-      &.success {
-        background: rgba(var(--accent-color-rgb), 0.02);
-      }
-
-      // Checked (Skipped)
-      &.checked {
-        background: rgba(var(--window-fg-color-rgb), 0.02);
-      }
-
-      // Error
-      &.error {
-        background: rgba(var(--warn-color-rgb), 0.05);
-
-        .mat-mdc-cell {
-          color: var(--warn-color);
-        }
-      }
-
-      .mat-mdc-cell {
-        padding: var(--space-sm) var(--space-md);
-        color: var(--window-fg-color);
-        font-size: var(--font-size-sm);
-        white-space: nowrap;
-      }
-    }
-
-    // --- COLUMN SPECIFIC STYLES ---
-
-    // 1. Name Column
-    .name-cell .file-info {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      max-width: 400px; // Increased to accommodate relative paths
-
-      .file-icon {
-        width: 20px;
-        height: 20px;
-        min-width: 20px;
-        color: var(--dim-color);
-      }
-
-      .file-name {
-        font-weight: 500;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex: 1;
-      }
-
-      .error-icon {
-        width: 16px;
-        height: 16px;
-        color: var(--warn-color);
-      }
-      .success-icon {
-        width: 16px;
-        height: 16px;
-        color: var(--accent-color);
-      }
-    }
-
-    // 2. Progress Column (Active)
-    .progress-cell .progress-info {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 140px;
-
-      .progress-header {
+      // --- ROW HEADER ---
+      .transfer-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        font-size: 11px;
-        color: var(--dim-color);
+        justify-content: space-between;
+        gap: var(--space-sm);
 
-        .progress-text {
-          font-weight: 600;
-          color: var(--window-fg-color);
+        .file-info {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          min-width: 0;
+          flex: 1;
+
+          .file-icon {
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            color: var(--dim-color);
+          }
+
+          .file-name {
+            font-weight: 600;
+            color: var(--window-fg-color);
+            font-size: var(--font-size-sm);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+
+        .progress-badge {
+          .percentage-text {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--window-fg-color);
+            font-family: var(--font-mono);
+
+            &.preparing,
+            &.finalizing {
+              font-family: inherit;
+              color: var(--dim-color);
+              font-size: var(--font-size-xs);
+              font-style: italic;
+            }
+          }
+        }
+      }
+
+      // --- ROW PATHS ---
+      .transfer-paths {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--font-size-xs);
+        color: var(--dim-color);
+        margin-left: 26px;
+
+        .path-pill {
+          background: rgba(var(--window-fg-color-rgb), 0.05);
+          padding: 1px 6px;
+          border-radius: 4px;
+          max-width: 180px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-family: var(--font-mono);
+
+          &.src {
+            color: var(--primary-color);
+          }
+          &.dst {
+            color: var(--accent-color);
+          }
+        }
+
+        .arrow-icon {
+          width: 12px;
+          height: 12px;
+          opacity: 0.5;
+        }
+      }
+
+      // --- PROGRESS BAR ---
+      .transfer-progress {
+        margin-left: 26px;
+
+        mat-progress-bar {
+          height: 4px;
+          border-radius: 2px;
+        }
+      }
+
+      // --- ROW FOOTER ---
+      .transfer-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-sm);
+        font-size: var(--font-size-xs);
+        color: var(--dim-color);
+        margin-left: 26px;
+
+        .stats-left {
+          .size-text {
+            font-weight: 500;
+          }
+          .size-transferred {
+            opacity: 0.8;
+            margin-left: var(--space-xs);
+          }
+        }
+
+        .stats-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .speed-text {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-mono);
+
+            .speed-dot {
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+
+              &.speed-fast {
+                background-color: var(--accent-color);
+              }
+              &.speed-medium {
+                background-color: var(--mat-sys-primary);
+              }
+              &.speed-slow {
+                background-color: var(--warn-color);
+              }
+            }
+          }
+
+          .eta-text {
+            font-weight: 600;
+            color: var(--primary-color);
+          }
+
+          .time-text {
+            color: var(--dim-color);
+          }
+
+          .duration-badge {
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: rgba(var(--primary-color-rgb), var(--active-opacity));
+            color: var(--primary-color);
+            font-weight: 600;
+          }
         }
       }
     }
+  }
 
-    // 3. Speed Column
-    .speed-cell .speed-info {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
+  // --- EMPTY STATE ---
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl) var(--panel-padding, 16px);
+    text-align: center;
+    color: var(--dim-color);
 
-      .speed-value {
-        font-family: var(--font-mono);
-        font-weight: 500;
-      }
-
-      .speed-indicator {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-
-        &.speed-fast {
-          background-color: var(--accent-color);
-        }
-        &.speed-medium {
-          background-color: var(--mat-sys-primary);
-        }
-        &.speed-slow {
-          background-color: var(--warn-color);
-        }
-      }
-
-      .speed-idle {
-        color: var(--dim-color);
-        opacity: 0.5;
-      }
+    .placeholder-icon {
+      width: var(--icon-size-xl, 32px);
+      height: var(--icon-size-xl, 32px);
+      font-size: var(--icon-size-xl, 32px);
+      opacity: 0.5;
+      margin-bottom: 12px;
     }
 
-    // 4. ETA & Time Columns
-    .time-cell .time-info {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 2px;
-
-      .time-value {
-        font-weight: 600;
-        font-size: 12px;
-      }
-
-      .time-relative {
-        font-size: 11px;
-        color: var(--dim-color);
-      }
-
-      .duration {
-        display: inline-block;
-        margin-top: 2px;
-        font-size: 10px;
-        padding: 1px 6px;
-        border-radius: 4px;
-        background: rgba(var(--mat-sys-primary-rgb), 0.1);
-        color: var(--mat-sys-primary);
-        width: fit-content;
-        font-weight: 600;
-      }
+    span {
+      font-size: var(--font-size-base);
+      font-weight: 500;
+      color: var(--window-fg-color);
+      margin-bottom: 4px;
     }
 
-    // 6. Path Column
-    .path-cell .path-info {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--dim-color);
-
-      .src,
-      .dst {
-        background: rgba(var(--window-fg-color-rgb), 0.05);
-        padding: 2px 6px;
-        border-radius: 4px;
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-family: var(--font-mono);
-        cursor: help;
-      }
-
-      .arrow-icon {
-        width: 14px;
-        height: 14px;
-        opacity: 0.5;
-      }
+    p {
+      font-size: var(--font-size-sm);
+      margin: 0;
+      max-width: 300px;
+      opacity: 0.8;
     }
   }
 }
 
 // Responsive Adjustments
 @media (max-width: 768px) {
-  .transfer-table-container .transfer-table {
-    .mat-mdc-header-cell,
-    .mat-mdc-cell {
-      padding: 8px 12px;
-    }
+  .transfer-table-container {
+    max-height: clamp(250px, 45vh, 500px);
 
-    // Hide non-essential columns on mobile
-    .eta-cell,
-    .size-cell,
-    .path-cell {
-      display: none;
-    }
-    .mat-column-eta,
-    .mat-column-size,
-    .mat-column-path {
-      display: none;
-    }
+    .transfer-list .transfer-row-item {
+      padding: var(--space-xs) var(--space-sm);
 
-    .name-cell .file-info {
-      max-width: 200px;
+      .transfer-paths {
+        margin-left: 0;
+
+        .path-pill {
+          max-width: 120px;
+        }
+      }
+
+      .transfer-progress {
+        margin-left: 0;
+      }
+
+      .transfer-footer {
+        margin-left: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+
+        .stats-left,
+        .stats-right {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+        }
+      }
     }
   }
 }

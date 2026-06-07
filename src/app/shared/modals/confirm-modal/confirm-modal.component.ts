@@ -15,8 +15,8 @@ import { TranslateModule } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent {
-  public dialogRef = inject(MatDialogRef<ConfirmModalComponent>);
-  public data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
+  public readonly dialogRef = inject(MatDialogRef<ConfirmModalComponent>);
+  public readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 
   @HostListener('document:keydown.escape', ['$event'])
   onEscapeKey(event: Event): void {

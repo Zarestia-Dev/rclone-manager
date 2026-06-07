@@ -33,58 +33,54 @@ import { PathService } from 'src/app/services';
   template: `
     <div class="path-section">
       <div class="path-item">
-        <div class="path-icon-container">
-          @if (config().showOpenButtons && config().hasSource) {
-            @if (isMultiPath(config().source)) {
-              <button
-                matIconButton
-                class="folder-button active multi-path"
-                [cdkMenuTriggerFor]="multiSourceMenu"
-              >
-                <mat-icon svgIcon="folder"></mat-icon>
-                <span class="path-count">{{ getAsArray(config().source).length }}</span>
-              </button>
+        @if (config().showOpenButtons && config().hasSource) {
+          @if (isMultiPath(config().source)) {
+            <button
+              matIconButton
+              class="folder-button active multi-path"
+              [cdkMenuTriggerFor]="multiSourceMenu"
+            >
+              <mat-icon svgIcon="folder"></mat-icon>
+              <span class="path-count">{{ getAsArray(config().source).length }}</span>
+            </button>
 
-              <ng-template #multiSourceMenu>
-                <div class="material-context-menu" cdkMenu>
-                  @for (p of getAsArray(config().source); track p) {
-                    <button
-                      class="menu-item"
-                      cdkMenuItem
-                      (cdkMenuItemTriggered)="openPath.emit(p)"
-                      [matTooltip]="p"
-                      matTooltipPosition="right"
-                    >
-                      <mat-icon [svgIcon]="isLocal(p) ? 'folder' : 'folder-open'"></mat-icon>
-                      <span class="menu-path-text">{{ p }}</span>
-                    </button>
-                  }
-                </div>
-              </ng-template>
-            } @else {
-              <button
-                matIconButton
-                class="folder-button active"
-                (click)="openPath.emit(getPrimaryPath(config().source))"
-                [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
-              >
-                <mat-icon
-                  [svgIcon]="isLocal(getPrimaryPath(config().source)) ? 'folder' : 'folder-open'"
-                ></mat-icon>
-              </button>
-            }
+            <ng-template #multiSourceMenu>
+              <div class="material-context-menu" cdkMenu>
+                @for (p of getAsArray(config().source); track p) {
+                  <button
+                    class="menu-item"
+                    cdkMenuItem
+                    (cdkMenuItemTriggered)="openPath.emit(p)"
+                    [matTooltip]="p"
+                    matTooltipPosition="right"
+                  >
+                    <mat-icon [svgIcon]="isLocal(p) ? 'folder' : 'folder-open'"></mat-icon>
+                    <span class="menu-path-text">{{ p }}</span>
+                  </button>
+                }
+              </div>
+            </ng-template>
           } @else {
-            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+            <button
+              matIconButton
+              class="folder-button active"
+              (click)="openPath.emit(getPrimaryPath(config().source))"
+              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
+            >
+              <mat-icon
+                [svgIcon]="isLocal(getPrimaryPath(config().source)) ? 'folder' : 'folder-open'"
+              ></mat-icon>
+            </button>
           }
+        } @else {
+          <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+        }
+        <div class="path-label">
+          {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
         </div>
-        <div class="path-info" [matTooltip]="formatTooltip(config().source)">
-          <div class="path-label">
-            {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
-          </div>
-          <div class="path-value">
-            {{ formatDisplay(config().source) }}
-          </div>
-        </div>
+        <code class="path-value" [matTooltip]="formatTooltip(config().source)">
+          {{ formatDisplay(config().source) }}
+        </code>
       </div>
 
       <div class="path-arrow">
@@ -95,35 +91,33 @@ import { PathService } from 'src/app/services';
       </div>
 
       <div class="path-item">
-        <div class="path-icon-container">
-          @if (config().showOpenButtons && config().hasDestination) {
-            <button
-              matIconButton
-              class="folder-button"
-              [class.active]="config().isDestinationActive"
-              [class.inactive]="!config().isDestinationActive"
-              [disabled]="config().actionInProgress === 'open' || !config().isDestinationActive"
-              (click)="openPath.emit(config().destination)"
-              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
-            >
-              @if (config().actionInProgress === 'open') {
-                <mat-spinner diameter="24"></mat-spinner>
-              } @else {
-                <mat-icon
-                  [svgIcon]="isLocal(config().destination) ? 'folder' : 'folder-open'"
-                ></mat-icon>
-              }
-            </button>
-          } @else {
-            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
-          }
+        @if (config().showOpenButtons && config().hasDestination) {
+          <button
+            matIconButton
+            class="folder-button"
+            [class.active]="config().isDestinationActive"
+            [class.inactive]="!config().isDestinationActive"
+            [disabled]="config().actionInProgress === 'open' || !config().isDestinationActive"
+            (click)="openPath.emit(config().destination)"
+            [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
+          >
+            @if (config().actionInProgress === 'open') {
+              <mat-spinner diameter="24"></mat-spinner>
+            } @else {
+              <mat-icon
+                [svgIcon]="isLocal(config().destination) ? 'folder' : 'folder-open'"
+              ></mat-icon>
+            }
+          </button>
+        } @else {
+          <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+        }
+        <div class="path-label">
+          {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
         </div>
-        <div class="path-info" [matTooltip]="config().destination">
-          <div class="path-label">
-            {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
-          </div>
-          <div class="path-value">{{ config().destination }}</div>
-        </div>
+        <code class="path-value" [matTooltip]="config().destination">{{
+          config().destination
+        }}</code>
       </div>
     </div>
   `,
