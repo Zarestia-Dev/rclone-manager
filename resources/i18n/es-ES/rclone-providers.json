@@ -1812,18 +1812,6 @@
       "web_token": {
         "title": "Web Token",
         "help": "Web API login token - set automatically."
-      },
-      "upload_concurrency": {
-        "title": "Concurrencia de subida",
-        "help": "Concurrencia para subidas multiparte.\n\nEste es el número de fragmentos del mismo archivo que se suben simultáneamente.\n\nTenga en cuenta que cada fragmento se almacena en búfer en la memoria."
-      },
-      "upload_cutoff": {
-        "title": "Límite de subida",
-        "help": "Límite para cambiar a la subida multiparte.\n\nCualquier archivo más grande que este se subirá en fragmentos de chunk_size. El mínimo es 100 MiB y el máximo es 5 GiB."
-      },
-      "chunk_size": {
-        "title": "Tamaño del fragmento",
-        "help": "Tamaño de fragmento para subidas multiparte.\n\nLos archivos más grandes que upload_cutoff se subirán en fragmentos de este tamaño.\n\nEl uso de memoria es aproximadamente chunk_size * upload_concurrency."
       }
     },
     "local": {
@@ -3904,14 +3892,6 @@
       "chunk_size": {
         "title": "Chunk Size",
         "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
-      },
-      "password": {
-        "title": "Contraseña",
-        "help": "Contraseña para el inicio de sesión."
-      },
-      "web_token": {
-        "title": "Token web",
-        "help": "Token de inicio de sesión de la API web - establecido automáticamente."
       }
     },
     "huaweidrive": {
