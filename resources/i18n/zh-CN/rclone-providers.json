@@ -1812,18 +1812,6 @@
       "web_token": {
         "title": "Web Token",
         "help": "Web API login token - set automatically."
-      },
-      "upload_concurrency": {
-        "title": "上传并发度",
-        "help": "分块上传的并发度。\n\n这是指同时上传的同一文件的分块数量。\n\n注意，每个分块都会缓冲在内存中。"
-      },
-      "upload_cutoff": {
-        "title": "分块上传阈值",
-        "help": "切换到分块上传的阈值大小。\n\n任何大于此大小的文件都将被分块（大小为 chunk_size）上传。最小值为 100 MiB，最大值为 5 GiB。"
-      },
-      "chunk_size": {
-        "title": "分块大小",
-        "help": "分块上传的每个块的大小。\n\n大于 upload_cutoff 的文件将按此大小分块上传。\n\n内存使用量大约为 chunk_size * upload_concurrency。"
       }
     },
     "local": {
@@ -3904,14 +3892,6 @@
       "chunk_size": {
         "title": "Chunk Size",
         "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
-      },
-      "password": {
-        "title": "密码",
-        "help": "登录密码"
-      },
-      "web_token": {
-        "title": "Web 令牌",
-        "help": "Web API 登录令牌 - 自动设置。"
       }
     },
     "huaweidrive": {
