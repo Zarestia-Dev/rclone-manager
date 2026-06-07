@@ -35,21 +35,21 @@
     "float": "Doit être un nombre décimal valide",
     "duration": "Format de durée invalide. Utiliser : 1h30m45s, 5m, 1h",
     "sizeSuffix": "Format de taille invalide. Utilisez : 100Ki, 16Mi, 1Gi, ou \"off\"",
-    "tristate": "La valeur doit être vraie, fausse ou non définie",
-    "time": "Format date et heure non valide. Utilisez ISO 8601 : AAAA-MM-JJDTHH:mm:ssZ",
+    "tristate": "La valeur doit être true, false ou non définie",
+    "time": "Format de date/heure invalide. Utilisez ISO 8601 : YYYY-MM-DDTHH:mm:ssZ",
     "spaceSepList": "La liste ne peut pas contenir uniquement des espaces",
     "bwTimetable": "Format de bande passante invalide",
     "fileMode": "Doit être au format octal (3 à 4 chiffres, chacun entre 0 et 7). Exemple : 755",
     "enum": "Doit être l’une des valeurs suivantes : {{values}}",
     "invalidPath": "Le chemin doit être absolu",
-    "urlArray": "Toutes les URLs doivent être valides et commencer par http:// ou https://",
+    "urlArray": "Toutes les URL doivent être valides et commencer par http:// ou https://",
     "bandwidth": "Format de bande passante invalide. Utilisez : 10M, 1G, 100K ou combinaisons",
     "passwordMismatch": "Les mots de passe ne correspondent pas",
     "remoteName": {
-      "invalidChars": "Le nom du remote contient des caractères invalides",
-      "invalidStart": "Le nom du remote ne peut pas commencer par un tiret ou un espace",
-      "invalidEnd": "Le nom du remote ne peut pas se terminer par un espace",
-      "nameTaken": "Ce nom de remote est déjà utilisé"
+      "invalidChars": "Le nom du dépôt distant contient des caractères invalides",
+      "invalidStart": "Le nom du dépôt distant ne peut pas commencer par un tiret ou un espace",
+      "invalidEnd": "Le nom du dépôt distant ne peut pas se terminer par un espace",
+      "nameTaken": "Ce nom de dépôts distant est déjà utilisé"
     },
     "password": {
       "minLength": "Le mot de passe doit comporter au moins 3 caractères",
@@ -140,12 +140,12 @@
   },
   "sidebar": {
     "toggleSearch": "Activer/désactiver La barre de recherche",
-    "remotes": "Remotes",
-    "searchPlaceholder": "Chercher des remotes...",
+    "remotes": "Dépôts distants",
+    "searchPlaceholder": "Chercher des dépôts distants...",
     "hiddenOnDashboard": "Masqué sur le tableau de bord",
-    "searchAriaLabel": "Rechercher des remotes",
-    "noRemotesFound": "Aucun remote ne correspond à \"{{term}}\"",
-    "noRemotesConfigured": "Aucun remote configuré",
+    "searchAriaLabel": "Rechercher des dépôts distants",
+    "noRemotesFound": "Aucun dépôt distant ne correspond à \"{{term}}\"",
+    "noRemotesConfigured": "Aucun dépôt distant configuré",
     "aria": {
       "mountStatus": "Statut du montage",
       "syncStatus": "Statut des opérations de synchronisation",
@@ -285,8 +285,8 @@
       "cooldown": "Temporisation (secondes)",
       "eventFilter": "Filtres de type événement",
       "eventFilterHint": "Laisser vide pour correspondre à tous les types d'événements.",
-      "remoteFilter": "Filtre Remote",
-      "remoteFilterHint": "Laisser vide pour correspondre à toutes les remotes.",
+      "remoteFilter": "Filtre du dépôt distant",
+      "remoteFilterHint": "Laisser vide pour correspondre à toutes les dépôts distants.",
       "originFilterHint": "Laisser vide pour correspondre à toute source d'origine.",
       "backendFilter": "Filtre Backend",
       "backendFilterHint": "Surveiller les événements uniquement sur les backends spécifiques.",
@@ -489,7 +489,7 @@
         "description": "Configuration personnalisée de la mise en page du tableau de bord."
       },
       "dashboard_card_variant": {
-        "label": "Mode d'affichage de la carte remote",
+        "label": "Mode d'affichage de la carte du dépôt distant",
         "description": "Variante d'affichage par défaut des cartes Remote dans les panneaux d'aperçu.",
         "options": {
           "compact": "Compacte",
@@ -548,7 +548,7 @@
     "serve": "Service"
   },
   "titlebar": {
-    "addRemoteMenu": "Menu Ajouter un remote",
+    "addRemoteMenu": "Menu Ajouter un dépôt distant",
     "home": "Home",
     "internetStatus": "État de la connexion Internet",
     "appMenu": "Menu de l’application",
@@ -578,8 +578,8 @@
       "fileBrowser": "Explorateur de fichiers",
       "shortcuts": "Raccourcis clavier",
       "about": "À propos de RClone Manager",
-      "quickRemote": "Remote rapide",
-      "detailedRemote": "Vue détaillée du remote"
+      "quickRemote": "Dépôt distant rapide",
+      "detailedRemote": "Vue détaillée du dépôt distant"
     }
   },
   "onboarding": {
@@ -959,7 +959,7 @@
       "applyToProfile": "Appliquer au profil",
       "serveType": "Type de service",
       "mountPoint": "Point de montage",
-      "remote": "Remote",
+      "remote": "Dépôt distant",
       "invalidCommand": "Commande de Rclone invalide. Veuillez fournir une commande avec une opération prise en charge (par exemple, synchronisation, copie, montage) ou flags.",
       "patch": "Correctif / Appliquer à Actif",
       "patchProfile": "Correctif pour profil(s) actif(s)",
@@ -968,8 +968,8 @@
       "applyPatch": "Appliquer le correctif"
     },
     "remoteConfig": {
-      "remoteName": "Nom du remote",
-      "remoteNameRequired": "Le nom du remote est requis",
+      "remoteName": "Nom du dépôt distant",
+      "remoteNameRequired": "Le nom du dépôt distant est requis",
       "remoteNamePlaceholder": "par exemple, mon-cloud-storage",
       "remoteTypePlaceholder": "par exemple, Google Drive",
       "invalidChars": "Le nom contient des caractères invalides",
@@ -991,7 +991,7 @@
         "vfs": "Profil VFS : Définissez les options de mise en cache du système de fichiers virtuels, de mise en mémoire tampon et de compatibilité comme paires de valeurs clés.",
         "filter": "Profil de filtrage : définissez des motifs glob, des règles d'inclusion/exclusion et des options de filtrage de fichiers sous forme de paires clé-valeur. ",
         "backend": "Profil backend : Configurez les options avancées du protocole et les paramètres de connexion spécifiques à distance comme des paires clé-valeur.",
-        "runtimeRemote": "Remote d'exécution : Définissez les paramètres de connexion dynamique et les réglages de performance comme des paires clés-valeurs."
+        "runtimeRemote": "Exécution du dépôt distant : Définissez les paramètres de connexion dynamique et les réglages de performance comme des paires clés-valeurs."
       },
       "showAdvanced": "Afficher Options Avancées",
       "hideAdvanced": "Masquer les options avancées",
@@ -1021,7 +1021,7 @@
       "selectMountType": "Sélectionnez le type de montage",
       "serveType": "Type",
       "loadingServeOptions": "Chargement des options {{type}}...",
-      "serveDescription": "Sélectionnez le chemin du remote que vous souhaitez servir. Vous pouvez servir le remote entier ou un dossier spécifique.",
+      "serveDescription": "Sélectionnez le chemin du dépôt distant que vous souhaitez servir. Vous pouvez servir le remote entier ou un dossier spécifique.",
       "operationDescription": "Configurez les options source, destination et démarrage automatique pour cette opération.",
       "hideCommandOptions": "Masquer les options de commande",
       "showCommandOptions": "Afficher les options de commande",
@@ -1081,14 +1081,14 @@
       "sourcePaths": "Chemin de la source",
       "destinationPath": "Chemin de la destination",
       "localPath": "Chemin local",
-      "remotePathServe": "Chemin du remote du service",
+      "remotePathServe": "Chemin du dépôt distant du service",
       "addSource": "Ajouter Source",
       "rootFolderSpecific": "Répertoire racine ou chemin spécifique",
       "enterSourcePath": "Entrez le chemin de la source...",
-      "otherRemotes": "Autres remotes",
+      "otherRemotes": "Autres dépôts distants",
       "enterDestPath": "Entrez le chemin de destination...",
       "mountDestMustBeLocal": "La destination du montage doit être un dossier local",
-      "completionNote": "L'autocomplétion du chemin distant sera disponible après la création du remote.",
+      "completionNote": "L'autocomplétion du chemin distant sera disponible après la création du dépôt distant.",
       "loading": "Chargement...",
       "upFolder": "Dossier supérieur",
       "noItemsFound": "Aucun élément trouvé dans ce dossier.",
@@ -1243,7 +1243,7 @@
         "description": "Fichier complet rclone.conf"
       },
       "remoteConfigs": {
-        "title": "Configurations des remotes"
+        "title": "Configurations du dépôt distant"
       },
       "profiles": {
         "title": "Profils"
@@ -1304,9 +1304,9 @@
     "channelChanged": "Le canal de mise à jour de Rclone a été changé en {{channel}}."
   },
   "fileBrowser": {
-    "resolveRemoteFailed": "Impossible de résoudre le remote pour cet élément",
+    "resolveRemoteFailed": "Impossible de résoudre le dépôt distant pour cet élément",
     "remoteAbout": {
-      "loading": "Chargement des informations du remote...",
+      "loading": "Chargement des informations du dépôt distant...",
       "reloadUsage": "Recharger l'utilisation",
       "totalSpace": "Espace total",
       "usedSpace": "Espace utilisé",
@@ -1325,7 +1325,7 @@
       "noMetadata": "Aucune spécification de métadonnées disponible.",
       "close": "Fermer la conversation",
       "unknown": "Inconnu",
-      "error": "Échec du chargement des informations du remote.",
+      "error": "Échec du chargement des informations du dépôt distant.",
       "tabs": {
         "overview": "Aperçu ",
         "features": "Fonctionnalités ",
@@ -1354,7 +1354,7 @@
       "checksums": "Sommes de contrôle",
       "loadingHashes": "Chargement des types de hachage...",
       "calculateMore": "Calculer plus :",
-      "noHashTypes": "Aucun type de hachage supporté pour ce remote",
+      "noHashTypes": "Aucun type de hachage supporté pour ce dépôt distant",
       "publicLink": "Lien public",
       "expires": "Expire",
       "expiry": {
@@ -1450,7 +1450,7 @@
       "vfsOptions": "Options VFS",
       "filterOptions": "Options de filtrage",
       "backendConfig": "Configuration du backend",
-      "runtimeRemoteOptions": "Exécution du remote",
+      "runtimeRemoteOptions": "Exécution du dépôt distant",
       "profilesLabel": "{{op}} Profils",
       "settingsLabel": "Paramètres {{op}}",
       "mountProfilesVfs": "Montage Profils & VFS",
@@ -1519,11 +1519,11 @@
       "jobIdLabel": "ID du Job:",
       "previousAutomationTooltip": "Automatisation précédente",
       "nextAutomationTooltip": "Prochaine automatisation",
-      "remoteConfiguration": "Configurations des remotes",
+      "remoteConfiguration": "Configurations du dépôt distant",
       "editConfiguration": "Modifier la configuration",
       "toggleQuickAction": "Activer/désactiver {{label}} en tant qu'action rapide",
       "quickActionSelected": "{{label}} a sélectionné comme action rapide {{position}}",
-      "remoteActionQuickSelection": "Sélection rapide des actions du remote"
+      "remoteActionQuickSelection": "Sélection rapide des actions du dépôt distant"
     }
   },
   "shortcuts": {
@@ -1538,9 +1538,9 @@
       "openPreferences": "Ouvrir les préférences",
       "openFlags": "Flags de Rclone Ouvert",
       "forceCheck": "Forcer le contrôle des montages",
-      "forceCheckServes": "Forcer la vérification des remotes",
-      "newRemoteDetailed": "Créer un nouveau remote (Détailé)",
-      "newRemoteQuick": "Créer un nouveau remote (rapide)",
+      "forceCheckServes": "Forcer la vérification des dépôts distants",
+      "newRemoteDetailed": "Créer un nouveau dépôt distant (détaillé)",
+      "newRemoteQuick": "Créer un nouveau dépôt distant (rapide)",
       "loadConfig": "Charger la configuration",
       "exportConfig": "Exporter la configuration",
       "toggleBrowser": "Activer/désactiver le navigateur de fichiers",
@@ -1549,7 +1549,7 @@
     "categories": {
       "global": "Global",
       "application": "Application",
-      "remoteManagement": "Gestion des remotes",
+      "remoteManagement": "Gestion du dépôt distant",
       "fileOperations": "Opérations sur les fichiers",
       "fileBrowser": "Explorateur de fichiers",
       "fileBrowserNautilus": "Explorateur de fichiers (Nautilus)",
@@ -1560,8 +1560,8 @@
     "refreshSuccess": "Raccourcis actualisés avec succès",
     "mountsRefreshSuccess": "Les montages ont été actualisées avec succès",
     "mountsRefreshError": "Échec de l'actualisation des montages : {{error}}",
-    "servesRefreshSuccess": "Remotes actualisés avec succès",
-    "servesRefreshError": "Échec de l’actualisation des remotes"
+    "servesRefreshSuccess": "Les services des dépôts distants actualisés avec succès",
+    "servesRefreshError": "Impossible d'actualiser les services des dépôts distants : {{error}}"
   },
   "app": {
     "shutdown": {
@@ -1596,7 +1596,7 @@
         "errorsCount": "Erreurs",
         "source": "Source",
         "destination": "Destination",
-        "remoteSource": "Remote Source",
+        "remoteSource": "Source du dépôt distant",
         "mountPoint": "Point de montage",
         "executeId": "Exécution ID",
         "group": "Group",
@@ -1670,7 +1670,7 @@
       "downloadPage": "Télécharger la page",
       "managedBuildNotice": "Mise à jour automatique impossible pour cette version. Mise à jour manuelle requise.",
       "openFlathub": "Ouvrir Flathub",
-      "loadInfoFailed": "Échec du chargement des informations du remote.",
+      "loadInfoFailed": "Échec du chargement des informations du dépôt distant.",
       "license": "Licence",
       "licenseText1": "Cette application est un logiciel libre et open source distribué sous le",
       "orLater": "ou version ultérieure",
@@ -1726,7 +1726,7 @@
       "aria": {
         "terminalLogs": "Journal du terminal"
       },
-      "remoteLogs": "Remote Logs: {{ name }}",
+      "remoteLogs": "Logs du dépôt distant : {{ name }}",
       "noLogsFound": "Pas de logs trouvés",
       "adjustFilters": "Essayez d'ajuster vos filtres",
       "terminalOutput": "Sortie Terminal",
@@ -1787,8 +1787,8 @@
       "title": "Exporter les Paramètres",
       "preparing": "Préparation des options d'exportation...",
       "selectType": "Sélectionner le type d'exportation",
-      "selectRemote": "Sélectionner le remote à exporter",
-      "chooseRemote": "Choisir un remote...",
+      "selectRemote": "Sélectionner le dépôt distant à exporter",
+      "chooseRemote": "Choisir un dépôt distant...",
       "destination": "Répertoire de destination",
       "selectDestination": "Sélectionner une destination...",
       "browseFolder": "Parcourir le dossier",
@@ -1804,8 +1804,8 @@
       "exporting": "Exportation en cours...",
       "fullBackup": "Sauvegarde complète",
       "allConfigs": "Toutes les configurations",
-      "singleRemote": "Remote simple",
-      "singleRemoteDesc": "Exporter une configuration d'un remote spécifique",
+      "singleRemote": "Dépôts distant simple",
+      "singleRemoteDesc": "Exporter une configuration d'un dépôt distant spécifique",
       "appPreferences": "Préférences de l'application",
       "configFiles": "Fichiers de configuration",
       "externalConfig": "Fichier de configuration externe",
@@ -1822,11 +1822,11 @@
         },
         "connections": {
           "label": "Connexions",
-          "description": "Remote distant enregistré"
+          "description": "Détails de connexion du dépôt distant enregistrés"
         },
         "remotes": {
-          "label": "Remotes",
-          "description": "Configuration des données du remote Rclone"
+          "label": "Dépôts distants",
+          "description": "Configuration des données du dépôt distant Rclone"
         },
         "alerts": {
           "label": "Alertes",
@@ -1853,18 +1853,18 @@
       "removeTooltip": "Supprimer",
       "switchFirst": "Basculer en premier vers un autre backend",
       "nameExists": "Le nom existe",
-      "hostExists": "Ce nom de remote est déjà utilisé",
+      "hostExists": "Ce nom de dépôt distant est déjà utilisé",
       "remoteSecurity": {
         "passwordStored": "Mot de passe requis",
         "noPasswordStored": "Aucun mot de passe enregistré",
-        "limitation": "Rclone ne prend pas en charge la modification ou la vérification des mots de passe de configuration des remotes via l’API. Vous pouvez uniquement déverrouiller la configuration du remote avec ce mot de passe.",
+        "limitation": "Rclone ne prend pas en charge la modification ou la vérification des mots de passe de configuration des dépôts distants via l’API. Vous pouvez uniquement déverrouiller la configuration du dépôt distant avec ce mot de passe.",
         "removePassword": "Supprimer le mot de passe enregistré"
       },
       "copyOptions": {
         "title": "Paramètres Copie",
         "description": "Copier les options d’une configuration existante",
         "backendConfig": "Copier les paramètres du backend",
-        "remotesConfig": "Copier les paramètres du remote",
+        "remotesConfig": "Copier les paramètres du dépôt distant",
         "fromZero": "Démarrer à partir de zéro"
       },
       "status": {
@@ -1919,22 +1919,22 @@
       }
     },
     "quickAdd": {
-      "title": "Ajout rapide d'un remote",
+      "title": "Ajout rapide d'un dépôt distant",
       "interactive": {
-        "followSteps": "Veuillez suivre les étapes pour configurer votre remote.",
+        "followSteps": "Veuillez suivre les étapes pour configurer votre dépôt distant.",
         "cancelling": "Annulation de l'opération...",
         "browserOpen": "Une fenêtre de navigateur peut s'ouvrir à l'authentification."
       },
       "operations": {
         "title": "Options d'opération (facultatif)",
-        "description": "Configurer les opérations à exécuter automatiquement après la création du remote.",
+        "description": "Configurer les opérations à exécuter automatiquement après la création du dépôt distant.",
         "mount": {
           "label": "Monter",
-          "description": "Monter automatiquement ce remote en tant que lecteur."
+          "description": "Monter automatiquement ce dépôt distant en tant que lecteur."
         },
         "sync": {
           "label": "Synchronisation",
-          "description": "Synchroniser ce remote vers un dossier local."
+          "description": "Synchroniser ce dépôt distant vers un dossier local."
         },
         "copy": {
           "label": "Copier",
@@ -1954,8 +1954,8 @@
         }
       },
       "buttons": {
-        "create": "Créer un remote",
-        "creating": "Ajout un remote...",
+        "create": "Créer un dépôt distant",
+        "creating": "Ajout un dépôt distant...",
         "processing": "Traitement en cours..."
       }
     },
@@ -1970,11 +1970,11 @@
         "stepIndicator": "Étapes de configuration"
       },
       "title": {
-        "add": "Ajouter un nouveau remote",
+        "add": "Ajouter un nouveau dépôt distant",
         "edit": "Modifier les paramètres {{target}}"
       },
       "steps": {
-        "remoteConfig": "Configuration du remote",
+        "remoteConfig": "Configuration du dépôt distant",
         "mount": "Monter",
         "serve": "Service de partage",
         "sync": "Synchronisation",
@@ -1984,7 +1984,7 @@
         "filter": "Filtre",
         "vfs": "VFS",
         "backend": "Backend",
-        "runtimeRemote": "Exécution du remote"
+        "runtimeRemote": "Exécution du dépôt distant"
       },
       "advancedProfiles": {
         "title": "Profils avancés",
@@ -2198,7 +2198,7 @@
     },
     "errors": {
       "connectionFailed": "Échec de la Connexion",
-      "bookmarkRemoteNotFound": "Le remote '{{remote}}' associé au signet est introuvable",
+      "bookmarkRemoteNotFound": "Le dépôt distant '{{remote}}' associé au signet est introuvable",
       "loadFailed": "Échec du chargement du répertoire",
       "deleteFailed": "Échec de la suppression des éléments {{count}}",
       "copyFailed": "Échec de la copie des éléments {{count}}",
@@ -2285,17 +2285,17 @@
     "options": {
       "showInTray": "Afficher dans le menu déroulant",
       "viewLogs": "Afficher les logs",
-      "cloneRemote": "Cloner Remote",
+      "cloneRemote": "Cloner un dépôt distant",
       "exportConfig": "Exporter la configuration",
       "resetSettings": "Réinitialiser les paramètres",
-      "deleteRemote": "Supprimer le remote"
+      "deleteRemote": "Supprimer le dépôts distant"
     },
     "deleteRemote": {
       "title": "Confirmer la suppression",
       "message": "Êtes-vous sûr de vouloir supprimer '{{name}}'? Cette action ne peut pas être annulée."
     },
     "resetRemote": {
-      "title": "Réinitialiser les paramètres du remote",
+      "title": "Réinitialiser les paramètres du dépôt distant",
       "message": "Êtes-vous sûr de vouloir réinitialiser TOUS les paramètres pour {{name}}?"
     },
     "notifications": {
@@ -2350,7 +2350,7 @@
       },
       "loading": "Chargement des informations du système...",
       "status": "Statut de Rclone:",
-      "totalRemotes": "Total Remotes:",
+      "totalRemotes": "Total dépôts distants :",
       "activeJobs": "Jobs actifs:",
       "memoryUsage": "Utilisation de la mémoire:",
       "uptime": "En service:",
@@ -2405,18 +2405,18 @@
       "startServe": "Démarrer le service de partage"
     },
     "panelTitles": {
-      "mountedRemotes": "Remotes montés",
+      "mountedRemotes": "Dépôts distants montés",
       "activeSync": "Opérations de synchronisation actives",
       "activeServes": "Services de partage actifs",
-      "unmountedRemotes": "Remotes démontés",
-      "inactiveRemotes": "Remotes inactifs",
-      "availableRemotes": "Remotes disponibles"
+      "unmountedRemotes": "Dépôts distants démontés",
+      "inactiveRemotes": "Dépôts distants inactifs",
+      "availableRemotes": "Dépôts distants disponibles"
     }
   },
   "backendErrors": {
     "mount": {
       "pointEmpty": "Le point de montage ne peut être vide",
-      "alreadyInUse": "Le point de montage {{mountPoint}} est déjà utilisé par le remote {{remote}}",
+      "alreadyInUse": "Le point de montage {{mountPoint}} est déjà utilisé par le dépôt distant {{remote}}",
       "configIncomplete": "Configuration du montage incomplète pour le profil '{{profile}}'"
     },
     "sync": {
@@ -2424,7 +2424,7 @@
     },
     "serve": {
       "parseFailed": "Échec de l'analyse de la réponse: {{error}}",
-      "remoteEmpty": "Nom du remote ne peut pas être vide",
+      "remoteEmpty": "Nom du dépôt distant ne peut pas être vide",
       "typeRequired": "Le type de service de partage résaeu doit être spécifié"
     },
     "request": {
@@ -2461,7 +2461,7 @@
       "lockFailed": "Échec de l'acquisition du verrouillage de configuration Rclone : {{error}}",
       "cacheRefreshFailed": "Échec de l'actualisation du cache de rclone : {{error}}",
       "invalidFlags": "Flags Rclone non valides détectés : {{error}}",
-      "updateRemoteUnsupported": "La mise à jour du remote n'est pas prise en charge pour cette version de Rclone",
+      "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de Rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}"
     },
     "security": {
@@ -2488,11 +2488,11 @@
       "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe"
     },
     "backend": {
-      "nameEmpty": "Nom du remote ne peut pas être vide",
+      "nameEmpty": "Nom du dépôt distant ne peut pas être vide",
       "cannotAddLocal": "Impossible d'ajouter un backend nommé 'Local'",
       "cannotRemoveLocal": "Impossible de supprimer le backend Local",
       "cannotRemoveActive": "Impossible de supprimer le backend actif",
-      "alreadyExists": "Un remote portant ce nom existe déjà",
+      "alreadyExists": "Un dépôt distant portant ce nom existe déjà",
       "notFound": "Backend '{{name}}' non trouvé"
     },
     "job": {
@@ -2501,9 +2501,9 @@
       "executionFailed": "Échec de l'exécution du Job: {{error}}"
     },
     "cache": {
-      "fetchRemotesFailed": "Échec de récupération des remotes",
-      "fetchConfigFailed": "Échec de récupération des remotes",
-      "refreshMountsFailed": "Impossible d'actualiser les remotes montées",
+      "fetchRemotesFailed": "Échec de récupération des dépôts distants",
+      "fetchConfigFailed": "Échec de récupération des dépôts distants",
+      "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montées",
       "refreshServesFailed": "Échec de l’actualisation des services de partage"
     },
     "automation": {
@@ -2523,7 +2523,7 @@
       "quitFailed": "Impossible de quitter le moteur de rclone: {{error}}"
     },
     "remote": {
-      "configFailed": "Échec de la configuration du remote: {{error}}"
+      "configFailed": "Échec de la configuration du dépôt distant : {{error}}"
     },
     "updater": {
       "noPending": "Aucune mise à jour en attente",
@@ -2544,22 +2544,22 @@
       "eventEmitFailed": "Échec de l'émission des paramètres d'événement: {{error}}",
       "subSettingsFailed": "Échec de l'obtention des sous-paramètres: {{error}}",
       "notFound": "Paramètres pour '{{name}}' introuvables",
-      "deleteFailed": "Échec de la suppression des paramètres remote: {{error}}"
+      "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
     }
   },
   "backendSuccess": {
     "mount": {
       "unmounted": "{{mountPoint}} démonté avec succès",
-      "allUnmounted": "Toutes les remotes ont été démontées avec succès"
+      "allUnmounted": "Toutes les dépôts distants ont été démontées avec succès"
     },
     "serve": {
       "stopSuccess": "Arrêt réussi du service de partage {{serverId}}",
       "stopped": "Le service de partage est arrêté"
     },
     "remote": {
-      "created": "{{name}} Remote créé avec succès",
-      "updated": "{{name}} du remote mis à jour avec succès",
-      "deleted": "{{name}} du remote supprimé avec succès"
+      "created": "Dépôt distant {{name}} créé avec succès",
+      "updated": "Dépôt distant {{name}} mis à jour avec succès",
+      "deleted": "Dépôt distant {{name}}  supprimé avec succès"
     },
     "backend": {
       "switched": "Basculé vers le backend {{name}}"
@@ -2585,7 +2585,7 @@
       "sync": "Aperçu de la synchronisation",
       "serve": "Aperçu des services de partage",
       "general": "RClone Manager",
-      "default": "Vue d'ensemble des remotes"
+      "default": "Vue d'ensemble des dépôts distants"
     },
     "status": {
       "titles": {
@@ -2621,7 +2621,7 @@
       "browse": "Explorer les fichiers",
       "emptyState": {
         "title": "Aucun profil configuré",
-        "message": "Ce remote n'a aucun profil d'opération à afficher."
+        "message": "Ce dépôt distant n'a aucun profil d'opération à afficher."
       }
     }
   },
@@ -2673,7 +2673,7 @@
       "automationStopped": "{{type}} Automatisation arrêtée",
       "allJobsStopped": "Touts les Jobs sont arrêtées",
       "allServesStopped": "Tous les serveurs sont arrêtés",
-      "allUnmounted": "Toutes les remotes déconnectés",
+      "allUnmounted": "Toutes les dépôts distants déconnectés",
       "updateFound": "Nouvelle version disponible",
       "updateStarted": "Mise à jour démarrée",
       "updateDownloaded": "Mise à jour téléchargée",
@@ -2705,7 +2705,7 @@
       "serveStopped": "Service de partage arrêté pour {{remote}}, profil « {{profile}} », sur {{backend}}.",
       "allJobsStopped": "Tous les jobs actifs ont été supprimés avec succès.",
       "allServesStopped": "Tous les serveurs actifs ont été fermés avec succès.",
-      "allUnmounted": "Toutes les montages remotes ont bien été déconnectés.",
+      "allUnmounted": "Touts les montages des dépôts distants ont bien été déconnectés.",
       "automationStarted": "L'automatisation {{type}} '{{automation}}' fonctionne sur {{backend}}.",
       "automationCompleted": "Automatisation {{type}} '{{automation}}' terminée avec succès.",
       "automationFailed": "L'automatisation {{type}} '{{automation}}' a rencontré une erreur : {{error}}",
@@ -2752,7 +2752,7 @@
     },
     "messages": {
       "missingRclone": "Le binaire Rclone n'a pas été trouvé. Veuillez l'installer pour continuer.",
-      "missingMountPlugin": "Le plugin de montage est requis pour le montage des remontes. Installez-le pour activer cette fonctionnalité.",
+      "missingMountPlugin": "Le plugin de montage est requis pour le montage des dépôts distants. Installez-le pour activer cette fonctionnalité.",
       "corruptConfig": "Le fichier de configuration de rclone semble corrompu. Restaurer à partir de la sauvegarde ?",
       "backendError": "Le backend de Rclone est inaccessible. Redémarrer le moteur peut corriger cela.",
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
