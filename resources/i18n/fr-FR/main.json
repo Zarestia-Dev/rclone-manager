@@ -574,7 +574,7 @@
       "import": "Importer",
       "export": "Exporter",
       "preferences": "Préférences",
-      "flags": "Rclone Flags",
+      "flags": "Flags Rclone",
       "fileBrowser": "Explorateur de fichiers",
       "shortcuts": "Raccourcis clavier",
       "about": "À propos de RClone Manager",
@@ -2045,7 +2045,7 @@
         "showing": "Affichage des flags {{count}} de {{total}}"
       },
       "pageTitle": {
-        "home": "Rclone Flags",
+        "home": "Flags de Rclone",
         "category": "{{page}} - {{category}}",
         "backend": "Flags Backend"
       },
@@ -2085,7 +2085,7 @@
         "main": "Flags généraux de RClone et transferts",
         "log": "Options de logs et de sortie",
         "http": "Flags HTTP du serveur",
-        "rc": "Options du serveur du dépôt distant",
+        "rc": "Flags du serveur du dépôt dsitant",
         "dlna": "Flags du serveur DLNA",
         "ftp": "Flags du serveur FTP",
         "nfs": "Flags du serveur NFS",
