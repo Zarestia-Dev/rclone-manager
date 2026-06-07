@@ -69,7 +69,7 @@
   },
   "sync": {
     "available": "Opérations de synchronisation disponibles",
-    "syncing": "Synchronisation en cours",
+    "syncing": "Synchronisation",
     "copying": "Copie en cours",
     "moving": "Déplacement en cours",
     "bisyncActive": "Bisync Actif",
@@ -80,7 +80,7 @@
     "bisyncWithProfile": "BiSync: {{profiles}}",
     "toggleSync": "Activer/désactiver Sync comme action rapide",
     "toggleCopy": "Activer/désactiver Copy comme action rapide",
-    "toggleMove": "Activer/désactiver le déplacement comme action rapide",
+    "toggleMove": "Activer/désactiver Move comme action rapide",
     "toggleBisync": "Activer/Désactiver la synchronisation bidirectionnelle comme action rapide",
     "successStart": "A démarré avec succès {{type}} pour {{remote}} ({{profile}})",
     "failedStart": "Échec du démarrage de {{type}} pour {{remote}}: {{error}}"
@@ -92,12 +92,12 @@
     "servingMultiple": "Partages ({{count}}) : {{profiles}}",
     "serveSummary": "Partage réseau ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
-    "toggleAction": "Activer/Désactiver le mode serveur comme action rapide",
+    "toggleAction": "Activer/désactiver le service en tant qu'action rapide",
     "successStart": "Démarrage réussi du service pour {{remote}} ({{profile}}) sur {{addr}}",
     "successStop": "Arrêt réussi du service {{id}}",
     "failedStop": "Impossible d'arrêter le service {{id}} : {{error}}",
     "successStopAll": "Tous les services de partage arrêtés avec succès",
-    "failedStopAll": "Échec de l’arrêt de tous les services de partage: {{error}}"
+    "failedStopAll": "Échec de l’arrêt de tous les services de partage : {{error}}"
   },
   "automation": {
     "status": {
@@ -186,7 +186,7 @@
     "pathDisplay": {
       "source": "Source",
       "destination": "Destination",
-      "openInExplorer": "Ouvrir dans l’Explorateur de fichiers"
+      "openInExplorer": "Ouvrir dans l’explorateur de fichiers"
     },
     "jobs": {
       "title": "Jobs",
@@ -286,7 +286,7 @@
       "eventFilter": "Filtres de type événement",
       "eventFilterHint": "Laisser vide pour correspondre à tous les types d'événements.",
       "remoteFilter": "Filtre du dépôt distant",
-      "remoteFilterHint": "Laisser vide pour correspondre à toutes les dépôts distants.",
+      "remoteFilterHint": "Laisser vide pour correspondre à tous les dépôts distants.",
       "originFilterHint": "Laisser vide pour correspondre à toute source d'origine.",
       "backendFilter": "Filtre Backend",
       "backendFilterHint": "Surveiller les événements uniquement sur les backends spécifiques.",
@@ -298,7 +298,7 @@
       "actionRequired": "Au moins une action est requise",
       "noActionsHint": "Vous devez d'abord créer une action d'alerte avant de pouvoir l'assigner à une règle.",
       "filtersEmptyHint": "Laisser vide pour correspondre à tous les événements.",
-      "scopeFilters": "Scope Filtre"
+      "scopeFilters": "Scope Filtres"
     },
     "events": {
       "job": "Jobs & Opérations de fichiers",
@@ -490,9 +490,9 @@
       },
       "dashboard_card_variant": {
         "label": "Mode d'affichage de la carte du dépôt distant",
-        "description": "Variante d'affichage par défaut des cartes Remote dans les panneaux d'aperçu.",
+        "description": "Variante d'affichage par défaut des cartes des dépôts distants dans les panneaux d'aperçu.",
         "options": {
-          "compact": "Compacte",
+          "compact": "Compact",
           "detailed": "Détaillé"
         }
       }
@@ -588,18 +588,18 @@
     "cards": {
       "welcome": {
         "title": "Bienvenue dans RClone Manager",
-        "content": "Votre solution moderne de gestion de stockage cloud. RClone Manager offre une interface intuitive pour synchroniser, monter et gérer tous vos remotes cloud sans effort."
+        "content": "Votre solution moderne de gestion de stockage cloud. RClone Manager offre une interface intuitive pour synchroniser, monter et gérer tous vos clouds sans effort."
       },
       "features": {
         "title": "Fonctionnalités avancées",
-        "content": "Synchronisez facilement vos fichiers, montez votre stockage cloud comme des disques locaux, gérez plusieurs remotes et surveillez vos transferts — le tout depuis une interface élégante."
+        "content": "Synchronisez facilement vos fichiers, montez votre stockage cloud comme des disques locaux, gérez plusieurs dépôts distants et surveillez vos transferts — le tout depuis une interface élégante."
       },
       "installRclone": {
         "title": "Installer Rclone",
         "content": "Rclone est nécessaire pour les opérations de stockage dans le cloud. Choisissez votre emplacement d'installation préféré ou l'emplacement binaire, et nous gérerons l'installation automatiquement."
       },
       "installPlugin": {
-        "title": "Installer le plugin de montage ",
+        "title": "Installer le plugin de montage",
         "content": "Le plugin montage vous permet de monter le stockage cloud en tant que disques locaux. Ce composant facultatif améliore votre expérience de Rclone."
       },
       "selectConfig": {
@@ -630,7 +630,7 @@
       "recommended": "Recommandé",
       "custom": "Personnalisé",
       "existing": "Existant",
-      "default": "Défaut"
+      "default": "Par défaut"
     },
     "actions": {
       "back": "Précédent",
@@ -833,8 +833,8 @@
       "stats": {
         "metadata": "Métadonnées",
         "items": "éléments",
-        "diskCache": "Cache disque",
-        "cachedFiles": "Fichiers cache",
+        "diskCache": "Cache du disque",
+        "cachedFiles": "Fichiers mis en cache",
         "pendingUploads": "Téléchargements en attente",
         "inProgress": "En Progression",
         "errors": "Erreurs",
@@ -872,7 +872,7 @@
         "title": "Informations sur le cache",
         "location": "Emplacement du cache:",
         "metaLocation": "Emplacement des métadonnées:",
-        "openFolder": "Ouvrir le dossier du cache",
+        "openFolder": "Ouvrir le dossier cache",
         "openMetaFolder": "Ouvrir le dossier des métadonnées",
         "note": "Note :",
         "noteText": "\"Effacer les métadonnées\" supprime seulement le cache des listes de répertoires. Les fichiers mis en cache restent dans le répertoire du cache jusqu'à ce que Rclone les purge automatiquement."
@@ -975,16 +975,16 @@
       "invalidChars": "Le nom contient des caractères invalides",
       "invalidStart": "Le nom ne peut pas commencer par un tiret ou un espace",
       "invalidEnd": "Le nom ne peut pas se terminer par un espace",
-      "nameTaken": "Un remote portant ce nom existe déjà",
-      "remoteType": "Type de remote",
-      "noMatchingTypes": "Aucun type de remote correspondant",
+      "nameTaken": "Un dépôt distant portant ce nom existe déjà",
+      "remoteType": "Type de dépôt distant",
+      "noMatchingTypes": "Aucun type de dépôt distant correspondant",
       "loadingOptions": "Chargement des options de configuration...",
       "fields": "Champs",
       "switchToForm": "Basculer en mode formulaire",
       "switchToJson": "Passer en mode JSON",
       "unknownTopLevelProperty": "Attention : '{{key}}' n'est pas une propriété standard de niveau supérieur pour ce profil et peut être ignorée.",
       "jsonEditorInfo": {
-        "sync": "Sync/Copier/Déplacer le profil: Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les drapeaux rclone dans '_config'.",
+        "sync": "Sync/Copier/Déplacer Profil : Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les flags Rclone dans '_config'.",
         "bisync": "Profil Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil, et place tous les flags Rclone dans '_config'.",
         "mount": "Profil de montage : Définissez les chemins 'fs' et 'mountPoint', 'mountType', les champs au niveau du profil, et placez toutes les options de montage dans 'mountOpt'.",
         "serve": "Service Profile : Définissez le chemin 'fs', 'serveType', les champs au niveau du profil, et placez toutes les options de service dans '_config'.",
@@ -1007,7 +1007,7 @@
       "requiredBadge": "Requis",
       "nextQuestionHelp": "Répondez à la question suivante pour continuer.",
       "defaultValue": "Valeur par défaut",
-      "defaultPrefix": "Défaut:",
+      "defaultPrefix": "Défaut :",
       "yes": "Oui",
       "no": "Non",
       "chooseOption": "Choisissez une option",
@@ -1021,7 +1021,7 @@
       "selectMountType": "Sélectionnez le type de montage",
       "serveType": "Type",
       "loadingServeOptions": "Chargement des options {{type}}...",
-      "serveDescription": "Sélectionnez le chemin du dépôt distant que vous souhaitez servir. Vous pouvez servir le remote entier ou un dossier spécifique.",
+      "serveDescription": "Sélectionnez le chemin du dépôt distant que vous souhaitez servir. Vous pouvez servir le dépôt distant entier ou un dossier spécifique.",
       "operationDescription": "Configurez les options source, destination et démarrage automatique pour cette opération.",
       "hideCommandOptions": "Masquer les options de commande",
       "showCommandOptions": "Afficher les options de commande",
@@ -1063,7 +1063,7 @@
       "nfs": "Système de fichiers réseau",
       "dlna": "Serveur multimédia DLNA",
       "docker": "Plugin de volume Docker",
-      "restic": "Serveur REST - Restic",
+      "restic": "Serveur REST Restic",
       "s3": "Serveur Amazon S3 compatible"
     },
     "appOperation": {
@@ -1741,7 +1741,7 @@
       "searchPlaceholder": "Paramètres de recherche...",
       "resetAll": "Réinitialiser tous les paramètres",
       "noSettingsFound": "Aucun paramètre correspondant",
-      "trySearching": "Essayez de rechercher:",
+      "trySearching": "Essayez de rechercher :",
       "readyToRestartHeader": "Redémarrage des paramètres requis",
       "readyToRestartDesc": "Les modifications suivantes nécessitent un redémarrage du moteur pour prendre effet:",
       "discardChanges": "Annuler les modifications",
@@ -1793,7 +1793,7 @@
       "selectDestination": "Sélectionner une destination...",
       "browseFolder": "Parcourir le dossier",
       "noteLabel": "Note de sauvegarde (facultatif)",
-      "notePlaceholder": "Ajouter une description",
+      "notePlaceholder": "Ajouter une description...",
       "encrypt": "Chiffrer l'export",
       "passwordLabel": "Mot de passe chiffré",
       "passwordPlaceholder": "Entrez le mot de passe",
@@ -1908,7 +1908,7 @@
         "updatePassword": "Mettre à jour le mot de passe",
         "removeEncryption": "Supprimer le chiffrement",
         "storePlainText": "Stocker les informations d'identification en texte brut",
-        "decryptWarning": "Ceci déchiffrera votre configuration de rclone. Vos identifiants seront visibles pour toute personne ayant accès à vos fichiers.",
+        "decryptWarning": "Ceci déchiffrera votre configuration de Rclone. Vos identifiants seront visibles pour toute personne ayant accès à vos fichiers.",
         "enableEncryption": "Activer le chiffrement",
         "protectCredentials": "Protégez vos informations d'identification avec un mot de passe",
         "passwordChanged": "Mot de passe changé",
@@ -1992,7 +1992,7 @@
         "vfs": "Profil VFS",
         "filter": "Filtrer profil",
         "backend": "Profil Backend",
-        "runtimeRemote": "Profil remote d'exécution"
+        "runtimeRemote": "Profil d'exécution du dépôt distant"
       },
       "profile": {
         "label": "Profil",
@@ -2085,7 +2085,7 @@
         "main": "Flags généraux de RClone et transferts",
         "log": "Options de logs et de sortie",
         "http": "Flags HTTP du serveur",
-        "rc": "Options du serveur remote",
+        "rc": "Options du serveur du dépôt distant",
         "dlna": "Flags du serveur DLNA",
         "ftp": "Flags du serveur FTP",
         "nfs": "Flags du serveur NFS",
@@ -2146,7 +2146,7 @@
       "folderEmpty": "Le dossier est vide"
     },
     "selection": {
-      "selected": "Sélectionné",
+      "selected": "sélectionné",
       "folder": "dossier",
       "folders": "dossiers",
       "item": "élément",
@@ -2190,7 +2190,7 @@
         "filenameLabel": "Nom du fichier d'archive",
         "formatLabel": "Format d'archive",
         "prefixLabel": "Chemin du préfixe",
-        "prefixHint": "Remplace les chemins complets si défini",
+        "prefixHint": "Remplace les chemins complets si définis",
         "fullPathLabel": "Inclure les chemins sources complets",
         "fullPathHint": "Conserve la structure du répertoire de la racine",
         "compress": "Compresser"
@@ -2208,8 +2208,8 @@
       "rmdirsFailed": "Impossible de supprimer les dossiers vides dans \"{{name}}\" : {{error}}",
       "createFolderFailed": "Impossible de créer le dossier \"{{name}}\" : {{error}}",
       "renameFailed": "Impossible de renommer '{{name}}': {{error}}",
-      "emptyTrashFailed": "Impossible de vider la corbeille dans {{remote}}: {{error}}",
-      "openFileFailed": "Impossible d'ouvrir le fichier : contexte du serveur remote manquant",
+      "emptyTrashFailed": "Impossible de vider la corbeille dans {{remote}} : {{error}}",
+      "openFileFailed": "Impossible d'ouvrir le fichier : contexte du serveur du dépôt distant manquant",
       "minSelection": "Veuillez sélectionner au moins un élément {{min}}{{s}}.",
       "copyUrlFailed": "Impossible de télécharger depuis l'URL: {{error}}",
       "archiveCreateFailed": "Impossible de créer l'archive: {{error}}",
@@ -2234,7 +2234,7 @@
       "closeTabsToRight": "Fermer les onglets à droite",
       "about": "À propos",
       "emptyTrash": "Vider la corbeille",
-      "removeEmptyDirs": "Enlever les dossiers vide",
+      "removeEmptyDirs": "Enlever les dossiers vides",
       "delete": "Supprimer",
       "compress": "Compresser",
       "copy": "Copier",
@@ -2251,7 +2251,7 @@
       "search": "Rechercher",
       "nextTab": "Onglet suivant",
       "previousTab": "Onglet précédent",
-      "toggleSplit": "Activer/désactiver la vue fractionnée",
+      "toggleSplit": "Activer/désactiver La vue fractionnée",
       "switchPane": "Basculer le volet"
     },
     "view": {
@@ -2278,9 +2278,9 @@
   "home": {
     "emptyState": {
       "title": "RClone Manager",
-      "description": "Gérez facilement vos remote de Rclone. Si vous êtes nouveau à Rclone, utilisez \"Ajouter un remote rapide\" pour une installation simple et rapide.",
-      "addQuickRemote": "Ajouter un remote rapide",
-      "addDetailedRemote": "Ajouter un remote détaillé"
+      "description": "Gérez facilement vos dépôt distants de Rclone. Si vous êtes nouveau à Rclone, utilisez \"Ajouter un dépôt distant rapide\" pour une installation simple et rapide.",
+      "addQuickRemote": "Ajouter un dépôt distant rapide",
+      "addDetailedRemote": "Ajouter un dépôt distant détaillé"
     },
     "options": {
       "showInTray": "Afficher dans le menu déroulant",
@@ -2288,11 +2288,11 @@
       "cloneRemote": "Cloner un dépôt distant",
       "exportConfig": "Exporter la configuration",
       "resetSettings": "Réinitialiser les paramètres",
-      "deleteRemote": "Supprimer le dépôts distant"
+      "deleteRemote": "Supprimer le dépôt distant"
     },
     "deleteRemote": {
       "title": "Confirmer la suppression",
-      "message": "Êtes-vous sûr de vouloir supprimer '{{name}}'? Cette action ne peut pas être annulée."
+      "message": "Êtes-vous sûr de vouloir supprimer '{{name}}' ? Cette action ne peut pas être annulée."
     },
     "resetRemote": {
       "title": "Réinitialiser les paramètres du dépôt distant",
@@ -2306,7 +2306,7 @@
       "initialLoadFailed": "Échec du chargement initial des données",
       "updateActionsFailed": "Échec de la mise à jour des actions rapides",
       "openFailed": "Impossible d'ouvrir {{name}}",
-      "resetSettingsFailed": "Échec de la réinitialisation des paramètres remote"
+      "resetSettingsFailed": "Échec de la réinitialisation des paramètres du dépôt distant"
     }
   },
   "transfer": {
@@ -2314,7 +2314,7 @@
   },
   "generalOverview": {
     "panels": {
-      "remotes": "Accès rapide au remote",
+      "remotes": "Accès rapide au dépôt distant",
       "bandwidth": "Limitation de bande passante",
       "system": "Informations système",
       "jobs": "Informations du Job",
@@ -2340,20 +2340,20 @@
       "loading": "Chargement des informations de la bande passante...",
       "error": "Erreur lors du chargement des informations de bande passante",
       "retry": "Réessayer le chargement de la bande passante",
-      "upload": "Charger:",
-      "download": "Télécharger:",
-      "total": "Total:"
+      "upload": "Charger :",
+      "download": "Télécharger :",
+      "total": "Total :"
     },
     "system": {
       "aria": {
         "loading": "Chargement des informations du système"
       },
       "loading": "Chargement des informations du système...",
-      "status": "Statut de Rclone:",
+      "status": "Statut de Rclone :",
       "totalRemotes": "Total dépôts distants :",
-      "activeJobs": "Jobs actifs:",
-      "memoryUsage": "Utilisation de la mémoire:",
-      "uptime": "En service:",
+      "activeJobs": "Jobs actifs :",
+      "memoryUsage": "Utilisation de la mémoire :",
+      "uptime": "En service :",
       "active": "Actif",
       "inactive": "Inactif",
       "error": "Erreur"
@@ -2367,16 +2367,16 @@
       },
       "progress": "Progression:",
       "of": "de",
-      "eta": "ETA:",
-      "speed": "Vitesse de transfert:",
+      "eta": "ETA :",
+      "speed": "Vitesse de transfert :",
       "transfers": "Transferts",
-      "checks": "Vérifications:",
-      "errors": "Erreurs:",
-      "deletes": "Suppressions:",
-      "renames": "Renommages:",
-      "serverCopies": "Copies du serveur:",
-      "serverMoves": "Déplacements du serveur:",
-      "lastError": "Dernière erreur:",
+      "checks": "Vérifications :",
+      "errors": "Erreurs :",
+      "deletes": "Suppressions :",
+      "renames": "Renommages :",
+      "serverCopies": "Copies du serveur :",
+      "serverMoves": "Déplacements du serveur :",
+      "lastError": "Dernière erreur :",
       "copyError": "Cliquez pour copier l'erreur",
       "runningJobs": "Jobs en cours",
       "starting": "Démarrage...",
@@ -2390,7 +2390,7 @@
         "loading": "Chargement des automatisations"
       },
       "noConfigured": "Aucune automatisation configurée. Configurez des opérations avec des calendriers de cron ou une surveillance de fichiers en temps réel pour créer des automatisations.",
-      "nextRun": "Prochaine exécution:"
+      "nextRun": "Prochaine exécution :"
     },
     "serves": {
       "activeCount": "{{count}} service{{s}} de partage actif",
@@ -2423,9 +2423,9 @@
       "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
     },
     "serve": {
-      "parseFailed": "Échec de l'analyse de la réponse: {{error}}",
+      "parseFailed": "Échec de l'analyse de la réponse : {{error}}",
       "remoteEmpty": "Nom du dépôt distant ne peut pas être vide",
-      "typeRequired": "Le type de service de partage résaeu doit être spécifié"
+      "typeRequired": "Le type de service de partage réseau doit être spécifié"
     },
     "request": {
       "failed": "Échec de la requête : {{error}}"
@@ -2436,9 +2436,9 @@
     "file": {
       "driveRoot": "Impossible de sélectionner la racine du lecteur (par exemple, D:\\) comme point de montage. Veuillez sélectionner ou créer un sous-dossier.",
       "folderNotEmpty": "Le dossier sélectionné n'est pas vide",
-      "invalidPath": "Chemin invalide: le chemin ne peut pas être vide.",
+      "invalidPath": "Chemin invalide : le chemin ne peut pas être vide.",
       "notFound": "Le chemin n'existe pas: {{path}}",
-      "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers: {{error}}"
+      "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}"
     },
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
@@ -2448,16 +2448,16 @@
       "binaryNotFound": "Le binaire de Rclone est introuvable.",
       "versionTooOld": "La version Rclone {{version}} est trop ancienne. La version minimale requise est {{required}}. Veuillez mettre à jour Rclone.",
       "versionCheckFailed": "Impossible d'obtenir la version actuelle de rclone : {{error}}",
-      "restartFailed": "Échec du redémarrage du moteur après mise à jour: {{error}}",
+      "restartFailed": "Échec du redémarrage du moteur après mise à jour : {{error}}",
       "selfupdateFailed": "rclone selfupdate --check échoué: {{error}}",
-      "downloadFailed": "Le téléchargement a échoué après 3 tentatives: {{error}}",
+      "downloadFailed": "Le téléchargement a échoué après 3 tentatives : {{error}}",
       "executionFailed": "Échec de l'exécution de Rclone: {{error}}",
       "notFound": "Le binaire de Rclone n'a pas été trouvé à {{path}}",
       "spawnFailed": "Impossible de démarrer le processus de rclone : {{error}}",
       "invalidPath": "Chemin spécifique de rclone invalide",
-      "killFailed": "Échec de la fin du processus de rclone : {{error}}",
-      "portCleanupFailed": "Échec du nettoyage des ports de rclone: {{error}}",
-      "configValidationFailed": "La validation de la configuration de Rclone a échoué: {{error}}",
+      "killFailed": "Échec de la fin du processus de Rclone : {{error}}",
+      "portCleanupFailed": "Échec du nettoyage des ports de Rclone : {{error}}",
+      "configValidationFailed": "La validation de la configuration de Rclone a échoué : {{error}}",
       "lockFailed": "Échec de l'acquisition du verrouillage de configuration Rclone : {{error}}",
       "cacheRefreshFailed": "Échec de l'actualisation du cache de rclone : {{error}}",
       "invalidFlags": "Flags Rclone non valides détectés : {{error}}",
@@ -2477,14 +2477,14 @@
     },
     "backup": {
       "unknownFormat": "Format de sauvegarde inconnu",
-      "integrityFailed": "Échec de la vérification d'intégrité! La sauvegarde peut être corrompue.",
+      "integrityFailed": "Échec de la vérification d'intégrité ! La sauvegarde peut être corrompue.",
       "encryptedPasswordRequired": "Cette sauvegarde est chiffrée. Mot de passe requis.",
       "unsupportedArchive": "Type d'archive non pris en charge. Doit être un fichier .rcman",
       "invalidArchive": "Format d'archive de sauvegarde invalide",
       "manifestParseFailed": "Échec de l'analyse du manifeste de sauvegarde : {{error}}",
-      "missingManifest": "Manifest de sauvegarde manquant dans l'archive",
-      "openFailed": "Échec de l'ouverture de l'archive de sauvegarde: {{error}}",
-      "restoreFailed": "La restauration de la sauvegarde a échoué: {{error}}",
+      "missingManifest": "Manifeste de sauvegarde est manquant dans l'archive",
+      "openFailed": "Échec de l'ouverture de l'archive de sauvegarde : {{error}}",
+      "restoreFailed": "La restauration de la sauvegarde a échoué : {{error}}",
       "secretRequirePassword": "Cette sauvegarde est protégée par un secret et nécessite un mot de passe"
     },
     "backend": {
@@ -2497,52 +2497,52 @@
     },
     "job": {
       "notFound": "JobInfo non trouvé",
-      "monitoringFailed": "Trop d'erreurs de surveillance du Job: {{error}}",
-      "executionFailed": "Échec de l'exécution du Job: {{error}}"
+      "monitoringFailed": "Trop d'erreurs de surveillance du Job : {{error}}",
+      "executionFailed": "Échec de l'exécution du Job : {{error}}"
     },
     "cache": {
       "fetchRemotesFailed": "Échec de récupération des dépôts distants",
       "fetchConfigFailed": "Échec de récupération des dépôts distants",
-      "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montées",
+      "refreshMountsFailed": "Impossible d'actualiser les dépôts distants montés",
       "refreshServesFailed": "Échec de l’actualisation des services de partage"
     },
     "automation": {
       "automationNotEnabled": "L'automatisation est désactivée",
-      "automationCannotRun": "L'automatisation ne peut pas s'exécuter (statut: {{status}})",
-      "executionFailed": "L'exécution de l'automatisation a échoué: {{error}}",
+      "automationCannotRun": "L'automatisation ne peut pas s'exécuter (statut : {{status}})",
+      "executionFailed": "L'exécution de l'automatisation a échoué : {{error}}",
       "initFailed": "Impossible d'initialiser le moteur d'automatisation: {{error}}",
-      "startFailed": "Impossible de démarrer le moteur d’automatisation: {{error}}",
+      "startFailed": "Impossible de démarrer le moteur d’automatisation : {{error}}",
       "stopFailed": "Échec de l'arrêt du moteur d'automatisation: {{error}}",
-      "invalidCron": "Expression cron invalide: {{error}}",
+      "invalidCron": "Expression cron invalide : {{error}}",
       "automationNotFound": "Automatisation non trouvée"
     },
     "system": {
-      "themeSetFailed": "Impossible de définir le thème de l'application: {{error}}",
-      "unlockFailed": "Échec du déblocage: {{error}}",
-      "killFailed": "Impossible de tuer le processus: {{error}}",
-      "quitFailed": "Impossible de quitter le moteur de rclone: {{error}}"
+      "themeSetFailed": "Impossible de définir le thème de l'application : {{error}}",
+      "unlockFailed": "Échec du déblocage : {{error}}",
+      "killFailed": "Impossible de tuer le processus : {{error}}",
+      "quitFailed": "Impossible de quitter le moteur de Rclone : {{error}}"
     },
     "remote": {
       "configFailed": "Échec de la configuration du dépôt distant : {{error}}"
     },
     "updater": {
       "noPending": "Aucune mise à jour en attente",
-      "invalidUrl": "URL invalide: {{error}}",
-      "github": "GitHub API error: {{error}}",
-      "updateFailed": "Échec de la mise à jour: {{error}}",
-      "updateUnavailable": "La mise à jour de l'artefact n'est plus disponible: {{error}}",
-      "relaunchFailed": "La relance a échoué: {{error}}",
-      "restartFailed": "Redémarrage échoué: {{error}}",
+      "invalidUrl": "URL invalide : {{error}}",
+      "github": "GitHub API erreur : {{error}}",
+      "updateFailed": "Échec de la mise à jour : {{error}}",
+      "updateUnavailable": "La mise à jour de l'artefact n'est plus disponible : {{error}}",
+      "relaunchFailed": "La relance a échoué : {{error}}",
+      "restartFailed": "Redémarrage échoué : {{error}}",
       "notWritable": "Le chemin de mise à jour n'est pas accessible en écriture",
-      "ioError": "IO erreur: {{error}}"
+      "ioError": "IO erreur : {{error}}"
     },
     "settings": {
-      "loadFailed": "Échec du chargement des paramètres: {{error}}",
-      "saveFailed": "Échec de l'enregistrement du paramètre: {{error}}",
-      "resetFailed": "Échec de la réinitialisation du paramètre: {{error}}",
-      "resetAllFailed": "Échec de la réinitialisation de tous les paramètres: {{error}}",
-      "eventEmitFailed": "Échec de l'émission des paramètres d'événement: {{error}}",
-      "subSettingsFailed": "Échec de l'obtention des sous-paramètres: {{error}}",
+      "loadFailed": "Échec du chargement des paramètres : {{error}}",
+      "saveFailed": "Échec de l'enregistrement du paramètre : {{error}}",
+      "resetFailed": "Échec de la réinitialisation du paramètre : {{error}}",
+      "resetAllFailed": "Échec de la réinitialisation de tous les paramètres : {{error}}",
+      "eventEmitFailed": "Échec de l'émission des paramètres d'événement : {{error}}",
+      "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
       "notFound": "Paramètres pour '{{name}}' introuvables",
       "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
     }
@@ -2550,7 +2550,7 @@
   "backendSuccess": {
     "mount": {
       "unmounted": "{{mountPoint}} démonté avec succès",
-      "allUnmounted": "Toutes les dépôts distants ont été démontées avec succès"
+      "allUnmounted": "Tous les dépôts distants ont été démontés avec succès"
     },
     "serve": {
       "stopSuccess": "Arrêt réussi du service de partage {{serverId}}",
@@ -2653,7 +2653,7 @@
     "tooltipMount": "1 montage",
     "tooltipMounts": "Montages {{count}}",
     "tooltipServe": "1 Partage",
-    "tooltipServes": "{{count}} service{{s}} de partage"
+    "tooltipServes": "{{count}} Service de partage"
   },
   "notification": {
     "title": {
@@ -2662,7 +2662,7 @@
       "unmountSucceeded": "Déconnecté",
       "jobStarted": "Processus {{type}} démarré",
       "jobCompleted": "{{type}} Terminé",
-      "jobFailed": "{{type}} Échouè",
+      "jobFailed": "{{type}} Échoué",
       "jobStopped": "{{type}} Arrêté",
       "serveStarted": "Serveur en ligne",
       "serveFailed": "Erreur serveur",
@@ -2673,7 +2673,7 @@
       "automationStopped": "{{type}} Automatisation arrêtée",
       "allJobsStopped": "Touts les Jobs sont arrêtées",
       "allServesStopped": "Tous les serveurs sont arrêtés",
-      "allUnmounted": "Toutes les dépôts distants déconnectés",
+      "allUnmounted": "Tous les dépôts distants déconnectés",
       "updateFound": "Nouvelle version disponible",
       "updateStarted": "Mise à jour démarrée",
       "updateDownloaded": "Mise à jour téléchargée",
@@ -2753,7 +2753,7 @@
     "messages": {
       "missingRclone": "Le binaire Rclone n'a pas été trouvé. Veuillez l'installer pour continuer.",
       "missingMountPlugin": "Le plugin de montage est requis pour le montage des dépôts distants. Installez-le pour activer cette fonctionnalité.",
-      "corruptConfig": "Le fichier de configuration de rclone semble corrompu. Restaurer à partir de la sauvegarde ?",
+      "corruptConfig": "Le fichier de configuration de Rclone semble corrompu. Restaurer à partir de la sauvegarde ?",
       "backendError": "Le backend de Rclone est inaccessible. Redémarrer le moteur peut corriger cela.",
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
       "versionTooOld": "Votre version de Rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
@@ -2810,7 +2810,7 @@
       "selectConfigFirst": "Veuillez d'abord sélectionner un fichier de configuration",
       "fixValidationErrors": "Merci de corriger les erreurs de validation",
       "enterPasswordFirst": "Veuillez entrer un mot de passe",
-      "accountLocked": "Le compte est bloqué.",
+      "accountLocked": "Le compte est bloqué",
       "selectInstallPathFirst": "Veuillez sélectionner un chemin d'installation",
       "selectBinaryFirst": "Veuillez sélectionner un binaire",
       "invalidBinary": "Le binaire sélectionné est invalide",
@@ -2820,15 +2820,15 @@
       "validateFailed": "Échec de la validation",
       "invalid": "Mot de passe incorrect",
       "locked": "Compte bloqué en raison d'un trop grand nombre de tentatives",
-      "generic": "Erreur: {{error}}"
+      "generic": "Erreur : {{error}}"
     },
     "errors": {
       "passwordRequired": "Mot de passe requis",
-      "mountPluginInstallFailed": "L'installation du plugin a échoué: {{error}}",
-      "rcloneInstallFailed": "Échec de l'installation de Rclone: {{error}}"
+      "mountPluginInstallFailed": "L'installation du plugin a échoué : {{error}}",
+      "rcloneInstallFailed": "Échec de l'installation de Rclone : {{error}}"
     },
     "configTabs": {
-      "default": "Défaut",
+      "default": "Par défaut",
       "custom": "Personnalisé"
     },
     "hideConfigOptions": "Masquer les options",
