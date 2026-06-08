@@ -372,23 +372,17 @@
                           </div>
 
                           @if (stats.lastError) {
-                            <div class="error-section" role="alert">
-                              <div class="label">
+                            <section class="detail-section">
+                              <span class="section-title error">
+                                <mat-icon svgIcon="circle-exclamation"></mat-icon>
                                 {{ 'generalOverview.jobs.lastError' | translate }}
-                              </div>
-                              <div
-                                class="error-message"
-                                matTooltip="{{ 'generalOverview.jobs.copyError' | translate }}"
+                              </span>
+                              <pre
+                                class="error-entry"
                                 [appCopyToClipboard]="stats.lastError"
-                              >
-                                <mat-icon
-                                  svgIcon="circle-exclamation"
-                                  class="error-icon warn"
-                                  aria-hidden="true"
-                                ></mat-icon>
-                                <span class="error-text-content">{{ stats.lastError }}</span>
-                              </div>
-                            </div>
+                                [matTooltip]="'common.copy' | translate"
+                              ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ stats.lastError }}</span></pre>
+                            </section>
                           }
 
                           @if (runningJobs().length > 0) {

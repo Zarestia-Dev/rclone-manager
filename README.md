@@ -81,9 +81,9 @@ Regular updates with new features and improvements. Check out our [roadmap](http
 | :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :---------------------------------------------------------: |
 | <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/dark-ui.png" alt="Dark Mode" width="250"/> |
 
-|                      Nautilus File Manager                      |                            File Viewer                            |                                                             |
-| :-------------------------------------------------------------: | :---------------------------------------------------------------: | :---------------------------------------------------------: |
-|  <img src="assets/nautilus.png" alt="Nautilus" width="250"/>    | <img src="assets/file-viewer.png" alt="File Viewer" width="250"/> |                                                             |
+|                    Nautilus File Manager                    |                            File Viewer                            |     |
+| :---------------------------------------------------------: | :---------------------------------------------------------------: | :-: |
+| <img src="assets/nautilus.png" alt="Nautilus" width="250"/> | <img src="assets/file-viewer.png" alt="File Viewer" width="250"/> |     |
 
 </p>
 
@@ -100,7 +100,6 @@ Install RClone Manager from your favorite package manager or download directly.
 | **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                | `yay -S rclone-manager`                                                                                                                                                     |
 | **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                        | `yay -S rclone-manager-git`                                                                                                                                                 |
 | **Flathub**         | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager)  | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                                                                     |
-| **Snap Store**      | [![Snap Store](https://img.shields.io/snap/v/rclone-manager?style=flat&label=&color=2ec27e)](https://snapcraft.io/rclone-manager)                                                       | `sudo snap install rclone-manager`                                                                                                                                          |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
 > 📚 **Detailed Guide:** [Wiki: Installation - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux)  
@@ -108,10 +107,10 @@ Install RClone Manager from your favorite package manager or download directly.
 
 ### macOS
 
-| Repository          | Version                                                                                                                                                                                   | Install Command                                                            |
-| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
-| **Homebrew**        | [![Brew](https://img.shields.io/badge/Brew-Zarestia--Dev-3584e4?style=flat&logo=homebrew)](https://github.com/Zarestia-Dev/homebrew-zarestia)                                             | `brew tap Zarestia-Dev/zarestia` <br> `brew install --cask rclone-manager` |
-| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)   | [Download DMG](https://github.com/Zarestia-Dev/rclone-manager/releases)    |
+| Repository          | Version                                                                                                                                                                                 | Install Command                                                            |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| **Homebrew**        | [![Brew](https://img.shields.io/badge/Brew-Zarestia--Dev-3584e4?style=flat&logo=homebrew)](https://github.com/Zarestia-Dev/homebrew-zarestia)                                           | `brew tap Zarestia-Dev/zarestia` <br> `brew install --cask rclone-manager` |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Download DMG](https://github.com/Zarestia-Dev/rclone-manager/releases)    |
 
 > 📚 **Detailed Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)  
 > _Important: Read this for the "App is Damaged" fix and macFUSE setup._

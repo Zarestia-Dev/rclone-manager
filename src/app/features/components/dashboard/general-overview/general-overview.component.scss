@@ -253,35 +253,6 @@
         border-radius: 999px;
       }
     }
-
-    .error-section {
-      margin-top: 8px;
-      border-radius: var(--radius-xs);
-      padding: 12px;
-      @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
-
-      .error-message {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        border-radius: var(--radius-xs);
-        margin-top: 8px;
-
-        .error-text-content {
-          transition: opacity 0.2s ease;
-          opacity: 0.7;
-
-          &:hover {
-            opacity: 1;
-          }
-
-          &:focus {
-            outline: 2px solid var(--primary-color);
-            outline-offset: 2px;
-          }
-        }
-      }
-    }
   }
 }
 

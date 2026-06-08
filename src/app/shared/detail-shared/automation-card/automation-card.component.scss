@@ -243,15 +243,12 @@
     gap: var(--space-md);
   }
 
-  .automation-info {
-    flex: 1;
-    min-width: 0;
-  }
-
   .automation-title-row {
     display: flex;
     align-items: center;
     gap: var(--space-md);
+    flex: 1;
+    min-width: 0;
 
     .title-text {
       display: flex;
@@ -413,20 +410,6 @@
       font-size: var(--font-size-sm);
       color: var(--window-fg-color);
       word-break: break-all;
-    }
-  }
-
-  .error-section {
-    background: rgba(var(--warn-color-rgb), var(--active-opacity));
-    border-radius: var(--radius-sm);
-    padding: var(--space-md);
-
-    .error-message {
-      font-size: var(--font-size-sm);
-      color: var(--warn-color);
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
     }
   }
 

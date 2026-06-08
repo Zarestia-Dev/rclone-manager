@@ -79,23 +79,21 @@
     [class.stopping]="automation().status === 'stopping'"
   >
     <mat-card-header class="automation-header">
-      <div class="automation-info">
-        <div class="automation-title-row">
-          <div class="automation-icon-wrapper" [class]="automationMeta().colorClass">
-            <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
-          </div>
-          <div class="title-text">
-            <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
-            <span class="automation-type-label">
-              {{ automation().remoteName }} ·
-              {{ 'dashboard.appDetail.' + automation().automationType | translate }}
-            </span>
-          </div>
-          <span class="status-indicator" [ngClass]="'status-' + automation().status">
-            <span class="dot"></span>
-            {{ 'automation.status.' + automation().status | translate }}
+      <div class="automation-title-row">
+        <div class="automation-icon-wrapper" [class]="automationMeta().colorClass">
+          <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
+        </div>
+        <div class="title-text">
+          <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
+          <span class="automation-type-label">
+            {{ automation().remoteName }} ·
+            {{ 'dashboard.appDetail.' + automation().automationType | translate }}
           </span>
         </div>
+        <span class="status-indicator" [ngClass]="'status-' + automation().status">
+          <span class="dot"></span>
+          {{ 'automation.status.' + automation().status | translate }}
+        </span>
       </div>
       <button
         mat-icon-button
@@ -226,13 +224,17 @@
       </div>
 
       @if (automation().lastError) {
-        <div class="detail-section error-section">
-          <h5 class="section-title">
-            <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+        <section class="detail-section">
+          <span class="section-title error">
+            <mat-icon svgIcon="circle-exclamation"></mat-icon>
             {{ 'dashboard.generalDetail.lastError' | translate }}
-          </h5>
-          <pre class="error-message">{{ automation().lastError }}</pre>
-        </div>
+          </span>
+          <pre
+            class="error-entry"
+            [appCopyToClipboard]="automation().lastError"
+            [matTooltip]="'common.copy' | translate"
+          ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ automation().lastError }}</span></pre>
+        </section>
       }
 
       @if (automation().currentJobId) {

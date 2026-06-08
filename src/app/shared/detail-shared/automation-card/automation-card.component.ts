@@ -9,6 +9,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Automation } from '@app/types';
 import { PathService } from '@app/services';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+import { CopyToClipboardDirective } from '@app/directives';
 
 const AUTOMATION_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
   sync: { icon: 'refresh', colorClass: 'sync-color' },
@@ -39,6 +40,7 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
     MatTooltipModule,
     TranslateModule,
     DatePipe,
+    CopyToClipboardDirective,
   ],
   templateUrl: './automation-card.component.html',
   styleUrl: './automation-card.component.scss',

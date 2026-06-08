@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **macOS Dock Visibility Control**: Added functionality to control the macOS dock visibility based on the presence of visible windows. The dock icon will now hide when there are no visible windows and show when there is at least one visible window. This is the default behavior for macOS apps that don't have a dock icon. This is a macOS-specific change. #208
 - Profile setting changed into the default rclone RC values instead of parsing them to different values and after parsing them again rclone RC values. 
 - **Client-Side Preference Storage**: Migrated transient view preferences and viewport states (Nautilus layout/sizes/sorting, split divider position, navigation sidebar state, dashboard accordion states, and selected profiles/operations per remote) from the backend settings database to client-side local storage. These keys only for frontend and no need the backend to access them. Reduced the I/O operations.
+- Remove the snap package support for now. Maybe will add it back in the future.
 
 ### Fixed
 - Fixed missing language values on some sections of the application and remove the non-used language keys.

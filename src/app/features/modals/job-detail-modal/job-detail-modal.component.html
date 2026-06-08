@@ -214,14 +214,11 @@
         <mat-icon svgIcon="circle-exclamation"></mat-icon>
         {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <div
+      <pre
         class="error-entry"
         [appCopyToClipboard]="lastError() || jobData().error"
         [matTooltip]="'common.copy' | translate"
-      >
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-        <pre class="error-message">{{ lastError() || jobData().error }}</pre>
-      </div>
+      ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ lastError() || jobData().error }}</span></pre>
     </section>
   }
 </main>
