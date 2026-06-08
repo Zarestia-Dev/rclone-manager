@@ -1154,5 +1154,65 @@
   "vfs_handle_caching": {
     "title": "Vfs Handle Caching",
     "help": "Time to keep file handle and downloaders alive after last close"
+  },
+  "mountType": {
+    "title": "Mount Type",
+    "help": "Mount type to use."
+  },
+  "type": {
+    "title": "Serve Type",
+    "help": "Serve type to use."
+  },
+  "mount_type_mount": {
+    "title": "Standard Mount",
+    "help": "Standard FUSE mount"
+  },
+  "mount_type_cmount": {
+    "title": "Windows/macOS FUSE Mount",
+    "help": "FUSE mount using cgofuse (default on Windows/macOS)"
+  },
+  "mount_type_mount2": {
+    "title": "Go-native Mount",
+    "help": "Go-native FUSE mount using go-fuse"
+  },
+  "mount_type_nfsmount": {
+    "title": "NFS Mount",
+    "help": "Mount using NFS protocol"
+  },
+  "serve_type_http": {
+    "title": "HTTP Server",
+    "help": "Serve the remote over HTTP"
+  },
+  "serve_type_webdav": {
+    "title": "WebDAV Server",
+    "help": "Serve the remote over WebDAV"
+  },
+  "serve_type_ftp": {
+    "title": "FTP Server",
+    "help": "Serve the remote over FTP"
+  },
+  "serve_type_sftp": {
+    "title": "SFTP Server",
+    "help": "Serve the remote over SFTP"
+  },
+  "serve_type_nfs": {
+    "title": "NFS Server",
+    "help": "Serve the remote over NFS"
+  },
+  "serve_type_dlna": {
+    "title": "DLNA Media Server",
+    "help": "Serve the remote over DLNA"
+  },
+  "serve_type_docker": {
+    "title": "Docker Volume Plugin",
+    "help": "Serve the remote as a Docker volume plugin"
+  },
+  "serve_type_restic": {
+    "title": "Restic REST Server",
+    "help": "Serve the remote over Restic REST API"
+  },
+  "serve_type_s3": {
+    "title": "Amazon S3 compatible server",
+    "help": "Serve the remote over Amazon S3 API"
   }
 }
