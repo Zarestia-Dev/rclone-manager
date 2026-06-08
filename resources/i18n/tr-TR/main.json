@@ -142,6 +142,7 @@
     "toggleSearch": "Arama çubuğunu aç/kapat",
     "remotes": "Uzak Bağlantılar",
     "searchPlaceholder": "Uzak bağlantıları ara...",
+    "hiddenOnDashboard": "Kontrol Panelinde Gizli",
     "searchAriaLabel": "Uzak bağlantıları ara",
     "noRemotesFound": "\"{{term}}\" ile eşleşen uzak bağlantı bulunamadı",
     "noRemotesConfigured": "Yapılandırılmış uzak bağlantı yok",
@@ -149,18 +150,17 @@
       "mountStatus": "Bağlama durumu",
       "syncStatus": "Senkronizasyon operasyonları durumu",
       "serveStatus": "Sunma durumu"
-    },
-    "hiddenOnDashboard": "Kontrol Panelinde Gizli"
+    }
   },
   "detailShared": {
     "jobInfo": {
       "title": "İş Bilgisi",
       "type": "İş Türü",
       "id": "İş Kimliği",
+      "status": "Görev Durumu",
       "started": "Başlangıç",
       "finished": "Bitiş",
-      "duration": "Süre",
-      "status": "Görev Durumu"
+      "duration": "Süre"
     },
     "diskUsage": {
       "title": "Disk Kullanımı",
@@ -198,6 +198,7 @@
         "started": "Başlangıç",
         "actions": "Eylemler"
       },
+      "dryRun": "Dry Run (Deneme)",
       "status": {
         "running": "Çalışıyor",
         "completed": "Tamamlandı",
@@ -209,8 +210,7 @@
         "stop": "Görevi Durdur",
         "delete": "Görevi Sil"
       },
-      "empty": "Görev bulunamadı",
-      "dryRun": "Dry Run (Deneme)"
+      "empty": "Görev bulunamadı"
     },
     "settings": {
       "metrics": "{{count}} ayar",
@@ -296,8 +296,8 @@
       "autoAcknowledgeHint": "Oluşan uyarıları otomatik olarak onaylandı olarak işaretle. Sistem bildirimi tetikleyen uyarılar için idealdir.",
       "actions": "Tetiklenecek Eylemler",
       "actionRequired": "En az bir eylem gereklidir.",
-      "filtersEmptyHint": "Tüm olaylarla eşleştirmek için boş bırakın.",
       "noActionsHint": "Bir kurala atamadan önce bir uyarı eylemi oluşturmanız gerekir.",
+      "filtersEmptyHint": "Tüm olaylarla eşleştirmek için boş bırakın.",
       "scopeFilters": "Kapsam Filtreleri"
     },
     "events": {
@@ -310,6 +310,10 @@
       "system": "Sistem Olayları"
     },
     "action": {
+      "basicInfo": "Temel Bilgiler",
+      "configuration": "Yapılandırma",
+      "noActionsCreated": "Henüz hiçbir uyarı eylemi oluşturulmadı.",
+      "noHeaders": "Yapılandırılmış özel üstbilgi yok.",
       "kind": "Eylem Tipi",
       "os_toast": "Sistem Bildirimi",
       "webhook": "Webhook (HTTP/S)",
@@ -352,11 +356,7 @@
       "discord": "Discord",
       "slack": "Slack",
       "headerKey": "Başlık Adı",
-      "headerValue": "Değer",
-      "basicInfo": "Temel Bilgiler",
-      "configuration": "Yapılandırma",
-      "noActionsCreated": "Henüz hiçbir uyarı eylemi oluşturulmadı.",
-      "noHeaders": "Yapılandırılmış özel üstbilgi yok."
+      "headerValue": "Değer"
     }
   },
   "settings": {
@@ -443,14 +443,6 @@
       }
     },
     "runtime": {
-      "dashboard_card_variant": {
-        "label": "Kart Görüntüleme Modu",
-        "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
-        "options": {
-          "compact": "Kompakt",
-          "detailed": "Ayrıntılı"
-        }
-      },
       "theme": {
         "label": "Uygulama Teması",
         "options": {
@@ -495,6 +487,14 @@
       "dashboard_layout": {
         "label": "Panel Düzeni",
         "description": "Panel için özel düzen yapılandırması."
+      },
+      "dashboard_card_variant": {
+        "label": "Kart Görüntüleme Modu",
+        "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
+        "options": {
+          "compact": "Kompakt",
+          "detailed": "Ayrıntılı"
+        }
       }
     },
     "nautilus": {
@@ -762,6 +762,12 @@
       "forbiddenChars": "{{name}} yasak karakterler içeriyor ('/' veya ':' )",
       "create": "Oluştur"
     },
+    "actions": {
+      "hide": "Gizle",
+      "show": "Göster",
+      "open": "Aç",
+      "reset": "Sıfırla"
+    },
     "overviewHeader": {
       "manageBackends": "Arka Uçları Yönet",
       "backendSwitchAria": "Mevcut mod: {{title}} - Arka uç değiştirmek için tıklayın"
@@ -780,6 +786,7 @@
       "none": "yok",
       "date": "Tarih",
       "time": "Saat",
+      "others": "diğerleri",
       "aria": {
         "item": "Öge",
         "removeItem": "Ögeyi kaldır",
@@ -788,8 +795,7 @@
       },
       "errors": {
         "invalidValue": "Geçersiz değer"
-      },
-      "others": "diğerleri"
+      }
     },
     "serveCard": {
       "tooltips": {
@@ -919,12 +925,6 @@
       "required": "Şifre gerekli",
       "remember": "Şifreyi hatırla",
       "keychain": "Sistem anahtarlığında saklandı"
-    },
-    "actions": {
-      "hide": "Gizle",
-      "open": "Aç",
-      "reset": "Sıfırla",
-      "show": "Göster"
     }
   },
   "wizards": {
@@ -1395,6 +1395,7 @@
       "errorCalculateSize": "Klasör boyutu hesaplanamadı",
       "errorUnexpected": "Beklenmeyen bir hata oluştu",
       "errorLoadFile": "{{name}} yüklenemedi",
+      "errorDownload": "Dosya indirilirken hata oluştu",
       "downloading": "{{name}} indiriliyor",
       "save": "Kaydet",
       "edit": "Düzenle",
@@ -1406,8 +1407,7 @@
       "extract": "Çıkart",
       "extracting": "{{name}} çıkartılıyor...",
       "errorExtract": "Arşiv çıkartılamadı",
-      "errorListArchive": "Arşiv içeriği listelenemedi",
-      "errorDownload": "Dosya indirilirken hata oluştu"
+      "errorListArchive": "Arşiv içeriği listelenemedi"
     }
   },
   "dashboard": {
@@ -1691,6 +1691,8 @@
       "cacheClearFailed": "Önbellek temizlenemedi"
     },
     "logs": {
+      "fetchError": "Uygulama günlükleri alınamadı.",
+      "clearError": "Uygulama günlükleri temizlenemedi.",
       "clearAll": "Tüm Günlükleri Temizle",
       "scrollTop": "Başa Git",
       "scrollBottom": "Sona Git",
@@ -1705,9 +1707,7 @@
       "logContext": "Günlük Bağlamı",
       "logLevel": "Günlük Seviyesi",
       "allLevels": "Tüm Seviyeler",
-      "searchPlaceholder": "Günlüklerde ara...",
-      "clearError": "Uygulama günlükleri temizlenemedi.",
-      "fetchError": "Uygulama günlükleri alınamadı."
+      "searchPlaceholder": "Günlüklerde ara..."
     },
     "preferences": {
       "title": "Tercihler",
@@ -1979,8 +1979,8 @@
         "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
         "disabledReason": {
           "defaultProtected": "Varsayılan profil yeniden adlandırılamaz veya silinemez",
-          "inUse": "Profil çalışan bir {{operation}} tarafından kullanılıyor. Önce onu durdurun.",
-          "lastProfile": "En az bir profil kalmalıdır"
+          "lastProfile": "En az bir profil kalmalıdır",
+          "inUse": "Profil çalışan bir {{operation}} tarafından kullanılıyor. Önce onu durdurun."
         }
       },
       "buttons": {
@@ -2182,23 +2182,21 @@
       "redoFailed": "{{count}} öge için yineleme başarısız",
       "rmdirsFailed": "\"{{name}}\" içinde boş klasörler kaldırılamadı: {{error}}",
       "createFolderFailed": "\"{{name}}\" klasörü oluşturulamadı: {{error}}",
+      "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}",
       "emptyTrashFailed": "Çöp boşaltılamadı: {{error}}",
       "openFileFailed": "Dosya açılamıyor: uzak sunucu bağlamı eksik",
       "minSelection": "Lütfen en az {{min}} öge seçin.",
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
       "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}",
-      "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
-      "renameFailed": "'{{name}}' yeniden adlandırılamadı: {{error}}"
+      "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi."
     },
     "contextMenu": {
       "open": "Aç",
       "openNewTab": "Yeni Sekmede Aç",
-      "openNewWindow": "Yeni Pencerede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
       "uploadFiles": "Dosyaları Yükle",
       "uploadFolder": "Klasörü Yükle",
-      "rename": "Yeniden Adlandır",
       "refresh": "Yenile",
       "properties": "Özellikler",
       "reload": "Yeniden Yükle",
@@ -2216,7 +2214,9 @@
       "compress": "Sıkıştır",
       "copy": "Kopyala",
       "cut": "Kes",
+      "rename": "Yeniden Adlandır",
       "paste": "Yapıştır",
+      "openNewWindow": "Yeni Pencerede Aç",
       "focusPath": "Yola Odaklan",
       "newTab": "Yeni Sekme",
       "closeTab": "Sekmeyi Kapat",
@@ -2234,20 +2234,20 @@
       "showHidden": "Gizli Dosyaları Göster"
     },
     "notifications": {
+      "mkdirFailed": "Klasör oluşturulamadı: {{path}}",
+      "uploadStarted": "{{count}} dosya yüklenmesi başlatılıyor...",
+      "uploadSuccess": "{{count}} dosya başarıyla yüklendi.",
+      "uploadFailed": "{{count}} dosya yüklenemedi.",
       "trashEmptied": "Temizlik işlemi başlatıldı",
       "rmdirsStarted": "Boş klasörler kaldırılıyor: \"{{name}}\"...",
       "deleteStarted": "{{count}} öge siliniyor...",
+      "copyStarted": "{{count}} öge kopyalanıyor...",
+      "moveStarted": "{{count}} öge taşınıyor...",
       "renameStarted": "Yeniden adlandırma işlemi başlatıldı",
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı",
       "copyUrlStarted": "URL'den indiriliyor...",
-      "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
-      "copyStarted": "{{count}} öge kopyalanıyor...",
-      "mkdirFailed": "Klasör oluşturulamadı: {{path}}",
-      "moveStarted": "{{count}} öge taşınıyor...",
-      "uploadFailed": "{{count}} dosya yüklenemedi.",
-      "uploadStarted": "{{count}} dosya yüklenmesi başlatılıyor...",
-      "uploadSuccess": "{{count}} dosya başarıyla yüklendi."
+      "archiveCreateStarted": "Arşiv oluşturma başlatıldı..."
     }
   },
   "home": {
@@ -2277,12 +2277,12 @@
       "settingsReset": "{{name}} ayarları sıfırlandı."
     },
     "errors": {
+      "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
       "initialLoadFailed": "İlk veri yüklemesi başarısız oldu",
       "updateActionsFailed": "Hızlı işlemler güncellenemedi",
       "openFailed": "{{name}} açılamadı",
       "resetSettingsFailed": "Uzak sunucu ayarları sıfırlanamadı",
-      "deleteRemoteFailed": "Uzak sunucu silinemedi",
-      "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin."
+      "deleteRemoteFailed": "Uzak sunucu silinemedi"
     }
   },
   "transfer": {
@@ -2427,16 +2427,16 @@
       "downloadFailed": "3 denemeden sonra indirme başarısız: {{error}}",
       "executionFailed": "Rclone yürütme başarısız: {{error}}",
       "notFound": "Rclone ikili dosyası {{path}} konumunda bulunamadı",
-      "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}",
-      "cacheRefreshFailed": "Rclone önbelleği yenilenemedi: {{error}}",
-      "configValidationFailed": "Rclone yapılandırma doğrulaması başarısız oldu: {{error}}",
-      "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
+      "spawnFailed": "Rclone işlemi başlatılamadı: {{error}}",
       "invalidPath": "Geçersiz rclone yolu belirtildi",
       "killFailed": "Rclone işlemi sonlandırılamadı: {{error}}",
-      "lockFailed": "Rclone yapılandırma kilidi alınamadı: {{error}}",
       "portCleanupFailed": "Rclone bağlantı noktaları temizlenemedi: {{error}}",
-      "spawnFailed": "Rclone işlemi başlatılamadı: {{error}}",
-      "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor"
+      "configValidationFailed": "Rclone yapılandırma doğrulaması başarısız oldu: {{error}}",
+      "lockFailed": "Rclone yapılandırma kilidi alınamadı: {{error}}",
+      "cacheRefreshFailed": "Rclone önbelleği yenilenemedi: {{error}}",
+      "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
+      "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor",
+      "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}"
     },
     "security": {
       "passwordEmpty": "Şifre boş olamaz",
@@ -2491,10 +2491,10 @@
       "automationNotFound": "Otomasyon bulunamadı"
     },
     "system": {
+      "themeSetFailed": "Uygulama teması ayarlanamadı: {{error}}",
       "unlockFailed": "Kilit açma başarısız: {{error}}",
       "killFailed": "İşlem sonlandırılamadı: {{error}}",
-      "quitFailed": "Rclone motoru kapatılamadı: {{error}}",
-      "themeSetFailed": "Uygulama teması ayarlanamadı: {{error}}"
+      "quitFailed": "Rclone motoru kapatılamadı: {{error}}"
     },
     "remote": {
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}"
@@ -2817,8 +2817,8 @@
     "refreshUi": "Arayüzü Yenile",
     "clearCache": "Önbelleği Temizle",
     "openDevTools": "Geliştirici Araçlarını Aç",
-    "cleared": "Veriler Temizlendi",
     "openDevToolsError": "Geliştirici Araçları açılamadı",
-    "openDevToolsHint": "Hata ayıklamak için Geliştirici Araçlarını açın"
+    "openDevToolsHint": "Hata ayıklamak için Geliştirici Araçlarını açın",
+    "cleared": "Veriler Temizlendi"
   }
 }
