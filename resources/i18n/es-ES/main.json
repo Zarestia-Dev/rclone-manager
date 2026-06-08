@@ -19,6 +19,7 @@
     "retry": "Reintentar",
     "copied": "Copiado al portapapeles",
     "copyFailed": "Error al copiar al portapapeles",
+    "required": "Este campo es requerido.",
     "clear": "Limpiar",
     "name": "Nombre",
     "status": "Estado",
@@ -27,7 +28,6 @@
     "all": "Todos",
     "description": "Descripción",
     "password": "Contraseña",
-    "required": "Este campo es requerido.",
     "username": "Nombre de usuario"
   },
   "validators": {
@@ -142,6 +142,7 @@
     "toggleSearch": "Alternar barra de búsqueda",
     "remotes": "Remotos",
     "searchPlaceholder": "Buscar remotos...",
+    "hiddenOnDashboard": "Oculto en el panel",
     "searchAriaLabel": "Buscar remotos",
     "noRemotesFound": "No se encontraron remotos que coincidan con \"{{term}}\"",
     "noRemotesConfigured": "No hay remotos configurados",
@@ -149,18 +150,17 @@
       "mountStatus": "Estado del montaje",
       "syncStatus": "Estado de las operaciones de sincronización",
       "serveStatus": "Estado del servicio"
-    },
-    "hiddenOnDashboard": "Oculto en el panel"
+    }
   },
   "detailShared": {
     "jobInfo": {
       "title": "Información del trabajo",
       "type": "Tipo de trabajo",
       "id": "ID del trabajo",
+      "status": "Estado de la tarea",
       "started": "Iniciado",
       "finished": "Finalizado",
-      "duration": "Duración",
-      "status": "Estado de la tarea"
+      "duration": "Duración"
     },
     "diskUsage": {
       "title": "Uso del disco",
@@ -198,6 +198,7 @@
         "started": "Iniciado",
         "actions": "Acciones"
       },
+      "dryRun": "Simulación (Dry Run)",
       "status": {
         "running": "En ejecución",
         "completed": "Completado",
@@ -209,8 +210,7 @@
         "stop": "Detener trabajo",
         "delete": "Borrar trabajo"
       },
-      "empty": "No se han encontrado trabajos",
-      "dryRun": "Simulación (Dry Run)"
+      "empty": "No se han encontrado trabajos"
     },
     "settings": {
       "metrics": "{{count}} ajustes",
@@ -296,11 +296,28 @@
       "autoAcknowledgeHint": "Marcar alertas como reconocidas automáticamente. Ideal para alertas que ya activan notificaciones del sistema.",
       "actions": "Acciones a activar",
       "actionRequired": "Se requiere al menos una acción.",
-      "filtersEmptyHint": "Dejar vacío para que coincida con todos los eventos.",
       "noActionsHint": "Debe crear una acción de alerta antes de poder asignarla a una regla.",
+      "filtersEmptyHint": "Dejar vacío para que coincida con todos los eventos.",
       "scopeFilters": "Filtros de Ámbito"
     },
+    "events": {
+      "job": "Tareas y Operaciones de Archivos",
+      "serve": "Servidores en Segundo Plano",
+      "mount": "Montajes de Unidad",
+      "engine": "Infraestructura del Motor",
+      "update": "Actualizaciones de Software",
+      "automation": "Automatizaciones",
+      "system": "Eventos del Sistema"
+    },
     "action": {
+      "basicInfo": "Información Básica",
+      "configuration": "Configuración",
+      "noActionsCreated": "Aún no se han creado acciones de alerta.",
+      "noHeaders": "No hay cabeceras personalizadas configuradas.",
+      "kind": "Tipo de Acción",
+      "os_toast": "Notificación de SO",
+      "webhook": "Webhook (HTTP/S)",
+      "script": "Script Personalizado",
       "telegram": "Telegram",
       "mqtt": "MQTT",
       "email": "Correo electrónico",
@@ -322,6 +339,9 @@
       "messageTemplate": "Plantilla de mensaje",
       "messageTemplateHint": "Soporta variables Handlebars",
       "telegram_info": "Puedes encontrar tu Token del bot en @BotFather y tu ID de chat en @userinfobot.",
+      "host": "Host",
+      "port": "Puerto",
+      "useTls": "Usar TLS",
       "topic": "Tema (Topic)",
       "qos": "QoS",
       "retain": "Retener (Retain)",
@@ -331,32 +351,12 @@
       "to": "Dirección del destinatario",
       "encryption": "Cifrado",
       "subjectTemplate": "Plantilla de asunto",
-      "basicInfo": "Información Básica",
-      "configuration": "Configuración",
-      "discord": "Discord",
-      "headerKey": "Nombre de Cabecera",
-      "headerValue": "Valor",
       "headers": "Cabeceras HTTP/S",
-      "host": "Host",
-      "kind": "Tipo de Acción",
-      "noActionsCreated": "Aún no se han creado acciones de alerta.",
-      "noHeaders": "No hay cabeceras personalizadas configuradas.",
-      "os_toast": "Notificación de SO",
-      "port": "Puerto",
       "presets": "Preajustes",
-      "script": "Script Personalizado",
+      "discord": "Discord",
       "slack": "Slack",
-      "useTls": "Usar TLS",
-      "webhook": "Webhook (HTTP/S)"
-    },
-    "events": {
-      "automation": "Automatizaciones",
-      "engine": "Infraestructura del Motor",
-      "job": "Tareas y Operaciones de Archivos",
-      "mount": "Montajes de Unidad",
-      "serve": "Servidores en Segundo Plano",
-      "system": "Eventos del Sistema",
-      "update": "Actualizaciones de Software"
+      "headerKey": "Nombre de Cabecera",
+      "headerValue": "Valor"
     }
   },
   "settings": {
@@ -443,14 +443,6 @@
       }
     },
     "runtime": {
-      "dashboard_card_variant": {
-        "label": "Variante de tarjeta",
-        "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
-        "options": {
-          "compact": "Compacto",
-          "detailed": "Detallado"
-        }
-      },
       "theme": {
         "label": "Tema de la aplicación",
         "options": {
@@ -495,6 +487,14 @@
       "dashboard_layout": {
         "label": "Diseño del panel de control",
         "description": "Configuración de diseño personalizada para el panel de control."
+      },
+      "dashboard_card_variant": {
+        "label": "Variante de tarjeta",
+        "description": "Mostrar tarjetas del panel de control en modo compacto o detallado",
+        "options": {
+          "compact": "Compacto",
+          "detailed": "Detallado"
+        }
       }
     },
     "nautilus": {
@@ -762,6 +762,12 @@
       "forbiddenChars": "{{name}} contiene caracteres prohibidos ('/' o ':')",
       "create": "Crear"
     },
+    "actions": {
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "open": "Abrir",
+      "reset": "Restablecer"
+    },
     "overviewHeader": {
       "manageBackends": "Gestionar backends",
       "backendSwitchAria": "Modo actual: {{title}} - Haga clic para cambiar el backend"
@@ -780,6 +786,7 @@
       "none": "ninguno",
       "date": "Fecha",
       "time": "Hora",
+      "others": "otros",
       "aria": {
         "item": "{{name}} elemento {{index}}",
         "removeItem": "Eliminar {{name}} elemento",
@@ -788,8 +795,7 @@
       },
       "errors": {
         "invalidValue": "Valor inválido"
-      },
-      "others": "otros"
+      }
     },
     "serveCard": {
       "tooltips": {
@@ -883,6 +889,7 @@
       },
       "actions": {
         "pollInterval": "Intervalo de sondeo",
+        "pollIntervalNotSupported": "ChangeNotify no compatible",
         "updateInterval": "Actualizar intervalo de sondeo",
         "refreshMetadata": "Actualizar metadatos",
         "clearCache": "Borrar caché de metadatos",
@@ -897,8 +904,7 @@
           "directoryRefreshed": "Directorio actualizado",
           "intervalSet": "Intervalo establecido en {{val}}",
           "error": "Error: {{error}}"
-        },
-        "pollIntervalNotSupported": "ChangeNotify no compatible"
+        }
       },
       "pollIntervalPlaceholder": "Introduzca el intervalo de sondeo (segundos)"
     },
@@ -919,12 +925,6 @@
       "required": "Se requiere contraseña",
       "remember": "Recordar contraseña",
       "keychain": "Almacenado en el llavero del sistema"
-    },
-    "actions": {
-      "hide": "Ocultar",
-      "open": "Abrir",
-      "reset": "Restablecer",
-      "show": "Mostrar"
     }
   },
   "wizards": {
@@ -1285,6 +1285,7 @@
     "resolveRemoteFailed": "No se pudo resolver el remoto para este elemento",
     "remoteAbout": {
       "loading": "Cargando información remota...",
+      "reloadUsage": "Recargar Uso",
       "totalSpace": "Espacio total",
       "usedSpace": "Espacio utilizado",
       "freeSpace": "Espacio libre",
@@ -1311,8 +1312,7 @@
       "metadata": {
         "system": "Metadatos del sistema",
         "standard": "Metadatos estándar"
-      },
-      "reloadUsage": "Recargar Uso"
+      }
     },
     "properties": {
       "title": "Propiedades",
@@ -1395,19 +1395,19 @@
       "errorCalculateSize": "Error al calcular el tamaño de la carpeta",
       "errorUnexpected": "Se produjo un error inesperado",
       "errorLoadFile": "Error al cargar {{name}}",
+      "errorDownload": "Error al descargar el archivo",
       "downloading": "Descargando {{name}}",
+      "save": "Guardar",
+      "edit": "Editar",
+      "cancel": "Cancelar",
+      "saveSuccess": "Archivo guardado correctamente",
+      "saveError": "Error al guardar el archivo",
       "archiveContents": "Contenido del archivo",
       "shortcutTargets": "Objetivos del acceso directo",
-      "errorListArchive": "Error al listar el contenido del archivo",
       "extract": "Extraer",
       "extracting": "Extrayendo \"{{name}}\"...",
       "errorExtract": "Error al extraer el archivo",
-      "cancel": "Cancelar",
-      "edit": "Editar",
-      "errorDownload": "Error al descargar el archivo",
-      "save": "Guardar",
-      "saveError": "Error al guardar el archivo",
-      "saveSuccess": "Archivo guardado correctamente"
+      "errorListArchive": "Error al listar el contenido del archivo"
     }
   },
   "dashboard": {
@@ -1416,6 +1416,7 @@
         "profileSelection": "Selección de perfil"
       },
       "operationMode": "Modo de operación",
+      "selectOperationMode": "Seleccionar modo de operación",
       "monitoring": "Monitoreo",
       "configuration": "Configuración",
       "selectedProfile": "Perfil seleccionado",
@@ -1473,8 +1474,7 @@
       "dryRun": "Simulacro",
       "dryRunActive": "Simulacro activo: no se realizarán cambios",
       "resync": "Resincronizar",
-      "resyncActive": "Resincronización activa: realizando resincronización completa",
-      "selectOperationMode": "Seleccionar modo de operación"
+      "resyncActive": "Resincronización activa: realizando resincronización completa"
     },
     "generalDetail": {
       "automations": "Automatizaciones",
@@ -1530,8 +1530,8 @@
       "remoteManagement": "Administración remota",
       "fileOperations": "Operaciones de archivo",
       "fileBrowser": "Explorador de archivos",
-      "navigation": "Navegación",
-      "fileBrowserNautilus": "Explorador de Archivos (Nautilus)"
+      "fileBrowserNautilus": "Explorador de Archivos (Nautilus)",
+      "navigation": "Navegación"
     },
     "quitError": "Error al salir de la aplicación: {{error}}",
     "mountsRefreshSuccess": "Montajes actualizados con éxito",
@@ -1597,6 +1597,8 @@
       "rcloneWebsite": "Sitio web de Rclone",
       "readyToRestart": "Se requiere reinicio",
       "restartDescription": "Se ha instalado una actualización. Reinicie la aplicación para aplicar los cambios.",
+      "rcloneRestartRequired": "Reinicio de Rclone Requerido",
+      "rcloneRestartDescription": "Se ha instalado una actualización de Rclone. Por favor, reinicie el motor para aplicar los cambios.",
       "restartNow": "Reiniciar ahora",
       "updateAvailable": "Actualización disponible",
       "version": "Versión",
@@ -1686,11 +1688,11 @@
       "entries": "Entradas activas",
       "clear": "Borrar",
       "cacheCleared": "Caché borrada correctamente",
-      "cacheClearFailed": "Error al borrar la caché",
-      "rcloneRestartDescription": "Se ha instalado una actualización de Rclone. Por favor, reinicie el motor para aplicar los cambios.",
-      "rcloneRestartRequired": "Reinicio de Rclone Requerido"
+      "cacheClearFailed": "Error al borrar la caché"
     },
     "logs": {
+      "fetchError": "Error al obtener los registros de la aplicación.",
+      "clearError": "Error al limpiar los registros de la aplicación.",
       "clearAll": "Borrar todos los registros",
       "scrollTop": "Desplazarse hacia arriba",
       "scrollBottom": "Desplazarse hacia abajo",
@@ -1705,9 +1707,7 @@
       "logContext": "Contexto del registro",
       "logLevel": "Nivel de registro",
       "allLevels": "Todos los niveles",
-      "searchPlaceholder": "Buscar registros...",
-      "clearError": "Error al limpiar los registros de la aplicación.",
-      "fetchError": "Error al obtener los registros de la aplicación."
+      "searchPlaceholder": "Buscar registros..."
     },
     "preferences": {
       "title": "Preferencias",
@@ -1979,8 +1979,8 @@
         "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
         "disabledReason": {
           "defaultProtected": "El perfil predeterminado no se puede renombrar ni eliminar",
-          "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero.",
-          "lastProfile": "Debe permanecer al menos un perfil"
+          "lastProfile": "Debe permanecer al menos un perfil",
+          "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero."
         }
       },
       "buttons": {
@@ -2083,6 +2083,9 @@
     }
   },
   "nautilus": {
+    "shortcuts": {
+      "title": "Atajos de Teclado de Nautilus"
+    },
     "titles": {
       "selectFolder": "Seleccionar carpeta",
       "selectFile": "Seleccionar archivo",
@@ -2091,10 +2094,13 @@
       "starred": "Favoritos",
       "searchPlaceholder": "Buscar archivos...",
       "local": "Local",
-      "localDisk": "Disco local",
-      "bookmarks": "Marcadores",
       "cloud": "Nube",
-      "fileSystem": "Sistema de Archivos"
+      "fileSystem": "Sistema de Archivos",
+      "bookmarks": "Marcadores",
+      "localDisk": "Disco local"
+    },
+    "bookmarks": {
+      "emptyHint": "Sin marcadores"
     },
     "sort": {
       "az": "A-Z",
@@ -2122,6 +2128,11 @@
       "items": "elementos"
     },
     "modals": {
+      "delete": {
+        "title": "Eliminar Elementos",
+        "messageSingle": "¿Está seguro de que desea eliminar \"{{name}}\"?",
+        "messageMultiple": "¿Está seguro de que desea eliminar {{count}} elementos?"
+      },
       "newFolder": {
         "title": "Nueva carpeta",
         "label": "Nombre de la carpeta",
@@ -2136,6 +2147,11 @@
       "emptyTrash": {
         "title": "Vaciar papelera",
         "message": "¿Eliminar archivos de la papelera de {{remote}}?"
+      },
+      "rmdirs": {
+        "title": "Eliminar Carpetas Vacías",
+        "message": "¿Está seguro de que desea eliminar todas las carpetas vacías en \"{{name}}\"?",
+        "confirm": "Eliminar"
       },
       "copyUrl": {
         "title": "Descargar desde URL",
@@ -2153,22 +2169,18 @@
         "fullPathLabel": "Incluir rutas de origen completas",
         "fullPathHint": "Mantiene la estructura de directorios desde la raíz",
         "compress": "Comprimir"
-      },
-      "delete": {
-        "messageMultiple": "¿Está seguro de que desea eliminar {{count}} elementos?",
-        "messageSingle": "¿Está seguro de que desea eliminar \"{{name}}\"?",
-        "title": "Eliminar Elementos"
-      },
-      "rmdirs": {
-        "confirm": "Eliminar",
-        "message": "¿Está seguro de que desea eliminar todas las carpetas vacías en \"{{name}}\"?",
-        "title": "Eliminar Carpetas Vacías"
       }
     },
     "errors": {
       "connectionFailed": "Conexión fallida",
       "bookmarkRemoteNotFound": "Remoto '{{remote}}' para marcador no encontrado",
       "loadFailed": "Error al cargar el directorio",
+      "deleteFailed": "Error al eliminar {{count}} elementos",
+      "copyFailed": "Error al copiar {{count}} elementos",
+      "moveFailed": "Error al mover {{count}} elementos",
+      "undoFailed": "Error al deshacer para {{count}} elementos",
+      "redoFailed": "Error al rehacer para {{count}} elementos",
+      "rmdirsFailed": "Error al eliminar carpetas vacías en \"{{name}}\": {{error}}",
       "createFolderFailed": "Error al crear la carpeta",
       "renameFailed": "Error al renombrar '{{name}}': {{error}}",
       "emptyTrashFailed": "Error al vaciar la papelera: {{error}}",
@@ -2176,23 +2188,15 @@
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
       "archiveCreateFailed": "Error al crear el archivo: {{error}}",
-      "copyFailed": "Error al copiar {{count}} elementos",
-      "deleteFailed": "Error al eliminar {{count}} elementos",
-      "externalDropFailed": "Error al procesar la caída de archivos externos.",
-      "moveFailed": "Error al mover {{count}} elementos",
-      "redoFailed": "Error al rehacer para {{count}} elementos",
-      "rmdirsFailed": "Error al eliminar carpetas vacías en \"{{name}}\": {{error}}",
-      "undoFailed": "Error al deshacer para {{count}} elementos"
+      "externalDropFailed": "Error al procesar la caída de archivos externos."
     },
     "contextMenu": {
       "open": "Abrir",
       "openNewTab": "Abrir en nueva pestaña",
-      "openNewWindow": "Abrir en nueva ventana",
       "copyPath": "Copiar ruta",
       "newFolder": "Nueva carpeta",
       "uploadFiles": "Subir archivos",
       "uploadFolder": "Subir carpeta",
-      "rename": "Renombrar",
       "refresh": "Actualizar",
       "properties": "Propiedades",
       "reload": "Recargar",
@@ -2201,53 +2205,49 @@
       "removeBookmark": "Eliminar marcador",
       "detachTab": "Separar pestaña",
       "duplicateTab": "Duplicar pestaña",
-      "closeTab": "Cerrar pestaña",
       "closeOtherTabs": "Cerrar otras pestañas",
       "closeTabsToRight": "Cerrar pestañas a la derecha",
       "about": "Acerca de",
       "emptyTrash": "Vaciar papelera",
+      "removeEmptyDirs": "Eliminar carpetas vacías",
+      "delete": "Eliminar",
       "compress": "Comprimir",
       "copy": "Copiar",
       "cut": "Cortar",
-      "delete": "Eliminar",
+      "rename": "Renombrar",
+      "paste": "Pegar",
+      "openNewWindow": "Abrir en nueva ventana",
       "focusPath": "Enfocar Ruta",
+      "newTab": "Nueva Pestaña",
+      "closeTab": "Cerrar pestaña",
+      "goUp": "Subir",
       "goBack": "Atrás",
       "goForward": "Adelante",
-      "goUp": "Subir",
-      "newTab": "Nueva Pestaña",
-      "nextTab": "Siguiente Pestaña",
-      "paste": "Pegar",
-      "previousTab": "Pestaña Anterior",
-      "removeEmptyDirs": "Eliminar carpetas vacías",
       "search": "Buscar",
-      "switchPane": "Cambiar de Panel",
-      "toggleSplit": "Alternar Vista Dividida"
+      "nextTab": "Siguiente Pestaña",
+      "previousTab": "Pestaña Anterior",
+      "toggleSplit": "Alternar Vista Dividida",
+      "switchPane": "Cambiar de Panel"
     },
     "view": {
       "iconSize": "Tamaño del ícono",
       "showHidden": "Mostrar archivos ocultos"
     },
     "notifications": {
-      "trashEmptied": "Papelera vaciada",
-      "renameStarted": "Operación de renombrado iniciada",
-      "copyUrlStarted": "Descargando desde URL...",
-      "archiveCreateStarted": "Operación de creación de archivo iniciada",
-      "copyStarted": "Copiando {{count}} elementos...",
-      "deleteStarted": "Eliminando {{count}} elementos...",
       "mkdirFailed": "Error al crear el directorio: {{path}}",
-      "moveStarted": "Moviendo {{count}} elementos...",
-      "redoComplete": "Rehacer exitoso",
-      "rmdirsStarted": "Eliminando carpetas vacías en \"{{name}}\"...",
-      "undoComplete": "Deshacer exitoso",
-      "uploadFailed": "Error al cargar {{count}} archivos.",
       "uploadStarted": "Iniciando carga de {{count}} archivos...",
-      "uploadSuccess": "{{count}} archivos cargados correctamente."
-    },
-    "bookmarks": {
-      "emptyHint": "Sin marcadores"
-    },
-    "shortcuts": {
-      "title": "Atajos de Teclado de Nautilus"
+      "uploadSuccess": "{{count}} archivos cargados correctamente.",
+      "uploadFailed": "Error al cargar {{count}} archivos.",
+      "trashEmptied": "Papelera vaciada",
+      "rmdirsStarted": "Eliminando carpetas vacías en \"{{name}}\"...",
+      "deleteStarted": "Eliminando {{count}} elementos...",
+      "copyStarted": "Copiando {{count}} elementos...",
+      "moveStarted": "Moviendo {{count}} elementos...",
+      "renameStarted": "Operación de renombrado iniciada",
+      "undoComplete": "Deshacer exitoso",
+      "redoComplete": "Rehacer exitoso",
+      "copyUrlStarted": "Descargando desde URL...",
+      "archiveCreateStarted": "Operación de creación de archivo iniciada"
     }
   },
   "home": {
@@ -2277,12 +2277,12 @@
       "settingsReset": "Configuraciones de {{name}} restablecidas."
     },
     "errors": {
+      "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
       "initialLoadFailed": "Error al cargar datos iniciales",
       "updateActionsFailed": "Error al actualizar acciones rápidas",
       "openFailed": "Error al abrir {{name}}",
       "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
-      "deleteRemoteFailed": "Error al eliminar el remoto",
-      "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles."
+      "deleteRemoteFailed": "Error al eliminar el remoto"
     }
   },
   "transfer": {
@@ -2349,8 +2349,8 @@
       "checks": "Comprobaciones:",
       "errors": "Errores:",
       "deletes": "Eliminaciones:",
-      "serverCopies": "Copias en servidor:",
       "renames": "Renombrados:",
+      "serverCopies": "Copias en servidor:",
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
       "runningJobs": "Tareas en Ejecución",
@@ -2427,16 +2427,16 @@
       "downloadFailed": "Descarga fallida después de 3 intentos: {{error}}",
       "executionFailed": "Error al ejecutar rclone: {{error}}",
       "notFound": "Binario de Rclone no encontrado en {{path}}",
-      "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
-      "cacheRefreshFailed": "Error al actualizar la caché de rclone: {{error}}",
-      "configValidationFailed": "Error de validación de la configuración de rclone: {{error}}",
-      "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
+      "spawnFailed": "Error al iniciar el proceso de rclone: {{error}}",
       "invalidPath": "Ruta de rclone especificada no válida",
       "killFailed": "Error al terminar el proceso de rclone: {{error}}",
-      "lockFailed": "Error al adquirir el bloqueo de configuración de rclone: {{error}}",
       "portCleanupFailed": "Error al limpiar los puertos de rclone: {{error}}",
-      "spawnFailed": "Error al iniciar el proceso de rclone: {{error}}",
-      "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone"
+      "configValidationFailed": "Error de validación de la configuración de rclone: {{error}}",
+      "lockFailed": "Error al adquirir el bloqueo de configuración de rclone: {{error}}",
+      "cacheRefreshFailed": "Error al actualizar la caché de rclone: {{error}}",
+      "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
+      "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
+      "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}"
     },
     "security": {
       "passwordEmpty": "La contraseña no puede estar vacía",
@@ -2491,10 +2491,10 @@
       "automationNotFound": "Automatización no encontrada"
     },
     "system": {
+      "themeSetFailed": "Error al establecer el tema de la aplicación: {{error}}",
       "unlockFailed": "Desbloqueo fallido: {{error}}",
       "killFailed": "Error al terminar el proceso: {{error}}",
-      "quitFailed": "Error al cerrar el motor de rclone: {{error}}",
-      "themeSetFailed": "Error al establecer el tema de la aplicación: {{error}}"
+      "quitFailed": "Error al cerrar el motor de rclone: {{error}}"
     },
     "remote": {
       "configFailed": "Error al configurar el remoto: {{error}}"
@@ -2814,11 +2814,11 @@
     "validatingPassword": "Validando..."
   },
   "developerTools": {
+    "refreshUi": "Refrescar UI",
     "clearCache": "Limpiar Caché",
-    "cleared": "Datos Limpiados",
     "openDevTools": "Abrir Herramientas de Desarrollador",
     "openDevToolsError": "Error al abrir DevTools",
     "openDevToolsHint": "Abrir DevTools para depuración",
-    "refreshUi": "Refrescar UI"
+    "cleared": "Datos Limpiados"
   }
 }
