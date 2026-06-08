@@ -1812,18 +1812,6 @@
       "web_token": {
         "title": "Web Token",
         "help": "Web API login token - set automatically."
-      },
-      "upload_concurrency": {
-        "title": "Yükleme Eşzamanlılığı",
-        "help": "Çok parçalı yüklemeler için eşzamanlılık.\n\nBu, aynı dosyanın eşzamanlı olarak yüklenen parça sayısıdır.\n\nHer parçanın bellekte arabelleğe alındığını unutmayın."
-      },
-      "upload_cutoff": {
-        "title": "Yükleme Sınırı",
-        "help": "Çok parçalı yüklemeye geçiş sınırı.\n\nBu değerden büyük olan dosyalar chunk_size boyutunda parçalar halinde yüklenecektir. Minimum 100 MiB, maksimum 5 GiB'dir."
-      },
-      "chunk_size": {
-        "title": "Parça Boyutu",
-        "help": "Çok parçalı yüklemeler için parça boyutu.\n\nupload_cutoff değerinden büyük dosyalar bu boyuttaki parçalar halinde yüklenecektir.\n\nBellek kullanımı yaklaşık olarak chunk_size * upload_concurrency kadardır."
       }
     },
     "local": {
@@ -3440,6 +3428,7 @@
         "help": "True ise başarısızlık durumunda yüklemeyi iptal etme (abort upload) çağrısı yapmaktan kaçın.\n\nFarklı oturumlar arasında yüklemelere devam etmek için true olarak ayarlanmalıdır."
       },
       "no_chunk": {
+        "title": "Parçalama Yapma",
         "help": "Akışla yükleme (streaming upload) sırasında dosyaları parçalama.\n\nAkışla yükleme yaparken (örn. `rcat` veya `--vfs-cache-mode off` ile `mount` kullanarak) bu bayrağı ayarlamak, swift arka ucunun parçalanmış dosyalar yüklememesine neden olur.\n\nBu, akışla yüklenen maksimum boyutu 5 GiB ile sınırlayacaktır. Bu yararlıdır çünkü parçalanmamış dosyalarla çalışmak daha kolaydır ve bir MD5SUM değerine sahiptirler.\n\nrclone, normal kopyalama işlemleri yaparken `chunk_size` değerinden büyük dosyaları yine de parçalayacaktır."
       },
       "no_large_objects": {
@@ -3903,14 +3892,6 @@
       "chunk_size": {
         "title": "Chunk Size",
         "help": "Chunk size for multipart uploads.\n\nFiles larger than upload_cutoff will be uploaded in chunks of this size.\n\nMemory usage is approximately chunk_size * upload_concurrency."
-      },
-      "password": {
-        "title": "Şifre",
-        "help": "Giriş için şifre."
-      },
-      "web_token": {
-        "title": "Web Token",
-        "help": "Web API giriş belirteci - otomatik olarak ayarlanır."
       }
     },
     "huaweidrive": {
