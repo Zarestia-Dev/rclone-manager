@@ -321,12 +321,9 @@ export class DebugService extends TauriBaseService {
       });
     }
 
-    const isStandalone = new URLSearchParams(window.location.search).get('standalone') === 'dialog';
-    const hasBottomItems = (!isStandalone && !isInput) || isDevMode();
+    if (items.length && !isInput) items.push('divider');
 
-    if (items.length && hasBottomItems) items.push('divider');
-
-    if (!isStandalone && !isInput) {
+    if (!isInput) {
       items.push(
         {
           label: this.t('developerTools.refreshUi'),

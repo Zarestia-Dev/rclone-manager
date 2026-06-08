@@ -943,14 +943,12 @@ export class RemoteConfigStateService {
   ]);
 
   private setupAutoStartValidators(): void {
-    if (this.editTarget() === 'remote' || !this.editTarget() || this.cloneTarget()) {
-      for (const type of FLAG_TYPES) {
-        if (type !== 'mount' && !RemoteConfigStateService.AUTO_START_OP_TYPES.has(type)) continue;
+    for (const type of FLAG_TYPES) {
+      if (type !== 'mount' && !RemoteConfigStateService.AUTO_START_OP_TYPES.has(type)) continue;
 
-        const opGroup = this.remoteConfigForm.get(`${type}Config`);
-        if (opGroup instanceof FormGroup) {
-          this.validatorRegistry.setupOperationValidation(opGroup, this.destroyRef);
-        }
+      const opGroup = this.remoteConfigForm.get(`${type}Config`);
+      if (opGroup instanceof FormGroup) {
+        this.validatorRegistry.setupOperationValidation(opGroup, this.destroyRef);
       }
     }
   }

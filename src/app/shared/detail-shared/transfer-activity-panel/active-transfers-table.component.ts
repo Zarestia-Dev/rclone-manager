@@ -1,5 +1,4 @@
-import { Component, input, ChangeDetectionStrategy } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { Component, input, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -7,15 +6,12 @@ import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
 import { TransferFile } from '@app/types';
-import { inject } from '@angular/core';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-active-transfers-table',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
@@ -27,7 +23,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
         <div class="transfer-list">
-          @for (transfer of transfers(); track trackByName($index, transfer)) {
+          @for (transfer of enrichedTransfers(); track transfer.name) {
             <div class="transfer-row-item">
               <!-- Header Row: Icon, File Name, and Percentage -->
               <div class="transfer-header">
@@ -57,7 +53,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
                   }
                 </div>
                 <div class="progress-badge">
-                  @if (isPreparing(transfer.percentage)) {
+                  @if (transfer.isPreparing) {
                     <span class="percentage-text preparing">{{
                       'shared.transferActivity.status.preparing' | translate
                     }}</span>
@@ -74,21 +70,21 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
               <!-- Path Display (srcFs -> dstFs) -->
               @if (transfer.srcFs || transfer.dstFs) {
                 <div class="transfer-paths">
-                  <span class="path-pill src">
+                  <code class="path-pill src">
                     {{ transfer.srcFs || '?' }}
-                  </span>
+                  </code>
                   <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <span class="path-badge dst">
+                  <code class="path-pill dst">
                     {{ transfer.dstFs || '?' }}
-                  </span>
+                  </code>
                 </div>
               }
 
               <!-- Progress Bar -->
               <div class="transfer-progress">
                 <mat-progress-bar
-                  [mode]="isPreparing(transfer.percentage) ? 'indeterminate' : 'determinate'"
-                  [value]="isPreparing(transfer.percentage) ? 0 : transfer.percentage"
+                  [mode]="transfer.isPreparing ? 'indeterminate' : 'determinate'"
+                  [value]="transfer.isPreparing ? 0 : transfer.percentage"
                 ></mat-progress-bar>
               </div>
 
@@ -103,7 +99,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
                 <div class="stats-right">
                   @if (transfer.speed > 0) {
                     <span class="speed-text">
-                      <span class="speed-dot" [ngClass]="getSpeedClass(transfer.speed)"></span>
+                      <span class="speed-dot" [class]="transfer.speedClass"></span>
                       {{ transfer.speed | formatFileSize }}/s
                     </span>
                   }
@@ -127,21 +123,27 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
   styleUrls: ['./transfer-tables.scss'],
 })
 export class ActiveTransfersTableComponent {
-  protected readonly pathService = inject(PathService);
-
   readonly transfers = input.required<TransferFile[]>();
 
-  trackByName(_index: number, transfer: TransferFile): string {
-    return transfer.name;
-  }
+  protected readonly enrichedTransfers = computed(() => {
+    return this.transfers().map(transfer => {
+      const isPreparing =
+        transfer.percentage === undefined ||
+        transfer.percentage === null ||
+        isNaN(transfer.percentage);
 
-  getSpeedClass(speed: number): string {
-    if (speed > 10 * 1024 * 1024) return 'speed-fast';
-    if (speed > 1 * 1024 * 1024) return 'speed-medium';
-    return 'speed-slow';
-  }
+      let speedClass = 'speed-slow';
+      if (transfer.speed > 10 * 1024 * 1024) {
+        speedClass = 'speed-fast';
+      } else if (transfer.speed > 1 * 1024 * 1024) {
+        speedClass = 'speed-medium';
+      }
 
-  isPreparing(percentage: number | undefined | null): boolean {
-    return percentage === undefined || percentage === null || isNaN(percentage);
-  }
+      return {
+        ...transfer,
+        isPreparing,
+        speedClass,
+      };
+    });
+  });
 }

@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a cancel support for While updates downloading. 
 - **Rclone Version Validation**: Enhanced rclone binary validation to support minimum version enforcement and version parsing (including pre-releases). 
 - **Local Storage Service**: Introduced a client-side local storage utility (`LocalStorageService`) with namespace prefixing, scoped key support, and transient in-memory fallback to manage UI state.
+- French language added (Main application) from Crowdin (https://crowdin.com/project/rclone-manger).
 
 ### Changed
 - Scheduled task manager and related components are changed to Automation manager. Releated language changed to Automation too. 

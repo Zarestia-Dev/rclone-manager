@@ -1,30 +1,27 @@
-import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-completed-transfers-table',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, MatIconModule, MatTooltipModule, TranslateModule, FormatFileSizePipe],
+  imports: [MatIconModule, MatTooltipModule, TranslateModule, FormatFileSizePipe],
   template: `
     <div class="transfer-table-container">
       @if (transfers().length > 0) {
         <div class="transfer-list">
-          @for (transfer of transfers(); track $index) {
+          @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
             <div
               class="transfer-row-item completed-item"
-              [ngClass]="{
-                error: transfer.status === 'failed',
-                checked: transfer.status === 'checked',
-                partial: transfer.status === 'partial',
-                success: transfer.status === 'completed',
-              }"
+              [class.error]="transfer.status === 'failed'"
+              [class.checked]="transfer.status === 'checked'"
+              [class.partial]="transfer.status === 'partial'"
+              [class.success]="transfer.status === 'completed'"
             >
               <!-- Header Row -->
               <div class="transfer-header">
@@ -37,45 +34,27 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
                   <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
                 </div>
                 <div class="status-badge">
-                  @switch (transfer.status) {
-                    @case ('failed') {
-                      <span class="app-pill p-warn" [matTooltip]="transfer.error">
-                        <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                        {{ 'shared.transferActivity.status.failed' | translate }}
-                      </span>
-                    }
-                    @case ('checked') {
-                      <span class="app-pill p-accent" [matTooltip]="transfer.error">
-                        <mat-icon svgIcon="circle-check"></mat-icon>
-                        {{ 'shared.transferActivity.status.checked' | translate }}
-                      </span>
-                    }
-                    @case ('partial') {
-                      <span class="app-pill p-orange" [matTooltip]="transfer.error">
-                        <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                        {{ 'shared.transferActivity.status.partial' | translate }}
-                      </span>
-                    }
-                    @default {
-                      <span class="app-pill p-primary" [matTooltip]="transfer.error">
-                        <mat-icon svgIcon="circle-check"></mat-icon>
-                        {{ 'shared.transferActivity.status.completed' | translate }}
-                      </span>
-                    }
-                  }
+                  <span
+                    class="app-pill"
+                    [class]="transfer.badgeClass"
+                    [matTooltip]="transfer.error"
+                  >
+                    <mat-icon [svgIcon]="transfer.badgeIcon"></mat-icon>
+                    {{ transfer.badgeText | translate }}
+                  </span>
                 </div>
               </div>
 
               <!-- Path Display (srcFs -> dstFs) -->
               @if (transfer.srcFs || transfer.dstFs) {
                 <div class="transfer-paths">
-                  <span class="path-pill src">
+                  <code class="path-pill src">
                     {{ transfer.srcFs || '?' }}
-                  </span>
+                  </code>
                   <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <span class="path-pill dst">
+                  <code class="path-pill dst">
                     {{ transfer.dstFs || '?' }}
-                  </span>
+                  </code>
                 </div>
               }
 
@@ -102,15 +81,11 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
                 <div class="stats-right">
                   @if (transfer.completedAt) {
                     <span class="time-text">
-                      {{ getRelativeTime(transfer.completedAt) }}
+                      {{ transfer.relativeTime }}
                     </span>
                   }
-                  @if (
-                    transfer.startedAt && transfer.completedAt && transfer.status === 'completed'
-                  ) {
-                    <span class="duration-badge">{{
-                      getDuration(transfer.startedAt, transfer.completedAt)
-                    }}</span>
+                  @if (transfer.duration) {
+                    <span class="duration-badge">{{ transfer.duration }}</span>
                   }
                 </div>
               </div>
@@ -131,10 +106,50 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 export class CompletedTransfersTableComponent {
   readonly transfers = input.required<CompletedTransfer[]>();
 
-  protected readonly pathService = inject(PathService);
   private readonly translate = inject(TranslateService);
+  private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  getRelativeTime(timestamp: string): string {
+  protected readonly enrichedTransfers = computed(() => {
+    this.lang();
+
+    return this.transfers().map(transfer => {
+      const relativeTime = transfer.completedAt ? this.getRelativeTime(transfer.completedAt) : '';
+      const duration =
+        transfer.startedAt && transfer.completedAt && transfer.status === 'completed'
+          ? this.getDuration(transfer.startedAt, transfer.completedAt)
+          : '';
+
+      let badgeClass = 'p-primary';
+      let badgeIcon = 'circle-check';
+      let badgeText = 'shared.transferActivity.status.completed';
+
+      if (transfer.status === 'failed') {
+        badgeClass = 'p-warn';
+        badgeIcon = 'circle-exclamation';
+        badgeText = 'shared.transferActivity.status.failed';
+      } else if (transfer.status === 'checked') {
+        badgeClass = 'p-accent';
+        badgeIcon = 'circle-check';
+        badgeText = 'shared.transferActivity.status.checked';
+      } else if (transfer.status === 'partial') {
+        badgeClass = 'p-orange';
+        badgeIcon = 'circle-exclamation';
+        badgeText = 'shared.transferActivity.status.partial';
+      }
+
+      return {
+        ...transfer,
+        relativeTime,
+        duration,
+        badgeClass,
+        badgeIcon,
+        badgeText,
+        uniqueId: `${transfer.jobid}-${transfer.name}`,
+      };
+    });
+  });
+
+  private getRelativeTime(timestamp: string): string {
     const diff = Date.now() - new Date(timestamp).getTime();
     const minutes = Math.floor(diff / 60_000);
     const hours = Math.floor(minutes / 60);
@@ -149,7 +164,7 @@ export class CompletedTransfersTableComponent {
     return this.translate.instant('shared.transferActivity.time.justNow');
   }
 
-  getDuration(startedAt: string, completedAt: string): string {
+  private getDuration(startedAt: string, completedAt: string): string {
     const diff = new Date(completedAt).getTime() - new Date(startedAt).getTime();
     if (diff < 1000)
       return this.translate.instant('shared.transferActivity.time.duration.lessThanSecond');

@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -13,6 +13,7 @@ import { TransferActivityPanelConfig } from '../../types';
 @Component({
   selector: 'app-transfer-activity-panel',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,
     MatIconModule,
@@ -29,18 +30,6 @@ import { TransferActivityPanelConfig } from '../../types';
         <mat-card-title class="panel-title-content">
           <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
-          <div class="transfer-summary">
-            <span class="app-pill p-accent">
-              {{ 'shared.transferActivity.active' | translate }}
-              {{ config().activeTransfers.length }}
-            </span>
-            @if (config().showHistory) {
-              <span class="app-pill p-primary">
-                {{ 'shared.transferActivity.recent' | translate }}
-                {{ config().completedTransfers.length }}
-              </span>
-            }
-          </div>
           @if (config().showHistory) {
             <button
               mat-icon-button
@@ -63,11 +52,11 @@ import { TransferActivityPanelConfig } from '../../types';
                     | translate: { count: config().activeTransfers.length }
                 }}</span>
               </ng-template>
-              <div class="tab-content">
+              <ng-template matTabContent>
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
                 ></app-active-transfers-table>
-              </div>
+              </ng-template>
             </mat-tab>
             <mat-tab>
               <ng-template mat-tab-label>
@@ -76,11 +65,11 @@ import { TransferActivityPanelConfig } from '../../types';
                     | translate: { count: config().completedTransfers.length }
                 }}</span>
               </ng-template>
-              <div class="tab-content">
+              <ng-template matTabContent>
                 <app-completed-transfers-table
                   [transfers]="config().completedTransfers"
                 ></app-completed-transfers-table>
-              </div>
+              </ng-template>
             </mat-tab>
           </mat-tab-group>
         } @else {

@@ -3,17 +3,6 @@
   flex-direction: column;
   overflow: hidden;
 
-  .panel-header {
-    .panel-title-content {
-      .transfer-summary {
-        display: flex;
-        gap: var(--space-sm);
-        align-items: center;
-        margin-left: auto;
-      }
-    }
-  }
-
   .panel-content {
     padding: 0;
     overflow: hidden;

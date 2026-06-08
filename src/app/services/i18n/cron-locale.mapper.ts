@@ -2,6 +2,7 @@ import 'cronstrue/locales/tr';
 import 'cronstrue/locales/es';
 import 'cronstrue/locales/zh_CN';
 import 'cronstrue/locales/zh_TW';
+import 'cronstrue/locales/fr';
 
 /**
  * Maps an app locale (e.g. 'en-US', 'tr-TR') to a cronstrue locale (e.g. 'en', 'tr').
