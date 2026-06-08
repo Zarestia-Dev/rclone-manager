@@ -1154,5 +1154,65 @@
   "vfs_handle_caching": {
     "title": "VFS Tanımlayıcı Önbelleğe Alma",
     "help": "Son kapatmadan sonra dosya tanımlayıcısını ve indiricileri aktif tutma süresi"
+  },
+  "mountType": {
+    "title": "Bağlama Türü",
+    "help": "Kullanılacak bağlama türü."
+  },
+  "type": {
+    "title": "Sunma Türü",
+    "help": "Kullanılacak sunma türü."
+  },
+  "mount_type_mount": {
+    "title": "Standart Bağlama",
+    "help": "Standart FUSE bağlama"
+  },
+  "mount_type_cmount": {
+    "title": "Windows/macOS FUSE Bağlama",
+    "help": "cgofuse kullanan FUSE bağlama (Windows/macOS'ta varsayılan)"
+  },
+  "mount_type_mount2": {
+    "title": "Go-yerel Bağlama",
+    "help": "go-fuse kullanan Go-yerel FUSE bağlama"
+  },
+  "mount_type_nfsmount": {
+    "title": "NFS Bağlama",
+    "help": "NFS protokolü kullanarak bağlama"
+  },
+  "serve_type_http": {
+    "title": "HTTP Sunucusu",
+    "help": "Uzak bağlantıyı HTTP üzerinden sunar"
+  },
+  "serve_type_webdav": {
+    "title": "WebDAV Sunucusu",
+    "help": "Uzak bağlantıyı WebDAV üzerinden sunar"
+  },
+  "serve_type_ftp": {
+    "title": "FTP Sunucusu",
+    "help": "Uzak bağlantıyı FTP üzerinden sunar"
+  },
+  "serve_type_sftp": {
+    "title": "SFTP Sunucusu",
+    "help": "Uzak bağlantıyı SFTP üzerinden sunar"
+  },
+  "serve_type_nfs": {
+    "title": "NFS Sunucusu",
+    "help": "Uzak bağlantıyı NFS üzerinden sunar"
+  },
+  "serve_type_dlna": {
+    "title": "DLNA Medya Sunucusu",
+    "help": "Uzak bağlantıyı DLNA üzerinden sunar"
+  },
+  "serve_type_docker": {
+    "title": "Docker Birim Eklentisi",
+    "help": "Uzak bağlantıyı bir Docker birim eklentisi olarak sunar"
+  },
+  "serve_type_restic": {
+    "title": "Restic REST Sunucusu",
+    "help": "Uzak bağlantıyı Restic REST API üzerinden sunar"
+  },
+  "serve_type_s3": {
+    "title": "Amazon S3 uyumlu sunucu",
+    "help": "Uzak bağlantıyı Amazon S3 API üzerinden sunar"
   }
 }

@@ -817,14 +817,22 @@ export class RemoteConfigStateService {
     if (fields.mount) {
       const mountTypeOpt = fields.mount.find(f => f.Name === 'mountType');
       if (mountTypeOpt) {
-        mountTypeOpt.Examples = this.mountTypes().map(t => ({ Value: t, Help: t }));
+        mountTypeOpt.Examples = this.mountTypes().map(t => {
+          const key = `mount_type_${t}.title`;
+          const help = this.translate.instant(key);
+          return { Value: t, Help: help !== key ? help : t };
+        });
       }
     }
 
     if (fields.serve) {
       const serveTypeOpt = fields.serve.find(f => f.Name === 'type');
       if (serveTypeOpt) {
-        serveTypeOpt.Examples = this.availableServeTypes().map(t => ({ Value: t, Help: t }));
+        serveTypeOpt.Examples = this.availableServeTypes().map(t => {
+          const key = `serve_type_${t}.title`;
+          const help = this.translate.instant(key);
+          return { Value: t, Help: help !== key ? help : t };
+        });
       }
     }
 
@@ -859,7 +867,11 @@ export class RemoteConfigStateService {
       const fields = await this.flagConfigService.loadServeFlagFields(type);
       const serveTypeOpt = fields.find(f => f.Name === 'type');
       if (serveTypeOpt) {
-        serveTypeOpt.Examples = this.availableServeTypes().map(t => ({ Value: t, Help: t }));
+        serveTypeOpt.Examples = this.availableServeTypes().map(t => {
+          const key = `serve_type_${t}.title`;
+          const help = this.translate.instant(key);
+          return { Value: t, Help: help !== key ? help : t };
+        });
       }
       this.dynamicServeFields.set(fields);
       this.rebuildServeOptionsGroup();

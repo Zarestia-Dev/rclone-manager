@@ -722,14 +722,7 @@
         "recent": "Recent ({{count}})"
       },
       "table": {
-        "file": "File",
-        "progress": "Progress",
-        "speed": "Speed",
-        "eta": "ETA",
-        "status": "Status",
         "size": "Size",
-        "path": "Path",
-        "completed": "Completed",
         "transferred": "transferred",
         "alreadyExisted": "already existed"
       },
@@ -943,7 +936,6 @@
       "preview": "Preview",
       "detectedTitle": "Detected Configuration",
       "operation": "Operation",
-      "none": "None",
       "source": "Source",
       "destination": "Destination",
       "mappedFlags": "Will Apply (Mapped Fields)",
@@ -1017,9 +1009,6 @@
       "fieldRequired": "This field is required",
       "readyToContinue": "Ready to continue",
       "provideValue": "Please provide a value",
-      "mountType": "Mount Type",
-      "selectMountType": "Select mount type",
-      "serveType": "Type",
       "loadingServeOptions": "Loading {{type}} options...",
       "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
       "operationDescription": "Configure source, destination, and auto-start options for this operation.",
@@ -1054,17 +1043,6 @@
           "description": "Suppress any stdout output from the RC config call"
         }
       }
-    },
-    "serveTypes": {
-      "http": "Serve files via HTTP",
-      "webdav": "WebDAV for file access",
-      "ftp": "FTP file transfer",
-      "sftp": "Secure FTP over SSH",
-      "nfs": "Network File System",
-      "dlna": "DLNA media server",
-      "docker": "Docker volume plugin",
-      "restic": "Restic REST server",
-      "s3": "Amazon S3 compatible server"
     },
     "appOperation": {
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
@@ -1556,8 +1534,6 @@
       "navigation": "Navigation"
     },
     "quitError": "Failed to quit application: {{error}}",
-    "refreshError": "Failed to refresh shortcuts: {{error}}",
-    "refreshSuccess": "Shortcuts refreshed successfully",
     "mountsRefreshSuccess": "Mounts refreshed successfully",
     "mountsRefreshError": "Failed to refresh mounts: {{error}}",
     "servesRefreshSuccess": "Served remotes refreshed successfully",
@@ -1594,8 +1570,6 @@
         "renamed": "Renamed",
         "listed": "Listed",
         "errorsCount": "Errors",
-        "source": "Source",
-        "destination": "Destination",
         "remoteSource": "Remote Source",
         "mountPoint": "Mount Point",
         "executeId": "Execute ID",
@@ -2030,7 +2004,8 @@
         "profiles": "{{type}} Profiles"
       },
       "errors": {
-        "interactiveProcessingFailed": "Failed to process interactive response"
+        "interactiveProcessingFailed": "Failed to process interactive response",
+        "loadFailed": "Failed to load remote configuration"
       }
     },
     "rcloneFlags": {
@@ -2306,7 +2281,8 @@
       "initialLoadFailed": "Initial data load failed",
       "updateActionsFailed": "Failed to update quick actions",
       "openFailed": "Failed to open {{name}}",
-      "resetSettingsFailed": "Failed to reset remote settings"
+      "resetSettingsFailed": "Failed to reset remote settings",
+      "deleteRemoteFailed": "Failed to delete remote"
     }
   },
   "transfer": {
@@ -2377,7 +2353,6 @@
       "serverCopies": "Server Copies:",
       "serverMoves": "Server Moves:",
       "lastError": "Last Error:",
-      "copyError": "Click to copy error",
       "runningJobs": "Running Jobs",
       "starting": "Starting...",
       "noRunning": "No active jobs are currently running."
@@ -2424,8 +2399,7 @@
     },
     "serve": {
       "parseFailed": "Failed to parse response: {{error}}",
-      "remoteEmpty": "Remote name cannot be empty",
-      "typeRequired": "Serve type must be specified"
+      "remoteEmpty": "Remote name cannot be empty"
     },
     "request": {
       "failed": "Request failed: {{error}}"

@@ -722,14 +722,7 @@
         "recent": "Reciente ({{count}})"
       },
       "table": {
-        "file": "Archivo",
-        "progress": "Progreso",
-        "speed": "Velocidad",
-        "eta": "ETA",
-        "status": "Estado",
         "size": "Tamaño",
-        "path": "Ruta",
-        "completed": "Completado",
         "transferred": "transferido",
         "alreadyExisted": "ya existía"
       },
@@ -943,7 +936,6 @@
       "preview": "Vista previa",
       "detectedTitle": "Configuración detectada",
       "operation": "Operación",
-      "none": "Ninguno",
       "source": "Origen",
       "destination": "Destino",
       "mappedFlags": "Se aplicarán (campos asignados)",
@@ -1017,9 +1009,6 @@
       "fieldRequired": "Este campo es obligatorio",
       "readyToContinue": "Listo para continuar",
       "provideValue": "Por favor, proporciona un valor",
-      "mountType": "Tipo de montaje",
-      "selectMountType": "Seleccionar tipo de montaje",
-      "serveType": "Tipo",
       "loadingServeOptions": "Cargando opciones de {{type}}...",
       "serveDescription": "Seleccione la ruta remota que desea servir. Puede servir todo el control remoto o una carpeta específica.",
       "operationDescription": "Configure las opciones de origen, destino e inicio automático para esta operación.",
@@ -1054,17 +1043,6 @@
           "description": "Suprimir cualquier salida estándar de la llamada de configuración de RC"
         }
       }
-    },
-    "serveTypes": {
-      "http": "Servir archivos a través de HTTP",
-      "webdav": "WebDAV para acceso a archivos",
-      "ftp": "Transferencia de archivos FTP",
-      "sftp": "FTP seguro sobre SSH",
-      "nfs": "Sistema de archivos de red",
-      "dlna": "Servidor de medios DLNA",
-      "docker": "Plugin de volumen de Docker",
-      "restic": "Servidor REST de Restic",
-      "s3": "Servidor compatible con Amazon S3"
     },
     "appOperation": {
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
@@ -1556,8 +1534,6 @@
       "fileBrowserNautilus": "Explorador de Archivos (Nautilus)"
     },
     "quitError": "Error al salir de la aplicación: {{error}}",
-    "refreshError": "Error al actualizar los atajos: {{error}}",
-    "refreshSuccess": "Atajos actualizados correctamente",
     "mountsRefreshSuccess": "Montajes actualizados con éxito",
     "mountsRefreshError": "Error al actualizar los montajes: {{error}}",
     "servesRefreshSuccess": "Remotos servidos actualizados con éxito",
@@ -1594,8 +1570,6 @@
         "renamed": "Renombrados",
         "listed": "Listados",
         "errorsCount": "Errores",
-        "source": "Origen",
-        "destination": "Destino",
         "remoteSource": "Origen remoto",
         "mountPoint": "Punto de montaje",
         "executeId": "ID de Ejecución",
@@ -2030,7 +2004,8 @@
         "profiles": "Perfiles de {{type}}"
       },
       "errors": {
-        "interactiveProcessingFailed": "Error al procesar la respuesta interactiva"
+        "interactiveProcessingFailed": "Error al procesar la respuesta interactiva",
+        "loadFailed": "Error al cargar la configuración remota"
       }
     },
     "rcloneFlags": {
@@ -2306,6 +2281,7 @@
       "updateActionsFailed": "Error al actualizar acciones rápidas",
       "openFailed": "Error al abrir {{name}}",
       "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
+      "deleteRemoteFailed": "Error al eliminar el remoto",
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles."
     }
   },
@@ -2377,7 +2353,6 @@
       "renames": "Renombrados:",
       "serverMoves": "Movimientos en servidor:",
       "lastError": "Último error:",
-      "copyError": "Haga clic para copiar el error",
       "runningJobs": "Tareas en Ejecución",
       "starting": "Iniciando...",
       "noRunning": "No hay trabajos activos en ejecución."
@@ -2424,8 +2399,7 @@
     },
     "serve": {
       "parseFailed": "Error al analizar la respuesta: {{error}}",
-      "remoteEmpty": "El nombre del remoto no puede estar vacío",
-      "typeRequired": "Se debe especificar el tipo de servicio"
+      "remoteEmpty": "El nombre del remoto no puede estar vacío"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"

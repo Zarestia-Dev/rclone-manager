@@ -722,14 +722,7 @@
         "recent": "最近完成（{{count}}）"
       },
       "table": {
-        "file": "文件",
-        "progress": "进度",
-        "speed": "速度",
-        "eta": "预计完成时间",
-        "status": "状态",
         "size": "大小",
-        "path": "路径",
-        "completed": "已完成",
         "transferred": "已传输",
         "alreadyExisted": "已存在"
       },
@@ -943,7 +936,6 @@
       "preview": "预览",
       "detectedTitle": "检测到的配置",
       "operation": "操作",
-      "none": "无",
       "source": "源",
       "destination": "目标",
       "mappedFlags": "将应用（已映射字段）",
@@ -1017,9 +1009,6 @@
       "fieldRequired": "此字段为必填项",
       "readyToContinue": "可继续",
       "provideValue": "请提供一个值",
-      "mountType": "挂载类型",
-      "selectMountType": "选择挂载类型",
-      "serveType": "类型",
       "loadingServeOptions": "加载 {{type}} 选项...",
       "serveDescription": "选择要提供服务的远程路径，可选择整个远程或特定文件夹",
       "operationDescription": "为此操作配置源路径、目标路径和自动启动选项",
@@ -1054,17 +1043,6 @@
           "description": "禁止来自 RC 配置调用的任何标准输出"
         }
       }
-    },
-    "serveTypes": {
-      "http": "通过 HTTP 提供文件服务",
-      "webdav": "WebDAV 文件访问",
-      "ftp": "FTP 文件传输",
-      "sftp": "基于 SSH 的安全 FTP",
-      "nfs": "网络文件系统（NFS）",
-      "dlna": "DLNA 媒体服务器",
-      "docker": "Docker 卷插件",
-      "restic": "Restic REST 服务器",
-      "s3": "兼容 Amazon S3 的服务器"
     },
     "appOperation": {
       "enableAutoStart": "开机自动{{type}}",
@@ -1556,8 +1534,6 @@
       "navigation": "导航"
     },
     "quitError": "退出应用失败：{{error}}",
-    "refreshError": "刷新快捷键失败：{{error}}",
-    "refreshSuccess": "快捷键刷新成功",
     "mountsRefreshSuccess": "挂载刷新成功",
     "mountsRefreshError": "刷新挂载失败：{{error}}",
     "servesRefreshSuccess": "已服务远程刷新成功",
@@ -1594,8 +1570,6 @@
         "renamed": "已重命名",
         "listed": "已列锚",
         "errorsCount": "错误",
-        "source": "源",
-        "destination": "目标",
         "remoteSource": "远程源",
         "mountPoint": "挂载点",
         "executeId": "执行 ID",
@@ -2030,7 +2004,8 @@
         "profiles": "{{type}} 配置文件"
       },
       "errors": {
-        "interactiveProcessingFailed": "处理交互式响应失败"
+        "interactiveProcessingFailed": "处理交互式响应失败",
+        "loadFailed": "加载远程配置失败"
       }
     },
     "rcloneFlags": {
@@ -2306,6 +2281,7 @@
       "updateActionsFailed": "更新快捷操作失败",
       "openFailed": "打开 {{name}} 失败",
       "resetSettingsFailed": "重置远程存储设置失败",
+      "deleteRemoteFailed": "删除远程存储失败",
       "generic": "发生意外错误。请检查日志获取更多详细信息。"
     }
   },
@@ -2377,7 +2353,6 @@
       "serverCopies": "服务端复制：",
       "serverMoves": "服务端移动：",
       "lastError": "最后错误：",
-      "copyError": "点击复制错误",
       "runningJobs": "运行中的作业",
       "starting": "正在启动...",
       "noRunning": "当前没有正在运行的活动任务。"
@@ -2424,8 +2399,7 @@
     },
     "serve": {
       "parseFailed": "解析响应失败：{{error}}",
-      "remoteEmpty": "远程存储名称不能为空",
-      "typeRequired": "必须指定服务类型"
+      "remoteEmpty": "远程存储名称不能为空"
     },
     "request": {
       "failed": "请求失败：{{error}}"

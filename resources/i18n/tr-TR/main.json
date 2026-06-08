@@ -722,14 +722,7 @@
         "recent": "Son ({{count}})"
       },
       "table": {
-        "file": "Dosya",
-        "progress": "İlerleme",
-        "speed": "Hız",
-        "eta": "Tahmini Süre",
-        "status": "Durum",
         "size": "Boyut",
-        "path": "Yol",
-        "completed": "Tamamlandı",
         "transferred": "aktarıldı",
         "alreadyExisted": "zaten mevcuttu"
       },
@@ -943,7 +936,6 @@
       "preview": "Önizleme",
       "detectedTitle": "Algılanan Yapılandırma",
       "operation": "İşlem",
-      "none": "Yok",
       "source": "Kaynak",
       "destination": "Hedef",
       "mappedFlags": "Uygulanacak (Eşleşen Alanlar)",
@@ -979,7 +971,7 @@
       "remoteType": "Uzak Bağlantı Türü",
       "noMatchingTypes": "Eşleşen tür yok",
       "loadingOptions": "Yapılandırma seçenekleri yükleniyor...",
-      "fields": "Alanlar",
+      "fields": "Alan",
       "switchToForm": "Form Moduna Geç",
       "switchToJson": "JSON Moduna Geç",
       "unknownTopLevelProperty": "Uyarı: '{{key}}' bu profil için standart bir üst düzey özellik değildir ve yoksayılabilir.",
@@ -1017,9 +1009,6 @@
       "fieldRequired": "Bu alan zorunludur",
       "readyToContinue": "Devam etmeye hazır",
       "provideValue": "Lütfen bir değer girin",
-      "mountType": "Bağlama Türü",
-      "selectMountType": "Bağlama türü seçin",
-      "serveType": "Tür",
       "loadingServeOptions": "{{type}} seçenekleri yükleniyor...",
       "serveDescription": "Sunmak istediğiniz uzak yolu seçin. Tüm uzak bağlantıyı veya belirli bir klasörü sunabilirsiniz.",
       "operationDescription": "Bu işlem için kaynak, hedef ve otomatik başlatma seçeneklerini yapılandırın.",
@@ -1054,17 +1043,6 @@
           "description": "RC yapılandırma çağrısından gelen herhangi bir standart çıktıyı bastır"
         }
       }
-    },
-    "serveTypes": {
-      "http": "HTTP üzerinden dosya sunumu",
-      "webdav": "Dosya erişimi için WebDAV",
-      "ftp": "FTP dosya transferi",
-      "sftp": "SSH üzerinden Güvenli FTP",
-      "nfs": "Ağ Dosya Sistemi (NFS)",
-      "dlna": "DLNA medya sunucusu",
-      "docker": "Docker birim eklentisi",
-      "restic": "Restic REST sunucusu",
-      "s3": "Amazon S3 uyumlu sunucu"
     },
     "appOperation": {
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
@@ -1556,8 +1534,6 @@
       "navigation": "Gezinti"
     },
     "quitError": "Uygulama kapatılamadı: {{error}}",
-    "refreshError": "Kısayollar yenilenemedi: {{error}}",
-    "refreshSuccess": "Kısayollar başarıyla yenilendi",
     "mountsRefreshSuccess": "Bağlantılar başarıyla yenilendi",
     "mountsRefreshError": "Bağlantılar yenilenemedi: {{error}}",
     "servesRefreshSuccess": "Sunulan bağlantılar başarıyla yenilendi",
@@ -1594,8 +1570,6 @@
         "renamed": "Yeniden Adlandırılanlar",
         "listed": "Listelenenler",
         "errorsCount": "Hatalar",
-        "source": "Kaynak",
-        "destination": "Hedef",
         "remoteSource": "Uzak Kaynak",
         "mountPoint": "Bağlama Noktası",
         "executeId": "Yürütme Kimliği",
@@ -2030,7 +2004,8 @@
         "profiles": "{{type}} Profilleri"
       },
       "errors": {
-        "interactiveProcessingFailed": "Etkileşimli yanıt işlenemedi"
+        "interactiveProcessingFailed": "Etkileşimli yanıt işlenemedi",
+        "loadFailed": "Uzak yapılandırma yüklenemedi"
       }
     },
     "rcloneFlags": {
@@ -2306,6 +2281,7 @@
       "updateActionsFailed": "Hızlı işlemler güncellenemedi",
       "openFailed": "{{name}} açılamadı",
       "resetSettingsFailed": "Uzak sunucu ayarları sıfırlanamadı",
+      "deleteRemoteFailed": "Uzak sunucu silinemedi",
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin."
     }
   },
@@ -2377,7 +2353,6 @@
       "serverCopies": "Sunucu Tarafı Kopyalamalar:",
       "serverMoves": "Sunucu Tarafı Taşımalar:",
       "lastError": "Son Hata:",
-      "copyError": "Hatayı kopyalamak için tıkla",
       "runningJobs": "Çalışan İşler",
       "starting": "Başlatılıyor...",
       "noRunning": "Şu anda çalışan aktif iş yok."
@@ -2424,8 +2399,7 @@
     },
     "serve": {
       "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
-      "remoteEmpty": "Uzak bağlantı adı boş olamaz",
-      "typeRequired": "Sunucu tipi belirtilmelidir"
+      "remoteEmpty": "Uzak bağlantı adı boş olamaz"
     },
     "request": {
       "failed": "İstek başarısız: {{error}}"

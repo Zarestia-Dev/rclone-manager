@@ -1154,5 +1154,65 @@
   "vfs_handle_caching": {
     "title": "Caché de manejadores VFS",
     "help": "Tiempo para mantener activos el manejador de archivos y los descargadores después del último cierre"
+  },
+  "mountType": {
+    "title": "Tipo de montaje",
+    "help": "Tipo de montaje a utilizar."
+  },
+  "type": {
+    "title": "Tipo de servidor",
+    "help": "Tipo de servidor a utilizar."
+  },
+  "mount_type_mount": {
+    "title": "Montaje estándar",
+    "help": "Montaje FUSE estándar"
+  },
+  "mount_type_cmount": {
+    "title": "Montaje FUSE de Windows/macOS",
+    "help": "Montaje FUSE usando cgofuse (predeterminado en Windows/macOS)"
+  },
+  "mount_type_mount2": {
+    "title": "Montaje nativo de Go",
+    "help": "Montaje FUSE nativo de Go usando go-fuse"
+  },
+  "mount_type_nfsmount": {
+    "title": "Montaje NFS",
+    "help": "Montaje usando protocolo NFS"
+  },
+  "serve_type_http": {
+    "title": "Servidor HTTP",
+    "help": "Servir el remoto a través de HTTP"
+  },
+  "serve_type_webdav": {
+    "title": "Servidor WebDAV",
+    "help": "Servir el remoto a través de WebDAV"
+  },
+  "serve_type_ftp": {
+    "title": "Servidor FTP",
+    "help": "Servir el remoto a través de FTP"
+  },
+  "serve_type_sftp": {
+    "title": "Servidor SFTP",
+    "help": "Servir el remoto a través de SFTP"
+  },
+  "serve_type_nfs": {
+    "title": "Servidor NFS",
+    "help": "Servir el remoto a través de NFS"
+  },
+  "serve_type_dlna": {
+    "title": "Servidor multimedia DLNA",
+    "help": "Servir el remoto a través de DLNA"
+  },
+  "serve_type_docker": {
+    "title": "Complemento de volumen Docker",
+    "help": "Servir el remoto como complemento de volumen Docker"
+  },
+  "serve_type_restic": {
+    "title": "Servidor REST de Restic",
+    "help": "Servir el remoto a través de la API REST de Restic"
+  },
+  "serve_type_s3": {
+    "title": "Servidor compatible con Amazon S3",
+    "help": "Servir el remoto a través de la API S3 de Amazon"
   }
 }

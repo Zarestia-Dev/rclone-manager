@@ -1154,5 +1154,65 @@
   "vfs_handle_caching": {
     "title": "VFS 句柄缓存",
     "help": "最后一次关闭后，保持文件句柄和下载器活跃的时间"
+  },
+  "mountType": {
+    "title": "挂载类型",
+    "help": "要使用的挂载类型。"
+  },
+  "type": {
+    "title": "服务类型",
+    "help": "要使用的服务类型."
+  },
+  "mount_type_mount": {
+    "title": "标准挂载",
+    "help": "标准 FUSE 挂载"
+  },
+  "mount_type_cmount": {
+    "title": "Windows/macOS FUSE 挂载",
+    "help": "使用 cgofuse 的 FUSE 挂载（Windows/macOS 上的默认设置）"
+  },
+  "mount_type_mount2": {
+    "title": "Go 原生挂载",
+    "help": "使用 go-fuse 的 Go 原生 FUSE 挂载"
+  },
+  "mount_type_nfsmount": {
+    "title": "NFS 挂载",
+    "help": "使用 NFS 协议挂载"
+  },
+  "serve_type_http": {
+    "title": "HTTP 服务器",
+    "help": "通过 HTTP 服务远程存储"
+  },
+  "serve_type_webdav": {
+    "title": "WebDAV 服务器",
+    "help": "通过 WebDAV 服务远程存储"
+  },
+  "serve_type_ftp": {
+    "title": "FTP 服务器",
+    "help": "通过 FTP 服务远程存储"
+  },
+  "serve_type_sftp": {
+    "title": "SFTP 服务器",
+    "help": "通过 SFTP 服务远程存储"
+  },
+  "serve_type_nfs": {
+    "title": "NFS 服务器",
+    "help": "通过 NFS 服务远程存储"
+  },
+  "serve_type_dlna": {
+    "title": "DLNA 媒体服务器",
+    "help": "通过 DLNA 服务远程存储"
+  },
+  "serve_type_docker": {
+    "title": "Docker 数据卷插件",
+    "help": "将远程存储作为 Docker 数据卷插件提供服务"
+  },
+  "serve_type_restic": {
+    "title": "Restic REST 服务器",
+    "help": "通过 Restic REST API 服务远程存储"
+  },
+  "serve_type_s3": {
+    "title": "兼容 Amazon S3 的服务器",
+    "help": "通过 Amazon S3 API 服务远程存储"
   }
 }

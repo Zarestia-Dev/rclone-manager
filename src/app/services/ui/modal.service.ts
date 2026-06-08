@@ -341,7 +341,7 @@ export class ModalService {
     if (this.shouldOpenStandalone()) {
       return this.openStandaloneDialog<LogsModalComponent>(
         'logs',
-        this.translate.instant('settings.logs.remoteLogs', { name: remoteName }),
+        this.translate.instant('modals.logs.remoteLogs', { name: remoteName }),
         data,
         680,
         600,
@@ -382,7 +382,7 @@ export class ModalService {
     if (this.shouldOpenStandalone()) {
       return this.openStandaloneDialog<JobDetailModalComponent>(
         'job-detail',
-        this.translate.instant('settings.jobDetail.title', { id: job.jobid }),
+        this.translate.instant('modals.jobDetail.title', { id: job.jobid }),
         data,
         680,
         600,
@@ -404,7 +404,7 @@ export class ModalService {
     if (this.shouldOpenStandalone()) {
       return this.openStandaloneDialog<RestorePreviewModalComponent>(
         'restore-preview',
-        this.translate.instant('settings.restore.title') || 'Restore Backup',
+        this.translate.instant('backup.restore.title') || 'Restore Backup',
         data,
         680,
         600,
@@ -442,7 +442,7 @@ export class ModalService {
     if (this.shouldOpenStandalone()) {
       return this.openStandaloneDialog<BackendModalComponent>(
         'backend',
-        this.translate.instant('settings.backend.title') || 'Backend Management',
+        this.translate.instant('modals.backend.title') || 'Backend Management',
         null,
         680,
         600
@@ -458,7 +458,7 @@ export class ModalService {
     if (this.shouldOpenStandalone()) {
       return this.openStandaloneDialog<PreferencesModalComponent>(
         'preferences',
-        this.translate.instant('settings.preferences.title'),
+        this.translate.instant('modals.preferences.title'),
         null,
         680,
         600
