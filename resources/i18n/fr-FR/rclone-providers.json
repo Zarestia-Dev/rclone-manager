@@ -905,7 +905,7 @@
       },
       "skip_shortcuts": {
         "title": "Ignorer les raccourcis",
-        "help": "Si activé, ignore les fichiers de raccourci.\n\nNormalement, rclone déréférence les fichiers de raccourci pour les faire apparaître comme s'ils étaient le fichier d'origine (consulter [the shortcuts section](#shortcuts)). Si ce paramètre est activé, rclone ignorera complètement les fichiers de raccourci.\n"
+        "help": "Si activé, ignore les fichiers de raccourci.\n\nNormalement, rclone déréférence les fichiers de raccourci pour les faire apparaître comme s'ils\nétaient le fichier d'origine (consulter [the shortcuts section](#shortcuts)).\nSi ce paramètre est activé, rclone ignorera complètement les fichiers de raccourci.\n"
       },
       "starred_only": {
         "title": "Favoris uniquement",
@@ -913,11 +913,11 @@
       },
       "stop_on_download_limit": {
         "title": "Arrêter à la limite de téléchargement",
-        "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 10 Tio de données depuis Google Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est atteinte, Google Drive produit un message d'erreur légèrement différent. Lorsque ce paramètre est activé, ces erreurs deviennent fatales. Elles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n"
+        "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 10 Tio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite\nest atteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google\nne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n"
       },
       "stop_on_upload_limit": {
         "title": "Arrêter à la limite de téléchargement",
-        "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 750 Gio de données depuis Google Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est atteinte, Google Drive produit un message d'erreur légèrement différent. Lorsque ce paramètre est activé, ces erreurs deviennent fatales. Elles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n\nConsulte : https://github.com/rclone/rclone/issues/3857"
+        "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 750 Gio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est\natteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n\nConsulte : https://github.com/rclone/rclone/issues/3857"
       },
       "team_drive": {
         "title": "Team Drive",
@@ -945,7 +945,7 @@
       },
       "use_shared_date": {
         "title": "Utiliser une date partagée",
-        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme pour « --drive-use-created-date », ce paramètre peut avoir des conséquences inattendues lors de l'envoi ou du téléchargement de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de création est utilisée."
+        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme pour « --drive-use-created-date », ce paramètre peut avoir\ndes conséquences inattendues lors de l'envoi ou du téléchargement de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de\ncréation est utilisée."
       },
       "use_trash": {
         "title": "Utiliser la corbeille",
@@ -975,7 +975,7 @@
       },
       "batch_size": {
         "title": "Taille du lot",
-        "help": "Nombre maximum de fichiers dans un lot d'envoi.\n\nDéfinit la taille du lot de fichiers à envoyer. Elle doit être inférieure à 1 000.\n\nPar défaut, cette valeur est 0, ce qui signifie que rclone calculera la taille du lot en fonction du paramètre batch_mode.\n\n- batch_mode: async — taille du lot par défaut : 100\n- batch_mode: sync — taille du lot par défaut : identique à --transfers\n- batch_mode: off — non utilisé\n\nRclone fermera tous les lots en attente à la fermeture, ce qui peut entraîner un délai à la sortie.\n\nCe paramètre est particulièrement utile si vous envoyez de nombreux petits fichiers, car cela les rendra beaucoup plus rapides. Vous pouvez utiliser --transfers 32 pour maximiser le débit."
+        "help": "Nombre maximum de fichiers dans un lot d'envoi.\n\nDéfinit la taille du lot de fichiers à envoyer. Elle doit être inférieure à 1 000.\n\nPar défaut, cette valeur est 0, ce qui signifie que rclone calculera la taille du lot\nen fonction du paramètre batch_mode.\n\n- batch_mode: async — taille du lot par défaut : 100\n- batch_mode: sync — taille du lot par défaut : identique à --transfers\n- batch_mode: off — non utilisé\n\nRclone fermera tous les lots en attente à la fermeture, ce qui peut entraîner un délai à la sortie.\n\nCe paramètre est particulièrement utile si vous envoyez de nombreux petits fichiers, car cela les rendra beaucoup plus rapides. Vous pouvez utiliser --transfers 32 pour maximiser le débit.\n"
       },
       "batch_timeout": {
         "title": "Délai d’expiration du lot",
@@ -1201,7 +1201,7 @@
       },
       "explicit_tls": {
         "title": "TLS explicite",
-        "help": "Utiliser FTPS explicite (FTP sur TLS).\n\nLors de l'utilisation de FTP explicite sur TLS, le client demande explicitement la sécurité au serveur afin de passer d'une connexion en texte clair à une connexion chiffrée. Ne dois pas être utilisé en combinaison avec FTPS implicite."
+        "help": "Utiliser FTPS explicite (FTP sur TLS).\n\nLors de l'utilisation de FTP explicite sur TLS, le client demande explicitement la sécurité\nau serveur afin de passer d'une connexion en texte clair à une connexion chiffrée.\nNe dois pas être utilisé en combinaison avec FTPS implicite."
       },
       "force_list_hidden": {
         "title": "Forcer l'affichage des fichiers cachés",
@@ -2677,7 +2677,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble] (/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -2769,7 +2769,7 @@
       },
       "sdk_log_mode": {
         "title": "Mode de journalisation du SDK",
-        "help": "Défini pour déboguer le SDK\n\nCette valeur peut être définie comme une liste séparée par des virgules des fonctions suivantes :\n\n- Signing\n- Retries\n- Request\nRequestWithBody\nResponse\nResponseWithBody\nDeprecatedUsage\nRequestEventMessage\nResponseEventMessage\n\nUtiliser Off pour désactiver et All pour activer tous les niveaux de journalisation. Vous devrez utiliser -vv pour voir les journaux de niveau débogage."
+        "help": "Défini pour déboguer le SDK\n\nCette valeur peut être définie comme une liste séparée par des virgules des fonctions suivantes :\n\n- Signing\n- Retries\n- Request\n- RequestWithBody\n- Response\n- ResponseWithBody\n- DeprecatedUsage\n- RequestEventMessage\n- ResponseEventMessage\n\nUtiliser Off pour désactiver et All pour activer tous les niveaux de journalisation. Vous devrez utiliser -vv pour voir les journaux de niveau débogage."
       },
       "secret_access_key": {
         "title": "Clé d'accès secrète",
@@ -2877,7 +2877,7 @@
       },
       "version_at": {
         "title": "Version à la date",
-        "help": "Afficher les versions des fichiers telles qu'elles étaient à la date spécifiée. Le paramètre doit être une date « 2006-01-02 », une date et heure « 2006-01-02 15:04:05 » ou une durée dans le passé, par exemple « 100d » ou « 1h ».\n\nÀ noter qu'avec ce paramètre, aucune opération d'écriture n'est autorisée ; il est donc impossible d'envoyer ou de supprimer des fichiers.\n\nConsulter [the time option docs](/docs/#time-options)pour les formats valide.\n"
+        "help": "Afficher les versions des fichiers telles qu'elles étaient à la date spécifiée. Le paramètre doit être une date « 2006-01-02 », une date et heure « 2006-01-02 15:04:05 » ou une durée dans le passé, par exemple « 100d » ou « 1h ».\n\nÀ noter qu'avec ce paramètre, aucune opération d'écriture n'est autorisée ; il est donc impossible d'envoyer ou de supprimer des fichiers.\n\nConsulter [the time option docs](/docs/#time-options) pour les formats valide.\n"
       },
       "version_deleted": {
         "title": "Version supprimée",
@@ -2913,7 +2913,7 @@
       },
       "object_lock_mode": {
         "title": "Mode de verrouillage de l'objet",
-        "help": "Mode de verrouillage d'objet à appliquer lors de l'envoi ou de la copie d'objets.\n\nDéfinir ce paramètre pour appliquer un mode de rétention de verrouillage d'objet aux objets. Si non défini, aucun mode de verrouillage d'objet n'est appliqué (même avec --metadata). \n\nRemarque : Pour activer la rétention de verrouillage d'objet, vous devez définir À LA FOIS object_lock_mode ET object_lock_retain_until_date. Définir uniquement l'un des deux n'a aucun effet.\n\n- GOVERNANCE : Définir le mode de verrouillage d'objet sur GOVERNANCE\n- COMPLIANCE : Définir le mode de verrouillage d'objet sur COMPLIANCE\n- copy : Copier le mode depuis l'objet source (nécessite --metadata)\n\nConsulter : https://docs. ws.文.com/AmazonS3/latest/userguide/object-lock.html"
+        "help": "Mode de verrouillage d'objet à appliquer lors de l'envoi ou de la copie d'objets.\n\nDéfinir ce paramètre pour appliquer un mode de rétention de verrouillage d'objet aux objets. Si non défini, aucun mode de verrouillage d'objet n'est appliqué (même avec --metadata). \n\nRemarque : Pour activer la rétention de verrouillage d'objet, vous devez définir À LA FOIS object_lock_mode ET object_lock_retain_until_date. Définir uniquement l'un des deux n'a aucun effet.\n\n- GOVERNANCE : Définir le mode de verrouillage d'objet sur GOVERNANCE\n- COMPLIANCE : Définir le mode de verrouillage d'objet sur COMPLIANCE\n- copy : Copier le mode depuis l'objet source (nécessite --metadata)\n\nConsulter : https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
       },
       "object_lock_retain_until_date": {
         "title": "Verrouillage de l'objet conservé jusqu'à la date",
@@ -2959,7 +2959,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez la [section encodage dans la vue d'ensemble] (/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "library": {
         "title": "Bibliothèque",
@@ -2985,7 +2985,7 @@
     "sftp": {
       "ask_password": {
         "title": "Demander le mot de passe",
-        "help": "Autoriser la demande de mot de passe SFTP si nécessaire.\n\nSi ce paramètre est activé et qu'aucun mot de passe n'est fourni, rclone : - demandera un mot de passe - ne contactera pas l'agent SSH"
+        "help": "Autoriser la demande de mot de passe SFTP si nécessaire.\n\nSi ce paramètre est activé et qu'aucun mot de passe n'est fourni, rclone : \n- demandera un mot de passe \n- ne contactera pas l'agent SSH"
       },
       "blake3sum_command": {
         "title": "Commande Blake3Sum",
