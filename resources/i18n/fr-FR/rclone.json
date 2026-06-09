@@ -5,7 +5,7 @@
   },
   "name": {
     "title": "Nom",
-    "help": "Nom du serveur DLNA"
+    "help": "Nom du serveur multimédia DLNA"
   },
   "log_trace": {
     "title": "Trace de log",
@@ -1108,7 +1108,7 @@
     "help": "Nom de fichier pour --check-access"
   },
   "maxDelete": {
-    "title": "Suppressions max (bisync)",
+    "title": "Limite de suppressions (bisync)",
     "help": "Abandonner la synchronisation si le pourcentage de fichiers supprimés dépasse ce seuil"
   },
   "force": {
@@ -1148,7 +1148,7 @@
     "help": "--backup-dir pour Path2"
   },
   "disable_zip": {
-    "title": "Désactiver le téléchargement ZIP",
+    "title": "Désactiver ZIP",
     "help": "Désactiver le téléchargement ZIP des répertoires"
   },
   "vfs_handle_caching": {
