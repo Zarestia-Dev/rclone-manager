@@ -87,7 +87,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage pour le backend.\n\nVoir la section [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage pour le backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -627,7 +627,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage utilisé par le backend.\n\nConsultez la [section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "eventually_consistent_delay": {
         "title": "Délai de cohérence éventuelle",
@@ -1487,7 +1487,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "namenode": {
         "title": "Namenode",
@@ -1533,7 +1533,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -1677,7 +1677,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations.."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -2219,7 +2219,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -2305,7 +2305,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hostname": {
         "title": "Nom d'hôte",
@@ -2435,7 +2435,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "token": {
         "title": "Jeton",
@@ -2531,7 +2531,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend. \n\nConsulter [encoding section in the overview](/overview/#encoding) d'informations."
+        "help": "L'encodage du backend. \n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "token": {
         "title": "Jeton",
@@ -2677,7 +2677,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -3229,7 +3229,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "user_agent": {
         "title": "Agent utilisateur",
@@ -3599,7 +3599,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend. \n\nConsulter [encoding section in the overview](/overview/#encoding) for more info.\n\nL'encodage par défaut est : Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,Hash,Percent,BackSlash,Del,Ctl,LeftSpace,LeftTilde,RightSpace,RightPeriod,InvalidUtf8 pour sharepoint-ntlm ou identity sinon."
+        "help": "L'encodage du backend. \n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations.\n\nL'encodage par défaut est : Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,Hash,Percent,BackSlash,Del,Ctl,LeftSpace,LeftTilde,RightSpace,RightPeriod,InvalidUtf8 pour sharepoint-ntlm ou identity sinon."
       },
       "headers": {
         "title": "En-têtes",
@@ -3745,7 +3745,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "master_keys": {
         "title": "Clé maîtresse",
@@ -3937,7 +3937,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "description": {
         "title": "Description",
