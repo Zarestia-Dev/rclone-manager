@@ -140,10 +140,10 @@ fn build_app(
         format!("http://127.0.0.1:{port}").parse().unwrap(),
     ];
 
-    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost") {
-        if let Ok(origin) = format!("http://{host}:{port}").parse() {
-            allowed_origins.push(origin);
-        }
+    if !matches!(host, "0.0.0.0" | "127.0.0.1" | "localhost")
+        && let Ok(origin) = format!("http://{host}:{port}").parse()
+    {
+        allowed_origins.push(origin);
     }
 
     #[cfg(debug_assertions)]

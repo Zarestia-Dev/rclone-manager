@@ -285,6 +285,7 @@ export class RemoteFacadeService extends TauriBaseService {
       }
 
       this.remoteNames.set(incomingNames);
+      this.pathService.setRemoteNames(incomingNames);
       this.remoteSettings.set(settings);
       if (newAdded) this.loadDiskUsageInBackground();
     } catch (error) {

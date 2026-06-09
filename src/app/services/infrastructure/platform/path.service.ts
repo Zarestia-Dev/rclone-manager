@@ -16,6 +16,15 @@ export interface PathGroup {
 
 @Injectable({ providedIn: 'root' })
 export class PathService {
+  private readonly remoteNames = new Set<string>();
+
+  setRemoteNames(names: string[]): void {
+    this.remoteNames.clear();
+    for (const name of names) {
+      this.remoteNames.add(this.normalizeRemoteName(name));
+    }
+  }
+
   normalizePath(p: string): string {
     if (!p) return '';
     const normalized = p.replace(/\\/g, '/');
@@ -88,8 +97,18 @@ export class PathService {
     const p = Array.isArray(path) ? path[0] : path;
     if (!p) return false;
 
-    // If there is no colon, it's definitely a local path
+    // If it starts with or matches a known remote name, it is a remote path
     const colonIdx = p.indexOf(':');
+    if (colonIdx > -1) {
+      const remotePart = p.substring(0, colonIdx);
+      if (this.remoteNames.has(this.normalizeRemoteName(remotePart))) {
+        return false;
+      }
+    } else if (this.remoteNames.has(this.normalizeRemoteName(p))) {
+      return false;
+    }
+
+    // If there is no colon, it's definitely a local path
     if (colonIdx === -1) {
       return true;
     }

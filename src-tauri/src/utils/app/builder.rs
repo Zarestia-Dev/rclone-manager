@@ -117,7 +117,7 @@ pub struct WindowOptions {
 
 #[cfg(not(feature = "web-server"))]
 #[tauri::command]
-pub fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
+pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
         let _ = existing.show();
         let _ = existing.unminimize();

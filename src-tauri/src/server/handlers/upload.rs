@@ -51,10 +51,11 @@ pub async fn stream_upload_handler(
                 let (batch_dir, temp_path) = if let Some(ref b) = batch {
                     let dir = temp_dir.join(format!("rclone_batch_{}", b.id));
                     tokio::fs::create_dir_all(&dir).await.ok();
-                    if let Some(p) = std::path::Path::new(&filename).parent() {
-                        if !p.as_os_str().is_empty() {
-                            tokio::fs::create_dir_all(dir.join(p)).await.ok();
-                        }
+                    if let Some(p) = std::path::Path::new(&filename)
+                        .parent()
+                        .filter(|p| !p.as_os_str().is_empty())
+                    {
+                        tokio::fs::create_dir_all(dir.join(p)).await.ok();
                     }
                     (Some(dir.clone()), dir.join(&filename))
                 } else {

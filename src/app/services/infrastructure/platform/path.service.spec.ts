@@ -173,6 +173,10 @@ describe('PathService', () => {
   });
 
   describe('isLocalPath', () => {
+    beforeEach(() => {
+      service.setRemoteNames(['remote', 'my-remote', 's3', 'folder', 'Google Drive']);
+    });
+
     it('should correctly classify local paths', () => {
       expect(service.isLocalPath('/absolute/path/on/linux')).toBeTrue();
       expect(service.isLocalPath('relative/path/on/linux')).toBeTrue();
@@ -189,6 +193,12 @@ describe('PathService', () => {
       expect(service.isLocalPath('my-remote:bucket/file.txt')).toBeFalse();
       expect(service.isLocalPath('s3:path')).toBeFalse();
       expect(service.isLocalPath('folder:name/file.txt')).toBeFalse();
+    });
+
+    it('should correctly classify bare remote names', () => {
+      expect(service.isLocalPath('Google Drive')).toBeFalse();
+      expect(service.isLocalPath('remote')).toBeFalse();
+      expect(service.isLocalPath('s3')).toBeFalse();
     });
   });
 });

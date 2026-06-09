@@ -282,16 +282,21 @@ pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
         None => "index.html#/nautilus".to_string(),
     };
 
-    crate::utils::app::builder::new_window(
-        app.clone(),
-        crate::utils::app::builder::WindowOptions {
-            label,
-            url,
-            title: "RClone Nautilus".to_string(),
-            width: Some(1024.0),
-            height: Some(768.0),
-            remote: remote_name.map(std::string::ToString::to_string),
-            path: None,
-        },
-    );
+    let remote_name_owned = remote_name.map(std::string::ToString::to_string);
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        crate::utils::app::builder::new_window(
+            app_clone,
+            crate::utils::app::builder::WindowOptions {
+                label,
+                url,
+                title: "RClone Nautilus".to_string(),
+                width: Some(1024.0),
+                height: Some(768.0),
+                remote: remote_name_owned,
+                path: None,
+            },
+        )
+        .await;
+    });
 }
