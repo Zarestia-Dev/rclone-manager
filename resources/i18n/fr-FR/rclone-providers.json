@@ -232,7 +232,7 @@
         "help": "Description du dépôt distant."
       },
       "disable_instance_discovery": {
-        "title": "Désactiver la découverte d'instance",
+        "title": "Désactiver la détection d'instance",
         "help": "Ignorer la demande de métadonnées d'instance Microsoft Entra.\n\nCette option ne doit être activée que par des applications\ns'authentifiant dans des clouds déconnectés ou des clouds privés\ntels qu'Azure Stack. Elle détermine si rclone demande les métadonnées\nd'instance Microsoft Entra depuis `https://login.microsoft.com/`\navant l'authentification.\n\nL'activer ignorera cette demande, vous rendant responsable de vous\nassurer que l'autorité configurée est valide et digne de confiance.\n"
       },
       "encoding": {
