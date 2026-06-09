@@ -801,7 +801,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez la [section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "env_auth": {
         "title": "Env Auth",
@@ -1003,7 +1003,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez la [section encodage dans la vue d'ensemble] (/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "export_formats": {
         "title": "Formats d'exportation",
@@ -1061,7 +1061,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez la [section encodage dans la vue d'ensemble] (/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "file_password": {
         "title": "Mot de Passe du Fichier",
@@ -1083,7 +1083,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez la [section encodage dans la vue d'ensemble] (/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "permanent_token": {
         "title": "Jeton permanent",
@@ -1117,7 +1117,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "key": {
         "title": "Clé",
@@ -1143,7 +1143,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "password": {
         "title": "Mot de passe",
@@ -1197,7 +1197,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "explicit_tls": {
         "title": "TLS explicite",
@@ -1333,7 +1333,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -1613,7 +1613,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "password": {
         "title": "Mot de passe",
@@ -1635,7 +1635,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -1677,7 +1677,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations.."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -1727,7 +1727,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hard_delete": {
         "title": "Suppression définitive",
@@ -1765,7 +1765,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend. \n\nConsulter [encoding section in the overview](/overview/#encoding) d'informations."
+        "help": "L'encodage du backend. \n\nConsultre [la section encodage dans la vue d'ensemble] (/overview/#encoding)."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -2033,7 +2033,7 @@
       },
       "secret": {
         "title": "Secret",
-        "help": "Définissez le secret du compte NetStorage/la clé G2O pour l'authentification.\n\nVeuillez choisir l'option « y » pour définir votre propre mot de passe, puis saisir votre secret."
+        "help": "Définissez le secret du compte NetStorage/la clé G2O pour l'authentification.\n\nVeuillez choisir l'option « y » pour définir votre propre mot de passe, puis saisir votre secret."
       }
     },
     "onedrive": {
@@ -2936,7 +2936,7 @@
         "help": "Définir le verrouillage d'objet via des appels API distincts après l'envoi.\n\nÀ utiliser pour les fournisseurs compatibles S3 qui ne prennent pas en charge la définition des en-têtes de verrouillage d'objet lors des opérations PUT. Si activé, le verrouillage d'objet est défini via des appels API distincts PutObjectRetention et PutObjectLegalHold après la fin de l'envoi.\n\nCela génère des appels API supplémentaires par objet ; n'activer que si votre fournisseur l'exige."
       },
       "object_lock_supported": {
-        "title": "Verrouillage d'objet pris en charge",
+        "title": "Verrouillage d'objet pris en charge",
         "help": "Indique si le fournisseur prend en charge le verrouillage d'objet S3. \n\nCette valeur doit être true, false ou laissée non définie pour utiliser la valeur par défaut du fournisseur.\n\nDéfinir à false pour les fournisseurs qui ne prennent pas entièrement en charge l'API de verrouillage d'objet S3 (par exemple GCS qui utilise des en-têtes non standard pour contourner la rétention de gouvernance et n'implémente pas la conservation légale via l'API S3).\n"
       }
     },
@@ -3077,7 +3077,7 @@
       },
       "macs": {
         "title": "MAC",
-        "help": "Liste d'algorithmes MAC (code d'authentification de message) séparés par des espaces, classés par ordre de préférence.\n\nAu moins un doit correspondre à la configuration du serveur. Cela peut être vérifié par exemple avec ssh -Q mac.\n\nExemple :\n\n    umac-64-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-256-etm@openssh.com\n"
+        "help": "Liste d'algorithmes MAC (code d'authentification de message) séparés par des espaces, classés par ordre de préférence.\n\nAu moins un doit correspondre à la configuration du serveur. Cela peut être vérifié par exemple avec ssh -Q mac.\n\nExemple :\n\n    umac-64-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-256-etm@openssh.com\n"
       },
       "md5sum_command": {
         "title": "Commande Md5Sum",
@@ -3148,7 +3148,7 @@
         "help": "Si activé, utiliser fstat à la place de stat.\n\nCertains serveurs limitent le nombre de fichiers ouverts simultanément et l'appel de Stat après l'ouverture d'un fichier renverra une erreur du serveur. L'activation de ce paramètre appellera Fstat à la place de Stat, qui est appelé sur un descripteur de fichier déjà ouvert.\n\nIl a été constaté que cela aide avec les serveurs SFTP IBM Sterling dont le niveau « extractability » est défini à 1, ce qui signifie qu'un seul fichier peut être ouvert à la fois.\n"
       },
       "use_insecure_cipher": {
-        "title": "Utiliser un algorithme de chiffrement non sécurisé",
+        "title": "Utiliser le chiffrement non sécurisé",
         "help": "Activer l'utilisation d'algorithmes de chiffrement et de méthodes d'échange de clés non sécurisés.\n\nCela active l'utilisation des algorithmes de chiffrement et méthodes d'échange de clés non sécurisés suivants :\n\n- aes128-cbc\n- aes192-cbc\n- aes256-cbc\n- 3des-cbc\n- diffie-hellman-group-exchange-sha256\n- diffie-hellman-group-exchange-sha1\n\nCes algorithmes sont non sécurisés et peuvent permettre à un attaquant de récupérer des données en clair.\n\nCe paramètre doit être false si vous utilisez les options avancées ciphers ou key_exchange.\n"
       },
       "user": {
@@ -3369,7 +3369,7 @@
     "swift": {
       "application_credential_id": {
         "title": "Identifiant de l'Application",
-        "help": "Identifiant des identifiants d'application (OS_APPLICATION_CREDENTIAL_ID)."
+        "help": "Identifiant des identifiants d'application (OS_APPLICATION_CREDENTIAL_ID)."
       },
       "application_credential_name": {
         "title": "Nom de l'identification de l'application",
@@ -3377,7 +3377,7 @@
       },
       "application_credential_secret": {
         "title": "Secret des informations d'identification de l'application",
-        "help": "Secret des identifiants d'application (OS_APPLICATION_CREDENTIAL_SECRET)."
+        "help": "Secret des identifiants d'application (OS_APPLICATION_CREDENTIAL_SECRET)."
       },
       "auth": {
         "title": "Authentification",
@@ -3737,7 +3737,7 @@
       },
       "api_key": {
         "title": "Clé API",
-        "help": "Clé API de votre compte Filen.\n\nObtenir cette clé via la commande export-api-key de l'interface CLI Filen. Vous pouvez télécharger l'interface CLI Filerclonen depuis https://github.com/FilenCloudDienste/filen-cli"
+        "help": "Clé API de votre compte Filen.\n\nObtenir cette clé via la commande export-api-key de l'interface CLI Filen. Vous pouvez télécharger l'interface CLI Filerclonen depuis https://github.com/FilenCloudDienste/filen-cli"
       },
       "upload_concurrency": {
         "title": "Concurrence d'envoi",
