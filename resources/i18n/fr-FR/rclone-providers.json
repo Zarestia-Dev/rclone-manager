@@ -945,7 +945,7 @@
       },
       "use_shared_date": {
         "title": "Utiliser une date partagée",
-        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme pour « --drive-use-created-date », ce paramètre peut avoir\ndes conséquences inattendues lors de l'envoi ou d'envoi de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de\ncréation est utilisée."
+        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme avec « --drive-use-created-date », cette option peut provoquer \ndes effets inattendus lors de l’envoi ou du téléchargement de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de\ncréation est utilisée."
       },
       "use_trash": {
         "title": "Utiliser la corbeille",
@@ -979,7 +979,7 @@
       },
       "batch_timeout": {
         "title": "Délai d’expiration du lot",
-        "help": "Durée maximale d'inactivité d'un lot d'envoi avant son envoi.\n\nSi un lot d'envoi est inactif pendant plus longtemps que cette durée,\nil sera envoyé.\n\nPar défaut, cette valeur est 0, ce qui signifie que\nrclone choisira une valeur par défaut appropriée selon le batch_mode\nutilisé.\n\n- batch_mode: async — batch_timeout par défaut : 10s\n- batch_mode: sync — batch_timeout par défaut : 500ms\n- batch_mode: off — non utilisé"
+        "help": "Durée maximale pendant laquelle un lot d’envois inactif peut rester en\nattente avant d’être téléversé.\n\nSi un lot d'envoi est inactif pendant plus longtemps que cette durée,\nil sera envoyé.\n\nPar défaut, cette valeur est 0, ce qui signifie que\nrclone choisira une valeur par défaut appropriée selon le batch_mode\nutilisé.\n\n- batch_mode: async — batch_timeout par défaut : 10s\n- batch_mode: sync — batch_timeout par défaut : 500ms\n- batch_mode: off — non utilisé\n"
       },
       "chunk_size": {
         "title": "Taille des blocs",
@@ -1560,11 +1560,11 @@
         "help": "URL du serveur de jetons."
       },
       "upload_concurrency": {
-        "title": "Concurrence de téléchargement",
+        "title": "Nombre d'envois simultanés",
         "help": "Simultanéité des envois par blocs.\n\nIl s'agit de la limite supérieure du nombre de transferts simultanés pour un même fichier.\nDéfinir une valeur inférieure à 1 entraînera un blocage des envois.\n\nSi vous envoyez un petit nombre de fichiers volumineux via des liaisons à haute vitesse\net que ces envois n'utilisent pas pleinement votre bande passante, augmenter cette valeur\npeut contribuer à accélérer les transferts."
       },
       "upload_cutoff": {
-        "title": "Seuil de téléchargement",
+        "title": "Seuil d'envoi",
         "help": "Seuil de basculement vers les envois par blocs.\n\nTout fichier dépassant cette taille sera envoyé en blocs de la taille\nconfigurée dans chunksize. La limite supérieure est de 2 147 483 647\noctets (environ 2,000 Gio). Il s'agit de la quantité maximale d'octets\nprise en charge par une seule opération d'envoi. Définir une valeur\nsupérieure à cette limite entraînera l'échec des envois."
       }
     },
@@ -1654,8 +1654,8 @@
         "help": "Vous pouvez trouver votre clé publique ImageKit.io dans votre [tableau de bord](https://imagekit.io/dashboard/developer/api-keys)"
       },
       "upload_tags": {
-        "title": "Balises de téléchargement",
-        "help": "Balises à ajouter aux fichiers téléchargés, par ex. \"tag1,tag2\"."
+        "title": "Balises d'envoi",
+        "help": "Balises à ajouter aux fichiers téléversés, par exemple : « tag1,tag2 »."
       },
       "versions": {
         "title": "Versions",
@@ -1754,8 +1754,8 @@
         "help": "Afficher uniquement les fichiers qui sont dans la corbeille.\n\nAffiche les fichiers supprimés dans leur structure de répertoires d'origine."
       },
       "upload_resume_limit": {
-        "title": "Limite de reprise de téléchargement",
-        "help": "Les fichiers plus volumineux que cette limite peuvent être repris si le téléchargement échoue."
+        "title": "Limite de reprise d’envoi",
+        "help": "Reprise possible pour les fichiers dépassant cette taille en cas d’échec de l’envoi."
       }
     },
     "koofr": {
@@ -2047,7 +2047,7 @@
       },
       "av_override": {
         "title": "Contournement antivirus",
-        "help": "Autorise le téléchargement de fichiers que le serveur considère comme infectés par un virus.\n\nLe serveur onedrive/sharepoint peut vérifier les fichiers téléchargés avec un vérificateur antivirus anti-\n. Si elle détecte des virus ou des logiciels malveillants potentiels, elle bloquera le téléchargement du fichier\n.\n\nDans ce cas, vous verrez un message comme ce\n\n    serveur rapporte que ce fichier est infecté par un virus - utilisez --onedrive-av-override pour le télécharger quand même : Infecté (nom de virus) : 403 Abstention :\n\nSi vous êtes 100% sûr de vouloir télécharger ce fichier quand même utiliser\nl'option --onedrive-av-override , ou av_override = true dans le fichier de configuration\n.\n"
+        "help": "Autorise le téléchargement de fichiers que le serveur considère comme infectés par un virus.\n\nLe serveur onedrive/sharepoint peut vérifier les fichiers téléchargés avec un vérificateur antivirus anti-\n. Si elle détecte des virus ou des logiciels malveillants potentiels, elle bloquera le téléchargement du fichier.\n\nDans ce cas, vous verrez un message comme celui-ci :\n\n    serveur rapporte que ce fichier est infecté par un virus - utilisez --onedrive-av-override pour le télécharger quand même : Infecté (nom de virus) : 403 Abstention :\n\nSi vous êtes 100% sûr de vouloir télécharger ce fichier quand même utiliser\nl'option --onedrive-av-override , ou av_override = true dans le fichier de configuration.\n"
       },
       "chunk_size": {
         "title": "Taille des blocs",
@@ -2157,7 +2157,7 @@
     "opendrive": {
       "access": {
         "title": "Accès",
-        "help": "Les fichiers et dossiers seront téléchargés avec cette autorisation d'accès (par défaut privé)"
+        "help": "Les fichiers et dossiers seront envoyés avec cette autorisation d'accès (par défaut privé)"
       },
       "chunk_size": {
         "title": "Taille des blocs",
@@ -2182,7 +2182,7 @@
     },
     "oracleobjectstorage": {
       "attempt_resume_upload": {
-        "title": "Tenter de reprendre le téléchargement",
+        "title": "Tenter de reprendre l’envoi",
         "help": "Si activé, tente de reprendre un envoi multipartie précédemment commencé pour l'objet.\n\nCela peut accélérer les transferts multipartie en reprenant les envois depuis une session précédente.\nAVERTISSEMENT : Si la taille des blocs diffère entre la session reprise et la session incomplète précédente,\nl'envoi multipartie repris est abandonné et un nouvel envoi multipartie est démarré avec la nouvelle taille de blocs.\n\nLe paramètre leave_parts_on_error doit être activé pour reprendre et optimiser en ignorant les blocs\ndéjà envoyés avec succès.\n"
       },
       "chunk_size": {
@@ -2227,10 +2227,10 @@
       },
       "leave_parts_on_error": {
         "title": "Laisser les parties en cas d'erreur",
-        "help": "Si vrai, évite d'appeler l'annulation du téléchargement en cas d'échec, laissant toutes les parties téléchargées avec succès pour une récupération manuelle.\n\nDoit être défini à true pour reprendre les envois entre différentes sessions.\n\nAVERTISSEMENT : Le stockage des parties d'un envoi multipartie incomplet est comptabilisé dans l'espace utilisé sur le stockage objet et entraînera des coûts supplémentaires s'il n'est pas nettoyé.\n"
+        "help": "Si cette option est activée, l’annulation de l’envoi n’est pas déclenchée en cas d’échec, afin de conserver les parties déjà téléversées pour une récupération manuelle.\n\nDoit être défini à true pour reprendre les envois entre différentes sessions.\n\nAVERTISSEMENT : Le stockage des parties d'un envoi multipartie incomplet est comptabilisé dans l'espace utilisé sur le stockage objet et entraînera des coûts supplémentaires s'il n'est pas nettoyé.\n"
       },
       "max_upload_parts": {
-        "title": "Nombre maximal de parties de téléchargement",
+        "title": "Nombre maximal de parties d’envoi",
         "help": "Nombre maximum de parties dans un envoi multipartie.\n\nCette option définit le nombre maximum de blocs multipartie à utiliser lors d'un envoi multipartie.\n\nOCI impose une limite maximale de 10 000 blocs.\n\nRclone augmentera automatiquement la taille des blocs lors de l'envoi d'un fichier volumineux de taille connue afin de rester en dessous de cette limite."
       },
       "namespace": {
@@ -2274,7 +2274,7 @@
         "help": "La classe de stockage à utiliser lors du stockage de nouveaux objets. https://docs.oracle.com/en-us/iaas/Content/Object/Concepts/understandingstoragetiers.htm"
       },
       "upload_concurrency": {
-        "title": "Concurrence de téléchargement",
+        "title": "Nombre d’envois simultanés",
         "help": "Simultanéité des envois multipartie.\n\nIl s'agit du nombre de blocs d'un même fichier envoyés simultanément.\n\nSi vous envoyez un petit nombre de fichiers volumineux via des liaisons à haute vitesse et que ces envois n'utilisent pas pleinement votre bande passante, augmenter cette valeur peut contribuer à accélérer les transferts."
       },
       "upload_cutoff": {
@@ -2576,7 +2576,7 @@
         "help": "Clé d'accès secrète QingStor (mot de passe).\n\nLaisser vide pour un accès anonyme ou des identifiants fournis à l’exécution."
       },
       "upload_concurrency": {
-        "title": "Concurrence de téléchargement",
+        "title": "Concurrence d'envoi",
         "help": "Simultanéité des envois multipartie.\n\nIl s'agit du nombre de blocs d'un même fichier envoyés simultanément.\n\nRemarque : si cette valeur est supérieure à 1, les sommes de contrôle des envois multipartie seront corrompues (les envois eux-mêmes ne sont pas corrompus).\n\nSi vous envoyez un petit nombre de fichiers volumineux via des liaisons à haute vitesse et que ces envois n'utilisent pas pleinement votre bande passante, augmenter cette valeur peut contribuer à accélérer les transferts."
       },
       "upload_cutoff": {
@@ -2598,7 +2598,7 @@
         "help": "Description du distant."
       },
       "effective_upload_time": {
-        "title": "Temps de transfert effectif",
+        "title": "Durée effective d’envoi",
         "help": "Durée d'envoi souhaitée pour un bloc."
       },
       "encoding": {
@@ -2665,7 +2665,7 @@
       },
       "disable_checksum": {
         "title": "Désactiver la somme de contrôle",
-        "help": "Ne stockez pas la somme de contrôle MD5 avec les métadonnées de l'objet.\n\nNormalement, rclone calcule la somme de contrôle MD5 du fichier d'entrée avant de l'envoyer afin de l'ajouter aux métadonnées de l'objet. C'est idéal pour vérifier l'intégrité des données, mais cela peut entraîner des délais importants pour le chargement des fichiers volumineux."
+        "help": "Ne stockez pas la somme de contrôle MD5 avec les métadonnées de l'objet.\n\nNormalement, rclone calcule la somme de contrôle MD5 du fichier en entrée avant de le téléverser afin de pouvoir l’ajouter aux métadonnées de l’objet. Cela est très utile pour vérifier l’intégrité des données, mais peut entraîner un long délai avant le début de l’envoi pour les fichiers volumineux."
       },
       "disable_http2": {
         "title": "Désactiver Http2",
@@ -2701,7 +2701,7 @@
       },
       "leave_parts_on_error": {
         "title": "Conserver les parties en cas d'erreur",
-        "help": "Si vrai, évite d'appeler l'annulation de téléchargement en cas d'échec, laissant toutes les parties téléchargées avec succès sur S3 pour une récupération manuelle.\n\nDoit être défini à true pour reprendre les envois entre différentes sessions.\n\nAVERTISSEMENT : Le stockage des parties d'un envoi multipartie incomplet est comptabilisé dans l'espace utilisé sur S3 et entraînera des coûts supplémentaires s'il n'est pas nettoyé.\n"
+        "help": "Si cette option est activée, l’annulation du téléversement n’est pas effectuée en cas d’échec, afin de conserver les parties déjà envoyées sur S3 pour une récupération manuelle.\n\nDoit être défini à true pour reprendre les envois entre différentes sessions.\n\nAVERTISSEMENT : Le stockage des parties d'un envoi multipartie incomplet est comptabilisé dans l'espace utilisé sur S3 et entraînera des coûts supplémentaires s'il n'est pas nettoyé.\n"
       },
       "list_chunk": {
         "title": "Taille du lot de listage",
@@ -2720,7 +2720,7 @@
         "help": "Contrainte de localisation - doit être définie pour correspondre à la région.\n\nLaisser vide en cas de doute. Utilisé uniquement lors de la création de compartiments."
       },
       "max_upload_parts": {
-        "title": "Nombre maximal de parties de téléchargement",
+        "title": "Nombre maximal de parties d’envoi",
         "help": "Nombre maximum de parties dans un envoi multipartie.\n\nCette option définit le nombre maximum de blocs multipartie à utiliser lors d'un envoi multipartie.\n\nCela peut être utile si un service ne prend pas en charge la limite de 10 000 blocs de la spécification AWS S3.\n\nRclone augmentera automatiquement la taille des blocs lors de l'envoi d'un fichier volumineux de taille connue afin de rester en dessous de cette limite.\n"
       },
       "memory_pool_flush_time": {
@@ -2820,7 +2820,7 @@
         "help": "Point de terminaison pour STS (obsolète).\n\nLaisser vide si vous utilisez AWS pour utiliser le point de terminaison par défaut de la région."
       },
       "upload_concurrency": {
-        "title": "Concurrence de téléchargement",
+        "title": "Concurrence d'envoi",
         "help": "Simultanéité des envois et copies multipartie.\n\nIl s'agit du nombre de blocs d'un même fichier envoyés simultanément pour les envois et copies multipartie.\n\nSi vous envoyez un petit nombre de fichiers volumineux via des liaisons à haute vitesse et que ces envois n'utilisent pas pleinement votre bande passante, augmenter cette valeur peut contribuer à accélérer les transferts."
       },
       "upload_cutoff": {
@@ -2853,7 +2853,7 @@
       },
       "use_multipart_etag": {
         "title": "Utiliser l'ETag multipart",
-        "help": "Indique s'il faut utiliser l'ETag dans les téléchargements multipart pour la vérification\n\nCette valeur doit être true, false ou laissée non définie pour utiliser la valeur par défaut du fournisseur.\n"
+        "help": "Permet d’utiliser l’ETag pour vérifier l’intégrité des envois multipart\n\nCette valeur doit être true, false ou laissée non définie pour utiliser la valeur par défaut du fournisseur.\n"
       },
       "use_multipart_uploads": {
         "title": "Utiliser les envois multipartie",
@@ -2921,7 +2921,7 @@
       },
       "object_lock_legal_hold_status": {
         "title": "Verrouiller le statut de maintien légal de l'objet",
-        "help": "Statut de conservation légale de verrouillage d'objet à appliquer lors de l'envoi ou de la copie d'objets.\n\nDéfinir ce paramètre pour appliquer une conservation légale de verrouillage d'objet aux objets. Si non défini, aucune conservation légale n'est appliquée (même avec --metadata).\n\nRemarque : La conservation légale est indépendante de la rétention et peut être définie séparément.\n\n- ON : Activer la conservation légale\n- OFF : Désactiver la conservation légale\n- copy : Copier le statut de conservation légale depuis l'objet source (nécessite --metadata)\n\nConsulter : https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+        "help": "Statut de conservation légale de verrouillage d'objet à appliquer lors de l'envoi ou de la copie d'objets.\n\nActivez cette option pour appliquer un « legal hold » (conservation légale) aux objets. Si elle n’est pas définie, aucun « legal hold » n’est appliqué (même avec « --metadata »).\n\nRemarque : La conservation légale est indépendante de la rétention et peut être définie séparément.\n\n- ON : Activer la conservation légale\n- OFF : Désactiver la conservation légale\n- copy : Copier le statut de conservation légale depuis l'objet source (nécessite --metadata)\n\nConsulter : https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
       },
       "bypass_governance_retention": {
         "title": "Contourner la rétention de gouvernance",
