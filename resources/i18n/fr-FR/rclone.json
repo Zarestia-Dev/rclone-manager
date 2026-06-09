@@ -148,7 +148,7 @@
     "help": "Autorité de certification client pour la vérification des clients"
   },
   "baseurl": {
-    "title": "Baseurl",
+    "title": "URL de base",
     "help": "Préfixe pour les URLs - laisser vide pour la racine"
   },
   "min_tls_version": {
@@ -176,8 +176,8 @@
     "help": "Nom d'utilisateur d'un en-tête HTTP défini"
   },
   "template": {
-    "title": "Modèle",
-    "help": "Modèle spécifié par l'utilisateur"
+    "title": "Gabarit",
+    "help": "Gabarit spécifié par l'utilisateur"
   },
   "log_file": {
     "title": "Fichier journal",
@@ -208,11 +208,11 @@
     "help": "Utiliser Syslog pour la journalisation"
   },
   "syslog_facility": {
-    "title": "Fonction Syslog",
-    "help": "Fonction syslog, par exemple KERN, USER"
+    "title": "Catégorie Syslog",
+    "help": "Catégorie Syslog, par exemple KERN, USER"
   },
   "log_systemd": {
-    "title": "Système de log",
+    "title": "Journal Systemd",
     "help": "Activer l'intégration systemd pour le journal"
   },
   "windows_event_log_level": {
@@ -261,7 +261,7 @@
   },
   "links": {
     "title": "Liens",
-    "help": "Convertir les liens symboliques vers/depuis des fichiers ordinaires avec l'extension « .rclonelink »."
+    "help": "Convertir les liens symboliques en fichiers ordinaires (et inversement) avec l’extension « .rclonelink »."
   },
   "contimeout": {
     "title": "Délai de connexion",
@@ -348,7 +348,7 @@
     "help": "Forcer le renommage de la destination insensible à la casse pour correspondre à la source"
   },
   "no_traverse": {
-    "title": "Ne pas parcourir",
+    "title": "Ne pas parcourir les répertoires",
     "help": "Ne pas parcourir le système de fichiers de destination lors de la copie"
   },
   "check_first": {
@@ -372,11 +372,11 @@
     "help": "Ne pas mettre à jour les dates de modification des répertoires"
   },
   "compare_dest": {
-    "title": "Destination de comparaison",
+    "title": "Comparer la destination",
     "help": "Inclure des chemins côté serveur supplémentaires lors de la comparaison"
   },
   "copy_dest": {
-    "title": "Destination de copie",
+    "title": "Copie vers la destination",
     "help": "Implique --compare-dest mais copie aussi les fichiers des chemins vers la destination"
   },
   "backup_dir": {
@@ -452,8 +452,8 @@
     "help": "Seuil de basculement à l'envoi par blocs si la taille du fichier est inconnue, l'envoi démarre après avoir atteint le seuil ou quand le fichier se termine"
   },
   "dump": {
-    "title": "Vidage",
-    "help": "Liste des éléments à vider : headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper"
+    "title": "Afficher les données",
+    "help": "Liste des éléments à afficher : headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper"
   },
   "max_transfer": {
     "title": "Transfert maximum",
@@ -505,7 +505,7 @@
   },
   "use_mmap": {
     "title": "Utiliser Mmap",
-    "help": "Utiliser l'allocateur mmap (voir la documentation)"
+    "help": "Utiliser l'allocateur mmap (consulter la documentation)"
   },
   "max_buffer_memory": {
     "title": "Mémoire tampon maximale",
@@ -604,7 +604,7 @@
     "help": "Télécharger directement vers le fichier de destination plutôt que par téléchargement atomique vers un fichier temporaire puis renommage"
   },
   "metadata_mapper": {
-    "title": "Transformateur de métadonnées",
+    "title": "Mappage des métadonnées",
     "help": "Programme à exécuter pour transformer les métadonnées avant l'envoi"
   },
   "partial_suffix": {
@@ -908,12 +908,12 @@
     "help": "Nom d'utilisateur depuis un en-tête HTTP défini"
   },
   "metrics_template": {
-    "title": "Modèle des métriques",
-    "help": "Modèle spécifié par l'utilisateur"
+    "title": "Gabarit de métriques",
+    "help": "Gabarit défini par l’utilisateur"
   },
   "stdio": {
     "title": "Entrée/sortie Standard",
-    "help": "Exécuter un serveur SFTP sur stdin/stdout"
+    "help": "Lancer un serveur SFTP sur l’entrée et la sortie standard"
   },
   "append_only": {
     "title": "Ajout uniquement",
