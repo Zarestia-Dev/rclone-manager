@@ -1007,7 +1007,7 @@
       },
       "export_formats": {
         "title": "Formats d'exportation",
-        "help": "Liste de formats préférés séparés par des virgules pour l'exportation des fichiers.\n\nCertains fichiers Dropbox ne sont accessibles qu'en les exportant dans un autre format, notamment les documents Dropbox Paper. \n\nPour chaque fichier de ce type, rclone choisira le premier format de cette liste que Dropbox considère comme valide. Si aucun n'est valide, il choisira le format par défaut de Dropbox.\n\nLes formats connus incluent : « html », « md » (markdown)."
+        "help": "Liste de formats préférés séparés par des virgules pour l'exportation des fichiers.\n\nCertains fichiers Dropbox ne sont accessibles qu'en les exportant dans un autre format, notamment les documents Dropbox Paper. \n\nPour chaque fichier de ce type, rclone choisira le premier format de cette liste que Dropbox considère comme valide. Si aucun n'est valide, il choisira le format par défaut de Dropbox.\n\nLes formats connus incluent : « html », « md » (markdown)"
       },
       "impersonate": {
         "title": "Emprunt d'identité",
@@ -1275,7 +1275,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du  backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du  backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "list_chunk": {
         "title": "Taille du lot de listage",
@@ -1365,7 +1365,7 @@
       },
       "service_account_file": {
         "title": "Fichier de compte de service",
-        "help": "Chemin du fichier JSON des identifiants du compte de service.\n\nLaisser vide en règle générale.\nNécessaire uniquement si vous souhaitez utiliser un compte de service\nplutôt qu'une connexion interactive.\n\nLe `~` en début de chemin sera développé, ainsi que les variables\nd'environnement telles que `${RCLONE_CONFIG_DIR}`."
+        "help": "Chemin du fichier JSON des identifiants du compte de service.\n\nLaisser vide en règle générale.\nNécessaire uniquement si vous souhaitez utiliser un compte de service\nplutôt qu'une connexion interactive.\n\nLe caractèrte `~` en début de chemin sera développé, ainsi que les variables\nd'environnement telles que `${RCLONE_CONFIG_DIR}`."
       },
       "storage_class": {
         "title": "Classe de stockage",
@@ -1423,7 +1423,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "include_archived": {
         "title": "Inclure les éléments archivés",
@@ -1833,7 +1833,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hashes": {
         "title": "Hachages",
@@ -1959,7 +1959,7 @@
       },
       "user_agent": {
         "title": "Agent utilisateur",
-        "help": "Agent utilisateur HTTP utilisé en interne par le client."
+        "help": "Agent utilisateur HTTP utilisé en interne par le client.\n\nValeur par défaut : \"rclone/VERSION\" ou celle fournie via l’option \"--user-agent\" en ligne de commande."
       }
     },
     "mega": {
@@ -1981,7 +1981,7 @@
       },
       "hard_delete": {
         "title": "Suppression définitive",
-        "help": "Supprimer les fichiers définitivement plutôt que de les placer dans la corbeille."
+        "help": "Supprimer les fichiers définitivement plutôt que de les placer dans la corbeille.\n\nNormalement, le backend Mega place toutes les suppressions dans la corbeille\nplutôt que de les supprimer définitivement. Si vous activez cette option, rclone supprimera\nles objets de manière permanente."
       },
       "master_key": {
         "title": "Clé maîtresse",
@@ -2087,7 +2087,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend."
+        "help": "L'encodage du backend.\n\nConsulter [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'information."
       },
       "expose_onenote_files": {
         "title": "Exposer les fichiers OneNote",
@@ -2119,7 +2119,7 @@
       },
       "metadata_permissions": {
         "title": "Autorisations des métadonnées",
-        "help": "Contrôle si les autorisations doivent être lues ou écrites dans les métadonnées."
+        "help": "Contrôle si les autorisations doivent être lues ou écrites dans les métadonnées.\n\nLa lecture des métadonnées de permissions des fichiers peut être effectuée rapidement, mais il\nn’est pas toujours souhaitable de définir les permissions à partir de ces métadonnées."
       },
       "no_versions": {
         "title": "Aucune version",
@@ -2131,7 +2131,7 @@
       },
       "root_folder_id": {
         "title": "ID du dossier racine",
-        "help": "ID du dossier racine."
+        "help": "ID du dossier racine.\n\nCela n’est généralement pas nécessaire, mais dans certains cas particuliers, vous pouvez connaître \nl’ID du dossier auquel vous souhaitez accéder sans pouvoir y parvenir par une navigation via le chemin."
       },
       "server_side_across_configs": {
         "title": "Opérations côté serveur entre configurations",
@@ -2191,7 +2191,7 @@
       },
       "compartment": {
         "title": "Compartiment",
-        "help": "Spécifiez l'OCID du compartiment si vous devez lister les compartiments."
+        "help": "Spécifiez l'OCID du compartiment si vous devez lister les compartiments.\n\nLister les objets fonctionne sans OCID de compartiment."
       },
       "config_file": {
         "title": "Fichier de configuration",
@@ -2309,7 +2309,7 @@
       },
       "hostname": {
         "title": "Nom d'hôte",
-        "help": "Nom d'hôte auquel se connecter."
+        "help": "Nom d'hôte auquel se connecter.\n\nCe paramètre est normalement défini lorsque rclone effectue la connexion OAuth initiale,\nmais vous devrez le définir manuellement si vous utilisez une configuration distante\navec rclone authorize."
       },
       "password": {
         "title": "Mot de passe",
@@ -2363,7 +2363,7 @@
       },
       "root_folder_id": {
         "title": "ID du dossier racine",
-        "help": "ID du dossier racine."
+        "help": "ID du dossier racine.\nLaisser vide dans la plupart des cas.\n\nÀ renseigner pour permettre à rclone d’utiliser un dossier non racine comme point de départ."
       },
       "trashed_only": {
         "title": "Corbeille uniquement",
@@ -2393,7 +2393,7 @@
     "pixeldrain": {
       "api_key": {
         "title": "Clé API",
-        "help": "Clé API pour votre compte pixeldrain."
+        "help": "Clé API pour votre compte pixeldrain.\nDisponible sur https://pixeldrain.com/user/api_keys."
       },
       "api_url": {
         "title": "URL de l'API",
@@ -2453,7 +2453,7 @@
       },
       "app_version": {
         "title": "Version de l'application",
-        "help": "La chaîne de version de l'application.\n\nLa chaîne de version de l'application indique le client qui effectue actuellement la requête API. Cette information est obligatoire et sera envoyée avec chaque requête API."
+        "help": "La chaîne de version de l'application.\n\nLa chaîne de version de l'application indique le client qui effectue actuellement la requête API.\nCette information est obligatoire et sera envoyée avec chaque requête API."
       },
       "client_access_token": {
         "title": "Jeton d'accès client",
@@ -2481,7 +2481,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "mailbox_password": {
         "title": "Mot de passe de la boîte aux lettres",
@@ -2561,19 +2561,19 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du  backend."
+        "help": "L'encodage du  backend.\n\nConsulter [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
-        "help": "Entrez une URL de point de terminaison pour vous connecter à l'API QingStor."
+        "help": "Entrez une URL de point de terminaison pour vous connecter à l'API QingStor.\n\nLaisser vide utilisera la valeur par défaut « https://qingstor.com:443 »"
       },
       "env_auth": {
         "title": "Authentification par environnement",
-        "help": "Obtenir les identifiants QingStor à partir de l'exécution."
+        "help": "Obtenir les identifiants QingStor à partir de l'exécution.\n\nS’applique uniquement si access_key_id et secret_access_key sont vides."
       },
       "secret_access_key": {
         "title": "Clé d'accès secrète",
-        "help": "Clé d'accès secrète QingStor (mot de passe)."
+        "help": "Clé d'accès secrète QingStor (mot de passe).\n\nLaisser vide pour un accès anonyme ou des identifiants fournis à l’exécution."
       },
       "upload_concurrency": {
         "title": "Concurrence de téléchargement",
@@ -2603,7 +2603,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend. \n\nConsulter [encoding section in the overview](/overview/#encoding) d'informations."
+        "help": "L'encodage du backend. \n\nConsulter [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hard_delete": {
         "title": "Suppression définitive",
@@ -2681,7 +2681,7 @@
       },
       "endpoint": {
         "title": "Point de terminaison",
-        "help": "Point de terminaison pour l'API S3."
+        "help": "Point de terminaison pour l'API S3.\n\nRequis lors de l’utilisation d’un clone S3."
       },
       "env_auth": {
         "title": "Authentification par environnement",
@@ -2761,7 +2761,7 @@
       },
       "region": {
         "title": "Région",
-        "help": "Région à laquelle se connecter."
+        "help": "Région à laquelle se connecter.\n\nLaisser vide si vous utilisez un clone S3 et que vous n’avez pas de région."
       },
       "requester_pays": {
         "title": "Requester Pays (Le demandeur paie)",
@@ -3191,7 +3191,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint": {
         "title": "Point de terminaison",
@@ -3251,7 +3251,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hide_special_share": {
         "title": "Masquer le partage spécial",
@@ -3313,7 +3313,7 @@
       },
       "satellite_address": {
         "title": "Adresse Satellite",
-        "help": "Adresse du satellite. L'adresse satellite personnalisée doit correspondre au format : <nodeid>@<address>:<port>."
+        "help": "Adresse du satellite.\n\nL'adresse satellite personnalisée doit correspondre au format : <nodeid>@<address>:<port>."
       }
     },
     "sugarsync": {
@@ -3343,7 +3343,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hard_delete": {
         "title": "Suppression définitive",
@@ -3405,7 +3405,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "endpoint_type": {
         "title": "Type d'Endpoint",
@@ -3513,7 +3513,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "list_page_size": {
         "title": "Taille de la page de la liste",
@@ -3573,7 +3573,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "private": {
         "title": "Privé",
@@ -3665,7 +3665,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "hard_delete": {
         "title": "Suppression définitive",
@@ -3707,7 +3707,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "region": {
         "title": "Région",
@@ -3779,7 +3779,7 @@
       },
       "root_folder_id": {
         "title": "Identifiant du dossier racine",
-        "help": "Identifiant du dossier racine\n\nLaisser vide normalement, rclone le renseignera automatiquement.\n\nSi vous souhaitez restreindre rclone à un dossier particulier, vous pouvez le renseigner — voir la documentation pour plus d'informations.\n"
+        "help": "Identifiant du dossier racine\n\nLaisser vide normalement, rclone le renseignera automatiquement.\n\nSi vous souhaitez restreindre rclone à un dossier particulier, vous pouvez\nle renseigner — voir la documentation pour plus d'informations.\n"
       },
       "workspace_id": {
         "title": "Identité de l'espace de travail",
@@ -3807,7 +3807,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "description": {
         "title": "Description",
@@ -3875,7 +3875,7 @@
       },
       "encoding": {
         "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [encoding section in the overview](/overview/#encoding) pour plus d'informations."
+        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
       },
       "description": {
         "title": "Description",
