@@ -916,8 +916,8 @@
         "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 10 Tio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite\nest atteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google\nne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n"
       },
       "stop_on_upload_limit": {
-        "title": "Arrêter à la limite de téléchargement",
-        "help": "Rendre les erreurs de limite de téléchargement fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 750 Gio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est\natteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n\nConsulte : https://github.com/rclone/rclone/issues/3857"
+        "title": "Arrêter à la limite d'envoi",
+        "help": "Rendre les erreurs de limite d\"envoi fatales.\n\nAu moment de la rédaction, il n'est possible de télécharger que 750 Gio de données depuis\nGoogle Drive par jour (il s'agit d'une limite non documentée). Lorsque cette limite est\natteinte, Google Drive produit un message d'erreur légèrement différent.\nLorsque ce paramètre est activé, ces erreurs deviennent fatales.\nElles interrompront la synchronisation en cours.\n\nCette détection repose sur des chaînes de messages d'erreur que Google ne documente pas et pourrait donc ne plus fonctionner à l'avenir.\n\nConsulte : https://github.com/rclone/rclone/issues/3857\n"
       },
       "team_drive": {
         "title": "Team Drive",
@@ -945,7 +945,7 @@
       },
       "use_shared_date": {
         "title": "Utiliser une date partagée",
-        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme pour « --drive-use-created-date », ce paramètre peut avoir\ndes conséquences inattendues lors de l'envoi ou du téléchargement de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de\ncréation est utilisée."
+        "help": "Utiliser la date de partage du fichier plutôt que la date de modification.\n\nÀ noter que, comme pour « --drive-use-created-date », ce paramètre peut avoir\ndes conséquences inattendues lors de l'envoi ou d'envoi de fichiers.\n\nSi ce paramètre et « --drive-use-created-date » sont tous deux activés, la date de\ncréation est utilisée."
       },
       "use_trash": {
         "title": "Utiliser la corbeille",
@@ -1224,7 +1224,7 @@
         "help": "Ne pas vérifier le certificat TLS du serveur."
       },
       "no_check_upload": {
-        "title": "Ne pas vérifier le téléchargement",
+        "title": "Envoi sans vérification",
         "help": "Ne pas vérifier que l'envoi s'est correctement déroulé.\n\nNormalement, rclone tente de vérifier l'existence du fichier après son envoi pour s'assurer que la taille et la date de modification sont conformes aux attentes.\n\nCe paramètre empêche rclone d'effectuer ces vérifications. Cela permet d'envoyer des fichiers vers des dossiers en écriture seule. \n\nVous aurez probablement également besoin du paramètre --inplace si vous envoyez vers un dossier en écriture seule.\n"
       },
       "pass": {
@@ -1305,7 +1305,7 @@
       },
       "bucket_policy_only": {
         "title": "Politique de bucket uniquement",
-        "help": "Les contrôles d'accès doivent utiliser des règles IAM au niveau du segment.\n\nSi vous voulez télécharger des objets dans un seau avec la politique de Bucket seulement définir\nalors vous devrez définir ceci.\n\nQuand il est défini, rclone:\n\n- ignore les ACLs définies sur les segments\n- ignore les ACLs définies sur les objets\n- crée des segments avec la politique de Bucket uniquement définir\n\nDocs: https://cloud. oogle.com/storeage/docs/bucket-policy-only\n"
+        "help": "Les contrôles d'accès doivent utiliser des règles IAM au niveau du segment.\n\nSi vous souhaitez téléverser des objets vers un bucket dont l'option « Bucket Policy Only » est activée, vous devrez activer ce paramètre.\n\nQuand il est défini, rclone:\n\n- ignore les ACLs définies sur les segments\n- ignore les ACLs définies sur les objets\n- crée des segments avec la politique de Bucket uniquement définir\n\nDocs: https://cloud. oogle.com/storeage/docs/bucket-policy-only\n"
       },
       "client_credentials": {
         "title": "Identifiants client",
