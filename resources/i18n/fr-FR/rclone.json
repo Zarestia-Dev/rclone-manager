@@ -1,0 +1,1218 @@
+{
+  "addr": {
+    "title": "Adresse",
+    "help": "AdresseIP:Port ou :Port auquel lier le serveur"
+  },
+  "name": {
+    "title": "Nom",
+    "help": "Nom du serveur multimédia DLNA"
+  },
+  "log_trace": {
+    "title": "Trace de log",
+    "help": "Activer la journalisation des traces du trafic SOAP"
+  },
+  "interface": {
+    "title": "Interface",
+    "help": "L'interface à utiliser pour SSDP (répéter si nécessaire)"
+  },
+  "announce_interval": {
+    "title": "Intervalle d'annonce",
+    "help": "L'intervalle entre les annonces SSDP"
+  },
+  "delete_excluded": {
+    "title": "Supprimer les exclusions",
+    "help": "Supprimer les fichiers sur dest exclus de la synchronisation"
+  },
+  "exclude_if_present": {
+    "title": "Exclure si présent",
+    "help": "Exclure les répertoires si le nom du fichier est présent"
+  },
+  "files_from": {
+    "title": "Fichiers depuis",
+    "help": "Lire la liste des noms de fichiers source depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "files_from_raw": {
+    "title": "Fichiers depuis (brut)",
+    "help": "Lire la liste des noms de fichiers source depuis un fichier sans aucun traitement des lignes (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "min_age": {
+    "title": "Âge minimal",
+    "help": "Ne transférer que les fichiers antérieurs à s ou au suffixe ms|s|m|h|d|w|M|y"
+  },
+  "max_age": {
+    "title": "Âge maximal",
+    "help": "Ne transférer que les fichiers inférieurs à s ou suffixes ms|s|m|h|d|w|M|y"
+  },
+  "min_size": {
+    "title": "Taille Min",
+    "help": "Transférer uniquement les fichiers plus grands que cette valeur en Kio ou avec le suffixe B|K|M|G|T|P"
+  },
+  "max_size": {
+    "title": "Taille maximum",
+    "help": "Transférer uniquement les fichiers plus petits que cette valeur en Kio ou avec le suffixe B|K|M|G|T|P"
+  },
+  "ignore_case": {
+    "title": "Ignorer la casse",
+    "help": "Ignorer la casse dans les filtres (insensible à la casse)"
+  },
+  "hash_filter": {
+    "title": "Filtre de hachage",
+    "help": "Partitionner les noms de fichiers par hachage k/n ou aléatoirement @/n"
+  },
+  "filter": {
+    "title": "Filtre",
+    "help": "Ajouter une règle de filtrage des fichiers"
+  },
+  "filter_from": {
+    "title": "Filtres depuis",
+    "help": "Lire les motifs de filtrage des fichiers depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "exclude": {
+    "title": "Exclure",
+    "help": "Exclure les fichiers correspondant au motif"
+  },
+  "exclude_from": {
+    "title": "Exclure depuis",
+    "help": "Lire les motifs d'exclusion des fichiers depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "include": {
+    "title": "Inclure",
+    "help": "Inclure les fichiers correspondant au motif"
+  },
+  "include_from": {
+    "title": "Inclure depuis",
+    "help": "Lire les motifs d'inclusion des fichiers depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "metadata_filter": {
+    "title": "Filtres de métadonnées",
+    "help": "Ajouter une règle de filtrage des métadonnées"
+  },
+  "metadata_filter_from": {
+    "title": "Filtre de métadonnées depuis",
+    "help": "Lire les motifs de filtrage des métadonnées depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "metadata_exclude": {
+    "title": "Exclure les métadonnées",
+    "help": "Exclure les métadonnées correspondant au motif"
+  },
+  "metadata_exclude_from": {
+    "title": "Exclure les métadonnées depuis",
+    "help": "Lire les motifs d'exclusion des métadonnées depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "metadata_include": {
+    "title": "Exclure les métadonnées",
+    "help": "Exclure les métadonnées correspondant au motif"
+  },
+  "metadata_include_from": {
+    "title": "Exclure les métadonnées depuis",
+    "help": "Lire les motifs d'inclusion des métadonnées depuis un fichier (utiliser - pour lire depuis l'entrée standard)"
+  },
+  "public_ip": {
+    "title": "IP publique",
+    "help": "Adresse IP publique à annoncer pour les connexions passives"
+  },
+  "passive_port": {
+    "title": "Port passif",
+    "help": "Plage de ports passive à utiliser"
+  },
+  "user": {
+    "title": "Utilisateur",
+    "help": "Nom d'utilisateur pour l'authentification"
+  },
+  "pass": {
+    "title": "Mot de passe",
+    "help": "Mot de passe pour l'authentification"
+  },
+  "cert": {
+    "title": "Certificat",
+    "help": "Clé TLS PEM (concaténation du certificat et du certificat CA)"
+  },
+  "key": {
+    "title": "Clé",
+    "help": "Clé privée TLS PEM"
+  },
+  "server_read_timeout": {
+    "title": "Délai d'expiration de lecture du serveur",
+    "help": "Délai d'expiration pour la lecture des données par le serveur"
+  },
+  "server_write_timeout": {
+    "title": "Délai d'expiration d'écriture du serveur",
+    "help": "Délai d'expiration pour l'écriture des données par le serveur"
+  },
+  "max_header_bytes": {
+    "title": "Taille maximale des en-têtes",
+    "help": "Taille maximale de l'en-tête de requête"
+  },
+  "client_ca": {
+    "title": "CA client",
+    "help": "Autorité de certification client pour la vérification des clients"
+  },
+  "baseurl": {
+    "title": "URL de base",
+    "help": "Préfixe pour les URLs - laisser vide pour la racine"
+  },
+  "min_tls_version": {
+    "title": "Version minimale TLS",
+    "help": "Version minimale de TLS acceptable"
+  },
+  "allow_origin": {
+    "title": "Autoriser la source",
+    "help": "Origine à partir de laquelle la requête inter-domaine (CORS) peut être exécutée"
+  },
+  "htpasswd": {
+    "title": "Htpasswd",
+    "help": "Un fichier htpasswd — si non fourni, aucune authentification n'est effectuée"
+  },
+  "realm": {
+    "title": "Domaine d'authentification",
+    "help": "Domaine d'authentification pour la connexion"
+  },
+  "salt": {
+    "title": "Sel",
+    "help": "Sel de hachage du mot de passe"
+  },
+  "user_from_header": {
+    "title": "Utilisateur depuis l'en-tête",
+    "help": "Nom d'utilisateur d'un en-tête HTTP défini"
+  },
+  "template": {
+    "title": "Gabarit",
+    "help": "Gabarit spécifié par l'utilisateur"
+  },
+  "log_file": {
+    "title": "Fichier journal",
+    "help": "Journaliser tout dans ce fichier"
+  },
+  "log_file_max_size": {
+    "title": "Taille maximale du fichier journal",
+    "help": "Taille maximale du fichier journal avant rotation (par exemple « 10 Mo »)"
+  },
+  "log_file_max_backups": {
+    "title": "Nombre maximum de sauvegardes du fichier journal",
+    "help": "Nombre maximum d'anciens fichiers journaux à conserver."
+  },
+  "log_file_max_age": {
+    "title": "Âge maximum du fichier journal",
+    "help": "Durée maximale de conservation des anciens fichiers journaux (par exemple \"7j\")"
+  },
+  "log_file_compress": {
+    "title": "Compression du fichier journal",
+    "help": "Si activé, compresser les fichiers journaux après rotation avec gzip."
+  },
+  "log_format": {
+    "title": "Format du journal",
+    "help": "Liste des options de format de log séparées par des virgules"
+  },
+  "syslog": {
+    "title": "Syslog",
+    "help": "Utiliser Syslog pour la journalisation"
+  },
+  "syslog_facility": {
+    "title": "Catégorie Syslog",
+    "help": "Catégorie Syslog, par exemple KERN, USER"
+  },
+  "log_systemd": {
+    "title": "Journal Systemd",
+    "help": "Activer l'intégration systemd pour le journal"
+  },
+  "windows_event_log_level": {
+    "title": "Niveau du journal des événements Windows",
+    "help": "Niveau du journal d'événements Windows DEBUG|INFO|NOTICE|ERROR|OFF"
+  },
+  "modify_window": {
+    "title": "Fenêtre de modification",
+    "help": "Différence de temps maximale pour être considérés identiques"
+  },
+  "checkers": {
+    "title": "Vérificateurs",
+    "help": "Nombre de vérificateurs à exécuter en parallèle"
+  },
+  "transfers": {
+    "title": "Transferts",
+    "help": "Nombre de transferts de fichiers à exécuter en parallèle"
+  },
+  "checksum": {
+    "title": "Somme de contrôle",
+    "help": "Vérifier les modifications avec la taille et la somme de contrôle (si disponible, ou utiliser la taille seulement)"
+  },
+  "size_only": {
+    "title": "Taille seulement",
+    "help": "Ignorer en se basant uniquement sur la taille, sans la date de modification ni la somme de contrôle"
+  },
+  "ignore_times": {
+    "title": "Ignorer les dates",
+    "help": "Ne pas ignorer les éléments correspondant à la taille et à la date — transférer tout de manière inconditionnelle"
+  },
+  "ignore_existing": {
+    "title": "Ignorer les existants",
+    "help": "Ignorer tous les fichiers qui existent sur la destination"
+  },
+  "ignore_errors": {
+    "title": "Ignorer les Erreurs",
+    "help": "Supprimer même s'il y a des erreurs d'E/S"
+  },
+  "dry_run": {
+    "title": "Simulation",
+    "help": "Effectuer une simulation sans modification permanente"
+  },
+  "interactive": {
+    "title": "Interactif",
+    "help": "Activer le mode interactif"
+  },
+  "links": {
+    "title": "Liens",
+    "help": "Convertir les liens symboliques en fichiers ordinaires (et inversement) avec l’extension « .rclonelink »."
+  },
+  "contimeout": {
+    "title": "Délai de connexion",
+    "help": "Connexion expirée"
+  },
+  "timeout": {
+    "title": "Délai dépassé",
+    "help": "Délai d'inactivité"
+  },
+  "expect_continue_timeout": {
+    "title": "Délai d'attente Expect-Continue",
+    "help": "Délai d'expiration lors de l'utilisation de expect / 100-continue en HTTP"
+  },
+  "no_check_certificate": {
+    "title": "Ne pas vérifier le certificat",
+    "help": "Ne pas vérifier le certificat SSL du serveur (non sécurisé)"
+  },
+  "ask_password": {
+    "title": "Demander le mot de passe",
+    "help": "Autoriser la demande de mot de passe pour la configuration chiffrée"
+  },
+  "password_command": {
+    "title": "Commande du mot de passe",
+    "help": "Commande pour fournir le mot de passe de la configuration chiffrée"
+  },
+  "max_delete": {
+    "title": "Suppressions max",
+    "help": "Lors de la synchronisation, limiter le nombre de suppressions"
+  },
+  "max_delete_size": {
+    "title": "Taille max des suppressions",
+    "help": "Lors de la synchronisation, limiter la taille totale des suppressions"
+  },
+  "track_renames": {
+    "title": "Suivre les renommages",
+    "help": "Lors de la synchronisation, suivre les renommages et effectuer un déplacement côté serveur si possible"
+  },
+  "track_renames_strategy": {
+    "title": "Stratégie de suivi des renommages",
+    "help": "Stratégies à utiliser lors de la synchronisation avec track-renames hash|modtime|leaf"
+  },
+  "retries": {
+    "title": "Tentatives",
+    "help": "Réessayer les opérations ce nombre de fois en cas d'échec"
+  },
+  "retries_sleep": {
+    "title": "Délai entre tentatives",
+    "help": "Intervalle entre les nouvelles tentatives en cas d'échec, par exemple 500ms, 60s, 5m (0 pour désactiver)"
+  },
+  "low_level_retries": {
+    "title": "Tentatives bas niveau",
+    "help": "Nombre de tentatives bas niveau à effectuer"
+  },
+  "update": {
+    "title": "Mettre à jour",
+    "help": "Ignorer les fichiers plus récents sur la destination"
+  },
+  "use_server_modtime": {
+    "title": "Utiliser la date de modification du serveur",
+    "help": "Utiliser la date de modification du serveur plutôt que les métadonnées de l'objet"
+  },
+  "no_gzip_encoding": {
+    "title": "Pas d'encodage Gzip",
+    "help": "Ne pas définir Accept-Encoding: gzip"
+  },
+  "max_depth": {
+    "title": "Profondeur maximale",
+    "help": "Si défini, limite la profondeur de récursion à cette valeur"
+  },
+  "ignore_size": {
+    "title": "Ignorer la taille",
+    "help": "Ignorer la taille lors de l'exclusion, utiliser la date de modification ou la somme de contrôle"
+  },
+  "ignore_checksum": {
+    "title": "Ignorer la somme de contrôle",
+    "help": "Ignorer la vérification des sommes de contrôle après copie"
+  },
+  "ignore_case_sync": {
+    "title": "Ignorer la casse à la synchronisation",
+    "help": "Ignorer la casse lors de la synchronisation"
+  },
+  "fix_case": {
+    "title": "Corriger la casse",
+    "help": "Forcer le renommage de la destination insensible à la casse pour correspondre à la source"
+  },
+  "no_traverse": {
+    "title": "Ne pas parcourir les répertoires",
+    "help": "Ne pas parcourir le système de fichiers de destination lors de la copie"
+  },
+  "check_first": {
+    "title": "Vérifier en premier",
+    "help": "Effectuer toutes les vérifications avant de démarrer les transferts"
+  },
+  "no_check_dest": {
+    "title": "Ne pas vérifier la destination",
+    "help": "Ne pas vérifier la destination, copier dans tous les cas"
+  },
+  "no_unicode_normalization": {
+    "title": "Pas de normalisation Unicode",
+    "help": "Ne pas normaliser les caractères Unicode dans les noms de fichiers"
+  },
+  "no_update_modtime": {
+    "title": "Ne pas mettre à jour la date de modification",
+    "help": "Ne pas mettre à jour la date de modification de la destination si les fichiers sont identiques"
+  },
+  "no_update_dir_modtime": {
+    "title": "Ne pas mettre à jour la date des répertoires",
+    "help": "Ne pas mettre à jour les dates de modification des répertoires"
+  },
+  "compare_dest": {
+    "title": "Comparer la destination",
+    "help": "Inclure des chemins côté serveur supplémentaires lors de la comparaison"
+  },
+  "copy_dest": {
+    "title": "Copie vers la destination",
+    "help": "Implique --compare-dest mais copie aussi les fichiers des chemins vers la destination"
+  },
+  "backup_dir": {
+    "title": "Répertoire de sauvegarde",
+    "help": "Effectuer des sauvegardes dans une hiérarchie basée dans DIR"
+  },
+  "suffix": {
+    "title": "Suffixe",
+    "help": "Suffixe à ajouter aux fichiers modifiés"
+  },
+  "suffix_keep_extension": {
+    "title": "Conserver l'extension avec le suffixe",
+    "help": "Conserver l'extension lors de l'utilisation de --suffix"
+  },
+  "fast_list": {
+    "title": "Listage rapide",
+    "help": "Utiliser le listage récursif si disponible ; utilise plus de mémoire mais moins de transactions"
+  },
+  "list_cutoff": {
+    "title": "Seuil de listage",
+    "help": "Pour économiser de la mémoire, trier les listages de répertoires sur disque au-delà de ce seuil"
+  },
+  "tpslimit": {
+    "title": "Limite TPS",
+    "help": "Limiter les transactions HTTP par seconde à cette valeur"
+  },
+  "tpslimit_burst": {
+    "title": "Rafale limite TPS",
+    "help": "Rafale maximale de transactions pour --tpslimit"
+  },
+  "user_agent": {
+    "title": "Agent utilisateur",
+    "help": "Définir l'agent utilisateur sur une chaîne spécifiée"
+  },
+  "immutable": {
+    "title": "Immuable",
+    "help": "Ne pas modifier les fichiers, échouer si des fichiers existants ont été modifiés"
+  },
+  "auto_confirm": {
+    "title": "Confirmation automatique",
+    "help": "Si activé, ne pas demander de confirmation dans la console"
+  },
+  "stats_unit": {
+    "title": "Unité des statistiques",
+    "help": "Afficher le débit dans les statistiques en « bits » ou « octets » par seconde"
+  },
+  "stats_file_name_length": {
+    "title": "Longueur du nom de fichier dans les statistiques",
+    "help": "Longueur maximale du nom de fichier dans les statistiques (0 pour illimité)"
+  },
+  "log_level": {
+    "title": "Niveau de journalisation",
+    "help": "Niveau de journalisation DEBUG|INFO|NOTICE|ERROR"
+  },
+  "stats_log_level": {
+    "title": "Niveau de journalisation des statistiques",
+    "help": "Niveau de journalisation pour l'affichage de --stats DEBUG|INFO|NOTICE|ERROR"
+  },
+  "bwlimit": {
+    "title": "Limite de bande passante",
+    "help": "Limite de bande passante en Kio/s, ou avec suffixe B|K|M|G|T|P ou un planning complet"
+  },
+  "bwlimit_file": {
+    "title": "Limite de bande passante par fichier",
+    "help": "Limite de bande passante par fichier en Kio/s, ou avec suffixe B|K|M|G|T|P ou un planning complet"
+  },
+  "buffer_size": {
+    "title": "Taille du tampon",
+    "help": "Taille du tampon mémoire lors de la lecture des fichiers pour chaque --transfer"
+  },
+  "streaming_upload_cutoff": {
+    "title": "Seuil d'envoi en flux",
+    "help": "Seuil de basculement à l'envoi par blocs si la taille du fichier est inconnue, l'envoi démarre après avoir atteint le seuil ou quand le fichier se termine"
+  },
+  "dump": {
+    "title": "Afficher les données",
+    "help": "Liste des éléments à afficher : headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper"
+  },
+  "max_transfer": {
+    "title": "Transfert maximum",
+    "help": "Taille maximale des données à transférer"
+  },
+  "max_duration": {
+    "title": "Durée maximale",
+    "help": "Durée maximale pendant laquelle rclone transfère des données"
+  },
+  "cutoff_mode": {
+    "title": "Mode de seuil",
+    "help": "Mode d'arrêt des transferts à la limite maximale HARD|SOFT|CAUTIOUS"
+  },
+  "max_backlog": {
+    "title": "File d'attente maximale",
+    "help": "Nombre maximum d'objets dans la file d'attente de synchronisation ou vérification"
+  },
+  "max_stats_groups": {
+    "title": "Groupes de statistiques maximum",
+    "help": "Nombre maximum de groupes de statistiques à conserver en mémoire, le plus ancien est supprimé au maximum"
+  },
+  "stats_one_line": {
+    "title": "Statistiques sur une ligne",
+    "help": "Faire tenir les statistiques sur une ligne"
+  },
+  "stats_one_line_date": {
+    "title": "Statistiques sur une ligne avec date",
+    "help": "Activer --stats-one-line et ajouter le préfixe date/heure actuelle"
+  },
+  "stats_one_line_date_format": {
+    "title": "Format de date des statistiques sur une ligne",
+    "help": "Activer --stats-one-line-date et utiliser une date au format personnalisé : placer la chaîne de date entre guillemets doubles (\"), voir https://golang.org/pkg/time/#Time.Format"
+  },
+  "error_on_no_transfer": {
+    "title": "Erreur si aucun transfert",
+    "help": "Définit le code de sortie 9 si aucun fichier n'est transféré, utile dans les scripts"
+  },
+  "progress": {
+    "title": "Progression",
+    "help": "Afficher la progression pendant le transfert"
+  },
+  "progress_terminal_title": {
+    "title": "Progression dans le titre du terminal",
+    "help": "Afficher la progression dans le titre du terminal (nécessite -P/--progress)"
+  },
+  "use_cookies": {
+    "title": "Utiliser les cookies",
+    "help": "Activer le gestionnaire de cookies de session"
+  },
+  "use_mmap": {
+    "title": "Utiliser Mmap",
+    "help": "Utiliser l'allocateur mmap (consulter la documentation)"
+  },
+  "max_buffer_memory": {
+    "title": "Mémoire tampon maximale",
+    "help": "Si défini, ne pas allouer plus que cette quantité de mémoire pour les tampons"
+  },
+  "ca_cert": {
+    "title": "Certificat CA",
+    "help": "Certificat CA utilisé pour vérifier les serveurs"
+  },
+  "client_cert": {
+    "title": "Certificat client",
+    "help": "Certificat SSL client (PEM) pour l'authentification TLS mutuelle"
+  },
+  "client_key": {
+    "title": "Clé client",
+    "help": "Clé privée SSL client (PEM) pour l'authentification TLS mutuelle"
+  },
+  "client_pass": {
+    "title": "Mot de passe client",
+    "help": "Mot de passe pour la clé privée SSL client (PEM) pour l'authentification TLS mutuelle (masqué)"
+  },
+  "multi_thread_cutoff": {
+    "title": "Seuil multi-thread",
+    "help": "Utiliser les téléchargements multi-thread pour les fichiers au-delà de cette taille"
+  },
+  "multi_thread_streams": {
+    "title": "Flux multi-thread",
+    "help": "Nombre de flux à utiliser pour les téléchargements multi-thread"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "Taille du tampon d'écriture multi-thread",
+    "help": "Taille du tampon mémoire pour l'écriture en mode multi-thread"
+  },
+  "multi_thread_chunk_size": {
+    "title": "Taille des blocs multi-thread",
+    "help": "Taille des blocs pour les téléchargements/envois multi-thread, si non définie par le système de fichiers"
+  },
+  "use_json_log": {
+    "title": "Utiliser le journal JSON",
+    "help": "Utiliser le format de journal JSON"
+  },
+  "order_by": {
+    "title": "Trier par",
+    "help": "Instructions sur la façon d'ordonner les transferts, par exemple 'size,descending'"
+  },
+  "refresh_times": {
+    "title": "Actualiser les dates",
+    "help": "Actualiser la date de modification des fichiers distants"
+  },
+  "no_console": {
+    "title": "Pas de console",
+    "help": "Masquer la fenêtre de console (pris en charge sur Windows uniquement)"
+  },
+  "fs_cache_expire_duration": {
+    "title": "Durée d'expiration du cache FS",
+    "help": "Mettre en cache les dépôts distants pendant cette durée (0 pour désactiver le cache)"
+  },
+  "fs_cache_expire_interval": {
+    "title": "Intervalle d'expiration du cache FS",
+    "help": "Intervalle de vérification des dépôts distants expirés"
+  },
+  "disable_http2": {
+    "title": "Désactiver HTTP/2",
+    "help": "Désactiver HTTP/2 dans le transport global"
+  },
+  "human_readable": {
+    "title": "Lisible par l'humain",
+    "help": "Afficher les nombres dans un format lisible, tailles avec suffixe Ki|Mi|Gi|Ti|Pi"
+  },
+  "kv_lock_time": {
+    "title": "Durée de verrouillage KV",
+    "help": "Durée maximale de verrouillage de la base de données clé-valeur par un processus"
+  },
+  "disable_http_keep_alives": {
+    "title": "Désactiver HTTP Keep-Alive",
+    "help": "Désactiver HTTP keep-alive et utiliser chaque connexion une seule fois"
+  },
+  "metadata": {
+    "title": "Métadonnées",
+    "help": "Si activé, conserver les métadonnées lors de la copie des objets"
+  },
+  "server_side_across_configs": {
+    "title": "Côté serveur entre configurations",
+    "help": "Autoriser les opérations côté serveur (par exemple la copie) à fonctionner entre différentes configurations"
+  },
+  "color": {
+    "title": "Couleur",
+    "help": "Quand afficher les couleurs (et autres codes ANSI) AUTO|NEVER|ALWAYS"
+  },
+  "default_time": {
+    "title": "Date par défaut",
+    "help": "Date à afficher si la date de modification est inconnue pour les fichiers et répertoires"
+  },
+  "inplace": {
+    "title": "En place",
+    "help": "Télécharger directement vers le fichier de destination plutôt que par téléchargement atomique vers un fichier temporaire puis renommage"
+  },
+  "metadata_mapper": {
+    "title": "Mappage des métadonnées",
+    "help": "Programme à exécuter pour transformer les métadonnées avant l'envoi"
+  },
+  "partial_suffix": {
+    "title": "Suffixe partiel",
+    "help": "Ajouter un suffixe partiel au nom du fichier temporaire quand --inplace n'est pas utilisé"
+  },
+  "max_connections": {
+    "title": "Connexions maximales",
+    "help": "Nombre maximum de connexions API backend simultanées, 0 pour illimité."
+  },
+  "name_transform": {
+    "title": "Transformation des noms",
+    "help": "Transformer les chemins pendant le processus de copie."
+  },
+  "http_proxy": {
+    "title": "Proxy HTTP",
+    "help": "URL du proxy HTTP."
+  },
+  "debug_fuse": {
+    "title": "Débogage FUSE",
+    "help": "Déboguer les internaux FUSE - nécessite -v"
+  },
+  "attr_timeout": {
+    "title": "Délai des attributs",
+    "help": "Durée pendant laquelle les attributs de fichier/répertoire sont mis en cache"
+  },
+  "option": {
+    "title": "Option",
+    "help": "Option pour libfuse/WinFsp (répéter si nécessaire)"
+  },
+  "fuse_flag": {
+    "title": "Indicateur FUSE",
+    "help": "Indicateurs ou arguments à transmettre directement à libfuse/WinFsp (répéter si nécessaire)"
+  },
+  "daemon": {
+    "title": "Démon",
+    "help": "Exécuter le montage en arrière-plan et quitter le processus parent (comme la sortie en arrière-plan est supprimée, utiliser --log-file avec --log-format=pid,... pour surveiller) (non pris en charge sur Windows)"
+  },
+  "daemon_timeout": {
+    "title": "Délai du démon",
+    "help": "Limite de temps pour que rclone réponde au noyau (non pris en charge sur Windows)"
+  },
+  "default_permissions": {
+    "title": "Permissions par défaut",
+    "help": "Fait respecter le contrôle d'accès par le noyau en fonction du mode de fichier (non pris en charge sur Windows)"
+  },
+  "allow_non_empty": {
+    "title": "Autoriser non vide",
+    "help": "Autoriser le montage sur un répertoire non vide (non pris en charge sur Windows)."
+  },
+  "allow_root": {
+    "title": "Autoriser l'accès root",
+    "help": "Autoriser l'accès à l'utilisateur root (non pris en charge sur Windows)"
+  },
+  "allow_other": {
+    "title": "Autoriser les autres",
+    "help": "Autoriser l'accès aux autres utilisateurs (non pris en charge sur Windows)"
+  },
+  "async_read": {
+    "title": "Lecture asynchrone",
+    "help": "Utiliser les lectures asynchrones (non pris en charge sur Windows)"
+  },
+  "max_read_ahead": {
+    "title": "Lecture anticipée maximale",
+    "help": "Nombre d'octets pouvant être préchargés pour les lectures séquentielles (non pris en charge sur Windows)"
+  },
+  "write_back_cache": {
+    "title": "Cache en écriture différée",
+    "help": "Fait mettre en tampon les écritures par le noyau avant de les envoyer à rclone (sans cela, le cache en écriture immédiate est utilisé) (non pris en charge sur Windows)"
+  },
+  "devname": {
+    "title": "Nom du périphérique",
+    "help": "Définir le nom du périphérique - par défaut remote:path"
+  },
+  "mount_case_insensitive": {
+    "title": "Montage insensible à la casse",
+    "help": "Indiquer au système d'exploitation que le montage est insensible à la casse (true) ou sensible (false) indépendamment du backend (auto)"
+  },
+  "direct_io": {
+    "title": "E/S directes",
+    "help": "Utiliser les E/S directes, désactive la mise en cache des données"
+  },
+  "volname": {
+    "title": "Nom du volume",
+    "help": "Définir le nom du volume (pris en charge sur Windows et OSX uniquement)"
+  },
+  "noappledouble": {
+    "title": "Ignorer Apple Double",
+    "help": "Ignorer les fichiers Apple Double (._) et .DS_Store (pris en charge sur OSX uniquement)"
+  },
+  "noapplexattr": {
+    "title": "Ignorer les attributs étendus Apple",
+    "help": "Ignorer tous les attributs étendus « com.apple.* » (pris en charge sur OSX uniquement)"
+  },
+  "network_mode": {
+    "title": "Mode réseau",
+    "help": "Monter comme lecteur réseau distant, au lieu d'un lecteur fixe (pris en charge sur Windows uniquement)"
+  },
+  "daemon_wait": {
+    "title": "Attente du démon",
+    "help": "Durée d'attente pour un montage prêt depuis le démon (temps maximum sur Linux, durée constante sur OSX/BSD) (non pris en charge sur Windows)"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "Limite des descripteurs NFS en cache",
+    "help": "Nombre maximum de descripteurs de fichiers en cache simultanément (minimum 5)"
+  },
+  "nfs_cache_type": {
+    "title": "Type de cache NFS",
+    "help": "Type de cache de descripteurs NFS à utiliser"
+  },
+  "nfs_cache_dir": {
+    "title": "Répertoire du cache NFS",
+    "help": "Le répertoire que le cache de descripteurs NFS utilisera si défini"
+  },
+  "auth_proxy": {
+    "title": "Proxy d'authentification",
+    "help": "Programme à utiliser pour créer le backend à partir de l'authentification"
+  },
+  "rc": {
+    "title": "Contrôle à distance",
+    "help": "Activer le serveur de contrôle à distance"
+  },
+  "rc_files": {
+    "title": "Fichiers de contrôle à distance",
+    "help": "Chemin vers les fichiers locaux à servir sur le serveur HTTP"
+  },
+  "rc_serve": {
+    "title": "Partage de contrôle à distance",
+    "help": "Activer le partage des objets distants"
+  },
+  "rc_serve_no_modtime": {
+    "title": "Partage sans date de modification",
+    "help": "Ne pas lire la date de modification (peut accélérer les choses)"
+  },
+  "rc_no_auth": {
+    "title": "Contrôle à distance sans authentification",
+    "help": "Ne pas exiger d'authentification pour certaines méthodes"
+  },
+  "rc_web_gui": {
+    "title": "Interface web de contrôle à distance",
+    "help": "Lancer l'interface web sur localhost"
+  },
+  "rc_web_gui_update": {
+    "title": "Mise à jour de l'interface web",
+    "help": "Vérifier et mettre à jour vers la dernière version de l'interface web"
+  },
+  "rc_web_gui_force_update": {
+    "title": "Forcer la mise à jour de l'interface web",
+    "help": "Forcer la mise à jour vers la dernière version de l'interface web"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "Ne pas ouvrir le navigateur",
+    "help": "Ne pas ouvrir le navigateur automatiquement"
+  },
+  "rc_web_fetch_url": {
+    "title": "URL de récupération de l'interface web",
+    "help": "URL pour récupérer les versions de l'interface web"
+  },
+  "rc_enable_metrics": {
+    "title": "Activer les métriques",
+    "help": "Activer le chemin des métriques Prometheus sur le serveur de contrôle à distance"
+  },
+  "rc_job_expire_duration": {
+    "title": "Durée d'expiration des tâches",
+    "help": "Expirer les tâches asynchrones terminées plus anciennes que cette valeur"
+  },
+  "rc_job_expire_interval": {
+    "title": "Intervalle d'expiration des tâches",
+    "help": "Intervalle de vérification des tâches asynchrones expirées"
+  },
+  "metrics_addr": {
+    "title": "Adresse des métriques",
+    "help": "AdresseIP:Port ou :Port auquel lier le serveur"
+  },
+  "rc_addr": {
+    "title": "Adresse de contrôle à distance",
+    "help": "AdresseIP:Port ou :Port auquel lier le serveur"
+  },
+  "rc_server_read_timeout": {
+    "title": "Délai de lecture du serveur de contrôle à distance",
+    "help": "Délai d'expiration pour la lecture des données par le serveur"
+  },
+  "rc_server_write_timeout": {
+    "title": "Délai d'écriture du serveur de contrôle à distance",
+    "help": "Délai d'expiration pour l'écriture des données par le serveur"
+  },
+  "rc_max_header_bytes": {
+    "title": "Taille maximale des en-têtes de contrôle à distance",
+    "help": "Taille maximale de l'en-tête de requête"
+  },
+  "rc_cert": {
+    "title": "Certificat de contrôle à distance",
+    "help": "Clé TLS PEM (concaténation du certificat et du certificat CA)"
+  },
+  "rc_key": {
+    "title": "Clé de contrôle à distance",
+    "help": "Clé privée TLS PEM"
+  },
+  "rc_client_ca": {
+    "title": "CA client de contrôle à distance",
+    "help": "Autorité de certification client pour la vérification des clients"
+  },
+  "rc_baseurl": {
+    "title": "URL de base de contrôle à distance",
+    "help": "Préfixe pour les URLs - laisser vide pour la racine"
+  },
+  "rc_min_tls_version": {
+    "title": "Version TLS minimale de contrôle à distance",
+    "help": "Version minimale de TLS acceptable"
+  },
+  "rc_allow_origin": {
+    "title": "Origine autorisée de contrôle à distance",
+    "help": "Origine à partir de laquelle la requête inter-domaine (CORS) peut être exécutée"
+  },
+  "rc_htpasswd": {
+    "title": "Htpasswd de contrôle à distance",
+    "help": "Un fichier htpasswd — si non fourni, aucune authentification n'est effectuée"
+  },
+  "rc_realm": {
+    "title": "Domaine d'authentification de contrôle à distance",
+    "help": "Domaine d'authentification pour la connexion"
+  },
+  "rc_user": {
+    "title": "Utilisateur de contrôle à distance",
+    "help": "Nom d'utilisateur pour l'authentification"
+  },
+  "rc_pass": {
+    "title": "Mot de passe de contrôle à distance",
+    "help": "Mot de passe pour l'authentification"
+  },
+  "rc_salt": {
+    "title": "Sel de contrôle à distance",
+    "help": "Sel de hachage du mot de passe"
+  },
+  "rc_user_from_header": {
+    "title": "Utilisateur depuis l'en-tête de contrôle à distance",
+    "help": "Nom d'utilisateur depuis un en-tête HTTP défini"
+  },
+  "rc_template": {
+    "title": "Modèle de contrôle à distance",
+    "help": "Modèle spécifié par l'utilisateur"
+  },
+  "metrics_server_read_timeout": {
+    "title": "Délai de lecture du serveur de métriques",
+    "help": "Délai d'expiration pour la lecture des données par le serveur"
+  },
+  "metrics_server_write_timeout": {
+    "title": "Délai d'écriture du serveur de métriques",
+    "help": "Délai d'expiration pour l'écriture des données par le serveur"
+  },
+  "metrics_max_header_bytes": {
+    "title": "Taille maximale des en-têtes de métriques",
+    "help": "Taille maximale de l'en-tête de requête"
+  },
+  "metrics_cert": {
+    "title": "Certificat de métriques",
+    "help": "Clé TLS PEM (concaténation du certificat et du certificat CA)"
+  },
+  "metrics_key": {
+    "title": "Clé de métriques",
+    "help": "Clé privée TLS PEM"
+  },
+  "metrics_client_ca": {
+    "title": "CA client de métriques",
+    "help": "Autorité de certification client pour la vérification des clients"
+  },
+  "metrics_baseurl": {
+    "title": "URL de base des métrique",
+    "help": "Préfixe pour les URLs - laisser vide pour la racine"
+  },
+  "metrics_min_tls_version": {
+    "title": "Version TLS minimale des métriques",
+    "help": "Version minimale de TLS acceptable"
+  },
+  "metrics_allow_origin": {
+    "title": "Origine autorisée des métriques",
+    "help": "Origine à partir de laquelle la requête inter-domaine (CORS) peut être exécutée"
+  },
+  "metrics_htpasswd": {
+    "title": "Htpasswd des métriques",
+    "help": "Un fichier htpasswd — si non fourni, aucune authentification n'est effectuée"
+  },
+  "metrics_realm": {
+    "title": "Domaine d'authentification des métriques",
+    "help": "Domaine d'authentification pour la connexion"
+  },
+  "metrics_user": {
+    "title": "Utilisateur des métriques",
+    "help": "Nom d'utilisateur pour l'authentification"
+  },
+  "metrics_pass": {
+    "title": "Mot de passe des métriques",
+    "help": "Mot de passe pour l'authentification"
+  },
+  "metrics_salt": {
+    "title": "Sel des métriques",
+    "help": "Sel de hachage du mot de passe"
+  },
+  "metrics_user_from_header": {
+    "title": "Utilisateur depuis l'en-tête des métriques",
+    "help": "Nom d'utilisateur depuis un en-tête HTTP défini"
+  },
+  "metrics_template": {
+    "title": "Gabarit de métriques",
+    "help": "Gabarit défini par l’utilisateur"
+  },
+  "stdio": {
+    "title": "Entrée/sortie Standard",
+    "help": "Lancer un serveur SFTP sur l’entrée et la sortie standard"
+  },
+  "append_only": {
+    "title": "Ajout uniquement",
+    "help": "Interdire la suppression des données du dépôt"
+  },
+  "private_repos": {
+    "title": "Dépôts privés",
+    "help": "Les utilisateurs ne peuvent accéder qu'à leur dépôt privé"
+  },
+  "cache_objects": {
+    "title": "Mettre en cache les objets",
+    "help": "Mettre en cache les objets listés"
+  },
+  "force_path_style": {
+    "title": "Forcer le style de chemin",
+    "help": "Si true, utiliser le style de chemin, si false, utiliser le style hébergé virtuel"
+  },
+  "etag_hash": {
+    "title": "Hachage ETag",
+    "help": "Hachage à utiliser pour l'ETag, ou auto ou vide pour désactiver"
+  },
+  "auth_key": {
+    "title": "Clé d'authentification",
+    "help": "Définir la paire de clés pour l'autorisation v4 : access_key_id,secret_access_key"
+  },
+  "no_cleanup": {
+    "title": "Pas de nettoyage",
+    "help": "Ne pas nettoyer les dossiers vides après la suppression d'un objet"
+  },
+  "authorized_keys": {
+    "title": "Clés autorisées",
+    "help": "Fichier de clés autorisées"
+  },
+  "no_auth": {
+    "title": "Sans authentification",
+    "help": "Autoriser les connexions sans authentification si activé"
+  },
+  "no_modtime": {
+    "title": "Pas de date de modification",
+    "help": "Ne pas lire/écrire la date de modification (peut accélérer les choses)"
+  },
+  "no_checksum": {
+    "title": "Pas de somme de contrôle",
+    "help": "Ne pas comparer les sommes de contrôle lors de lenvoi/réception"
+  },
+  "no_seek": {
+    "title": "Pas de déplacement",
+    "help": "Ne pas autoriser le déplacement dans les fichiers"
+  },
+  "dir_cache_time": {
+    "title": "Durée du cache de répertoires",
+    "help": "Durée de mise en cache des entrées de répertoire"
+  },
+  "vfs_refresh": {
+    "title": "Actualisation VFS",
+    "help": "Actualise le cache de répertoires de manière récursive en arrière-plan au démarrage"
+  },
+  "poll_interval": {
+    "title": "Intervalle d'interrogation",
+    "help": "Durée d'attente entre les vérifications des modifications, doit être inférieure à dir-cache-time et uniquement sur les dépôts distants pris en charge (0 pour désactiver)"
+  },
+  "read_only": {
+    "title": "Lecture seule",
+    "help": "N'autoriser que l'accès en lecture seule"
+  },
+  "vfs_links": {
+    "title": "Liens VFS",
+    "help": "Convertir les liens symboliques vers/depuis des fichiers ordinaires avec l'extension '.rclonelink' pour le VFS"
+  },
+  "vfs_cache_mode": {
+    "title": "Mode de cache VFS",
+    "help": "Mode de cache off|minimal|writes|full"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "Intervalle d'interrogation du cache VFS",
+    "help": "Intervalle de vérification du cache pour les objets obsolètes"
+  },
+  "vfs_cache_max_age": {
+    "title": "Âge maximal du cache VFS",
+    "help": "Durée maximale depuis le dernier accès aux objets dans le cache"
+  },
+  "vfs_cache_max_size": {
+    "title": "Taille maximale du cache VFS",
+    "help": "Taille totale maximale des objets dans le cache"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "Espace libre minimal du cache VFS",
+    "help": "Espace libre minimal cible sur le disque contenant le cache"
+  },
+  "vfs_read_chunk_size": {
+    "title": "Taille des blocs de lecture VFS",
+    "help": "Lire les objets source par blocs"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "Limite de taille des blocs de lecture VFS",
+    "help": "Si supérieur à --vfs-read-chunk-size, doubler la taille des blocs après chaque lecture, jusqu'à atteindre la limite ('off' pour illimité)"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "Flux de blocs de lecture VFS",
+    "help": "Nombre de flux parallèles à lire simultanément"
+  },
+  "dir_perms": {
+    "title": "Permissions des répertoires",
+    "help": "Permissions des répertoires"
+  },
+  "file_perms": {
+    "title": "Permissions des fichiers",
+    "help": "Permissions des fichiers"
+  },
+  "link_perms": {
+    "title": "Permissions des liens",
+    "help": "Permissions des liens"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS insensible à la casse",
+    "help": "Si un nom de fichier n'est pas trouvé, rechercher une correspondance insensible à la casse"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "Bloquer les doublons normalisés VFS",
+    "help": "Si des noms de fichiers en double existent dans le même répertoire (après normalisation), journaliser une erreur et masquer les doublons (peut avoir un impact sur les performances)"
+  },
+  "vfs_write_wait": {
+    "title": "Attente d'écriture VFS",
+    "help": "Durée d'attente pour une écriture en séquence avant de renvoyer une erreur"
+  },
+  "vfs_read_wait": {
+    "title": "Attente de lecture VFS",
+    "help": "Durée d'attente pour une lecture en séquence avant de se déplacer"
+  },
+  "vfs_write_back": {
+    "title": "Écriture différée VFS",
+    "help": "Délai de réécriture des fichiers après la dernière utilisation lors de l'utilisation du cache"
+  },
+  "vfs_read_ahead": {
+    "title": "Lecture anticipée VFS",
+    "help": "Lecture anticipée supplémentaire au-delà de --buffer-size en mode cache complet"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS utilisé = taille",
+    "help": "Utiliser l'algorithme 'rclone size' pour la taille utilisée"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "Empreinte rapide VFS",
+    "help": "Utiliser des empreintes rapides (moins précises) pour la détection des modifications"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "Taille totale du disque VFS",
+    "help": "Spécifier l'espace total du disque"
+  },
+  "umask": {
+    "title": "Masque de permissions",
+    "help": "Remplacer les bits de permission définis par le système de fichiers (non pris en charge sur Windows)"
+  },
+  "uid": {
+    "title": "ID d'Utilisateur",
+    "help": "Remplacer le champ uid défini par le système de fichiers (non pris en charge sur Windows)"
+  },
+  "gid": {
+    "title": "Identifiant de groupe",
+    "help": "Remplacer le champ gid défini par le système de fichiers (non pris en charge sur Windows)"
+  },
+  "vfs_metadata_extension": {
+    "title": "Extension de métadonnées VFS",
+    "help": "Définir l'extension pour lire les métadonnées"
+  },
+  "disable_dir_list": {
+    "title": "Désactiver le listage des répertoires",
+    "help": "Désactiver le listage HTML des répertoires sur les requêtes GET vers un répertoire"
+  },
+  "create_empty_src_dirs": {
+    "title": "Créer les répertoires source vides",
+    "help": "Créer les répertoires source vides sur la destination après déplacement."
+  },
+  "delete_empty_src_dirs": {
+    "title": "Supprimer les répertoires source vides",
+    "help": "Supprimer les répertoires source vides après déplacement."
+  },
+  "dryRun": {
+    "title": "Simulation",
+    "help": "Effectuer une simulation."
+  },
+  "resync": {
+    "title": "Resynchronisation",
+    "help": "Effectuer la resynchronisation."
+  },
+  "checkAccess": {
+    "title": "Vérifier l'accès",
+    "help": "Abandonner si les fichiers RCLONE_TEST sont introuvables sur les deux systèmes de fichiers"
+  },
+  "checkFilename": {
+    "title": "Nom de fichier de vérification",
+    "help": "Nom de fichier pour --check-access"
+  },
+  "maxDelete": {
+    "title": "Limite de suppressions (bisync)",
+    "help": "Abandonner la synchronisation si le pourcentage de fichiers supprimés dépasse ce seuil"
+  },
+  "force": {
+    "title": "Forcer",
+    "help": "Contourner la vérification de sécurité --max-delete et exécuter la synchronisation"
+  },
+  "checkSync": {
+    "title": "Vérifier la synchronisation",
+    "help": "Contrôle la comparaison des listages finaux."
+  },
+  "remove_empty_dirs": {
+    "title": "Supprimer les répertoires vides",
+    "help": "Supprimer les répertoires vides à l'étape de nettoyage finale."
+  },
+  "filters_file": {
+    "title": "Fichier de filtres",
+    "help": "Lire les motifs de filtrage depuis un fichier."
+  },
+  "ignore_listing_checksum": {
+    "title": "Ignorer la somme de contrôle des listages",
+    "help": "Ne pas utiliser les sommes de contrôle pour les listages."
+  },
+  "resilient": {
+    "title": "Résilient",
+    "help": "Autoriser les futures exécutions à réessayer après certaines erreurs moins graves."
+  },
+  "work_dir": {
+    "title": "Répertoire de travail",
+    "help": "Répertoire serveur pour les fichiers d'historique."
+  },
+  "backup_dir1": {
+    "title": "Répertoire de sauvegarde 1",
+    "help": "--backup-dir pour Path1"
+  },
+  "backup_dir2": {
+    "title": "Répertoire de sauvegarde 2",
+    "help": "--backup-dir pour Path2"
+  },
+  "disable_zip": {
+    "title": "Désactiver ZIP",
+    "help": "Désactiver le téléchargement ZIP des répertoires"
+  },
+  "vfs_handle_caching": {
+    "title": "Mise en cache des descripteurs VFS",
+    "help": "Durée de conservation du descripteur de fichier et des téléchargeurs après la dernière fermeture"
+  },
+  "mountType": {
+    "title": "Type de montage",
+    "help": "Type de montage à utiliser."
+  },
+  "type": {
+    "title": "Type de partage",
+    "help": "Type de partage à utiliser."
+  },
+  "mount_type_mount": {
+    "title": "Montage standard",
+    "help": "Montage FUSE standard"
+  },
+  "mount_type_cmount": {
+    "title": "Montage FUSE Windows/macOS",
+    "help": "Montage FUSE utilisant cgofuse (par défaut sur Windows/macOS)"
+  },
+  "mount_type_mount2": {
+    "title": "Montage Go natif",
+    "help": "Montage FUSE natif Go utilisant go-fuse"
+  },
+  "mount_type_nfsmount": {
+    "title": "Montage NFS",
+    "help": "Montage utilisant le protocole NFS"
+  },
+  "serve_type_http": {
+    "title": "Serveur HTTP",
+    "help": "Partager le dépôt distant via HTTP"
+  },
+  "serve_type_webdav": {
+    "title": "Serveur WebDAV",
+    "help": "Partager le dépôt distant via WebDAV"
+  },
+  "serve_type_ftp": {
+    "title": "Serveur FTP",
+    "help": "Partager le dépôt distant via FTP"
+  },
+  "serve_type_sftp": {
+    "title": "Serveur SFTP",
+    "help": "Partager le dépôt distant via SFTP"
+  },
+  "serve_type_nfs": {
+    "title": "Serveur NFS",
+    "help": "Partager le dépôt distant via NFS"
+  },
+  "serve_type_dlna": {
+    "title": "Serveur multimédia DLNA",
+    "help": "Partager le dépôt distant via DLNA"
+  },
+  "serve_type_docker": {
+    "title": "Plugin de volume Docker",
+    "help": "Partager le dépôt distant comme plugin de volume Docker"
+  },
+  "serve_type_restic": {
+    "title": "Serveur REST Restic",
+    "help": "Partager le dépôt distant via l'API REST Restic"
+  },
+  "serve_type_s3": {
+    "title": "Serveur Amazon S3 compatible",
+    "help": "Partager le dépôt distant via l'API Amazon S3"
+  }
+}
