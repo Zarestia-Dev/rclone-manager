@@ -1810,13 +1810,48 @@
     },
     "backend": {
       "title": "Gestión del backend",
+      "fields": {
+        "host": {
+          "label": "Host",
+          "placeholder": "p. ej., 127.0.0.1 o mi-nas.local"
+        },
+        "port": {
+          "label": "Puerto",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "Nombre de usuario",
+          "placeholder": "Dejar vacío para no usar autenticación"
+        },
+        "password": {
+          "label": "Contraseña",
+          "placeholder": "Dejar vacío para no usar autenticación"
+        },
+        "oauthHost": {
+          "label": "Host OAuth",
+          "placeholder": "127.0.0.1",
+          "description": "Host al que conectarse para las devoluciones de llamada de OAuth. Debe ser una dirección enrutable, nunca un comodín como 0.0.0.0. En Docker, establézcalo en el nombre de host accesible del contenedor."
+        },
+        "oauthPort": {
+          "label": "Puerto OAuth"
+        },
+        "configPassword": {
+          "label": "Contraseña de configuración",
+          "description": "Contraseña para el archivo de configuración cifrado"
+        },
+        "configPath": {
+          "label": "Ruta de configuración",
+          "placeholder": "Dejar vacío para usar la predeterminada",
+          "description": "Ruta específica a rclone.conf (opcional)"
+        }
+      },
       "addBackend": "Agregar backend",
       "editBackend": "Editar backend",
       "active": "Activo",
       "local": "Local",
       "name": "Nombre",
-      "enableAuth": "Habilitar autenticación",
-      "oauthSettings": "Configuración de OAuth",
+      "enableAuth": "Personalizar autenticación",
+      "oauthSettings": "Configuración de OAuth (Se eliminará en el futuro)",
       "selectConfigFile": "Seleccionar archivo de configuración",
       "activeConfigPath": "Ruta de configuración activa",
       "connectionTab": "Conexión",

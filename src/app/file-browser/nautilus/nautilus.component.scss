@@ -8,6 +8,10 @@
   width: 100vw;
   height: 100vh;
   --sidebar-width: clamp(180px, 20vw, 240px);
+
+  @media (max-width: 679px) {
+    --sidebar-width: unset;
+  }
 }
 
 .nautilus-sidenav {

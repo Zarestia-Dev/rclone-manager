@@ -156,6 +156,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   rawUrl = signal<string>('');
   fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
   currentFileType = signal<string>('text');
+  isHeadless = computed(() => isHeadlessMode());
 
   isLoading = signal(true);
   isDownloading = signal(false);

@@ -1810,13 +1810,48 @@
     },
     "backend": {
       "title": "Arka Uç Yönetimi",
+      "fields": {
+        "host": {
+          "label": "Sunucu",
+          "placeholder": "örn. 127.0.0.1 veya my-nas.local"
+        },
+        "port": {
+          "label": "Port",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "Kullanıcı Adı",
+          "placeholder": "Kimlik doğrulaması olmaması için boş bırakın"
+        },
+        "password": {
+          "label": "Parola",
+          "placeholder": "Kimlik doğrulaması olmaması için boş bırakın"
+        },
+        "oauthHost": {
+          "label": "OAuth Sunucusu",
+          "placeholder": "127.0.0.1",
+          "description": "OAuth geri çağırmaları için bağlanılacak sunucu. Erişilebilir bir adres olmalıdır — 0.0.0.0 gibi genel bir adres olamaz. Docker'da bunu konteynerin erişilebilir ana bilgisayar adına ayarlayın."
+        },
+        "oauthPort": {
+          "label": "OAuth Portu"
+        },
+        "configPassword": {
+          "label": "Yapılandırma Parolası",
+          "description": "Şifrelenmiş yapılandırma dosyası için parola"
+        },
+        "configPath": {
+          "label": "Yapılandırma Yolu",
+          "placeholder": "Varsayılanı kullanmak için boş bırakın",
+          "description": "rclone.conf için özel dosya yolu (isteğe bağlı)"
+        }
+      },
       "addBackend": "Arka Uç Ekle",
       "editBackend": "Arka Uç Düzenle",
       "active": "Aktif",
       "local": "Yerel",
       "name": "Ad",
-      "enableAuth": "Kimlik Doğrulamayı Etkinleştir",
-      "oauthSettings": "OAuth Ayarları",
+      "enableAuth": "Kimlik Doğrulamasını Özelleştir",
+      "oauthSettings": "OAuth Ayarları (Gelecekte kaldırılacak)",
       "selectConfigFile": "Yapılandırma Dosyası Seç",
       "activeConfigPath": "Aktif Yapılandırma Yolu",
       "connectionTab": "Bağlantı",

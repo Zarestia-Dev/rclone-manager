@@ -123,20 +123,6 @@ fn append_user_flags_from_app(
     Ok(())
 }
 
-fn append_auth_args(args: &mut Vec<String>, username: Option<String>, password: Option<String>) {
-    match (username, password) {
-        (Some(user), Some(pass)) if !user.is_empty() => {
-            debug!("Starting rclone with authentication");
-            args.push(format!("--rc-user={user}"));
-            args.push(format!("--rc-pass={pass}"));
-        }
-        _ => {
-            debug!("Starting rclone with no authentication");
-            args.push("--rc-no-auth".to_string());
-        }
-    }
-}
-
 /// Build the rclone command for the main engine or the OAuth process.
 pub async fn build_rclone_process_command(
     app: &AppHandle,
@@ -154,7 +140,21 @@ pub async fn build_rclone_process_command(
         }
     };
 
-    let backend = backend_manager_state.get_active().await;
+    let mut backend = backend_manager_state.get_active().await;
+
+    if backend.is_local && !backend.has_valid_auth() {
+        let user = format!("user_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let pass = uuid::Uuid::new_v4().to_string().replace("-", "");
+
+        backend.username = Some(user);
+        backend.password = Some(pass);
+        backend.is_auth_generated = true;
+
+        let settings_manager = app.state::<AppSettingsManager>();
+        let _ = backend_manager_state
+            .update(&settings_manager, &backend.name, backend.clone())
+            .await;
+    }
 
     let port = match kind {
         ProcessKind::Engine => backend.port,
@@ -182,20 +182,11 @@ pub async fn build_rclone_process_command(
         append_user_flags_from_app(app, &mut args)?;
     }
 
-    let auth_args = if backend.has_valid_auth() {
-        Some((
-            backend.username.clone().unwrap(),
-            backend.password.clone().unwrap_or_default(),
-        ))
-    } else {
-        None
-    };
-
-    append_auth_args(
-        &mut args,
-        auth_args.as_ref().map(|(u, _)| u.clone()),
-        auth_args.map(|(_, p)| p),
-    );
+    if let (Some(user), Some(pass)) = (&backend.username, &backend.password) {
+        debug!("Starting rclone with authentication");
+        args.push(format!("--rc-user={user}"));
+        args.push(format!("--rc-pass={pass}"));
+    }
 
     apply_rclone_environment(app, command.args(args)).await
 }

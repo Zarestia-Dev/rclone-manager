@@ -12,7 +12,6 @@ use crate::{
     rclone::{
         backend::{
             BackendManager,
-            schema::BackendConnectionSchema,
             types::{Backend, BackendInfo},
         },
         state::automations::AutomationsCache,
@@ -25,15 +24,8 @@ use crate::{
         },
     },
 };
-use rcman::{SettingMetadata, SettingsSchema};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::Emitter;
-
-#[tauri::command]
-pub async fn get_backend_schema() -> Result<HashMap<String, SettingMetadata>, String> {
-    Ok(BackendConnectionSchema::get_metadata())
-}
 
 #[tauri::command]
 pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
@@ -207,6 +199,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     let mut backend = Backend {
         name: params.name.clone(),
         is_local: existing.is_local,
+        is_auth_generated: existing.is_auth_generated,
         host: params.host,
         port: params.port,
         username: None,
@@ -224,7 +217,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     //   (None, None)         → client did not send credentials → preserve existing
     //   (Some(u), Some(p))
     //     both non-empty     → user set new credentials → update
-    //   anything else        → partial or explicitly cleared → clear both
+    //   anything else        → partial or explicitly cleared → clear both (or preserve for local if they are generated)
     match (params.username.as_deref(), params.password.as_deref()) {
         (None, None) => {
             backend.username = existing.username.clone();
@@ -233,10 +226,18 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         (Some(u), Some(p)) if !u.is_empty() && !p.is_empty() => {
             backend.username = Some(u.to_string());
             backend.password = Some(p.to_string());
+            backend.is_auth_generated = false;
         }
         _ => {
-            backend.username = None;
-            backend.password = None;
+            if existing.is_local && existing.is_auth_generated {
+                backend.username = existing.username.clone();
+                backend.password = existing.password.clone();
+                backend.is_auth_generated = true;
+            } else {
+                backend.username = None;
+                backend.password = None;
+                backend.is_auth_generated = false;
+            }
         }
     }
 
@@ -377,7 +378,13 @@ fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> 
         .sub_settings("connections")
         .map_err(|e| e.to_string())?;
 
-    let value = serde_json::to_value(backend).map_err(|e| e.to_string())?;
+    let mut backend_to_save = backend.clone();
+    if backend_to_save.is_auth_generated {
+        backend_to_save.username = None;
+        backend_to_save.password = None;
+    }
+
+    let value = serde_json::to_value(&backend_to_save).map_err(|e| e.to_string())?;
     connections
         .set(&backend.name, &value)
         .map_err(|e| e.to_string())?;

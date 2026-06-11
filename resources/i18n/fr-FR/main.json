@@ -1810,13 +1810,48 @@
     },
     "backend": {
       "title": "Gestion du backend",
+      "fields": {
+        "host": {
+          "label": "Hôte",
+          "placeholder": "ex. 127.0.0.1 ou mon-nas.local"
+        },
+        "port": {
+          "label": "Port",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "Nom d'utilisateur",
+          "placeholder": "Laisser vide pour aucune authentification"
+        },
+        "password": {
+          "label": "Mot de passe",
+          "placeholder": "Laisser vide pour aucune authentification"
+        },
+        "oauthHost": {
+          "label": "Hôte OAuth",
+          "placeholder": "127.0.0.1",
+          "description": "Hôte auquel se connecter pour les rappels OAuth. Doit être une adresse routable — jamais un caractère générique comme 0.0.0.0. Dans Docker, définissez-le sur le nom d'hôte accessible du conteneur."
+        },
+        "oauthPort": {
+          "label": "Port OAuth"
+        },
+        "configPassword": {
+          "label": "Mot de passe de configuration",
+          "description": "Mot de passe pour le fichier de configuration chiffré"
+        },
+        "configPath": {
+          "label": "Chemin de configuration",
+          "placeholder": "Laisser vide pour utiliser les paramètres par défaut",
+          "description": "Chemin d'accès spécifique à rclone.conf (facultatif)"
+        }
+      },
       "addBackend": "Ajouter un backend",
       "editBackend": "Modifier Backend",
       "active": "Actif",
       "local": "Local",
       "name": "Nom",
-      "enableAuth": "Activer l'authentification",
-      "oauthSettings": "Paramètres OAuth",
+      "enableAuth": "Personnaliser l'authentification",
+      "oauthSettings": "Paramètres OAuth (Sera supprimé à l'avenir)",
       "selectConfigFile": "Sélectionnez le fichier de configuration",
       "activeConfigPath": "Chemin de configuration actif",
       "connectionTab": "Connexion",

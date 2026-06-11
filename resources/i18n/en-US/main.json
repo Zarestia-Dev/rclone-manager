@@ -1810,13 +1810,48 @@
     },
     "backend": {
       "title": "Backend Management",
+      "fields": {
+        "host": {
+          "label": "Host",
+          "placeholder": "e.g. 127.0.0.1 or my-nas.local"
+        },
+        "port": {
+          "label": "Port",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "Username",
+          "placeholder": "Leave empty for no auth"
+        },
+        "password": {
+          "label": "Password",
+          "placeholder": "Leave empty for no auth"
+        },
+        "oauthHost": {
+          "label": "OAuth Host",
+          "placeholder": "127.0.0.1",
+          "description": "Host to connect to for OAuth callbacks. Must be a routable address — never a wildcard like 0.0.0.0. In Docker, set this to the container's accessible hostname."
+        },
+        "oauthPort": {
+          "label": "OAuth Port"
+        },
+        "configPassword": {
+          "label": "Config Password",
+          "description": "Password for encrypted configuration file"
+        },
+        "configPath": {
+          "label": "Config Path",
+          "placeholder": "Leave empty to use default",
+          "description": "Specific path to rclone.conf (optional)"
+        }
+      },
       "addBackend": "Add Backend",
       "editBackend": "Edit Backend",
       "active": "Active",
       "local": "Local",
       "name": "Name",
-      "enableAuth": "Enable Authentication",
-      "oauthSettings": "OAuth Settings",
+      "enableAuth": "Customize Authentication",
+      "oauthSettings": "OAuth Settings (Will be removed in the future)",
       "selectConfigFile": "Select Config File",
       "activeConfigPath": "Active Config Path",
       "connectionTab": "Connection",

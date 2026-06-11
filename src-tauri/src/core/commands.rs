@@ -252,7 +252,6 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // BACKEND MANAGEMENT
             // =================================================================
-            (get_backend_schema, $crate::rclone::commands::backend::get_backend_schema, [], [no_app]);
             (list_backends, $crate::rclone::commands::backend::list_backends, []);
             (get_active_backend, $crate::rclone::commands::backend::get_active_backend, []);
             (get_backend_profiles, $crate::rclone::commands::backend::get_backend_profiles, []);

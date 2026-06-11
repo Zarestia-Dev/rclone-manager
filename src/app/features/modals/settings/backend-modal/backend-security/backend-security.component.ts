@@ -1,11 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import {
   FormBuilder,
-  FormGroup,
   ReactiveFormsModule,
-  Validators,
   AbstractControl,
   ValidationErrors,
+  Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -42,6 +41,7 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
   ],
   templateUrl: './backend-security.component.html',
   styleUrls: ['./backend-security.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BackendSecurityComponent implements OnInit {
   private readonly passwordService = inject(RclonePasswordService);
@@ -58,15 +58,26 @@ export class BackendSecurityComponent implements OnInit {
   readonly hasStoredPassword = signal(false);
   readonly encryptionLoading = signal(false);
 
-  readonly securityForm: FormGroup = this.fb.group(
+  readonly keychainPassword = this.fb.control('', [Validators.required]);
+
+  readonly encryptForm = this.fb.group(
     {
-      currentPassword: ['', Validators.required],
-      newPassword: ['', Validators.required],
-      confirmPassword: ['', Validators.required],
-      keychainPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required]],
+      confirmPassword: ['', [Validators.required]],
     },
     { validators: passwordMatchValidator }
   );
+
+  readonly changePasswordForm = this.fb.group(
+    {
+      currentPassword: ['', [Validators.required]],
+      newPassword: ['', [Validators.required]],
+      confirmPassword: ['', [Validators.required]],
+    },
+    { validators: passwordMatchValidator }
+  );
+
+  readonly decryptPassword = this.fb.control('', [Validators.required]);
 
   async ngOnInit(): Promise<void> {
     await this.loadEncryptionStatus();
@@ -94,7 +105,9 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   onPanelOpened(): void {
-    this.securityForm.reset();
+    this.encryptForm.reset();
+    this.changePasswordForm.reset();
+    this.decryptPassword.reset();
     this.showCurrentPassword.set(false);
     this.showNewPassword.set(false);
   }
@@ -109,14 +122,12 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitKeychainStore(): Promise<void> {
-    const passwordControl = this.securityForm.get('keychainPassword');
-    const password = passwordControl?.value;
-
-    if (!password) {
-      passwordControl?.markAsTouched();
+    if (this.keychainPassword.invalid) {
+      this.keychainPassword.markAsTouched();
       return;
     }
 
+    const password = this.keychainPassword.value!;
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.validatePassword(password);
@@ -125,7 +136,7 @@ export class BackendSecurityComponent implements OnInit {
         this.translate.instant('modals.backend.security.passwordStored')
       );
       this.showKeychainInput.set(false);
-      passwordControl?.reset();
+      this.keychainPassword.reset();
       await this.loadEncryptionStatus();
     } catch (error) {
       this.notificationService.showError(this.translate.instant(String(error)));
@@ -136,15 +147,17 @@ export class BackendSecurityComponent implements OnInit {
 
   async cancelKeychainStore(): Promise<void> {
     this.showKeychainInput.set(false);
-    this.securityForm.patchValue({ keychainPassword: '' });
+    this.keychainPassword.reset();
     await this.loadEncryptionStatus();
   }
 
   async submitEncrypt(): Promise<void> {
-    if (this.isFormInvalidForEncrypt()) return;
+    if (this.encryptForm.invalid) {
+      this.encryptForm.markAllAsTouched();
+      return;
+    }
 
-    const { newPassword } = this.securityForm.value;
-
+    const newPassword = this.encryptForm.value.newPassword!;
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.encryptConfig(newPassword);
@@ -153,7 +166,7 @@ export class BackendSecurityComponent implements OnInit {
       this.notificationService.showSuccess(
         this.translate.instant('modals.backend.security.encrypted')
       );
-      this.securityForm.reset();
+      this.encryptForm.reset();
     } catch (error) {
       this.notificationService.showError(this.translate.instant(String(error)));
     } finally {
@@ -162,21 +175,21 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitDecrypt(): Promise<void> {
-    const currentPasswordControl = this.securityForm.get('currentPassword');
-    if (!currentPasswordControl?.value) {
-      currentPasswordControl?.markAsTouched();
+    if (this.decryptPassword.invalid) {
+      this.decryptPassword.markAsTouched();
       return;
     }
 
+    const password = this.decryptPassword.value!;
     this.encryptionLoading.set(true);
     try {
-      await this.passwordService.unencryptConfig(currentPasswordControl.value);
+      await this.passwordService.unencryptConfig(password);
       await this.passwordService.removeStoredPassword();
       await this.loadEncryptionStatus();
       this.notificationService.showSuccess(
         this.translate.instant('modals.backend.security.removeEncryption')
       );
-      this.securityForm.reset();
+      this.decryptPassword.reset();
     } catch (error) {
       this.notificationService.showError(this.translate.instant(String(error)));
     } finally {
@@ -185,9 +198,13 @@ export class BackendSecurityComponent implements OnInit {
   }
 
   async submitChangePassword(): Promise<void> {
-    if (this.isFormInvalidForChangePassword()) return;
+    if (this.changePasswordForm.invalid) {
+      this.changePasswordForm.markAllAsTouched();
+      return;
+    }
 
-    const { currentPassword, newPassword } = this.securityForm.value;
+    const { currentPassword, newPassword } = this.changePasswordForm.value;
+    if (!currentPassword || !newPassword) return;
 
     this.encryptionLoading.set(true);
     try {
@@ -197,7 +214,7 @@ export class BackendSecurityComponent implements OnInit {
       this.notificationService.showSuccess(
         this.translate.instant('modals.backend.security.passwordChanged')
       );
-      this.securityForm.reset();
+      this.changePasswordForm.reset();
     } catch (error) {
       this.notificationService.showError(this.translate.instant(String(error)));
     } finally {
@@ -219,17 +236,5 @@ export class BackendSecurityComponent implements OnInit {
     } finally {
       this.encryptionLoading.set(false);
     }
-  }
-
-  isFormInvalidForEncrypt(): boolean {
-    return (
-      !this.securityForm.get('newPassword')?.valid ||
-      !this.securityForm.get('confirmPassword')?.valid ||
-      this.securityForm.hasError('passwordMismatch')
-    );
-  }
-
-  isFormInvalidForChangePassword(): boolean {
-    return !this.securityForm.get('currentPassword')?.valid || this.isFormInvalidForEncrypt();
   }
 }

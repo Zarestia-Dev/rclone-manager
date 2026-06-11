@@ -3,9 +3,9 @@
 // Simplified flat structure - no nested types.
 
 use crate::utils::rclone::endpoints::core;
-use std::path::PathBuf;
-
+use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 fn default_oauth_port() -> u16 {
     51901
@@ -20,7 +20,7 @@ fn default_oauth_host() -> String {
 /// Represents a connection to an rclone RC API server.
 /// - Local: Managed by the app (starts/stops the process)
 /// - Remote: External rclone rcd instance
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct Backend {
     /// Unique name/identifier (used as key, skipped in serialization)
     #[serde(skip)]
@@ -29,6 +29,10 @@ pub struct Backend {
     /// True = managed by app (Local), False = external (Remote)
     #[serde(default)]
     pub is_local: bool,
+
+    /// True = authentication credentials were auto-generated at runtime and should not be saved to disk
+    #[serde(skip)]
+    pub is_auth_generated: bool,
 
     /// Host address rclone binds to (e.g., "127.0.0.1", "0.0.0.0").
     ///
@@ -46,6 +50,7 @@ pub struct Backend {
 
     /// RC API password (for --rc-pass) - stored in keychain, not JSON
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[setting(secret)]
     pub password: Option<String>,
 
     /// Port for the OAuth helper process.
@@ -66,6 +71,7 @@ pub struct Backend {
 
     /// Config password for encrypted remote configs - stored in keychain
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[setting(secret)]
     pub config_password: Option<String>,
 
     /// Config file path (for remote backends mostly) - optional
@@ -89,6 +95,7 @@ impl Backend {
         Self {
             name: name.into(),
             is_local: true,
+            is_auth_generated: false,
             host: "127.0.0.1".to_string(),
             port: 51900,
             username: None,
@@ -105,6 +112,7 @@ impl Backend {
         Self {
             name: name.into(),
             is_local: false,
+            is_auth_generated: false,
             host: host.into(),
             port,
             username: None,
@@ -493,8 +501,8 @@ impl Backend {
             "arg": args,
         });
 
-        if async_job && let Some(obj) = payload.as_object_mut() {
-            obj.insert("_async".to_string(), serde_json::json!(true));
+        if async_job {
+            payload["_async"] = serde_json::json!(true);
         }
 
         payload
@@ -507,6 +515,7 @@ impl Backend {
 pub struct BackendInfo {
     pub name: String,
     pub is_local: bool,
+    pub is_auth_generated: bool,
     pub host: String,
     pub port: u16,
     pub is_active: bool,
@@ -539,6 +548,7 @@ impl BackendInfo {
         Self {
             name: backend.name.clone(),
             is_local: backend.is_local,
+            is_auth_generated: backend.is_auth_generated,
             host: backend.host.clone(),
             port: backend.port,
             is_active,
@@ -690,5 +700,11 @@ mod tests {
         assert_eq!(backend.host, "10.0.0.1");
         assert_eq!(backend.oauth_port, 51901); // default
         assert_eq!(backend.oauth_host, "127.0.0.1"); // default
+    }
+
+    #[test]
+    fn test_is_auth_generated_default() {
+        let backend = Backend::new_local("Local");
+        assert!(!backend.is_auth_generated);
     }
 }

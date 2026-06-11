@@ -1810,13 +1810,48 @@
     },
     "backend": {
       "title": "后端管理",
+      "fields": {
+        "host": {
+          "label": "主机",
+          "placeholder": "例如 127.0.0.1 或 my-nas.local"
+        },
+        "port": {
+          "label": "端口",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "用户名",
+          "placeholder": "留空表示不进行身份验证"
+        },
+        "password": {
+          "label": "密码",
+          "placeholder": "留空表示不进行身份验证"
+        },
+        "oauthHost": {
+          "label": "OAuth 主机",
+          "placeholder": "127.0.0.1",
+          "description": "用于 OAuth 回调的连接主机。必须是可路由的地址 — 绝对不能是像 0.0.0.0 这样的通配符。在 Docker 中，将其设置为容器可访问的主机名。"
+        },
+        "oauthPort": {
+          "label": "OAuth 端口"
+        },
+        "configPassword": {
+          "label": "配置密码",
+          "description": "加密配置文件的密码"
+        },
+        "configPath": {
+          "label": "配置路径",
+          "placeholder": "留空以使用默认路径",
+          "description": "rclone.conf 的特定路径（可选）"
+        }
+      },
       "addBackend": "添加后端",
       "editBackend": "编辑后端",
       "active": "已启用",
       "local": "本地",
       "name": "名称",
-      "enableAuth": "启用身份验证",
-      "oauthSettings": "OAuth 设置",
+      "enableAuth": "自定义身份验证",
+      "oauthSettings": "OAuth 设置 (未来将被移除)",
       "selectConfigFile": "选择配置文件",
       "activeConfigPath": "当前使用的配置路径",
       "connectionTab": "连接",

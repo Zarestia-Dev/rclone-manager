@@ -1,11 +1,12 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
+import { EventListenersService } from './event-listeners.service';
 
 import {
   BackendInfo,
   TestConnectionResult,
-  BackendSettingMetadata,
   addBackendArgs,
   RuntimeStatus,
 } from 'src/app/shared/types/backend.types';
@@ -18,6 +19,18 @@ export class BackendService extends TauriBaseService {
   readonly activeBackend = signal<string>('Local');
   readonly isLoading = signal<boolean>(false);
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    super();
+    this.eventListenersService
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async () => {
+        await this.loadBackends();
+      });
+  }
 
   readonly activeConfigPath = computed(() => {
     const active = this.backends().find(b => b.name === this.activeBackend());
@@ -29,10 +42,6 @@ export class BackendService extends TauriBaseService {
     const active = this.backends().find(b => b.name === this.activeBackend());
     return active?.isLocal ?? true;
   });
-
-  async getBackendSchema(): Promise<Record<string, BackendSettingMetadata>> {
-    return this.invokeCommand<Record<string, BackendSettingMetadata>>('get_backend_schema');
-  }
 
   async loadBackends(): Promise<void> {
     try {
@@ -286,8 +295,8 @@ export class BackendService extends TauriBaseService {
       host: formValue.host,
       port: Number(formValue.port),
       isLocal,
-      username: formValue.has_auth && formValue.username ? formValue.username : undefined,
-      password: formValue.has_auth && formValue.password ? formValue.password : undefined,
+      username: formValue.has_auth ? formValue.username || undefined : '',
+      password: formValue.has_auth ? formValue.password || undefined : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
       oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,

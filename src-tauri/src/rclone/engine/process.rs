@@ -62,14 +62,27 @@ impl RcApiEngine {
             return Ok(());
         };
 
+        use crate::core::settings::AppSettingsManager;
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app.state::<BackendManager>();
+        let backend = backend_manager.get_active().await;
+
         if self.running && child.id().is_some() {
-            use crate::rclone::backend::BackendManager;
-            let backend = app.state::<BackendManager>().get_active().await;
             let state = app.state::<RcloneState>();
             let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
             if graceful_shutdown(child, quit_request).await.is_ok() {
                 self.running = false;
+                if backend.is_auth_generated {
+                    let mut updated_backend = backend.clone();
+                    updated_backend.username = None;
+                    updated_backend.password = None;
+                    updated_backend.is_auth_generated = false;
+                    let settings_manager = app.state::<AppSettingsManager>();
+                    let _ = backend_manager
+                        .update(&settings_manager, &backend.name, updated_backend)
+                        .await;
+                }
                 return Ok(());
             }
         } else {
@@ -83,6 +96,16 @@ impl RcApiEngine {
         }
 
         self.running = false;
+        if backend.is_auth_generated {
+            let mut updated_backend = backend.clone();
+            updated_backend.username = None;
+            updated_backend.password = None;
+            updated_backend.is_auth_generated = false;
+            let settings_manager = app.state::<AppSettingsManager>();
+            let _ = backend_manager
+                .update(&settings_manager, &backend.name, updated_backend)
+                .await;
+        }
         let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::error());
         Ok(())
     }

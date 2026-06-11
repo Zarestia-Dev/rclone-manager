@@ -86,7 +86,7 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         )
         .with_sub_settings(
             rcman::SubSettingsConfig::singlefile("connections")
-                .with_schema::<crate::rclone::backend::schema::BackendConnectionSchema>(),
+                .with_schema::<crate::rclone::backend::types::Backend>(),
         )
         .with_sub_settings(
             rcman::SubSettingsConfig::singlefile("alerts/rules")

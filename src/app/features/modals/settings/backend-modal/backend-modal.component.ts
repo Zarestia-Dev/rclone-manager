@@ -1,7 +1,19 @@
-import { Component, computed, inject, OnInit, resource, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NgClass, NgTemplateOutlet } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,17 +21,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import type {
-  addBackendArgs,
-  BackendInfo,
-  BackendSettingMetadata,
-} from 'src/app/shared/types/backend.types';
+import type { addBackendArgs, BackendInfo } from 'src/app/shared/types/backend.types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { map } from 'rxjs';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -46,11 +53,10 @@ import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
     TranslateModule,
     MatExpansionModule,
     MatSlideToggle,
-    NgTemplateOutlet,
-    NgClass,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BackendModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<BackendModalComponent>);
@@ -65,10 +71,8 @@ export class BackendModalComponent implements OnInit {
   readonly activeBackend = this.backendService.activeBackend;
   readonly isLoading = this.backendService.isLoading;
 
-  readonly formMode = signal<{
-    mode: 'add' | 'edit' | null;
-    editingName?: string;
-  }>({ mode: null });
+  readonly formMode = signal<'add' | 'edit' | null>(null);
+  readonly editingName = signal<string | null>(null);
 
   readonly isSaving = signal(false);
 
@@ -81,174 +85,180 @@ export class BackendModalComponent implements OnInit {
 
   readonly activeConfigPath = this.backendService.activeConfigPath;
 
-  readonly backendForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.pattern(/^[^/\\:*?"<>|]+$/)]],
-    host: [BACKEND_CONSTANTS.DEFAULTS.HOST, [Validators.required]],
-    port: [
-      BACKEND_CONSTANTS.DEFAULTS.PORT,
-      [Validators.required, Validators.min(1024), Validators.max(65535)],
-    ],
-    username: [''],
-    password: [''],
-    config_password: [''],
-    config_path: [''],
-    has_auth: [false],
-    oauth_host: [BACKEND_CONSTANTS.DEFAULTS.IP],
-    oauth_port: [
-      BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
-      [Validators.min(1024), Validators.max(65535)],
-    ],
-  });
+  readonly backendForm: FormGroup;
 
-  // Tracks form value reactively, including disabled controls (e.g. name in edit mode).
-  private readonly formValue = toSignal(
-    this.backendForm.valueChanges.pipe(map(() => this.backendForm.getRawValue())),
-    { initialValue: this.backendForm.getRawValue() }
-  );
+  readonly backendsWithMetadata = computed(() => {
+    return this.backends().map(backend => {
+      let icon: string = BACKEND_CONSTANTS.ICONS.REMOTE;
+      if (backend.isLocal) {
+        icon = BACKEND_CONSTANTS.ICONS.LOCAL;
+      } else if (backend.os) {
+        const os = backend.os.toLowerCase();
+        if (os.includes('linux')) {
+          icon = BACKEND_CONSTANTS.ICONS.LINUX;
+        } else if (os.includes('darwin') || os.includes('macos')) {
+          icon = BACKEND_CONSTANTS.ICONS.APPLE;
+        } else if (os.includes('windows')) {
+          icon = BACKEND_CONSTANTS.ICONS.WINDOWS;
+        }
+      }
 
-  readonly isDuplicateName = computed(() => {
-    const name = this.formValue()['name']?.toLowerCase();
-    const { mode, editingName } = this.formMode();
-    if (!name || (mode === 'edit' && editingName?.toLowerCase() === name)) return false;
-    return this.backends().some(b => b.name.toLowerCase() === name);
-  });
+      let statusClass: string = BACKEND_CONSTANTS.STATUS.UNKNOWN;
+      let statusTooltip = this.translate.instant('modals.backend.status.notTested');
 
-  readonly isDuplicateHost = computed(() => {
-    const { host, port } = this.formValue();
-    const { editingName } = this.formMode();
-    if (!host || !port) return false;
-    return this.backends().some(b => b.name !== editingName && b.host === host && b.port === port);
+      if (backend.status) {
+        if (backend.status.type === 'connected') {
+          statusClass = BACKEND_CONSTANTS.STATUS.CONNECTED;
+          statusTooltip = this.translate.instant('modals.backend.status.connected');
+        } else if (backend.status.type === 'error') {
+          statusClass = BACKEND_CONSTANTS.STATUS.ERROR_PREFIX;
+          statusTooltip = this.translate.instant('modals.backend.status.error', {
+            message: backend.status.message,
+          });
+        }
+      }
+
+      return {
+        ...backend,
+        icon,
+        statusClass,
+        statusTooltip,
+      };
+    });
   });
 
   readonly hasConfigPassword = computed(() => {
-    const { mode, editingName } = this.formMode();
+    const mode = this.formMode();
+    const editingName = this.editingName();
     if (mode !== 'edit' || !editingName) return false;
     return this.backends().find(b => b.name === editingName)?.hasConfigPassword ?? false;
   });
 
   readonly editingBackendRuntimePath = computed(() => {
-    const { mode, editingName } = this.formMode();
+    const mode = this.formMode();
+    const editingName = this.editingName();
     if (mode !== 'edit' || !editingName) return null;
     return this.backends().find(b => b.name === editingName)?.runtimeConfigPath ?? null;
   });
 
   readonly isActiveEditing = computed(() => {
-    const { mode, editingName } = this.formMode();
+    const mode = this.formMode();
+    const editingName = this.editingName();
     if (mode !== 'edit' || !editingName) return false;
     return this.activeBackend() === editingName;
   });
 
-  readonly schemaResource = resource({
-    loader: () => this.backendService.getBackendSchema(),
-  });
-
-  readonly schema = computed(() => this.schemaResource.value() ?? {});
-
-  readonly fieldGroups = computed(() => {
-    const schema = this.schema();
-    const groups: Record<string, { key: string; meta: BackendSettingMetadata }[]> = {};
-    const groupOrder = [
-      BACKEND_CONSTANTS.GROUPS.CONNECTION,
-      BACKEND_CONSTANTS.GROUPS.AUTHENTICATION,
-      BACKEND_CONSTANTS.GROUPS.OAUTH,
-      BACKEND_CONSTANTS.GROUPS.SECURITY,
-      BACKEND_CONSTANTS.GROUPS.ADVANCED,
-    ];
-
-    for (const [key, meta] of Object.entries(schema)) {
-      if (key === 'is_local') continue;
-      const group = (meta.metadata['group'] as string) || 'other';
-      (groups[group] ??= []).push({ key, meta });
-    }
-
-    for (const fields of Object.values(groups)) {
-      fields.sort(
-        (a, b) =>
-          ((a.meta.metadata['order'] as number) ?? 100) -
-          ((b.meta.metadata['order'] as number) ?? 100)
-      );
-    }
-
-    return groupOrder
-      .map(name => ({ name, fields: groups[name] ?? [] }))
-      .filter(g => g.fields.length > 0);
-  });
-
-  readonly securityFields = computed(
-    () => this.fieldGroups().find(g => g.name === 'security')?.fields ?? []
-  );
-
-  ngOnInit(): void {
-    this.backendService.loadBackends();
+  constructor() {
+    this.backendForm = this.fb.group(
+      {
+        name: [
+          '',
+          [
+            Validators.required,
+            Validators.pattern(/^[^/\\:*?"<>|]+$/),
+            this.duplicateNameValidator,
+          ],
+        ],
+        host: [BACKEND_CONSTANTS.DEFAULTS.HOST, [Validators.required]],
+        port: [
+          BACKEND_CONSTANTS.DEFAULTS.PORT,
+          [Validators.required, Validators.min(1024), Validators.max(65535)],
+        ],
+        username: [''],
+        password: [''],
+        config_password: [''],
+        config_path: [''],
+        has_auth: [false],
+        oauth_host: [BACKEND_CONSTANTS.DEFAULTS.IP],
+        oauth_port: [
+          BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
+          [Validators.min(1024), Validators.max(65535)],
+        ],
+      },
+      { validators: [this.duplicateHostValidator] }
+    );
   }
 
-  private applySchemaValidators(schema: Record<string, BackendSettingMetadata>): void {
-    for (const [key, meta] of Object.entries(schema)) {
-      const control = this.backendForm.get(key);
-      if (!control) continue;
-
-      const validators = [];
-      if (meta.constraints?.number?.min !== undefined)
-        validators.push(Validators.min(meta.constraints.number.min));
-      if (meta.constraints?.number?.max !== undefined)
-        validators.push(Validators.max(meta.constraints.number.max));
-      if (meta.constraints?.text?.pattern)
-        validators.push(Validators.pattern(meta.constraints.text.pattern));
-
-      if (validators.length > 0) {
-        control.addValidators(validators);
-        control.updateValueAndValidity();
-      }
-    }
+  async ngOnInit(): Promise<void> {
+    await this.backendService.loadBackends();
   }
+
+  private duplicateNameValidator = (control: AbstractControl): ValidationErrors | null => {
+    const name = control.value?.trim().toLowerCase();
+    if (!name) return null;
+    const mode = this.formMode();
+    const editingName = this.editingName();
+    if (mode === 'edit' && editingName?.toLowerCase() === name) return null;
+    const exists = this.backends().some(b => b.name.toLowerCase() === name);
+    return exists ? { duplicateName: true } : null;
+  };
+
+  private duplicateHostValidator = (group: AbstractControl): ValidationErrors | null => {
+    const hostCtrl = group.get('host');
+    const portCtrl = group.get('port');
+    if (!hostCtrl?.value || !portCtrl?.value) return null;
+
+    const editingName = this.editingName();
+    const exists = this.backends().some(
+      b =>
+        b.name !== editingName &&
+        b.host === hostCtrl.value &&
+        Number(b.port) === Number(portCtrl.value)
+    );
+
+    const hasDup = hostCtrl.hasError('duplicateHost');
+    if (exists && !hasDup) {
+      hostCtrl.setErrors({ ...hostCtrl.errors, duplicateHost: true });
+    } else if (!exists && hasDup) {
+      const { duplicateHost: _, ...errors } = hostCtrl.errors || {};
+      hostCtrl.setErrors(Object.keys(errors).length ? errors : null);
+    }
+
+    return exists ? { duplicateHost: true } : null;
+  };
 
   close(): void {
     this.modalService.animatedClose(this.dialogRef);
   }
 
   toggleAddForm(): void {
-    if (this.formMode().mode === null) {
-      this.formMode.set({ mode: 'add' });
+    if (this.formMode() === null) {
+      this.formMode.set('add');
       this.copyBackendFrom.set('none');
       this.copyRemotesFrom.set('none');
-
-      const schema = this.schema();
-      if (Object.keys(schema).length > 0) {
-        this.applySchemaValidators(schema);
-      }
     } else {
-      this.formMode.set({ mode: null });
+      this.formMode.set(null);
+      this.editingName.set(null);
       this.resetForm();
     }
   }
 
   startEdit(backend: BackendInfo): void {
-    this.formMode.set({ mode: 'edit', editingName: backend.name });
+    this.formMode.set('edit');
+    this.editingName.set(backend.name);
+
+    const hasCustomAuth = backend.hasAuth && !backend.isAuthGenerated;
 
     this.backendForm.patchValue({
       name: backend.name,
       host: backend.host,
       port: backend.port,
-      has_auth: backend.hasAuth,
+      has_auth: hasCustomAuth,
       username: backend.username ?? '',
-      password: '',
+      password: backend.password ?? '',
       config_password: '',
       config_path: backend.configPath ?? '',
       oauth_host: backend.oauthHost ?? BACKEND_CONSTANTS.DEFAULTS.IP,
       oauth_port: backend.oauthPort ?? BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
     });
 
-    this.updateAuthValidators(backend.hasAuth);
+    this.updateAuthValidators(hasCustomAuth);
     this.backendForm.get('name')?.disable();
-
-    const schema = this.schema();
-    if (Object.keys(schema).length > 0) {
-      this.applySchemaValidators(schema);
-    }
   }
 
   cancelEdit(): void {
-    this.formMode.set({ mode: null });
+    this.formMode.set(null);
+    this.editingName.set(null);
     this.resetForm();
     this.backendForm.get('name')?.enable();
   }
@@ -310,17 +320,16 @@ export class BackendModalComponent implements OnInit {
   }
 
   async saveBackend(): Promise<void> {
-    if (this.backendForm.invalid || this.isDuplicateName() || this.isDuplicateHost()) return;
+    if (this.backendForm.invalid) return;
 
     const formValue = this.backendForm.getRawValue();
-    const { mode, editingName } = this.formMode();
+    const mode = this.formMode();
+    const editingName = this.editingName();
     const isEditingLocal = mode === 'edit' && editingName === 'Local';
 
     this.isSaving.set(true);
     try {
       if (mode === 'edit' && editingName) {
-        // Use the update mapper so blank password fields send undefined (→ Rust
-        // None) and the existing credential is preserved instead of cleared.
         const backendData = this.backendService.mapFormToUpdateConfig(
           formValue,
           editingName,
@@ -402,7 +411,8 @@ export class BackendModalComponent implements OnInit {
   }
 
   async removeConfigPassword(): Promise<void> {
-    const { mode, editingName } = this.formMode();
+    const mode = this.formMode();
+    const editingName = this.editingName();
     if (mode !== 'edit' || !editingName) return;
 
     const backend = this.backends().find(b => b.name === editingName);
@@ -443,7 +453,7 @@ export class BackendModalComponent implements OnInit {
   async selectConfigFile(): Promise<void> {
     if (!this.isConfigSelectionAllowed()) return;
 
-    const { editingName } = this.formMode();
+    const editingName = this.editingName();
     const isLocalBackend = editingName === 'Local';
     const currentPath = this.backendForm.get('config_path')?.value || undefined;
 
@@ -478,77 +488,8 @@ export class BackendModalComponent implements OnInit {
     }
   }
 
-  // Icon & status helpers
-
-  getBackendIcon(backend: BackendInfo): string {
-    if (backend.isLocal) return BACKEND_CONSTANTS.ICONS.LOCAL;
-    if (!backend.os) return BACKEND_CONSTANTS.ICONS.REMOTE;
-    const os = backend.os.toLowerCase();
-    if (os.includes('linux')) return BACKEND_CONSTANTS.ICONS.LINUX;
-    if (os.includes('darwin') || os.includes('macos')) return BACKEND_CONSTANTS.ICONS.APPLE;
-    if (os.includes('windows')) return BACKEND_CONSTANTS.ICONS.WINDOWS;
-    return BACKEND_CONSTANTS.ICONS.REMOTE;
-  }
-
-  getStatusClass(backend: BackendInfo): string {
-    if (!backend.status || backend.status.type === 'unknown')
-      return BACKEND_CONSTANTS.STATUS.UNKNOWN;
-    if (backend.status.type === 'connected') return BACKEND_CONSTANTS.STATUS.CONNECTED;
-    if (backend.status.type === 'error') return BACKEND_CONSTANTS.STATUS.ERROR_PREFIX;
-    return BACKEND_CONSTANTS.STATUS.UNKNOWN;
-  }
-
-  getStatusTooltip(backend: BackendInfo): string {
-    if (!backend.status || backend.status.type === 'unknown')
-      return this.translate.instant('modals.backend.status.notTested');
-    if (backend.status.type === 'connected')
-      return this.translate.instant('modals.backend.status.connected');
-    if (backend.status.type === 'error') {
-      return this.translate.instant('modals.backend.status.error', {
-        message: backend.status.message,
-      });
-    }
-    return BACKEND_CONSTANTS.STATUS.UNKNOWN;
-  }
-
-  getFieldClasses(field: { key: string }, group: string): string[] {
-    const isHostField = field.key === 'host' || field.key === 'oauth_host';
-    const isPortField = field.key === 'port' || field.key === 'oauth_port';
-    const isFullWidth =
-      group !== BACKEND_CONSTANTS.GROUPS.CONNECTION && group !== BACKEND_CONSTANTS.GROUPS.OAUTH;
-
-    return [
-      'field-wrapper',
-      isHostField ? 'host-field' : '',
-      isPortField ? 'port-field' : '',
-      isFullWidth ? 'full-width' : '',
-    ].filter(Boolean);
-  }
-
-  getFieldIcon(key: string): string | null {
-    switch (key) {
-      case 'host':
-      case 'oauth_host':
-        return BACKEND_CONSTANTS.ICONS.GLOBE;
-      case 'username':
-        return BACKEND_CONSTANTS.ICONS.USER;
-      case 'password':
-        return BACKEND_CONSTANTS.ICONS.KEY;
-      case 'config_password':
-        return BACKEND_CONSTANTS.ICONS.LOCK;
-      case 'config_path':
-        return BACKEND_CONSTANTS.ICONS.FILE;
-      default:
-        return null;
-    }
-  }
-
-  isPasswordVisible(key: string): boolean {
-    return key === 'config_password' ? this.showConfigPassword() : this.showPassword();
-  }
-
-  toggleFieldPassword(key: string): void {
-    if (key === 'config_password') {
+  toggleFieldPassword(key: 'password' | 'configPassword'): void {
+    if (key === 'configPassword') {
       this.showConfigPassword.update(v => !v);
     } else {
       this.showPassword.update(v => !v);

@@ -1,23 +1,23 @@
-<div class="security-container" [formGroup]="securityForm">
+<div class="security-container">
   <!-- Status Banner -->
-  <div class="status-banner" [class.encrypted]="isConfigEncrypted() === true">
+  <div class="status-banner" [class.encrypted]="isConfigEncrypted()">
     <div class="status-icon">
-      <mat-icon [svgIcon]="isConfigEncrypted() === true ? 'security' : 'shield'"></mat-icon>
+      <mat-icon [svgIcon]="isConfigEncrypted() ? 'security' : 'shield'"></mat-icon>
     </div>
     <div class="status-text">
       <strong>{{
-        (isConfigEncrypted() === true
+        (isConfigEncrypted()
           ? 'modals.backend.security.encrypted'
           : 'modals.backend.security.notEncrypted'
         ) | translate
       }}</strong>
       <span>{{
-        (isConfigEncrypted() === true
+        (isConfigEncrypted()
           ? 'modals.backend.security.credentialsProtected'
           : 'modals.backend.security.credentialsPlainText'
         ) | translate
       }}</span>
-      @if (isConfigEncrypted() === true && hasStoredPassword()) {
+      @if (isConfigEncrypted() && hasStoredPassword()) {
         <span class="keyring-status">
           <mat-icon svgIcon="key"></mat-icon>
           {{ 'modals.backend.security.passwordStoredInKeyring' | translate }}
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  @if (isConfigEncrypted() === true) {
+  @if (isConfigEncrypted()) {
     <!-- ENCRYPTED STATE -->
 
     <!-- Keychain Card -->
@@ -50,13 +50,13 @@
             <mat-label>{{ 'modals.backend.security.configPassword' | translate }}</mat-label>
             <input
               matInput
-              formControlName="keychainPassword"
+              [formControl]="keychainPassword"
               type="password"
               (keyup.enter)="
                 $event.preventDefault(); $event.stopPropagation(); submitKeychainStore()
               "
             />
-            @if (securityForm.get('keychainPassword')?.hasError('required')) {
+            @if (keychainPassword.hasError('required')) {
               <mat-error>{{ 'common.required' | translate }}</mat-error>
             }
           </mat-form-field>
@@ -68,7 +68,7 @@
               mat-flat-button
               type="button"
               (click)="submitKeychainStore()"
-              [disabled]="encryptionLoading() || securityForm.get('keychainPassword')?.invalid"
+              [disabled]="encryptionLoading() || keychainPassword.invalid"
             >
               {{ 'modals.backend.security.saveToKeychain' | translate }}
             </button>
@@ -80,7 +80,7 @@
     <!-- Accordion for Actions -->
     <mat-accordion class="security-accordion" [multi]="false">
       <!-- Change Password Panel -->
-      <mat-expansion-panel (opened)="onPanelOpened()">
+      <mat-expansion-panel (opened)="onPanelOpened()" [formGroup]="changePasswordForm">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <mat-icon svgIcon="refresh"></mat-icon>
@@ -106,7 +106,7 @@
           >
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
-          @if (securityForm.get('currentPassword')?.hasError('required')) {
+          @if (changePasswordForm.get('currentPassword')?.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -121,7 +121,7 @@
           <button mat-icon-button matSuffix (click)="toggleNewPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
-          @if (securityForm.get('newPassword')?.hasError('required')) {
+          @if (changePasswordForm.get('newPassword')?.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -133,12 +133,12 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="confirmPassword"
           />
-          @if (securityForm.get('confirmPassword')?.hasError('required')) {
+          @if (changePasswordForm.get('confirmPassword')?.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
           @if (
-            !securityForm.get('confirmPassword')?.hasError('required') &&
-            securityForm.hasError('passwordMismatch')
+            !changePasswordForm.get('confirmPassword')?.hasError('required') &&
+            changePasswordForm.hasError('passwordMismatch')
           ) {
             <mat-error>{{ 'modals.backend.security.passwordsMismatch' | translate }}</mat-error>
           }
@@ -149,7 +149,7 @@
             mat-flat-button
             type="button"
             (click)="submitChangePassword()"
-            [disabled]="encryptionLoading() || isFormInvalidForChangePassword()"
+            [disabled]="encryptionLoading() || changePasswordForm.invalid"
           >
             @if (encryptionLoading()) {
               <mat-spinner diameter="18"></mat-spinner>
@@ -182,7 +182,7 @@
           <input
             matInput
             [type]="showCurrentPassword() ? 'text' : 'password'"
-            formControlName="currentPassword"
+            [formControl]="decryptPassword"
           />
           <button
             mat-icon-button
@@ -192,7 +192,7 @@
           >
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
-          @if (securityForm.get('currentPassword')?.hasError('required')) {
+          @if (decryptPassword.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -203,7 +203,7 @@
             type="button"
             class="warn"
             (click)="submitDecrypt()"
-            [disabled]="encryptionLoading() || securityForm.get('currentPassword')?.invalid"
+            [disabled]="encryptionLoading() || decryptPassword.invalid"
           >
             @if (encryptionLoading()) {
               <mat-spinner diameter="18"></mat-spinner>
@@ -216,7 +216,7 @@
     </mat-accordion>
   } @else if (isConfigEncrypted() === false) {
     <!-- UNENCRYPTED STATE -->
-    <div class="action-card highlight">
+    <div class="action-card highlight" [formGroup]="encryptForm">
       <div class="card-header">
         <mat-icon svgIcon="lock"></mat-icon>
         <div class="card-title">
@@ -236,7 +236,7 @@
           <button mat-icon-button matSuffix (click)="toggleNewPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
-          @if (securityForm.get('newPassword')?.hasError('required')) {
+          @if (encryptForm.get('newPassword')?.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -248,12 +248,12 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="confirmPassword"
           />
-          @if (securityForm.get('confirmPassword')?.hasError('required')) {
+          @if (encryptForm.get('confirmPassword')?.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
           @if (
-            !securityForm.get('confirmPassword')?.hasError('required') &&
-            securityForm.hasError('passwordMismatch')
+            !encryptForm.get('confirmPassword')?.hasError('required') &&
+            encryptForm.hasError('passwordMismatch')
           ) {
             <mat-error>{{ 'modals.backend.security.passwordsMismatch' | translate }}</mat-error>
           }
@@ -264,7 +264,7 @@
             mat-flat-button
             type="button"
             (click)="submitEncrypt()"
-            [disabled]="encryptionLoading() || isFormInvalidForEncrypt()"
+            [disabled]="encryptionLoading() || encryptForm.invalid"
           >
             @if (encryptionLoading()) {
               <mat-spinner diameter="18"></mat-spinner>
