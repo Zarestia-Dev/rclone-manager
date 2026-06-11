@@ -6,7 +6,6 @@ import {
   output,
   signal,
   computed,
-  linkedSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +18,8 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { SharedProfileType, EditTarget } from '@app/types';
 import { CliFlagMapperService, ImportResult } from '@app/services';
+
+type ProfileMode = 'new' | 'override' | 'patch';
 
 @Component({
   selector: 'app-cli-import',
@@ -39,6 +40,7 @@ import { CliFlagMapperService, ImportResult } from '@app/services';
 export class CliImportComponent {
   private readonly mapper = inject(CliFlagMapperService);
 
+  // Inputs & Outputs
   readonly visible = input(false);
   readonly remoteType = input('');
   readonly activeStep = input<EditTarget>(null);
@@ -49,21 +51,23 @@ export class CliImportComponent {
   readonly apply = output<{
     result: ImportResult;
     profileName: string;
-    mode: 'new' | 'override' | 'patch';
+    mode: ProfileMode;
   }>();
 
+  // State Signals
   readonly cliInput = signal('');
   readonly importResult = signal<ImportResult | null>(null);
-  readonly profileMode = signal<'new' | 'override' | 'patch'>('new');
+  readonly profileMode = signal<ProfileMode>('new');
   readonly newProfileName = signal('');
   readonly validationError = signal<string | null>(null);
 
+  // Derivations
   readonly detectedVerbProfiles = computed(() => {
     const verb = (this.importResult()?.verb ?? 'sync') as SharedProfileType;
     return this.existingProfiles()[verb] ?? [];
   });
 
-  readonly selectedOverrideProfile = linkedSignal(() => this.detectedVerbProfiles()[0] ?? '');
+  readonly selectedOverrideProfile = computed(() => this.detectedVerbProfiles()[0] ?? '');
 
   readonly mappedFlags = computed(
     () => this.importResult()?.classified.filter(f => f.status === 'mapped') ?? []
@@ -104,42 +108,37 @@ export class CliImportComponent {
 
   readonly isApplyDisabled = computed(() => {
     if (!this.importResult()) return true;
-    if (this.profileMode() === 'patch') {
-      const step = this.activeStep();
-      return !step || step === 'remote';
+
+    switch (this.profileMode()) {
+      case 'patch':
+        return !this.activeStep() || this.activeStep() === 'remote';
+      case 'new':
+        return !this.newProfileName().trim();
+      case 'override':
+        return !this.selectedOverrideProfile();
     }
-    return this.profileMode() === 'new'
-      ? !this.newProfileName().trim()
-      : !this.selectedOverrideProfile();
   });
 
   async previewImport(): Promise<void> {
     const text = this.cliInput().trim();
     if (!text) {
-      this.importResult.set(null);
-      this.validationError.set(null);
+      this.clearInput();
       return;
     }
 
     try {
       const result = await this.mapper.importCliCommand(text, this.remoteType());
       if (!result.verb && result.classified.length === 0) {
-        this.validationError.set('wizards.cliImport.invalidCommand');
-        this.importResult.set(null);
+        this.setError('wizards.cliImport.invalidCommand');
         return;
       }
 
       this.validationError.set(null);
       this.importResult.set(result);
-      if (!result.verb) {
-        this.profileMode.set('patch');
-      } else {
-        this.profileMode.set('new');
-      }
+      this.profileMode.set(result.verb ? 'new' : 'patch');
     } catch (error) {
       console.error('Failed to parse CLI import command:', error);
-      this.validationError.set('wizards.cliImport.invalidCommand');
-      this.importResult.set(null);
+      this.setError('wizards.cliImport.invalidCommand');
     }
   }
 
@@ -161,10 +160,11 @@ export class CliImportComponent {
           ? this.selectedOverrideProfile()
           : '';
 
-    this.apply.emit({
-      result,
-      profileName,
-      mode,
-    });
+    this.apply.emit({ result, profileName, mode });
+  }
+
+  private setError(msg: string): void {
+    this.validationError.set(msg);
+    this.importResult.set(null);
   }
 }

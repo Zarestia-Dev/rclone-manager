@@ -3,20 +3,21 @@ import { RcConfigOption, SharedProfileType } from '@app/types';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
 import { TranslateService } from '@ngx-translate/core';
+import { getControlKey } from './utils/remote-config.utils';
 
 export interface ParsedCLIFlag {
-  raw: string; // e.g. "--max-delete"
-  key: string; // e.g. "max-delete"
-  value: string | boolean; // e.g. "50" or true (for flags without value)
-  hasMacro: boolean; // true if it contains macro pattern like $(...) or `...`
+  raw: string;
+  key: string;
+  value: string | boolean;
+  hasMacro: boolean;
 }
 
 export interface ParsedCLI {
-  verb?: string; // "sync" | "copy" | "move" | "bisync" | "mount" | "serve"
-  serveSubtype?: string; // e.g. "http", "ftp", etc. for serve command
-  mountSubtype?: string; // e.g. "mount", "mount2", "cmount", "nfsmount"
-  sourcePath?: string; // first positional arg
-  destPath?: string; // second positional arg
+  verb?: string;
+  serveSubtype?: string;
+  mountSubtype?: string;
+  sourcePath?: string;
+  destPath?: string;
   flags: ParsedCLIFlag[];
 }
 
@@ -40,9 +41,7 @@ export interface ImportResult {
   classified: ClassifiedFlag[];
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class CliFlagMapperService {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly remoteManagementService = inject(RemoteManagementService);
@@ -53,9 +52,7 @@ export class CliFlagMapperService {
     string,
     Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
   >();
-  /**
-   * Tokenizes a raw shell command line into tokens, respecting quotes.
-   */
+
   tokenize(cli: string): string[] {
     const tokens: string[] = [];
     let current = '';
@@ -64,23 +61,19 @@ export class CliFlagMapperService {
     let inSubshell = 0;
     let inBacktick = false;
 
-    // Replace backslash line continuations
     const cleanCli = cli.replace(/\\\r?\n/g, ' ');
+    const len = cleanCli.length;
 
-    let i = 0;
-    while (i < cleanCli.length) {
+    for (let i = 0; i < len; i++) {
       const char = cleanCli[i];
 
-      // Strip shell comments starting with #
       if (
         char === '#' &&
         !inDoubleQuote &&
         !inSingleQuote &&
         (i === 0 || /\s/.test(cleanCli[i - 1]))
       ) {
-        while (i < cleanCli.length && cleanCli[i] !== '\n') {
-          i++;
-        }
+        while (i < len && cleanCli[i] !== '\n') i++;
         continue;
       }
 
@@ -95,14 +88,14 @@ export class CliFlagMapperService {
         current += char;
       } else if (
         char === '$' &&
-        i + 1 < cleanCli.length &&
+        i + 1 < len &&
         cleanCli[i + 1] === '(' &&
         !inDoubleQuote &&
         !inSingleQuote
       ) {
         inSubshell++;
         current += '$(';
-        i++; // skip '('
+        i++;
       } else if (char === ')' && inSubshell > 0 && !inDoubleQuote && !inSingleQuote) {
         inSubshell--;
         current += ')';
@@ -114,40 +107,32 @@ export class CliFlagMapperService {
         !inBacktick
       ) {
         if (current) {
-          tokens.push(current);
+          tokens.push(this.stripQuotes(current));
           current = '';
         }
       } else {
         current += char;
       }
-      i++;
     }
-    if (current) {
-      tokens.push(current);
-    }
-    return tokens.map(t => this.stripQuotes(t));
+    if (current) tokens.push(this.stripQuotes(current));
+    return tokens;
   }
 
   private stripQuotes(token: string): string {
+    const len = token.length;
     if (
-      (token.startsWith('"') && token.endsWith('"')) ||
-      (token.startsWith("'") && token.endsWith("'"))
+      len >= 2 &&
+      ((token[0] === '"' && token[len - 1] === '"') || (token[0] === "'" && token[len - 1] === "'"))
     ) {
       return token.slice(1, -1);
     }
     return token;
   }
 
-  /**
-   * Checks if a string contains macros like $(...) or `...`
-   */
   hasMacro(val: string): boolean {
     return /(\$\([\s\S]+?\))|(`[\s\S]+?`)/.test(val);
   }
 
-  /**
-   * Parse a list of tokens into parsed verb, paths, and flags.
-   */
   parse(cliString: string, existingBools: Set<string>): ParsedCLI {
     const tokens = this.tokenize(cliString);
     const flags: ParsedCLIFlag[] = [];
@@ -167,30 +152,28 @@ export class CliFlagMapperService {
       'nfsmount',
       'serve',
     ]);
+    const len = tokens.length;
 
-    let i = 0;
-    while (i < tokens.length) {
+    for (let i = 0; i < len; i++) {
       const token = tokens[i];
 
-      // Handle rclone binary prefix
       if (
         i === 0 &&
-        (token.toLowerCase() === 'rclone' ||
-          token.toLowerCase() === 'rclone.exe' ||
+        (token === 'rclone' ||
+          token === 'rclone.exe' ||
           token.startsWith('./rclone') ||
           token.startsWith('.\\rclone'))
       ) {
-        i++;
         continue;
       }
 
-      if (token.startsWith('-') && /^-{1,2}[a-zA-Z0-9_]/.test(token)) {
+      if (token[0] === '-' && /^-{1,2}[a-zA-Z0-9_]/.test(token)) {
         let rawKey: string;
         let rawValue: string | boolean = true;
         let originalToken = token;
 
-        if (token.includes('=')) {
-          const eqIdx = token.indexOf('=');
+        const eqIdx = token.indexOf('=');
+        if (eqIdx !== -1) {
           rawKey = token.substring(0, eqIdx);
           rawValue = this.stripQuotes(token.substring(eqIdx + 1));
         } else {
@@ -200,31 +183,23 @@ export class CliFlagMapperService {
             existingBools.has(cleanKey) ||
             existingBools.has(cleanKey.replace(/-/g, '_')) ||
             existingBools.has(cleanKey.replace(/_/g, '-'));
-          const isNextFlag = i + 1 < tokens.length && /^-{1,2}[a-zA-Z0-9_]/.test(tokens[i + 1]);
 
-          if (i + 1 < tokens.length && !isNextFlag && !isKnownBool) {
-            rawValue = tokens[i + 1];
+          if (i + 1 < len && !tokens[i + 1].startsWith('-') && !isKnownBool) {
+            rawValue = tokens[++i];
             originalToken = `${rawKey} ${rawValue}`;
-            i++;
           }
         }
 
-        const cleanKey = rawKey.replace(/^-+/, '');
         flags.push({
           raw: originalToken,
-          key: cleanKey,
+          key: rawKey.replace(/^-+/, ''),
           value: rawValue,
           hasMacro: typeof rawValue === 'string' && this.hasMacro(rawValue),
         });
       } else {
         if (!verb && verbs.has(token.toLowerCase())) {
           const lowerToken = token.toLowerCase();
-          if (
-            lowerToken === 'mount' ||
-            lowerToken === 'mount2' ||
-            lowerToken === 'cmount' ||
-            lowerToken === 'nfsmount'
-          ) {
+          if (lowerToken.includes('mount')) {
             verb = 'mount';
             mountSubtype = lowerToken;
           } else {
@@ -236,7 +211,6 @@ export class CliFlagMapperService {
           positionalArgs.push(token);
         }
       }
-      i++;
     }
 
     return {
@@ -249,45 +223,40 @@ export class CliFlagMapperService {
     };
   }
 
-  /**
-   * Builds lookup table mapping flag names to their definitions.
-   */
   buildLookupTable(
     flagFields: Record<SharedProfileType, RcConfigOption[]>,
     remoteType?: string
   ): Record<string, { option: RcConfigOption; flagType: SharedProfileType }> {
     const table: Record<string, { option: RcConfigOption; flagType: SharedProfileType }> = {};
+    const prefix = remoteType ? `${remoteType.toLowerCase().trim()}-` : '';
 
-    Object.entries(flagFields).forEach(([type, fields]) => {
+    for (const [type, fields] of Object.entries(flagFields)) {
       const flagType = type as SharedProfileType;
-      fields.forEach(field => {
+      const isRuntimeRemote = flagType === 'runtimeRemote';
+
+      for (const field of fields) {
         const nameRaw = (field.Name ?? '').toLowerCase();
         const nameHyphen = nameRaw.replace(/_/g, '-');
         const keyCamel = (field.FieldName ?? '').toLowerCase();
 
-        const prefixes: string[] = [''];
-        if (flagType === 'runtimeRemote' && remoteType) {
-          prefixes.push(`${remoteType.toLowerCase().trim()}-`);
-        }
+        const addEntry = (key: string) => {
+          if (!key) return;
+          const val = { option: field, flagType };
+          table[key] = val;
+          table[key.replace(/[-_]/g, '')] = val;
 
-        prefixes.forEach(p => {
-          const addEntry = (key: string) => {
-            const fullKey = p + key;
-            table[fullKey] = { option: field, flagType };
-            // Pre-register stripped keys (without hyphens and underscores) for O(1) fallback
-            const stripped = key.replace(/[-_]/g, '');
-            if (stripped && stripped !== key) {
-              table[p + stripped] = { option: field, flagType };
-            }
-          };
+          if (isRuntimeRemote && prefix) {
+            const prefixed = prefix + key;
+            table[prefixed] = val;
+            table[prefixed.replace(/[-_]/g, '')] = val;
+          }
+        };
 
-          if (nameRaw) addEntry(nameRaw);
-          if (nameHyphen && nameHyphen !== nameRaw) addEntry(nameHyphen);
-          if (keyCamel && keyCamel !== nameRaw && keyCamel !== nameHyphen) addEntry(keyCamel);
-        });
-      });
-    });
-
+        addEntry(nameRaw);
+        addEntry(nameHyphen);
+        addEntry(keyCamel);
+      }
+    }
     return table;
   }
 
@@ -296,70 +265,51 @@ export class CliFlagMapperService {
     const v = verb.toLowerCase();
     const ft = flagType.toLowerCase();
 
-    switch (ft) {
-      case 'vfs':
-        return v === 'mount' || v === 'serve';
-      case 'mount':
-      case 'serve':
-        return v === ft;
-      case 'sync':
-      case 'copy':
-      case 'move':
-      case 'bisync':
-        return v === ft;
-      case 'filter':
-      case 'backend':
-      case 'runtimeRemote':
-        return true;
-      default:
-        return false;
-    }
+    if (ft === 'vfs') return v === 'mount' || v === 'serve';
+    if (
+      ft === 'mount' ||
+      ft === 'serve' ||
+      ft === 'sync' ||
+      ft === 'copy' ||
+      ft === 'move' ||
+      ft === 'bisync'
+    )
+      return v === ft;
+    return ft === 'filter' || ft === 'backend' || ft === 'runtimeremote';
   }
 
-  /**
-   * Classify parsed CLI structure against lookup table.
-   */
   classify(
     parsed: ParsedCLI,
     lookupTable: Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
   ): ImportResult {
+    const verb = parsed.verb || 'sync';
     const classified: ClassifiedFlag[] = parsed.flags.map(flag => {
       const keyLower = flag.key.toLowerCase();
-      // Try exact lookup or stripped lookup in O(1)
       const match = lookupTable[keyLower] || lookupTable[keyLower.replace(/[-_]/g, '')];
 
       if (match) {
-        const verb = parsed.verb || 'sync';
         if (this.isImportCompatible(match.flagType, verb)) {
           return {
             flag,
             status: 'mapped',
             flagType: match.flagType,
-            fieldName: match.option.FieldName || match.option.Name,
+            fieldName: getControlKey(match.option, match.flagType),
             coercedValue: this.coerceValue(flag.value, match.option.Type),
-          } satisfies ClassifiedFlag;
-        } else {
-          return {
-            flag,
-            status: 'unknown',
-            guidance: this.translateService.instant('wizards.cliImport.wrongBlockGuidance', {
-              block: match.flagType,
-              verb,
-            }),
-          } satisfies ClassifiedFlag;
+          };
         }
+        return {
+          flag,
+          status: 'unknown',
+          guidance: this.translateService.instant('wizards.cliImport.wrongBlockGuidance', {
+            block: match.flagType,
+            verb,
+          }),
+        };
       }
-      return { flag, status: 'unknown' } satisfies ClassifiedFlag;
+      return { flag, status: 'unknown' };
     });
 
-    return {
-      verb: parsed.verb,
-      serveSubtype: parsed.serveSubtype,
-      mountSubtype: parsed.mountSubtype,
-      sourcePath: parsed.sourcePath,
-      destPath: parsed.destPath,
-      classified,
-    };
+    return { ...parsed, classified };
   }
 
   private static readonly INT_TYPES = new Set([
@@ -394,9 +344,7 @@ export class CliFlagMapperService {
   ): Promise<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>> {
     const cacheKey = remoteType || '__none__';
     const cached = this.lookupTablesCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
+    if (cached) return cached;
 
     const flagFields = await this.flagConfigService.loadAllFlagFields();
     let runtimeRemoteFields: RcConfigOption[] = [];
@@ -405,36 +353,34 @@ export class CliFlagMapperService {
       try {
         runtimeRemoteFields = await this.remoteManagementService.getRemoteConfigFields(remoteType);
       } catch (error) {
-        console.error('Failed to load remote config fields for lookup table:', error);
+        console.error('Failed to load remote config fields:', error);
       }
     }
 
-    const mergedFields = {
-      ...flagFields,
-      runtimeRemote: runtimeRemoteFields,
-    } as Record<SharedProfileType, RcConfigOption[]>;
-
-    const table = this.buildLookupTable(mergedFields, remoteType);
+    const table = this.buildLookupTable(
+      { ...flagFields, runtimeRemote: runtimeRemoteFields },
+      remoteType
+    );
     this.lookupTablesCache.set(cacheKey, table);
     return table;
   }
 
   async getBooleanFlags(): Promise<Set<string>> {
-    if (this.booleanFlagsCache) {
-      return this.booleanFlagsCache;
-    }
+    if (this.booleanFlagsCache) return this.booleanFlagsCache;
     const flagFields = await this.flagConfigService.loadAllFlagFields();
     const bools = new Set<string>();
 
     for (const fields of Object.values(flagFields)) {
       for (const f of fields) {
-        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
-
-        const names = [f.Name, f.FieldName].filter(Boolean) as string[];
-        for (const name of names) {
-          const lower = name.toLowerCase();
-          bools.add(lower);
-          bools.add(lower.replace(/_/g, '-'));
+        if (f.Type === 'bool' || f.Type === 'Tristate') {
+          if (f.Name) {
+            bools.add(f.Name.toLowerCase());
+            bools.add(f.Name.toLowerCase().replace(/_/g, '-'));
+          }
+          if (f.FieldName) {
+            bools.add(f.FieldName.toLowerCase());
+            bools.add(f.FieldName.toLowerCase().replace(/_/g, '-'));
+          }
         }
       }
     }
@@ -443,9 +389,10 @@ export class CliFlagMapperService {
   }
 
   async importCliCommand(cliString: string, remoteType?: string): Promise<ImportResult> {
-    const boolFlags = await this.getBooleanFlags();
-    const parsed = this.parse(cliString, boolFlags);
-    const lookupTable = await this.getGlobalLookupTable(remoteType);
-    return this.classify(parsed, lookupTable);
+    const [boolFlags, lookupTable] = await Promise.all([
+      this.getBooleanFlags(),
+      this.getGlobalLookupTable(remoteType),
+    ]);
+    return this.classify(this.parse(cliString, boolFlags), lookupTable);
   }
 }

@@ -58,6 +58,20 @@ export function getDefaultAnswerFromQuestion(
 }
 
 /**
+ * Strips leading CLI flag dashes (e.g., --, -) from a search query.
+ */
+export function stripCliPrefix(query: string): string {
+  const q = query.toLowerCase().trim();
+  if (q.startsWith('--')) {
+    return q.slice(2);
+  }
+  if (q.startsWith('-')) {
+    return q.slice(1);
+  }
+  return q;
+}
+
+/**
  * Normalizes an rclone config key for flexible searching
  * (lowercase, hyphens/spaces → underscores).
  */
@@ -71,7 +85,7 @@ export function normalizeRcloneKey(val: string | undefined | null): string {
 export function matchesConfigSearch(field: RcConfigOption, query: string): boolean {
   if (!query) return true;
 
-  const q = query.toLowerCase().trim();
+  const q = stripCliPrefix(query);
   const flexQ = normalizeRcloneKey(q);
 
   return (

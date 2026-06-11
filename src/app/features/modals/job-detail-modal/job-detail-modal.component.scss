@@ -1,14 +1,16 @@
-// Utilities
-.mono {
-  font-family: var(--font-mono);
-}
 .truncate {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.flex-1 {
-  flex: 1;
+
+.dry-run-pill {
+  margin-left: var(--space-md);
+}
+
+.embedded-path-display {
+  display: block;
+  padding: 10px;
 }
 
 .dashboard-grids {
@@ -21,10 +23,6 @@
 
   @media (max-width: 600px) {
     flex-direction: column;
-
-    .counter-grid {
-      flex: none;
-    }
   }
 }
 
@@ -58,7 +56,7 @@
     gap: 8px;
     display: flex;
     flex-direction: column;
-    padding: 10px 10px var(--space-xs) 10px;
+    padding: 10px 10px var(--space-xs);
     --mat-sys-surface-variant: var(--window-bg-color);
 
     .progress-info {
@@ -71,7 +69,6 @@
         font-weight: 800;
         color: var(--primary-color);
       }
-
       .main-bytes {
         font-size: 0.85rem;
         color: var(--dim-color);
@@ -99,13 +96,18 @@
         font-size: 0.75rem;
         background: rgba(var(--window-fg-color-rgb), 0.05);
 
-        &[data-status="running"] {
+        &[data-status="running"],
+        &[data-status="completed"] {
           background: rgba(var(--primary-color-rgb), 0.1);
           color: var(--primary-color);
         }
         &[data-status="completed"] {
-          background: rgba(var(--success-color-rgb), 0.1);
-          color: var(--success-color);
+          background: rgba(var(--accent-color-rgb), 0.1);
+          color: var(--accent-color);
+        }
+        &[data-status="stopped"] {
+          background: rgba(var(--orange-rgb), 0.1);
+          color: var(--orange);
         }
         &[data-status="failed"] {
           background: rgba(var(--warn-color-rgb), 0.1);
@@ -117,28 +119,24 @@
     &.highlight .value {
       color: var(--secondary-color);
     }
-
     &.active {
       background: rgba(var(--primary-color-rgb), 0.05);
       .value {
         color: var(--primary-color);
       }
     }
-
     &.highlight-warn.active {
       background: rgba(var(--secondary-color-rgb), 0.1);
       .value {
         color: var(--secondary-color);
       }
     }
-
     &.highlight-error.active {
       background: rgba(var(--warn-color-rgb), 0.1);
       .value {
         color: var(--warn-color);
       }
     }
-
     &.error .value {
       color: var(--warn-color);
     }

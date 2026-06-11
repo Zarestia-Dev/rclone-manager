@@ -78,9 +78,9 @@ import { PathService } from 'src/app/services';
         <div class="path-label">
           {{ config().sourceLabel || ('detailShared.pathDisplay.source' | translate) }}
         </div>
-        <code class="path-value" [matTooltip]="formatTooltip(config().source)">
-          {{ formatDisplay(config().source) }}
-        </code>
+        <code class="path-value" [matTooltip]="formatTooltip(config().source)">{{
+          formatDisplay(config().source)
+        }}</code>
       </div>
 
       <div class="path-arrow">
@@ -126,43 +126,34 @@ export class PathDisplayComponent {
   readonly config = input.required<PathDisplayConfig>();
   readonly openPath = output<string>();
 
-  readonly isMobile = signal(false);
-
   private readonly pathService = inject(PathService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly mediaQuery = window.matchMedia('(max-width: 768px)');
+
+  readonly isMobile = signal(this.mediaQuery.matches);
+
+  constructor() {
+    afterNextRender(() => {
+      const handler = (e: MediaQueryListEvent): void => this.isMobile.set(e.matches);
+      this.mediaQuery.addEventListener('change', handler);
+      inject(DestroyRef).onDestroy(() => this.mediaQuery.removeEventListener('change', handler));
+    });
+  }
 
   isLocal(path: string): boolean {
     return this.pathService.isLocalPath(path);
   }
-
-  constructor() {
-    afterNextRender(() => {
-      const update = (): void => {
-        this.isMobile.set(window.innerWidth <= 768);
-      };
-      update();
-      const observer = new ResizeObserver(update);
-      observer.observe(document.body);
-      this.destroyRef.onDestroy(() => observer.disconnect());
-    });
-  }
-
   isMultiPath(path: string | string[]): boolean {
     return this.pathService.isMultiPath(path);
   }
-
   getAsArray(path: string | string[]): string[] {
     return this.pathService.asPathArray(path);
   }
-
   getPrimaryPath(path: string | string[]): string {
     return this.pathService.getPrimaryPath(path);
   }
-
   formatDisplay(path: string | string[]): string {
     return this.pathService.formatPathDisplay(path);
   }
-
   formatTooltip(path: string | string[]): string {
     return this.pathService.formatPathTooltip(path);
   }

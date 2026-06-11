@@ -218,7 +218,11 @@
       "noData": "无配置数据",
       "edit": "编辑设置",
       "restricted": "受限",
-      "invalidJson": "[无效 JSON]"
+      "invalidJson": "[无效 JSON]",
+      "categories": {
+        "app": "应用设置",
+        "rclone": "Rclone 选项"
+      }
     }
   },
   "rcloneUpdate": {

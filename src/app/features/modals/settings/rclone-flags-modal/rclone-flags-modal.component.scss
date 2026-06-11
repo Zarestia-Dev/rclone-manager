@@ -139,12 +139,8 @@ app-json-editor,
 
 // Search Results Info
 .search-results-info {
-  margin-inline: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-  background: rgba(var(--primary-color-rgb), 0.1);
-  border-radius: var(--radius-md);
+  margin: var(--space-sm) var(--space-sm) 0 var(--space-sm);
+  font-weight: 500;
 }
 
 // Overlay Pages

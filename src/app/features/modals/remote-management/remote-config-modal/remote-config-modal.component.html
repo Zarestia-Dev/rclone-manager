@@ -159,7 +159,7 @@
               <section class="step-container">
                 <app-profile-header [flagType]="flagType" />
 
-                @if (state.LINKED_PROFILE_TYPES.has(flagType)) {
+                @if (LINKED_PROFILE_TYPES.has(flagType)) {
                   @let showVfs = flagType === 'mount' || flagType === 'serve';
                   <mat-expansion-panel class="linked-profiles-panel">
                     <mat-expansion-panel-header>
@@ -182,7 +182,9 @@
                             'modals.remoteConfig.advancedProfiles.vfs' | translate
                           }}</mat-label>
                           <mat-select
-                            [formControl]="state.formControl(flagType + 'Config.vfsProfile')"
+                            [formControl]="
+                              $any(state.remoteConfigForm.get(flagType + 'Config.vfsProfile'))
+                            "
                             (selectionChange)="state.selectProfile('vfs', $event.value)"
                           >
                             @for (opt of state.profileOptions().vfs; track opt) {
@@ -197,7 +199,9 @@
                           'modals.remoteConfig.advancedProfiles.filter' | translate
                         }}</mat-label>
                         <mat-select
-                          [formControl]="state.formControl(flagType + 'Config.filterProfile')"
+                          [formControl]="
+                            $any(state.remoteConfigForm.get(flagType + 'Config.filterProfile'))
+                          "
                           (selectionChange)="state.selectProfile('filter', $event.value)"
                         >
                           @for (opt of state.profileOptions().filter; track opt) {
@@ -211,7 +215,9 @@
                           'modals.remoteConfig.advancedProfiles.backend' | translate
                         }}</mat-label>
                         <mat-select
-                          [formControl]="state.formControl(flagType + 'Config.backendProfile')"
+                          [formControl]="
+                            $any(state.remoteConfigForm.get(flagType + 'Config.backendProfile'))
+                          "
                           (selectionChange)="state.selectProfile('backend', $event.value)"
                         >
                           @for (opt of state.profileOptions().backend; track opt) {
@@ -226,7 +232,9 @@
                         }}</mat-label>
                         <mat-select
                           [formControl]="
-                            state.formControl(flagType + 'Config.runtimeRemoteProfile')
+                            $any(
+                              state.remoteConfigForm.get(flagType + 'Config.runtimeRemoteProfile')
+                            )
                           "
                           (selectionChange)="state.selectProfile('runtimeRemote', $event.value)"
                         >

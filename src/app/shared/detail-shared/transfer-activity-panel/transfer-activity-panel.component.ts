@@ -28,7 +28,7 @@ import { TransferActivityPanelConfig } from '../../types';
     <mat-card class="detail-panel transfer-activity-panel">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="download" style="color: var(--mat-sys-primary);"></mat-icon>
+          <mat-icon svgIcon="download" class="primary-icon"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           @if (config().showHistory) {
             <button
@@ -36,7 +36,7 @@ import { TransferActivityPanelConfig } from '../../types';
               (click)="resetStats.emit()"
               [matTooltip]="'shared.transferActivity.resetStats' | translate"
             >
-              <mat-icon svgIcon="broom" style="color: var(--mat-sys-primary);"></mat-icon>
+              <mat-icon svgIcon="broom" class="primary-icon"></mat-icon>
             </button>
           }
         </mat-card-title>
@@ -45,26 +45,24 @@ import { TransferActivityPanelConfig } from '../../types';
       <mat-card-content class="panel-content">
         @if (config().showHistory && config().completedTransfers.length > 0) {
           <mat-tab-group>
-            <mat-tab>
-              <ng-template mat-tab-label>
-                <span>{{
-                  'shared.transferActivity.tabs.active'
-                    | translate: { count: config().activeTransfers.length }
-                }}</span>
-              </ng-template>
+            <mat-tab
+              [label]="
+                'shared.transferActivity.tabs.active'
+                  | translate: { count: config().activeTransfers.length }
+              "
+            >
               <ng-template matTabContent>
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
                 ></app-active-transfers-table>
               </ng-template>
             </mat-tab>
-            <mat-tab>
-              <ng-template mat-tab-label>
-                <span>{{
-                  'shared.transferActivity.tabs.recent'
-                    | translate: { count: config().completedTransfers.length }
-                }}</span>
-              </ng-template>
+            <mat-tab
+              [label]="
+                'shared.transferActivity.tabs.recent'
+                  | translate: { count: config().completedTransfers.length }
+              "
+            >
               <ng-template matTabContent>
                 <app-completed-transfers-table
                   [transfers]="config().completedTransfers"
@@ -82,7 +80,24 @@ import { TransferActivityPanelConfig } from '../../types';
       </mat-card-content>
     </mat-card>
   `,
-  styleUrls: ['./transfer-activity-panel.component.scss'],
+  styles: `
+    .transfer-activity-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      .panel-content {
+        padding: 0;
+        overflow: hidden;
+      }
+      .single-view-content {
+        max-height: 40vh;
+        overflow: hidden;
+      }
+      .primary-icon {
+        color: var(--mat-sys-primary);
+      }
+    }
+  `,
 })
 export class TransferActivityPanelComponent {
   readonly config = input.required<TransferActivityPanelConfig>();

@@ -218,7 +218,11 @@
       "noData": "No configuration data available",
       "edit": "Edit Settings",
       "restricted": "RESTRICTED",
-      "invalidJson": "[Invalid JSON]"
+      "invalidJson": "[Invalid JSON]",
+      "categories": {
+        "app": "Application Settings",
+        "rclone": "Rclone Options"
+      }
     }
   },
   "rcloneUpdate": {

@@ -25,8 +25,11 @@ import {
   RcloneBackendOptionsService,
   NotificationService,
   ModalService,
+  matchesConfigSearch,
+  stripCliPrefix,
 } from '@app/services';
 import { RcConfigOption, SharedProfileType } from '@app/types';
+import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import {
   SettingControlComponent,
@@ -183,6 +186,7 @@ const MAIN_CATEGORY_CONFIG: Record<
     JsonEditorComponent,
     MatTooltipModule,
     TranslateModule,
+    RcloneOptionTranslatePipe,
   ],
   templateUrl: './rclone-flags-modal.component.html',
   styleUrls: ['./rclone-flags-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -280,6 +284,8 @@ export class RcloneFlagsModalComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return [];
 
+    const cleanQuery = stripCliPrefix(query);
+
     const results: SearchResult[] = [];
     const options = this.groupedOptions();
 
@@ -287,11 +293,9 @@ export class RcloneFlagsModalComponent implements OnInit {
       for (const category in options[service]) {
         for (const option of options[service][category]) {
           if (
-            option.Name.toLowerCase().includes(query) ||
-            option.FieldName.toLowerCase().includes(query) ||
-            option.Help.toLowerCase().includes(query) ||
-            service.toLowerCase().includes(query) ||
-            category.toLowerCase().includes(query)
+            matchesConfigSearch(option, query) ||
+            service.toLowerCase().includes(cleanQuery) ||
+            category.toLowerCase().includes(cleanQuery)
           ) {
             results.push({ service, category, option });
           }
@@ -308,9 +312,11 @@ export class RcloneFlagsModalComponent implements OnInit {
       return this.services();
     }
 
+    const cleanQuery = stripCliPrefix(query);
+
     const matchedServices = new Set(this.globalSearchResults().map(r => r.service));
     return this.services()
-      .filter(s => matchedServices.has(s.name) || s.name.toLowerCase().includes(query))
+      .filter(s => matchedServices.has(s.name) || s.name.toLowerCase().includes(cleanQuery))
       .map(s => ({ ...s, expanded: true }));
   });
 
@@ -332,12 +338,7 @@ export class RcloneFlagsModalComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return options;
 
-    return options.filter(
-      opt =>
-        opt.Name.toLowerCase().includes(query) ||
-        opt.FieldName.toLowerCase().includes(query) ||
-        opt.Help.toLowerCase().includes(query)
-    );
+    return options.filter(opt => matchesConfigSearch(opt, query));
   });
 
   readonly filteredOptionsCount = computed(() => this.virtualScrollData().length);

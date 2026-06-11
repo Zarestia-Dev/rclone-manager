@@ -1,15 +1,16 @@
 <div class="cli-import-container" [class.visible]="visible()">
   <div class="cli-import-inner">
-    <div class="cli-import-header">
+    <header class="cli-import-header">
       <h3>
         <mat-icon svgIcon="terminal"></mat-icon>
         {{ 'wizards.cliImport.title' | translate }}
       </h3>
-    </div>
+    </header>
 
     <div class="cli-import-body">
-      <div class="textarea-section">
+      <section class="textarea-section">
         <p class="description">{{ 'wizards.cliImport.description' | translate }}</p>
+
         <mat-form-field>
           <mat-label>{{ 'wizards.cliImport.placeholder' | translate }}</mat-label>
           <textarea
@@ -21,10 +22,10 @@
           ></textarea>
         </mat-form-field>
 
-        @if (validationError()) {
+        @if (validationError(); as error) {
           <div class="validation-error-message">
             <mat-icon svgIcon="circle-xmark"></mat-icon>
-            <span>{{ validationError()! | translate }}</span>
+            <span>{{ error | translate }}</span>
           </div>
         }
 
@@ -43,12 +44,12 @@
             {{ 'wizards.cliImport.preview' | translate }}
           </button>
         </div>
-      </div>
+      </section>
 
       @if (importResult(); as result) {
         @let verb = result.verb ?? '';
 
-        <div class="preview-section">
+        <section class="preview-section">
           <div class="detected-info">
             <h4>{{ 'wizards.cliImport.detectedTitle' | translate }}</h4>
             <div class="info-grid">
@@ -58,178 +59,187 @@
                   {{ verb || ('wizards.cliImport.patch' | translate) }}
                 </span>
               </div>
+
               @if (result.serveSubtype) {
                 <div class="info-item">
                   <span class="label">{{ 'wizards.cliImport.serveType' | translate }}:</span>
-                  <span class="value capitalize font-mono">{{ result.serveSubtype }}</span>
+                  <code class="value capitalize">{{ result.serveSubtype }}</code>
                 </div>
               }
+
               @if (result.sourcePath) {
                 <div class="info-item">
                   <span class="label">
-                    @if (verb === 'mount' || verb === 'serve') {
-                      {{ 'wizards.cliImport.remote' | translate }}:
-                    } @else {
-                      {{ 'wizards.cliImport.source' | translate }}:
-                    }
+                    {{
+                      verb === 'mount' || verb === 'serve'
+                        ? ('wizards.cliImport.remote' | translate)
+                        : ('wizards.cliImport.source' | translate)
+                    }}
                   </span>
-                  <span class="value font-mono">{{ result.sourcePath }}</span>
+                  <code class="value">{{ result.sourcePath }}</code>
                 </div>
               }
+
               @if (result.destPath && verb !== 'serve') {
                 <div class="info-item">
                   <span class="label">
-                    @if (verb === 'mount') {
-                      {{ 'wizards.cliImport.mountPoint' | translate }}:
-                    } @else {
-                      {{ 'wizards.cliImport.destination' | translate }}:
-                    }
+                    {{
+                      verb === 'mount'
+                        ? ('wizards.cliImport.mountPoint' | translate)
+                        : ('wizards.cliImport.destination' | translate)
+                    }}
                   </span>
-                  <span class="value font-mono">{{ result.destPath }}</span>
+                  <code class="value">{{ result.destPath }}</code>
                 </div>
               }
             </div>
           </div>
 
-          <!-- Mapped Flags -->
-          @if (mappedFlags().length > 0) {
-            <div class="preview-group">
-              <h5 class="success-header">
-                <mat-icon svgIcon="circle-check"></mat-icon>
-                {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ mappedFlags().length }})
-              </h5>
-              <div class="flag-list">
-                @for (item of mappedFlags(); track item.flag.key) {
-                  <div class="flag-row">
-                    <span class="flag-key font-mono">--{{ item.flag.key }}</span>
-                    <span class="arrow">→</span>
-                    <span class="form-field font-mono">{{ item.fieldName }}</span>
-                    <span class="equals">=</span>
-                    <span class="flag-val font-mono">{{ item.coercedValue }}</span>
-                  </div>
-                }
+          @if (mappedFlags(); as flags) {
+            @if (flags.length > 0) {
+              <div class="preview-group">
+                <h5 class="success-header">
+                  <mat-icon svgIcon="circle-check"></mat-icon>
+                  {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ flags.length }})
+                </h5>
+                <div class="flag-list">
+                  @for (item of flags; track item.flag.key) {
+                    <div class="flag-row">
+                      <code class="flag-key">--{{ item.flag.key }}</code>
+                      <span class="arrow">→</span>
+                      <code class="form-field">{{ item.fieldName }}</code>
+                      <span class="equals">=</span>
+                      <code class="flag-val">{{ item.coercedValue }}</code>
+                    </div>
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
 
-          <!-- Macro Values -->
-          @if (macroFlags().length > 0) {
-            <div class="preview-group">
-              <h5 class="info-header">
-                <mat-icon svgIcon="info"></mat-icon>
-                {{ 'wizards.cliImport.macroDetected' | translate }}
-              </h5>
-              <p class="macro-desc">{{ 'wizards.cliImport.macroDesc' | translate }}</p>
-              <div class="flag-list">
-                @for (macro of macroFlags(); track macro.source) {
-                  <div class="flag-row">
-                    <span class="flag-key font-mono">{{ macro.source }}</span>
-                    <span class="arrow">:</span>
-                    <span class="flag-val font-mono">{{ macro.value }}</span>
-                  </div>
-                }
+          @if (macroFlags(); as macros) {
+            @if (macros.length > 0) {
+              <div class="preview-group">
+                <h5 class="info-header">
+                  <mat-icon svgIcon="info"></mat-icon>
+                  {{ 'wizards.cliImport.macroDetected' | translate }}
+                </h5>
+                <p class="macro-desc">{{ 'wizards.cliImport.macroDesc' | translate }}</p>
+                <div class="flag-list">
+                  @for (macro of macros; track macro.source) {
+                    <div class="flag-row">
+                      <code class="flag-key">{{ macro.source }}</code>
+                      <span class="arrow">:</span>
+                      <code class="flag-val">{{ macro.value }}</code>
+                    </div>
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
 
-          <!-- Unknown Flags -->
-          @if (unknownFlags().length > 0) {
-            <div class="preview-group">
-              <h5 class="error-header">
-                <mat-icon svgIcon="question"></mat-icon>
-                {{ 'wizards.cliImport.unrecognizedFlags' | translate }} ({{
-                  unknownFlags().length
-                }})
-              </h5>
-              <div class="flag-list">
-                @for (item of unknownFlags(); track item.flag.raw) {
-                  <div class="flag-row unmapped-item">
-                    <span class="flag-raw-text">{{ item.flag.raw }}</span>
-                    @if (item.guidance) {
-                      <span class="flag-guidance-text font-sans">{{ item.guidance }}</span>
-                    }
-                  </div>
-                }
+          @if (unknownFlags(); as unknowns) {
+            @if (unknowns.length > 0) {
+              <div class="preview-group">
+                <h5 class="error-header">
+                  <mat-icon svgIcon="question"></mat-icon>
+                  {{ 'wizards.cliImport.unrecognizedFlags' | translate }} ({{ unknowns.length }})
+                </h5>
+                <div class="flag-list">
+                  @for (item of unknowns; track item.flag.raw) {
+                    <div class="flag-row unmapped-item">
+                      <code>{{ item.flag.raw }}</code>
+                      @if (item.guidance) {
+                        <span class="flag-guidance-text">{{ item.guidance }}</span>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
 
-          <!-- Profile Application Config -->
           <div class="profile-apply-section">
             <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
 
             @if (!result.verb) {
-              @if (!activeStep() || activeStep() === 'remote') {
-                <div class="patch-info-box warning">
-                  <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                  <span>{{ 'wizards.cliImport.patchInfoRemoteStep' | translate }}</span>
-                </div>
-              } @else {
-                <div class="patch-info-box">
-                  <mat-icon svgIcon="info"></mat-icon>
-                  <span>{{ 'wizards.cliImport.patchInfo' | translate }}</span>
-                </div>
-              }
+              <div
+                class="patch-info-box"
+                [class.warning]="!activeStep() || activeStep() === 'remote'"
+              >
+                <mat-icon
+                  [svgIcon]="
+                    !activeStep() || activeStep() === 'remote' ? 'circle-exclamation' : 'info'
+                  "
+                ></mat-icon>
+                <span>
+                  {{
+                    (!activeStep() || activeStep() === 'remote'
+                      ? 'wizards.cliImport.patchInfoRemoteStep'
+                      : 'wizards.cliImport.patchInfo'
+                    ) | translate
+                  }}
+                </span>
+              </div>
             }
 
-            <div class="radio-group-container">
-              <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
-                <mat-radio-button value="new" [disabled]="!result.verb">
-                  {{ 'wizards.cliImport.newProfile' | translate }}
-                </mat-radio-button>
-                <mat-radio-button
-                  value="override"
-                  [disabled]="!result.verb || detectedVerbProfiles().length === 0"
+            <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
+              <mat-radio-button value="new" [disabled]="!result.verb">
+                {{ 'wizards.cliImport.newProfile' | translate }}
+              </mat-radio-button>
+              <mat-radio-button
+                value="override"
+                [disabled]="!result.verb || detectedVerbProfiles().length === 0"
+              >
+                {{ 'wizards.cliImport.overrideProfile' | translate }}
+              </mat-radio-button>
+              <mat-radio-button value="patch">
+                {{ 'wizards.cliImport.patchProfile' | translate }}
+              </mat-radio-button>
+            </mat-radio-group>
+
+            @if (profileMode() === 'new') {
+              <mat-form-field>
+                <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
+                <input
+                  matInput
+                  [ngModel]="newProfileName()"
+                  (ngModelChange)="newProfileName.set($event)"
+                  placeholder="e.g. daily-backup"
+                />
+              </mat-form-field>
+            }
+
+            @if (profileMode() === 'override') {
+              <mat-form-field>
+                <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="selectedOverrideProfile()"
+                  (ngModelChange)="$event ? profileMode.set('override') : null"
                 >
-                  {{ 'wizards.cliImport.overrideProfile' | translate }}
-                </mat-radio-button>
-                <mat-radio-button value="patch">
-                  {{ 'wizards.cliImport.patchProfile' | translate }}
-                </mat-radio-button>
-              </mat-radio-group>
-            </div>
+                  @for (p of detectedVerbProfiles(); track p) {
+                    <mat-option [value]="p">{{ p }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
 
-            <div class="input-row">
-              @if (profileMode() === 'new') {
-                <mat-form-field class="full-width">
-                  <mat-label>{{ 'wizards.cliImport.profileName' | translate }}</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="newProfileName()"
-                    (ngModelChange)="newProfileName.set($event)"
-                    placeholder="e.g. daily-backup"
-                  />
-                </mat-form-field>
-              }
-
-              @if (profileMode() === 'override') {
-                <mat-form-field class="full-width">
-                  <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
-                  <mat-select
-                    [ngModel]="selectedOverrideProfile()"
-                    (ngModelChange)="selectedOverrideProfile.set($event)"
-                  >
-                    @for (p of detectedVerbProfiles(); track p) {
-                      <mat-option [value]="p">{{ p }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              }
-            </div>
-
-            <div class="apply-actions">
-              <button mat-raised-button [disabled]="isApplyDisabled()" (click)="onApply()">
-                <mat-icon svgIcon="circle-check"></mat-icon>
-                {{
-                  (profileMode() === 'patch'
-                    ? 'wizards.cliImport.applyPatch'
-                    : 'wizards.cliImport.applyToProfile'
-                  ) | translate
-                }}
-              </button>
-            </div>
+            <button
+              mat-raised-button
+              class="primary"
+              [disabled]="isApplyDisabled()"
+              (click)="onApply()"
+            >
+              <mat-icon svgIcon="circle-check"></mat-icon>
+              {{
+                (profileMode() === 'patch'
+                  ? 'wizards.cliImport.applyPatch'
+                  : 'wizards.cliImport.applyToProfile'
+                ) | translate
+              }}
+            </button>
           </div>
-        </div>
+        </section>
       }
     </div>
   </div>

@@ -2,23 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Remote, RemoteStatus, RemoteOperationState, SyncOperationType } from '@app/types';
 
-/**
- * Service for computing remote status information.
- * Consolidates tooltip generation and profile counting logic.
- */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class RemoteStatusService {
-  private translate = inject(TranslateService);
-
-  // ============================================================================
-  // MOUNT STATUS
-  // ============================================================================
+  private readonly translate = inject(TranslateService);
 
   getMountProfileCount(remote: Remote): number {
-    if (!remote.status.mount.activeProfiles) return 0;
-    return Object.keys(remote.status.mount.activeProfiles).length;
+    return remote.status.mount.activeProfiles
+      ? Object.keys(remote.status.mount.activeProfiles).length
+      : 0;
   }
 
   isMounted(remote: Remote): boolean {
@@ -26,177 +17,136 @@ export class RemoteStatusService {
   }
 
   getMountTooltip(remote: Remote): string {
-    const profiles = remote.status.mount.activeProfiles;
-    if (!profiles || Object.keys(profiles).length === 0) {
-      return this.translate.instant('mount.notMounted');
-    }
-
-    const profileNames = Object.keys(profiles);
-    if (profileNames.length === 1) {
-      return this.translate.instant('mount.mountedWithProfile', {
-        profile: profileNames[0],
-      });
-    }
-
+    const p = remote.status.mount.activeProfiles;
+    if (!p) return this.translate.instant('mount.notMounted');
+    const names = Object.keys(p);
+    if (names.length === 0) return this.translate.instant('mount.notMounted');
+    if (names.length === 1)
+      return this.translate.instant('mount.mountedWithProfile', { profile: names[0] });
     return this.translate.instant('mount.mountedMultiple', {
-      count: profileNames.length,
-      profiles: profileNames.join(', '),
+      count: names.length,
+      profiles: names.join(', '),
     });
   }
 
-  // ============================================================================
-  // SYNC OPERATIONS STATUS
-  // ============================================================================
-
   getSyncProfileCount(remote: Remote): number {
-    let count = 0;
-    count += Object.keys(remote.status.sync.activeProfiles || {}).length;
-    count += Object.keys(remote.status.copy.activeProfiles || {}).length;
-    count += Object.keys(remote.status.move.activeProfiles || {}).length;
-    count += Object.keys(remote.status.bisync.activeProfiles || {}).length;
-    return count;
+    const s = remote.status;
+    return (
+      Object.keys(s.sync.activeProfiles || {}).length +
+      Object.keys(s.copy.activeProfiles || {}).length +
+      Object.keys(s.move.activeProfiles || {}).length +
+      Object.keys(s.bisync.activeProfiles || {}).length
+    );
   }
 
   getActiveSyncOperationIcon(remote: Remote): string {
-    if (remote.status.sync.active) return 'refresh';
-    if (remote.status.copy.active) return 'copy';
-    if (remote.status.move.active) return 'move';
-    if (remote.status.bisync.active) return 'right-left';
-    return 'sync'; // Default icon
+    const s = remote.status;
+    return s.sync.active
+      ? 'refresh'
+      : s.copy.active
+        ? 'copy'
+        : s.move.active
+          ? 'move'
+          : s.bisync.active
+            ? 'right-left'
+            : 'sync';
   }
 
   getSyncOperationsTooltip(remote: Remote): string {
-    const activeDetails: string[] = [];
-
-    const syncProfiles = Object.keys(remote.status.sync.activeProfiles || {});
-    if (syncProfiles.length > 0) {
-      activeDetails.push(
-        this.translate.instant('sync.syncWithProfile', { profiles: syncProfiles.join(', ') })
-      );
-    }
-    const copyProfiles = Object.keys(remote.status.copy.activeProfiles || {});
-    if (copyProfiles.length > 0) {
-      activeDetails.push(
-        this.translate.instant('sync.copyWithProfile', { profiles: copyProfiles.join(', ') })
-      );
-    }
-    const moveProfiles = Object.keys(remote.status.move.activeProfiles || {});
-    if (moveProfiles.length > 0) {
-      activeDetails.push(
-        this.translate.instant('sync.moveWithProfile', { profiles: moveProfiles.join(', ') })
-      );
-    }
-    const bisyncProfiles = Object.keys(remote.status.bisync.activeProfiles || {});
-    if (bisyncProfiles.length > 0) {
-      activeDetails.push(
-        this.translate.instant('sync.bisyncWithProfile', { profiles: bisyncProfiles.join(', ') })
-      );
-    }
-
-    if (activeDetails.length > 0) {
-      return activeDetails.join(' • ');
-    }
-
-    return this.translate.instant('sync.available');
+    const s = remote.status,
+      details: string[] = [];
+    const sy = Object.keys(s.sync.activeProfiles || {});
+    if (sy.length)
+      details.push(this.translate.instant('sync.syncWithProfile', { profiles: sy.join(', ') }));
+    const cp = Object.keys(s.copy.activeProfiles || {});
+    if (cp.length)
+      details.push(this.translate.instant('sync.copyWithProfile', { profiles: cp.join(', ') }));
+    const mv = Object.keys(s.move.activeProfiles || {});
+    if (mv.length)
+      details.push(this.translate.instant('sync.moveWithProfile', { profiles: mv.join(', ') }));
+    const bi = Object.keys(s.bisync.activeProfiles || {});
+    if (bi.length)
+      details.push(this.translate.instant('sync.bisyncWithProfile', { profiles: bi.join(', ') }));
+    return details.length ? details.join(' • ') : this.translate.instant('sync.available');
   }
 
   getOperationState(
     remote: Remote | undefined | null,
     type: SyncOperationType
   ): RemoteOperationState | undefined {
-    if (!remote) return undefined;
-    return remote.status[type as keyof RemoteStatus] as RemoteOperationState;
+    return remote?.status[type as keyof RemoteStatus] as RemoteOperationState;
   }
 
   getActiveSyncOperationType(remote: Remote): 'sync' | 'copy' | 'move' | 'bisync' | null {
-    if (remote.status.sync.active) return 'sync';
-    if (remote.status.copy.active) return 'copy';
-    if (remote.status.move.active) return 'move';
-    if (remote.status.bisync.active) return 'bisync';
-    return null;
+    const s = remote.status;
+    return s.sync.active
+      ? 'sync'
+      : s.copy.active
+        ? 'copy'
+        : s.move.active
+          ? 'move'
+          : s.bisync.active
+            ? 'bisync'
+            : null;
   }
-
-  // ============================================================================
-  // SERVE STATUS
-  // ============================================================================
 
   getServeProfileCount(remote: Remote): number {
     return remote.status.serve.count || 0;
   }
-
   isServing(remote: Remote): boolean {
     return remote.status.serve.active === true;
   }
 
   getServeTooltip(remote: Remote): string {
-    if (!remote.status.serve.active) {
-      return this.translate.instant('serve.noActive');
-    }
-
+    if (!remote.status.serve.active) return this.translate.instant('serve.noActive');
     const serves = remote.status.serve.serves || [];
-
-    if (serves.length === 0) {
-      return this.translate.instant('serve.serving');
-    }
-
-    if (serves.length === 1) {
-      const serve = serves[0];
-      const profileName = serve.profile || 'Default';
+    if (serves.length === 0) return this.translate.instant('serve.serving');
+    if (serves.length === 1)
       return this.translate.instant('serve.servingWithProfile', {
-        profile: profileName,
-        type: serve.params.type.toUpperCase(),
-        addr: serve.addr,
+        profile: serves[0].profile || 'Default',
+        type: serves[0].params.type.toUpperCase(),
+        addr: serves[0].addr,
       });
-    }
-
-    // Multiple serves - show profile names
-    const serveInfo = serves.map(s => {
-      const profile = s.profile || 'Default';
-      return this.translate.instant('serve.profileInfo', {
-        profile: profile,
-        type: s.params.type.toUpperCase(),
-      });
-    });
-
     return this.translate.instant('serve.servingMultiple', {
       count: serves.length,
-      profiles: serveInfo.join(', '),
+      profiles: serves
+        .map(s =>
+          this.translate.instant('serve.profileInfo', {
+            profile: s.profile || 'Default',
+            type: s.params.type.toUpperCase(),
+          })
+        )
+        .join(', '),
     });
   }
 
-  // ============================================================================
-  // COMBINED STATUS
-  // ============================================================================
-
   getActiveOperationsSummary(remote: Remote): string[] {
     const summary: string[] = [];
-
-    if (this.isMounted(remote)) {
+    if (this.isMounted(remote))
       summary.push(
         this.translate.instant('mount.mountedMultiple', {
           count: this.getMountProfileCount(remote),
         })
       );
-    }
-
-    if (this.getActiveSyncOperationType(remote)) {
+    if (this.getActiveSyncOperationType(remote))
       summary.push(
         this.translate.instant('sync.syncSummary', { count: this.getSyncProfileCount(remote) })
       );
-    }
-
-    if (this.isServing(remote)) {
+    if (this.isServing(remote))
       summary.push(
         this.translate.instant('serve.serveSummary', { count: this.getServeProfileCount(remote) })
       );
-    }
-
     return summary;
   }
 
   hasActiveOperations(remote: Remote): boolean {
     return (
-      this.isMounted(remote) || !!this.getActiveSyncOperationType(remote) || this.isServing(remote)
+      this.isMounted(remote) ||
+      remote.status.sync.active ||
+      remote.status.copy.active ||
+      remote.status.move.active ||
+      remote.status.bisync.active ||
+      this.isServing(remote)
     );
   }
 }

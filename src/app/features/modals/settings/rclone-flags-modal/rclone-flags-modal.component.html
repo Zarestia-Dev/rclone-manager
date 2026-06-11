@@ -51,12 +51,17 @@
                 <div class="config-item-content">
                   <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
                   <div class="config-item-text">
-                    <span class="config-item-title">{{ result.option.FieldName }}</span>
+                    <span class="config-item-title">{{
+                      result.option.Name
+                        | rcloneOptionTranslate
+                          : 'title'
+                          : result.option.FieldName || result.option.Name
+                    }}</span>
                     <small class="config-item-description">
                       {{ result.service | titlecase }} > {{ result.category }}
                     </small>
                     <small class="config-item-description result-help">{{
-                      result.option.Help
+                      result.option.Name | rcloneOptionTranslate: 'help' : result.option.Help
                     }}</small>
                   </div>
                 </div>
@@ -207,12 +212,10 @@
       </div>
 
       @if (hasSearchQuery()) {
-        <div class="search-results-info">
-          <small>{{
-            'modals.rcloneFlags.search.showing'
-              | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
-          }}</small>
-        </div>
+        <small class="search-results-info">{{
+          'modals.rcloneFlags.search.showing'
+            | translate: { count: filteredOptionsCount(), total: totalOptionsCount() }
+        }}</small>
       }
 
       @if (filteredOptionsCount() === 0 && hasSearchQuery()) {

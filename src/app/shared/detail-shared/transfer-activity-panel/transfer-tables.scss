@@ -22,12 +22,10 @@
       &:hover {
         background: rgba(var(--primary-color-rgb), var(--background-opacity));
       }
-
       &:last-child {
         border-bottom: none;
       }
 
-      // --- ROW HEADER ---
       .transfer-header {
         display: flex;
         align-items: center;
@@ -37,7 +35,7 @@
         .file-info {
           display: flex;
           align-items: center;
-          gap: var(--space-sm);
+          gap: var(--space-xs);
           min-width: 0;
           flex: 1;
 
@@ -47,7 +45,6 @@
             min-width: 18px;
             color: var(--dim-color);
           }
-
           .file-name {
             font-weight: 600;
             color: var(--window-fg-color);
@@ -58,25 +55,22 @@
           }
         }
 
-        .progress-badge {
-          .percentage-text {
-            font-size: var(--font-size-sm);
-            font-weight: 600;
-            color: var(--window-fg-color);
-            font-family: var(--font-mono);
+        .progress-badge .percentage-text {
+          font-size: var(--font-size-sm);
+          font-weight: 600;
+          color: var(--window-fg-color);
+          font-family: var(--font-mono);
 
-            &.preparing,
-            &.finalizing {
-              font-family: inherit;
-              color: var(--dim-color);
-              font-size: var(--font-size-xs);
-              font-style: italic;
-            }
+          &.preparing,
+          &.finalizing {
+            font-family: inherit;
+            color: var(--dim-color);
+            font-size: var(--font-size-xs);
+            font-style: italic;
           }
         }
       }
 
-      // --- ROW PATHS ---
       .transfer-paths {
         display: flex;
         align-items: center;
@@ -92,7 +86,6 @@
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-
           &.src {
             color: var(--primary-color);
           }
@@ -100,7 +93,6 @@
             color: var(--accent-color);
           }
         }
-
         .arrow-icon {
           width: 16px;
           height: 16px;
@@ -108,17 +100,14 @@
         }
       }
 
-      // --- PROGRESS BAR ---
       .transfer-progress {
         margin-left: 26px;
-
         mat-progress-bar {
           height: 4px;
           border-radius: 2px;
         }
       }
 
-      // --- ROW FOOTER ---
       .transfer-footer {
         display: flex;
         align-items: center;
@@ -153,7 +142,6 @@
               width: 6px;
               height: 6px;
               border-radius: 50%;
-
               &.speed-fast {
                 background-color: var(--accent-color);
               }
@@ -165,16 +153,13 @@
               }
             }
           }
-
           .eta-text {
             font-weight: 600;
             color: var(--primary-color);
           }
-
           .time-text {
             color: var(--dim-color);
           }
-
           .duration-badge {
             font-size: 10px;
             padding: 1px 5px;
@@ -188,7 +173,6 @@
     }
   }
 
-  // --- EMPTY STATE ---
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -205,14 +189,12 @@
       opacity: 0.5;
       margin-bottom: 12px;
     }
-
     span {
       font-size: var(--font-size-base);
       font-weight: 500;
       color: var(--window-fg-color);
       margin-bottom: 4px;
     }
-
     p {
       font-size: var(--font-size-sm);
       margin: 0;
@@ -222,28 +204,21 @@
   }
 }
 
-// Responsive Adjustments
 @media (max-width: 768px) {
   .transfer-table-container {
     max-height: clamp(250px, 45vh, 500px);
 
     .transfer-list .transfer-row-item {
       padding: var(--space-xs) var(--space-sm);
-
-      .transfer-paths {
-        margin-left: 0;
-      }
-
-      .transfer-progress {
-        margin-left: 0;
-      }
-
+      .transfer-paths,
+      .transfer-progress,
       .transfer-footer {
         margin-left: 0;
+      }
+      .transfer-footer {
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
-
         .stats-left,
         .stats-right {
           width: 100%;

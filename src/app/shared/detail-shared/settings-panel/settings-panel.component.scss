@@ -26,6 +26,29 @@ mat-expansion-panel {
 }
 
 // Settings Grid (existing styles - preserved)
+.groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.settings-group-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .group-section-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--mat-sys-primary);
+    margin: 0;
+    padding: var(--space-xs);
+    border-radius: var(--radius-xxs);
+    background: var(--sidebar-bg-color);
+  }
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

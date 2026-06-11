@@ -1,10 +1,10 @@
 import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-completed-transfers-table',
@@ -16,14 +16,7 @@ import { CompletedTransfer } from '@app/types';
       @if (transfers().length > 0) {
         <div class="transfer-list">
           @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
-            <div
-              class="transfer-row-item completed-item"
-              [class.error]="transfer.status === 'failed'"
-              [class.checked]="transfer.status === 'checked'"
-              [class.partial]="transfer.status === 'partial'"
-              [class.success]="transfer.status === 'completed'"
-            >
-              <!-- Header Row -->
+            <div class="transfer-row-item completed-item" [class]="transfer.status">
               <div class="transfer-header">
                 <div class="file-info">
                   <mat-icon
@@ -45,20 +38,14 @@ import { CompletedTransfer } from '@app/types';
                 </div>
               </div>
 
-              <!-- Path Display (srcFs -> dstFs) -->
               @if (transfer.srcFs || transfer.dstFs) {
                 <div class="transfer-paths">
-                  <code class="path-pill src">
-                    {{ transfer.srcFs || '?' }}
-                  </code>
+                  <code class="path-pill src">{{ transfer.srcFs || '?' }}</code>
                   <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <code class="path-pill dst">
-                    {{ transfer.dstFs || '?' }}
-                  </code>
+                  <code class="path-pill dst">{{ transfer.dstFs || '?' }}</code>
                 </div>
               }
 
-              <!-- Footer Stats -->
               <div class="transfer-footer">
                 <div class="stats-left">
                   <span class="size-text">
@@ -80,9 +67,7 @@ import { CompletedTransfer } from '@app/types';
                 </div>
                 <div class="stats-right">
                   @if (transfer.completedAt) {
-                    <span class="time-text">
-                      {{ transfer.relativeTime }}
-                    </span>
+                    <span class="time-text">{{ transfer.relativeTime }}</span>
                   }
                   @if (transfer.duration) {
                     <span class="duration-badge">{{ transfer.duration }}</span>
@@ -113,34 +98,35 @@ export class CompletedTransfersTableComponent {
     this.lang();
 
     return this.transfers().map(transfer => {
-      const relativeTime = transfer.completedAt ? this.getRelativeTime(transfer.completedAt) : '';
-      const duration =
-        transfer.startedAt && transfer.completedAt && transfer.status === 'completed'
-          ? this.getDuration(transfer.startedAt, transfer.completedAt)
-          : '';
-
       let badgeClass = 'p-primary';
       let badgeIcon = 'circle-check';
       let badgeText = 'shared.transferActivity.status.completed';
 
-      if (transfer.status === 'failed') {
-        badgeClass = 'p-warn';
-        badgeIcon = 'circle-exclamation';
-        badgeText = 'shared.transferActivity.status.failed';
-      } else if (transfer.status === 'checked') {
-        badgeClass = 'p-accent';
-        badgeIcon = 'circle-check';
-        badgeText = 'shared.transferActivity.status.checked';
-      } else if (transfer.status === 'partial') {
-        badgeClass = 'p-orange';
-        badgeIcon = 'circle-exclamation';
-        badgeText = 'shared.transferActivity.status.partial';
+      switch (transfer.status) {
+        case 'failed':
+          badgeClass = 'p-warn';
+          badgeIcon = 'circle-exclamation';
+          badgeText = 'shared.transferActivity.status.failed';
+          break;
+        case 'checked':
+          badgeClass = 'p-accent';
+          badgeIcon = 'circle-check';
+          badgeText = 'shared.transferActivity.status.checked';
+          break;
+        case 'partial':
+          badgeClass = 'p-orange';
+          badgeIcon = 'circle-exclamation';
+          badgeText = 'shared.transferActivity.status.partial';
+          break;
       }
 
       return {
         ...transfer,
-        relativeTime,
-        duration,
+        relativeTime: transfer.completedAt ? this.getRelativeTime(transfer.completedAt) : '',
+        duration:
+          transfer.startedAt && transfer.completedAt && transfer.status === 'completed'
+            ? this.getDuration(transfer.startedAt, transfer.completedAt)
+            : '',
         badgeClass,
         badgeIcon,
         badgeText,
@@ -150,39 +136,36 @@ export class CompletedTransfersTableComponent {
   });
 
   private getRelativeTime(timestamp: string): string {
-    const diff = Date.now() - new Date(timestamp).getTime();
-    const minutes = Math.floor(diff / 60_000);
+    const diff = Date.now() - Date.parse(timestamp);
+    const minutes = Math.floor(diff / 60000);
+    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
     const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0)
-      return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
-    if (hours > 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
-    if (minutes > 0)
+    if (hours <= 0)
       return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
-    return this.translate.instant('shared.transferActivity.time.justNow');
+    const days = Math.floor(hours / 24);
+    if (days <= 0)
+      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
+    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
   }
 
   private getDuration(startedAt: string, completedAt: string): string {
-    const diff = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    const diff = Date.parse(completedAt) - Date.parse(startedAt);
     if (diff < 1000)
       return this.translate.instant('shared.transferActivity.time.duration.lessThanSecond');
 
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
+    if (minutes <= 0)
+      return this.translate.instant('shared.transferActivity.time.duration.seconds', { seconds });
     const hours = Math.floor(minutes / 60);
-
-    if (hours > 0)
-      return this.translate.instant('shared.transferActivity.time.duration.hours', {
-        hours,
-        minutes: minutes % 60,
-      });
-    if (minutes > 0)
+    if (hours <= 0)
       return this.translate.instant('shared.transferActivity.time.duration.minutes', {
         minutes,
         seconds: seconds % 60,
       });
-    return this.translate.instant('shared.transferActivity.time.duration.seconds', { seconds });
+    return this.translate.instant('shared.transferActivity.time.duration.hours', {
+      hours,
+      minutes: minutes % 60,
+    });
   }
 }

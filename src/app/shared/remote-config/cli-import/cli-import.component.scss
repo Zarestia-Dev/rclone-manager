@@ -68,7 +68,6 @@
   textarea {
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
-    line-height: 1.5;
   }
 
   .validation-error-message {
@@ -150,7 +149,7 @@
   background-color: var(--view-bg-color);
   border-radius: var(--border-radius);
   padding: var(--space-sm);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--box-shadow);
 
   h5 {
     margin: 0;
@@ -168,13 +167,13 @@
   }
 
   .success-header {
-    color: var(--success-color);
+    color: var(--primary-color);
   }
   .info-header {
     color: var(--accent-color);
   }
   .error-header {
-    color: var(--destructive-color);
+    color: var(--warn-color);
   }
 
   .macro-desc {
@@ -211,15 +210,11 @@
     }
 
     &.unmapped-item {
-      color: var(--destructive-color);
+      color: var(--warn-color);
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 4px;
-
-      .flag-raw-text {
-        font-family: var(--font-mono);
-      }
 
       .flag-guidance-text {
         font-size: var(--font-size-xs);
@@ -238,7 +233,7 @@
   background-color: var(--view-bg-color);
   border-radius: var(--border-radius);
   padding: var(--space-md);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--box-shadow);
   margin-top: var(--space-xs);
 
   h4 {
@@ -246,18 +241,8 @@
     font-size: var(--font-size-md);
     font-weight: 600;
   }
-
-  .apply-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-sm);
-    margin-top: var(--space-xs);
-  }
 }
 
-.font-mono {
-  font-family: var(--font-mono);
-}
 .capitalize {
   text-transform: capitalize;
 }
@@ -272,11 +257,8 @@
   border: 1px solid var(--accent-color);
   padding: var(--space-sm);
   border-radius: var(--border-radius);
-  margin-bottom: var(--space-sm);
-  line-height: 1.4;
 
   mat-icon {
-    flex-shrink: 0;
     color: var(--accent-color);
   }
 

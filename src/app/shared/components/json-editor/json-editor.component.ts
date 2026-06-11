@@ -78,6 +78,10 @@ function toCamelCase(str: string): string {
   return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());
 }
 
+function toSnakeCase(str: string): string {
+  return str.replace(/^--?/, '').replace(/-/g, '_');
+}
+
 const PROFILE_TYPES: SharedProfileType[] = ['sync', 'copy', 'move', 'bisync', 'mount', 'serve'];
 const NESTED_OPTIONS_TYPES: SharedProfileType[] = ['vfs', 'filter', 'backend'];
 const HAS_OPTIONS_GROUP_TYPES: SharedProfileType[] = [...PROFILE_TYPES, ...NESTED_OPTIONS_TYPES];
@@ -399,7 +403,9 @@ export class JsonEditorComponent {
         const matched = this.lookupOption(kText);
         const suggestion = matched
           ? getControlKey(matched.option, flagType || undefined)
-          : toCamelCase(kText);
+          : flagType === 'serve'
+            ? toSnakeCase(kText)
+            : toCamelCase(kText);
         return {
           from,
           to,
@@ -594,7 +600,9 @@ export class JsonEditorComponent {
         const matched = this.lookupOption(key);
         const suggestion = matched
           ? getControlKey(matched.option, flagType || undefined)
-          : toCamelCase(key);
+          : flagType === 'serve'
+            ? toSnakeCase(key)
+            : toCamelCase(key);
         return { key, suggestion };
       }
     }
@@ -621,7 +629,9 @@ export class JsonEditorComponent {
         const matched = this.lookupOption(key);
         const suggestion = matched
           ? getControlKey(matched.option, flagType || undefined)
-          : toCamelCase(key);
+          : flagType === 'serve'
+            ? toSnakeCase(key)
+            : toCamelCase(key);
         return { cliArg: { key, suggestion } };
       }
 
@@ -724,7 +734,12 @@ export class JsonEditorComponent {
 
     if (isProfile) {
       // Validate top level keys (excluding _config/mountOpt, srcFs/dstFs, etc.)
-      const topLevelKeys = type ? new Set(getTopLevelKeysForProfile(type)) : new Set<string>();
+      const topLevelKeys =
+        type === 'serve'
+          ? new Set(['fs', 'type', ...this.fieldDefs().map(f => f.Name)])
+          : type
+            ? new Set(getTopLevelKeysForProfile(type))
+            : new Set<string>();
 
       // Check CLI arguments at top level
       const cliCheck = this.checkCliArguments(parsed);

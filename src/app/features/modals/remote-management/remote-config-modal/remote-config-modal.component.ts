@@ -29,7 +29,6 @@ import { JobManagementService } from '../../../../services/operations/job-manage
 import { MountManagementService } from '../../../../services/operations/mount-management.service';
 import { AppSettingsService } from '../../../../services/settings/app-settings.service';
 import { ServeManagementService } from '../../../../services/operations/serve-management.service';
-import { NautilusService } from '../../../../services/ui/nautilus.service';
 import { ModalService } from '../../../../services/ui/modal.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { IconService } from '../../../../services/ui/icon.service';
@@ -54,6 +53,7 @@ import {
   RuntimeRemoteConfig,
   SharedProfileType,
   FilterConfig,
+  LINKED_PROFILE_TYPES,
 } from '@app/types';
 import { CopyToClipboardDirective } from '@app/directives';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
@@ -131,7 +131,6 @@ export class RemoteConfigModalComponent {
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData;
   private readonly serveManagementService = inject(ServeManagementService);
   readonly iconService = inject(IconService);
-  private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
@@ -140,6 +139,7 @@ export class RemoteConfigModalComponent {
   // ── Static config ─────────────────────────────────────────────────────────────
 
   readonly FLAG_TYPES = FLAG_TYPES;
+  readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
   readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
     mount: 'hard-drive',

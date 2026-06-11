@@ -4,8 +4,8 @@
   </button>
   <p>
     {{ 'modals.jobDetail.title' | translate: { id: jobData().jobid } }}
-    @if (jobData().dry_run === true) {
-      <span class="app-pill p-accent" style="margin-left: var(--space-md)">
+    @if (jobData().dry_run) {
+      <span class="app-pill p-accent dry-run-pill">
         {{ 'detailShared.jobs.dryRun' | translate }}
       </span>
     }
@@ -16,7 +16,6 @@
 </header>
 
 <main>
-  <!-- Section 1: Overview & Environment -->
   <div class="dashboard-grids">
     <div class="counter-grid">
       <span class="grid-header">
@@ -71,36 +70,34 @@
       @if (identifiers().group) {
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.group' | translate }}</span>
-          <span class="value mono truncate" [matTooltip]="identifiers().group">{{
+          <code class="value truncate" [matTooltip]="identifiers().group">{{
             identifiers().group
-          }}</span>
+          }}</code>
         </div>
       }
       @if (identifiers().executeId) {
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.executeId' | translate }}</span>
-          <span class="value mono truncate" [matTooltip]="identifiers().executeId">{{
+          <code class="value truncate" [matTooltip]="identifiers().executeId">{{
             identifiers().executeId
-          }}</span>
+          }}</code>
         </div>
       }
     </div>
   </div>
 
-  <!-- Section 2: Paths -->
   <div class="counter-grid">
     <span class="grid-header">
       <mat-icon [svgIcon]="isMount() ? 'mount' : 'folder-open'"></mat-icon>
       {{ 'modals.jobDetail.sections.paths' | translate }}
     </span>
     <app-path-display
+      class="embedded-path-display"
       [config]="pathDisplayConfig()"
       (openPath)="onOpenPath($event)"
-      style="display: block; padding: 10px"
     ></app-path-display>
   </div>
 
-  <!-- Section 3: Detailed Statistics -->
   @if (showStatistics()) {
     <div class="dashboard-grids">
       <div class="counter-grid">
@@ -109,7 +106,6 @@
           {{ statisticsTitle() | translate: { op: (jobData().job_type | titlecase) } }}
         </span>
 
-        <!-- Main Progress -->
         <div class="progress-details">
           <div class="progress-info">
             <span class="main-percentage">{{ progress() | number: '1.0-1' }}%</span>
@@ -140,34 +136,33 @@
       </div>
     </div>
 
-    <!-- Counter Grids -->
     <div class="dashboard-grids">
-      <!-- File Counters -->
       <div class="counter-grid">
         <span class="grid-header">{{ 'modals.jobDetail.fields.files' | translate }}</span>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.transferred' | translate }}</span>
-          <span class="value">{{ fileCounters()?.transfers }}</span>
-        </div>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.checks' | translate }}</span>
-          <span class="value">{{ fileCounters()?.checks }}</span>
-        </div>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.deleted' | translate }}</span>
-          <span class="value">{{ fileCounters()?.deletes }}</span>
-        </div>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.renamed' | translate }}</span>
-          <span class="value">{{ fileCounters()?.renames }}</span>
-        </div>
-        <div class="grid-item">
-          <span class="label">{{ 'modals.jobDetail.fields.listed' | translate }}</span>
-          <span class="value">{{ fileCounters()?.listed }}</span>
-        </div>
+        @if (fileCounters(); as counters) {
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.transferred' | translate }}</span
+            ><span class="value">{{ counters.transfers }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.checks' | translate }}</span
+            ><span class="value">{{ counters.checks }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.deleted' | translate }}</span
+            ><span class="value">{{ counters.deletes }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.renamed' | translate }}</span
+            ><span class="value">{{ counters.renames }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label">{{ 'modals.jobDetail.fields.listed' | translate }}</span
+            ><span class="value">{{ counters.listed }}</span>
+          </div>
+        }
       </div>
 
-      <!-- Server Side & Logic -->
       <div class="counter-grid">
         <span class="grid-header">Server-side & Flags</span>
         <div class="grid-item" [class.active]="jobData().stats.serverSideCopies > 0">
@@ -200,25 +195,20 @@
         </div>
       </div>
     </div>
-  }
 
-  <!-- Section 4: Transfer Activity -->
-  @if (showStatistics()) {
     <app-transfer-activity-panel [config]="transferActivityConfig()"></app-transfer-activity-panel>
   }
 
-  <!-- Section 6: Errors Log -->
-  @if (jobData().error || lastError()) {
+  @if (lastError(); as err) {
     <section class="detail-section">
       <span class="section-title error">
         <mat-icon svgIcon="circle-exclamation"></mat-icon>
         {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <pre
-        class="error-entry"
-        [appCopyToClipboard]="lastError() || jobData().error"
-        [matTooltip]="'common.copy' | translate"
-      ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ lastError() || jobData().error }}</span></pre>
+      <pre class="error-entry" [appCopyToClipboard]="err" [matTooltip]="'common.copy' | translate">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+        <span>{{ err }}</span>
+      </pre>
     </section>
   }
 </main>

@@ -4,21 +4,15 @@ import { firstValueFrom } from 'rxjs';
 import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
-/**
- * Service for remote file system operations
- * Handles browsing, metadata, and active file operations (copy, move, delete, etc.)
- */
 @Injectable({ providedIn: 'root' })
 export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
-    try {
-      return await this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
-    } catch (error) {
-      console.error('Error getting filesystem info:', error);
-      throw error;
-    }
+    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group }).catch(e => {
+      console.error(e);
+      throw e;
+    });
   }
 
   async getDiskUsage(
@@ -109,7 +103,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
   }
 
   async transferItems(
-    items: { remote: string; path: string; name: string; isDir: boolean }[],
+    items: any[],
     dstRemote: string,
     dstPath: string,
     mode: 'copy' | 'move',
@@ -126,11 +120,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     });
   }
 
-  async deleteItems(
-    items: { remote: string; path: string; isDir: boolean }[],
-    source?: Origin,
-    group?: string
-  ): Promise<string> {
+  async deleteItems(items: any[], source?: Origin, group?: string): Promise<string> {
     return this.invokeCommand<string>('delete', { items, origin: source, group });
   }
 
@@ -140,12 +130,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     source?: Origin,
     group?: string
   ): Promise<string> {
-    return this.invokeCommand<string>('remove_empty_dirs', {
-      remote,
-      path,
-      origin: source,
-      group,
-    });
+    return this.invokeCommand<string>('remove_empty_dirs', { remote, path, origin: source, group });
   }
 
   async rename(
@@ -238,25 +223,25 @@ export class RemoteFileOperationsService extends TauriBaseService {
     totalFiles?: number,
     jobId?: number
   ): Promise<string> {
-    const formData = new FormData();
-    formData.append('remote', remote);
-    formData.append('path', path);
-    if (source) formData.append('origin', JSON.stringify(source));
-    if (batchId) formData.append('batchId', batchId);
-    if (jobId !== undefined) formData.append('jobId', jobId.toString());
-    if (fileIndex !== undefined) formData.append('fileIndex', fileIndex.toString());
-    if (totalFiles !== undefined) formData.append('totalFiles', totalFiles.toString());
-    formData.append('file', file, overrideName || file.name);
+    const fd = new FormData();
+    fd.append('remote', remote);
+    fd.append('path', path);
+    if (source) fd.append('origin', JSON.stringify(source));
+    if (batchId) fd.append('batchId', batchId);
+    if (jobId !== undefined) fd.append('jobId', jobId.toString());
+    if (fileIndex !== undefined) fd.append('fileIndex', fileIndex.toString());
+    if (totalFiles !== undefined) fd.append('totalFiles', totalFiles.toString());
+    fd.append('file', file, overrideName || file.name);
 
-    const uploadUrl = `${this.apiClient.getApiBase()}/upload`;
-    const response = await firstValueFrom(
-      this.http.post<{ success: boolean; data: string; error?: string }>(uploadUrl, formData, {
-        withCredentials: true,
-      })
+    const res = await firstValueFrom(
+      this.http.post<{ success: boolean; data: string; error?: string }>(
+        `${this.apiClient.getApiBase()}/upload`,
+        fd,
+        { withCredentials: true }
+      )
     );
-
-    if (response.success) return response.data;
-    throw new Error(response.error || 'Upload failed');
+    if (res.success) return res.data;
+    throw new Error(res.error || 'Upload failed');
   }
 
   async uploadWebFilesBatch(
@@ -265,17 +250,16 @@ export class RemoteFileOperationsService extends TauriBaseService {
     files: { file: File; relativePath: string }[],
     source?: Origin
   ): Promise<{ successCount: number; failedPaths: string[] }> {
-    const batchId = Date.now().toString();
-    const jobId = Date.now();
-    const totalFiles = files.length;
-    const totalBytes = files.reduce((sum, f) => sum + f.file.size, 0);
-
+    const batchId = Date.now().toString(),
+      jobId = Date.now(),
+      totalFiles = files.length,
+      totalBytes = files.reduce((s, f) => s + f.file.size, 0);
     await this.registerPreparingJob(jobId, remote, path, totalFiles, totalBytes, source);
 
-    let uploadedBytes = 0;
-    const completedItems: unknown[] = [];
-    const failedPaths: string[] = [];
-    let successCount = 0;
+    let uploadedBytes = 0,
+      successCount = 0;
+    const completed: any[] = [],
+      failedPaths: string[] = [];
 
     for (let i = 0; i < totalFiles; i++) {
       const { file, relativePath } = files[i];
@@ -293,28 +277,26 @@ export class RemoteFileOperationsService extends TauriBaseService {
         );
         successCount++;
         uploadedBytes += file.size;
-        completedItems.push({
+        completed.push({
           name: relativePath,
           size: file.size,
           bytes: file.size,
           completed_at: new Date().toISOString(),
         });
-
         await this.updateJobStats(jobId, {
           totalBytes,
           bytes: uploadedBytes,
           transfers: successCount,
           totalTransfers: totalFiles,
-          completed: completedItems,
+          completed,
           transferring: [],
           preparing: true,
         });
       } catch (err) {
-        console.error(`Upload failed for ${relativePath}:`, err);
+        console.error(err);
         failedPaths.push(relativePath);
       }
     }
-
     return { successCount, failedPaths };
   }
 
@@ -382,10 +364,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     plain?: boolean,
     filesOnly?: boolean,
     dirsOnly?: boolean
-  ): Promise<{
-    success: boolean;
-    items: { size: number; date: string; time: string; path: string; isDir: boolean }[];
-  }> {
+  ): Promise<any> {
     return this.invokeCommand('archive_list', {
       source,
       long,

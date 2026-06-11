@@ -355,15 +355,6 @@
         background: var(--hover-bg-color);
       }
     }
-
-    .remove-btn {
-      .destructive-icon {
-        color: var(--destructive-color);
-      }
-      &:hover {
-        background: rgba(var(--destructive-color-rgb), 0.1);
-      }
-    }
   }
 }
 

@@ -218,7 +218,11 @@
       "noData": "Yapılandırma verisi mevcut değil",
       "edit": "Ayarları Düzenle",
       "restricted": "KISITLAMA",
-      "invalidJson": "[Geçersiz JSON]"
+      "invalidJson": "[Geçersiz JSON]",
+      "categories": {
+        "app": "Uygulama Ayarları",
+        "rclone": "Rclone Seçenekleri"
+      }
     }
   },
   "rcloneUpdate": {

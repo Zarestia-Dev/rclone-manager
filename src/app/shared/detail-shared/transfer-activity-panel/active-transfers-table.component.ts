@@ -25,7 +25,6 @@ import { TransferFile } from '@app/types';
         <div class="transfer-list">
           @for (transfer of enrichedTransfers(); track transfer.name) {
             <div class="transfer-row-item">
-              <!-- Header Row: Icon, File Name, and Percentage -->
               <div class="transfer-header">
                 <div class="file-info">
                   <mat-icon
@@ -67,20 +66,14 @@ import { TransferFile } from '@app/types';
                 </div>
               </div>
 
-              <!-- Path Display (srcFs -> dstFs) -->
               @if (transfer.srcFs || transfer.dstFs) {
                 <div class="transfer-paths">
-                  <code class="path-pill src">
-                    {{ transfer.srcFs || '?' }}
-                  </code>
+                  <code class="path-pill src">{{ transfer.srcFs || '?' }}</code>
                   <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <code class="path-pill dst">
-                    {{ transfer.dstFs || '?' }}
-                  </code>
+                  <code class="path-pill dst">{{ transfer.dstFs || '?' }}</code>
                 </div>
               }
 
-              <!-- Progress Bar -->
               <div class="transfer-progress">
                 <mat-progress-bar
                   [mode]="transfer.isPreparing ? 'indeterminate' : 'determinate'"
@@ -88,12 +81,10 @@ import { TransferFile } from '@app/types';
                 ></mat-progress-bar>
               </div>
 
-              <!-- Stats Footer -->
               <div class="transfer-footer">
                 <div class="stats-left">
                   <span class="size-text">
-                    {{ transfer.bytes | formatFileSize }} /
-                    {{ transfer.size | formatFileSize }}
+                    {{ transfer.bytes | formatFileSize }} / {{ transfer.size | formatFileSize }}
                   </span>
                 </div>
                 <div class="stats-right">
@@ -126,24 +117,15 @@ export class ActiveTransfersTableComponent {
   readonly transfers = input.required<TransferFile[]>();
 
   protected readonly enrichedTransfers = computed(() => {
-    return this.transfers().map(transfer => {
-      const isPreparing =
-        transfer.percentage === undefined ||
-        transfer.percentage === null ||
-        isNaN(transfer.percentage);
-
-      let speedClass = 'speed-slow';
-      if (transfer.speed > 10 * 1024 * 1024) {
-        speedClass = 'speed-fast';
-      } else if (transfer.speed > 1 * 1024 * 1024) {
-        speedClass = 'speed-medium';
-      }
-
-      return {
-        ...transfer,
-        isPreparing,
-        speedClass,
-      };
-    });
+    return this.transfers().map(transfer => ({
+      ...transfer,
+      isPreparing: transfer.percentage == null || isNaN(transfer.percentage),
+      speedClass:
+        transfer.speed > 10485760
+          ? 'speed-fast'
+          : transfer.speed > 1048576
+            ? 'speed-medium'
+            : 'speed-slow',
+    }));
   });
 }
