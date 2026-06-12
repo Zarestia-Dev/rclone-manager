@@ -9,7 +9,7 @@ use crate::{
     rclone::{
         backend::BackendManager,
         commands::{
-            common::redact_sensitive_values,
+            common::redact_value,
             job::stop_job,
             mount::unmount_remote,
             serve::stop_serve,
@@ -176,30 +176,31 @@ pub async fn create_remote(
         return Err("Missing remote type".into());
     };
 
-    log_operation(
-        LogLevel::Info,
-        Some(name.clone()),
-        Some("Remote creation".to_string()),
-        "Creating remote".to_string(),
-        Some(json!({
-            "type": remote_type,
-            "parameters": redact_sensitive_values(&parameters, &app),
-        })),
-    );
-
-    ensure_oauth_process(&app)
-        .await
-        .map_err(|e| e.to_string())?;
-
     let mut body = json!({
         "name":       name,
         "type":       remote_type,
         "parameters": parameters,
     });
 
-    if let Some(extra) = opt {
-        body["opt"] = extra;
+    if let Some(ref extra) = opt {
+        body["opt"] = extra.clone();
     }
+
+    let redacted_payload = redact_value(&body, &app);
+
+    log_operation(
+        LogLevel::Info,
+        Some(name.clone()),
+        Some("Remote creation".to_string()),
+        "Creating remote".to_string(),
+        Some(json!({
+            "arguments": redacted_payload,
+        })),
+    );
+
+    ensure_oauth_process(&app)
+        .await
+        .map_err(|e| e.to_string())?;
 
     call_config(&app, config::CREATE, body).await.map_err(|e| {
         log_operation(
@@ -241,9 +242,17 @@ pub async fn update_remote(
     parameters: HashMap<String, Value>,
     opt: Option<Value>,
 ) -> Result<(), String> {
-    let Some(remote_type) = parameters.get("type").and_then(|v| v.as_str()) else {
+    let Some(_remote_type) = parameters.get("type").and_then(|v| v.as_str()) else {
         return Err("Missing remote type".into());
     };
+
+    let mut body = json!({ "name": name, "parameters": parameters });
+
+    if let Some(ref extra) = opt {
+        body["opt"] = extra.clone();
+    }
+
+    let redacted_payload = redact_value(&body, &app);
 
     log_operation(
         LogLevel::Info,
@@ -251,20 +260,13 @@ pub async fn update_remote(
         Some("Remote update".to_string()),
         "Updating remote".to_string(),
         Some(json!({
-            "type": remote_type,
-            "parameters": redact_sensitive_values(&parameters, &app),
+            "arguments": redacted_payload,
         })),
     );
 
     ensure_oauth_process(&app)
         .await
         .map_err(|e| e.to_string())?;
-
-    let mut body = json!({ "name": name, "parameters": parameters });
-
-    if let Some(extra) = opt {
-        body["opt"] = extra;
-    }
 
     call_config(&app, config::UPDATE, body).await.map_err(|e| {
         log_operation(

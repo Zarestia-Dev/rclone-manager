@@ -130,6 +130,7 @@ pub struct CoreSettings {
             "--rc-user",
             "--rc-pass",
             "--rc-no-auth",
+            "--rc-template",
             "--log-file-max-size",
             "--log-file-max-backups",
         )

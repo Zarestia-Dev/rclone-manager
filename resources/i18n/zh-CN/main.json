@@ -893,7 +893,7 @@
       },
       "actions": {
         "pollInterval": "轮询间隔",
-        "pollIntervalNotSupported": "不支持 ChangeNotify",
+        "pollIntervalNotSupported": "不支持轮询间隔",
         "updateInterval": "更新轮询间隔",
         "refreshMetadata": "刷新元数据",
         "clearCache": "清除元数据缓存",

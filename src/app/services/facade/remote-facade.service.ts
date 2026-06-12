@@ -9,14 +9,13 @@ import {
   linkedSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, concatMap, from, of } from 'rxjs';
+import { merge, concatMap, from } from 'rxjs';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
-import { RemoteMetadataService } from '../remote/remote-metadata.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { FileSystemService } from '../operations/file-system.service';
@@ -72,7 +71,6 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly serveService = inject(ServeManagementService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly remoteOpsService = inject(RemoteFileOperationsService);
-  private readonly metadataService = inject(RemoteMetadataService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListeners = inject(EventListenersService);
   private readonly fileSystemService = inject(FileSystemService);
@@ -199,19 +197,24 @@ export class RemoteFacadeService extends TauriBaseService {
     group?: string,
     forceRefresh = false
   ): Promise<DiskUsage | null> {
-    const features = await this.metadataService.getFeatures(remoteName, source);
     const state = this.getOrCreateRemoteState(remoteName);
+    const features = await this.remoteService.getFeatures(
+      remoteName,
+      state.base().type,
+      source,
+      group
+    );
 
-    if (features.error) {
+    if (features.Error) {
       state.disk.update(cur => ({
         ...cur,
         loading: false,
         error: true,
-        errorMessage: features.error,
+        errorMessage: features.Error,
       }));
       return null;
     }
-    if (!features.hasAbout) {
+    if (!features.About) {
       state.disk.update(cur => ({ ...cur, notSupported: true, loading: false, error: false }));
       return null;
     }
@@ -257,12 +260,14 @@ export class RemoteFacadeService extends TauriBaseService {
       ]);
 
       const incomingNames = Object.keys(configs);
+      this.remoteNames.set(incomingNames);
+      this.pathService.setRemoteNames(incomingNames);
       const currentNames = Array.from(this.remoteStates.keys());
 
       for (const name of currentNames) {
         if (!configs[name]) {
           this.remoteStates.delete(name);
-          this.metadataService.clearCache(name);
+          this.remoteService.clearCache(name);
         }
       }
 
@@ -274,8 +279,8 @@ export class RemoteFacadeService extends TauriBaseService {
 
         if (state) {
           if (JSON.stringify(state.base().config) !== JSON.stringify(config)) {
-            this.metadataService.clearCache(name);
-            void this.metadataService.getFeatures(name);
+            this.remoteService.clearCache(name);
+            void this.remoteService.getFeatures(name, config.type);
           }
           state.base.update(b => ({ ...b, config }));
         } else {
@@ -284,8 +289,6 @@ export class RemoteFacadeService extends TauriBaseService {
         }
       }
 
-      this.remoteNames.set(incomingNames);
-      this.pathService.setRemoteNames(incomingNames);
       this.remoteSettings.set(settings);
       if (newAdded) this.loadDiskUsageInBackground();
     } catch (error) {
@@ -359,7 +362,8 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   featuresSignal(remoteName: string): Signal<RemoteFeatures> {
-    return this.metadataService.getFeaturesSignal(remoteName);
+    const remote = this.activeRemotes().find(r => r.name === remoteName);
+    return this.remoteService.getFeaturesSignal(remoteName, remote?.type);
   }
 
   getActionState(remoteName: string): ActionState[] {
@@ -606,19 +610,33 @@ export class RemoteFacadeService extends TauriBaseService {
 
   loadDiskUsageInBackground(remotes?: Remote[]): void {
     const generation = ++this.backgroundLoadGeneration;
-    const targets = (remotes ?? this.activeRemotes()).filter(
-      r =>
-        !r.status.diskUsage.error &&
-        !r.status.diskUsage.notSupported &&
-        r.status.diskUsage.total_space === undefined
-    );
+    const targets = remotes ?? this.activeRemotes();
     if (!targets.length) return;
 
     from(targets)
       .pipe(
-        concatMap(remote => {
-          if (generation !== this.backgroundLoadGeneration) return of(null);
-          return from(this.getCachedOrFetchDiskUsage(remote.name));
+        concatMap(async remote => {
+          if (generation !== this.backgroundLoadGeneration) return null;
+          try {
+            const features = await this.remoteService.getFeatures(remote.name, remote.type);
+            if (generation !== this.backgroundLoadGeneration) return null;
+
+            const state = this.remoteStates.get(remote.name);
+            if (!state) return null;
+
+            if (!features.About) {
+              state.disk.set({ notSupported: true, loading: false, error: false });
+              return null;
+            }
+
+            return this.getCachedOrFetchDiskUsage(remote.name);
+          } catch (e) {
+            console.error(
+              `[RemoteFacadeService] Error loading features/disk usage for ${remote.name}:`,
+              e
+            );
+            return null;
+          }
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -649,7 +667,7 @@ export class RemoteFacadeService extends TauriBaseService {
         enriched: this.createEnrichedSignal(name, baseSig),
       };
       this.remoteStates.set(name, state);
-      void this.metadataService.getFeatures(name);
+      void this.remoteService.getFeatures(name, config?.type);
     }
     return state;
   }
@@ -675,7 +693,7 @@ export class RemoteFacadeService extends TauriBaseService {
       return {
         ...enriched,
         status: { ...enriched.status, diskUsage: state.disk() },
-        features: this.metadataService.getFeaturesSignal(name)(),
+        features: this.remoteService.getFeaturesSignal(name, baseSig().type)(),
       };
     });
   }

@@ -1,79 +1,88 @@
-// RClone Manager — Minimal Service Worker for PWA installability
+// Import Google's Workbox library via CDN
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 
-const CACHE_NAME = 'rcman-v1';
-const OFFLINE_URL = '/offline.html';
+if (workbox) {
+  console.log('Workbox loaded successfully');
 
-// Install: pre-cache the app shell and offline page
-self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.addAll(['/', '/index.html', OFFLINE_URL]).catch(() => {
-        // Non-critical: caching may fail on first load, that's okay
-      })
-    )
+  const { registerRoute, setDefaultHandler, setCatchHandler } = workbox.routing;
+  const { CacheFirst, NetworkFirst, NetworkOnly } = workbox.strategies;
+  const { precacheAndRoute } = workbox.precaching;
+
+  // 1. Immediate Activation (Skip waiting and claim clients)
+  workbox.core.skipWaiting();
+  workbox.core.clientsClaim();
+
+  // 2. Precaching the App Shell & Critical Assets
+  // Workbox automatically revisions and updates these files when they change
+  precacheAndRoute([
+    { url: '/', revision: 'v2' },
+    { url: '/index.html', revision: 'v2' },
+    { url: '/offline.html', revision: 'v2' },
+    { url: 'assets/icons/files/folder.svg', revision: 'v2' },
+    { url: 'assets/icons/files/file.svg', revision: 'v2' },
+    { url: 'assets/icons/devices/hard-drive.svg', revision: 'v2' },
+    { url: 'assets/icons/devices/server.svg', revision: 'v2' },
+    { url: 'assets/icons/devices/globe.svg', revision: 'v2' },
+    { url: 'assets/icons/general/gear.svg', revision: 'v2' },
+    { url: 'assets/icons/general/info.svg', revision: 'v2' },
+    { url: 'assets/icons/navigation/chevron-left.svg', revision: 'v2' },
+    { url: 'assets/icons/navigation/chevron-right.svg', revision: 'v2' },
+    { url: 'assets/icons/navigation/chevron-up.svg', revision: 'v2' },
+    { url: 'assets/icons/navigation/chevron-down.svg', revision: 'v2' },
+    { url: 'assets/icons/titlebar/search.svg', revision: 'v2' },
+    { url: 'assets/icons/actions/rotate.svg', revision: 'v2' },
+    { url: 'assets/icons/titlebar/close.svg', revision: 'v2' },
+    { url: 'assets/icons/titlebar/add.svg', revision: 'v2' },
+    { url: 'assets/icons/adwaita/places/folder.svg', revision: 'v2' },
+    { url: 'assets/icons/adwaita/mimetypes/text-x-generic.svg', revision: 'v2' },
+  ]);
+
+  // 3. Exclusions (API, SSE Streams, Dev Server) -> Network Only
+  registerRoute(
+    ({ url, request }) =>
+      url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/health') ||
+      url.pathname.startsWith('/stream') ||
+      url.pathname.includes('/invoke') ||
+      url.pathname.includes('/events') ||
+      request.headers.get('accept')?.includes('text/event-stream') ||
+      url.port === '1420',
+    new NetworkOnly()
   );
-});
 
-// Activate: clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then(keys =>
-        Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-      )
+  // 4. Static Assets (JS, CSS, Images, Fonts) -> Cache First
+  registerRoute(
+    ({ url }) =>
+      url.pathname.includes('/assets/') ||
+      /\.(js|css|woff2?|ttf|png|jpe?g|gif|svg|ico|webmanifest)$/i.test(url.pathname),
+    new CacheFirst({
+      cacheName: 'rcman-static-assets',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 60,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+        }),
+      ],
+    })
   );
-  self.clients.claim();
-});
 
-// Fetch: network-first strategy
-// API calls and SSE are always network-only.
-// Navigation requests fall back to offline page on failure.
-// Static assets try network first, then fall back to cache.
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Never cache API calls, SSE streams, or non-GET requests
-  if (
-    event.request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/health') ||
-    url.pathname.startsWith('/stream') ||
-    event.request.url.includes('/invoke') ||
-    event.request.url.includes('/events') ||
-    event.request.headers.get('accept')?.includes('text/event-stream')
-  ) {
-    return;
-  }
-
-  // Navigation requests (HTML pages): show offline page on failure
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // Cache successful navigation responses
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(OFFLINE_URL))
-    );
-    return;
-  }
-
-  // Static assets: network-first with cache fallback
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+  // 5. Default Strategy -> Network First
+  // Handles navigation and regular page requests dynamically
+  setDefaultHandler(
+    new NetworkFirst({
+      cacheName: 'rcman-dynamic-fallback',
+    })
   );
-});
+
+  // 6. Global Catch Handler -> Offline Page Fallback
+  // If a navigation request completely fails (no network, no cache), show offline.html
+  setCatchHandler(({ event }) => {
+    if (event.request.mode === 'navigate') {
+      return workbox.precaching.matchPrecache('/offline.html');
+    }
+    return Response.error();
+  });
+
+} else {
+  console.error('Workbox failed to load!');
+}

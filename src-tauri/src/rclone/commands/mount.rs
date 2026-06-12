@@ -20,7 +20,7 @@ use crate::{
 
 use super::common::{
     FromConfig, OperationContext, fs_value_with_runtime_overrides, parse_common_config,
-    redact_sensitive_values,
+    redact_value,
 };
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
@@ -138,18 +138,13 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         return Err(error_msg);
     }
 
-    let mount_opts_map = params
-        .rclone_config
-        .get("mountOpt")
-        .and_then(|v| v.as_object())
-        .map(|obj| obj.clone().into_iter().collect())
-        .unwrap_or_default();
+    let payload = params.to_rclone_body();
 
     let log_context = json!({
         "mount_point": params.mount_point,
         "remote_name": params.remote_name,
         "mount_type": params.mount_type,
-        "options": redact_sensitive_values(&mount_opts_map, &app),
+        "arguments": redact_value(&payload, &app),
     });
 
     log_operation(
@@ -162,7 +157,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
 
     let state = app.state::<RcloneState>();
     let url = backend.url_for(mount::MOUNT);
-    let payload = params.to_rclone_body();
     let client = state.client.clone();
 
     // Build request like sync does

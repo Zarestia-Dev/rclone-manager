@@ -126,7 +126,7 @@ export class NautilusSidebarComponent {
   }
 
   supportsCleanup(remote: ExplorerRoot | null): boolean {
-    return remote ? this.remoteFacadeService.featuresSignal(remote.name)().hasCleanUp : false;
+    return remote ? this.remoteFacadeService.featuresSignal(remote.name)().CleanUp : false;
   }
 
   private _bookmarkKey(bm: FileBrowserItem): string {

@@ -893,7 +893,7 @@
       },
       "actions": {
         "pollInterval": "Intervalo de sondeo",
-        "pollIntervalNotSupported": "ChangeNotify no compatible",
+        "pollIntervalNotSupported": "Intervalo de sondeo no compatible",
         "updateInterval": "Actualizar intervalo de sondeo",
         "refreshMetadata": "Actualizar metadatos",
         "clearCache": "Borrar caché de metadatos",

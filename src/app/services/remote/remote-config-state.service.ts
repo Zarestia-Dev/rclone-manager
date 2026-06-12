@@ -755,7 +755,8 @@ export class RemoteConfigStateService {
   }
 
   applyPresets(remoteType: string): void {
-    const preset = this.presetsService.resolvePresets(remoteType);
+    const vendor = this.remoteForm.get('vendor')?.value;
+    const preset = this.presetsService.resolvePresets(remoteType, vendor);
 
     // 1. Patch VFS default profile
     if (preset.vfs) {
@@ -1127,6 +1128,22 @@ export class RemoteConfigStateService {
     if (!this.isPopulatingForm()) {
       if (changed || this.editTarget() === 'remote') this.changedRemoteFields.add(name);
       else this.changedRemoteFields.delete(name);
+
+      if (
+        name === 'vendor' &&
+        this.isNewRemoteCreation() &&
+        this.remoteForm.get('type')?.value === 'webdav'
+      ) {
+        const t = this.remoteForm.get('type')?.value;
+        this.applyPresets(t);
+        for (const flagType of this.PROFILE_TYPES) {
+          const activeProfile = this.selectedProfileName()[flagType] || DEFAULT_PROFILE_NAME;
+          const profileData = this.profiles()[flagType]?.[activeProfile];
+          if (profileData) {
+            void this.populateProfileForm(flagType, profileData);
+          }
+        }
+      }
     }
   }
   toggleCliImportVisibility(): void {

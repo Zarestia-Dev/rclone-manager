@@ -119,9 +119,11 @@ pub fn log_operation(
     message: impl Into<String>,
     context: Option<Value>,
 ) {
+    let clean_remote =
+        remote_name.map(|name| crate::utils::rclone::util::extract_remote_name_from_fs(&name));
     let entry = LogEntry {
         timestamp: Utc::now(),
-        remote_name,
+        remote_name: clean_remote,
         level: level.clone(),
         message: message.into(),
         context,

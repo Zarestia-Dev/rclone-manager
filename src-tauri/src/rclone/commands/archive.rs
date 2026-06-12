@@ -4,8 +4,10 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
+use crate::utils::logging::log::log_operation;
 use crate::utils::rclone::endpoints::core;
 use crate::utils::types::jobs::JobType;
+use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
 use crate::utils::types::state::RcloneState;
 
@@ -145,7 +147,7 @@ pub async fn archive_list(
     let rclone_state = app.state::<RcloneState>();
     let client = &rclone_state.client;
 
-    let mut args = vec!["list".to_string(), source];
+    let mut args = vec!["list".to_string(), source.clone()];
 
     if long.unwrap_or(false) {
         args.push("--long".to_string());
@@ -163,10 +165,34 @@ pub async fn archive_list(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload = backend.build_core_command_payload("archive", args, false, os);
 
+    let remote_name = Some(crate::utils::rclone::util::extract_remote_name_from_fs(
+        &source,
+    ));
+
+    log_operation(
+        LogLevel::Info,
+        remote_name.clone(),
+        Some("Archive list".to_string()),
+        format!("Listing archive at {source}"),
+        Some(json!({
+            "arguments": crate::rclone::commands::common::redact_value(&payload, &app),
+        })),
+    );
+
     let response = backend
         .post_json(client, core::COMMAND, Some(&payload))
         .await
-        .map_err(|e| format!("Failed to list archive: {e}"))?;
+        .map_err(|e| {
+            let err_msg = format!("Failed to list archive: {e}");
+            log_operation(
+                LogLevel::Error,
+                remote_name.clone(),
+                Some("Archive list".to_string()),
+                err_msg.clone(),
+                None,
+            );
+            err_msg
+        })?;
 
     let error = response
         .get("error")
@@ -178,8 +204,24 @@ pub async fn archive_list(
         .unwrap_or("");
 
     if error {
-        return Err(format!("Archive list failed: {result}"));
+        let err_msg = format!("Archive list failed: {result}");
+        log_operation(
+            LogLevel::Error,
+            remote_name.clone(),
+            Some("Archive list".to_string()),
+            err_msg.clone(),
+            None,
+        );
+        return Err(err_msg);
     }
+
+    log_operation(
+        LogLevel::Info,
+        remote_name.clone(),
+        Some("Archive list".to_string()),
+        format!("Successfully listed archive at {source}"),
+        None,
+    );
 
     let is_long = long.unwrap_or(false);
     let is_plain = plain.unwrap_or(false);

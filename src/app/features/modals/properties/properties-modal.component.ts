@@ -24,7 +24,7 @@ import {
   RemoteFacadeService,
   ModalService,
   IconService,
-  RemoteMetadataService,
+  RemoteManagementService,
   PathService,
   JobManagementService,
 } from '@app/services';
@@ -79,7 +79,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
-  private readonly remoteMetadata = inject(RemoteMetadataService);
+  private readonly remoteService = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly readJobGroup = `filemanager/properties/${this.data.remoteName}/${this.data.path || '/'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -268,18 +268,22 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
       const baseName = this.pathService.normalizeRemoteName(remoteName);
 
       // If features were not passed, or they have no hashes (could be stub or not yet loaded in facade)
-      if (!features || !features.hashes || features.hashes.length === 0) {
-        this.remoteMetadata.clearCache(baseName); // Clear cache to ensure fresh fetch
-        features = await this.remoteMetadata.getFeatures(baseName, 'filemanager');
+      if (!features || !features.Hashes || features.Hashes.length === 0) {
+        this.remoteService.clearCache(baseName); // Clear cache to ensure fresh fetch
+        features = await this.remoteService.getFeatures(
+          baseName,
+          this.data.remoteType,
+          'filemanager'
+        );
       }
 
       // Update supported hashes
-      const hashes = features?.hashes ?? [];
+      const hashes = features?.Hashes ?? [];
       this.supportedHashes.set(hashes);
 
       // Update public link support (only for remotes)
       if (!isLocal) {
-        this.supportsPublicLink.set(features?.hasPublicLink ?? false);
+        this.supportsPublicLink.set(features?.PublicLink ?? false);
       }
 
       // Auto-calculate only the first hash (usually md5) for single files

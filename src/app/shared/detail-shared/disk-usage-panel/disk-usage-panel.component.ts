@@ -70,15 +70,11 @@ import { FormatFileSizePipe } from '@app/pipes';
             <div
               class="progress-fill"
               [class.loading]="cfg.loading"
-              [ngClass]="usageSeverity()"
-              [ngStyle]="
-                cfg.loading
-                  ? {}
-                  : {
-                      width: usagePercentage() + '%',
-                      'min-width': (cfg.used_space ?? 0) > 0 ? '8px' : '0',
-                    }
-              "
+              [ngClass]="cfg.loading ? '' : usageSeverity()"
+              [ngStyle]="{
+                width: (cfg.loading ? 100 : usagePercentage()) + '%',
+                'min-width': !cfg.loading && (cfg.used_space ?? 0) > 0 ? '8px' : '0',
+              }"
             ></div>
           </div>
 

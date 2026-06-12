@@ -210,10 +210,14 @@ export class JobDetailModalComponent {
     };
   });
 
+  readonly activeGroup = computed(() => {
+    const job = this.jobData();
+    return job.status === 'Running' ? job.group : null;
+  });
+
   constructor() {
     effect(onCleanup => {
-      const job = this.jobData();
-      const group = job.status === 'Running' ? job.group : null;
+      const group = this.activeGroup();
       if (!group) return;
 
       this.jobService.watchGroup(group);

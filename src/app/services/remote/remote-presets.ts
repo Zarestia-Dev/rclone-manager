@@ -18,9 +18,6 @@ const REMOTE_FAMILY_MAP: Record<string, StorageFamily> = {
   gcs: 's3',
   googlecloudstorage: 's3',
   webdav: 'webdav',
-  nextcloud: 'webdav',
-  owncloud: 'webdav',
-  sharepoint: 'webdav',
 };
 
 // Base presets (applied to ALL remotes regardless of type)
@@ -28,12 +25,12 @@ const BASE_PRESET: PresetValues = {
   vfs: {
     CacheMode: 'full',
     CacheMaxSize: '250G',
+    CacheMinFreeSpace: '10G',
     CacheMaxAge: '48h',
     WriteBack: '15s',
-    FastFingerprint: true,
-    NoModTime: true,
-    ChunkSize: '32M',
-    ChunkStreams: 16,
+    ChunkSize: '16M',
+    ChunkStreams: 8,
+    ReadAhead: '128M',
     DirCacheTime: '1000h',
     Refresh: true,
   },
@@ -41,9 +38,10 @@ const BASE_PRESET: PresetValues = {
     AttrTimeout: '10s',
   },
   backend: {
-    BufferSize: '128M',
+    BufferSize: '32M',
     MaxBufferMemory: '2G',
     LogLevel: 'INFO',
+    Transfers: 8,
   },
 };
 
@@ -53,13 +51,16 @@ const FAMILY_PRESETS: Record<StorageFamily, PresetValues> = {
     backend: {
       DisableHTTP2: true,
     },
+    vfs: {
+      UseServerModTime: true,
+      FastFingerprint: true,
+      DirCacheTime: '72h',
+    },
   },
   webdav: {
-    backend: {
-      EtagHash: 'auto',
-    },
     vfs: {
       WriteBack: '20s',
+      DirCacheTime: '72h',
     },
   },
   generic: {},
@@ -83,6 +84,22 @@ const PROVIDER_REMOTE_PRESETS: Record<string, PresetValues> = {
   },
 };
 
+// Vendor-specific remote presets (provider -> vendor mapping)
+const VENDOR_PRESETS: Record<string, Record<string, PresetValues>> = {
+  webdav: {
+    nextcloud: {
+      remote: {
+        nextcloud_chunk_size: '64M',
+      },
+    },
+    owncloud: {
+      remote: {
+        nextcloud_chunk_size: '64M',
+      },
+    },
+  },
+};
+
 // OS-specific configuration overrides
 const OS_PRESETS: Record<'windows' | 'macos' | 'linux', PresetValues> = {
   windows: {
@@ -94,15 +111,15 @@ const OS_PRESETS: Record<'windows' | 'macos' | 'linux', PresetValues> = {
   linux: {},
 };
 
-// OS matching rules (ordered by priority)
+// OS matching rules (ordered by priority to avoid 'darwin' matching 'win')
 const OS_PRESET_RULES: { matches: (os: string) => boolean; preset: PresetValues }[] = [
-  {
-    matches: (os: string) => os.includes('win'),
-    preset: OS_PRESETS.windows,
-  },
   {
     matches: (os: string) => os.includes('darwin') || os.includes('mac') || os.includes('ios'),
     preset: OS_PRESETS.macos,
+  },
+  {
+    matches: (os: string) => os.startsWith('win') || os.includes('windows'),
+    preset: OS_PRESETS.windows,
   },
   {
     matches: () => true, // Fallback default (linux)
@@ -132,7 +149,7 @@ export class RemotePresetsService {
    */
   getStorageFamily(remoteType: string): StorageFamily {
     if (!remoteType) return 'generic';
-    return REMOTE_FAMILY_MAP[remoteType.toLowerCase().trim()] || 'generic';
+    return REMOTE_FAMILY_MAP[remoteType.toLowerCase().replace(/\s+/g, '')] || 'generic';
   }
 
   /**
@@ -149,7 +166,7 @@ export class RemotePresetsService {
   /**
    * Resolves the merged presets based on the remote type and target OS/platform.
    */
-  resolvePresets(remoteType: string): PresetValues {
+  resolvePresets(remoteType: string, vendor?: string): PresetValues {
     let merged = { ...BASE_PRESET };
 
     // 1. Merge family-specific presets
@@ -160,13 +177,22 @@ export class RemotePresetsService {
     }
 
     // 2. Add provider-specific remote options
-    const typeLower = remoteType.toLowerCase().trim();
+    const typeLower = remoteType.toLowerCase().replace(/\s+/g, '');
     const providerPreset = PROVIDER_REMOTE_PRESETS[typeLower];
     if (providerPreset) {
       merged = mergePresets(merged, providerPreset);
     }
 
-    // 3. Merge OS-specific presets using rule matching
+    // 3. Add vendor-specific remote presets (e.g. Nextcloud/Owncloud for WebDAV)
+    if (vendor) {
+      const vendorLower = vendor.toLowerCase().replace(/\s+/g, '');
+      const vendorPreset = VENDOR_PRESETS[typeLower]?.[vendorLower];
+      if (vendorPreset) {
+        merged = mergePresets(merged, vendorPreset);
+      }
+    }
+
+    // 4. Merge OS-specific presets using rule matching
     const osPlatform = this.getTargetPlatform();
     const matchedRule = OS_PRESET_RULES.find(rule => rule.matches(osPlatform));
     if (matchedRule) {

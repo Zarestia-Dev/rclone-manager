@@ -893,7 +893,7 @@
       },
       "actions": {
         "pollInterval": "Intervalle d'interrogation",
-        "pollIntervalNotSupported": "La notification de modification n'est pas prise en charge",
+        "pollIntervalNotSupported": "Intervalle d'interrogation non pris en charge",
         "updateInterval": "Mettre à jour l'intervalle d'interrogation",
         "refreshMetadata": "Rafraîchir les métadonnées",
         "clearCache": "Effacer le cache des métadonnées",

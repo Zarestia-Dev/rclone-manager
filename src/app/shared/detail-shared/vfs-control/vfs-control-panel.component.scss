@@ -27,10 +27,6 @@
   }
 }
 
-.vfs-selector {
-  margin-bottom: 16px;
-}
-
 // Warning banner for indexed VFS instances
 .indexed-vfs-warning {
   display: flex;
@@ -273,12 +269,6 @@
   gap: 4px;
 }
 
-mat-card-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
 .tries-badge {
   background: rgba(var(--orange-rgb), 0.1);
   color: var(--orange);
@@ -413,4 +403,21 @@ mat-card-actions {
       }
     }
   }
+}
+
+.poll-interval-container {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  gap: var(--space-xs);
+  font-size: var(--font-size-md);
+  color: var(--dim-color);
+  padding: 0 var(--space-sm);
+  min-height: 48px;
+  background: rgba(var(--window-fg-color-rgb), 0.04);
+  border-radius: var(--border-radius);
+}
+
+mat-card-actions {
+  gap: var(--space-xs);
 }

@@ -135,9 +135,6 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
                 class="usage-bar"
                 [color]="getUsageColor(usage.used / usage.total)"
               ></mat-progress-bar>
-              <span class="usage-free">{{
-                'detailShared.diskUsage.free' | translate: { value: (usage.free | formatFileSize) }
-              }}</span>
             }
           </div>
         }
@@ -254,12 +251,6 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
         .usage-bar {
           height: 6px;
           border-radius: 3px;
-        }
-
-        .usage-free {
-          font-size: var(--body-xs);
-          color: var(--text-tertiary);
-          text-align: right;
         }
       }
 

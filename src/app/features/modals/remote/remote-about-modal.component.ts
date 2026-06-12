@@ -24,7 +24,7 @@ import {
   RcloneValueMapperService,
   RemoteFacadeService,
   RemoteFileOperationsService,
-  RemoteMetadataService,
+  RemoteManagementService,
   JobManagementService,
 } from 'src/app/services';
 import { FormatFileSizePipe } from '@app/pipes';
@@ -60,7 +60,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<RemoteAboutModalComponent>);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
-  private readonly metadataService = inject(RemoteMetadataService);
+  private readonly remoteService = inject(RemoteManagementService);
   private readonly translate = inject(TranslateService);
   private readonly modalService = inject(ModalService);
   private readonly mapper = inject(RcloneValueMapperService);
@@ -142,7 +142,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.metadataService.clearCache(this.displayName);
+    this.remoteService.clearCache(this.displayName);
     this.loadData();
   }
 
@@ -152,7 +152,7 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
 
     // 1. Fetch FsInfo (fast) - allows the modal content to appear
     try {
-      const fsInfo = await this.metadataService.getFsInfo(
+      const fsInfo = await this.remoteService.getFsInfo(
         this.normalizedName,
         'dashboard',
         this.readJobGroup

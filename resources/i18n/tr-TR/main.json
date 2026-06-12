@@ -893,7 +893,7 @@
       },
       "actions": {
         "pollInterval": "Yoklama Aralığı",
-        "pollIntervalNotSupported": "ChangeNotify desteklenmiyor",
+        "pollIntervalNotSupported": "Yoklama aralığı desteklenmiyor",
         "updateInterval": "Yoklama Aralığını Güncelle",
         "refreshMetadata": "Meta Veriyi Yenile",
         "clearCache": "Meta Veri Önbelleğini Temizle",

@@ -21,12 +21,7 @@
     <!-- Remote Options Menu -->
     @let remote = selectedRemote();
     @if (remote) {
-      <button
-        matIconButton
-        class="ellipsis-button"
-        [cdkMenuTriggerFor]="remoteOptionsMenu"
-        [cdkMenuTriggerData]="{ remote: remote }"
-      >
+      <button matIconButton class="ellipsis-button" [cdkMenuTriggerFor]="remoteOptionsMenu">
         <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
       </button>
     }
@@ -136,37 +131,40 @@
   </mat-sidenav-content>
 </mat-sidenav-container>
 
-<ng-template #remoteOptionsMenu let-remote="remote">
-  <div class="material-context-menu" cdkMenu>
-    <!-- Show in Tray Menu (Toggle) -->
-    <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
-      <mat-checkbox
-        labelPosition="before"
-        [checked]="getRemoteSettingValue(remote.name, 'showOnTray')"
-        (change)="saveRemoteSettings(remote.name, { showOnTray: $event.checked })"
-      >
-        <span>{{ 'home.options.showInTray' | translate }}</span>
-      </mat-checkbox>
-    </button>
-    <mat-divider></mat-divider>
-    <!-- Remote Actions -->
-    <button class="menu-item" cdkMenuItem (click)="openLogsModal(remote.name)">
-      <span>{{ 'home.options.viewLogs' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="cloneRemote(remote.name)">
-      <span>{{ 'home.options.cloneRemote' | translate }}</span>
-    </button>
-    <mat-divider></mat-divider>
-    <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.name)">
-      <span>{{ 'home.options.exportConfig' | translate }}</span>
-    </button>
-    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.name)">
-      <span>{{ 'home.options.resetSettings' | translate }}</span>
-    </button>
-    <mat-divider></mat-divider>
-    <!-- Delete Remote -->
-    <button class="menu-item" cdkMenuItem (click)="deleteRemote(remote.name)">
-      <span>{{ 'home.options.deleteRemote' | translate }}</span>
-    </button>
-  </div>
+<ng-template #remoteOptionsMenu>
+  @let activeRemote = selectedRemote();
+  @if (activeRemote) {
+    <div class="material-context-menu" cdkMenu>
+      <!-- Show in Tray Menu (Toggle) -->
+      <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
+        <mat-checkbox
+          labelPosition="before"
+          [checked]="getRemoteSettingValue(activeRemote.name, 'showOnTray')"
+          (change)="saveRemoteSettings(activeRemote.name, { showOnTray: $event.checked })"
+        >
+          <span>{{ 'home.options.showInTray' | translate }}</span>
+        </mat-checkbox>
+      </button>
+      <mat-divider></mat-divider>
+      <!-- Remote Actions -->
+      <button class="menu-item" cdkMenuItem (click)="openLogsModal(activeRemote.name)">
+        <span>{{ 'home.options.viewLogs' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="cloneRemote(activeRemote.name)">
+        <span>{{ 'home.options.cloneRemote' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button class="menu-item" cdkMenuItem (click)="openExportModal(activeRemote.name)">
+        <span>{{ 'home.options.exportConfig' | translate }}</span>
+      </button>
+      <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(activeRemote.name)">
+        <span>{{ 'home.options.resetSettings' | translate }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <!-- Delete Remote -->
+      <button class="menu-item" cdkMenuItem (click)="deleteRemote(activeRemote.name)">
+        <span>{{ 'home.options.deleteRemote' | translate }}</span>
+      </button>
+    </div>
+  }
 </ng-template>

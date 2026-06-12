@@ -893,7 +893,7 @@
       },
       "actions": {
         "pollInterval": "Poll Interval",
-        "pollIntervalNotSupported": "ChangeNotify not supported",
+        "pollIntervalNotSupported": "Poll interval not supported",
         "updateInterval": "Update Poll Interval",
         "refreshMetadata": "Refresh Metadata",
         "clearCache": "Clear Metadata Cache",

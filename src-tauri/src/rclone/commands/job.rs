@@ -21,6 +21,7 @@ use crate::{
     },
 };
 
+use super::common::redact_value;
 use super::system::RcloneError;
 
 const JOB_POLL_INTERVAL_MS: u64 = 500;
@@ -180,7 +181,8 @@ async fn initialize_and_register_job(
         ));
     }
 
-    let (jobid, response_json, execute_id) = send_job_request(request, payload, &metadata).await?;
+    let (jobid, response_json, execute_id) =
+        send_job_request(app, request, payload, &metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active().await.name;
@@ -204,6 +206,7 @@ async fn initialize_and_register_job(
 }
 
 async fn send_job_request(
+    app: &AppHandle,
     client_builder: reqwest::RequestBuilder,
     payload: Value,
     metadata: &JobMetadata,
@@ -241,6 +244,8 @@ async fn send_job_request(
 
     let (jobid, execute_id) = parse_job_response(&response_json)?;
 
+    let redacted_payload = redact_value(&payload, app);
+
     log_operation(
         LogLevel::Info,
         Some(metadata.remote_name.clone()),
@@ -249,7 +254,11 @@ async fn send_job_request(
             "{} started with ID {} (ExecuteID: {:?})",
             metadata.job_type, jobid, execute_id
         ),
-        Some(json!({"jobid": jobid, "executeId": execute_id})),
+        Some(json!({
+            "jobid": jobid,
+            "executeId": execute_id,
+            "arguments": redacted_payload,
+        })),
     );
 
     Ok((jobid, response_json, execute_id))

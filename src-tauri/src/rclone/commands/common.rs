@@ -333,27 +333,56 @@ pub fn resolve_runtime_remote_options(
     }
 }
 
-/// Redact sensitive values from parameters for logging.
+/// Recursively redact sensitive values from any JSON Value for logging.
 /// Reads restrict setting from `AppSettingsManager` internally.
-pub fn redact_sensitive_values(params: &HashMap<String, Value>, app: &AppHandle) -> Value {
+///
+/// NOTE: `--password-command` CLI flags are **always** redacted, regardless of
+/// the `restrict` setting — passwords must never appear in logs.
+pub fn redact_value(val: &Value, app: &AppHandle) -> Value {
     let restrict_enabled: bool = app
         .try_state::<AppSettingsManager>()
         .and_then(|manager| manager.inner().get("general.restrict").ok())
         .unwrap_or(false);
 
-    let map: serde_json::Map<String, Value> = params
-        .iter()
-        .map(|(k, v)| {
-            let value = if restrict_enabled && crate::utils::security::is_sensitive_field(k) {
-                json!("[RESTRICTED]")
-            } else {
-                v.clone()
-            };
-            (k.clone(), value)
-        })
-        .collect();
+    fn redact_recursive(val: &Value, restrict_enabled: bool) -> Value {
+        match val {
+            Value::Object(map) => {
+                let mut redacted_map = serde_json::Map::new();
+                for (k, v) in map {
+                    let new_val =
+                        if restrict_enabled && crate::utils::security::is_sensitive_field(k) {
+                            json!("[RESTRICTED]")
+                        } else {
+                            redact_recursive(v, restrict_enabled)
+                        };
+                    redacted_map.insert(k.clone(), new_val);
+                }
+                Value::Object(redacted_map)
+            }
+            Value::Array(arr) => {
+                let redacted_arr = arr
+                    .iter()
+                    .map(|v| redact_recursive(v, restrict_enabled))
+                    .collect();
+                Value::Array(redacted_arr)
+            }
+            // Always redact --password-command=... flags — passwords must never
+            // appear in logs regardless of the `restrict` setting.
+            Value::String(s) if s.starts_with("--password-command") => {
+                if let Some(eq_pos) = s.find('=') {
+                    let flag = &s[..eq_pos];
+                    json!(format!("{flag}=[REDACTED]"))
+                } else {
+                    // Flag without value (next element carries the value) —
+                    // replace the bare flag name so callers know it was present.
+                    json!("--password-command=[REDACTED]")
+                }
+            }
+            _ => val.clone(),
+        }
+    }
 
-    Value::Object(map)
+    redact_recursive(val, restrict_enabled)
 }
 
 #[cfg(test)]

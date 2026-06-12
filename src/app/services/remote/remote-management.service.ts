@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, signal, computed, Signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { RemoteFileOperationsService } from './remote-file-operations.service';
+import { PathService } from '../infrastructure/platform/path.service';
 import {
   RemoteProvider,
   ConfigRecord,
@@ -8,6 +10,9 @@ import {
   LocalDrive,
   CommandOption,
   INTERACTIVE_REMOTES,
+  FsInfo,
+  RemoteFeatures,
+  Origin,
 } from '@app/types';
 
 interface RawProvider {
@@ -20,6 +25,104 @@ type ProvidersResponse = Record<string, RawProvider[]>;
 
 @Injectable({ providedIn: 'root' })
 export class RemoteManagementService extends TauriBaseService {
+  private readonly remoteOpsService = inject(RemoteFileOperationsService);
+  private readonly pathService = inject(PathService);
+
+  private readonly metadataCache = new Map<string, FsInfo>();
+  private readonly _features = signal<Record<string, RemoteFeatures>>({});
+
+  async getFsInfo(
+    remoteName: string,
+    source: Origin = 'dashboard',
+    group?: string
+  ): Promise<FsInfo> {
+    const key = this.pathService.normalizeRemoteName(remoteName);
+    if (this.metadataCache.has(key)) return this.metadataCache.get(key)!;
+
+    const fsName = this.pathService.isLocalPath(key) ? key : `${key}:`;
+    try {
+      const info = await this.remoteOpsService.getFsInfo(fsName, source, group);
+      this.metadataCache.set(key, info);
+      return info;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  }
+
+  getFeaturesSignal(remoteName: string, remoteType?: string): Signal<RemoteFeatures> {
+    const nameKey = this.pathService.normalizeRemoteName(remoteName);
+    const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
+    return computed(
+      () =>
+        this._features()[typeKey] ||
+        this._features()[nameKey] || {
+          IsLocal: this.pathService.isLocalPath(nameKey),
+          About: true,
+          BucketBased: false,
+          CleanUp: false,
+          PublicLink: false,
+          ChangeNotify: false,
+          Hashes: [],
+        }
+    );
+  }
+
+  async getFeatures(
+    remoteName: string,
+    remoteType?: string,
+    source: Origin = 'dashboard',
+    group?: string
+  ): Promise<RemoteFeatures> {
+    const nameKey = this.pathService.normalizeRemoteName(remoteName);
+    const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
+
+    if (this._features()[typeKey]) return this._features()[typeKey];
+    if (this._features()[nameKey]) return this._features()[nameKey];
+
+    try {
+      const info = await this.getFsInfo(remoteName, source, group);
+      const feats: RemoteFeatures = {
+        IsLocal: this.pathService.isLocalPath(nameKey),
+        About: info.Features?.['About'] === true,
+        BucketBased: info.Features?.['BucketBased'] ?? false,
+        CleanUp: !!info.Features?.['CleanUp'],
+        PublicLink: info.Features?.['PublicLink'] !== false && !!info.Features?.['PublicLink'],
+        ChangeNotify: !!info.Features?.['ChangeNotify'],
+        Hashes: info.Hashes ?? [],
+      };
+      this._features.update(c => ({ ...c, [nameKey]: feats, [typeKey]: feats }));
+      return feats;
+    } catch {
+      const fallback: RemoteFeatures = {
+        IsLocal: this.pathService.isLocalPath(nameKey),
+        About: false,
+        BucketBased: false,
+        CleanUp: false,
+        PublicLink: false,
+        ChangeNotify: false,
+        Hashes: [],
+      };
+      this._features.update(c => ({ ...c, [nameKey]: fallback, [typeKey]: fallback }));
+      return fallback;
+    }
+  }
+
+  clearCache(remoteName?: string): void {
+    if (remoteName) {
+      const key = this.pathService.normalizeRemoteName(remoteName);
+      this.metadataCache.delete(key);
+      this._features.update(c => {
+        const n = { ...c };
+        delete n[key];
+        return n;
+      });
+    } else {
+      this.metadataCache.clear();
+      this._features.set({});
+    }
+  }
+
   private providersCache: ProvidersResponse | null = null;
   private providersPromise: Promise<ProvidersResponse> | null = null;
 

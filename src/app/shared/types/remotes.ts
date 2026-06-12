@@ -72,14 +72,14 @@ export interface RemoteStatus {
 }
 
 export interface RemoteFeatures {
-  isLocal: boolean;
-  hasAbout: boolean;
-  hasBucket: boolean;
-  hasCleanUp: boolean;
-  hasPublicLink: boolean;
-  changeNotify: boolean;
-  hashes: string[];
-  error?: string;
+  IsLocal: boolean;
+  About: boolean;
+  BucketBased: boolean;
+  CleanUp: boolean;
+  PublicLink: boolean;
+  ChangeNotify: boolean;
+  Hashes: string[];
+  Error?: string;
 }
 
 export interface Remote {

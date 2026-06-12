@@ -179,6 +179,16 @@ pub async fn build_rclone_process_command(
             "5".to_string(),
         ]);
 
+        if let Ok(paths) = crate::core::paths::AppPaths::from_app_handle(app) {
+            let template_path = paths.serve_template_path();
+            if template_path.exists() {
+                args.extend([
+                    "--rc-template".to_string(),
+                    template_path.to_string_lossy().to_string(),
+                ]);
+            }
+        }
+
         append_user_flags_from_app(app, &mut args)?;
     }
 

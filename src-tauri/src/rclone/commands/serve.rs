@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::common::{
-    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_sensitive_values,
+    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_value,
 };
 
 /// Parameters for starting a serve instance
@@ -191,30 +191,6 @@ pub async fn start_serve(
 
     debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
-    let serve_opts_map = params
-        .rclone_config
-        .as_object()
-        .map(|obj| {
-            obj.clone()
-                .into_iter()
-                .filter(|(k, _)| k != "fs" && k != "type")
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let log_context = json!({
-        "remote_name": params.remote_name,
-        "serve_options": redact_sensitive_values(&serve_opts_map, &app),
-    });
-
-    log_operation(
-        LogLevel::Info,
-        Some(params.remote_name.clone()),
-        Some("Start serve".to_string()),
-        format!("Attempting to start {serve_type} serve"),
-        Some(log_context),
-    );
-
     let mut payload = params.to_rclone_body();
 
     // Auto-inject our custom template for web-based protocols if not already specified
@@ -236,6 +212,19 @@ pub async fn start_serve(
             );
         }
     }
+
+    let log_context = json!({
+        "remote_name": params.remote_name,
+        "arguments": redact_value(&payload, &app),
+    });
+
+    log_operation(
+        LogLevel::Info,
+        Some(params.remote_name.clone()),
+        Some("Start serve".to_string()),
+        format!("Attempting to start {serve_type} serve"),
+        Some(log_context),
+    );
 
     debug!("📦 Serve request payload: {payload:#?}");
 
@@ -293,7 +282,7 @@ pub async fn start_serve(
             "Serve started with ID {} at {}",
             serve_response.id, serve_response.addr
         ),
-        Some(json!({ "id": serve_response.id, "addr": serve_response.addr })),
+        Some(response_json),
     );
 
     // Refresh first so the entry exists in cache, then attach the profile to it.
