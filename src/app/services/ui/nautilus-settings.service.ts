@@ -82,7 +82,7 @@ export class NautilusSettingsService {
       this.iconSize.set(savedSize);
     } else {
       const sizes = l === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
-      this.iconSize.set(sizes[Math.floor(sizes.length / 2)]);
+      this.iconSize.set(sizes[Math.floor((sizes.length - 1) / 2)]);
     }
   }
 
@@ -147,7 +147,7 @@ export class NautilusSettingsService {
     // Restore icon size for the current layout.
     const savedSize = layout === 'grid' ? gridIconSize : listIconSize;
     const sizes = layout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
-    this.iconSize.set(savedSize ?? sizes[Math.floor(sizes.length / 2)]);
+    this.iconSize.set(savedSize ?? sizes[Math.floor((sizes.length - 1) / 2)]);
   }
 
   private _changeIconSize(direction: 1 | -1): void {

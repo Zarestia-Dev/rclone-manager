@@ -19,6 +19,7 @@ export const BASE_ICONS: Record<string, string> = {
   'right-arrow': 'assets/icons/navigation/circle-arrow-right.svg',
   'arrow-down': 'assets/icons/navigation/circle-arrow-down.svg',
   'right-left': 'assets/icons/navigation/right-left.svg',
+  bisync: 'assets/icons/navigation/right-left.svg',
 
   // ------------------- Status Icons -------------------
   'circle-check': 'assets/icons/status/circle-check.svg',
@@ -86,6 +87,7 @@ export const BASE_ICONS: Record<string, string> = {
   'hard-drive': 'assets/icons/devices/hard-drive.svg',
   disk: 'assets/icons/devices/disk.svg',
   server: 'assets/icons/devices/server.svg',
+  backend: 'assets/icons/devices/server.svg',
   cloud: 'assets/icons/devices/cloud.svg',
   tv: 'assets/icons/devices/tv.svg',
   'satellite-dish': 'assets/icons/devices/satellite-dish.svg',

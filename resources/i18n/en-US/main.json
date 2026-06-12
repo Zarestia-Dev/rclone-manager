@@ -961,7 +961,10 @@
       "patchProfile": "Patch Active Profile(s)",
       "patchInfo": "No operation (sync, serve, or mount) was specified. The imported flags will be applied as a patch directly to your active configuration profile(s).",
       "patchInfoRemoteStep": "No operation (sync, serve, or mount) was specified. To apply these flags as a patch, please navigate to a specific configuration step (e.g., Sync, Mount, or Serve) instead of the Remote step.",
-      "applyPatch": "Apply Patch"
+      "applyPatch": "Apply Patch",
+      "importSourcePath": "Import Source Path",
+      "importDestPath": "Import Destination Path",
+      "importMountPoint": "Import Mount Point"
     },
     "remoteConfig": {
       "remoteName": "Remote Name",

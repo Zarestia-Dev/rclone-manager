@@ -961,7 +961,10 @@
       "patchProfile": "Correctif pour profil(s) actif(s)",
       "patchInfo": "Aucune opération (synchronisation, service ou montage) n'a été spécifiée. Les flags importés seront appliqués en tant que correctif directement à vos profils de configuration actifs.",
       "patchInfoRemoteStep": "Aucune opération (sync, serve, or mount) n'a été spécifiée. Pour appliquer ces options, veuillez vous rendre dans une étape de configuration spécifique (ex. Sync, Mount, or Serve) plutôt que dans l'étape du dépôt distant.",
-      "applyPatch": "Appliquer le correctif"
+      "applyPatch": "Appliquer le correctif",
+      "importSourcePath": "Importer le chemin source",
+      "importDestPath": "Importer le chemin de destination",
+      "importMountPoint": "Importer le point de montage"
     },
     "remoteConfig": {
       "remoteName": "Nom du dépôt distant",

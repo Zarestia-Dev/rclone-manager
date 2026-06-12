@@ -1,47 +1,55 @@
 <ng-container [formGroup]="opFormGroup()">
-  <!-- Automation accordion -->
-  <div class="automation-accordion">
+  <mat-accordion class="automation-accordion" multi="true">
     @if (showAutoStart()) {
-      <div class="accordion-item autostart-item">
-        <div class="accordion-header">
-          <mat-slide-toggle formControlName="autoStart" class="operation-enable">
-            {{
-              'wizards.appOperation.enableAutoStart'
-                | translate
-                  : {
-                      type:
-                        ('modals.remoteConfig.steps.' +
-                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                        | translate),
-                    }
-            }}
-          </mat-slide-toggle>
+      <mat-expansion-panel hideToggle="true" [expanded]="false" disabled>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-slide-toggle formControlName="autoStart">
+              {{
+                'wizards.appOperation.enableAutoStart'
+                  | translate
+                    : {
+                        type:
+                          ('modals.remoteConfig.steps.' +
+                            (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                          | translate),
+                      }
+              }}
+            </mat-slide-toggle>
+          </mat-panel-title>
           @if (description()) {
-            <span class="header-description">{{ description() }}</span>
+            <mat-panel-description>{{ description() }}</mat-panel-description>
           }
-        </div>
-      </div>
+        </mat-expansion-panel-header>
+      </mat-expansion-panel>
     }
 
     @if (!isMount() && !isServe() && showCronSection()) {
-      <div class="accordion-item" [class.expanded]="cronPanelExpanded()">
-        <button type="button" class="accordion-header" (click)="toggleCronPanel()">
-          <mat-slide-toggle formControlName="cronEnabled" (click)="$event.stopPropagation()">
-            {{
-              'wizards.appOperation.enableScheduled'
-                | translate
-                  : {
-                      type:
-                        ('modals.remoteConfig.steps.' +
-                          (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                        | translate),
-                    }
-            }}
-          </mat-slide-toggle>
+      <mat-expansion-panel
+        [expanded]="cronPanelExpanded()"
+        (opened)="cronPanelExpanded.set(true)"
+        (closed)="cronPanelExpanded.set(false)"
+        class="mac-panel"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-slide-toggle formControlName="cronEnabled" (click)="$event.stopPropagation()">
+              {{
+                'wizards.appOperation.enableScheduled'
+                  | translate
+                    : {
+                        type:
+                          ('modals.remoteConfig.steps.' +
+                            (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                          | translate),
+                      }
+              }}
+            </mat-slide-toggle>
+          </mat-panel-title>
 
-          <span class="header-meta">
+          <mat-panel-description>
             @if (cronExpression()) {
-              <code class="cron-chip">{{ cronExpression() }}</code>
+              <code class="cron-tag">{{ cronExpression() }}</code>
               <button mat-icon-button (click)="clearSchedule($event)" type="button">
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
@@ -50,36 +58,32 @@
                 'wizards.appOperation.notConfigured' | translate
               }}</span>
             }
-          </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
 
-          <mat-icon svgIcon="chevron-down" class="expand-icon"></mat-icon>
-        </button>
-
-        <div class="accordion-body">
-          <p
-            class="body-description"
-            [innerHTML]="'wizards.appOperation.scheduleDescription' | translate"
-          ></p>
-          <app-cron-input
-            [initialValue]="cronExpression()"
-            [automationName]="operationType()"
-            (cronChange)="onCronChange($event)"
-            (validationChange)="onCronValidationChange($event)"
-          />
-        </div>
-      </div>
+        <p
+          class="helper-text"
+          [innerHTML]="'wizards.appOperation.scheduleDescription' | translate"
+        ></p>
+        <app-cron-input
+          [initialValue]="cronExpression()"
+          [automationName]="operationType()"
+          (cronChange)="onCronChange($event)"
+          (validationChange)="onCronValidationChange($event)"
+        />
+      </mat-expansion-panel>
     }
 
     @if (showWatchSection()) {
-      <div
-        class="accordion-item"
-        [class.expanded]="watchPanelExpanded()"
-        [class.disabled-tape]="!isWatchPossible()"
+      <mat-expansion-panel
+        [expanded]="watchPanelExpanded()"
+        (opened)="watchPanelExpanded.set(true)"
+        (closed)="watchPanelExpanded.set(false)"
+        [disabled]="!isWatchPossible()"
+        class="mac-panel"
+        [class.unavailable]="!isWatchPossible()"
       >
-        <button
-          type="button"
-          class="accordion-header"
-          (click)="toggleWatchPanel()"
+        <mat-expansion-panel-header
           [matTooltip]="
             !isWatchPossible()
               ? ((operationType() === 'bisync'
@@ -89,11 +93,12 @@
               : ''
           "
         >
-          <mat-slide-toggle formControlName="watchEnabled" (click)="$event.stopPropagation()">
-            {{ 'wizards.appOperation.enableWatch' | translate }}
-          </mat-slide-toggle>
-
-          <span class="header-meta">
+          <mat-panel-title>
+            <mat-slide-toggle formControlName="watchEnabled" (click)="$event.stopPropagation()">
+              {{ 'wizards.appOperation.enableWatch' | translate }}
+            </mat-slide-toggle>
+          </mat-panel-title>
+          <mat-panel-description>
             @if (isWatchEnabled() && isWatchPossible()) {
               {{ 'wizards.appOperation.watchDelay' | translate }}:
               <strong>{{ opFormGroup().get('watchDelay')?.value || 1 }}s</strong>
@@ -102,70 +107,66 @@
                 'wizards.appOperation.watchDescription' | translate
               }}</span>
             }
-          </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
 
-          <mat-icon svgIcon="chevron-down" class="expand-icon"></mat-icon>
-        </button>
+        @if (!isWatchPossible()) {
+          <div class="message warning" role="alert">
+            <mat-icon svgIcon="info" class="orange"></mat-icon>
+            <span>{{
+              (operationType() === 'bisync'
+                ? 'wizards.appOperation.watchRequiresLocal'
+                : 'wizards.appOperation.watchRequiresLocalSource'
+              ) | translate
+            }}</span>
+          </div>
+        }
 
-        <div class="accordion-body">
-          @if (!isWatchPossible()) {
-            <div class="message warning" role="alert">
-              <span>{{
-                (operationType() === 'bisync'
-                  ? 'wizards.appOperation.watchRequiresLocal'
-                  : 'wizards.appOperation.watchRequiresLocalSource'
-                ) | translate
-              }}</span>
-            </div>
-          }
-
-          @if (isWatchPossible()) {
-            @if (hasMixedSources()) {
-              <div class="message info" role="alert">
-                <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
-              </div>
-            }
-
+        @if (isWatchPossible()) {
+          @if (hasMixedSources()) {
             <div class="message info" role="alert">
-              <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
-            </div>
-
-            <div class="watch-delay-section">
-              <div class="watch-delay-wrapper">
-                <span class="watch-delay-label">{{
-                  'wizards.appOperation.watchDelay' | translate
-                }}</span>
-                <app-number-input
-                  formControlName="watchDelay"
-                  [min]="0"
-                  [allowNegative]="false"
-                  [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
-                />
-              </div>
-              @if (
-                opFormGroup().get('watchDelay')?.hasError('required') &&
-                opFormGroup().get('watchDelay')?.touched
-              ) {
-                <mat-error class="validation-error">{{
-                  'shared.validation.required' | translate
-                }}</mat-error>
-              }
-              @if (
-                opFormGroup().get('watchDelay')?.hasError('min') &&
-                opFormGroup().get('watchDelay')?.touched
-              ) {
-                <mat-error class="validation-error">{{
-                  'shared.validation.min' | translate: { val: 1 }
-                }}</mat-error>
-              }
+              <mat-icon svgIcon="info" class="primary"></mat-icon>
+              <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
             </div>
           }
-        </div>
-      </div>
-    }
-  </div>
 
-  <!-- Paths -->
+          <div class="message info" role="alert">
+            <mat-icon svgIcon="info" class="primary"></mat-icon>
+            <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
+          </div>
+
+          <div class="watch-delay-section">
+            <span class="watch-delay-label">{{
+              'wizards.appOperation.watchDelay' | translate
+            }}</span>
+            <app-number-input
+              formControlName="watchDelay"
+              [min]="0"
+              [allowNegative]="false"
+              [ariaLabel]="'wizards.appOperation.watchDelay' | translate"
+            />
+            @if (
+              opFormGroup().get('watchDelay')?.hasError('required') &&
+              opFormGroup().get('watchDelay')?.touched
+            ) {
+              <mat-error class="validation-error">{{
+                'shared.validation.required' | translate
+              }}</mat-error>
+            }
+            @if (
+              opFormGroup().get('watchDelay')?.hasError('min') &&
+              opFormGroup().get('watchDelay')?.touched
+            ) {
+              <mat-error class="validation-error">{{
+                'shared.validation.min' | translate: { val: 1 }
+              }}</mat-error>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+
   <div class="paths-container">
     @if (isNewRemote()) {
       <div class="message warning" role="alert">
@@ -216,7 +217,6 @@
   </div>
 </ng-container>
 
-<!-- Path row template -->
 <ng-template #pathRow let-item let-isDest="isDest">
   <div class="path-item-row" [formGroup]="item.control">
     <div class="path-type-selector">
@@ -347,7 +347,6 @@
   </div>
 </ng-template>
 
-<!-- Autocomplete menu template -->
 <ng-template #autocompleteMenu let-item="item">
   @if (pathStates.get(item.group + '-' + item.index)?.(); as state) {
     <div class="material-context-menu" cdkMenu>

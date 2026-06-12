@@ -1,104 +1,14 @@
 // ── Automation accordion ──────────────────────────────────────────────────────
-
-.automation-accordion {
-  margin-top: var(--space-sm);
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--box-shadow);
-  overflow: hidden;
-}
-
-.accordion-item {
-  border-bottom: 1px solid var(--border-color);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  // Expanded state: tint the header slightly
-  &.expanded > .accordion-header {
-    background: rgba(var(--primary-color-rgb), 0.04);
-  }
-
-  // Collapsed body
-  .accordion-body {
-    display: none;
-    padding: var(--space-md);
-    border-top: 1px solid var(--border-color);
-    animation: accordionOpen 0.18s ease;
-  }
-
-  &.expanded .accordion-body {
-    display: block;
-  }
-
-  &.disabled-tape {
-    position: relative;
-    background: repeating-linear-gradient(
-      -45deg,
-      rgba(var(--window-fg-color-rgb), 0.04),
-      rgba(var(--window-fg-color-rgb), 0.04) 10px,
-      rgba(var(--orange-rgb), 0.1) 10px,
-      rgba(var(--orange-rgb), 0.1) 20px
-    );
-
-    .accordion-header {
-      cursor: not-allowed;
-
-      &:hover {
-        background: rgba(var(--window-fg-color-rgb), 0.04);
-      }
-    }
-
-    .expand-icon {
-      opacity: 0.3;
-    }
-
-    mat-slide-toggle {
-      pointer-events: none;
-    }
-  }
-}
-
-.accordion-header {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  min-height: 48px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-
-  &:hover {
-    background: var(--hover-bg-color);
-  }
-
-  // Static autostart row has no cursor
-  .autostart-item & {
-    cursor: default;
-
-    &:hover {
-      background: transparent;
-    }
-  }
-}
-
-// Right-side meta (cron expression, watch delay, description)
-.header-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-left: auto;
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
-}
-
-.header-description {
-  font-size: var(--font-size-sm);
-  color: var(--dim-color);
+.unavailable {
+  position: relative;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(var(--window-fg-color-rgb), 0.04),
+    rgba(var(--window-fg-color-rgb), 0.04) 10px,
+    rgba(var(--orange-rgb), 0.1) 10px,
+    rgba(var(--orange-rgb), 0.1) 20px
+  ) !important;
+  cursor: not-allowed;
 }
 
 .not-configured {
@@ -106,7 +16,7 @@
   opacity: 0.6;
 }
 
-.cron-chip {
+.cron-tag {
   font-family: monospace;
   font-size: 0.75rem;
   font-weight: 600;
@@ -116,41 +26,13 @@
   padding: 2px 6px;
 }
 
-// Chevron rotates when expanded
-.expand-icon {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  color: var(--dim-color);
-  transition: transform 0.18s ease;
-  margin-left: var(--space-xs);
-
-  .expanded > .accordion-header & {
-    transform: rotate(180deg);
-  }
-}
-
-.body-description {
+.helper-text {
   color: var(--dim-color);
   font-size: var(--font-size-md);
-  line-height: 1.5;
   margin: 0 0 var(--space-md);
 }
 
-@keyframes accordionOpen {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 // ── Paths container ──────────────────────────────────────────────────────────
-
 .paths-container {
   margin-top: var(--space-sm);
   padding: var(--space-sm) var(--space-md) var(--space-md);
@@ -207,7 +89,6 @@
 }
 
 // ── Path row ─────────────────────────────────────────────────────────────────
-
 .path-item-row {
   display: flex;
   align-items: stretch;
@@ -369,8 +250,7 @@
   }
 }
 
-// ── Messages ─────────────────────────────────────────────────────────────────
-
+// ── Messages & Sections ──────────────────────────────────────────────────────
 .message {
   display: flex;
   align-items: center;
@@ -385,17 +265,10 @@
 
 .watch-delay-section {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-top: var(--space-md);
-  margin-bottom: var(--space-xs);
-
-  .watch-delay-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-md);
-  }
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
 
   .watch-delay-label {
     font-size: var(--font-size-md);
@@ -404,6 +277,7 @@
   }
 
   .validation-error {
+    flex: 1 0 100%;
     font-size: var(--font-size-xs);
     color: var(--warn-color);
   }

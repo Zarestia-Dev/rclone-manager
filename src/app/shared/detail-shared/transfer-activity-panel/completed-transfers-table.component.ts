@@ -12,81 +12,76 @@ import { toSignal } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, MatTooltipModule, TranslateModule, FormatFileSizePipe],
   template: `
-    <div class="transfer-table-container">
+    <div class="card-list-container">
       @if (transfers().length > 0) {
-        <div class="transfer-list">
-          @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
-            <div class="transfer-row-item completed-item" [class]="transfer.status">
-              <div class="transfer-header">
-                <div class="file-info">
-                  <mat-icon
-                    svgIcon="file"
-                    class="file-icon"
-                    [matTooltip]="transfer.name"
-                  ></mat-icon>
-                  <span class="file-name" [title]="transfer.name">{{ transfer.name }}</span>
-                </div>
-                <div class="status-badge">
-                  <span
-                    class="app-pill"
-                    [class]="transfer.badgeClass"
-                    [matTooltip]="transfer.error"
-                  >
-                    <mat-icon [svgIcon]="transfer.badgeIcon"></mat-icon>
-                    {{ transfer.badgeText | translate }}
-                  </span>
-                </div>
+        @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
+          <div class="card-row-item completed-item" [class]="transfer.status">
+            <div class="card-header">
+              <div class="card-info-left">
+                <mat-icon
+                  svgIcon="file"
+                  class="card-primary-icon file-icon"
+                  [matTooltip]="transfer.name"
+                ></mat-icon>
+                <span class="card-title-text file-name" [title]="transfer.name">{{
+                  transfer.name
+                }}</span>
               </div>
-
-              @if (transfer.srcFs || transfer.dstFs) {
-                <div class="transfer-paths">
-                  <code class="path-pill src">{{ transfer.srcFs || '?' }}</code>
-                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                  <code class="path-pill dst">{{ transfer.dstFs || '?' }}</code>
-                </div>
-              }
-
-              <div class="transfer-footer">
-                <div class="stats-left">
-                  <span class="size-text">
-                    {{ transfer.size | formatFileSize }}
-                    @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
-                      <span class="size-transferred">
-                        ({{
-                          'shared.transferActivity.table.transferred'
-                            | translate: { bytes: (transfer.bytes | formatFileSize) }
-                        }})
-                      </span>
-                    }
-                    @if (transfer.status === 'checked' && transfer.size > 0) {
-                      <span class="size-transferred">
-                        ({{ 'shared.transferActivity.table.alreadyExisted' | translate }})
-                      </span>
-                    }
-                  </span>
-                </div>
-                <div class="stats-right">
-                  @if (transfer.completedAt) {
-                    <span class="time-text">{{ transfer.relativeTime }}</span>
-                  }
-                  @if (transfer.duration) {
-                    <span class="duration-badge">{{ transfer.duration }}</span>
-                  }
-                </div>
+              <div class="card-info-right status-badge">
+                <span class="app-pill" [class]="transfer.badgeClass" [matTooltip]="transfer.error">
+                  <mat-icon [svgIcon]="transfer.badgeIcon"></mat-icon>
+                  {{ transfer.badgeText | translate }}
+                </span>
               </div>
             </div>
-          }
-        </div>
+
+            @if (transfer.srcFs || transfer.dstFs) {
+              <div class="card-paths">
+                <code class="path-pill src">{{ transfer.srcFs || '?' }}</code>
+                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                <code class="path-pill dst">{{ transfer.dstFs || '?' }}</code>
+              </div>
+            }
+
+            <div class="card-footer">
+              <div class="card-footer-left">
+                <span class="size-text">
+                  {{ transfer.size | formatFileSize }}
+                  @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
+                    <span class="size-transferred">
+                      ({{
+                        'shared.transferActivity.table.transferred'
+                          | translate: { bytes: (transfer.bytes | formatFileSize) }
+                      }})
+                    </span>
+                  }
+                  @if (transfer.status === 'checked' && transfer.size > 0) {
+                    <span class="size-transferred">
+                      ({{ 'shared.transferActivity.table.alreadyExisted' | translate }})
+                    </span>
+                  }
+                </span>
+              </div>
+              <div class="card-footer-right">
+                @if (transfer.completedAt) {
+                  <span class="time-text">{{ transfer.relativeTime }}</span>
+                }
+                @if (transfer.duration) {
+                  <span class="duration-badge">{{ transfer.duration }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        }
       } @else {
         <div class="empty-state">
-          <mat-icon svgIcon="circle-check" class="placeholder-icon"></mat-icon>
+          <mat-icon svgIcon="circle-check"></mat-icon>
           <span>{{ 'shared.transferActivity.empty.noRecent' | translate }}</span>
           <p>{{ 'shared.transferActivity.empty.recentHint' | translate }}</p>
         </div>
       }
     </div>
   `,
-  styleUrls: ['./transfer-tables.scss'],
 })
 export class CompletedTransfersTableComponent {
   readonly transfers = input.required<CompletedTransfer[]>();

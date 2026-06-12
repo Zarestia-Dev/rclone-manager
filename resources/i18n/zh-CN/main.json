@@ -961,7 +961,10 @@
       "patchProfile": "修补当前活动配置文件",
       "patchInfo": "未指定操作（sync、serve 或 mount）。导入的参数将作为补丁直接应用到您当前活动的配置文件中。",
       "patchInfoRemoteStep": "未指定操作（sync、serve 或 mount）。要将这些参数作为补丁应用，请先导航到具体的配置步骤（例如“同步”、“挂载”或“服务”），而不是“远程连接”步骤。",
-      "applyPatch": "应用补丁"
+      "applyPatch": "应用补丁",
+      "importSourcePath": "导入源路径",
+      "importDestPath": "导入目标路径",
+      "importMountPoint": "导入挂载点"
     },
     "remoteConfig": {
       "remoteName": "远程存储名称",

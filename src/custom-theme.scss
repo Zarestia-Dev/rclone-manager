@@ -1069,10 +1069,8 @@ mat-accordion {
   }
 
   mat-panel-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    flex: 1;
+    flex: 0 0 auto;
+    gap: var(--space-sm);
 
     mat-icon:first-child {
       color: var(--primary-color);
@@ -1081,8 +1079,7 @@ mat-accordion {
   }
 
   mat-panel-description {
-    flex-grow: 0;
-    flex-basis: auto;
+    flex: 1 1 auto;
   }
 
   .mat-expansion-panel-header {
@@ -1564,5 +1561,254 @@ mat-accordion {
   span {
     flex: 1;
     min-width: 0;
+  }
+}
+
+// ============================================================================
+// SECTION 6: UNIFIED CARD LAYOUT SYSTEM (Jobs & Transfer Activity)
+// ============================================================================
+
+.card-list-container {
+  background: var(--window-bg-color);
+  max-height: clamp(300px, 50vh, 600px);
+  overflow-y: auto;
+  position: relative;
+  padding: 0 !important;
+  flex-direction: column;
+  width: 100%;
+  contain: layout style paint; // Isolates row renders to protect frame updates in zoneless modes
+}
+
+.card-row-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+  transition: var(--transition-fast);
+  outline: none;
+  contain: layout style paint;
+
+  &[role="button"],
+  &.interactive {
+    cursor: pointer;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--bg-hover);
+  }
+  &:focus-visible {
+    box-shadow: inset 2px 0 0 var(--primary-color);
+  }
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.card-info-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  flex: 1;
+
+  .card-primary-icon {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    color: var(--dim-color);
+  }
+
+  .card-title-text {
+    font-weight: 600;
+    color: var(--window-fg-color);
+    font-size: var(--font-size-md);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+  }
+}
+
+.card-info-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.card-paths {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  margin-left: 26px;
+
+  .path-pill {
+    background: rgba(var(--window-fg-color-rgb), 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.src {
+      color: var(--primary-color);
+    }
+    &.dst {
+      color: var(--accent-color);
+    }
+  }
+
+  .arrow-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--dim-color);
+  }
+}
+
+.card-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: 26px;
+
+  mat-progress-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+  }
+
+  .percentage-text {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--window-fg-color);
+    min-width: 32px;
+    text-align: right;
+    font-family: var(--font-mono);
+
+    &.preparing,
+    &.finalizing {
+      font-family: inherit;
+      color: var(--dim-color);
+      font-size: var(--font-size-xs);
+      font-style: italic;
+    }
+  }
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  margin-left: 26px;
+
+  .card-footer-left {
+    gap: var(--space-xs);
+
+    .size-text {
+      font-weight: 500;
+    }
+
+    .size-transferred {
+      opacity: 0.8;
+      margin-left: var(--space-xs);
+    }
+  }
+
+  .card-footer-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+
+    .dry-run-badge {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+    }
+
+    .duration-text,
+    .duration-badge {
+      color: var(--dim-color);
+      opacity: 0.95;
+      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .duration-badge {
+      background: rgba(var(--primary-color-rgb), var(--active-opacity));
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .speed-text {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+
+      .speed-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        &.speed-fast {
+          background-color: var(--accent-color);
+        }
+        &.speed-medium {
+          background-color: var(--mat-sys-primary);
+        }
+        &.speed-slow {
+          background-color: var(--warn-color);
+        }
+      }
+    }
+
+    .eta-text {
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .card-list-container {
+    max-height: clamp(250px, 45vh, 500px);
+  }
+
+  .card-row-item {
+    padding: var(--space-xs) var(--space-sm);
+
+    .card-paths,
+    .card-progress,
+    .card-footer {
+      margin-left: 0;
+    }
+
+    .card-footer {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-xxs);
+
+      .card-footer-left,
+      .card-footer-right {
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+        text-align: center;
+      }
+    }
   }
 }

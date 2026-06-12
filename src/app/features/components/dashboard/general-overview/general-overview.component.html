@@ -24,9 +24,7 @@
                   animate.enter="expand-height-enter"
                   animate.leave="expand-height-leave"
                 >
-                  <div>
-                    <mat-icon svgIcon="drag-indicator"></mat-icon>
-                  </div>
+                  <mat-icon svgIcon="drag-indicator"></mat-icon>
                   <span class="panel-label">{{ panel.title | translate }}</span>
 
                   @if (panel.id === 'remotes') {
@@ -115,14 +113,12 @@
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <div class="panel-title-content">
-                            <mat-icon
-                              svgIcon="right-left"
-                              class="primary"
-                              aria-hidden="true"
-                            ></mat-icon>
-                            <span>{{ 'generalOverview.panels.bandwidth' | translate }}</span>
-                          </div>
+                          <mat-icon
+                            svgIcon="right-left"
+                            class="primary"
+                            aria-hidden="true"
+                          ></mat-icon>
+                          <span>{{ 'generalOverview.panels.bandwidth' | translate }}</span>
                         </mat-panel-title>
                         <mat-panel-description>
                           <span aria-live="polite">
@@ -135,7 +131,7 @@
                                 'generalOverview.bandwidth.error' | translate
                               }}</span>
                             } @else {
-                              <span>{{ bandwidthLimit()?.rate | formatRateValue }}</span>
+                              {{ bandwidthLimit()?.rate | formatRateValue }}
                             }
                           </span>
                         </mat-panel-description>
@@ -172,30 +168,28 @@
                           </button>
                         </div>
                       } @else {
-                        <div class="bandwidth-content">
-                          <div
-                            class="bandwidth-status"
-                            [class.limited]="isBandwidthLimited()"
-                            [class.unlimited]="!isBandwidthLimited()"
-                            aria-live="polite"
-                          >
-                            <div class="status-indicator" aria-hidden="true"></div>
-                            <span class="status-text">{{ bandwidth?.rate | formatRateValue }}</span>
-                          </div>
-
-                          @if (isBandwidthLimited()) {
-                            <div class="bandwidth-details">
-                              @for (detail of bandwidthDetails(); track $index) {
-                                <div class="detail-item">
-                                  <span class="label">{{ detail.labelKey | translate }}</span>
-                                  <span class="value">{{
-                                    detail.bytesPerSec | formatRateValue
-                                  }}</span>
-                                </div>
-                              }
-                            </div>
-                          }
+                        <div
+                          class="bandwidth-status"
+                          [class.limited]="isBandwidthLimited()"
+                          [class.unlimited]="!isBandwidthLimited()"
+                          aria-live="polite"
+                        >
+                          <div class="status-indicator" aria-hidden="true"></div>
+                          <span class="status-text">{{ bandwidth?.rate | formatRateValue }}</span>
                         </div>
+
+                        @if (isBandwidthLimited()) {
+                          <div class="bandwidth-details">
+                            @for (detail of bandwidthDetails(); track $index) {
+                              <div class="detail-item">
+                                <span class="label">{{ detail.labelKey | translate }}</span>
+                                <span class="value">{{
+                                  detail.bytesPerSec | formatRateValue
+                                }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
                       }
                     </mat-expansion-panel>
                   }
@@ -208,14 +202,8 @@
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <div class="panel-title-content">
-                            <mat-icon
-                              svgIcon="question"
-                              class="orange"
-                              aria-hidden="true"
-                            ></mat-icon>
-                            <span>{{ 'generalOverview.panels.system' | translate }}</span>
-                          </div>
+                          <mat-icon svgIcon="question" class="orange" aria-hidden="true"></mat-icon>
+                          <span>{{ 'generalOverview.panels.system' | translate }}</span>
                         </mat-panel-title>
                         <mat-panel-description>
                           <div
@@ -236,7 +224,6 @@
                           <span>{{ 'generalOverview.system.loading' | translate }}</span>
                         </div>
                       } @else {
-                        <!-- Explicit items are cleaner here — each row needs a different pipe -->
                         @let status = rcloneStatus();
                         <div class="info-grid" role="grid">
                           <div class="info-item" role="row">
@@ -271,7 +258,6 @@
                             <span class="label" role="gridcell">{{
                               'generalOverview.system.uptime' | translate
                             }}</span>
-                            <!-- FIX: same — use the exposed uptime signal. -->
                             <span class="value" role="gridcell">{{ uptime() | formatTime }}</span>
                           </div>
                         </div>
@@ -287,10 +273,8 @@
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <div class="panel-title-content">
-                            <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
-                            <span>{{ 'generalOverview.panels.jobs' | translate }}</span>
-                          </div>
+                          <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
+                          <span>{{ 'generalOverview.panels.jobs' | translate }}</span>
                         </mat-panel-title>
                         <mat-panel-description>
                           @let activeJobs = activeJobsCount();
@@ -341,15 +325,15 @@
                                 aria-valuemax="100"
                               ></mat-progress-bar>
                               <div class="progress-details" role="row">
-                                <span role="gridcell"
-                                  >{{ stats.bytes | formatBytes }}
+                                <span role="gridcell">
+                                  {{ stats.bytes | formatBytes }}
                                   {{ 'generalOverview.jobs.of' | translate }}
-                                  {{ stats.totalBytes | formatBytes }}</span
-                                >
-                                <span role="gridcell"
-                                  >{{ 'generalOverview.jobs.eta' | translate }}
-                                  {{ stats.eta | formatEta }}</span
-                                >
+                                  {{ stats.totalBytes | formatBytes }}
+                                </span>
+                                <span role="gridcell">
+                                  {{ 'generalOverview.jobs.eta' | translate }}
+                                  {{ stats.eta | formatEta }}
+                                </span>
                               </div>
                             </div>
                           }
@@ -401,35 +385,32 @@
                                         class="running-job-icon"
                                       ></mat-icon>
                                       <div class="running-job-text">
-                                        <span class="running-job-title">
-                                          {{ getJobLabel(job) }}
-                                        </span>
-                                        <span class="running-job-path">
-                                          {{ job.destination || job.source }}
-                                        </span>
+                                        <span class="running-job-title">{{
+                                          getJobLabel(job)
+                                        }}</span>
+                                        <span class="running-job-path">{{
+                                          job.destination || job.source
+                                        }}</span>
                                       </div>
                                     </div>
 
-                                    @if (job.stats; as stats) {
+                                    @if (job.stats; as jStats) {
                                       <div class="running-job-meta">
-                                        <span>{{ stats.bytes | formatBytes }}</span>
+                                        <span>{{ jStats.bytes | formatBytes }}</span>
                                         <span class="dot-separator">•</span>
-                                        @if (stats.speed > 0) {
-                                          <span>{{ stats.speed | formatRateValue }}</span>
-                                        } @else {
-                                          <span>{{
-                                            'generalOverview.jobs.starting' | translate
-                                          }}</span>
-                                        }
+                                        <span>{{
+                                          jStats.speed > 0
+                                            ? (jStats.speed | formatRateValue)
+                                            : ('generalOverview.jobs.starting' | translate)
+                                        }}</span>
                                         <span class="dot-separator">•</span>
-                                        <span>{{ stats.eta | formatEta }}</span>
+                                        <span>{{ jStats.eta | formatEta }}</span>
                                       </div>
-
                                       <mat-progress-bar
                                         mode="determinate"
                                         [value]="
-                                          stats.totalBytes > 0
-                                            ? (stats.bytes / stats.totalBytes) * 100
+                                          jStats.totalBytes > 0
+                                            ? (jStats.bytes / jStats.totalBytes) * 100
                                             : 0
                                         "
                                         class="running-job-progress"
@@ -444,7 +425,6 @@
                                         <span class="dot-separator">•</span>
                                         <span>{{ 0 | formatEta }}</span>
                                       </div>
-
                                       <mat-progress-bar
                                         mode="determinate"
                                         [value]="0"
@@ -476,10 +456,8 @@
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <div class="panel-title-content">
-                            <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
-                            <span>{{ 'generalOverview.panels.automations' | translate }}</span>
-                          </div>
+                          <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
+                          <span>{{ 'generalOverview.panels.automations' | translate }}</span>
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
@@ -545,14 +523,12 @@
                     >
                       <mat-expansion-panel-header>
                         <mat-panel-title>
-                          <div class="panel-title-content">
-                            <mat-icon
-                              svgIcon="satellite-dish"
-                              class="primary"
-                              aria-hidden="true"
-                            ></mat-icon>
-                            <span>{{ 'generalOverview.panels.serves' | translate }}</span>
-                          </div>
+                          <mat-icon
+                            svgIcon="satellite-dish"
+                            class="primary"
+                            aria-hidden="true"
+                          ></mat-icon>
+                          <span>{{ 'generalOverview.panels.serves' | translate }}</span>
                         </mat-panel-title>
                         <mat-panel-description>
                           <span
@@ -564,10 +540,7 @@
                               serves.length > 0
                                 ? ('generalOverview.serves.activeCount'
                                   | translate
-                                    : {
-                                        count: serves.length,
-                                        s: serves.length !== 1 ? 's' : '',
-                                      })
+                                    : { count: serves.length, s: serves.length !== 1 ? 's' : '' })
                                 : ('generalOverview.serves.noActive' | translate)
                             }}
                           </span>
@@ -614,7 +587,7 @@
         "
       >
         <mat-icon
-          [class]="isEditingLayout() ? 'primary' : ''"
+          [class.primary]="isEditingLayout()"
           [svgIcon]="isEditingLayout() ? 'circle-check' : 'pen'"
         ></mat-icon>
       </button>

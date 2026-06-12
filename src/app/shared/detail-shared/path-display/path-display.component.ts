@@ -127,6 +127,7 @@ export class PathDisplayComponent {
   readonly openPath = output<string>();
 
   private readonly pathService = inject(PathService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly mediaQuery = window.matchMedia('(max-width: 768px)');
 
   readonly isMobile = signal(this.mediaQuery.matches);
@@ -135,7 +136,7 @@ export class PathDisplayComponent {
     afterNextRender(() => {
       const handler = (e: MediaQueryListEvent): void => this.isMobile.set(e.matches);
       this.mediaQuery.addEventListener('change', handler);
-      inject(DestroyRef).onDestroy(() => this.mediaQuery.removeEventListener('change', handler));
+      this.destroyRef.onDestroy(() => this.mediaQuery.removeEventListener('change', handler));
     });
   }
 

@@ -229,12 +229,10 @@
 .profile-apply-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
   background-color: var(--view-bg-color);
   border-radius: var(--border-radius);
   padding: var(--space-md);
   box-shadow: var(--box-shadow);
-  margin-top: var(--space-xs);
 
   h4 {
     margin: 0;

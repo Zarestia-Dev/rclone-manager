@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { SharedProfileType, EditTarget } from '@app/types';
@@ -31,6 +32,7 @@ type ProfileMode = 'new' | 'override' | 'patch';
     MatSelectModule,
     MatButtonModule,
     MatRadioModule,
+    MatCheckboxModule,
     TranslateModule,
   ],
   templateUrl: './cli-import.component.html',
@@ -52,6 +54,8 @@ export class CliImportComponent {
     result: ImportResult;
     profileName: string;
     mode: ProfileMode;
+    importSourcePath: boolean;
+    importDestPath: boolean;
   }>();
 
   // State Signals
@@ -60,6 +64,8 @@ export class CliImportComponent {
   readonly profileMode = signal<ProfileMode>('new');
   readonly newProfileName = signal('');
   readonly validationError = signal<string | null>(null);
+  readonly importSourcePath = signal(true);
+  readonly importDestPath = signal(true);
 
   // Derivations
   readonly detectedVerbProfiles = computed(() => {
@@ -136,6 +142,8 @@ export class CliImportComponent {
       this.validationError.set(null);
       this.importResult.set(result);
       this.profileMode.set(result.verb ? 'new' : 'patch');
+      this.importSourcePath.set(true);
+      this.importDestPath.set(true);
     } catch (error) {
       console.error('Failed to parse CLI import command:', error);
       this.setError('wizards.cliImport.invalidCommand');
@@ -146,6 +154,8 @@ export class CliImportComponent {
     this.cliInput.set('');
     this.importResult.set(null);
     this.validationError.set(null);
+    this.importSourcePath.set(true);
+    this.importDestPath.set(true);
   }
 
   onApply(): void {
@@ -160,7 +170,13 @@ export class CliImportComponent {
           ? this.selectedOverrideProfile()
           : '';
 
-    this.apply.emit({ result, profileName, mode });
+    this.apply.emit({
+      result,
+      profileName,
+      mode,
+      importSourcePath: this.importSourcePath(),
+      importDestPath: this.importDestPath(),
+    });
   }
 
   private setError(msg: string): void {

@@ -340,22 +340,32 @@ export function mapConfigToFormProfile(
         ctx.pathService.parseFsString(s, 'currentRemote', ctx.remoteName, ctx.existingRemotes)
       );
     } else {
-      result['source'] = ctx.pathService.parseFsString(
+      const parsedSrc = ctx.pathService.parseFsString(
         configSources[0] ?? '',
         'currentRemote',
         ctx.remoteName,
         ctx.existingRemotes
       );
+      if (type === 'mount' || type === 'serve') {
+        parsedSrc.type = 'currentRemote';
+        parsedSrc.remote = '';
+      }
+      result['source'] = parsedSrc;
     }
 
     if (mapping.destKey) {
       const destVal = rcloneConfig[mapping.destKey] ?? '';
-      result['dest'] = ctx.pathService.parseFsString(
+      const parsedDst = ctx.pathService.parseFsString(
         destVal,
         'local',
         ctx.remoteName,
         ctx.existingRemotes
       );
+      if (type === 'mount') {
+        parsedDst.type = 'local';
+        parsedDst.remote = '';
+      }
+      result['dest'] = parsedDst;
     }
   }
 

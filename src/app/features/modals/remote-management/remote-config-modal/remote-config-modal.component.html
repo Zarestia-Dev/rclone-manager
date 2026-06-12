@@ -155,7 +155,7 @@
 
           @default {
             @if (state.currentStep() < state.stepConfigs().length) {
-              @let flagType = FLAG_TYPES[state.currentStep() - 2];
+              @let flagType = $any(state.stepConfigs()[state.currentStep() - 1].type);
               <section class="step-container">
                 <app-profile-header [flagType]="flagType" />
 
@@ -258,7 +258,7 @@
                   [dynamicFlagFields]="
                     flagType === 'serve'
                       ? state.dynamicServeFields()
-                      : state.dynamicFlagFields()[flagType]
+                      : $any(state.dynamicFlagFields())[flagType]
                   "
                   [isLoadingServeFields]="state.isLoadingServeFields()"
                   [highlightedFields]="state.highlightedFieldsForActiveProfiles()"

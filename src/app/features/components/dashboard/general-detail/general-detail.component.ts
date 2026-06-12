@@ -140,15 +140,6 @@ export class GeneralDetailComponent {
 
   protected readonly maxPrimaryActions = 3;
 
-  private static readonly DISPLAYED_COLUMNS = [
-    'type',
-    'profile',
-    'status',
-    'progress',
-    'startTime',
-    'actions',
-  ] as const;
-
   // Derivations
   readonly jobs = computed(() =>
     this.remoteFacade.jobs().filter(j => j.remote_name === this.selectedRemote().name)
@@ -209,7 +200,6 @@ export class GeneralDetailComponent {
 
   readonly jobsPanelConfig = computed<JobsPanelConfig>(() => ({
     jobs: this.jobs(),
-    displayedColumns: GeneralDetailComponent.DISPLAYED_COLUMNS,
   }));
 
   private readonly selectedRemoteName = computed(() => this.selectedRemote().name);

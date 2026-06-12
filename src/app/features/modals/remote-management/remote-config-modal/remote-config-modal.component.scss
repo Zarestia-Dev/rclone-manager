@@ -148,6 +148,7 @@ main {
     flex-direction: column;
     padding: var(--space-sm) var(--space-lg);
     max-width: 900px;
+    gap: var(--space-md);
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;

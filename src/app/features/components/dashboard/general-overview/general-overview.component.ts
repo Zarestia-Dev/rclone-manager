@@ -8,7 +8,6 @@ import {
   output,
 } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -50,10 +49,9 @@ import {
   LocalStorageService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
+import { AutomationCardComponent } from '../../../../shared/detail-shared';
 
 const SCROLL_DELAY_MS = 60;
-
-import { AutomationCardComponent } from '../../../../shared/detail-shared';
 
 const JOB_ICON_MAP: Record<string, string> = {
   sync: 'refresh',
@@ -108,7 +106,6 @@ const ALL_PANELS: PanelConfig[] = [
   imports: [
     NgClass,
     DecimalPipe,
-    MatCardModule,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
@@ -182,7 +179,7 @@ export class GeneralOverviewComponent {
 
   readonly automations = this.automationService.automations;
 
-  // --- Service signals re-exposed for the template ---
+  // --- Re-exposed Service Signals ---
   readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
   readonly jobStats = this.rcloneStatusService.jobStats;
   readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
@@ -190,14 +187,12 @@ export class GeneralOverviewComponent {
   readonly memoryUsage = this.rcloneStatusService.memoryUsage;
   readonly uptime = this.rcloneStatusService.uptime;
 
-  // --- Computed ---
+  // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
-  readonly activeJobsCount = computed(
-    () => this.remoteFacade.jobs().filter(j => j.status === 'Running').length
-  );
   readonly runningJobs = computed(() =>
     this.remoteFacade.jobs().filter(j => j.status === 'Running')
   );
+  readonly activeJobsCount = computed(() => this.runningJobs().length);
   readonly allRunningServes = computed(() =>
     this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
   );
@@ -242,12 +237,14 @@ export class GeneralOverviewComponent {
   });
 
   constructor() {
-    void this.loadLayoutSettings();
-    void this.loadAutomations();
+    this.initDashboardData();
+  }
+
+  private async initDashboardData(): Promise<void> {
+    await Promise.all([this.loadLayoutSettings(), this.loadAutomations()]);
   }
 
   // --- Layout management ---
-
   toggleEditLayout(): void {
     this.isEditingLayout.update(v => !v);
   }
@@ -318,7 +315,6 @@ export class GeneralOverviewComponent {
   }
 
   // --- Serve actions ---
-
   stopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
@@ -336,7 +332,6 @@ export class GeneralOverviewComponent {
   }
 
   // --- Automation actions ---
-
   async toggleAutomation(automationId: string): Promise<void> {
     try {
       await this.automationService.toggleAutomation(automationId);
@@ -370,7 +365,6 @@ export class GeneralOverviewComponent {
   }
 
   // --- Private helpers ---
-
   private async loadLayoutSettings(): Promise<void> {
     try {
       const [savedLayout, savedVariant] = await Promise.all([
@@ -381,7 +375,6 @@ export class GeneralOverviewComponent {
       ]);
 
       if (savedLayout) {
-        // Support both the new {order, hidden} shape and the legacy string[] shape
         const order: string[] = Array.isArray(savedLayout)
           ? savedLayout
           : (savedLayout.order ?? []);
@@ -395,7 +388,6 @@ export class GeneralOverviewComponent {
             .filter((p): p is PanelConfig => !!p)
             .map(p => ({ ...p, visible: !hiddenIds.has(p.id) }));
 
-          // Append any panels not present in the saved order (e.g. newly added panels)
           const seenIds = new Set(order);
           const appended = ALL_PANELS.filter(p => !seenIds.has(p.id)).map(p => ({
             ...p,
@@ -405,7 +397,6 @@ export class GeneralOverviewComponent {
           this.dashboardPanels.set([...ordered, ...appended]);
         }
       }
-
       if (savedVariant) this.cardDisplayMode.set(savedVariant);
     } catch {
       console.debug('Failed to load layout settings, using defaults');

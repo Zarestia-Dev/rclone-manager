@@ -239,17 +239,6 @@ export class ValidatorRegistryService {
     if (cronEnabledCtrl) triggers.push(cronEnabledCtrl.valueChanges);
     if (watchEnabledCtrl) triggers.push(watchEnabledCtrl.valueChanges);
 
-    const addTypeListener = (group: AbstractControl | null) => {
-      if (group instanceof FormGroup) {
-        const typeCtrl = group.get('type');
-        if (typeCtrl) triggers.push(typeCtrl.valueChanges);
-      } else if (group instanceof FormArray) {
-        triggers.push(group.valueChanges);
-      }
-    };
-    addTypeListener(sourceCtrl);
-    addTypeListener(destCtrl);
-
     if (triggers.length > 0) {
       merge(...triggers)
         .pipe(takeUntilDestroyed(destroyRef))

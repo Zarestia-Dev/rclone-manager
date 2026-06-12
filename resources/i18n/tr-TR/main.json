@@ -961,7 +961,10 @@
       "patchProfile": "Aktif Profili/Profilleri Yamala",
       "patchInfo": "Herhangi bir işlem (sync, serve veya mount) belirtilmedi. İçe aktarılan bayraklar doğrudan aktif yapılandırma profilinize yama olarak uygulanacaktır.",
       "patchInfoRemoteStep": "Herhangi bir işlem (sync, serve veya mount) belirtilmedi. Bu bayrakları yama olarak uygulamak için lütfen Uzak Bağlantı (Remote) adımı yerine değiştirmek istediğiniz özel bir yapılandırma adımına (ör. Sync, Mount veya Serve) gidin.",
-      "applyPatch": "Yamayı Uygula"
+      "applyPatch": "Yamayı Uygula",
+      "importSourcePath": "Kaynak Yolunu İçe Aktar",
+      "importDestPath": "Hedef Yolunu İçe Aktar",
+      "importMountPoint": "Bağlama Noktasını İçe Aktar"
     },
     "remoteConfig": {
       "remoteName": "Uzak Bağlantı Adı",

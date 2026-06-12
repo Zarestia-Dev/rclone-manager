@@ -848,9 +848,17 @@ export class JsonEditorComponent {
                   })
                 );
                 const lastGroup = sourceCtrl.at(sourceCtrl.length - 1) as FormGroup;
-                lastGroup.patchValue(
-                  this.pathService.parseFsString(p, 'currentRemote', currentRemote, existing)
+                const parsed = this.pathService.parseFsString(
+                  p,
+                  'currentRemote',
+                  currentRemote,
+                  existing
                 );
+                if (type === 'mount' || type === 'serve') {
+                  parsed.type = 'currentRemote';
+                  parsed.remote = '';
+                }
+                lastGroup.patchValue(parsed);
               }
             } else {
               sourceCtrl.push(
@@ -862,9 +870,17 @@ export class JsonEditorComponent {
               );
             }
           } else if (sourceCtrl instanceof FormGroup) {
-            sourceCtrl.patchValue(
-              this.pathService.parseFsString(srcVal || '', 'currentRemote', currentRemote, existing)
+            const parsed = this.pathService.parseFsString(
+              srcVal || '',
+              'currentRemote',
+              currentRemote,
+              existing
             );
+            if (type === 'mount' || type === 'serve') {
+              parsed.type = 'currentRemote';
+              parsed.remote = '';
+            }
+            sourceCtrl.patchValue(parsed);
           }
         }
 
@@ -874,9 +890,17 @@ export class JsonEditorComponent {
           const dstVal = rcloneParsed[mapping.destKey];
 
           if (destCtrl instanceof FormGroup && dstVal !== undefined) {
-            destCtrl.patchValue(
-              this.pathService.parseFsString(dstVal || '', 'local', currentRemote, existing)
+            const parsed = this.pathService.parseFsString(
+              dstVal || '',
+              'local',
+              currentRemote,
+              existing
             );
+            if (type === 'mount') {
+              parsed.type = 'local';
+              parsed.remote = '';
+            }
+            destCtrl.patchValue(parsed);
           }
         }
       }

@@ -12,7 +12,6 @@
 // =============================================
 // MAIN LAYOUT
 // =============================================
-
 .general-overview {
   display: flex;
   flex-direction: column;
@@ -38,8 +37,6 @@
 // =============================================
 // EXPANSION PANELS
 // =============================================
-
-// Bandwidth Panel
 .bandwidth-panel {
   .bandwidth-error {
     @include flex-center;
@@ -50,215 +47,196 @@
     @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
   }
 
-  .bandwidth-content {
-    margin-top: 16px;
+  .bandwidth-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: var(--transition-standard);
 
-    .bandwidth-status {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      transition: var(--transition-standard);
+    .status-indicator {
+      width: var(--icon-size-xs);
+      height: var(--icon-size-xs);
+      border-radius: 50%;
+      animation: breathing 3s ease-in-out infinite;
+      will-change: transform, opacity;
+    }
 
+    .status-text {
+      font-weight: 500;
+    }
+
+    &.limited {
+      @include status-container(rgba(var(--yellow-rgb), 0.05), rgba(var(--yellow-rgb), 0.3));
       .status-indicator {
-        width: var(--icon-size-xs);
-        height: var(--icon-size-xs);
-        border-radius: 50%;
-        animation: breathing 3s ease-in-out infinite;
-        will-change: transform, opacity;
-      }
-
-      .status-text {
-        font-weight: 500;
-      }
-
-      &.limited {
-        @include status-container(rgba(var(--yellow-rgb), 0.05), rgba(var(--yellow-rgb), 0.3));
-
-        .status-indicator {
-          background: var(--yellow);
-          box-shadow: 0 0 10px rgba(var(--yellow-rgb), 0.4);
-        }
-      }
-
-      &.unlimited {
-        @include status-container(
-          rgba(var(--primary-color-rgb), 0.05),
-          rgba(var(--primary-color-rgb), 0.3)
-        );
-
-        .status-indicator {
-          background: var(--primary-color);
-          box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.4);
-        }
+        background: var(--yellow);
+        box-shadow: 0 0 10px rgba(var(--yellow-rgb), 0.4);
       }
     }
 
-    .bandwidth-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 16px;
+    &.unlimited {
+      @include status-container(
+        rgba(var(--primary-color-rgb), 0.05),
+        rgba(var(--primary-color-rgb), 0.3)
+      );
+      .status-indicator {
+        background: var(--primary-color);
+        box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.4);
+      }
     }
+  }
+
+  .bandwidth-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
   }
 }
 
-// System Info Panel
-.system-info-panel {
-  .info-grid {
+.system-info-panel .info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.job-info-panel .job-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .job-progress-section {
+    background-color: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
+    border-radius: 8px;
+    padding: 16px;
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    mat-progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-details {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: clamp(10px, 2vw, 12px);
+      opacity: 0.8;
+    }
+  }
+
+  .job-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 16px;
-    margin-top: 16px;
   }
-}
 
-// Job Info Panel
-.job-info-panel {
-  .job-grid {
+  .running-jobs-section {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-top: 16px;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
+    border: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
 
-    .job-progress-section {
-      background-color: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
-      border-radius: 8px;
-      padding: 16px;
-
-      .progress-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-      }
-
-      mat-progress-bar {
-        height: 8px;
-        border-radius: 4px;
-        overflow: hidden;
-      }
-
-      .progress-details {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 8px;
-        font-size: clamp(10px, 2vw, 12px);
-        opacity: 0.8;
-      }
-    }
-
-    .job-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-    }
-
-    .running-jobs-section {
+    .section-heading {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 12px;
-      border-radius: 8px;
-      background: rgba(var(--view-bg-color-rgb, var(--view-bg-color)), 0.02);
-      border: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dim-color);
 
-      .section-heading {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--dim-color);
-
-        mat-icon {
-          width: 16px;
-          height: 16px;
-          font-size: 16px;
-        }
-      }
-
-      .running-jobs-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .running-job-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 10px 12px;
-        border-radius: 8px;
-        background: rgba(var(--window-bg-color-rgb), 0.7);
-        border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
-      }
-
-      .running-job-main {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-      }
-
-      .running-job-icon {
+      mat-icon {
         width: 16px;
         height: 16px;
         font-size: 16px;
-        color: var(--primary-color);
-        flex-shrink: 0;
       }
+    }
 
-      .running-job-text {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        flex: 1;
-      }
+    .running-jobs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
 
-      .running-job-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--window-fg-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
+    .running-job-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(var(--window-bg-color-rgb), 0.7);
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+    }
 
-      .running-job-path,
-      .running-job-meta {
-        font-size: 11px;
-        color: var(--dim-color);
-      }
+    .running-job-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
 
-      .running-job-path {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
+    .running-job-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      color: var(--primary-color);
+      flex-shrink: 0;
+    }
 
-      .running-job-meta {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 4px;
-      }
+    .running-job-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
 
-      .dot-separator {
-        opacity: 0.5;
-      }
+    .running-job-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--window-fg-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-      .running-job-progress {
-        height: 4px;
-        border-radius: 999px;
-      }
+    .running-job-path,
+    .running-job-meta {
+      font-size: 11px;
+      color: var(--dim-color);
+    }
+
+    .running-job-path {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .running-job-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dot-separator {
+      opacity: 0.5;
+    }
+
+    .running-job-progress {
+      height: 4px;
+      border-radius: 999px;
     }
   }
 }
-
-// =============================================
-// AUTOMATIONS PANEL
-// =============================================
 
 .serves-panel,
 .automations-panel {
@@ -272,12 +250,10 @@
 // =============================================
 // DRAG & DROP LAYOUT EDITOR
 // =============================================
-
 .draggable-panel-wrapper {
   border-radius: var(--card-border-radius);
   border: 2px dashed transparent;
   padding: 0;
-
   transition:
     border-color var(--transition-cubic),
     background-color var(--transition-cubic),
@@ -339,7 +315,6 @@
     color: var(--window-fg-color);
   }
 
-  // FIX: added gap — the label and slide-toggle were touching with no spacing.
   .visibility-toggle {
     display: flex;
     align-items: center;
@@ -401,14 +376,6 @@
 // =============================================
 // SHARED / UTILITY STYLES
 // =============================================
-
-.panel-title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-}
-
 .info-item,
 .detail-item {
   gap: 4px;
@@ -436,11 +403,9 @@
     &.success {
       color: var(--primary-color);
     }
-
     &.error {
       color: var(--warn-color);
     }
-
     &.inactive {
       color: var(--dim-color);
     }
@@ -457,11 +422,9 @@
   &.active {
     background-color: var(--primary-color);
   }
-
   &.error {
     background-color: var(--warn-color);
   }
-
   &.inactive {
     background-color: var(--dim-color);
   }
@@ -499,10 +462,6 @@
   gap: 12px;
   flex-direction: column;
 }
-
-// =============================================
-// RESPONSIVE STYLES
-// =============================================
 
 @media (max-width: 768px) {
   .general-overview {

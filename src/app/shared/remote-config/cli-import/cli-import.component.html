@@ -162,6 +162,30 @@
           <div class="profile-apply-section">
             <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
 
+            @if (result.sourcePath || result.destPath) {
+              @if (result.sourcePath) {
+                <mat-checkbox
+                  [ngModel]="importSourcePath()"
+                  (ngModelChange)="importSourcePath.set($event)"
+                >
+                  {{ 'wizards.cliImport.importSourcePath' | translate }}
+                </mat-checkbox>
+              }
+              @if (result.destPath && verb !== 'serve') {
+                <mat-checkbox
+                  [ngModel]="importDestPath()"
+                  (ngModelChange)="importDestPath.set($event)"
+                >
+                  {{
+                    (verb === 'mount'
+                      ? 'wizards.cliImport.importMountPoint'
+                      : 'wizards.cliImport.importDestPath'
+                    ) | translate
+                  }}
+                </mat-checkbox>
+              }
+            }
+
             @if (!result.verb) {
               <div
                 class="patch-info-box"

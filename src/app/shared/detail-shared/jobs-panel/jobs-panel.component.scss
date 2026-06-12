@@ -1,150 +1,90 @@
-.jobs-table-container {
-  background: var(--window-bg-color);
-  border-radius: var(--item-radius);
-  max-height: clamp(300px, 50vh, 600px);
-  overflow-y: auto;
+.jobs-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .app-pill.has-error {
+    cursor: help;
+  }
+}
+
+.job-type-icon {
+  &.job-icon-sync {
+    color: var(--primary-color);
+  }
+  &.job-icon-copy {
+    color: var(--yellow);
+  }
+  &.job-icon-move {
+    color: var(--orange);
+  }
+  &.job-icon-bisync {
+    color: var(--purple);
+  }
+  &.job-icon-mount,
+  &.job-icon-serve {
+    color: var(--accent-color);
+  }
+}
+
+.job-id-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--dim-color);
+  cursor: help;
+}
+
+.profile-name {
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+  background: color-mix(in srgb, var(--window-fg-color) 5%, transparent);
+  padding: 2px 6px;
+  border-radius: var(--radius-xxs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  outline: none;
   position: relative;
+  overflow: hidden;
+  padding: 0;
+  transition: var(--transition-fast);
 
-  .jobs-table {
-    width: 100%;
-    background: transparent;
-    // Smooth scrolling performance
-    contain: layout style paint;
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    .mat-mdc-header-row {
-      background: var(--sidebar-bg-color);
-      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--panel-hover-opacity));
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      transition: var(--transition-fast);
-    }
+  &.stop-button {
+    color: var(--warn-color);
+    background: color-mix(in srgb, var(--warn-color) 10%, transparent);
 
-    .mat-mdc-header-cell {
-      color: var(--window-fg-color);
-      font-weight: 600;
-      font-size: var(--font-size-sm);
-      background: var(--window-bg-color);
-    }
-
-    .job-row {
-      border-bottom: 1px solid rgba(var(--window-fg-color-rgb), var(--border-opacity));
-      cursor: pointer;
-      transition: var(--transition-fast);
-
-      &:hover {
-        background: rgba(var(--primary-color-rgb), var(--background-opacity));
-      }
-
-      &:last-child {
-        border-bottom: none;
-      }
-    }
-
-    .type-column {
-      .job-type-text {
-        font-weight: 600;
-        color: var(--window-fg-color);
-      }
-    }
-
-    .progress-info {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-
-      .progress-text {
-        font-size: var(--font-size-sm);
-        color: var(--dim-color);
-        font-weight: 500;
-      }
-    }
-
-    .no-progress {
-      color: var(--dim-color);
-      font-style: italic;
-    }
-
-    .start-time {
-      color: var(--window-fg-color);
-      font-size: var(--font-size-sm);
-    }
-
-    .job-actions {
-      display: flex;
-      gap: var(--space-xs);
-      justify-content: center;
-
-      .action-button {
-        transition: var(--transition-fast);
-
-        &.info-button {
-          color: var(--primary-color);
-          background: rgba(var(--primary-color-rgb), var(--active-opacity));
-
-          &:hover {
-            background: rgba(var(--primary-color-rgb), 0.2);
-          }
-        }
-
-        &.stop-button {
-          color: var(--warn-color);
-          background: rgba(var(--warn-color-rgb), var(--active-opacity));
-
-          &:hover {
-            background: rgba(var(--warn-color-rgb), 0.2);
-          }
-        }
-
-        &.delete-button {
-          color: var(--dim-color);
-          background: rgba(var(--window-fg-color-rgb), var(--border-opacity));
-
-          &:hover {
-            background: rgba(var(--warn-color-rgb), var(--active-opacity));
-            color: var(--warn-color);
-          }
-        }
-      }
-    }
-
-    .no-data-row {
-      .no-data-cell {
-        padding: var(--space-xl) var(--panel-padding);
-        text-align: center;
-
-        .no-data-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          color: var(--dim-color);
-
-          .no-data-icon {
-            width: var(--icon-size-xl);
-            height: var(--icon-size-xl);
-            opacity: 0.5;
-          }
-
-          span {
-            font-size: var(--font-size-base);
-            font-weight: 500;
-          }
-        }
-      }
+    &:hover {
+      background: color-mix(in srgb, var(--warn-color) 20%, transparent);
     }
   }
-}
 
-@media (max-width: 768px) {
-  .jobs-table-container {
-    overflow-x: auto;
-    max-height: clamp(250px, 45vh, 500px); // Slightly smaller on mobile
-  }
-}
+  &.delete-button {
+    color: var(--dim-color);
+    background: var(--border-color);
 
-@media (max-width: 480px) {
-  .jobs-table-container {
-    max-height: clamp(200px, 40vh, 400px); // Even smaller on small screens
+    &:hover {
+      background: color-mix(in srgb, var(--warn-color) 10%, transparent);
+      color: var(--warn-color);
+    }
   }
 }

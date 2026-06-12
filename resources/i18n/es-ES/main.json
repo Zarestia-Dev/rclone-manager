@@ -961,7 +961,10 @@
       "patchProfile": "Parchear perfil(es) activo(s)",
       "patchInfo": "No se especificó ninguna operación (sync, serve o mount). Las opciones importadas se aplicarán como un parche directamente a sus perfiles de configuración activos.",
       "patchInfoRemoteStep": "No se especificó ninguna operación (sync, serve o mount). Para aplicar estas opciones como un parche, navegue a un paso de configuración específico (por ejemplo, Sincronización, Montaje o Servir) en lugar del paso de Conexión.",
-      "applyPatch": "Aplicar parche"
+      "applyPatch": "Aplicar parche",
+      "importSourcePath": "Importar ruta de origen",
+      "importDestPath": "Importar ruta de destino",
+      "importMountPoint": "Importar punto de montaje"
     },
     "remoteConfig": {
       "remoteName": "Nombre remoto",

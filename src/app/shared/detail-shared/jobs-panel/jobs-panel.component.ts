@@ -1,188 +1,168 @@
-import {
-  Component,
-  input,
-  output,
-  effect,
-  viewChild,
-  inject,
-  ChangeDetectionStrategy,
-} from '@angular/core';
-import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { Component, input, output, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { MatSort, MatSortModule } from '@angular/material/sort';
-import { MatButtonModule } from '@angular/material/button';
+import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {} from '@angular/material/dialog';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { ModalService, JobManagementService } from '@app/services';
+import { FormatTimePipe } from '../../pipes/format-time.pipe';
+import { ModalService } from '@app/services';
+
+const STATUS_BADGE_MAP: Record<string, string> = {
+  completed: 'p-primary',
+  failed: 'p-warn',
+  stopped: 'p-orange',
+};
+
+const ICON_MAP: Record<string, string> = {
+  sync: 'refresh',
+  copy: 'copy',
+  move: 'move',
+  bisync: 'right-left',
+  serve: 'serve',
+  mount: 'mount',
+};
 
 @Component({
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
-    NgClass,
     TitleCasePipe,
-    DatePipe,
     MatCardModule,
     MatIconModule,
-    MatTableModule,
-    MatSortModule,
-    MatButtonModule,
+    MatRipple,
     MatProgressBarModule,
     MatTooltipModule,
     FormatFileSizePipe,
+    FormatTimePipe,
     TranslateModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
     @let cfg = config();
 
-    <mat-card>
-      <mat-card-header>
+    <mat-card class="detail-panel jobs-panel">
+      <mat-card-header class="panel-header">
         <mat-card-title>
           <mat-icon svgIcon="jobs" style="color: var(--op-color, var(--primary-color));"></mat-icon>
           <span>{{ 'detailShared.jobs.title' | translate }}</span>
           <span class="app-pill p-accent">{{ cfg.jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
-      <mat-card-content>
-        <div class="jobs-table-container">
-          <table mat-table [dataSource]="dataSource" matSort class="jobs-table">
-            <!-- Type Column -->
-            <ng-container matColumnDef="type">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'detailShared.jobs.columns.type' | translate }}
-              </th>
-              <td class="type-column" mat-cell *matCellDef="let job">
-                <span class="job-type-text">{{ job.job_type | titlecase }}</span>
-                @if (job.dry_run) {
-                  <span class="app-pill p-accent" style="margin-left: var(--space-md)">
-                    {{ 'detailShared.jobs.dryRun' | translate }}
-                  </span>
-                }
-              </td>
-            </ng-container>
 
-            <!-- Profile Column -->
-            <ng-container matColumnDef="profile">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'detailShared.jobs.columns.profile' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let job">
-                <span class="profile-name">{{ job.profile || 'default' }}</span>
-              </td>
-            </ng-container>
-
-            <!-- Status Column -->
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'detailShared.jobs.columns.status' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let job">
-                @let status = getJobStatus(job);
-                <span class="app-pill" [ngClass]="status">
-                  {{ 'detailShared.jobs.status.' + status | translate }}
+      <mat-card-content class="panel-content card-list-container">
+        @for (job of enrichedJobs(); track job.jobid) {
+          <div
+            class="card-row-item"
+            role="button"
+            tabindex="0"
+            (click)="showJobDetails(job)"
+            (keydown.enter)="showJobDetails(job)"
+            (keydown.space)="$event.preventDefault(); showJobDetails(job)"
+          >
+            <div class="card-header">
+              <div class="card-info-left">
+                <mat-icon
+                  [svgIcon]="job.icon"
+                  class="card-primary-icon job-type-icon"
+                  [class]="job.iconClass"
+                ></mat-icon>
+                <span class="card-title-text job-type-text">
+                  {{ job.job_type | titlecase }}
                 </span>
-              </td>
-            </ng-container>
+                <span
+                  class="job-id-label"
+                  [matTooltip]="
+                    job.execute_id
+                      ? ('modals.jobDetail.fields.executeId' | translate) + ': ' + job.execute_id
+                      : ''
+                  "
+                  >#{{ job.jobid }}</span
+                >
+                @if (job.profile) {
+                  <span class="profile-name">{{ job.profile }}</span>
+                }
+              </div>
 
-            <!-- Progress Column -->
-            <ng-container matColumnDef="progress">
-              <th mat-header-cell *matHeaderCellDef>
-                {{ 'detailShared.jobs.columns.progress' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let job">
-                @if (job.job_type !== 'mount' && job.stats) {
-                  <div class="progress-info">
-                    <mat-progress-bar
-                      mode="determinate"
-                      [value]="getJobProgress(job)"
-                      class="job-progress"
-                    ></mat-progress-bar>
-                    <span class="progress-text">
+              <div class="card-info-right">
+                <span
+                  class="app-pill"
+                  [class]="job.badgeClass"
+                  [class.has-error]="job.statusLower === 'failed' && job.errorText"
+                  [matTooltip]="job.statusLower === 'failed' && job.errorText ? job.errorText : ''"
+                >
+                  {{ 'detailShared.jobs.status.' + job.statusLower | translate }}
+                </span>
+
+                <button
+                  type="button"
+                  class="action-button"
+                  [class.stop-button]="job.statusLower === 'running'"
+                  [class.delete-button]="job.statusLower !== 'running'"
+                  [matTooltip]="
+                    (job.statusLower === 'running'
+                      ? 'detailShared.jobs.actions.stop'
+                      : 'detailShared.jobs.actions.delete'
+                    ) | translate
+                  "
+                  (click)="
+                    job.statusLower === 'running' ? onStopJob(job) : deleteJob.emit(job.jobid);
+                    $event.stopPropagation()
+                  "
+                  matRipple
+                  [matRippleCentered]="true"
+                  [matRippleUnbounded]="false"
+                  tabindex="-1"
+                >
+                  <mat-icon [svgIcon]="job.statusLower === 'running' ? 'stop' : 'trash'"></mat-icon>
+                </button>
+              </div>
+            </div>
+
+            @if (job.hasProgress) {
+              <div class="card-progress">
+                <mat-progress-bar mode="determinate" [value]="job.progress"></mat-progress-bar>
+                <span class="percentage-text">{{ job.progress }}%</span>
+              </div>
+            }
+
+            @if (job.hasFooter) {
+              <div class="card-footer">
+                <div class="card-footer-left">
+                  <span class="size-text">
+                    @if (job.hasProgress) {
                       {{ job.stats.bytes | formatFileSize }} /
                       {{ job.stats.totalBytes | formatFileSize }}
+                    }
+                  </span>
+                </div>
+                <div class="card-footer-right">
+                  @if (job.dry_run) {
+                    <span class="app-pill p-accent dry-run-badge">
+                      {{ 'detailShared.jobs.dryRun' | translate }}
                     </span>
-                  </div>
-                } @else {
-                  <span class="no-progress">-</span>
-                }
-              </td>
-            </ng-container>
-
-            <!-- Start Time Column -->
-            <ng-container matColumnDef="startTime">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'detailShared.jobs.columns.started' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let job">
-                <span class="start-time">{{ job.start_time | date: 'short' }}</span>
-              </td>
-            </ng-container>
-
-            <!-- Actions Column -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>
-                {{ 'detailShared.jobs.columns.actions' | translate }}
-              </th>
-              <td mat-cell *matCellDef="let job">
-                @let status = getJobStatus(job);
-                <div class="job-actions">
-                  @if (status === 'running') {
-                    <button
-                      matIconButton
-                      tabindex="-1"
-                      class="action-button stop-button"
-                      [matTooltip]="'detailShared.jobs.actions.stop' | translate"
-                      (click)="
-                        stopJob.emit({
-                          type: job.job_type,
-                          remoteName: job.remote_name,
-                          profileName: job.profile,
-                        });
-                        $event.stopPropagation()
-                      "
-                    >
-                      <mat-icon svgIcon="stop"></mat-icon>
-                    </button>
-                  } @else {
-                    <button
-                      matIconButton
-                      tabindex="-1"
-                      class="action-button delete-button"
-                      [matTooltip]="'detailShared.jobs.actions.delete' | translate"
-                      (click)="deleteJob.emit(job.jobid); $event.stopPropagation()"
-                    >
-                      <mat-icon svgIcon="trash"></mat-icon>
-                    </button>
+                  }
+                  @if (job.durationSeconds > 0) {
+                    <span class="duration-text">{{ job.durationSeconds | formatTime }}</span>
+                  }
+                  @if (job.relativeTime) {
+                    <span class="time-text">{{ job.relativeTime }}</span>
                   }
                 </div>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="cfg.displayedColumns"></tr>
-            <tr
-              mat-row
-              *matRowDef="let row; columns: cfg.displayedColumns"
-              class="job-row"
-              (click)="showJobDetails(row)"
-            ></tr>
-            <tr class="no-data-row" *matNoDataRow>
-              <td class="no-data-cell" [attr.colspan]="cfg.displayedColumns.length">
-                <div class="no-data-content">
-                  <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
-                  <span>{{ 'detailShared.jobs.empty' | translate }}</span>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <mat-icon svgIcon="jobs"></mat-icon>
+            <span>{{ 'detailShared.jobs.empty' | translate }}</span>
+          </div>
+        }
       </mat-card-content>
     </mat-card>
   `,
@@ -198,42 +178,63 @@ export class JobsPanelComponent {
   readonly deleteJob = output<number>();
 
   private readonly modalService = inject(ModalService);
-  private readonly jobService = inject(JobManagementService);
-  private readonly sort = viewChild(MatSort);
+  private readonly translate = inject(TranslateService);
+  private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
 
-  readonly dataSource = new MatTableDataSource<JobInfo>([]);
+  protected readonly enrichedJobs = computed(() => {
+    this.lang(); // Track locale context changes inside Zoneless Architecture
 
-  constructor() {
-    effect(() => {
-      this.dataSource.data = this.config().jobs;
-      const sort = this.sort();
-      if (sort) this.dataSource.sort = sort;
+    return this.config().jobs.map(job => {
+      const statusLower = job.status.toLowerCase();
+      const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
+      const relativeTime = job.start_time ? this.getRelativeTime(job.start_time) : '';
+      const durationSeconds = job.start_time
+        ? this.getJobDurationSeconds(job.start_time, job.end_time)
+        : 0;
+      const errorText = job.error || job.stats?.lastError || '';
+
+      return {
+        ...job,
+        statusLower,
+        badgeClass: STATUS_BADGE_MAP[statusLower] || 'p-accent',
+        relativeTime,
+        durationSeconds,
+        progress: hasProgress ? Math.round((job.stats.bytes / job.stats.totalBytes) * 100) : 0,
+        icon: ICON_MAP[job.job_type] || 'jobs',
+        iconClass: `job-icon-${job.job_type}`,
+        hasProgress,
+        hasFooter: hasProgress || !!job.dry_run || !!relativeTime || durationSeconds > 0,
+        errorText,
+      };
     });
+  });
 
-    this.dataSource.sortingDataAccessor = (job: JobInfo, column: string): string | number => {
-      switch (column) {
-        case 'type':
-          return job.job_type;
-        case 'profile':
-          return job.profile ?? 'default';
-        case 'status':
-          return job.status.toLowerCase();
-        case 'startTime':
-          return job.start_time ? new Date(job.start_time).getTime() : 0;
-        default:
-          return '';
-      }
-    };
+  private getJobDurationSeconds(startTime: string, endTime?: string): number {
+    const start = Date.parse(startTime);
+    if (isNaN(start)) return 0;
+    const end = endTime ? Date.parse(endTime) : Date.now();
+    return Math.max(0, Math.floor((end - start) / 1000));
   }
 
-  getJobProgress(job: JobInfo): number {
-    if (!job.stats) return 0;
-    if (!job.stats.totalBytes) return 0;
-    return (job.stats.bytes / job.stats.totalBytes) * 100;
+  private getRelativeTime(timestamp: string): string {
+    const diff = Date.now() - Date.parse(timestamp);
+    const minutes = Math.floor(diff / 60000);
+    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
+    const hours = Math.floor(minutes / 60);
+    if (hours <= 0)
+      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
+    const days = Math.floor(hours / 24);
+    if (days <= 0)
+      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
+    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
   }
 
-  getJobStatus(job: JobInfo): string {
-    return job.status.toLowerCase();
+  onStopJob(job: JobInfo): void {
+    this.stopJob.emit({
+      type: job.job_type as PrimaryActionType,
+      remoteName: job.remote_name,
+      profileName: job.profile,
+    });
   }
 
   showJobDetails(job: JobInfo): void {

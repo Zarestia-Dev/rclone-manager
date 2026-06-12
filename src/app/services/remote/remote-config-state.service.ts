@@ -43,7 +43,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 export interface StepConfig {
   readonly label: string;
   readonly icon: string;
-  readonly type: string;
+  readonly type: EditTarget;
 }
 export interface DialogData {
   editTarget?: EditTarget;
@@ -270,9 +270,6 @@ export class RemoteConfigStateService {
       icon: type === 'serve' ? 'satellite-dish' : type,
       type,
     })),
-    { label: 'modals.remoteConfig.steps.filter', icon: 'filter', type: 'filter' },
-    { label: 'modals.remoteConfig.steps.vfs', icon: 'vfs', type: 'vfs' },
-    { label: 'modals.remoteConfig.steps.backend', icon: 'server', type: 'backend' },
     { label: 'modals.remoteConfig.steps.runtimeRemote', icon: 'gear', type: 'runtimeRemote' },
   ]);
 
@@ -1063,8 +1060,10 @@ export class RemoteConfigStateService {
     result: ImportResult;
     profileName: string;
     mode: 'new' | 'override' | 'patch';
+    importSourcePath: boolean;
+    importDestPath: boolean;
   }): Promise<void> {
-    const { result, profileName, mode } = event;
+    const { result, profileName, mode, importSourcePath, importDestPath } = event;
     const targetType = (result.verb || this.editTarget() || 'sync') as SharedProfileType;
 
     if (mode === 'new') {
@@ -1090,7 +1089,7 @@ export class RemoteConfigStateService {
     if (targetType === 'mount' && result.mountSubtype)
       group.get('options.mountType')?.setValue(result.mountSubtype);
 
-    if (result.sourcePath) {
+    if (result.sourcePath && importSourcePath) {
       const srcCtrl = group.get('source'),
         parsed = this.pathService.parseFsString(
           result.sourcePath,
@@ -1098,22 +1097,28 @@ export class RemoteConfigStateService {
           this.currentRemoteName(),
           this.existingRemotes()
         );
+      if (targetType === 'mount' || targetType === 'serve') {
+        parsed.type = 'currentRemote';
+        parsed.remote = '';
+      }
       if (srcCtrl instanceof FormArray) {
         srcCtrl.clear();
         srcCtrl.push(this.createSourcePathGroup(parsed));
       } else srcCtrl?.patchValue(parsed);
     }
-    if (result.destPath)
-      group
-        .get('dest')
-        ?.patchValue(
-          this.pathService.parseFsString(
-            result.destPath,
-            'local',
-            this.currentRemoteName(),
-            this.existingRemotes()
-          )
-        );
+    if (result.destPath && importDestPath) {
+      const destParsed = this.pathService.parseFsString(
+        result.destPath,
+        'local',
+        this.currentRemoteName(),
+        this.existingRemotes()
+      );
+      if (targetType === 'mount') {
+        destParsed.type = 'local';
+        destParsed.remote = '';
+      }
+      group.get('dest')?.patchValue(destParsed);
+    }
 
     const processedLinked = new Set<SharedProfileType>();
     for (const cls of result.classified) {

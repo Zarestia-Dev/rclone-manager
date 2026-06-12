@@ -27,7 +27,7 @@ import { TransferActivityPanelConfig } from '../../types';
   template: `
     <mat-card class="detail-panel transfer-activity-panel">
       <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
+        <mat-card-title>
           <mat-icon svgIcon="download" class="primary-icon"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           @if (config().showHistory) {
