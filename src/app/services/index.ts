@@ -26,6 +26,7 @@ export * from './remote/path-selection.service';
 export * from './remote/rclone-value-mapper.service';
 export * from './remote/cli-flag-mapper.service';
 export * from './remote/remote-config-state.service';
+export * from './remote/remote-presets';
 export * from './infrastructure/platform/tauri-base.service';
 export * from './infrastructure/platform/path.service';
 export * from './settings/backup-restore.service';

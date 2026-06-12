@@ -4,15 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [v0.2.7] - 2026-06-12
 
 ### Added
+- **Predefined Performance Presets**: Added smart, OS-aware performance configuration presets automatically applied during initial remote creation (not triggered on edit or clone).
+  - Integrates optimized VFS defaults (`CacheMode: 'full'`, large cache limits, directory caching) and backend buffer properties for high-performance cross-platform remote usage.
+  - Automatically matches storage protocol families (e.g. S3-compatible, WebDAV) and host OS configurations (such as `NetworkMode` on Windows or `NoAppleXattr` on macOS).
 - Local filesystem watchers for sync, copy, move, and bisync automations. Sync, copy, and move require at least one local source path; bisync watches local paths from both sides.
 - Net-change debounce: create/delete pairs on the same path within the debounce window cancel each other out, suppressing temp files and atomic saves without explicit exclude rules.
 - Added support for detached windows for dialogs (like progress, logs etc.). If you close the main window, dialogs will stay open. Some helper dialogs not open as a new window.
 - Added a cancel support for While updates downloading. 
 - **Rclone Version Validation**: Enhanced rclone binary validation to support minimum version enforcement and version parsing (including pre-releases). 
-- **Local Storage Service**: Introduced a client-side local storage utility (`LocalStorageService`) with namespace prefixing, scoped key support, and transient in-memory fallback to manage UI state.
 - French language added from Crowdin (https://crowdin.com/project/rclone-manger).
 
 ### Security

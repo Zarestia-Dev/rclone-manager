@@ -39,6 +39,7 @@ import { IconService } from '../ui/icon.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { staticFlagDefinitions } from './flag-definitions';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { RemotePresetsService } from './remote-presets';
 
 export interface StepConfig {
   readonly label: string;
@@ -110,6 +111,7 @@ export class RemoteConfigStateService {
   private readonly pathService = inject(PathService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly presetsService = inject(RemotePresetsService);
   private existingConfig?: RemoteSettings | null;
 
   readonly remoteForm: FormGroup = this.fb.group({
@@ -743,6 +745,65 @@ export class RemoteConfigStateService {
     this.currentStep.set(idx !== -1 ? idx + 1 : 1);
   }
 
+  isNewRemoteCreation(): boolean {
+    return (
+      !this.dialogData?.name &&
+      !this.dialogData?.cloneFrom &&
+      !this.editTarget() &&
+      !this.cloneTarget()
+    );
+  }
+
+  applyPresets(remoteType: string): void {
+    const preset = this.presetsService.resolvePresets(remoteType);
+
+    // 1. Patch VFS default profile
+    if (preset.vfs) {
+      this.profiles.update(p => ({
+        ...p,
+        vfs: {
+          ...p.vfs,
+          [DEFAULT_PROFILE_NAME]: { ...p.vfs[DEFAULT_PROFILE_NAME], ...preset.vfs },
+        },
+      }));
+    }
+
+    // 2. Patch mount default profile's options
+    if (preset.mount && Object.keys(preset.mount).length) {
+      const currentMount = this.profiles().mount[DEFAULT_PROFILE_NAME] || {};
+      const rclone = currentMount.rclone || {};
+      this.profiles.update(p => ({
+        ...p,
+        mount: {
+          ...p.mount,
+          [DEFAULT_PROFILE_NAME]: {
+            ...currentMount,
+            rclone: { ...rclone, mountOpt: { ...rclone.mountOpt, ...preset.mount } },
+          },
+        },
+      }));
+    }
+
+    // 3. Patch backend default profile
+    if (preset.backend) {
+      this.profiles.update(p => ({
+        ...p,
+        backend: {
+          ...p.backend,
+          [DEFAULT_PROFILE_NAME]: { ...p.backend[DEFAULT_PROFILE_NAME], ...preset.backend },
+        },
+      }));
+    }
+
+    // 4. Patch remote-specific config options
+    if (preset.remote) {
+      this.remoteForm.patchValue(preset.remote, { emitEvent: false });
+      for (const key of Object.keys(preset.remote)) {
+        this.onRemoteFieldChanged(key, true);
+      }
+    }
+  }
+
   initProfiles(
     dialogData: DialogData,
     autoAddProfile?: boolean,
@@ -763,6 +824,11 @@ export class RemoteConfigStateService {
     }
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelected);
+
+    if (this.isNewRemoteCreation() && dialogData?.remoteType) {
+      this.applyPresets(dialogData.remoteType);
+    }
+
     if (autoAddProfile && editTarget && this.PROFILE_TYPES.includes(editTarget))
       this.startAddProfile(editTarget);
   }
@@ -1031,6 +1097,17 @@ export class RemoteConfigStateService {
     const t = this.remoteForm.get('type')?.value as string;
     await this.loadRemoteFields(t);
     await this.syncRuntimeRemoteType();
+
+    if (this.isNewRemoteCreation() && t) {
+      this.applyPresets(t);
+      for (const flagType of this.PROFILE_TYPES) {
+        const activeProfile = this.selectedProfileName()[flagType] || DEFAULT_PROFILE_NAME;
+        const profileData = this.profiles()[flagType]?.[activeProfile];
+        if (profileData) {
+          await this.populateProfileForm(flagType, profileData);
+        }
+      }
+    }
   }
 
   private async loadRemoteFields(type: string): Promise<void> {

@@ -31,11 +31,11 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
-  NautilusService,
   ModalService,
   ValidatorRegistryService,
   IconService,
   PathService,
+  RemotePresetsService,
 } from '@app/services';
 import { CopyToClipboardDirective } from '@app/directives';
 import {
@@ -96,9 +96,9 @@ export class QuickAddRemoteComponent {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
-  private readonly nautilusService = inject(NautilusService);
   private readonly modalService = inject(ModalService);
   private readonly pathService = inject(PathService);
+  private readonly presetsService = inject(RemotePresetsService);
 
   readonly operationTabs = [
     {
@@ -425,9 +425,15 @@ export class QuickAddRemoteComponent {
 
   private async handleStandardCreation(setup: any, operations: any): Promise<void> {
     const finalConfig = this.buildFinalConfig(setup.name, operations);
+    const preset = this.presetsService.resolvePresets(setup.type || '');
+    const parameters = {
+      name: setup.name,
+      type: setup.type,
+      ...(preset.remote || {}),
+    };
     await this.remoteManagementService.createRemote(
       setup.name,
-      { name: setup.name, type: setup.type },
+      parameters,
       this.remoteManagementService.buildOpt(this.commandOptions())
     );
     await this.appSettingsService.saveRemoteSettings(setup.name, finalConfig);
@@ -450,10 +456,23 @@ export class QuickAddRemoteComponent {
       });
     };
 
+    const preset = this.presetsService.resolvePresets(
+      this.quickAddForm.get('setup.type')?.value || ''
+    );
+
+    const mountProfile = buildProfile('mount', operations.mount);
+    if (preset.mount && Object.keys(preset.mount).length) {
+      if (!mountProfile['rclone']) mountProfile['rclone'] = {};
+      mountProfile['rclone']['mountOpt'] = {
+        ...mountProfile['rclone']['mountOpt'],
+        ...preset.mount,
+      };
+    }
+
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
         [DEFAULT_PROFILE_NAME]: {
-          ...buildProfile('mount', operations.mount),
+          ...mountProfile,
           vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
@@ -478,16 +497,14 @@ export class QuickAddRemoteComponent {
       [REMOTE_CONFIG_KEYS.filter]: { [DEFAULT_PROFILE_NAME]: {} },
       [REMOTE_CONFIG_KEYS.vfs]: {
         [DEFAULT_PROFILE_NAME]: {
-          options: {
-            CacheMode: 'writes',
-            ChunkSize: '128M',
-            DirCacheTime: '5m',
-            VfsCacheMaxAge: '1h',
-            ReadOnly: false,
-          },
+          options: preset.vfs || {},
         },
       },
-      [REMOTE_CONFIG_KEYS.backend]: { [DEFAULT_PROFILE_NAME]: {} },
+      [REMOTE_CONFIG_KEYS.backend]: {
+        [DEFAULT_PROFILE_NAME]: {
+          options: preset.backend || {},
+        },
+      },
       showOnTray: true,
     } as unknown as RemoteConfigSections;
   }
@@ -497,10 +514,11 @@ export class QuickAddRemoteComponent {
   private async startInteractiveRemoteConfig(): Promise<void> {
     if (!this.pendingConfig) return;
     try {
+      const preset = this.presetsService.resolvePresets(this.pendingConfig.remoteData.type || '');
       const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
         this.pendingConfig.remoteData.name,
         this.pendingConfig.remoteData.type,
-        {},
+        preset.remote || {},
         this.remoteManagementService.buildOpt(this.commandOptions())
       );
       if (!startResp || startResp.State === '') {
