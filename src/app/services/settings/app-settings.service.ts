@@ -129,8 +129,8 @@ export class AppSettingsService extends TauriBaseService {
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('settings.resetAll.title'),
       this.translate.instant('settings.resetAll.message'),
-      undefined,
-      undefined,
+      'common.yes',
+      'common.no',
       {
         icon: 'rotate-right',
         color: 'warn',

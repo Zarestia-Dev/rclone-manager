@@ -75,8 +75,8 @@ export class NautilusActionsService {
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('nautilus.modals.emptyTrash.title'),
       this.translate.instant('nautilus.modals.emptyTrash.message', { remote: r.name }),
-      undefined,
-      undefined,
+      'common.delete',
+      'common.cancel',
       { icon: 'trash', color: 'warn' }
     );
     if (!confirmed) return;

@@ -610,7 +610,8 @@ export class RcloneFlagsModalComponent implements OnInit {
       'modals.rcloneFlags.reset.title',
       'modals.rcloneFlags.reset.message',
       'modals.rcloneFlags.reset.confirm',
-      'common.cancel'
+      'common.cancel',
+      { color: 'warn', icon: 'circle-exclamation' }
     );
     if (!confirmed) return;
 

@@ -284,8 +284,8 @@ export class HomeComponent {
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('home.resetRemote.title'),
       this.translate.instant('home.resetRemote.message', { name: remoteName }),
-      undefined,
-      undefined,
+      'common.yes',
+      'common.no',
       { icon: 'rotate-right', color: 'warn' }
     );
     if (!confirmed) return;

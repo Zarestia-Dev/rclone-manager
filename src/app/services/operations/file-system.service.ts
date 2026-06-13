@@ -58,8 +58,8 @@ export class FileSystemService extends TauriBaseService {
       this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',
@@ -113,8 +113,8 @@ export class FileSystemService extends TauriBaseService {
       this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',

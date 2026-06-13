@@ -166,8 +166,8 @@ export class NautilusFileOperationsService {
     const confirmed = await this.notifications.confirmModal(
       this.translate.instant('nautilus.modals.delete.title'),
       message,
-      undefined,
-      undefined,
+      'common.delete',
+      'common.cancel',
       { icon: 'trash', color: 'warn' }
     );
     if (!confirmed) return false;

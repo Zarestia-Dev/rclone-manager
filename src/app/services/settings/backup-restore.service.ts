@@ -104,8 +104,8 @@ export class BackupRestoreService extends TauriBaseService {
       this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
-        undefined,
-        undefined,
+        '',
+        'common.close',
         {
           icon: 'circle-exclamation',
           color: 'warn',
