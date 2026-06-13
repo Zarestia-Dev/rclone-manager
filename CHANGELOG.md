@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.2.7] - 2026-06-12
+## [v0.2.7] - 2026-06-13
 
 ### Added
 - **Predefined Performance Presets**: Added smart, OS-aware performance configuration presets automatically applied during initial remote creation (not triggered on edit or clone).

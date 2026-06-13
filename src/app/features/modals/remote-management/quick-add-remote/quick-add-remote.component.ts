@@ -255,7 +255,7 @@ export class QuickAddRemoteComponent {
   ): FormGroup {
     return this.fb.group({
       type: new FormControl(defaultType),
-      path: new FormControl('', [this.validatorRegistry.operationPathValidator()]),
+      path: new FormControl(''),
       remote: new FormControl(''),
     });
   }

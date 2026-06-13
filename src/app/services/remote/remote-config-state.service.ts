@@ -382,7 +382,7 @@ export class RemoteConfigStateService {
   createSourcePathGroup(initial?: { type?: string; path?: string; remote?: string }): FormGroup {
     return this.fb.group({
       type: [initial?.type || 'currentRemote'],
-      path: [initial?.path || '', [this.validatorRegistry.operationPathValidator()]],
+      path: [initial?.path || ''],
       remote: [initial?.remote || ''],
     });
   }
@@ -415,7 +415,7 @@ export class RemoteConfigStateService {
     if (fields.includes('dest'))
       group['dest'] = this.fb.group({
         type: ['local'],
-        path: ['', [this.validatorRegistry.operationPathValidator()]],
+        path: [''],
         remote: [''],
       });
     if (fields.includes('autoStart') && !fields.includes('type')) group['cronExpression'] = [null];

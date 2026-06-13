@@ -197,7 +197,7 @@ async fn initialize_and_register_job(
             Some(app),
         )
         .await;
-        if metadata.origin != Some(Origin::Automation) && (metadata.job_type != JobType::Mount) {
+        if metadata.job_type != JobType::Mount {
             notify(app, metadata.started_event(backend_name.clone()));
         }
     }
@@ -677,14 +677,14 @@ pub async fn handle_job_completion(
 
     if stopped {
         info!("{} Job {jobid} stopped by user.", metadata.job_type);
-        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
+        if !metadata.no_cache {
             notify(app, metadata.stopped_event(backend_name.clone()));
         }
         return Ok(job_status.get("output").cloned().unwrap_or(json!({})));
     }
 
     if !success {
-        if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
+        if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
@@ -697,7 +697,7 @@ pub async fn handle_job_completion(
         return Err(RcloneError::JobError(error_msg));
     }
 
-    if !metadata.no_cache && metadata.origin != Some(Origin::Automation) {
+    if !metadata.no_cache {
         log_operation(
             LogLevel::Info,
             Some(metadata.remote_name.clone()),
@@ -946,9 +946,19 @@ pub async fn submit_batch_job(
         )
         .await;
 
-        if metadata.origin != Some(Origin::Automation) {
-            notify(&app, metadata.started_event(backend.name.clone()));
-        }
+        let redacted_payload = redact_value(&payload, &app);
+        log_operation(
+            LogLevel::Info,
+            Some(metadata.remote_name.clone()),
+            Some(metadata.job_type.to_string()),
+            format!(
+                "{} started with ID {} (ExecuteID: {:?})",
+                metadata.job_type, jobid, execute_id
+            ),
+            Some(redacted_payload),
+        );
+
+        notify(&app, metadata.started_event(backend.name.clone()));
     }
 
     let backend_name = backend.name.clone();

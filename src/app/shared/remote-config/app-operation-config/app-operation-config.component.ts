@@ -284,9 +284,7 @@ export class OperationConfigComponent {
     array.push(
       new FormGroup({
         type: new FormControl(initial?.type ?? 'currentRemote'),
-        path: new FormControl(initial?.path ?? '', [
-          this.validatorRegistry.operationPathValidator(),
-        ]),
+        path: new FormControl(initial?.path ?? ''),
         remote: new FormControl(initial?.remote ?? ''),
       })
     );

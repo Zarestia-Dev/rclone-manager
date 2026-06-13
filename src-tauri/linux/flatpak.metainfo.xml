@@ -97,6 +97,59 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.7" date="2026-06-13">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Smart, OS-aware performance presets applied automatically during remote creation.</li>
+          <li>Local filesystem watchers for sync, copy, move, and bisync automations.</li>
+          <li>Net-change debounce window to suppress temporary and atomic save file transfers.</li>
+          <li>Support for detached dialog windows (progress, logs, etc.) that persist after closing the main window.</li>
+          <li>Cancel button support during update downloads.</li>
+          <li>Enhanced rclone binary version validation and minimum version enforcement.</li>
+          <li>French language translation from Crowdin.</li>
+        </ul>
+        <p>Security</p>
+        <ul>
+          <li>Transient random in-memory credentials for local Rclone engines when no credentials are configured.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Migrated scheduled tasks to the new Automations Manager system.</li>
+          <li>macOS dock icon visibility controls based on window visibility.</li>
+          <li>Profile configuration values aligned with native Rclone RC properties.</li>
+          <li>Moved temporary view preferences to client-side local storage to optimize disk I/O.</li>
+          <li>Removed Snap package support.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed missing localization values and cleaned up unused translation keys.</li>
+          <li>Fixed incorrect mapping of rclone flags on backends and sync types.</li>
+          <li>Workaround for VFS options being ignored during serve startup.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.6" date="2026-05-19">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Dry run toggle on Operation Control Panel for sync, copy, move, and bisync.</li>
+          <li>New component to map CLI rclone commands to application values.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Shortcut option to toggle window visibility, in addition to the tray menu.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Aligned JSON editor flag formats to PascalCase matching Rclone structures.</li>
+          <li>Fixed destination path loading on remote configuration modal.</li>
+          <li>Fixed ordering issues on UI remote list load.</li>
+          <li>Fixed UI thread freeze when updating the system tray menu.</li>
+          <li>Various update process bug fixes.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-05-16">
       <description>
         <p>Added</p>

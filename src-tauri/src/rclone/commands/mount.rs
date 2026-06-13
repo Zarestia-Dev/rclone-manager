@@ -222,6 +222,13 @@ pub async fn unmount_remote(
 
     if mount_point.trim().is_empty() {
         let error_msg = crate::localized_error!("backendErrors.mount.pointEmpty");
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.clone()),
+            Some("Unmount remote".to_string()),
+            format!("Failed to unmount: {error_msg}"),
+            None,
+        );
         notify(
             &app,
             NotificationEvent::Mount(MountStage::Failed {
@@ -258,6 +265,13 @@ pub async fn unmount_remote(
         .await
         .map_err(|e| {
             let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
+            log_operation(
+                LogLevel::Error,
+                Some(remote_name.clone()),
+                Some("Unmount remote".to_string()),
+                format!("Failed to unmount {mount_point}: {error_msg}"),
+                None,
+            );
             notify(
                 &app,
                 NotificationEvent::Mount(MountStage::Failed {
@@ -329,7 +343,17 @@ pub async fn unmount_all_remotes(
     let _ = backend
         .post_json(&state.client, mount::UNMOUNTALL, None)
         .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+        .map_err(|e| {
+            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
+            log_operation(
+                LogLevel::Error,
+                None,
+                Some("Unmount all remotes".to_string()),
+                format!("Failed to unmount all remotes: {error_msg}"),
+                None,
+            );
+            error_msg
+        })?;
 
     if !context.is_shutdown()
         && let Err(e) = force_check_mounted_remotes(app.clone()).await

@@ -50,9 +50,9 @@ const FAMILY_PRESETS: Record<StorageFamily, PresetValues> = {
   s3: {
     backend: {
       DisableHTTP2: true,
+      UseServerModTime: true,
     },
     vfs: {
-      UseServerModTime: true,
       FastFingerprint: true,
       DirCacheTime: '72h',
     },

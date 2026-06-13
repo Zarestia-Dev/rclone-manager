@@ -503,7 +503,7 @@ pub async fn execute_upload_batch(
             .await;
     }
 
-    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
+    if !metadata.no_cache {
         notify(&app, metadata.started_event(backend.name.clone()));
     }
 
@@ -561,7 +561,7 @@ pub async fn execute_upload_batch(
     let success = errors.is_empty();
     let error_msg = (!success).then(|| format!("{} failed: {}", errors.len(), errors.join("; ")));
 
-    if metadata.origin != Some(Origin::Automation) && !metadata.no_cache {
+    if !metadata.no_cache {
         if success {
             notify(&app, metadata.completed_event(backend.name.clone()));
         } else if let Some(ref m) = error_msg {

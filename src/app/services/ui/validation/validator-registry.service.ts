@@ -321,50 +321,6 @@ export class ValidatorRegistryService {
     };
   }
 
-  operationPathValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const pathGroup = control.parent;
-      if (!pathGroup) return null;
-
-      // Find the operation group (the one with autoStart)
-      let opGroup = pathGroup.parent;
-      if (opGroup instanceof FormArray) {
-        opGroup = opGroup.parent;
-      }
-      if (!opGroup) return null;
-
-      const autoStart = opGroup.get('autoStart')?.value === true;
-      const cronEnabled = opGroup.get('cronEnabled')?.value === true;
-      const watchEnabled = opGroup.get('watchEnabled')?.value === true;
-      const isActive = autoStart || cronEnabled || watchEnabled;
-
-      if (!isActive) return null;
-
-      const type = pathGroup.get('type')?.value;
-      if (type === 'local') {
-        const value = control.value;
-        if (!value || String(value).trim() === '') {
-          return { required: true };
-        }
-
-        // Run crossPlatformPath check
-        if (this.isWindowsTarget()) {
-          const winAbs =
-            /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
-          if (!winAbs.test(value)) {
-            return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
-          }
-        } else {
-          if (!/^(\/[^\0]*)$/.test(value)) {
-            return { invalidPath: { message: this.translate.instant('validators.invalidPath') } };
-          }
-        }
-      }
-
-      return null;
-    };
-  }
-
   private crossPlatformPathValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
