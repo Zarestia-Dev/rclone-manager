@@ -1,5 +1,12 @@
-import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  HostListener,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -117,14 +124,6 @@ export class ExportModalComponent implements OnInit {
   );
 
   async ngOnInit(): Promise<void> {
-    // Scope escape handling to this dialog only — avoids global HostListener conflicts
-    this.dialogRef
-      .keydownEvents()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        if (event.key === 'Escape') this.close();
-      });
-
     this.isLoading.set(true);
     try {
       const [remotesList, categoriesList, profilesList] = await Promise.allSettled([
@@ -249,6 +248,7 @@ export class ExportModalComponent implements OnInit {
     }
   }
 
+  @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isExporting()) {
       this.dialogRef.close(false);

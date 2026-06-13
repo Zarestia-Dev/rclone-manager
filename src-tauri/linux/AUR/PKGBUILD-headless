@@ -1,8 +1,8 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager-headless
 appname='RClone.Manager.Headless'
-releasetag=0.2.6
-pkgver=0.2.6
+releasetag=0.2.7
+pkgver=0.2.7
 pkgrel=1
 pkgdesc="User-friendly WebUI for Rclone (Headless Server)"
 arch=('x86_64' 'aarch64')
@@ -13,8 +13,8 @@ optdepends=('rclone: for cloud storage operations', 'fuse3: for mounting remote 
 options=('!strip' '!debug')
 source_x86_64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_amd64.deb")
 source_aarch64=("${url}/releases/download/headless-v${releasetag}/${appname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('51cb51dfe74930e8c9b3c19046faae1889ad2f63ed7c27f66026f6600a584575')
-sha256sums_aarch64=('a070a41dd837ec930cc9d7dc8aa16f1b18888776991668f8cac15e693de54b16')
+sha256sums_x86_64=('f4585ac56bbf802d34200fa4943b96afe71bd9def9d5c44b880495fb65bb2061')
+sha256sums_aarch64=('96dca0f9c9f169fae472956fe053c1121f2229a88726f1bf474af15610b1a085')
 
 prepare() {
   cd "${srcdir}"
