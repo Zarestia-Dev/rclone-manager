@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { PathDisplayConfig } from '../../types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { PathService } from 'src/app/services';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-path-display',

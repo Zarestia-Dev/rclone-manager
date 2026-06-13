@@ -6,7 +6,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { EditTarget } from '@app/types';
-import { RemoteConfigStateService } from '@app/services';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-config-modal-sidebar',

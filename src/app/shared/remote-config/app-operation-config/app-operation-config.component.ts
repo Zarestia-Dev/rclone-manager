@@ -31,16 +31,17 @@ import {
   FileBrowserItem,
   FilePickerSelection,
 } from '@app/types';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import {
-  BackendService,
-  FileSystemService,
-  NotificationService,
   PathSelectionService,
   PathSelectionState,
-  PathService,
-  ValidatorRegistryService,
-} from '@app/services';
-import { CronInputComponent, NumberInputComponent } from '@app/shared/components';
+} from 'src/app/services/remote/path-selection.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
+import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';

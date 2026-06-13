@@ -16,7 +16,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { NotificationService } from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const newPassword = group.get('newPassword')?.value;

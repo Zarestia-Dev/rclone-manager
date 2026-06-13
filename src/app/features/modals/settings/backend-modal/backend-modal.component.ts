@@ -31,7 +31,7 @@ import { BackendSecurityComponent } from './backend-security/backend-security.co
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { ModalService, NotificationService } from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FilePickerConfig } from 'src/app/shared/types/ui';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 
@@ -65,7 +65,6 @@ export class BackendModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly modalService = inject(ModalService);
 
   readonly backends = this.backendService.backends;
   readonly activeBackend = this.backendService.activeBackend;
@@ -218,7 +217,7 @@ export class BackendModalComponent implements OnInit {
   };
 
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 
   toggleAddForm(): void {

@@ -2,13 +2,11 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import {
-  NotificationService,
-  PathService,
-  RemoteFileOperationsService,
-  ModalService,
-  ApiClientService,
-} from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
 import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
 
 export interface UndoEntry {
@@ -28,7 +26,7 @@ export class NautilusFileOperationsService {
   private readonly MAX_UNDO_STACK = 20;
 
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
+  private readonly nautilusService = inject(NautilusService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
@@ -206,7 +204,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.modalService.openInput({
+    const ref = this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.rename.title'),
       label: this.translate.instant('nautilus.modals.rename.label'),
       icon: 'pen',
@@ -440,7 +438,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.modalService.openInput({
+    const ref = this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',
@@ -464,7 +462,7 @@ export class NautilusFileOperationsService {
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.modalService.openInput({
+    const ref = this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
       icon: 'download',
       createLabel: this.translate.instant('nautilus.modals.copyUrl.confirm'),
@@ -528,7 +526,7 @@ export class NautilusFileOperationsService {
     const firstItem = items[0];
     const defaultName = items.length === 1 ? `${firstItem.entry.Name}.zip` : 'archive.zip';
 
-    const ref = this.modalService.openArchiveCreate({ items, defaultName });
+    const ref = this.nautilusService.openArchiveCreate({ items, defaultName });
     const result = (await firstValueFrom(ref.afterClosed())) as {
       filename: string;
       format: string;

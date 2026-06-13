@@ -2,7 +2,7 @@ import { Component, input, inject, ChangeDetectionStrategy, computed } from '@an
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
+import { FormatFileSizePipe } from '@app/pipes';
 import { CompletedTransfer } from '@app/types';
 import { toSignal } from '@angular/core/rxjs-interop';
 

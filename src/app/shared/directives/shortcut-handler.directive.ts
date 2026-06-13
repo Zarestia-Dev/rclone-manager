@@ -3,16 +3,14 @@ import { TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 
 // Services
-import {
-  MountManagementService,
-  ServeManagementService,
-  NautilusService,
-  WindowService,
-  BackupRestoreUiService,
-  OnboardingStateService,
-  NotificationService,
-  ModalService,
-} from '@app/services';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { WindowService } from 'src/app/services/ui/window.service';
+import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
+import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 
 @Directive({
   selector: '[appShortcutHandler]',

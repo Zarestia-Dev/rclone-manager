@@ -20,22 +20,21 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
+import { RcloneBackendOptionsService } from 'src/app/services/settings/rclone-backend-options.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import {
-  FlagConfigService,
-  RcloneBackendOptionsService,
-  NotificationService,
-  ModalService,
   matchesConfigSearch,
   stripCliPrefix,
-} from '@app/services';
+} from 'src/app/services/remote/utils/remote-config.utils';
 import { RcConfigOption, SharedProfileType } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
+import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import {
-  SettingControlComponent,
   JsonEditorComponent,
   JSON_EDITOR_LOOKUP_TABLE,
-} from 'src/app/shared/components';
+} from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -206,7 +205,6 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
 
   readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
 
@@ -676,6 +674,6 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

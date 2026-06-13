@@ -9,7 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
-import { ModalService, AlertService, FileSystemService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/types';
 
 export interface KindOption {
@@ -38,7 +39,6 @@ export interface KindOption {
 export class AlertActionEditorComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<AlertActionEditorComponent>);
-  private readonly modalService = inject(ModalService);
   public readonly alertService = inject(AlertService);
   private readonly fileSystem = inject(FileSystemService);
 
@@ -313,11 +313,11 @@ export class AlertActionEditorComponent {
       };
     }
 
-    this.modalService.animatedClose(this.dialogRef, action);
+    this.dialogRef.close(action);
   }
 
   @HostListener('document:keydown.escape')
   cancel(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

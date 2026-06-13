@@ -18,10 +18,9 @@ import { ExportModalData, ExportType } from '@app/types';
 import {
   BackupRestoreService,
   ExportCategory,
-  RemoteManagementService,
-  FileSystemService,
-  ModalService,
-} from '@app/services';
+} from 'src/app/services/settings/backup-restore.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 
 interface ExportOption {
   id: string;
@@ -83,7 +82,6 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
 
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
@@ -253,7 +251,7 @@ export class ExportModalComponent implements OnInit {
 
   close(): void {
     if (!this.isExporting()) {
-      this.modalService.animatedClose(this.dialogRef, false);
+      this.dialogRef.close(false);
     }
   }
 

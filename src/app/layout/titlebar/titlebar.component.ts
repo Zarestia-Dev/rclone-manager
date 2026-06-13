@@ -10,19 +10,17 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 
 // Services
-import {
-  BackupRestoreUiService,
-  UiStateService,
-  NautilusService,
-  AppUpdaterService,
-  RcloneUpdateService,
-  WindowService,
-  ModalService,
-  ConnectionService,
-  AlertService,
-} from '@app/services';
+import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
+import { WindowService } from 'src/app/services/ui/window.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { ConnectionService } from 'src/app/services/infrastructure/system/connection.service';
+import { AlertService } from 'src/app/services/alerts/alert.service';
 import { Theme } from '@app/types';
-import { WindowControlsComponent } from '@app/shared/components';
+import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
 
 @Component({
   selector: 'app-titlebar',

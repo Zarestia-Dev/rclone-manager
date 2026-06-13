@@ -17,7 +17,9 @@ import {
   RemoteCardVariant,
   CardDisplayMode,
 } from '@app/types';
-import { IconService, PathService, RemoteFacadeService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 interface OpenInFilesEvent {

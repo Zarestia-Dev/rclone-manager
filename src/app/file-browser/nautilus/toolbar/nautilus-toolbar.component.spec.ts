@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NautilusToolbarComponent } from './nautilus-toolbar.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
-import { IconService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
 
 describe('NautilusToolbarComponent', () => {
   let component: NautilusToolbarComponent;

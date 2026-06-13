@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, inject, signal, effect, untracked } from '@angular/core';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { AppUpdaterService, RcloneUpdateService, SystemHealthService } from '@app/services';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
+import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 /**
  * Centralized service for managing onboarding state across the application
  * Provides a single source of truth for onboarding completion status

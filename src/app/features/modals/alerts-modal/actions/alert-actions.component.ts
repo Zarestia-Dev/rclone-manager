@@ -7,9 +7,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
-import { AlertService, ModalService, NotificationService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertAction } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
+import { MatDialog } from '@angular/material/dialog';
+import { AlertActionEditorComponent } from './alert-action-editor/alert-action-editor.component';
 
 @Component({
   selector: 'app-alert-actions',
@@ -279,7 +282,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 })
 export class AlertActionsComponent {
   public readonly alerts = inject(AlertService);
-  private readonly modalService = inject(ModalService);
+  private readonly dialog = inject(MatDialog);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
 
@@ -291,8 +294,12 @@ export class AlertActionsComponent {
   }
 
   createAction(): void {
-    this.modalService
-      .openAlertActionEditor()
+    this.dialog
+      .open(AlertActionEditorComponent, {
+        width: '600px',
+        disableClose: false,
+        data: { actionId: undefined },
+      })
       .afterClosed()
       .subscribe(async action => {
         if (action) await this.alerts.saveAlertAction(action);
@@ -300,8 +307,12 @@ export class AlertActionsComponent {
   }
 
   editAction(action: AlertAction): void {
-    this.modalService
-      .openAlertActionEditor(action.id)
+    this.dialog
+      .open(AlertActionEditorComponent, {
+        width: '600px',
+        disableClose: false,
+        data: { actionId: action.id },
+      })
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertAction(updated);

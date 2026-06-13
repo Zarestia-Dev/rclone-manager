@@ -17,10 +17,11 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { IconService, NautilusService } from '@app/services';
-import { WindowControlsComponent } from '@app/shared/components';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
 import { ExplorerRoot } from '@app/types';
-import { ScrollShadowDirective } from '@app/directives';
+import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
 @Component({
   selector: 'app-nautilus-toolbar',

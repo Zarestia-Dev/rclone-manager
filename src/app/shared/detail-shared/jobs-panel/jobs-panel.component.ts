@@ -8,9 +8,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FormatTimePipe } from '../../pipes/format-time.pipe';
-import { ModalService } from '@app/services';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { ModalService } from 'src/app/services/ui/modal.service';
 
 const STATUS_BADGE_MAP: Record<string, string> = {
   completed: 'p-primary',

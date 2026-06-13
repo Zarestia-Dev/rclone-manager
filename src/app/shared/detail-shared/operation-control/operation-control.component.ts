@@ -19,7 +19,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { PathDisplayComponent } from '../path-display/path-display.component';
 import { OperationControlConfig, PrimaryActionType, LocalDiskUsage } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { SystemInfoService } from '@app/services';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { TranslateModule } from '@ngx-translate/core';
 
 const OPERATION_ICONS: Record<PrimaryActionType, string> = {

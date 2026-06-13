@@ -37,18 +37,16 @@ import {
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
-import {
-  AutomationService,
-  UiStateService,
-  RcloneStatusService,
-  AppSettingsService,
-  BackendService,
-  RemoteFacadeService,
-  IconService,
-  PathService,
-  LocalStorageService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
+import { AutomationService } from 'src/app/services/operations/automation.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { AutomationCardComponent } from '../../../../shared/detail-shared';
 
 const SCROLL_DELAY_MS = 60;

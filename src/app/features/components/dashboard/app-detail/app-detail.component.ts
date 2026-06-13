@@ -59,14 +59,14 @@ import {
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
+import { IconService } from 'src/app/services/ui/icon.service';
 import {
-  IconService,
   JobManagementService,
   RawTransfer,
   mapRawTransfer,
-  RemoteFacadeService,
-  LocalStorageService,
-} from '@app/services';
+} from 'src/app/services/operations/job-management.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';

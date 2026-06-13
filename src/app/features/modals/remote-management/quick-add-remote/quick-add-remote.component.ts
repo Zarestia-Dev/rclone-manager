@@ -24,20 +24,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslateModule } from '@ngx-translate/core';
 
-import {
-  AuthStateService,
-  RemoteManagementService,
-  JobManagementService,
-  MountManagementService,
-  AppSettingsService,
-  FileSystemService,
-  ModalService,
-  ValidatorRegistryService,
-  IconService,
-  PathService,
-  RemotePresetsService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
+import { AuthStateService } from 'src/app/services/security/auth-state.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import {
   RemoteType,
   RemoteConfigSections,
@@ -96,7 +93,6 @@ export class QuickAddRemoteComponent {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
-  private readonly modalService = inject(ModalService);
   private readonly pathService = inject(PathService);
   private readonly presetsService = inject(RemotePresetsService);
 
@@ -412,7 +408,7 @@ export class QuickAddRemoteComponent {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
-        if (!this.isAuthCancelled()) this.modalService.animatedClose(this.dialogRef, true);
+        if (!this.isAuthCancelled()) this.dialogRef.close(true);
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
@@ -594,7 +590,7 @@ export class QuickAddRemoteComponent {
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     await this.triggerAutoStartOperations(remoteData.name, finalConfig);
     this.authStateService.resetAuthState();
-    this.modalService.animatedClose(this.dialogRef, true);
+    this.dialogRef.close(true);
   }
 
   private async triggerAutoStartOperations(
@@ -677,6 +673,6 @@ export class QuickAddRemoteComponent {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

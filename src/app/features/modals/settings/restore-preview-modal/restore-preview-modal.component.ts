@@ -9,7 +9,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
-import { BackupAnalysis, BackupRestoreService, ModalService } from '@app/services';
+import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
+import { BackupAnalysis } from '@app/types';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 const MIN_PASSWORD_LENGTH = 4;
@@ -38,7 +39,6 @@ export class RestorePreviewModalComponent {
   private readonly dialogRef = inject(MatDialogRef<RestorePreviewModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly data = inject<{ backupPath: string; analysis: BackupAnalysis }>(MAT_DIALOG_DATA);
 
   readonly analysis: BackupAnalysis = this.data.analysis;
@@ -107,7 +107,7 @@ export class RestorePreviewModalComponent {
 
     try {
       await this.backupRestoreService.restoreSettings(this.backupPath, password, restoreProfile);
-      this.modalService.animatedClose(this.dialogRef, true);
+      this.dialogRef.close(true);
     } catch (error) {
       this.#handleRestoreError(error);
     } finally {
@@ -118,7 +118,7 @@ export class RestorePreviewModalComponent {
   @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isVerifying()) {
-      this.modalService.animatedClose(this.dialogRef, false);
+      this.dialogRef.close(false);
     }
   }
 

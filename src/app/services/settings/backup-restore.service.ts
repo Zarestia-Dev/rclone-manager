@@ -1,29 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ExportType } from '../../shared/types/ui';
+import { ExportType, BackupAnalysis } from '@app/types';
 import { FileSystemService } from '../operations/file-system.service';
-
-// Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
-export interface BackupAnalysis {
-  isEncrypted: boolean;
-  archiveType: string;
-  formatVersion: string;
-  isLegacy?: boolean;
-  createdAt?: string;
-  backupType?: string;
-  userNote?: string;
-  contents?: BackupContentsInfo;
-}
-
-// Matches the `BackupContentsInfo` struct
-export interface BackupContentsInfo {
-  settings: boolean;
-  backendConfig: boolean;
-  rcloneConfig: boolean;
-  remoteCount?: number;
-  remoteNames?: string[];
-  profiles?: string[];
-}
 
 // Matches ExportCategoryResponse from backend
 export interface ExportCategory {
@@ -123,9 +101,10 @@ export class BackupRestoreService extends TauriBaseService {
     try {
       return await this.invokeCommand<BackupAnalysis>('analyze_backup_file', { path });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
+        undefined,
         undefined,
         {
           icon: 'circle-exclamation',

@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialogRef } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AlertService, ModalService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
 import { AlertHistoryComponent } from './history/alert-history.component';
 import { AlertRulesComponent } from './rules/alert-rules.component';
 import { AlertActionsComponent } from './actions/alert-actions.component';
@@ -127,11 +127,10 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
 })
 export class AlertsModalComponent {
   private readonly dialogRef = inject(MatDialogRef<AlertsModalComponent>);
-  private readonly modalService = inject(ModalService);
 
   readonly alerts = inject(AlertService);
 
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

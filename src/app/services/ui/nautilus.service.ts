@@ -12,13 +12,17 @@ import { Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
-import { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import {
-  AppSettingsService,
-  EventListenersService,
-  PathService,
-  RemoteManagementService,
-} from '@app/services';
+  ModalService,
+  RemoteConfigModalOptions,
+  ExportModalOptions,
+  PropertiesModalOptions,
+  RemoteAboutModalOptions,
+} from 'src/app/services/ui/modal.service';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
 import {
   FileBrowserItem,
@@ -40,8 +44,8 @@ export class NautilusService extends TauriBaseService {
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
+  private readonly modalService = inject(ModalService);
 
-  // --- File Picker ---
   private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
     isOpen: false,
   });
@@ -50,20 +54,28 @@ export class NautilusService extends TauriBaseService {
   private readonly _filePickerResult = new Subject<FilePickerResult>();
   readonly filePickerResult$ = this._filePickerResult.asObservable();
 
-  // --- Public signals (read by UI) ---
-  readonly starredItems = signal<FileBrowserItem[]>([]);
-  readonly bookmarks = signal<FileBrowserItem[]>([]);
+  private readonly _starredItems = signal<FileBrowserItem[]>([]);
+  readonly starredItems = this._starredItems.asReadonly();
+
+  private readonly _bookmarks = signal<FileBrowserItem[]>([]);
+  readonly bookmarks = this._bookmarks.asReadonly();
+
   readonly selectedNautilusRemote = signal<string | null>(null);
   readonly targetPath = signal<string | null>(null);
-  readonly isStandaloneWindow = signal(false);
 
-  // --- Remote / Drive state ---
-  readonly localDrives = signal<ExplorerRoot[]>([]);
-  readonly cloudRemotes = signal<ExplorerRoot[]>([]);
-  readonly allRemotesLookup = computed(() => [...this.localDrives(), ...this.cloudRemotes()]);
+  private readonly _isStandaloneWindow = signal(false);
+  readonly isStandaloneWindow = this._isStandaloneWindow.asReadonly();
+
+  private readonly _localDrives = signal<ExplorerRoot[]>([]);
+  readonly localDrives = this._localDrives.asReadonly();
+
+  private readonly _cloudRemotes = signal<ExplorerRoot[]>([]);
+  readonly cloudRemotes = this._cloudRemotes.asReadonly();
+
+  readonly allRemotesLookup = computed(() => [...this._localDrives(), ...this._cloudRemotes()]);
 
   private pickerOverlayRef: OverlayRef | null = null;
-  private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
+  private pickerComponentRef: ComponentRef<any> | null = null;
 
   private readonly collectionConfig: Record<
     CollectionType,
@@ -74,11 +86,11 @@ export class NautilusService extends TauriBaseService {
       allowFiles: boolean;
     }
   > = {
-    starred: { category: 'nautilus', key: 'starred', signal: this.starredItems, allowFiles: true },
+    starred: { category: 'nautilus', key: 'starred', signal: this._starredItems, allowFiles: true },
     bookmarks: {
       category: 'nautilus',
       key: 'bookmarks',
-      signal: this.bookmarks,
+      signal: this._bookmarks,
       allowFiles: false,
     },
   };
@@ -91,8 +103,6 @@ export class NautilusService extends TauriBaseService {
     this.setupBrowseListener();
   }
 
-  // ========== REMOTE DATA ==========
-
   async loadRemoteData(): Promise<void> {
     try {
       const [remoteNames, drives, configs] = await Promise.all([
@@ -104,7 +114,7 @@ export class NautilusService extends TauriBaseService {
         }),
       ]);
 
-      this.localDrives.set(
+      this._localDrives.set(
         drives.map(drive => ({
           name: drive.name,
           label: drive.label || drive.name,
@@ -118,7 +128,7 @@ export class NautilusService extends TauriBaseService {
         }))
       );
 
-      this.cloudRemotes.set(
+      this._cloudRemotes.set(
         remoteNames.map(name => {
           const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
             name
@@ -136,8 +146,6 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  // ========== STANDALONE WINDOW / DEEP LINK ==========
-
   openFromBrowseQueryParam(): void {
     const urlParams = new URLSearchParams(window.location.search);
     const pathName = window.location.pathname;
@@ -151,7 +159,7 @@ export class NautilusService extends TauriBaseService {
       hash.startsWith('#/nautilus') ||
       urlParams.has('browse');
 
-    this.isStandaloneWindow.set(isStandalone);
+    this._isStandaloneWindow.set(isStandalone);
 
     const { remoteName, remotePath } = this.parseNautilusLocation(urlParams, pathName, hash);
 
@@ -169,14 +177,10 @@ export class NautilusService extends TauriBaseService {
       if (!isStandalone) {
         void this.newNautilusWindow(remoteName, remotePath);
       }
-      return;
     }
   }
 
-  // ========== WINDOW CONTROL ==========
-
   setWindowTitle(title: string): void {
-    // Defer so callers don't need to worry about timing relative to Tauri state.
     setTimeout(async () => {
       if (this.isTauri) {
         await this.getCurrentTauriWindow()?.setTitle(title);
@@ -184,8 +188,6 @@ export class NautilusService extends TauriBaseService {
       this.titleService.setTitle(title);
     }, 0);
   }
-
-  // ========== TAB DETACHMENT & URL HELPERS ==========
 
   getNautilusUrl(remote: string | null, path: string | null): string {
     let url = `${window.location.origin}/nautilus`;
@@ -222,8 +224,6 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  // ========== BROWSER & PICKER CONTROL ==========
-
   openForRemote(remoteName: string): void {
     void this.newNautilusWindow(remoteName, null);
   }
@@ -233,13 +233,13 @@ export class NautilusService extends TauriBaseService {
     void this.newNautilusWindow(remote || null, relativePath || null);
   }
 
-  openFilePicker(options: FilePickerConfig): void {
+  async openFilePicker(options: FilePickerConfig): Promise<void> {
     if (this.pickerOverlayRef) return;
     this._filePickerState.set({
       isOpen: true,
       options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
     });
-    this.createPickerOverlay();
+    await this.createPickerOverlay();
   }
 
   closeFilePicker(result: FileBrowserItem[] | null): void {
@@ -265,12 +265,10 @@ export class NautilusService extends TauriBaseService {
   }
 
   closeBrowser(): void {
-    if (this.isStandaloneWindow()) {
+    if (this._isStandaloneWindow()) {
       this.getCurrentTauriWindow()?.close();
     }
   }
-
-  // ========== COLLECTIONS ==========
 
   isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
     const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
@@ -311,8 +309,6 @@ export class NautilusService extends TauriBaseService {
     config.signal.set(newList);
     this.saveCollection(type, newList);
   }
-
-  // ========== PRIVATE HELPERS ==========
 
   private parseNautilusLocation(
     urlParams: URLSearchParams,
@@ -373,7 +369,7 @@ export class NautilusService extends TauriBaseService {
         next: (path: string) => {
           console.log('Browse in app event:', path);
           if (path) {
-            if (this.isStandaloneWindow()) {
+            if (this._isStandaloneWindow()) {
               this.targetPath.set(path);
             } else {
               const { remote, path: relativePath } = this.pathService.splitFsPath(path);
@@ -418,16 +414,51 @@ export class NautilusService extends TauriBaseService {
     this.appSettingsService.saveSetting(category, key, items);
   }
 
+  openProperties(options: PropertiesModalOptions): any {
+    return this.modalService.openProperties(options);
+  }
+
+  openExport(options: ExportModalOptions): any {
+    return this.modalService.openExport(options);
+  }
+
+  openLogs(remoteName: string): any {
+    return this.modalService.openLogs(remoteName);
+  }
+
+  openRemoteConfig(options: RemoteConfigModalOptions): any {
+    return this.modalService.openRemoteConfig(options);
+  }
+
+  openQuickAddRemote(): any {
+    return this.modalService.openQuickAddRemote();
+  }
+
+  openArchiveCreate(data: any): any {
+    return this.modalService.openArchiveCreate(data);
+  }
+
+  openRemoteAbout(options: RemoteAboutModalOptions): any {
+    return this.modalService.openRemoteAbout(options);
+  }
+
+  openKeyboardShortcuts(data?: { nautilus?: boolean }): any {
+    return this.modalService.openKeyboardShortcuts(data);
+  }
+
   private createNautilusOverlay(
+    componentClass: any,
     onClose: () => void,
     showAnimation = true
-  ): { overlayRef: OverlayRef; componentRef: ComponentRef<NautilusComponent> } {
+  ): { overlayRef: OverlayRef; componentRef: ComponentRef<any> } {
     const overlayRef = this.overlay.create({
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
-    const componentRef = overlayRef.attach(new ComponentPortal(NautilusComponent));
+    const componentRef = overlayRef.attach(
+      new ComponentPortal(componentClass)
+    ) as ComponentRef<any>;
 
     if (showAnimation) {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
@@ -439,8 +470,9 @@ export class NautilusService extends TauriBaseService {
     return { overlayRef, componentRef };
   }
 
-  private createPickerOverlay(): void {
-    const { overlayRef, componentRef } = this.createNautilusOverlay(() =>
+  private async createPickerOverlay(): Promise<void> {
+    const { NautilusComponent } = await import('src/app/file-browser/nautilus/nautilus.component');
+    const { overlayRef, componentRef } = this.createNautilusOverlay(NautilusComponent, () =>
       this.closeFilePicker(null)
     );
     this.pickerOverlayRef = overlayRef;

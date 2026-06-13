@@ -32,8 +32,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { NumberInputComponent } from '../../../../shared/components/number-input/number-input.component';
 
-import { ValidatorRegistryService, ModalService } from '@app/services';
-import { AppSettingsService, FileSystemService, LocalStorageService } from '@app/services';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
 interface PendingChange {
@@ -79,7 +81,6 @@ export class PreferencesModalComponent {
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
 
   settingsForm: FormGroup = this.fb.group({});
@@ -558,7 +559,7 @@ export class PreferencesModalComponent {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 
   @HostListener('document:keydown.control.f', ['$event'])

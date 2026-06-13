@@ -42,16 +42,14 @@ import { yaml as cmYaml } from '@codemirror/lang-yaml';
 import { go as legacyGo } from '@codemirror/legacy-modes/mode/go';
 import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
 
-import {
-  RemoteFileOperationsService,
-  PathService,
-  JobManagementService,
-  FileSystemService,
-  NautilusService,
-} from '@app/services';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import { IconService } from '@app/services';
-import { NotificationService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry, ORIGINS, FilePickerResult } from '@app/types';
 
@@ -202,7 +200,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.cancelCurrentRequest$.complete();
     void this.stopReadJobs();
-    this.fileViewerService.activeFileName.set(null);
+    this.fileViewerService.setActiveFileName(null);
   }
 
   private async stopReadJobs(): Promise<void> {
@@ -489,7 +487,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     await this.stopReadJobs();
 
     const item = this.currentItem();
-    this.fileViewerService.activeFileName.set(item ? item.Name : null);
+    this.fileViewerService.setActiveFileName(item ? item.Name : null);
 
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
     this.cancelCurrentRequest$.next();

@@ -23,10 +23,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
-import { LoggingService, BackendTranslationService, ModalService } from '@app/services';
+import { LoggingService } from 'src/app/services/infrastructure/platform/logging.service';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AnsiToHtmlPipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { CopyToClipboardDirective } from '@app/directives';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 @Component({
   selector: 'app-logs-modal',
@@ -58,7 +59,6 @@ export class LogsModalComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly loggingService = inject(LoggingService);
   private readonly backendTranslation = inject(BackendTranslationService);
-  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
   private readonly injector = inject(Injector);
 
@@ -210,6 +210,6 @@ export class LogsModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

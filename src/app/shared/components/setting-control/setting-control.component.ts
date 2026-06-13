@@ -34,14 +34,11 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
 import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
-import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { LineBreaksPipe, RcloneOptionTranslatePipe } from '@app/pipes';
 import { NumberInputComponent } from '../number-input/number-input.component';
-import {
-  RcloneValueMapperService,
-  AppSettingsService,
-  ValidatorRegistryService,
-} from '@app/services';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 
 @Component({
   selector: 'app-setting-control',

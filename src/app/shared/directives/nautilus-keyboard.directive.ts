@@ -1,6 +1,8 @@
 import { Directive, HostListener, inject, WritableSignal, Signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { NautilusService, NautilusTabService, NautilusFileOperationsService } from '@app/services';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { NautilusTabService } from 'src/app/services/ui/nautilus-tab.service';
+import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { FileBrowserItem } from '@app/types';
 
 export interface KeyboardCallbacks {

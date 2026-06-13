@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { NautilusService } from '@app/services';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusActionsService } from './nautilus-actions.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { FileBrowserItem, Entry } from '@app/types';

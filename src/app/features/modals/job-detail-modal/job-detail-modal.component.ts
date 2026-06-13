@@ -19,16 +19,15 @@ import {
   TransferActivityPanelComponent,
   PathDisplayComponent,
 } from '../../../shared/detail-shared';
+import { IconService } from 'src/app/services/ui/icon.service';
 import {
-  IconService,
   JobManagementService,
   mapRawTransfer,
-  ModalService,
-  FileSystemService,
-  NautilusService,
-  PathService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
+} from 'src/app/services/operations/job-management.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 
 @Component({
   selector: 'app-job-detail-modal',
@@ -57,7 +56,6 @@ export class JobDetailModalComponent {
   private readonly dialogRef = inject(MatDialogRef<JobDetailModalComponent>);
   readonly initialData: Partial<JobInfo> & { jobid: number } = inject(MAT_DIALOG_DATA);
   readonly iconService = inject(IconService);
-  private readonly modalService = inject(ModalService);
   private readonly jobService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly nautilusService = inject(NautilusService);
@@ -227,7 +225,7 @@ export class JobDetailModalComponent {
 
   @HostListener('keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 
   async onOpenPath(path: string): Promise<void> {

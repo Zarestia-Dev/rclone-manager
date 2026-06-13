@@ -55,9 +55,10 @@ export class FileSystemService extends TauriBaseService {
         requireEmpty: requireEmpty || false,
       });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
+        undefined,
         undefined,
         {
           icon: 'circle-exclamation',
@@ -109,9 +110,10 @@ export class FileSystemService extends TauriBaseService {
     try {
       return await this.invokeCommand<string>('get_file_location', { initialPath });
     } catch (error) {
-      this.notificationService.alertModal(
+      this.notificationService.confirmModal(
         this.translate.instant('common.error'),
         String(error),
+        undefined,
         undefined,
         {
           icon: 'circle-exclamation',

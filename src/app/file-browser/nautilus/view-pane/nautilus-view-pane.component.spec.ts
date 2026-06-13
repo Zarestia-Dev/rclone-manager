@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NautilusViewPaneComponent } from './nautilus-view-pane.component';
 import { TranslateModule } from '@ngx-translate/core';
-import { IconService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
 import { FormatFileSizePipe } from '@app/pipes';
 
 class MockIconService {

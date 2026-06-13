@@ -1,47 +1,17 @@
-import { Injectable, inject, Injector, signal } from '@angular/core';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogRef,
-  MAT_DIALOG_DATA,
-} from '@angular/material/dialog';
+import { Injectable, inject, Injector, signal, Type } from '@angular/core';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
-import { Subject, Observable } from 'rxjs';
+import { Subject, Observable, from, switchMap } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 
-import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
-import { BackendModalComponent } from '../../features/modals/settings/backend-modal/backend-modal.component';
-import { LogsModalComponent } from '../../features/modals/settings/logs-modal/logs-modal.component';
-import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
-import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
-import { RcloneFlagsModalComponent } from '../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component';
-import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
-import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
-import { JobDetailModalComponent } from '../../features/modals/job-detail-modal/job-detail-modal.component';
-import { RemoteAboutModalComponent } from '../../features/modals/remote/remote-about-modal.component';
-import { PropertiesModalComponent } from '../../features/modals/properties/properties-modal.component';
-import { AlertsModalComponent } from '../../features/modals/alerts-modal/alerts-modal.component';
-import { AlertActionEditorComponent } from '../../features/modals/alerts-modal/actions/alert-action-editor/alert-action-editor.component';
-import { AlertRuleEditorComponent } from '../../features/modals/alerts-modal/rules/alert-rules-editor/alert-rule-editor.component';
 import {
-  InputModalComponent,
-  InputModalData,
-} from '../../shared/modals/input-modal/input-modal.component';
-import { ArchiveCreateModalComponent } from '../../shared/modals/archive-create-modal/archive-create-modal.component';
-import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
-import {
-  AlertAction,
-  AlertRule,
   RemoteFeatures,
   STANDARD_MODAL_SIZE,
   CONFIG_MODAL_SIZE,
   ABOUT_MODAL_SIZE,
-  ConfirmDialogData,
+  BackupAnalysis,
 } from '@app/types';
 import { JobInfo } from '../../shared/types/jobs';
-import { BackupAnalysis } from '../settings/backup-restore.service';
 import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
@@ -84,174 +54,204 @@ export interface RestorePreviewOptions {
   analysis: BackupAnalysis;
 }
 
-const sanitizeLabel = (str: string): string => {
-  return str.replace(/[^a-zA-Z0-9_-]/g, '-');
-};
+const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-abstract class StandaloneDialogRef<R = any> {
-  constructor(public id: string) {}
-
-  abstract close(result?: R): void;
-
-  backdropClick(): Observable<MouseEvent> {
-    return new Subject<MouseEvent>().asObservable();
-  }
-
-  keydownEvents(): Observable<KeyboardEvent> {
-    return new Subject<KeyboardEvent>().asObservable();
-  }
-
-  updatePosition(): this {
-    return this;
-  }
-  updateSize(): this {
-    return this;
-  }
+interface StandaloneOpts {
+  type: string;
+  title: string;
+  data?: any;
+  width?: number;
+  height?: number;
+  suffix?: string;
 }
 
-class MockDialogRef<R = any> extends StandaloneDialogRef<R> {
-  private readonly afterClosedSubject = new Subject<R | undefined>();
+class AsyncDialogRef<R = any> {
+  constructor(private readonly promise: Promise<MatDialogRef<any, R>>) {}
 
   afterClosed(): Observable<R | undefined> {
-    return this.afterClosedSubject.asObservable();
+    return from(this.promise).pipe(switchMap(ref => ref.afterClosed()));
   }
 
   close(result?: R): void {
-    this.afterClosedSubject.next(result);
-    this.afterClosedSubject.complete();
+    this.promise.then(ref => ref.close(result));
   }
 }
 
-class ChildDialogRef<R = any> extends StandaloneDialogRef<R> {
+class ChildWindowRef<R = any> {
+  constructor(private readonly windowLabel: string) {}
+
   close(result?: R): void {
-    getCurrentWindow()
-      .emit(`dialog-result-${this.id}`, result)
-      .then(() => {
-        getCurrentWindow().close();
-      })
-      .catch(err => {
-        console.error('Failed to emit dialog result or close window:', err);
-        getCurrentWindow().close();
-      });
+    const win = getCurrentWindow();
+    win
+      .emit(`dialog-result-${this.windowLabel}`, result)
+      .then(() => win.close())
+      .catch(() => win.close());
   }
 }
 
-const componentsMap: Record<string, any> = {
-  'quick-add-remote': QuickAddRemoteComponent,
-  'remote-config': RemoteConfigModalComponent,
-  logs: LogsModalComponent,
-  export: ExportModalComponent,
-  backend: BackendModalComponent,
-  preferences: PreferencesModalComponent,
-  'rclone-flags': RcloneFlagsModalComponent,
-  'job-detail': JobDetailModalComponent,
-  properties: PropertiesModalComponent,
-  'remote-about': RemoteAboutModalComponent,
-  'keyboard-shortcuts': KeyboardShortcutsModalComponent,
-  about: AboutModalComponent,
-  'restore-preview': RestorePreviewModalComponent,
-  alerts: AlertsModalComponent,
-  'alert-action-editor': AlertActionEditorComponent,
-  'alert-rule-editor': AlertRuleEditorComponent,
-};
+class StandaloneWindowRef<R = any> {
+  private readonly closed$ = new Subject<R | undefined>();
 
-@Injectable({
-  providedIn: 'root',
-})
+  afterClosed(): Observable<R | undefined> {
+    return this.closed$.asObservable();
+  }
+
+  resolve(result?: R): void {
+    this.closed$.next(result);
+    this.closed$.complete();
+  }
+}
+
+@Injectable({ providedIn: 'root' })
 export class ModalService {
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
   private readonly apiClient = inject(ApiClientService);
+  private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
 
-  readonly isDialogStandalone = signal(false);
-  readonly dialogComponent = signal<any>(null);
+  private readonly _isDialogStandalone = signal<boolean>(false);
+  readonly isDialogStandalone = this._isDialogStandalone.asReadonly();
+
+  private readonly _dialogComponent = signal<Type<any> | null>(null);
+  readonly dialogComponent = this._dialogComponent.asReadonly();
+
   dialogInjector?: Injector;
 
+  private readonly loaders: Record<string, () => Promise<Type<any>>> = {
+    'quick-add-remote': () =>
+      import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
+        m => m.QuickAddRemoteComponent
+      ),
+    'remote-config': () =>
+      import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
+        m => m.RemoteConfigModalComponent
+      ),
+    logs: () =>
+      import('../../features/modals/settings/logs-modal/logs-modal.component').then(
+        m => m.LogsModalComponent
+      ),
+    export: () =>
+      import('../../features/modals/settings/export-modal/export-modal.component').then(
+        m => m.ExportModalComponent
+      ),
+    backend: () =>
+      import('../../features/modals/settings/backend-modal/backend-modal.component').then(
+        m => m.BackendModalComponent
+      ),
+    preferences: () =>
+      import('../../features/modals/settings/preferences-modal/preferences-modal.component').then(
+        m => m.PreferencesModalComponent
+      ),
+    'rclone-flags': () =>
+      import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
+        m => m.RcloneFlagsModalComponent
+      ),
+    'job-detail': () =>
+      import('../../features/modals/job-detail-modal/job-detail-modal.component').then(
+        m => m.JobDetailModalComponent
+      ),
+    properties: () =>
+      import('../../features/modals/properties/properties-modal.component').then(
+        m => m.PropertiesModalComponent
+      ),
+    'remote-about': () =>
+      import('../../features/modals/remote/remote-about-modal.component').then(
+        m => m.RemoteAboutModalComponent
+      ),
+    'keyboard-shortcuts': () =>
+      import('../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component').then(
+        m => m.KeyboardShortcutsModalComponent
+      ),
+    about: () =>
+      import('../../features/modals/settings/about-modal/about-modal.component').then(
+        m => m.AboutModalComponent
+      ),
+    'restore-preview': () =>
+      import('../../features/modals/settings/restore-preview-modal/restore-preview-modal.component').then(
+        m => m.RestorePreviewModalComponent
+      ),
+    alerts: () =>
+      import('../../features/modals/alerts-modal/alerts-modal.component').then(
+        m => m.AlertsModalComponent
+      ),
+  };
+
   constructor() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const isDialog = urlParams.get('standalone') === 'dialog';
-    this.isDialogStandalone.set(isDialog);
+    this._isDialogStandalone.set(
+      new URLSearchParams(window.location.search).get('standalone') === 'dialog'
+    );
   }
 
-  // ============================================================================
-  // Standalone Host Resolution
-  // ============================================================================
+  async resolveDialogWindow(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const dialogType = params.get('dialogType') ?? '';
+    const loader = this.loaders[dialogType];
 
-  resolveDialogWindow(): void {
-    const urlParams = new URLSearchParams(window.location.search);
-    const dialogType = urlParams.get('dialogType');
-
-    const componentClass = dialogType ? componentsMap[dialogType] : null;
-    if (!componentClass) {
-      console.error(`[ModalService] Standalone dialog component not found for type: ${dialogType}`);
+    if (!loader) {
+      console.error(`[ModalService] Unknown standalone dialog type: "${dialogType}"`);
       return;
     }
 
-    this.dialogComponent.set(componentClass);
+    const component = await loader();
+    this._dialogComponent.set(component);
 
-    let parsedData: any = null;
-    const currentWindowLabel = getCurrentWindow().label;
-    const rawData = urlParams.get('dialogData');
-    if (rawData) {
+    let data: any = null;
+    const raw = params.get('dialogData');
+    if (raw) {
       try {
-        parsedData = JSON.parse(decodeURIComponent(rawData));
+        data = JSON.parse(decodeURIComponent(raw));
       } catch (e) {
-        console.error('[ModalService] Failed to parse URL data:', e);
+        console.error('[ModalService] Failed to parse dialogData:', e);
       }
     }
 
-    const mockRef = new ChildDialogRef(currentWindowLabel);
-
+    const windowLabel = getCurrentWindow().label;
     this.dialogInjector = Injector.create({
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: parsedData },
-        { provide: MatDialogRef, useValue: mockRef },
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: new ChildWindowRef(windowLabel) },
       ],
       parent: this.injector,
     });
   }
 
-  // ============================================================================
-  // Standalone Guest Helpers
-  // ============================================================================
+  private get standaloneEnabled(): boolean {
+    return (
+      !isHeadlessMode() &&
+      this.appSettings.options()?.['general.standalone_dialogs']?.value === true
+    );
+  }
 
-  private shouldOpenStandalone(): boolean {
-    if (isHeadlessMode()) {
-      return false;
+  private openModal(
+    importAndOpen: () => Promise<MatDialogRef<any>>,
+    standalone?: StandaloneOpts
+  ): MatDialogRef<any> {
+    if (standalone && this.standaloneEnabled) {
+      return this.spawnStandaloneWindow(standalone) as unknown as MatDialogRef<any>;
     }
-    const appSettingsService = this.injector.get(AppSettingsService);
-    const options = appSettingsService.options();
-    return options ? options['general.standalone_dialogs']?.value === true : false;
+    return new AsyncDialogRef(importAndOpen()) as unknown as MatDialogRef<any>;
   }
 
-  private openStandaloneDialog<T, R = any>(
-    dialogType: string,
-    title: string,
-    data: any,
-    width?: number,
-    height?: number,
-    uniqueSuffix?: string
-  ): MatDialogRef<T, R> {
-    const suffix = uniqueSuffix ? `-${sanitizeLabel(uniqueSuffix)}` : '';
-    const label = `dialog-${dialogType}${suffix}`;
-    const mockRef = new MockDialogRef<R>(label);
+  private spawnStandaloneWindow<R>(opts: StandaloneOpts): StandaloneWindowRef<R> {
+    const suffix = opts.suffix ? `-${sanitizeLabel(opts.suffix)}` : '';
+    const label = `dialog-${opts.type}${suffix}`;
+    const ref = new StandaloneWindowRef<R>();
 
-    const encodedData = data ? encodeURIComponent(JSON.stringify(data)) : '';
-    const url = `index.html?standalone=dialog&dialogType=${dialogType}${encodedData ? `&dialogData=${encodedData}` : ''}`;
+    const encoded = opts.data ? encodeURIComponent(JSON.stringify(opts.data)) : '';
+    const url = `index.html?standalone=dialog&dialogType=${opts.type}${encoded ? `&dialogData=${encoded}` : ''}`;
 
-    this.setupStandaloneWindow(label, url, title, width, height, mockRef);
-
-    return mockRef as unknown as MatDialogRef<T, R>;
+    this.openWindowAndBind(label, url, opts.title, opts.width, opts.height, ref);
+    return ref;
   }
 
-  private async setupStandaloneWindow<R>(
+  private async openWindowAndBind<R>(
     label: string,
     url: string,
     title: string,
     width: number | undefined,
     height: number | undefined,
-    mockRef: MockDialogRef<R>
+    ref: StandaloneWindowRef<R>
   ): Promise<void> {
     let created: boolean;
     try {
@@ -259,51 +259,40 @@ export class ModalService {
         opts: { label, url, title, width, height },
       });
     } catch (err) {
-      console.error('Failed to open standalone dialog window:', err);
+      console.error('[ModalService] Failed to open standalone window:', err);
       return;
     }
 
-    if (!created) {
-      return;
-    }
+    if (!created) return;
 
-    const targetWin = new Window(label);
+    const win = new Window(label);
     let resultReceived = false;
-
     let unlistenResult: (() => void) | undefined;
     let unlistenDestroyed: (() => void) | undefined;
 
     const cleanup = (): void => {
-      if (unlistenResult) unlistenResult();
-      if (unlistenDestroyed) unlistenDestroyed();
+      unlistenResult?.();
+      unlistenDestroyed?.();
     };
 
     try {
-      unlistenResult = await targetWin.listen<R>(`dialog-result-${label}`, event => {
+      unlistenResult = await win.listen<R>(`dialog-result-${label}`, ({ payload }) => {
         resultReceived = true;
-        mockRef.close(event.payload);
+        ref.resolve(payload);
         cleanup();
       });
 
-      unlistenDestroyed = await targetWin.once('tauri://destroyed', () => {
+      unlistenDestroyed = await win.once('tauri://destroyed', () => {
         cleanup();
-        if (!resultReceived) {
-          mockRef.close();
-        }
+        if (!resultReceived) ref.resolve();
       });
     } catch (err) {
-      console.error('[ModalService] Failed to set up standalone window event listeners:', err);
+      console.error('[ModalService] Failed to bind standalone window listeners:', err);
       cleanup();
     }
   }
 
-  // ============================================================================
-  // Standalone Modals (Multi-Instance)
-  // ============================================================================
-
-  openRemoteConfig(
-    options: RemoteConfigModalOptions = {}
-  ): MatDialogRef<RemoteConfigModalComponent> {
+  openRemoteConfig(options: RemoteConfigModalOptions = {}): MatDialogRef<any> {
     const data = {
       name: options.remoteName,
       remoteType: options.remoteType,
@@ -313,203 +302,216 @@ export class ModalService {
       autoAddProfile: options.autoAddProfile,
       cloneFrom: options.cloneFrom,
     };
-    if (this.shouldOpenStandalone()) {
-      const suffixParts: string[] = [];
-      if (options.remoteName) suffixParts.push(options.remoteName);
-      if (options.targetProfile) suffixParts.push(options.targetProfile);
-      if (options.editTarget) suffixParts.push(options.editTarget);
-      const uniqueSuffix = suffixParts.length > 0 ? suffixParts.join('-') : 'new';
-
-      return this.openStandaloneDialog<RemoteConfigModalComponent>(
-        'remote-config',
-        this.translate.instant('titlebar.menu.detailedRemote'),
+    const suffix =
+      [options.remoteName, options.targetProfile, options.editTarget].filter(Boolean).join('-') ||
+      'new';
+    return this.openModal(
+      () =>
+        import('../../features/modals/remote-management/remote-config-modal/remote-config-modal.component').then(
+          m =>
+            this.dialog.open(m.RemoteConfigModalComponent, {
+              ...CONFIG_MODAL_SIZE,
+              disableClose: true,
+              data,
+            })
+        ),
+      {
+        type: 'remote-config',
+        title: this.translate.instant('titlebar.menu.detailedRemote'),
         data,
-        1024,
-        768,
-        uniqueSuffix
-      );
-    }
-    return this.dialog.open(RemoteConfigModalComponent, {
-      ...CONFIG_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+        width: 1024,
+        height: 768,
+        suffix,
+      }
+    );
   }
 
-  openLogs(remoteName: string): MatDialogRef<LogsModalComponent> {
+  openLogs(remoteName: string): MatDialogRef<any> {
     const data = { remoteName };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<LogsModalComponent>(
-        'logs',
-        this.translate.instant('modals.logs.remoteLogs', { name: remoteName }),
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/logs-modal/logs-modal.component').then(m =>
+          this.dialog.open(m.LogsModalComponent, {
+            ...STANDARD_MODAL_SIZE,
+            disableClose: true,
+            data,
+          })
+        ),
+      {
+        type: 'logs',
+        title: this.translate.instant('modals.logs.remoteLogs', { name: remoteName }),
         data,
-        680,
-        600,
-        remoteName
-      );
-    }
-    return this.dialog.open(LogsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+        width: 680,
+        height: 600,
+        suffix: remoteName,
+      }
+    );
   }
 
-  openExport(options: ExportModalOptions = {}): MatDialogRef<ExportModalComponent> {
+  openExport(options: ExportModalOptions = {}): MatDialogRef<any> {
     const data = {
       remoteName: options.remoteName,
       defaultExportType: options.defaultExportType ?? 'FullBackup',
     };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<ExportModalComponent>(
-        'export',
-        this.translate.instant('titlebar.menu.export'),
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/export-modal/export-modal.component').then(m =>
+          this.dialog.open(m.ExportModalComponent, {
+            ...STANDARD_MODAL_SIZE,
+            disableClose: true,
+            data,
+          })
+        ),
+      {
+        type: 'export',
+        title: this.translate.instant('titlebar.menu.export'),
         data,
-        680,
-        600,
-        options.remoteName || 'full'
-      );
-    }
-    return this.dialog.open(ExportModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+        width: 680,
+        height: 600,
+        suffix: options.remoteName ?? 'full',
+      }
+    );
   }
 
-  openJobDetail(job: JobInfo): MatDialogRef<JobDetailModalComponent> {
+  openJobDetail(job: JobInfo): MatDialogRef<any> {
     const data = { jobid: job.jobid, execute_id: job.execute_id };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<JobDetailModalComponent>(
-        'job-detail',
-        this.translate.instant('modals.jobDetail.title', { id: job.jobid }),
+    return this.openModal(
+      () =>
+        import('../../features/modals/job-detail-modal/job-detail-modal.component').then(m =>
+          this.dialog.open(m.JobDetailModalComponent, {
+            ...STANDARD_MODAL_SIZE,
+            disableClose: true,
+            data,
+          })
+        ),
+      {
+        type: 'job-detail',
+        title: this.translate.instant('modals.jobDetail.title', { id: job.jobid }),
         data,
-        680,
-        600,
-        job.jobid.toString()
-      );
-    }
-    return this.dialog.open(JobDetailModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+        width: 680,
+        height: 600,
+        suffix: String(job.jobid),
+      }
+    );
   }
 
-  openRestorePreview(options: RestorePreviewOptions): MatDialogRef<RestorePreviewModalComponent> {
-    const data = {
-      backupPath: options.backupPath,
-      analysis: options.analysis,
-    };
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RestorePreviewModalComponent>(
-        'restore-preview',
-        this.translate.instant('backup.restore.title') || 'Restore Backup',
+  openRestorePreview(options: RestorePreviewOptions): MatDialogRef<any> {
+    const data = { backupPath: options.backupPath, analysis: options.analysis };
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/restore-preview-modal/restore-preview-modal.component').then(
+          m =>
+            this.dialog.open(m.RestorePreviewModalComponent, {
+              ...STANDARD_MODAL_SIZE,
+              disableClose: true,
+              data,
+            })
+        ),
+      {
+        type: 'restore-preview',
+        title: this.translate.instant('backup.restore.title') || 'Restore Backup',
         data,
-        680,
-        600,
-        options.backupPath
-      );
-    }
-    return this.dialog.open(RestorePreviewModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+        width: 680,
+        height: 600,
+        suffix: options.backupPath,
+      }
+    );
   }
 
-  // ============================================================================
-  // Standalone Modals (Single-Instance)
-  // ============================================================================
-
-  openQuickAddRemote(): MatDialogRef<QuickAddRemoteComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<QuickAddRemoteComponent>(
-        'quick-add-remote',
-        this.translate.instant('titlebar.menu.quickRemote'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(QuickAddRemoteComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
+  openQuickAddRemote(): MatDialogRef<any> {
+    return this.openModal(
+      () =>
+        import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
+          m =>
+            this.dialog.open(m.QuickAddRemoteComponent, {
+              ...STANDARD_MODAL_SIZE,
+              disableClose: true,
+            })
+        ),
+      {
+        type: 'quick-add-remote',
+        title: this.translate.instant('titlebar.menu.quickRemote'),
+        width: 680,
+        height: 600,
+      }
+    );
   }
 
-  openBackend(): MatDialogRef<BackendModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<BackendModalComponent>(
-        'backend',
-        this.translate.instant('modals.backend.title') || 'Backend Management',
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(BackendModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: false,
-    });
+  openBackend(): MatDialogRef<any> {
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/backend-modal/backend-modal.component').then(m =>
+          this.dialog.open(m.BackendModalComponent, { ...STANDARD_MODAL_SIZE, disableClose: false })
+        ),
+      {
+        type: 'backend',
+        title: this.translate.instant('modals.backend.title') || 'Backend Management',
+        width: 680,
+        height: 600,
+      }
+    );
   }
 
-  openPreferences(): MatDialogRef<PreferencesModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<PreferencesModalComponent>(
-        'preferences',
-        this.translate.instant('modals.preferences.title'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(PreferencesModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
+  openPreferences(): MatDialogRef<any> {
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/preferences-modal/preferences-modal.component').then(
+          m =>
+            this.dialog.open(m.PreferencesModalComponent, {
+              ...STANDARD_MODAL_SIZE,
+              disableClose: true,
+            })
+        ),
+      {
+        type: 'preferences',
+        title: this.translate.instant('modals.preferences.title'),
+        width: 680,
+        height: 600,
+      }
+    );
   }
 
-  openRcloneFlags(): MatDialogRef<RcloneFlagsModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<RcloneFlagsModalComponent>(
-        'rclone-flags',
-        this.translate.instant('titlebar.menu.flags'),
-        null,
-        680,
-        600
-      );
-    }
-    return this.dialog.open(RcloneFlagsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-    });
+  openRcloneFlags(): MatDialogRef<any> {
+    return this.openModal(
+      () =>
+        import('../../features/modals/settings/rclone-flags-modal/rclone-flags-modal.component').then(
+          m =>
+            this.dialog.open(m.RcloneFlagsModalComponent, {
+              ...STANDARD_MODAL_SIZE,
+              disableClose: true,
+            })
+        ),
+      {
+        type: 'rclone-flags',
+        title: this.translate.instant('titlebar.menu.flags'),
+        width: 680,
+        height: 600,
+      }
+    );
   }
 
-  openAlerts(): MatDialogRef<AlertsModalComponent> {
-    if (this.shouldOpenStandalone()) {
-      return this.openStandaloneDialog<AlertsModalComponent>(
-        'alerts',
-        this.translate.instant('alerts.title') || 'Alerts & Notifications',
-        null,
-        1200,
-        800
-      );
-    }
-    return this.dialog.open(AlertsModalComponent, {
-      width: '90vw',
-      maxWidth: '1200px',
-      height: '85vh',
-      disableClose: false,
-      panelClass: 'alerts-modal-panel',
-    });
+  openAlerts(): MatDialogRef<any> {
+    return this.openModal(
+      () =>
+        import('../../features/modals/alerts-modal/alerts-modal.component').then(m =>
+          this.dialog.open(m.AlertsModalComponent, {
+            width: '90vw',
+            maxWidth: '1200px',
+            height: '85vh',
+            disableClose: false,
+            panelClass: 'alerts-modal-panel',
+          })
+        ),
+      {
+        type: 'alerts',
+        title: this.translate.instant('alerts.title') || 'Alerts & Notifications',
+        width: 1200,
+        height: 800,
+      }
+    );
   }
 
-  // ============================================================================
-  // Standard-Only Modals (Non-Standalone)
-  // ============================================================================
-
-  openProperties(options: PropertiesModalOptions): MatDialogRef<PropertiesModalComponent> {
+  openProperties(options: PropertiesModalOptions): MatDialogRef<any> {
     const data = {
       remoteName: options.remoteName,
       path: options.path,
@@ -518,16 +520,20 @@ export class ModalService {
       remoteType: options.remoteType,
       features: options.features,
     };
-    return this.dialog.open(PropertiesModalComponent, {
-      data,
-      height: options.height ?? '60vh',
-      maxHeight: options.maxHeight ?? '800px',
-      width: options.width ?? '60vw',
-      maxWidth: options.maxWidth ?? '400px',
-    });
+    return new AsyncDialogRef(
+      import('../../features/modals/properties/properties-modal.component').then(m =>
+        this.dialog.open(m.PropertiesModalComponent, {
+          data,
+          height: options.height ?? '60vh',
+          maxHeight: options.maxHeight ?? '800px',
+          width: options.width ?? '60vw',
+          maxWidth: options.maxWidth ?? '400px',
+        })
+      )
+    ) as unknown as MatDialogRef<any>;
   }
 
-  openRemoteAbout(options: RemoteAboutModalOptions): MatDialogRef<RemoteAboutModalComponent> {
+  openRemoteAbout(options: RemoteAboutModalOptions): MatDialogRef<any> {
     const data = {
       remote: {
         displayName: options.displayName,
@@ -535,103 +541,47 @@ export class ModalService {
         type: options.type,
       },
     };
-    return this.dialog.open(RemoteAboutModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
+    return new AsyncDialogRef(
+      import('../../features/modals/remote/remote-about-modal.component').then(m =>
+        this.dialog.open(m.RemoteAboutModalComponent, {
+          ...STANDARD_MODAL_SIZE,
+          disableClose: true,
+          data,
+        })
+      )
+    ) as unknown as MatDialogRef<any>;
   }
 
-  openAlertActionEditor(actionId?: string): MatDialogRef<AlertActionEditorComponent, AlertAction> {
-    return this.dialog.open(AlertActionEditorComponent, {
-      width: '600px',
-      disableClose: false,
-      data: { actionId },
-    });
+  openKeyboardShortcuts(data?: { nautilus?: boolean }): MatDialogRef<any> {
+    return new AsyncDialogRef(
+      import('../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component').then(
+        m =>
+          this.dialog.open(m.KeyboardShortcutsModalComponent, {
+            ...STANDARD_MODAL_SIZE,
+            disableClose: true,
+            data,
+          })
+      )
+    ) as unknown as MatDialogRef<any>;
   }
 
-  openAlertRuleEditor(ruleId?: string): MatDialogRef<AlertRuleEditorComponent, AlertRule> {
-    return this.dialog.open(AlertRuleEditorComponent, {
-      width: '600px',
-      disableClose: true,
-      data: { ruleId },
-    });
+  openAbout(): MatDialogRef<any> {
+    return new AsyncDialogRef(
+      import('../../features/modals/settings/about-modal/about-modal.component').then(m =>
+        this.dialog.open(m.AboutModalComponent, { ...ABOUT_MODAL_SIZE, disableClose: true })
+      )
+    ) as unknown as MatDialogRef<any>;
   }
 
-  openKeyboardShortcuts(data?: {
-    nautilus?: boolean;
-  }): MatDialogRef<KeyboardShortcutsModalComponent> {
-    return this.dialog.open(KeyboardShortcutsModalComponent, {
-      ...STANDARD_MODAL_SIZE,
-      disableClose: true,
-      data,
-    });
-  }
-
-  openAbout(): MatDialogRef<AboutModalComponent> {
-    return this.dialog.open(AboutModalComponent, {
-      ...ABOUT_MODAL_SIZE,
-      disableClose: true,
-    });
-  }
-
-  openArchiveCreate(data: {
-    items: any[];
-    defaultName: string;
-  }): MatDialogRef<ArchiveCreateModalComponent> {
-    return this.dialog.open(ArchiveCreateModalComponent, {
-      width: '450px',
-      disableClose: true,
-      data,
-    });
-  }
-
-  openConfirm(
-    data: ConfirmDialogData,
-    config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
-  ): MatDialogRef<ConfirmModalComponent, boolean> {
-    return this.dialog.open(ConfirmModalComponent, {
-      maxWidth: '480px',
-      disableClose: true,
-      data,
-      ...config,
-    });
-  }
-
-  openInput<T = any>(
-    data: InputModalData,
-    config: Partial<MatDialogConfig<InputModalData>> = {}
-  ): MatDialogRef<InputModalComponent, T> {
-    return this.dialog.open(InputModalComponent, {
-      minWidth: '362px',
-      disableClose: true,
-      data,
-      ...config,
-    });
-  }
-
-  // ============================================================================
-  // Utilities
-  // ============================================================================
-
-  animatedClose<T, R = unknown>(
-    dialogRef: MatDialogRef<T>,
-    result?: R,
-    animationDuration = 200
-  ): void {
-    const isMobile = window.innerWidth <= 450;
-    if (isMobile) {
-      const dialogContainer = document.getElementById(dialogRef.id);
-      if (dialogContainer) {
-        dialogContainer.classList.add('closing');
-        setTimeout(() => {
-          dialogRef.close(result);
-        }, animationDuration);
-      } else {
-        dialogRef.close(result);
-      }
-    } else {
-      dialogRef.close(result);
-    }
+  openArchiveCreate(data: { items: any[]; defaultName: string }): MatDialogRef<any> {
+    return new AsyncDialogRef(
+      import('../../shared/modals/archive-create-modal/archive-create-modal.component').then(m =>
+        this.dialog.open(m.ArchiveCreateModalComponent, {
+          width: '450px',
+          disableClose: true,
+          data,
+        })
+      )
+    ) as unknown as MatDialogRef<any>;
   }
 }

@@ -16,7 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
-import { getDefaultAnswerFromQuestion } from '@app/services';
+import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remote-config.utils';
 
 @Component({
   selector: 'app-interactive-config-step',

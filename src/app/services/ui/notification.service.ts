@@ -1,9 +1,14 @@
-import { inject, Injectable, Injector } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
-import { ConfirmDialogData } from '@app/types';
-import { ModalService } from '@app/services';
+import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
+import {
+  InputModalComponent,
+  InputModalData,
+} from '../../shared/modals/input-modal/input-modal.component';
+import { ConfirmDialogData } from '@app/types';
 
 /**
  * Service for handling user notifications and confirmations
@@ -15,16 +20,8 @@ import { firstValueFrom } from 'rxjs';
 })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
-  private injector = inject(Injector);
   private translate = inject(TranslateService);
-
-  private _modalService?: ModalService;
-  private get modalService(): ModalService {
-    if (!this._modalService) {
-      this._modalService = this.injector.get(ModalService);
-    }
-    return this._modalService;
-  }
+  private dialog = inject(MatDialog);
 
   /**
    * Show success message
@@ -78,14 +75,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Show confirmation modal
-   * @param title Modal title (should be pre-translated)
-   * @param message Modal message (should be pre-translated)
-   * @param confirmText Confirm button text (defaults to translated 'Yes')
-   * @param cancelText Cancel button text (defaults to translated 'No')
-   * @param options Optional icon and styling options
-   */
   async confirmModal(
     title: string,
     message: string,
@@ -96,40 +85,37 @@ export class NotificationService {
     const dialogData: ConfirmDialogData = {
       title,
       message,
-      cancelText: cancelText ?? 'common.no',
-      confirmText: confirmText ?? 'common.yes',
+      cancelText: cancelText ?? (confirmText ? 'common.no' : 'common.ok'),
+      confirmText,
       ...options,
     };
 
-    const dialogRef = this.modalService.openConfirm(dialogData);
+    const dialogRef = this.openConfirm(dialogData);
     const result = await firstValueFrom(dialogRef.afterClosed());
     return !!result;
   }
 
-  /**
-   * Show alert modal
-   * @param title Modal title (should be pre-translated)
-   * @param message Modal message (should be pre-translated)
-   * @param buttonText Button text (defaults to translated 'OK')
-   * @param options Optional icon and styling options
-   */
-  async alertModal(
-    title: string,
-    message: string,
-    buttonText?: string,
-    options?: Pick<ConfirmDialogData, 'icon' | 'color'>
-  ): Promise<void> {
-    const dialogData: ConfirmDialogData = {
-      title,
-      message,
-      cancelText: buttonText ?? this.translate.instant('common.ok'),
-      ...options,
-    };
-
-    const dialogRef = this.modalService.openConfirm({
-      ...dialogData,
+  openConfirm(
+    data: ConfirmDialogData,
+    config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
+  ): MatDialogRef<ConfirmModalComponent, boolean> {
+    return this.dialog.open(ConfirmModalComponent, {
+      maxWidth: '480px',
+      disableClose: true,
+      data,
+      ...config,
     });
+  }
 
-    await firstValueFrom(dialogRef.afterClosed());
+  openInput<T = any>(
+    data: InputModalData,
+    config: Partial<MatDialogConfig<InputModalData>> = {}
+  ): MatDialogRef<InputModalComponent, T> {
+    return this.dialog.open(InputModalComponent, {
+      minWidth: '362px',
+      disableClose: true,
+      data,
+      ...config,
+    });
   }
 }

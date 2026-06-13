@@ -23,10 +23,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { NautilusService, NotificationService, PathService, isHeadlessMode } from '@app/services';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { Entry, ExplorerRoot, FileBrowserItem, FilePickerConfig } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { CopyToClipboardDirective, NautilusKeyboardDirective } from '@app/directives';
+import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
+import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
 
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
@@ -107,7 +111,7 @@ export class NautilusComponent implements OnInit {
   protected readonly fileViewerSvc = inject(FileViewerService);
 
   // ── Outputs & ViewChild ──────────────────────────────────────────────────────
-  readonly closeOverlay = output<void>();
+  readonly closeOverlay = output<FileBrowserItem[] | null>();
   @ViewChild('sidenav') sidenav!: MatSidenav;
   @ViewChild('fileUploadInput') fileUploadInput!: ElementRef<HTMLInputElement>;
   @ViewChild('folderUploadInput') folderUploadInput!: ElementRef<HTMLInputElement>;
@@ -301,7 +305,7 @@ export class NautilusComponent implements OnInit {
     this._registerKeyboard();
     this._registerDragDrop();
 
-    this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit();
+    this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit(null);
 
     this.destroyRef.onDestroy(() => {
       this.nautilusService.setWindowTitle('RClone Manager');
@@ -890,7 +894,7 @@ export class NautilusComponent implements OnInit {
       return;
     }
 
-    this.nautilusService.closeFilePicker(items);
+    this.closeOverlay.emit(items);
   }
 
   // ---------------------------------------------------------------------------

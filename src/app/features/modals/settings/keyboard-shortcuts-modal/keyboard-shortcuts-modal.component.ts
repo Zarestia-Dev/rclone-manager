@@ -14,7 +14,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
-import { ModalService } from '@app/services';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 
@@ -38,7 +37,6 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 export class KeyboardShortcutsModalComponent {
   private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
-  private readonly modalService = inject(ModalService);
   private readonly data = inject(MAT_DIALOG_DATA, { optional: true }) as {
     nautilus?: boolean;
   } | null;
@@ -265,7 +263,7 @@ export class KeyboardShortcutsModalComponent {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 
   @HostListener('document:keydown.control.f')

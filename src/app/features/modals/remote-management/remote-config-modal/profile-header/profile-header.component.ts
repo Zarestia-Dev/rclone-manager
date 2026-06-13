@@ -8,7 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { SharedProfileType } from '@app/types';
-import { RemoteConfigStateService } from '@app/services';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-profile-header',

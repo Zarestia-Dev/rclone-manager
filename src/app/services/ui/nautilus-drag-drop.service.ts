@@ -1,18 +1,12 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import {
-  isHeadlessMode,
-  NotificationService,
-  PathService,
-  RemoteFileOperationsService,
-} from '@app/services';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 
 export const NAUTILUS_DRAG_MIME_TYPE = 'application/nautilus-files';
 
@@ -53,10 +47,6 @@ export interface DragDropCallbacks {
   refresh: (remote?: string, path?: string) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Internal types
-// ---------------------------------------------------------------------------
-
 interface HitResult {
   folder: FileBrowserItem | null;
   segmentIndex: number | null;
@@ -86,9 +76,6 @@ const NULL_HIT: HitResult = {
   paneIndex: null,
 };
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
 @Injectable()
 export class NautilusDragDropService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
@@ -98,17 +85,20 @@ export class NautilusDragDropService {
   private readonly fileOps = inject(NautilusFileOperationsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  // ── Public state ────────────────────────────────────────────────────────────
-  readonly isInternalDragging = signal(false);
-  readonly isExternalDragging = signal(false);
-  readonly isDragging = computed(() => this.isInternalDragging() || this.isExternalDragging());
+  private readonly _isInternalDragging = signal(false);
+  readonly isInternalDragging = this._isInternalDragging.asReadonly();
+
+  private readonly _isExternalDragging = signal(false);
+  readonly isExternalDragging = this._isExternalDragging.asReadonly();
+
+  readonly isDragging = computed(() => this._isInternalDragging() || this._isExternalDragging());
+
   readonly hoveredFolder = signal<FileBrowserItem | null>(null);
   readonly hoveredFolderPaneIndex = signal<number | null>(null);
   readonly hoveredSegmentIndex = signal<number | null>(null);
   readonly hoveredTabIndex = signal<number | null>(null);
   readonly hoveredSidebarItem = signal<string | null>(null);
 
-  // ── Private state ────────────────────────────────────────────────────────────
   private _items: FileBrowserItem[] = [];
   private _counter = 0;
   private _lastHitKey = '';
@@ -119,10 +109,6 @@ export class NautilusDragDropService {
   private _dragGhostHost: HTMLElement | null = null;
   private _cb!: DragDropCallbacks;
 
-  // ---------------------------------------------------------------------------
-  // Setup
-  // ---------------------------------------------------------------------------
-
   register(cb: DragDropCallbacks): void {
     this._cb = cb;
   }
@@ -132,21 +118,21 @@ export class NautilusDragDropService {
 
     try {
       const unlisten = await getCurrentWindow().onDragDropEvent(async event => {
-        if (this.isInternalDragging()) return;
+        if (this._isInternalDragging()) return;
 
         if (event.payload.type === 'enter' || event.payload.type === 'over') {
-          this.isExternalDragging.set(true);
+          this._isExternalDragging.set(true);
           return;
         }
 
         if (event.payload.type === 'leave') {
-          this.isExternalDragging.set(false);
+          this._isExternalDragging.set(false);
           return;
         }
 
         if (event.payload.type !== 'drop' || event.payload.paths.length === 0) return;
 
-        this.isExternalDragging.set(false);
+        this._isExternalDragging.set(false);
         this.endDrag();
 
         const target = this._resolveDropTargetFromPoint(
@@ -185,10 +171,6 @@ export class NautilusDragDropService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Drag lifecycle
-  // ---------------------------------------------------------------------------
-
   startDrag(event: DragEvent, items: FileBrowserItem[], paneIndex: 0 | 1): void {
     if (event.dataTransfer) {
       const payload: NautilusDragPayload = { items, sourcePaneIndex: paneIndex };
@@ -203,8 +185,8 @@ export class NautilusDragDropService {
     point: { x: number; y: number },
     svgIcon: SVGElement | null = null
   ): void {
-    this.isInternalDragging.set(true);
-    this.isExternalDragging.set(false);
+    this._isInternalDragging.set(true);
+    this._isExternalDragging.set(false);
     this._lastHitKey = '';
     this._items = items;
     this._internalPointerDrag = {
@@ -223,7 +205,7 @@ export class NautilusDragDropService {
         (this._dragGhostEl as any).popover = 'manual';
         (this._dragGhostEl as any).showPopover();
       } catch {
-        // Popover API might not be supported
+        // Popover fallback
       }
     }
     this._updateDragGhostPosition(point.x + 12, point.y + 12);
@@ -241,77 +223,47 @@ export class NautilusDragDropService {
     const bgCards = isMulti ? GHOST_BG_CARDS : 0;
     const wrapper = document.createElement('div');
 
-    Object.assign(wrapper.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      margin: '0',
-      padding: '0',
-      border: 'none',
-      background: 'transparent',
-      zIndex: '2147483647',
-      pointerEvents: 'none',
-      width: `${GHOST_CARD_W + bgCards * GHOST_STACK_OFFSET}px`,
-      height: `${GHOST_CARD_H + bgCards * GHOST_STACK_OFFSET}px`,
-      opacity: '1',
-      visibility: 'visible',
-    });
+    wrapper.style.cssText = `
+      position: fixed; top: 0; left: 0; margin: 0; padding: 0; border: none;
+      background: transparent; z-index: 2147483647; pointer-events: none;
+      width: ${GHOST_CARD_W + bgCards * GHOST_STACK_OFFSET}px;
+      height: ${GHOST_CARD_H + bgCards * GHOST_STACK_OFFSET}px;
+      opacity: 1; visibility: visible;
+    `;
 
-    for (let step = bgCards; step >= 1; step--) {
-      const bg = document.createElement('div');
-      const opacity = 0.45 + ((bgCards - step) / bgCards) * 0.25;
-      Object.assign(bg.style, {
-        position: 'absolute',
-        top: `${(bgCards - step) * GHOST_STACK_OFFSET}px`,
-        left: `${step * GHOST_STACK_OFFSET}px`,
-        width: `${GHOST_CARD_W}px`,
-        height: `${GHOST_CARD_H}px`,
-        borderRadius: 'var(--card-border-radius, 10px)',
-        background: 'var(--sidebar-bg-color, #272a2f)',
-        border: '1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12))',
-        boxSizing: 'border-box',
-        opacity: String(opacity),
-      });
-      wrapper.appendChild(bg);
+    if (isMulti) {
+      const fragment = document.createDocumentFragment();
+      for (let step = bgCards; step >= 1; step--) {
+        const bg = document.createElement('div');
+        const opacity = 0.45 + ((bgCards - step) / bgCards) * 0.25;
+        bg.style.cssText = `
+          position: absolute; top: ${(bgCards - step) * GHOST_STACK_OFFSET}px;
+          left: ${step * GHOST_STACK_OFFSET}px; width: ${GHOST_CARD_W}px; height: ${GHOST_CARD_H}px;
+          border-radius: var(--card-border-radius, 10px); background: var(--sidebar-bg-color, #272a2f);
+          border: 1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12)); box-sizing: border-box;
+          opacity: ${opacity};
+        `;
+        fragment.appendChild(bg);
+      }
+      wrapper.appendChild(fragment);
     }
 
     const front = document.createElement('div');
-    Object.assign(front.style, {
-      position: 'absolute',
-      top: `${bgCards * GHOST_STACK_OFFSET}px`,
-      left: '0',
-      width: `${GHOST_CARD_W}px`,
-      height: `${GHOST_CARD_H}px`,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 'var(--space-xs)',
-      padding: '0 var(--space-sm)',
-      borderRadius: 'var(--card-border-radius, 10px)',
-      background: 'var(--popover-bg-color, #2f3136)',
-      border: '1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12))',
-      boxShadow: 'var(--shadow-popover, 0 8px 24px rgba(0, 0, 0, 0.35))',
-      boxSizing: 'border-box',
-      overflow: 'hidden',
-    });
+    front.style.cssText = `
+      position: absolute; top: ${bgCards * GHOST_STACK_OFFSET}px; left: 0;
+      width: ${GHOST_CARD_W}px; height: ${GHOST_CARD_H}px; display: flex;
+      align-items: center; gap: var(--space-xs); padding: 0 var(--space-sm);
+      border-radius: var(--card-border-radius, 10px); background: var(--popover-bg-color, #2f3136);
+      border: 1px solid var(--card-shade-color, rgba(255, 255, 255, 0.12));
+      box-shadow: var(--shadow-popover, 0 8px 24px rgba(0, 0, 0, 0.35)); box-sizing: border-box; overflow: hidden;
+    `;
 
     const iconWrapper = document.createElement('span');
-    Object.assign(iconWrapper.style, {
-      width: 'var(--icon-size-sm)',
-      height: 'var(--icon-size-sm)',
-      flexShrink: '0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    });
+    iconWrapper.style.cssText = `width: var(--icon-size-sm); height: var(--icon-size-sm); flex-shrink: 0; display: flex; align-items: center; justify-content: center;`;
 
     if (svgIcon) {
       const clone = svgIcon.cloneNode(true) as SVGElement;
-      Object.assign(clone.style, {
-        width: 'var(--icon-size-sm)',
-        height: 'var(--icon-size-sm)',
-        display: 'block',
-        color: items[0]?.entry.IsDir ? 'var(--accent-color)' : 'var(--dim-color)',
-      });
+      clone.style.cssText = `width: var(--icon-size-sm); height: var(--icon-size-sm); display: block; color: ${items[0]?.entry.IsDir ? 'var(--accent-color)' : 'var(--dim-color)'};`;
       iconWrapper.appendChild(clone);
     } else {
       iconWrapper.textContent = items[0]?.entry.IsDir ? '📁' : '📄';
@@ -319,30 +271,13 @@ export class NautilusDragDropService {
     front.appendChild(iconWrapper);
 
     const label = document.createElement('span');
-    Object.assign(label.style, {
-      flex: '1',
-      minWidth: '0',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      fontSize: 'var(--font-size-md)',
-      fontWeight: '500',
-      color: 'var(--window-fg-color, #f3f4f6)',
-    });
+    label.style.cssText = `flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-md); font-weight: 500; color: var(--window-fg-color, #f3f4f6);`;
     label.textContent = items[0]?.entry.Name ?? '';
     front.appendChild(label);
 
     if (isMulti) {
       const badge = document.createElement('span');
-      Object.assign(badge.style, {
-        flexShrink: '0',
-        borderRadius: 'var(--radius-xs, 6px)',
-        padding: 'var(--space-xxs, 2px) var(--space-xs, 6px)',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: '700',
-        color: 'var(--accent-fg-color, #ffffff)',
-        background: 'var(--accent-color, #0ea5e9)',
-      });
+      badge.style.cssText = `flex-shrink: 0; border-radius: var(--radius-xs, 6px); padding: var(--space-xxs, 2px) var(--space-xs, 6px); font-size: var(--font-size-sm); font-weight: 700; color: var(--accent-fg-color, #ffffff); background: var(--accent-color, #0ea5e9);`;
       badge.textContent = items.length.toString();
       front.appendChild(badge);
     }
@@ -353,8 +288,7 @@ export class NautilusDragDropService {
 
   private _updateDragGhostPosition(x: number, y: number): void {
     if (!this._dragGhostEl) return;
-    this._dragGhostEl.style.left = `${x}px`;
-    this._dragGhostEl.style.top = `${y}px`;
+    this._dragGhostEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
   async commitInternalPointerDrag(point: { x: number; y: number }): Promise<void> {
@@ -363,7 +297,6 @@ export class NautilusDragDropService {
     const ctx = this._cb.getContext();
     const resolved = this._resolveDropHit(point, ctx);
 
-    // Handle special sidebar items that aren't standard file operations
     if (resolved.sidebarItem === 'starred') {
       this._internalPointerDrag.items.forEach(item => {
         if (!this._cb.isStarred(item)) this._cb.toggleStar(item);
@@ -404,8 +337,8 @@ export class NautilusDragDropService {
   }
 
   endDrag(): void {
-    this.isInternalDragging.set(false);
-    this.isExternalDragging.set(false);
+    this._isInternalDragging.set(false);
+    this._isExternalDragging.set(false);
     this._counter = 0;
     this._lastHitKey = '';
     this._items = [];
@@ -421,10 +354,6 @@ export class NautilusDragDropService {
     this.hoveredSidebarItem.set(null);
   }
 
-  // ---------------------------------------------------------------------------
-  // Container-level events
-  // ---------------------------------------------------------------------------
-
   onDragOver(event: DragEvent): void {
     if (event.dataTransfer?.types.includes('application/x-nautilus-tab')) return;
     event.preventDefault();
@@ -435,9 +364,9 @@ export class NautilusDragDropService {
   onContainerDragEnter(_event: DragEvent): void {
     this._counter++;
     if (this._counter === 1 && this._items.length > 0) {
-      this.isInternalDragging.set(true);
+      this._isInternalDragging.set(true);
     } else if (this._counter === 1) {
-      this.isExternalDragging.set(true);
+      this._isExternalDragging.set(true);
     }
   }
 
@@ -446,9 +375,9 @@ export class NautilusDragDropService {
     if (this._counter <= 0) {
       this._counter = 0;
       if (this._items.length === 0) {
-        this.isExternalDragging.set(false);
+        this._isExternalDragging.set(false);
       } else {
-        this.isInternalDragging.set(false);
+        this._isInternalDragging.set(false);
       }
     }
   }
@@ -474,10 +403,6 @@ export class NautilusDragDropService {
     this._counter = 0;
     if (this._items.length === 0) this.endDrag();
   }
-
-  // ---------------------------------------------------------------------------
-  // Named drop targets
-  // ---------------------------------------------------------------------------
 
   dropToStarred(event: DragEvent): void {
     event.stopPropagation();
@@ -564,10 +489,6 @@ export class NautilusDragDropService {
     await this._processDrop(event, { remote: targetRemote, path: targetPath }, fsEntries);
   }
 
-  // ---------------------------------------------------------------------------
-  // Private: hover-open timer
-  // ---------------------------------------------------------------------------
-
   private _onMove(point: { x: number; y: number }): void {
     const ctx = this._cb.getContext();
     const hit = this._resolveDropHit(point, ctx);
@@ -645,10 +566,6 @@ export class NautilusDragDropService {
     }
     this._hoverKey = '';
   }
-
-  // ---------------------------------------------------------------------------
-  // Private: drop processing
-  // ---------------------------------------------------------------------------
 
   private async _processDrop(
     event: DragEvent,
@@ -826,7 +743,6 @@ export class NautilusDragDropService {
     const tabIdx = resolved.tabIndex ?? this.hoveredTabIndex();
     const sidebarItem = resolved.sidebarItem ?? this.hoveredSidebarItem();
 
-    // 1. Tab target
     if (tabIdx !== null) {
       const tab = ctx.tabs[tabIdx];
       if (tab?.left.remote) {
@@ -834,7 +750,6 @@ export class NautilusDragDropService {
       }
     }
 
-    // 2. Sidebar target
     if (sidebarItem) {
       if (sidebarItem.startsWith('remote:')) {
         const remoteName = sidebarItem.replace('remote:', '');
@@ -854,12 +769,9 @@ export class NautilusDragDropService {
           if (remote) return { remote, path: bm.entry.Path };
         }
       }
-      // Special sidebar items (starred, etc) are handled in commitInternalPointerDrag.
-      // We return an invalid target here to avoid falling back to the current directory.
       return { remote: null, path: '' };
     }
 
-    // 3. Pane target (folder within or the pane itself)
     if (resolved.paneIndex !== null) {
       const pane = ctx.panes[resolved.paneIndex as 0 | 1];
       if (!pane.remote) return { remote: null, path: '' };
@@ -877,9 +789,7 @@ export class NautilusDragDropService {
       return { remote: pane.remote, path: pane.path };
     }
 
-    // 4. Breadcrumb segment target
     if (segIdx !== null) {
-      // Segments belong to the active pane's remote
       const pane = ctx.panes[ctx.activePaneIndex];
       if (!pane.remote) return { remote: null, path: '' };
       return {
@@ -888,13 +798,8 @@ export class NautilusDragDropService {
       };
     }
 
-    // No valid target resolved (e.g. over toolbar empty space or sidebar background)
     return { remote: null, path: '' };
   }
-
-  // ---------------------------------------------------------------------------
-  // Private: FileSystem API utilities
-  // ---------------------------------------------------------------------------
 
   private _hasExternalFiles(event: DragEvent): boolean {
     const dt = event.dataTransfer;
@@ -961,10 +866,6 @@ export class NautilusDragDropService {
 
     return results;
   }
-
-  // ---------------------------------------------------------------------------
-  // Private: utilities
-  // ---------------------------------------------------------------------------
 
   private _normalizeRemote(remote: ExplorerRoot): string {
     return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);

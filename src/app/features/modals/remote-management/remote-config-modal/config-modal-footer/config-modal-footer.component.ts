@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { TranslateModule } from '@ngx-translate/core';
-import { RemoteConfigStateService } from '@app/services';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-config-modal-footer',

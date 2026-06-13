@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
-import { RemoteManagementService } from '@app/services';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 
 import { NautilusComponent } from './nautilus.component';
 

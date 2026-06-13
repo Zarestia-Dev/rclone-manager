@@ -33,15 +33,13 @@ import {
   VfsService,
   VfsStats,
 } from 'src/app/services/operations/vfs.service';
-import { NotificationService } from '@app/services';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import {
-  FileSystemService,
-  MountManagementService,
-  RemoteFacadeService,
-  RcloneValueMapperService,
-  ServeManagementService,
-} from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { FormatFileSizePipe } from '@app/pipes';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { MountManagementService } from 'src/app/services/operations/mount-management.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 
 interface VfsInstance {
   name: string;

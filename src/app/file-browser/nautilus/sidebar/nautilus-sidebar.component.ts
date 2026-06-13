@@ -7,7 +7,9 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
-import { IconService, PathService, RemoteFacadeService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { SlideMenuController } from '../slide-menu';

@@ -1,32 +1,19 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import {
-  PathService,
-  RemoteFileOperationsService,
-  RemoteFacadeService,
-  ModalService,
-  NotificationService,
-} from '@app/services';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ExplorerRoot, FileBrowserItem, ORIGINS, RemoteFeatures } from '@app/types';
-import { NautilusService } from '@app/services';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
 import { FileViewerService } from '../ui/file-viewer.service';
 
-/**
- * Handles all context-menu and dialog-driven actions for the Nautilus file
- * browser.  Lives at component scope so it can reference the component-scoped
- * NautilusTabService and NautilusFileOperationsService.
- *
- * Owns `contextMenuItem` — the item last right-clicked or activated via
- * keyboard.  `setContextItem` in the parent component sets this signal and
- * handles the pane-switch / selection-sync side-effect.
- */
 @Injectable()
 export class NautilusActionsService {
   private readonly tabSvc = inject(NautilusTabService);
   private readonly fileOps = inject(NautilusFileOperationsService);
-  private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
@@ -35,10 +22,7 @@ export class NautilusActionsService {
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
 
-  /** The item that was last right-clicked (or null for empty-area clicks). */
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
-
-  // ── Dialogs ─────────────────────────────────────────────────────────────────
 
   openPropertiesDialog(source: 'contextMenu' | 'bookmark', itemOverride?: FileBrowserItem): void {
     const activeRemote = this.tabSvc.activeRemote();
@@ -58,7 +42,7 @@ export class NautilusActionsService {
     );
     const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
 
-    this.modalService.openProperties({
+    this.nautilusService.openProperties({
       remoteName,
       path,
       isLocal,
@@ -73,14 +57,14 @@ export class NautilusActionsService {
   }
 
   openShortcutsModal(): void {
-    this.modalService.openKeyboardShortcuts({ nautilus: true });
+    this.nautilusService.openKeyboardShortcuts({ nautilus: true });
   }
 
   openAboutModal(remote: ExplorerRoot): void {
     const normalized = remote.isLocal
       ? remote.name
       : this.pathSvc.normalizeRemoteForRclone(remote.name);
-    this.modalService.openRemoteAbout({
+    this.nautilusService.openRemoteAbout({
       displayName: remote.name,
       normalizedName: normalized,
       type: remote.type,
@@ -112,13 +96,6 @@ export class NautilusActionsService {
     }
   }
 
-  // ── Context-menu file actions ────────────────────────────────────────────────
-
-  /**
-   * Opens the file viewer.
-   * The caller must supply the sorted/filtered file list from the active pane
-   * so that previous/next navigation in the viewer is correct.
-   */
   async openFilePreview(item: FileBrowserItem, activePaneFiles: FileBrowserItem[]): Promise<void> {
     const currentRemote = this.tabSvc.nautilusRemote();
     const actualRemoteName = item.meta.remote ?? currentRemote?.name;
@@ -128,7 +105,6 @@ export class NautilusActionsService {
     }
 
     const isLocal = item.meta.isLocal;
-
     const idx = activePaneFiles.findIndex(f => f.entry.Path === item.entry.Path);
     if (idx === -1) return;
 
@@ -139,8 +115,6 @@ export class NautilusActionsService {
       isLocal
     );
   }
-
-  // ── File operations (delegate to NautilusFileOperationsService + refresh) ───
 
   async openNewFolder(): Promise<void> {
     const remote = this.tabSvc.activeRemote();
@@ -232,8 +206,6 @@ export class NautilusActionsService {
     if (changed) this._refresh();
   }
 
-  // ── Tab/window openers ───────────────────────────────────────────────────────
-
   openContextMenuOpenInNewTab(): void {
     const item = this.contextMenuItem();
     if (!item?.entry.IsDir) return;
@@ -270,8 +242,6 @@ export class NautilusActionsService {
     const remote = this._resolveBookmarkRemote(bookmark);
     if (remote) this.nautilusService.newNautilusWindow(remote.name, bookmark.entry.Path);
   }
-
-  // ── Private helpers ──────────────────────────────────────────────────────────
 
   private _refresh(): void {
     const remote = this.tabSvc.activeRemote();

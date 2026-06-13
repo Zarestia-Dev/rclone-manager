@@ -2,7 +2,9 @@ import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/c
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
-import { UiStateService, WindowService, isHeadlessMode } from '@app/services';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { WindowService } from 'src/app/services/ui/window.service';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-window-controls',

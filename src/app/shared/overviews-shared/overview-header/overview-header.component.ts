@@ -3,7 +3,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppTab } from '@app/types';
-import { BackendService, RcloneStatusService } from '@app/services';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 
 const TITLE_MAP: Record<AppTab, string> = {
   mount: 'overviews.headers.mount',

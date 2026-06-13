@@ -18,7 +18,8 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatTableModule } from '@angular/material/table';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
-import { IconService, NautilusService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
 import { Entry, FileBrowserItem } from '@app/types';
 

@@ -17,8 +17,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { FileSystemService, SystemInfoService } from '@app/services';
-import { ValidatorRegistryService } from '@app/services';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { InstallationOptionsData, InstallationTabOption } from '../../types';
 
 type LocationType = 'default' | 'custom' | 'existing';

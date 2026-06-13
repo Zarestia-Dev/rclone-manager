@@ -20,13 +20,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { InstallationOptionsData, RepairData, InstallationTabOption } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
-import {
-  RclonePasswordService,
-  RepairService,
-  InstallationService,
-  AppSettingsService,
-  SystemInfoService,
-} from '@app/services';
+import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
+import { RepairService } from 'src/app/services/operations/repair.service';
+import { InstallationService } from 'src/app/services/settings/installation.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 

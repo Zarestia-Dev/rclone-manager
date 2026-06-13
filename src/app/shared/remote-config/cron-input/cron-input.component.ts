@@ -32,7 +32,7 @@ import {
   tap,
 } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { AutomationService } from '@app/services';
+import { AutomationService } from 'src/app/services/operations/automation.service';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';

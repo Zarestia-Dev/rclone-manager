@@ -21,15 +21,15 @@ import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
 import { RcConfigOption, SENSITIVE_KEYS, SharedProfileType } from '@app/types';
-import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { RcloneOptionTranslatePipe } from '@app/pipes';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import {
-  RcloneValueMapperService,
   matchesConfigSearch,
-  AppSettingsService,
   OPERATION_PATH_MAPPINGS,
   getTopLevelKeysForProfile,
   getControlKey,
-} from '@app/services';
+} from 'src/app/services/remote/utils/remote-config.utils';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
 import { PathService } from '../../../services/infrastructure/platform/path.service';
 

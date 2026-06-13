@@ -7,12 +7,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 // Services
-import {
-  EventListenersService,
-  AppSettingsService,
-  SystemInfoService,
-  AppUpdaterService,
-} from '@app/services';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 
 @Component({
   selector: 'app-banner',

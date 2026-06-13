@@ -29,8 +29,11 @@ import {
   CommandOption,
   PREDEFINED_OPTIONS,
 } from '@app/types';
-import { IconService, matchesConfigSearch, RemoteManagementService } from '@app/services';
-import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
+import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 
 const _obscureOption = PREDEFINED_OPTIONS.find(o => o.key === 'obscure');
 export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption

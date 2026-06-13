@@ -11,7 +11,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
-import { AlertService, ModalService, RemoteFacadeService, BackendService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 
 @Component({
   selector: 'app-alert-rule-editor',
@@ -34,7 +36,6 @@ import { AlertService, ModalService, RemoteFacadeService, BackendService } from 
 export class AlertRuleEditorComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<AlertRuleEditorComponent>);
-  private readonly modalService = inject(ModalService);
   private readonly alertService = inject(AlertService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly backendService = inject(BackendService);
@@ -115,11 +116,11 @@ export class AlertRuleEditorComponent {
     if (this.form.invalid) return;
     const val = this.form.getRawValue();
     if (!val.action_ids.length) return;
-    this.modalService.animatedClose(this.dialogRef, val);
+    this.dialogRef.close(val);
   }
 
   @HostListener('document:keydown.escape')
   cancel(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

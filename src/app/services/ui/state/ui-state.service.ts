@@ -1,7 +1,9 @@
 import { inject, Injectable, signal, effect } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote } from '@app/types';
-import { isHeadlessMode, PathService, WindowService } from '@app/services';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
 
 /**

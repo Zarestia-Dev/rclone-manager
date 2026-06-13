@@ -4,13 +4,11 @@ import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, from, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { LocalStorageService } from './state/local-storage.service';
-import {
-  NotificationService,
-  PathService,
-  RemoteFileOperationsService,
-  JobManagementService,
-  NautilusService,
-} from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS } from '@app/types';
 import { TabItem } from '../../file-browser/nautilus/tabs/nautilus-tabs.component';
 import { FileViewerService } from '../ui/file-viewer.service';

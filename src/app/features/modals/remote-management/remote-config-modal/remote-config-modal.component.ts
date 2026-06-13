@@ -29,7 +29,6 @@ import { JobManagementService } from '../../../../services/operations/job-manage
 import { MountManagementService } from '../../../../services/operations/mount-management.service';
 import { AppSettingsService } from '../../../../services/settings/app-settings.service';
 import { ServeManagementService } from '../../../../services/operations/serve-management.service';
-import { ModalService } from '../../../../services/ui/modal.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
@@ -55,7 +54,7 @@ import {
   FilterConfig,
   LINKED_PROFILE_TYPES,
 } from '@app/types';
-import { CopyToClipboardDirective } from '@app/directives';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
@@ -133,7 +132,6 @@ export class RemoteConfigModalComponent {
   readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
 
   // ── Static config ─────────────────────────────────────────────────────────────
@@ -542,6 +540,6 @@ export class RemoteConfigModalComponent {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

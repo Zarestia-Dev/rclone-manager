@@ -18,17 +18,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import {
-  RemoteFileOperationsService,
-  NautilusService,
-  RemoteFacadeService,
-  ModalService,
-  IconService,
-  RemoteManagementService,
-  PathService,
-  JobManagementService,
-} from '@app/services';
-import { CopyToClipboardDirective } from '@app/directives';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -78,7 +75,6 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
@@ -459,7 +455,7 @@ export class PropertiesModalComponent implements OnInit, OnDestroy {
   @HostListener('keydown.escape')
   close(): void {
     void this.stopReadJobs();
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 
   getIcon(item?: Entry | null): string {

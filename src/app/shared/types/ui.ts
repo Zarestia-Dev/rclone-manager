@@ -171,3 +171,25 @@ export interface NotifyOptions {
   showSuccess?: boolean;
   showError?: boolean;
 }
+
+// Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
+export interface BackupAnalysis {
+  isEncrypted: boolean;
+  archiveType: string;
+  formatVersion: string;
+  isLegacy?: boolean;
+  createdAt?: string;
+  backupType?: string;
+  userNote?: string;
+  contents?: BackupContentsInfo;
+}
+
+// Matches the `BackupContentsInfo` struct
+export interface BackupContentsInfo {
+  settings: boolean;
+  backendConfig: boolean;
+  rcloneConfig: boolean;
+  remoteCount?: number;
+  remoteNames?: string[];
+  profiles?: string[];
+}

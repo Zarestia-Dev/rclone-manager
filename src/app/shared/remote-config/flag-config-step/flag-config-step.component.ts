@@ -17,14 +17,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { FlagType, RcConfigOption } from '@app/types';
-import { JsonEditorComponent, SettingControlComponent } from 'src/app/shared/components';
+import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
+import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
+import { IconService } from 'src/app/services/ui/icon.service';
 import {
-  IconService,
   matchesConfigSearch,
   getControlKey,
-  RemoteConfigStateService,
-} from '@app/services';
+} from 'src/app/services/remote/utils/remote-config.utils';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-flag-config-step',

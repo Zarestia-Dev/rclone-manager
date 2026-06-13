@@ -33,15 +33,13 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-import {
-  NotificationService,
-  UiStateService,
-  AppSettingsService,
-  ModalService,
-  BackendService,
-  RcloneStatusService,
-  LocalStorageService,
-} from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
+import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 
 @Component({
   selector: 'app-home',

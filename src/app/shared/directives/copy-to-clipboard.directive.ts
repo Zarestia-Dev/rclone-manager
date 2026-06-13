@@ -1,7 +1,7 @@
 import { Directive, HostListener, input, inject, HostBinding, ElementRef } from '@angular/core';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { TranslateService } from '@ngx-translate/core';
-import { NotificationService } from '@app/services';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 
 /**
  * Directive to add "Copy to Clipboard" behavior to any element.

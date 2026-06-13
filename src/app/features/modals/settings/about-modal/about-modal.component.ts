@@ -24,19 +24,15 @@ import { marked, Renderer } from 'marked';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NgClass, NgTemplateOutlet, DecimalPipe } from '@angular/common';
 
-import {
-  SystemInfoService,
-  AppUpdaterService,
-  RcloneUpdateService,
-  DebugService,
-  NotificationService,
-  DebugInfo,
-  RcloneStatusService,
-  BackendService,
-  ModalService,
-} from '@app/services';
+import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
+import { DebugService, DebugInfo } from 'src/app/services/infrastructure/system/debug.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { DownloadStateStatus } from '@app/types';
-import { CopyToClipboardDirective } from '@app/directives';
+import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 // Configure renderer once at module level
 const renderer = new Renderer();
@@ -99,7 +95,6 @@ export class AboutModalComponent implements OnInit {
 
   private readonly rcloneStatusService = inject(RcloneStatusService);
   public readonly backendService = inject(BackendService);
-  private readonly modalService = inject(ModalService);
 
   // ---------------------------------------------------------------------------
   // Navigation state
@@ -288,7 +283,7 @@ export class AboutModalComponent implements OnInit {
     if (this.overlayStack().length > 0) {
       this.goBack();
     } else {
-      this.modalService.animatedClose(this.dialogRef);
+      this.dialogRef.close();
     }
   }
 

@@ -7,9 +7,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AlertService, NotificationService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertHistoryFilter, AlertSeverity } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
 
 @Component({
   selector: 'app-alert-history',

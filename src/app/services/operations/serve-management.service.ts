@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
-import { EventListenersService } from '@app/services';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
 /**

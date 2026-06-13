@@ -16,7 +16,9 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 
 import { Remote } from '@app/types';
 
-import { IconService, UiStateService, RemoteStatusService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { RemoteStatusService } from 'src/app/services/remote/remote-status.service';
 import { RemoteFacadeService } from '../../services/facade/remote-facade.service';
 
 @Component({

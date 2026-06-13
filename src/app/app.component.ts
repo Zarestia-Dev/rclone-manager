@@ -5,23 +5,21 @@ import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { ShortcutHandlerDirective } from '@app/directives';
+import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
 import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
 
 // Services
-import {
-  AppSettingsService,
-  OnboardingStateService,
-  NautilusService,
-  BackendService,
-  IconService,
-  DebugService,
-  GlobalLoadingService,
-  ModalService,
-  AppUpdaterService,
-  RcloneUpdateService,
-} from '@app/services';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
+import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { DebugService } from 'src/app/services/infrastructure/system/debug.service';
+import { GlobalLoadingService } from 'src/app/services/ui/global-loading.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
+import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 
@@ -79,7 +77,7 @@ export class AppComponent implements OnInit {
       this.nautilusService.openFromBrowseQueryParam();
 
       if (this.modalService.isDialogStandalone()) {
-        this.modalService.resolveDialogWindow();
+        await this.modalService.resolveDialogWindow();
       } else if (!this.nautilusService.isStandaloneWindow()) {
         this.backendService.runStartupChecks();
         void this.appUpdaterService.initialize();

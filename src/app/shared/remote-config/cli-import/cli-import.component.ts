@@ -18,7 +18,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { SharedProfileType, EditTarget } from '@app/types';
-import { CliFlagMapperService, ImportResult } from '@app/services';
+import {
+  CliFlagMapperService,
+  ImportResult,
+} from 'src/app/services/remote/cli-flag-mapper.service';
 
 type ProfileMode = 'new' | 'override' | 'patch';
 

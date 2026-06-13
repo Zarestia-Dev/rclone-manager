@@ -3,8 +3,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
-import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FormatTimePipe } from '../../pipes/format-time.pipe';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
 
 @Component({

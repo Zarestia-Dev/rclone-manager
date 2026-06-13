@@ -17,7 +17,10 @@ import {
   SettingsPanelComponent,
   AutomationCardComponent,
 } from '../../../../shared/detail-shared';
-import { IconService, AutomationService, RemoteFacadeService, PathService } from '@app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { AutomationService } from 'src/app/services/operations/automation.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ActionConfig {

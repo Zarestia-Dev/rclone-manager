@@ -8,9 +8,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AlertService, ModalService, NotificationService } from '@app/services';
+import { AlertService } from 'src/app/services/alerts/alert.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
 import { AlertRule } from '@app/types';
-import { SearchContainerComponent } from '@app/shared/components';
+import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
+import { MatDialog } from '@angular/material/dialog';
+import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor.component';
 
 @Component({
   selector: 'app-alert-rules',
@@ -426,7 +429,7 @@ import { SearchContainerComponent } from '@app/shared/components';
 })
 export class AlertRulesComponent {
   public readonly alerts = inject(AlertService);
-  private readonly modalService = inject(ModalService);
+  private readonly dialog = inject(MatDialog);
   private readonly notificationService = inject(NotificationService);
 
   searchVisible = signal(false);
@@ -437,8 +440,12 @@ export class AlertRulesComponent {
   }
 
   createRule(): void {
-    this.modalService
-      .openAlertRuleEditor()
+    this.dialog
+      .open(AlertRuleEditorComponent, {
+        width: '600px',
+        disableClose: true,
+        data: { ruleId: undefined },
+      })
       .afterClosed()
       .subscribe(async rule => {
         if (rule) await this.alerts.saveAlertRule(rule);
@@ -446,8 +453,12 @@ export class AlertRulesComponent {
   }
 
   editRule(rule: AlertRule): void {
-    this.modalService
-      .openAlertRuleEditor(rule.id)
+    this.dialog
+      .open(AlertRuleEditorComponent, {
+        width: '600px',
+        disableClose: true,
+        data: { ruleId: rule.id },
+      })
       .afterClosed()
       .subscribe(async updated => {
         if (updated) await this.alerts.saveAlertRule(updated);

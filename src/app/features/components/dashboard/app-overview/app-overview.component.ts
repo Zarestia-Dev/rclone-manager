@@ -9,7 +9,9 @@ import { TranslateModule } from '@ngx-translate/core';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { AppSettingsService, RemoteFacadeService, BackendService } from '@app/services';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 
 interface StopJobEvent {
   type: PrimaryActionType;

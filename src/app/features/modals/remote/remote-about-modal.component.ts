@@ -18,15 +18,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  IconService,
-  ModalService,
-  RcloneValueMapperService,
-  RemoteFacadeService,
-  RemoteFileOperationsService,
-  RemoteManagementService,
-  JobManagementService,
-} from 'src/app/services';
+import { IconService } from 'src/app/services/ui/icon.service';
+import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { DiskUsage, FsInfo } from '@app/types';
@@ -62,7 +59,6 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   private readonly remoteFacadeService = inject(RemoteFacadeService);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly translate = inject(TranslateService);
-  private readonly modalService = inject(ModalService);
   private readonly mapper = inject(RcloneValueMapperService);
   private readonly jobManagementService = inject(JobManagementService);
   public readonly iconService = inject(IconService);
@@ -211,6 +207,6 @@ export class RemoteAboutModalComponent implements OnInit, OnDestroy {
   @HostListener('document:keydown.escape')
   close(): void {
     void this.stopReadJobs();
-    this.modalService.animatedClose(this.dialogRef);
+    this.dialogRef.close();
   }
 }

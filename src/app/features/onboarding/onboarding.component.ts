@@ -18,15 +18,13 @@ import { InstallationOptionsComponent } from '../../shared/components/installati
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
 import { TranslateModule } from '@ngx-translate/core';
 
-import {
-  InstallationService,
-  EventListenersService,
-  AppSettingsService,
-  FileSystemService,
-  RclonePasswordService,
-  SystemHealthService,
-  BackupRestoreUiService,
-} from '@app/services';
+import { InstallationService } from 'src/app/services/settings/installation.service';
+import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
+import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
+import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
 import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 

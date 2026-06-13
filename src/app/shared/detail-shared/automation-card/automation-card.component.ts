@@ -7,9 +7,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Automation } from '@app/types';
-import { PathService } from '@app/services';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
-import { CopyToClipboardDirective } from '@app/directives';
+import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 const AUTOMATION_TYPE_META: Record<string, { icon: string; colorClass: string }> = {
   sync: { icon: 'refresh', colorClass: 'sync-color' },

@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { AppSettingsService } from '@app/services';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 
 interface SettingEntry {
