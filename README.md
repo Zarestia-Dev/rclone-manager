@@ -7,6 +7,9 @@
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
+  <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.fr-FR.md">🇫🇷 Français</a> •
+  <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="CONTRIBUTING.md#adding-translations">Help to translate</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
@@ -36,7 +39,7 @@
 
 ---
 
-## ⚡ Overview
+## Overview
 
 **RClone Manager** simplifies remote file management and synchronization. Using Rclone as its backbone, it offers a desktop environment with a built-in file manager (**Nautilus**) to transfer, mount, and serve remote files effortlessly.
 
@@ -48,7 +51,7 @@
 
 ---
 
-## 📸 Screenshot
+## Screenshot
 
 <p align="center">
   <picture>
@@ -57,12 +60,12 @@
     <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
-  <i>📖 Want to see more? Check out the <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs">Wiki Gallery</a></b> for all features.</i>
+  <i>📖 Want to see more? Check out the <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki Gallery</a></b> for all features.</i>
 </p>
 
 ---
 
-## 📦 Installation & Downloads
+## Installation & Downloads
 
 Install RClone Manager using your preferred package manager, or download standalone binaries directly from the [Releases](https://github.com/Zarestia-Dev/rclone-manager/releases) page.
 
@@ -102,7 +105,7 @@ Install RClone Manager using your preferred package manager, or download standal
 
 ---
 
-## 🛠️ Development & Support
+## Development & Support
 
 - **Building from Source:** Refer to the [Building Guide](https://hakanismail.info/zarestia/rclone-manager/docs/building).
 - **Code Quality:** Check out [LINTING.md](LINTING.md) for style guidelines.
@@ -110,7 +113,7 @@ Install RClone Manager using your preferred package manager, or download standal
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions of all forms!
 
@@ -120,7 +123,7 @@ We welcome contributions of all forms!
 
 ---
 
-## 📜 License & Support
+## License & Support
 
 - **License:** Licensed under the [GNU GPLv3](LICENSE) – free to use, modify, and distribute.
 - **Support:** If you like this project, please consider leaving a ⭐ on GitHub!

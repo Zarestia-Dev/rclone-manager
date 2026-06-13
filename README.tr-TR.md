@@ -7,6 +7,9 @@
 <p align="center">
   <a href="README.md">🇺🇸 English</a> •
   <a href="README.tr-TR.md">🇹🇷 Türkçe</a> •
+  <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
+  <a href="README.fr-FR.md">🇫🇷 Français</a> •
+  <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="CONTRIBUTING.md#adding-translations">Çeviriye Yardım Edin</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
@@ -36,7 +39,7 @@
 
 ---
 
-## ⚡ Genel Bakış
+## Genel Bakış
 
 **RClone Manager**, uzak dosya yönetimini ve senkronizasyonunu basitleştirir. Rclone'u temel alarak, uzak dosyaları zahmetsizce aktarmak, bağlamak ve sunmak için yerleşik bir dosya yöneticisi (**Nautilus**) içeren bir masaüstü ortamı sunar.
 
@@ -48,7 +51,7 @@
 
 ---
 
-## 📸 Ekran Görüntüsü
+## Ekran Görüntüsü
 
 <p align="center">
   <picture>
@@ -57,12 +60,12 @@
     <img alt="RClone Manager Masaüstü UI" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
-  <i>📖 Daha fazla görmek ister misiniz? Tüm özellikler için <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs">Wiki Galeri</a></b> sayfasına göz atın.</i>
+  <i>📖 Daha fazla görmek ister misiniz? Tüm özellikler için <b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki Galeri</a></b> sayfasına göz atın.</i>
 </p>
 
 ---
 
-## 📦 Kurulum ve İndirmeler
+## Kurulum ve İndirmeler
 
 RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin veya doğrudan [Sürümler](https://github.com/Zarestia-Dev/rclone-manager/releases) sayfasından indirin.
 
@@ -102,7 +105,7 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 
 ---
 
-## 🛠️ Geliştirme ve Destek
+## Geliştirme ve Destek
 
 - **Kaynaktan Derleme:** [Derleme Kılavuzu](https://hakanismail.info/zarestia/rclone-manager/docs/building) sayfasına bakın.
 - **Kod Kalitesi:** Tarz kuralları için [LINTING.md](LINTING.md) dosyasına bakın.
@@ -110,7 +113,7 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 
 ---
 
-## 🤝 Katkıda Bulunma
+## Katkıda Bulunma
 
 Her türlü katkıyı memnuniyetle karşılıyoruz!
 
@@ -120,7 +123,7 @@ Her türlü katkıyı memnuniyetle karşılıyoruz!
 
 ---
 
-## 📜 Lisans ve Destek
+## Lisans ve Destek
 
 - **Lisans:** [GNU GPLv3](LICENSE) altında lisanslanmıştır – kullanmak, değiştirmek ve dağıtmak serbesttir.
 - **Destek:** Bu projeyi beğendiyseniz, lütfen GitHub üzerinde bir ⭐ bırakmayı düşünün!
