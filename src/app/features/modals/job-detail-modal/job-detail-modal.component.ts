@@ -208,6 +208,15 @@ export class JobDetailModalComponent {
     this.dialogRef.close();
   }
 
+  async onDeleteJob(): Promise<void> {
+    try {
+      await this.jobService.deleteJob(this.jobData().jobid);
+      this.close();
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+    }
+  }
+
   async onOpenPath(path: string): Promise<void> {
     if (this.pathService.isLocalPath(path)) {
       await this.fileSystemService.openInFiles(path);

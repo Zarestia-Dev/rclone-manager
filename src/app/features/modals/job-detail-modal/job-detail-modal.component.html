@@ -196,7 +196,11 @@
       </div>
     </div>
 
-    <app-transfer-activity-panel [config]="transferActivityConfig()"></app-transfer-activity-panel>
+    <app-transfer-activity-panel
+      [config]="transferActivityConfig()"
+      [isJobRunning]="jobStatus() === 'running'"
+      (deleteJob)="onDeleteJob()"
+    ></app-transfer-activity-panel>
   }
 
   @if (lastError(); as err) {

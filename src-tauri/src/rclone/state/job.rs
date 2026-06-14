@@ -91,9 +91,19 @@ impl JobCache {
     }
 
     pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
-        self.update_job(jobid, |j| j.stats = Some(stats), None)
-            .await
-            .map(|_| ())
+        self.update_job(
+            jobid,
+            |j| {
+                let mut stats = stats;
+                if j.status.is_finished() {
+                    sanitize_finished_stats(&mut stats);
+                }
+                j.stats = Some(stats);
+            },
+            None,
+        )
+        .await
+        .map(|_| ())
     }
 
     pub async fn complete_job(
@@ -114,6 +124,9 @@ impl JobCache {
                     };
                     j.error = error;
                     j.end_time = Some(chrono::Utc::now());
+                    if let Some(stats) = j.stats.as_mut() {
+                        sanitize_finished_stats(stats);
+                    }
                 }
             },
             app,
@@ -128,6 +141,9 @@ impl JobCache {
                 if !j.status.is_finished() {
                     j.status = JobStatus::Stopped;
                     j.end_time = Some(chrono::Utc::now());
+                    if let Some(stats) = j.stats.as_mut() {
+                        sanitize_finished_stats(stats);
+                    }
                 }
             },
             app,
@@ -232,6 +248,14 @@ impl JobCache {
     }
 }
 
+fn sanitize_finished_stats(stats: &mut Value) {
+    if let Some(obj) = stats.as_object_mut() {
+        obj.insert("transferring".to_string(), serde_json::json!([]));
+        obj.insert("speed".to_string(), serde_json::json!(0.0));
+        obj.insert("eta".to_string(), Value::Null);
+    }
+}
+
 impl Default for JobCache {
     fn default() -> Self {
         Self::new()
@@ -316,5 +340,57 @@ mod tests {
         assert_eq!(job2.end_time.unwrap(), first_end_time);
         assert_eq!(job2.status, JobStatus::Completed);
         assert!(job2.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_job_stats_sanitization_on_finish() {
+        let cache = JobCache::new();
+        let jobid = 1;
+        cache
+            .add_job(mock_job(jobid, "gdrive:", JobType::Sync, None), None)
+            .await;
+
+        // Populate running stats
+        let active_stats = serde_json::json!({
+            "bytes": 100,
+            "totalBytes": 1000,
+            "speed": 50.0,
+            "eta": 18,
+            "transferring": [
+                {
+                    "name": "file1.txt",
+                    "size": 500,
+                    "bytes": 50,
+                    "speed": 10.0,
+                    "eta": 45
+                }
+            ]
+        });
+
+        cache
+            .update_job_stats(jobid, active_stats.clone())
+            .await
+            .unwrap();
+        let job = cache.get_job(jobid).await.unwrap();
+        let stats_val = job.stats.unwrap();
+        assert_eq!(stats_val["transferring"].as_array().unwrap().len(), 1);
+        assert_eq!(stats_val["speed"].as_f64().unwrap(), 50.0);
+        assert_eq!(stats_val["eta"].as_u64().unwrap(), 18);
+
+        // Stop the job and check if stats are sanitized
+        cache.stop_job(jobid, None).await.unwrap();
+        let job = cache.get_job(jobid).await.unwrap();
+        let stats_val = job.stats.unwrap();
+        assert_eq!(stats_val["transferring"].as_array().unwrap().len(), 0);
+        assert_eq!(stats_val["speed"].as_f64().unwrap(), 0.0);
+        assert!(stats_val["eta"].is_null());
+
+        // Attempt to update stats on stopped job, it should remain sanitized
+        cache.update_job_stats(jobid, active_stats).await.unwrap();
+        let job = cache.get_job(jobid).await.unwrap();
+        let stats_val = job.stats.unwrap();
+        assert_eq!(stats_val["transferring"].as_array().unwrap().len(), 0);
+        assert_eq!(stats_val["speed"].as_f64().unwrap(), 0.0);
+        assert!(stats_val["eta"].is_null());
     }
 }

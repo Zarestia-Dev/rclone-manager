@@ -31,19 +31,33 @@ import { TransferActivityPanelConfig } from '../../types';
           <mat-icon svgIcon="download" class="primary-icon"></mat-icon>
           <span>{{ 'shared.transferActivity.title' | translate }}</span>
           @if (config().showHistory) {
-            <button
-              mat-icon-button
-              (click)="resetStats.emit()"
-              [matTooltip]="'shared.transferActivity.resetStats' | translate"
-            >
-              <mat-icon svgIcon="broom" class="primary-icon"></mat-icon>
-            </button>
+            @if (isJobRunning()) {
+              <button
+                mat-icon-button
+                (click)="resetStats.emit()"
+                [matTooltip]="'shared.transferActivity.resetStats' | translate"
+              >
+                <mat-icon svgIcon="broom" class="primary-icon"></mat-icon>
+              </button>
+            } @else {
+              <button
+                mat-icon-button
+                (click)="deleteJob.emit()"
+                [matTooltip]="'detailShared.jobs.actions.delete' | translate"
+              >
+                <mat-icon svgIcon="trash" class="warn-icon"></mat-icon>
+              </button>
+            }
           }
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content class="panel-content">
-        @if (config().showHistory && config().completedTransfers.length > 0) {
+        @if (
+          config().showHistory &&
+          config().activeTransfers.length > 0 &&
+          config().completedTransfers.length > 0
+        ) {
           <mat-tab-group>
             <mat-tab
               [label]="
@@ -70,12 +84,14 @@ import { TransferActivityPanelConfig } from '../../types';
               </ng-template>
             </mat-tab>
           </mat-tab-group>
+        } @else if (config().showHistory && config().completedTransfers.length > 0) {
+          <app-completed-transfers-table
+            [transfers]="config().completedTransfers"
+          ></app-completed-transfers-table>
         } @else {
-          <div class="single-view-content">
-            <app-active-transfers-table
-              [transfers]="config().activeTransfers"
-            ></app-active-transfers-table>
-          </div>
+          <app-active-transfers-table
+            [transfers]="config().activeTransfers"
+          ></app-active-transfers-table>
         }
       </mat-card-content>
     </mat-card>
@@ -89,17 +105,18 @@ import { TransferActivityPanelConfig } from '../../types';
         padding: 0;
         overflow: hidden;
       }
-      .single-view-content {
-        max-height: 40vh;
-        overflow: hidden;
-      }
       .primary-icon {
         color: var(--mat-sys-primary);
+      }
+      .warn-icon {
+        color: var(--mat-sys-error);
       }
     }
   `,
 })
 export class TransferActivityPanelComponent {
   readonly config = input.required<TransferActivityPanelConfig>();
+  readonly isJobRunning = input<boolean>(false);
   readonly resetStats = output<void>();
+  readonly deleteJob = output<void>();
 }

@@ -180,7 +180,9 @@
 
           <app-transfer-activity-panel
             [config]="transferActivityConfig()"
+            [isJobRunning]="operationActiveState()"
             (resetStats)="onResetStats()"
+            (deleteJob)="onResetStats()"
             class="activity-panel"
           ></app-transfer-activity-panel>
         }

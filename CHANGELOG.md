@@ -7,14 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Added
-- **Language**: Added Ukrainian language support. (Thanks to @maksam07!)
-- **CI/CD Validation**: Added a multi-OS GitHub Actions workflow (`ci.yml`) to automatically validate lints, formatting, and compilation checks across Linux, Windows, and macOS on push and pull request triggers.
+- **Language**: Added Ukrainian language support. (Thanks to @maksam07!) PR #230
+- **CI/CD Validation**: Added a multi-OS GitHub Actions workflow (`ci.yml`) to automatically validate lints, formatting, and compilation checks across Linux, Windows, and macOS on push and pull request triggers. Rust code validating all linux, windows and macos platforms, frontend code validating is only linux platform.
+- **PowerShell**: Added PowerShell 7+ (pwsh) support for mount plugin installer. If pwsh is not available on Windows, default to Windows PowerShell (powershell.exe). #229
 
 ### Changed
 - 
 
 ### Fixed
-- 
+- Detached dialog and other dialog fixes. #228
 
 ## [v0.2.7] - 2026-06-13
 
