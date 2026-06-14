@@ -200,14 +200,4 @@ mod tests {
         ]);
         assert!(args.validate().is_ok());
     }
-
-    #[test]
-    fn test_general_env_vars() {
-        unsafe {
-            std::env::set_var("RCLONE_MANAGER_DATA_DIR", "/env/data");
-        }
-        // We use try_parse to avoid exiting if parsing fails, but parse_from doesn't use env by default in tests easily without side effects
-        // Clap's parse_from ignores env vars. We should test if the struct definition has `env = ...`
-        // Actually, let's just test the struct fields.
-    }
 }

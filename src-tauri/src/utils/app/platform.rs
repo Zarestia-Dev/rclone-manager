@@ -19,7 +19,7 @@ pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
     app.restart();
 }
 
-#[cfg(feature = "flatpak")]
+#[cfg(all(target_os = "linux", feature = "flatpak"))]
 pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
     use std::collections::HashMap;
     use zbus::zvariant::Value;

@@ -210,7 +210,7 @@ fn handle_notifications_change(app: &AppHandle, enabled: bool) {
 fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
 
-    #[cfg(feature = "flatpak")]
+    #[cfg(all(target_os = "linux", feature = "flatpak"))]
     {
         tauri::async_runtime::spawn(async move {
             use crate::utils::app::platform::manage_flatpak_background_portal;
@@ -220,7 +220,7 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
         });
     }
 
-    #[cfg(all(desktop, not(feature = "flatpak")))]
+    #[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
     {
         use tauri_plugin_autostart::ManagerExt;
         let autostart = _app.autolaunch();

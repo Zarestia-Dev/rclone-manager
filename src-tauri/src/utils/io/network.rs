@@ -188,7 +188,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     }
 }
 
-#[cfg(feature = "container")]
+#[cfg(all(target_os = "linux", feature = "container"))]
 #[must_use]
 pub fn is_metered() -> bool {
     use log::info;
@@ -198,7 +198,7 @@ pub fn is_metered() -> bool {
     false
 }
 
-#[cfg(feature = "container")]
+#[cfg(all(target_os = "linux", feature = "container"))]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
     use crate::utils::types::monitoring::NetworkStatusPayload;
     use log::error;
