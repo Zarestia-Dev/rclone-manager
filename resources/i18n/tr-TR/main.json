@@ -190,14 +190,6 @@
     },
     "jobs": {
       "title": "Görevler",
-      "columns": {
-        "type": "Tür",
-        "profile": "Profil",
-        "status": "Durum",
-        "progress": "İlerleme",
-        "started": "Başlangıç",
-        "actions": "Eylemler"
-      },
       "dryRun": "Dry Run (Deneme)",
       "status": {
         "running": "Çalışıyor",
@@ -718,8 +710,6 @@
     },
     "transferActivity": {
       "title": "Transfer Etkinliği",
-      "active": "Aktif:",
-      "recent": "Son:",
       "resetStats": "Etkinlikleri Sıfırla",
       "tabs": {
         "active": "Aktif ({{count}})",
@@ -2320,7 +2310,6 @@
     },
     "errors": {
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
-      "initialLoadFailed": "İlk veri yüklemesi başarısız oldu",
       "updateActionsFailed": "Hızlı işlemler güncellenemedi",
       "openFailed": "{{name}} açılamadı",
       "resetSettingsFailed": "Uzak sunucu ayarları sıfırlanamadı",
@@ -2402,10 +2391,6 @@
     "automations": {
       "activeCount": "{{active}} aktif / {{total}} toplam",
       "noScheduled": "Otomasyon yok",
-      "loading": "Otomasyonlar yükleniyor...",
-      "aria": {
-        "loading": "Otomasyonlar yükleniyor"
-      },
       "noConfigured": "Otomasyon yapılandırılmamış. Otomasyon oluşturmak için cron zamanlamaları veya gerçek zamanlı dosya izlemeyi yapılandırın.",
       "nextRun": "Sonraki Çalışma:"
     },
@@ -2777,7 +2762,6 @@
       "passwordRequired": "Rclone yapılandırmanız şifrelenmiş. Lütfen parolanızı girin.",
       "versionTooOld": "Rclone sürümünüz {{required}} sürümünden daha eski. Devam etmek için lütfen güncelleyin.",
       "defaultParams": "Bir sistem bileşeni düzgün çalışmıyor.",
-      "mountPluginStatusChecked": "Durum {{time}} tarihinde kontrol edildi",
       "mountPluginStatusError": "Durum kontrol edilemedi"
     },
     "progress": {

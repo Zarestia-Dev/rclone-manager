@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+- **Language**: Added Ukrainian language support. (Thanks to @maksam07!)
+- **CI/CD Validation**: Added a multi-OS GitHub Actions workflow (`ci.yml`) to automatically validate lints, formatting, and compilation checks across Linux, Windows, and macOS on push and pull request triggers.
+
 ### Changed
 - 
 

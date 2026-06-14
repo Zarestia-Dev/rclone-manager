@@ -190,14 +190,6 @@
     },
     "jobs": {
       "title": "Jobs",
-      "columns": {
-        "type": "Type",
-        "profile": "Profile",
-        "status": "Status",
-        "progress": "Progress",
-        "started": "Started",
-        "actions": "Actions"
-      },
       "dryRun": "Dry Run",
       "status": {
         "running": "Running",
@@ -718,8 +710,6 @@
     },
     "transferActivity": {
       "title": "Transfer Activity",
-      "active": "Active:",
-      "recent": "Recent:",
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
@@ -2320,7 +2310,6 @@
     },
     "errors": {
       "generic": "An unexpected error occurred. Please check the logs for more details.",
-      "initialLoadFailed": "Initial data load failed",
       "updateActionsFailed": "Failed to update quick actions",
       "openFailed": "Failed to open {{name}}",
       "resetSettingsFailed": "Failed to reset remote settings",
@@ -2402,10 +2391,6 @@
     "automations": {
       "activeCount": "{{active}} active / {{total}} total",
       "noScheduled": "No automations",
-      "loading": "Loading automations...",
-      "aria": {
-        "loading": "Loading automations"
-      },
       "noConfigured": "No automations configured. Configure operations with cron schedules or real-time file monitoring to create automations.",
       "nextRun": "Next Run:"
     },
@@ -2777,7 +2762,6 @@
       "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
       "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
-      "mountPluginStatusChecked": "Status checked at {{time}}",
       "mountPluginStatusError": "Failed to check status"
     },
     "progress": {

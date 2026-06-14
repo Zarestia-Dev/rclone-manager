@@ -213,6 +213,13 @@ export class RemoteCardComponent {
     }
   });
 
+  readonly visibleStatusIndicators = computed<PrimaryActionType[]>(() => {
+    const allOps: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync', 'serve'];
+    const activeOps = allOps.filter(op => this.isOpActive(op));
+    const displayedActionButtonIds = this.actionButtons().map(btn => btn.id as PrimaryActionType);
+    return activeOps.filter(op => !displayedActionButtonIds.includes(op));
+  });
+
   readonly detailedOperations = computed<PrimaryActionType[]>(() => {
     const candidates = this.candidatesForDetailedMode();
     return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);

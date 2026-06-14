@@ -190,14 +190,6 @@
     },
     "jobs": {
       "title": "Trabajos",
-      "columns": {
-        "type": "Tipo",
-        "profile": "Perfil",
-        "status": "Estado",
-        "progress": "Progreso",
-        "started": "Iniciado",
-        "actions": "Acciones"
-      },
       "dryRun": "Simulación (Dry Run)",
       "status": {
         "running": "En ejecución",
@@ -718,8 +710,6 @@
     },
     "transferActivity": {
       "title": "Actividad de transferencia",
-      "active": "Activo:",
-      "recent": "Reciente:",
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
@@ -2320,7 +2310,6 @@
     },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
-      "initialLoadFailed": "Error al cargar datos iniciales",
       "updateActionsFailed": "Error al actualizar acciones rápidas",
       "openFailed": "Error al abrir {{name}}",
       "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
@@ -2402,10 +2391,6 @@
     "automations": {
       "activeCount": "{{active}} activo / {{total}} total",
       "noScheduled": "No hay automatizaciones",
-      "loading": "Cargando automatizaciones...",
-      "aria": {
-        "loading": "Cargando automatizaciones"
-      },
       "noConfigured": "No hay automatizaciones configuradas. Configure operaciones con cron o monitoreo de archivos en tiempo real para crear automatizaciones.",
       "nextRun": "Próxima ejecución:"
     },
@@ -2777,7 +2762,6 @@
       "passwordRequired": "Su configuración de rclone está encriptada. Por favor ingrese su contraseña.",
       "versionTooOld": "Su versión de rclone es anterior a la {{required}}. Por favor actualice para continuar.",
       "defaultParams": "Un componente del sistema no funciona correctamente.",
-      "mountPluginStatusChecked": "Estado verificado a las {{time}}",
       "mountPluginStatusError": "Error al verificar el estado"
     },
     "progress": {

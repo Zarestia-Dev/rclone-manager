@@ -190,14 +190,6 @@
     },
     "jobs": {
       "title": "Jobs",
-      "columns": {
-        "type": "Type",
-        "profile": "Profil",
-        "status": "Statut",
-        "progress": "Progression",
-        "started": "Démarré",
-        "actions": "Actions"
-      },
       "dryRun": "Simulation",
       "status": {
         "running": "En cours",
@@ -718,8 +710,6 @@
     },
     "transferActivity": {
       "title": "Activité de transfert",
-      "active": "Actif :",
-      "recent": "Récent :",
       "resetStats": "Réinitialiser les Statistiques",
       "tabs": {
         "active": "Actif ({{count}})",
@@ -2320,7 +2310,6 @@
     },
     "errors": {
       "generic": "Une erreur inattendue s'est produite. Veuillez vérifier les logs pour plus de détails.",
-      "initialLoadFailed": "Échec du chargement initial des données",
       "updateActionsFailed": "Échec de la mise à jour des actions rapides",
       "openFailed": "Impossible d'ouvrir {{name}}",
       "resetSettingsFailed": "Échec de la réinitialisation des paramètres du dépôt distant",
@@ -2402,10 +2391,6 @@
     "automations": {
       "activeCount": "{{active}} actif/ {{total}} total",
       "noScheduled": "Aucune automatisation",
-      "loading": "Chargement des automatisations...",
-      "aria": {
-        "loading": "Chargement des automatisations"
-      },
       "noConfigured": "Aucune automatisation configurée. Configurez des opérations avec des calendriers de cron ou une surveillance de fichiers en temps réel pour créer des automatisations.",
       "nextRun": "Prochaine exécution :"
     },
@@ -2777,7 +2762,6 @@
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
       "versionTooOld": "Votre version de rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
       "defaultParams": "Un composant système ne fonctionne pas correctement.",
-      "mountPluginStatusChecked": "Statut vérifié à {{time}}",
       "mountPluginStatusError": "Échec de la vérification du statut"
     },
     "progress": {

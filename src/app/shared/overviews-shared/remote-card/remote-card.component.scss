@@ -21,8 +21,6 @@
 }
 
 // ── Edit overlay ──────────────────────────────────────────────────────────────
-// Positioned relative to .remote-card which already has position: relative.
-
 .card-edit-overlay {
   position: absolute;
   top: var(--space-xs);

@@ -190,14 +190,6 @@
     },
     "jobs": {
       "title": "任务",
-      "columns": {
-        "type": "类型",
-        "profile": "配置文件",
-        "status": "状态",
-        "progress": "进度",
-        "started": "开始时间",
-        "actions": "操作"
-      },
       "dryRun": "模拟运行 (Dry Run)",
       "status": {
         "running": "运行中",
@@ -718,8 +710,6 @@
     },
     "transferActivity": {
       "title": "传输活动",
-      "active": "进行中：",
-      "recent": "最近完成：",
       "resetStats": "重置统计",
       "tabs": {
         "active": "进行中（{{count}}）",
@@ -2320,7 +2310,6 @@
     },
     "errors": {
       "generic": "发生意外错误。请检查日志获取更多详细信息。",
-      "initialLoadFailed": "初始数据加载失败",
       "updateActionsFailed": "更新快捷操作失败",
       "openFailed": "打开 {{name}} 失败",
       "resetSettingsFailed": "重置远程存储设置失败",
@@ -2402,10 +2391,6 @@
     "automations": {
       "activeCount": "活动 {{active}} / 总计 {{total}}",
       "noScheduled": "暂无自动化",
-      "loading": "正在加载自动化...",
-      "aria": {
-        "loading": "正在加载自动化"
-      },
       "noConfigured": "未配置任何自动化。可通过配置 Cron 表达式或实时文件监控来创建自动化。",
       "nextRun": "下次运行："
     },
@@ -2777,7 +2762,6 @@
       "passwordRequired": "rclone 配置已加密，请输入密码。",
       "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
-      "mountPluginStatusChecked": "状态检查时间：{{time}}",
       "mountPluginStatusError": "状态检查失败"
     },
     "progress": {
