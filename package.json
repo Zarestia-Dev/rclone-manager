@@ -18,7 +18,7 @@
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
-    "lint:rust": "cd src-tauri && cargo clippy -- -D warnings",
+    "lint:rust": "cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings",
     "format:rust": "cd src-tauri && cargo fmt",
     "format:rust:check": "cd src-tauri && cargo fmt -- --check",
     "lint:all": "npm run lint && npm run format:check && npm run lint:rust && npm run format:rust:check",
@@ -28,19 +28,6 @@
     "sync:flags": "node scripts/update-flags.cjs",
     "sync:providers": "node scripts/update-providers.cjs",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,html}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{scss,json}": [
-      "prettier --write"
-    ],
-    "src-tauri/src/**/*.rs": [
-      "sh -c 'cd src-tauri && cargo fmt'",
-      "sh -c 'cd src-tauri && cargo clippy -- -D warnings'"
-    ]
   },
   "private": true,
   "dependencies": {
@@ -97,7 +84,6 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.2.0",
-    "lint-staged": "^17.0.4",
     "prettier": "^3.8.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.3"

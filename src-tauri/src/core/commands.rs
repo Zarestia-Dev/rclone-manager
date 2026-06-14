@@ -201,7 +201,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // MOUNT PLUGIN
             // =================================================================
-            (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [no_app]);
+            (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [sync, no_app, infallible]);
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
             #[cfg(not(any(target_os = "macos", target_os = "windows")))]
