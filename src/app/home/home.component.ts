@@ -111,11 +111,10 @@ export class HomeComponent {
     );
   });
 
-  readonly isLoading = signal(false);
+  readonly isLoading = this.remoteFacadeService.loading;
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
-    void this.loadInitialData();
     this.destroyRef.onDestroy(() => this.uiStateService.resetSelectedRemote());
   }
 
@@ -134,19 +133,6 @@ export class HomeComponent {
     update(mql.matches);
     mql.addEventListener('change', handler);
     this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
-  }
-
-  // --- Data ---
-
-  private async loadInitialData(): Promise<void> {
-    this.isLoading.set(true);
-    try {
-      await this.remoteFacadeService.refreshAll();
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.initialLoadFailed'), error);
-    } finally {
-      this.isLoading.set(false);
-    }
   }
 
   // --- Remote Selection ---
@@ -232,7 +218,6 @@ export class HomeComponent {
 
     try {
       await this.remoteFacadeService.deleteRemote(remoteName);
-      void this.remoteFacadeService.loadRemotes();
       if (this.selectedRemote()?.name === remoteName) {
         this.uiStateService.resetSelectedRemote();
       }
@@ -272,9 +257,7 @@ export class HomeComponent {
   }
 
   async saveRemoteSettings(remoteName: string, settings: Partial<RemoteSettings>): Promise<void> {
-    const merged = { ...this.remoteFacadeService.getRemoteSettings(remoteName), ...settings };
-    await this.appSettingsService.saveRemoteSettings(remoteName, merged);
-    await this.remoteFacadeService.loadRemotes();
+    await this.remoteFacadeService.updateRemoteSettings(remoteName, settings);
   }
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
@@ -292,7 +275,6 @@ export class HomeComponent {
 
     try {
       await this.appSettingsService.resetRemoteSettings(remoteName);
-      await this.remoteFacadeService.loadRemotes();
       this.notificationService.showSuccess(
         this.translate.instant('home.notifications.settingsReset', { name: remoteName })
       );

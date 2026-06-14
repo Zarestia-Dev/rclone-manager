@@ -2459,6 +2459,8 @@
     "rclone": {
       "unsupportedPlatform": "Plataforma no soportada",
       "downloadError": "Error desconocido al descargar Rclone",
+      "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
+      "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
       "unsupportedOS": "Sistema operativo no soportado.",
       "binaryNotFound": "Binario de Rclone no encontrado.",
@@ -2581,7 +2583,8 @@
       "switched": "Cambió al backend {{name}}"
     },
     "rclone": {
-      "updated": "Rclone actualizado exitosamente (canal {{channel}})"
+      "updated": "Rclone actualizado exitosamente (canal {{channel}})",
+      "mountPluginInstalled": "Complemento de montaje instalado con éxito"
     },
     "job": {
       "stopped": "Trabajo detenido exitosamente",

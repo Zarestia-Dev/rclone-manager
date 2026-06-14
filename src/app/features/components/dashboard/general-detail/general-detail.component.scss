@@ -1,10 +1,12 @@
 /* --- Main Container --- */
-.remote-details {
+:host {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
   margin: 0 auto;
   padding: var(--space-md);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header-content {
@@ -221,7 +223,7 @@
 
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
-  .remote-details {
+  :host {
     padding: var(--header-gap);
     gap: var(--space-xs);
   }
@@ -253,13 +255,6 @@
 
 /* --- Automations Card --- */
 .automations-card {
-  .panel-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--window-fg-color);
-  }
-
   .carousel-indicators {
     display: flex;
     justify-content: center;

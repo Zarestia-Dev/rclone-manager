@@ -5,28 +5,22 @@ import {
   computed,
   ChangeDetectionStrategy,
   DestroyRef,
+  HostListener,
 } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatRadioModule } from '@angular/material/radio';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { InstallationOptionsData, RepairData, InstallationTabOption } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { RepairService } from 'src/app/services/operations/repair.service';
-import { InstallationService } from 'src/app/services/settings/installation.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
 type RepairMode = 'standard' | 'install' | 'config';
 
@@ -46,16 +40,8 @@ const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
   selector: 'app-repair-sheet',
   standalone: true,
   imports: [
-    MatListModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatRadioModule,
-    MatCheckboxModule,
-    MatProgressSpinnerModule,
-    FormsModule,
-    ReactiveFormsModule,
     MatTooltipModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
@@ -84,11 +70,11 @@ export class RepairSheetComponent {
   private readonly repairService = inject(RepairService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly passwordService = inject(RclonePasswordService);
-  private readonly installationService = inject(InstallationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly backendService = inject(BackendService);
   private readonly systemInfoService = inject(SystemInfoService);
+  private readonly backendTranslation = inject(BackendTranslationService);
 
   readonly configTabOptions = CONFIG_TAB_OPTIONS;
   readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
@@ -204,6 +190,14 @@ export class RepairSheetComponent {
     return this.installationValid() ? '' : 'repairSheet.tooltips.fixValidationErrors';
   });
 
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void this.repair();
+    }
+  }
+
   async repair(): Promise<void> {
     if (!this.canRepair()) return;
 
@@ -255,15 +249,22 @@ export class RepairSheetComponent {
     this.passwordErrorMessage.set('');
 
     try {
-      await this.passwordService.validatePassword(this.password());
+      const pwd = this.password();
+      await this.passwordService.validatePassword(pwd);
       if (this.storePassword()) {
         await this.passwordService
-          .storePassword(this.password())
+          .storePassword(pwd)
           .catch(err => console.warn('Failed to store password:', err));
+      } else {
+        await this.passwordService.setConfigPasswordEnv(pwd);
       }
-      await this.passwordService.setConfigPasswordEnv(this.password());
       this.password.set('');
-      await this.executeRepair();
+
+      if (this.data.type === 'rclone_password') {
+        this.dismissAfter({ password: pwd, stored: this.storePassword() }, 1000);
+      } else {
+        await this.executeRepair();
+      }
     } catch (error) {
       this.hasPasswordError.set(true);
       this.passwordErrorMessage.set(this.getPasswordErrorMessage(error));
@@ -272,34 +273,11 @@ export class RepairSheetComponent {
     }
   }
 
-  async refreshMountPluginStatus(): Promise<void> {
-    if (this.isRefreshingStatus()) return;
-    this.isRefreshingStatus.set(true);
-    try {
-      const isInstalled = await this.installationService.isMountPluginInstalled(1);
-      if (isInstalled) {
-        this.sheetRef.dismiss('success');
-      } else {
-        this.messageOverride.set(
-          this.translate.instant('repairSheet.messages.mountPluginStatusChecked', {
-            time: new Date().toLocaleTimeString(),
-          })
-        );
-      }
-    } catch {
-      this.messageOverride.set(
-        this.translate.instant('repairSheet.messages.mountPluginStatusError')
-      );
-    } finally {
-      this.isRefreshingStatus.set(false);
-    }
-  }
-
   dismiss(): void {
     this.sheetRef.dismiss();
   }
 
-  private dismissAfter(result: string, delay: number): void {
+  private dismissAfter(result: any, delay: number): void {
     const id = setTimeout(() => this.sheetRef.dismiss(result), delay);
     this.destroyRef.onDestroy(() => clearTimeout(id));
   }
@@ -345,10 +323,14 @@ export class RepairSheetComponent {
       this.dismissAfter('success', this.isMountPluginRepair() ? 2000 : 1000);
     } catch (error) {
       console.error('Repair failed:', error);
-      if (this.isMountPluginRepair() && error instanceof Error) {
+      if (this.isMountPluginRepair()) {
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : this.backendTranslation.translateBackendMessage(error);
         this.messageOverride.set(
           this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
-            error: error.message,
+            error: errorMsg,
           })
         );
       }

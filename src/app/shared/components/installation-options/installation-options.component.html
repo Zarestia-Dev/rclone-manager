@@ -48,6 +48,7 @@
               "
             />
             <button
+              type="button"
               matSuffix
               matIconButton
               (click)="selectCustomPath()"
@@ -78,6 +79,7 @@
               [placeholder]="'shared.installationOptions.existingBinaryPlaceholder' | translate"
             />
             <button
+              type="button"
               matSuffix
               matIconButton
               (click)="selectBinary()"
@@ -100,6 +102,7 @@
               <span>{{ statusText() }}</span>
               @if (binaryTestResult() !== 'valid') {
                 <button
+                  type="button"
                   matButton="outlined"
                   (click)="testBinary()"
                   [disabled]="disabled() || binaryTestResult() === 'testing'"

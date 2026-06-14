@@ -81,7 +81,9 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 burst_ticks = BURST_TICK_COUNT;
                 if !running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
-                    start_engine_if_not_running(&app_handle).await;
+                    if !updating && !should_exit {
+                        start_engine_if_not_running(&app_handle).await;
+                    }
                 }
                 continue;
             }
@@ -137,13 +139,6 @@ pub fn start_system_poller(app_handle: AppHandle) {
             .poller_running
             .store(false, Ordering::SeqCst);
     });
-}
-
-pub fn stop_system_poller(app_handle: &AppHandle) {
-    app_handle
-        .state::<RcloneState>()
-        .poller_running
-        .store(false, Ordering::SeqCst);
 }
 
 fn parse_batch_result(result_obj: &serde_json::Value, endpoint_name: &str) -> serde_json::Value {

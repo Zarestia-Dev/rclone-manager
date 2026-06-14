@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { interval, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin, ORIGINS, GlobalStats, CompletedTransfer } from '@app/types';
+import { JobInfo, Origin, ORIGINS, CompletedTransfer } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
@@ -61,15 +61,6 @@ export class JobManagementService extends TauriBaseService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly eventListeners = inject(EventListenersService);
 
-  private readonly _watchedGroups = signal<Set<string>>(new Set());
-  public readonly watchedGroups = this._watchedGroups.asReadonly();
-
-  private readonly _groupStatsMap = signal<Map<string, GlobalStats>>(new Map());
-  public readonly groupStatsMap = this._groupStatsMap.asReadonly();
-
-  private readonly _groupTransfersMap = signal<Map<string, CompletedTransfer[]>>(new Map());
-  public readonly groupTransfersMap = this._groupTransfersMap.asReadonly();
-
   constructor() {
     super();
     this.initializeEventListeners();
@@ -83,83 +74,12 @@ export class JobManagementService extends TauriBaseService {
     interval(1000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        const watched = this._watchedGroups();
-        if (this.activeJobs().length === 0 && watched.size === 0) return;
+        if (this.activeJobs().length === 0) return;
 
         this.refreshJobs().catch(() => {
           /* empty */
         });
-
-        for (const groupName of watched) {
-          this.refreshGroupData(groupName).catch(() => {
-            /* empty */
-          });
-        }
       });
-  }
-
-  private async refreshGroupData(groupName: string): Promise<void> {
-    const [stats, rawResponse] = await Promise.all([
-      this.invokeCommand<GlobalStats>('get_stats', { group: groupName }),
-      this.invokeCommand<{ transferred?: RawTransfer[] } | RawTransfer[]>(
-        'get_completed_transfers',
-        { group: groupName }
-      ),
-    ]);
-
-    if (stats) {
-      this._groupStatsMap.update(map => new Map(map).set(groupName, stats));
-    }
-
-    // Rclone returns either `{ transferred: [...] }` or a bare array
-    const rawArray =
-      (rawResponse as { transferred?: RawTransfer[] })?.transferred ??
-      (Array.isArray(rawResponse) ? rawResponse : []);
-
-    this._groupTransfersMap.update(map => {
-      const currentTransfers = map.get(groupName) ?? [];
-      const newTransfers = rawArray.map(mapRawTransfer);
-
-      // Deduplicate by file name to avoid adding the same transfer multiple times
-      const existingNames = new Set(currentTransfers.map(t => t.name));
-      const deduplicatedNew = newTransfers.filter(t => !existingNames.has(t.name));
-
-      if (deduplicatedNew.length === 0) return map;
-
-      // Keep only last 1000 transfers
-      const updated = [...currentTransfers, ...deduplicatedNew].slice(-1000);
-      return new Map(map).set(groupName, updated);
-    });
-  }
-
-  public watchGroup(name: string): void {
-    this._watchedGroups.update(set => new Set(set).add(name));
-    void this.refreshGroupData(name);
-  }
-
-  public unwatchGroup(name: string): void {
-    this._watchedGroups.update(set => {
-      if (!set.has(name)) return set;
-      const next = new Set(set);
-      next.delete(name);
-      return next;
-    });
-    this.clearGroupData(name);
-  }
-
-  public clearGroupData(name: string): void {
-    this._groupStatsMap.update(map => {
-      if (!map.has(name)) return map;
-      const next = new Map(map);
-      next.delete(name);
-      return next;
-    });
-    this._groupTransfersMap.update(map => {
-      if (!map.has(name)) return map;
-      const next = new Map(map);
-      next.delete(name);
-      return next;
-    });
   }
 
   private initializeEventListeners(): void {

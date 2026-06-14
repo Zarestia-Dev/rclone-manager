@@ -1,30 +1,28 @@
 <div class="remote-details" [style.--mat-sys-primary]="operationColorCssVar()">
-  <div class="detail-header">
-    <div class="remote-info-section">
-      <div
-        class="icon-container"
-        [ngClass]="{
-          sync: isSyncType() && operationActiveState(),
-          copy: selectedSyncOperation() === 'copy' && operationActiveState(),
-          move: selectedSyncOperation() === 'move' && operationActiveState(),
-          bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-          mount: selectedRemote().status.mount.active,
-          serve: selectedRemote().status.serve.active,
-        }"
-      >
-        <mat-icon
-          [svgIcon]="iconService.getIconName(selectedRemote().type)"
-          class="remote-type-icon"
-        ></mat-icon>
-      </div>
-      <div class="remote-text-info">
-        <h2 class="remote-name" [matTooltip]="selectedRemote().name" matTooltipShowDelay="600">
-          {{ selectedRemote().name }}
-        </h2>
-        <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
-      </div>
+  <header class="detail-header">
+    <div
+      class="icon-container"
+      [ngClass]="{
+        sync: isSyncType() && operationActiveState(),
+        copy: selectedSyncOperation() === 'copy' && operationActiveState(),
+        move: selectedSyncOperation() === 'move' && operationActiveState(),
+        bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
+        mount: selectedRemote().status.mount.active,
+        serve: selectedRemote().status.serve.active,
+      }"
+    >
+      <mat-icon
+        [svgIcon]="iconService.getIconName(selectedRemote().type)"
+        class="remote-type-icon"
+      ></mat-icon>
     </div>
-  </div>
+    <div class="remote-text-info">
+      <h2 class="remote-name" [matTooltip]="selectedRemote().name" matTooltipShowDelay="600">
+        {{ selectedRemote().name }}
+      </h2>
+      <span class="remote-type">{{ selectedRemote().type | titlecase }}</span>
+    </div>
+  </header>
 
   @if (mainOperationType() === 'sync') {
     <div
@@ -52,11 +50,7 @@
   }
 
   <mat-tab-group>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span>{{ 'dashboard.appDetail.monitoring' | translate }}</span>
-      </ng-template>
-
+    <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
         @if (showProfileSelector()) {
           <div
@@ -144,46 +138,40 @@
         }
 
         @if (isSyncType()) {
-          @if (hasCronSchedule()) {
-            @let schedule = selectedCronSchedule();
-            @if (schedule) {
-              <div
-                class="cron-human-readable"
-                [ngClass]="{
-                  'operation-sync': selectedSyncOperation() === 'sync',
-                  'operation-bisync': selectedSyncOperation() === 'bisync',
-                  'operation-move': selectedSyncOperation() === 'move',
-                  'operation-copy': selectedSyncOperation() === 'copy',
-                }"
-              >
-                <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
-                  schedule.humanReadable
-                }}</span>
-              </div>
-            }
+          @if (selectedCronSchedule(); as schedule) {
+            <div
+              class="cron-human-readable"
+              [ngClass]="{
+                'operation-sync': selectedSyncOperation() === 'sync',
+                'operation-bisync': selectedSyncOperation() === 'bisync',
+                'operation-move': selectedSyncOperation() === 'move',
+                'operation-copy': selectedSyncOperation() === 'copy',
+              }"
+            >
+              <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+              <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
+                schedule.humanReadable
+              }}</span>
+            </div>
           }
 
-          @if (hasWatcher()) {
-            @let watcher = selectedWatcher();
-            @if (watcher) {
-              <div
-                class="cron-human-readable"
-                [ngClass]="{
-                  'operation-sync': selectedSyncOperation() === 'sync',
-                  'operation-bisync': selectedSyncOperation() === 'bisync',
-                  'operation-move': selectedSyncOperation() === 'move',
-                  'operation-copy': selectedSyncOperation() === 'copy',
-                }"
-              >
-                <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
-                <span class="cron-schedule">
-                  {{ 'automation.monitoring.realtimeSchedule' | translate }}
-                  ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
-                  {{ 'automation.monitoring.seconds' | translate }})
-                </span>
-              </div>
-            }
+          @if (selectedWatcher(); as watcher) {
+            <div
+              class="cron-human-readable"
+              [ngClass]="{
+                'operation-sync': selectedSyncOperation() === 'sync',
+                'operation-bisync': selectedSyncOperation() === 'bisync',
+                'operation-move': selectedSyncOperation() === 'move',
+                'operation-copy': selectedSyncOperation() === 'copy',
+              }"
+            >
+              <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
+              <span class="cron-schedule">
+                {{ 'automation.monitoring.realtimeSchedule' | translate }}
+                ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
+                {{ 'automation.monitoring.seconds' | translate }})
+              </span>
+            </div>
           }
 
           <app-job-info-panel [config]="jobInfoConfig()" class="info-panel"></app-job-info-panel>
@@ -224,47 +212,41 @@
       </div>
     </mat-tab>
 
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span>{{ 'dashboard.appDetail.configuration' | translate }}</span>
-      </ng-template>
+    <mat-tab [label]="'dashboard.appDetail.configuration' | translate">
+      <div class="settings-layout configuration-content">
+        <section class="settings-group operation-settings">
+          <header class="group-header">
+            <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+            <p class="group-description">{{ operationSettingsDescription() }}</p>
+          </header>
+          <div class="group-panels">
+            @for (section of operationSettingsSections(); track section.key) {
+              <app-settings-panel
+                [config]="getSettingsPanelConfig(section)"
+                (editSettings)="onEditSettings($event)"
+              ></app-settings-panel>
+            }
+          </div>
+        </section>
 
-      <div class="configuration-content">
-        <div class="settings-layout">
-          <section class="settings-group operation-settings">
-            <header class="group-header">
-              <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-              <p class="group-description">{{ operationSettingsDescription() }}</p>
-            </header>
-            <div class="group-panels">
-              @for (section of operationSettingsSections(); track section.key) {
-                <app-settings-panel
-                  [config]="getSettingsPanelConfig(section)"
-                  (editSettings)="onEditSettings($event)"
-                ></app-settings-panel>
-              }
-            </div>
-          </section>
-
-          <section class="settings-group shared-settings">
-            <header class="group-header">
-              <h3 class="group-title">
-                {{ 'dashboard.appDetail.sharedSettings' | translate }}
-              </h3>
-              <p class="group-description">
-                {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
-              </p>
-            </header>
-            <div class="group-panels">
-              @for (section of sharedSettingsSections(); track section.key) {
-                <app-settings-panel
-                  [config]="getSettingsPanelConfig(section)"
-                  (editSettings)="onEditSettings($event)"
-                ></app-settings-panel>
-              }
-            </div>
-          </section>
-        </div>
+        <section class="settings-group shared-settings">
+          <header class="group-header">
+            <h3 class="group-title">
+              {{ 'dashboard.appDetail.sharedSettings' | translate }}
+            </h3>
+            <p class="group-description">
+              {{ 'dashboard.appDetail.sharedSettingsDesc' | translate }}
+            </p>
+          </header>
+          <div class="group-panels">
+            @for (section of sharedSettingsSections(); track section.key) {
+              <app-settings-panel
+                [config]="getSettingsPanelConfig(section)"
+                (editSettings)="onEditSettings($event)"
+              ></app-settings-panel>
+            }
+          </div>
+        </section>
       </div>
     </mat-tab>
   </mat-tab-group>

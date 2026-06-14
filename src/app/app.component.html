@@ -1,16 +1,16 @@
 <div class="app-wrapper">
   @if (!initializing()) {
-    @if (!completedOnboarding()) {
-      @defer {
-        <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
-      }
-    } @else if (modalService.isDialogStandalone()) {
+    @if (modalService.isDialogStandalone()) {
       <ng-container
         *ngComponentOutlet="modalService.dialogComponent(); injector: modalService.dialogInjector"
       ></ng-container>
     } @else if (nautilusService.isStandaloneWindow()) {
       @defer {
         <app-nautilus></app-nautilus>
+      }
+    } @else if (!completedOnboarding()) {
+      @defer {
+        <app-onboarding (completed)="finishOnboarding()"></app-onboarding>
       }
     } @else {
       @defer {

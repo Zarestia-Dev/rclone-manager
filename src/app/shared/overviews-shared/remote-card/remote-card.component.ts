@@ -2,7 +2,6 @@ import { NgClass, TitleCasePipe } from '@angular/common';
 import { Component, computed, input, inject, output } from '@angular/core';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -106,7 +105,6 @@ const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
   imports: [
     NgClass,
     TitleCasePipe,
-    MatCardModule,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
@@ -116,12 +114,13 @@ const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
   templateUrl: './remote-card.component.html',
   styleUrl: './remote-card.component.scss',
   host: {
-    // Let the card be a proper grid/flex item without a wrapper div
-    '[style.display]': '"block"',
-    // Mirror edit-mode state onto the host so the panel SCSS and CDK can
-    // see it directly on the element (e.g. cursor, opacity, pointer-events).
+    role: 'button',
+    '[attr.tabindex]': 'isEditingLayout() ? -1 : 0',
+    '(click)': 'onRemoteClick()',
+    '(keydown)': 'onRemoteKeyDown($event)',
     '[class.is-editing]': 'isEditingLayout()',
     '[class.is-hidden-layout]': 'isHidden() && isEditingLayout()',
+    '[class]': 'remoteCardClasses()',
   },
 })
 export class RemoteCardComponent {
@@ -186,6 +185,7 @@ export class RemoteCardComponent {
   readonly remoteCardClasses = computed(() => {
     const s = this.remote().status;
     return {
+      'remote-card': true,
       [`${this.cardVariant()}-remote`]: true,
       mounted: !!s.mount.active,
       syncing: !!s.sync.active,

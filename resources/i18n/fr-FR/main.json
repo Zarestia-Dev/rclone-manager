@@ -2459,6 +2459,8 @@
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
       "downloadError": "Erreur inconnue lors du téléchargement de rclone",
+      "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
+      "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",
       "configEncrypted": "La configuration est chiffrée et aucun mot de passe n'est fourni",
       "unsupportedOS": "OS non pris en charge.",
       "binaryNotFound": "Le binaire de rclone est introuvable.",
@@ -2581,7 +2583,8 @@
       "switched": "Basculé vers le backend {{name}}"
     },
     "rclone": {
-      "updated": "Rclone mis à jour avec succès ( canal{{channel}})"
+      "updated": "Rclone mis à jour avec succès ( canal{{channel}})",
+      "mountPluginInstalled": "Plug-in de montage installé avec succès"
     },
     "job": {
       "stopped": "Job arrêté avec succès",

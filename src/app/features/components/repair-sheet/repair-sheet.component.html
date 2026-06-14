@@ -1,4 +1,4 @@
-<mat-nav-list class="repair-sheet" [class.repairing]="installing()">
+<form [class.repairing]="installing()" (submit)="repair(); $event.preventDefault()">
   <div class="sheet-header">
     <div class="repair-header-top">
       <div class="repair-icon">
@@ -26,37 +26,32 @@
     }
 
     @if (requiresPassword()) {
-      <div class="password-row">
-        <app-password-manager
-          [password]="password()"
-          [storePassword]="storePassword()"
-          [isSubmitting]="isSubmittingPassword()"
-          [hasError]="hasPasswordError()"
-          [errorMessage]="passwordErrorMessage()"
-          [showStoreOption]="!!data.showStoreOption"
-          [disabled]="installing() || showConfigOptions()"
-          (passwordChange)="password.set($event)"
-          (storePasswordChange)="storePassword.set($event)"
-          (unlock)="submitPassword()"
-        ></app-password-manager>
-      </div>
+      <app-password-manager
+        [password]="password()"
+        [storePassword]="storePassword()"
+        [isSubmitting]="isSubmittingPassword()"
+        [hasError]="hasPasswordError()"
+        [errorMessage]="passwordErrorMessage()"
+        [showStoreOption]="!!data.showStoreOption"
+        [disabled]="installing() || showConfigOptions()"
+        (passwordChange)="password.set($event)"
+        (storePasswordChange)="storePassword.set($event)"
+        (unlock)="submitPassword()"
+      ></app-password-manager>
 
-      <div class="config-toggle-container">
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="toggleConfigOptions()"
-          [disabled]="installing() || isSubmittingPassword()"
-        >
-          <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
-          {{
-            (showConfigOptions()
-              ? 'repairSheet.hideConfigOptions'
-              : 'repairSheet.useDifferentConfig'
-            ) | translate
-          }}
-        </button>
-      </div>
+      <button
+        type="button"
+        matButton="filled"
+        class="accent"
+        (click)="toggleConfigOptions()"
+        [disabled]="installing() || isSubmittingPassword()"
+      >
+        <mat-icon svgIcon="caret-down" [class.rotated]="showConfigOptions()"></mat-icon>
+        {{
+          (showConfigOptions() ? 'repairSheet.hideConfigOptions' : 'repairSheet.useDifferentConfig')
+            | translate
+        }}
+      </button>
 
       @if (showConfigOptions()) {
         <app-installation-options
@@ -70,19 +65,16 @@
     }
 
     @if (isRcloneBinaryRepair()) {
-      <div>
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="toggleInstallOptions()"
-          [disabled]="installing()"
-        >
-          <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
-          {{
-            (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate
-          }}
-        </button>
-      </div>
+      <button
+        type="button"
+        matButton="filled"
+        class="accent"
+        (click)="toggleInstallOptions()"
+        [disabled]="installing()"
+      >
+        <mat-icon svgIcon="caret-down" [class.rotated]="showAdvanced()"></mat-icon>
+        {{ (showAdvanced() ? 'repairSheet.hideAdvanced' : 'repairSheet.showAdvanced') | translate }}
+      </button>
 
       @if (showAdvanced()) {
         <app-installation-options
@@ -97,9 +89,9 @@
 
   <div class="sheet-actions">
     <button
+      type="submit"
       matButton="filled"
       [disabled]="!canRepair()"
-      (click)="void repair()"
       [attr.aria-label]="
         (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
       "
@@ -112,4 +104,4 @@
       ></mat-icon>
     </button>
   </div>
-</mat-nav-list>
+</form>

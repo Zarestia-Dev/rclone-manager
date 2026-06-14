@@ -1,7 +1,12 @@
-import { Component, inject, signal, isDevMode, ChangeDetectionStrategy } from '@angular/core';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { merge, from, combineLatest, of } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import {
+  Component,
+  inject,
+  signal,
+  isDevMode,
+  ChangeDetectionStrategy,
+  computed,
+} from '@angular/core';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -30,37 +35,34 @@ export class BannerComponent {
   readonly minRcloneVersion = this.systemInfoService.minRcloneVersion;
   private readonly flatpakDismissed = signal(false);
 
-  readonly showFlatpakWarning = toSignal(
-    combineLatest([
-      toObservable(this.appUpdaterService.buildType),
-      toObservable(this.flatpakDismissed),
-    ]).pipe(
-      switchMap(([buildType, dismissed]) => {
-        // Not a flatpak build, or user already dismissed — hide the banner
-        if (buildType !== 'flatpak' || dismissed) return of(false);
+  readonly showFlatpakWarning = computed(() => {
+    const buildType = this.appUpdaterService.buildType();
+    const dismissed = this.flatpakDismissed();
+    if (buildType !== 'flatpak' || dismissed) return false;
 
-        return from(this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn')).pipe(
-          map(warn => !!warn),
-          catchError(() => of(false))
-        );
-      })
-    ),
-    { initialValue: false }
-  );
+    return !!this.appSettingsService.options()?.['runtime.flatpak_warn']?.value;
+  });
 
   // Merges the initial network state with real-time updates into a single signal.
-  readonly isMeteredConnection = toSignal(
-    merge(
-      from(this.systemInfoService.isNetworkMetered()),
-      this.eventListenersService.listenToNetworkStatusChanged().pipe(map(p => p?.isMetered))
-    ).pipe(map(v => !!v)),
-    { initialValue: false }
-  );
+  readonly isMeteredConnection = signal(false);
 
   // Listens to the consolidated engine status stream.
   readonly engineError = toSignal(this.eventListenersService.listenToEngineErrorState(), {
     initialValue: null,
   });
+
+  constructor() {
+    this.systemInfoService.isNetworkMetered().then(isMetered => {
+      this.isMeteredConnection.set(isMetered);
+    });
+
+    this.eventListenersService
+      .listenToNetworkStatusChanged()
+      .pipe(takeUntilDestroyed())
+      .subscribe(p => {
+        this.isMeteredConnection.set(!!p?.isMetered);
+      });
+  }
 
   async dismissFlatpakWarning(): Promise<void> {
     this.flatpakDismissed.set(true);

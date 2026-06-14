@@ -1,6 +1,4 @@
-import { NgClass } from '@angular/common';
-import { Component, computed, input, output, inject, signal, OnInit } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
+import { Component, computed, input, output, inject, signal, linkedSignal } from '@angular/core';
 import { CardDisplayMode, OperationTab, PrimaryActionType, Remote } from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -51,7 +49,6 @@ const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
 @Component({
   selector: 'app-app-overview',
   imports: [
-    NgClass,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
@@ -62,9 +59,14 @@ const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
   ],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
+  host: {
+    class: 'app-overview',
+    '[class]': 'mode()',
+    'attr.animate.enter': 'fade-in-out-enter',
+    'attr.animate.leave': 'fade-in-out-leave',
+  },
 })
-export class AppOverviewComponent implements OnInit {
-  private readonly translate = inject(TranslateService);
+export class AppOverviewComponent {
   private readonly appSettingsService = inject(AppSettingsService);
   readonly remoteFacade = inject(RemoteFacadeService);
   readonly backendService = inject(BackendService);
@@ -83,8 +85,12 @@ export class AppOverviewComponent implements OnInit {
   readonly stopJob = output<StopJobEvent>();
   readonly openBackendModal = output<void>();
 
-  // Card display mode is local UI state, not derived from inputs
-  readonly cardDisplayMode = signal<CardDisplayMode>('detailed');
+  // Card display mode is local UI state initialized from settings options signal
+  readonly cardDisplayMode = linkedSignal<CardDisplayMode>(() => {
+    const saved = this.appSettingsService.options()?.['runtime.dashboard_card_variant']
+      ?.value as CardDisplayMode;
+    return saved || 'detailed';
+  });
   readonly isEditingLayout = signal(false);
 
   // --- Derived state ---
@@ -97,39 +103,13 @@ export class AppOverviewComponent implements OnInit {
     this.remoteFacade.orderedVisibleRemotes().filter(r => !this.isActive(r))
   );
 
-  /** Active remotes including hidden ones for the editor */
-  readonly activeRemotesForEditor = computed(() =>
-    this.remoteFacade.allRemotesForEditor().filter(r => this.isActive(r))
-  );
-
-  /** Inactive remotes including hidden ones for the editor */
-  readonly inactiveRemotesForEditor = computed(() =>
-    this.remoteFacade.allRemotesForEditor().filter(r => !this.isActive(r))
-  );
-
-  /** All remotes including hidden ones for the unified editor */
-  readonly allRemotesForEditor = computed(() => this.remoteFacade.allRemotesForEditor());
-
-  /** Names of remotes that are hidden in the current backend */
-  readonly hiddenRemoteNames = computed(() => this.remoteFacade.hiddenRemoteNames());
   readonly activeCount = computed(() => this.activeRemotes().length);
   readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
-  readonly primaryActionLabel = computed(() => this.translate.instant(this.modeConfig().label));
+  readonly primaryActionLabel = computed(() => this.modeConfig().label);
   readonly activeIcon = computed(() => this.modeConfig().icon);
-  readonly activeTitle = computed(() => this.translate.instant(this.modeConfig().activeTitle));
-  readonly inactiveTitle = computed(() => this.translate.instant(this.modeConfig().inactiveTitle));
-
-  async ngOnInit(): Promise<void> {
-    try {
-      const saved = await this.appSettingsService.getSettingValue<CardDisplayMode>(
-        'runtime.dashboard_card_variant'
-      );
-      if (saved) this.cardDisplayMode.set(saved);
-    } catch {
-      console.debug('[AppOverview] Failed to load dashboard card variant, using fallback.');
-    }
-  }
+  readonly activeTitle = computed(() => this.modeConfig().activeTitle);
+  readonly inactiveTitle = computed(() => this.modeConfig().inactiveTitle);
 
   // --- Event handlers ---
 
@@ -154,12 +134,9 @@ export class AppOverviewComponent implements OnInit {
   }
 
   onCardDisplayModeToggle(): void {
-    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'dashboard_card_variant',
-      this.cardDisplayMode()
-    );
+    const nextMode = this.cardDisplayMode() === 'compact' ? 'detailed' : 'compact';
+    this.cardDisplayMode.set(nextMode);
+    void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', nextMode);
   }
 
   // --- Private helpers ---

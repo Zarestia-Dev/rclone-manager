@@ -271,7 +271,7 @@ export class SystemHealthService {
 
   private async recheckMountPluginStatus(): Promise<void> {
     try {
-      const ok = await this.installationService.isMountPluginInstalled(1);
+      const ok = await this.installationService.isMountPluginInstalled();
       if (ok) {
         this.markMountPluginInstalled();
         this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);

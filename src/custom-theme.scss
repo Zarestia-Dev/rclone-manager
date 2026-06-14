@@ -732,16 +732,15 @@ $dark-theme: (
       flex: 1;
     }
 
-    // Status Variants
     @each $status,
       $color
         in (
           "primary": primary-color,
           "accent": accent-color,
-          "warn": warn-color,
           "orange": orange,
           "yellow": yellow,
           "purple": purple,
+          "warn": warn-color,
           "dim": dim-color
         )
     {

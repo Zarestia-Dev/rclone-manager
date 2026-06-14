@@ -43,8 +43,6 @@ type OnboardingAction =
   | 'finish'
   | 'next';
 
-const delay = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
-
 @Component({
   selector: 'app-onboarding',
   standalone: true,
@@ -229,13 +227,11 @@ export class OnboardingComponent {
   // ─── Init ────────────────────────────────────────────────────────────────────
 
   private async initOnboarding(): Promise<void> {
-    await delay(500);
     try {
       await this.systemHealth.runAllChecks();
     } catch (error) {
       console.error('OnboardingComponent: System checks failed', error);
     }
-    await delay(300);
     this.animationState.set('visible');
   }
 
@@ -340,12 +336,11 @@ export class OnboardingComponent {
     try {
       const data = this.configData();
       if (data.installLocation === 'custom' && data.customPath) {
-        // rclone_config_file is now stored as config_path on the Local backend.
-        // Ensure backends are loaded (they may not be during onboarding).
-        if (this.backendService.backends().length === 0) {
+        let localBackend = this.backendService.backends().find(b => b.name === 'Local');
+        if (!localBackend) {
           await this.backendService.loadBackends();
+          localBackend = this.backendService.backends().find(b => b.name === 'Local');
         }
-        const localBackend = this.backendService.backends().find(b => b.name === 'Local');
         if (localBackend) {
           await this.backendService.updateBackend({
             name: 'Local',

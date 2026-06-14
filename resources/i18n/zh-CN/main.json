@@ -2459,6 +2459,8 @@
     "rclone": {
       "unsupportedPlatform": "不支持的平台",
       "downloadError": "下载 Rclone 时发生未知错误",
+      "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
+      "mountPluginVerificationFailed": "安装成功但验证失败。可能需要重新启动。",
       "configEncrypted": "配置已加密，未提供密码",
       "unsupportedOS": "不支持的操作系统。",
       "binaryNotFound": "未找到 Rclone 可执行文件。",
@@ -2581,7 +2583,8 @@
       "switched": "已切换到后端 {{name}}"
     },
     "rclone": {
-      "updated": "Rclone 更新成功（{{channel}} 通道）"
+      "updated": "Rclone 更新成功（{{channel}} 通道）",
+      "mountPluginInstalled": "挂载插件安装成功"
     },
     "job": {
       "stopped": "任务已停止",

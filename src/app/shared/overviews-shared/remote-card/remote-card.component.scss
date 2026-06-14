@@ -2,21 +2,12 @@
 // The component is now a direct grid item (no wrapper div), so it must be a
 // proper block box and carry its own edit/hidden state via host bindings.
 
-:host {
-  display: block;
-  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
 :host(.is-editing) {
   cursor: grab;
+  pointer-events: none;
 
   &:active {
     cursor: grabbing;
-  }
-
-  // Prevent accidental interaction with the card while rearranging
-  .remote-card {
-    pointer-events: none;
   }
 
   // The overlay itself must still be interactive
@@ -76,11 +67,12 @@
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
-.remote-card {
+:host {
   position: relative;
   transition: var(--transition-standard);
   background: var(--window-bg-color);
   box-shadow: var(--box-shadow);
+  border-radius: var(--card-border-radius-large);
 
   &:hover {
     background: var(--hover-bg-color);
@@ -461,6 +453,15 @@
     position: relative;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+    .profile-name-text {
+      display: inline-block;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
     .profile-open-btn {
       position: relative;
       z-index: 1;
@@ -521,7 +522,7 @@
 // ── Responsive ──────────────────────────────────────────────────────────────
 
 @media (max-width: 768px) {
-  .remote-card {
+  :host {
     .remote-header {
       padding: var(--space-md);
     }
@@ -532,12 +533,18 @@
 }
 
 @media (max-width: 480px) {
-  .remote-card {
+  :host {
     .remote-header {
       padding: var(--space-sm);
     }
     .remote-content {
       padding: var(--space-xxs) var(--space-sm) var(--space-sm);
+    }
+    .profile-details-section {
+      padding: var(--space-sm);
+    }
+    .profile-name-text {
+      max-width: 110px;
     }
   }
 }

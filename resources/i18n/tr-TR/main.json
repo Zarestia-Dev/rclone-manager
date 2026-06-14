@@ -2459,6 +2459,8 @@
     "rclone": {
       "unsupportedPlatform": "Desteklenmeyen platform",
       "downloadError": "Rclone indirilirken bilinmeyen hata",
+      "mountPluginInstallFailed": "Eklenti kurulumu başarısız: {{error}}",
+      "mountPluginVerificationFailed": "Kurulum başarılı oldu ancak doğrulama başarısız oldu. Yeniden başlatma gerekebilir.",
       "configEncrypted": "Yapılandırma şifrelenmiş ve şifre sağlanmadı",
       "unsupportedOS": "Desteklenmeyen işletim sistemi.",
       "binaryNotFound": "Rclone ikili dosyası bulunamadı.",
@@ -2581,7 +2583,8 @@
       "switched": "{{name}} arka ucuna geçildi"
     },
     "rclone": {
-      "updated": "Rclone başarıyla güncellendi ({{channel}} kanalı)"
+      "updated": "Rclone başarıyla güncellendi ({{channel}} kanalı)",
+      "mountPluginInstalled": "Bağlama eklentisi başarıyla kuruldu"
     },
     "job": {
       "stopped": "İş başarıyla durduruldu",

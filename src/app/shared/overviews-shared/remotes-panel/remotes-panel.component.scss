@@ -1,16 +1,10 @@
 :host {
-  display: block;
-}
-
-// ── Panel Shell ──────────────────────────────────────────────────────────────
-
-.remotes-panel {
+  display: flex;
+  flex-direction: column;
   border-radius: var(--card-border-radius-large);
   background: var(--view-bg-color);
   box-shadow: var(--shadow-gnome);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 // ── Panel Header ─────────────────────────────────────────────────────────────
@@ -45,7 +39,7 @@
   }
 }
 
-.active-remotes-panel .panel-title mat-icon {
+:host(.active-remotes-panel) .panel-title mat-icon {
   color: var(--mode-primary-color, var(--primary-color));
 }
 
@@ -67,7 +61,7 @@
     color 0.2s ease;
 }
 
-.active-remotes-panel .panel-count {
+:host(.active-remotes-panel) .panel-count {
   background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
   color: var(--mode-primary-color, var(--primary-color));
 }
@@ -130,8 +124,13 @@
     padding: var(--space-md);
   }
 
+  .remotes-grid-wrap {
+    padding: var(--space-md);
+    max-height: 350px;
+    overflow-y: auto;
+  }
+
   .remotes-grid {
-    grid-template-columns: 1fr;
     gap: var(--space-sm);
   }
 }

@@ -26,20 +26,10 @@ export class InstallationService extends TauriBaseService {
 
   /**
    * Check if mount plugin is installed
-   * @param retryCount Number of times to retry the check (for post-installation verification)
    */
-  async isMountPluginInstalled(retryCount = 0): Promise<boolean> {
+  async isMountPluginInstalled(): Promise<boolean> {
     try {
-      const result = await this.invokeCommand<boolean>('check_mount_plugin_installed');
-
-      // If we got false but this is a retry (indicating we just installed),
-      // wait a bit and try again
-      if (!result && retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.invokeCommand<boolean>('check_mount_plugin_installed');
-      }
-
-      return result;
+      return await this.invokeCommand<boolean>('check_mount_plugin_installed');
     } catch (error) {
       console.error('Error checking mount plugin installation:', error);
 
@@ -48,12 +38,6 @@ export class InstallationService extends TauriBaseService {
         `${this.translate.instant('repairSheet.messages.mountPluginStatusError')}: ${translatedError}`
       );
 
-      // If this is a retry attempt, don't retry again
-      if (retryCount > 0) {
-        throw error;
-      }
-
-      // For first attempt, assume not installed on error
       return false;
     }
   }
@@ -63,8 +47,8 @@ export class InstallationService extends TauriBaseService {
    */
   async installMountPlugin(): Promise<string> {
     return this.invokeWithNotification<string>('install_mount_plugin', undefined, {
-      errorKey: 'repairSheet.errors.mountPluginInstallFailed',
-      errorParams: { errorKey: 'repairSheet.errors.mountPluginInstallFailed' },
+      successKey: 'backendSuccess.rclone.mountPluginInstalled',
+      errorKey: 'backendErrors.rclone.mountPluginInstallFailed',
     });
   }
 }

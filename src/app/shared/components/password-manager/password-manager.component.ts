@@ -1,6 +1,5 @@
 import { Component, output, input } from '@angular/core';
 
-import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +11,6 @@ import { TranslateModule } from '@ngx-translate/core';
   selector: 'app-password-manager',
   standalone: true,
   imports: [
-    FormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,

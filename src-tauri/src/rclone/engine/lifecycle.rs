@@ -3,7 +3,6 @@ use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::backend::BackendManager;
-use crate::rclone::engine::poller::stop_system_poller;
 use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
@@ -39,7 +38,6 @@ impl RcApiEngine {
 
         self.process = None;
         self.running = false;
-        stop_system_poller(app);
     }
 }
 
@@ -60,12 +58,6 @@ pub async fn resume_engine(app: &AppHandle) {
     let mut engine = state.lock().await;
     engine.should_exit = false;
     engine.set_updating(false);
-}
-
-pub async fn clear_engine_errors(app: &AppHandle) {
-    let state = app.state::<EngineState>();
-    let mut engine = state.lock().await;
-    engine.clear_errors();
 }
 
 pub async fn get_engine_status(app: &AppHandle) -> (bool, bool, bool) {
@@ -146,7 +138,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = true;
                 info!("Rclone API started on port {}", engine.current_api_port);
 
-                super::post_start::trigger_post_start_setup(app.clone());
+                super::post_start::run_post_start_setup(app).await;
             } else {
                 error!("Failed to start Rclone API within timeout");
                 engine.running = false;

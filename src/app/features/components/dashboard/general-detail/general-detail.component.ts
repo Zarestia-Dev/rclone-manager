@@ -208,10 +208,6 @@ export class GeneralDetailComponent {
   private readonly selectedRemoteName = computed(() => this.selectedRemote().name);
 
   constructor() {
-    void this.automationService
-      .getAutomations()
-      .catch(err => console.error('Error loading automations:', err));
-
     effect(() => {
       this.selectedRemoteName();
       untracked(() => this.currentAutomationCardIndex.set(0));

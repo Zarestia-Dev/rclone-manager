@@ -479,37 +479,23 @@
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
-                      @if (isLoadingAutomations()) {
-                        <div class="loading fade-in" aria-live="polite">
-                          <mat-spinner
-                            diameter="24"
-                            [attr.aria-label]="
-                              'generalOverview.automations.aria.loading' | translate
-                            "
-                          ></mat-spinner>
-                          <span>{{ 'generalOverview.automations.loading' | translate }}</span>
+                      @if (totalAutomationsCount() === 0) {
+                        <div class="no-automations-message empty-state-message" role="status">
+                          <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                          <span>{{ 'generalOverview.automations.noConfigured' | translate }}</span>
                         </div>
                       } @else {
-                        @if (totalAutomationsCount() === 0) {
-                          <div class="no-automations-message empty-state-message" role="status">
-                            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                            <span>{{
-                              'generalOverview.automations.noConfigured' | translate
-                            }}</span>
-                          </div>
-                        } @else {
-                          <div class="grid">
-                            @for (automation of automations(); track automation.id) {
-                              <app-automation-card
-                                [automation]="automation"
-                                variant="compact"
-                                (click)="onAutomationClick(automation)"
-                                (toggled)="toggleAutomation($event)"
-                                (openInFiles)="onOpenAutomationInFiles($event)"
-                              ></app-automation-card>
-                            }
-                          </div>
-                        }
+                        <div class="grid">
+                          @for (automation of automations(); track automation.id) {
+                            <app-automation-card
+                              [automation]="automation"
+                              variant="compact"
+                              (click)="onAutomationClick(automation)"
+                              (toggled)="toggleAutomation($event)"
+                              (openInFiles)="onOpenAutomationInFiles($event)"
+                            ></app-automation-card>
+                          }
+                        </div>
                       }
                     </mat-expansion-panel>
                   }

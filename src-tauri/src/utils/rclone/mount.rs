@@ -183,16 +183,27 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
 
     match result {
         Ok(_) => {
-            if check_mount_plugin_installed().await? {
+            // Verify if installed, retrying up to 5 times (1s delay between checks)
+            let mut verified = false;
+            for i in 0..5 {
+                if check_mount_plugin_installed().await.unwrap_or(false) {
+                    verified = true;
+                    break;
+                }
+                log::debug!(
+                    "macOS: Mount plugin check failed, retrying in 1s (attempt {}/5)...",
+                    i + 1
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+
+            if verified {
                 if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
                     let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }
-                Ok("Mount plugin installed successfully".to_string())
+                Ok("backendSuccess.rclone.mountPluginInstalled".to_string())
             } else {
-                Err(
-                    "Installation succeeded but verification failed. Restart may be required."
-                        .to_string(),
-                )
+                Err("backendErrors.rclone.mountPluginVerificationFailed".to_string())
             }
         }
         Err(e) => Err(e),
@@ -224,16 +235,27 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
 
     match result {
         Ok(_) => {
-            if check_mount_plugin_installed().await? {
+            // Verify if installed, retrying up to 5 times (1s delay between checks)
+            let mut verified = false;
+            for i in 0..5 {
+                if check_mount_plugin_installed().await.unwrap_or(false) {
+                    verified = true;
+                    break;
+                }
+                log::debug!(
+                    "Windows: Mount plugin check failed, retrying in 1s (attempt {}/5)...",
+                    i + 1
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+
+            if verified {
                 if let Some(window) = tauri::Manager::get_webview_window(&app_handle, "main") {
                     let _ = tauri::Emitter::emit(&window, MOUNT_PLUGIN_INSTALLED, ());
                 }
-                Ok("Mount plugin installed successfully".to_string())
+                Ok("backendSuccess.rclone.mountPluginInstalled".to_string())
             } else {
-                Err(
-                    "Installation succeeded but verification failed. Restart may be required."
-                        .to_string(),
-                )
+                Err("backendErrors.rclone.mountPluginVerificationFailed".to_string())
             }
         }
         Err(e) => Err(e),

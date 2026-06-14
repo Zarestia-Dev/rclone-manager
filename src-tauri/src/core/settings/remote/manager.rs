@@ -13,7 +13,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::state::automations::AutomationsCache;
-use crate::utils::types::events::REMOTE_SETTINGS_CHANGED;
+use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHANGED};
 use crate::utils::types::remotes::OperationConfigKey;
 
 /// **Save remote settings (per remote)**
@@ -105,6 +105,8 @@ pub async fn save_remote_settings(
             if let Err(e) = watcher_manager.sync_watchers(app.clone()).await {
                 warn!("Watcher sync incomplete for remote '{remote_name}': {e}");
             }
+
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "remote_settings_update");
         }
         _ => {}
     }

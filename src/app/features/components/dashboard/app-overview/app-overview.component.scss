@@ -2,7 +2,7 @@
 // APP OVERVIEW ROOT CONTAINER
 // =============================================
 
-.app-overview {
+:host {
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
@@ -42,14 +42,14 @@
 // =============================================
 
 @media (max-width: 768px) {
-  .app-overview {
+  :host {
     padding: var(--panel-padding-mobile);
     gap: var(--section-gap-mobile);
   }
 }
 
 @media (max-width: 480px) {
-  .app-overview {
+  :host {
     padding: var(--space-sm);
   }
 }
@@ -124,6 +124,6 @@
 
 @media (max-width: 599px) {
   .layout-actions-blossom {
-    bottom: calc(56px);
+    bottom: 56px;
   }
 }

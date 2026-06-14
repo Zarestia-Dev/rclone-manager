@@ -1,11 +1,4 @@
-import {
-  Component,
-  inject,
-  ChangeDetectionStrategy,
-  HostListener,
-  computed,
-  effect,
-} from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, HostListener, computed } from '@angular/core';
 import { DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -128,10 +121,7 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const completedTransfers =
-      job.status === 'Running' && job.group
-        ? (this.jobService.groupTransfersMap().get(job.group) ?? [])
-        : (((stats as any)?.completed ?? []) as any[]).map(mapRawTransfer);
+    const completedTransfers = (((stats as any)?.completed ?? []) as any[]).map(mapRawTransfer);
 
     const combined = [...completedTransfers].sort((a, b) => {
       const timeA = a.completedAt ? Date.parse(a.completedAt) : 0;
@@ -212,16 +202,6 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     return job.status === 'Running' ? job.group : null;
   });
-
-  constructor() {
-    effect(onCleanup => {
-      const group = this.activeGroup();
-      if (!group) return;
-
-      this.jobService.watchGroup(group);
-      onCleanup(() => this.jobService.unwatchGroup(group));
-    });
-  }
 
   @HostListener('keydown.escape')
   close(): void {

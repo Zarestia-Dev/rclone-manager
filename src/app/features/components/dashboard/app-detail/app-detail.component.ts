@@ -1,14 +1,5 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
-import {
-  Component,
-  inject,
-  computed,
-  effect,
-  input,
-  model,
-  output,
-  linkedSignal,
-} from '@angular/core';
+import { Component, inject, computed, input, model, output, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -298,13 +289,6 @@ export class AppDetailComponent {
     )
   );
 
-  readonly shouldPoll = computed(
-    () =>
-      this.isSyncType() &&
-      this.operationActiveState() &&
-      this.activeGroupJob()?.status === 'Running'
-  );
-
   readonly isDryRun = computed(() => {
     const opType = this.currentOpType();
     if (opType === 'bisync') {
@@ -348,18 +332,14 @@ export class AppDetailComponent {
     return false;
   });
 
-  // --- Derived: Live Data (from service, when polling) ---
+  // --- Derived: Live Data (from service) ---
   readonly jobStats = computed<GlobalStats>(() => {
-    if (this.shouldPoll()) {
-      return this.jobService.groupStatsMap().get(this.currentGroupName()) ?? DEFAULT_JOB_STATS;
-    }
     return (this.activeGroupJob()?.stats as GlobalStats | undefined) ?? DEFAULT_JOB_STATS;
   });
 
   readonly activeTransfers = computed<TransferFile[]>(() => {
-    const transferring = this.shouldPoll()
-      ? (this.jobService.groupStatsMap().get(this.currentGroupName())?.transferring ?? [])
-      : ((this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? []);
+    const transferring =
+      (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? [];
 
     return (transferring as TransferFile[]).map(f => ({
       ...f,
@@ -370,9 +350,6 @@ export class AppDetailComponent {
   });
 
   readonly completedTransfers = computed<CompletedTransfer[]>(() => {
-    if (this.shouldPoll()) {
-      return this.jobService.groupTransfersMap().get(this.currentGroupName()) ?? [];
-    }
     const completed = (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)
       ?.completed;
     return Array.isArray(completed) ? completed.map(mapRawTransfer) : [];
@@ -627,16 +604,6 @@ export class AppDetailComponent {
     showHistory: this.completedTransfers().length > 0,
   }));
 
-  constructor() {
-    // Delegate group polling to the service while the current job is running.
-    effect(onCleanup => {
-      if (!this.shouldPoll()) return;
-      const groupName = this.currentGroupName();
-      this.jobService.watchGroup(groupName);
-      onCleanup(() => this.jobService.unwatchGroup(groupName));
-    });
-  }
-
   // --- Public Methods ---
 
   onProfileSelect(name: string): void {
@@ -684,7 +651,6 @@ export class AppDetailComponent {
     const groupName = this.currentGroupName();
     try {
       await this.jobService.resetGroupStats(groupName);
-      this.jobService.clearGroupData(groupName);
     } catch (error) {
       console.error('Failed to reset group stats:', error);
     }

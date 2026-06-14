@@ -1,7 +1,6 @@
 import { DestroyRef, Injectable, inject, signal, effect, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AppSettingsService } from '../../settings/app-settings.service';
-import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
-import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 /**
  * Centralized service for managing onboarding state across the application
@@ -19,8 +18,6 @@ import { SystemHealthService } from 'src/app/services/infrastructure/maintenance
 export class OnboardingStateService {
   private appSettingsService = inject(AppSettingsService);
   private systemHealthService = inject(SystemHealthService);
-  private appUpdaterService = inject(AppUpdaterService);
-  private rcloneUpdateService = inject(RcloneUpdateService);
   private destroyRef = inject(DestroyRef);
 
   // State tracking
@@ -32,32 +29,25 @@ export class OnboardingStateService {
   public readonly isInitialized = this._isInitialized.asReadonly();
 
   constructor() {
-    this.initializeOnboardingState().catch(error => {
-      console.error('Failed to initialize onboarding state:', error);
-    });
+    this.appSettingsService
+      .selectSetting('core.completed_onboarding')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: setting => {
+          const completed = setting?.value === true;
+          this._isCompleted.set(completed);
+          this.systemHealthService.setOnboardingCompleted(completed);
+          this._isInitialized.set(true);
+        },
+        error: error => {
+          console.error('Error in onboarding settings stream:', error);
+          this._isCompleted.set(false);
+          this.systemHealthService.setOnboardingCompleted(false);
+          this._isInitialized.set(true);
+        },
+      });
 
     this.setupPostOnboardingTasks();
-  }
-
-  /**
-   * Initialize onboarding state from settings
-   * Called automatically on service construction
-   */
-  private async initializeOnboardingState(): Promise<void> {
-    try {
-      const completed =
-        (await this.appSettingsService.getSettingValue<boolean>('core.completed_onboarding')) ||
-        false;
-
-      this._isCompleted.set(completed);
-      this.systemHealthService.setOnboardingCompleted(completed);
-      this._isInitialized.set(true);
-    } catch (error) {
-      console.error('Error initializing onboarding state:', error);
-      this._isCompleted.set(false);
-      this.systemHealthService.setOnboardingCompleted(false);
-      this._isInitialized.set(true);
-    }
   }
 
   /**

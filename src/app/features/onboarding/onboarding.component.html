@@ -39,142 +39,134 @@
 
         @switch (currentCard().key) {
           @case ('selectConfig') {
-            <div class="form-section">
-              <app-installation-options
-                [mode]="'config'"
-                [disabled]="installing()"
-                [tabOptions]="[
-                  { key: 'default', label: 'onboarding.options.default', icon: 'file' },
-                  { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
-                ]"
-                (dataChange)="onConfigOptionsChange($event)"
-                (validChange)="onConfigValidChange($event)"
-              ></app-installation-options>
-            </div>
+            <app-installation-options
+              class="form-section"
+              [mode]="'config'"
+              [disabled]="installing()"
+              [tabOptions]="[
+                { key: 'default', label: 'onboarding.options.default', icon: 'file' },
+                { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
+              ]"
+              (dataChange)="onConfigOptionsChange($event)"
+              (validChange)="onConfigValidChange($event)"
+            ></app-installation-options>
           }
           @case ('passwordRequired') {
-            <div class="form-section">
-              <app-password-manager
-                [password]="configPassword()"
-                [hasError]="!!passwordValidationError()"
-                [storePassword]="true"
-                [isSubmitting]="isSubmittingPassword()"
-                [errorMessage]="passwordValidationError() || ''"
-                [showStoreOption]="false"
-                (passwordChange)="configPassword.set($event)"
-                (unlock)="submitConfigPassword()"
-              ></app-password-manager>
-            </div>
+            <app-password-manager
+              class="form-section"
+              [password]="configPassword()"
+              [hasError]="!!passwordValidationError()"
+              [storePassword]="true"
+              [isSubmitting]="isSubmittingPassword()"
+              [errorMessage]="passwordValidationError() || ''"
+              [showStoreOption]="false"
+              (passwordChange)="configPassword.set($event)"
+              (unlock)="submitConfigPassword()"
+            ></app-password-manager>
           }
           @case ('installRclone') {
-            <div class="form-section">
-              <app-installation-options
-                [mode]="'install'"
-                [disabled]="installing()"
-                [tabOptions]="onboardingTabOptions"
-                (dataChange)="onInstallationOptionsChange($event)"
-                (validChange)="onInstallationValidChange($event)"
-              ></app-installation-options>
-            </div>
+            <app-installation-options
+              class="form-section"
+              [mode]="'install'"
+              [disabled]="installing()"
+              [tabOptions]="onboardingTabOptions"
+              (dataChange)="onInstallationOptionsChange($event)"
+              (validChange)="onInstallationValidChange($event)"
+            ></app-installation-options>
           }
         }
       </div>
     </div>
 
     <div class="footer-navigation">
-      <div>
-        @if (currentCardIndex() > 0) {
-          <button matButton (click)="previousCard()" class="secondary">
-            <mat-icon svgIcon="left-arrow"></mat-icon>
-            {{ 'onboarding.actions.back' | translate }}
-          </button>
-        } @else {
-          <button mat-stroked-button (click)="importSettings()">
-            <mat-icon svgIcon="file-arrow-up"></mat-icon>
-            {{ 'titlebar.menu.import' | translate }}
+      @if (currentCardIndex() > 0) {
+        <button matButton (click)="previousCard()" class="secondary">
+          <mat-icon svgIcon="left-arrow"></mat-icon>
+          {{ 'onboarding.actions.back' | translate }}
+        </button>
+      } @else {
+        <button mat-stroked-button (click)="importSettings()">
+          <mat-icon svgIcon="file-arrow-up"></mat-icon>
+          {{ 'titlebar.menu.import' | translate }}
+        </button>
+      }
+
+      @switch (currentAction()) {
+        @case ('install-rclone') {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="installRclone()"
+            [disabled]="!canInstall()"
+            [matTooltip]="
+              !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
+            "
+          >
+            <mat-icon
+              [svgIcon]="installing() ? 'refresh' : 'download'"
+              [class.animate-spin]="installing()"
+            ></mat-icon>
+            {{ installButtonText() | translate }}
           </button>
         }
-      </div>
-      <div>
-        @switch (currentAction()) {
-          @case ('install-rclone') {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="installRclone()"
-              [disabled]="!canInstall()"
-              [matTooltip]="
-                !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
-              "
-            >
-              <mat-icon
-                [svgIcon]="installing() ? 'refresh' : 'download'"
-                [class.animate-spin]="installing()"
-              ></mat-icon>
-              {{ installButtonText() | translate }}
-            </button>
-          }
-          @case ('install-plugin') {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="installMountPlugin()"
-              [disabled]="downloadingPlugin()"
-            >
-              <mat-icon
-                [svgIcon]="downloadingPlugin() ? 'refresh' : 'download'"
-                [class.animate-spin]="downloadingPlugin()"
-              ></mat-icon>
-              {{
-                (downloadingPlugin()
-                  ? 'onboarding.actions.installingPlugin'
-                  : 'onboarding.actions.installPlugin'
-                ) | translate
-              }}
-            </button>
-          }
-          @case ('config-next') {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="onConfigNext()"
-              [disabled]="!configValid()"
-              [matTooltip]="
-                !configValid() ? ('onboarding.validation.selectConfig' | translate) : ''
-              "
-            >
-              {{ 'onboarding.actions.next' | translate }}
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </button>
-          }
-          @case ('unlock') {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="submitConfigPassword()"
-              [disabled]="!configPassword() || isSubmittingPassword()"
-            >
-              @if (isSubmittingPassword()) {
-                <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
-              } @else {
-                <span>{{ 'onboarding.actions.unlock' | translate }}</span>
-              }
-            </button>
-          }
-          @case ('finish') {
-            <button matButton="filled" class="primary" (click)="completeOnboarding()">
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              {{ 'onboarding.actions.getStarted' | translate }}
-            </button>
-          }
-          @default {
-            <button matButton="filled" class="primary" (click)="nextCard()">
-              {{ 'onboarding.actions.next' | translate }}
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </button>
-          }
+        @case ('install-plugin') {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="installMountPlugin()"
+            [disabled]="downloadingPlugin()"
+          >
+            <mat-icon
+              [svgIcon]="downloadingPlugin() ? 'refresh' : 'download'"
+              [class.animate-spin]="downloadingPlugin()"
+            ></mat-icon>
+            {{
+              (downloadingPlugin()
+                ? 'onboarding.actions.installingPlugin'
+                : 'onboarding.actions.installPlugin'
+              ) | translate
+            }}
+          </button>
         }
-      </div>
+        @case ('config-next') {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="onConfigNext()"
+            [disabled]="!configValid()"
+            [matTooltip]="!configValid() ? ('onboarding.validation.selectConfig' | translate) : ''"
+          >
+            {{ 'onboarding.actions.next' | translate }}
+            <mat-icon svgIcon="right-arrow"></mat-icon>
+          </button>
+        }
+        @case ('unlock') {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="submitConfigPassword()"
+            [disabled]="!configPassword() || isSubmittingPassword()"
+          >
+            @if (isSubmittingPassword()) {
+              <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+            } @else {
+              <span>{{ 'onboarding.actions.unlock' | translate }}</span>
+            }
+          </button>
+        }
+        @case ('finish') {
+          <button matButton="filled" class="primary" (click)="completeOnboarding()">
+            <mat-icon svgIcon="circle-check"></mat-icon>
+            {{ 'onboarding.actions.getStarted' | translate }}
+          </button>
+        }
+        @default {
+          <button matButton="filled" class="primary" (click)="nextCard()">
+            {{ 'onboarding.actions.next' | translate }}
+            <mat-icon svgIcon="right-arrow"></mat-icon>
+          </button>
+        }
+      }
     </div>
   </div>
 </div>

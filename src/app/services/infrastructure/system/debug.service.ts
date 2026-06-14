@@ -157,9 +157,9 @@ export class DebugService extends TauriBaseService {
       });
     }
 
-    if (items.length && !isInput) items.push('divider');
+    if (items.length && !isInput && !selectedText) items.push('divider');
 
-    if (!isInput) {
+    if (!isInput && !selectedText) {
       items.push(
         {
           label: this.t('developerTools.refreshUi'),
@@ -172,7 +172,7 @@ export class DebugService extends TauriBaseService {
       );
     }
 
-    if (isDevMode()) {
+    if (isDevMode() && !selectedText) {
       items.push({
         label: this.t('developerTools.openDevTools'),
         action: () => void this.openDevTools(),

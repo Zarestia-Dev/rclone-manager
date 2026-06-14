@@ -1,5 +1,4 @@
 use crate::rclone::backend::BackendManager;
-use crate::rclone::engine::lifecycle::clear_engine_errors;
 use crate::utils::types::state::RcloneState;
 use crate::{
     core::initialization::apply_settings::apply_core_settings,
@@ -8,24 +7,22 @@ use crate::{
 use log::{debug, error};
 use tauri::{AppHandle, Emitter, Manager};
 
-pub fn trigger_post_start_setup(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let manager = app.state::<crate::core::settings::AppSettingsManager>();
-        match manager.get_all() {
-            Ok(settings) => {
-                apply_core_settings(&app, &settings).await;
-                clear_engine_errors(&app).await;
-                refresh_caches_and_tray(&app).await;
-            }
-            Err(e) => {
-                error!("Failed to load settings after engine start: {e}");
-            }
-        }
+pub async fn run_post_start_setup(app: &AppHandle) {
+    let manager = app.state::<crate::core::settings::AppSettingsManager>();
+    match manager.get_all() {
+        Ok(settings) => {
+            apply_core_settings(app, &settings).await;
 
-        if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready) {
-            error!("Failed to emit ready event: {e}");
+            refresh_caches_and_tray(app).await;
         }
-    });
+        Err(e) => {
+            error!("Post-start: Failed to load settings: {e}");
+        }
+    }
+
+    if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::Ready) {
+        error!("Post-start: Failed to emit ready event: {e}");
+    }
 }
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
@@ -40,17 +37,17 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
     )
     .await
     {
-        error!("Failed to fetch Local backend runtime info: {e}");
+        error!("Post-start: Failed to fetch Local backend runtime info: {e}");
     }
 
     let backend_manager = app.state::<BackendManager>();
     match backend_manager.remote_cache.refresh_all(app.clone()).await {
-        Ok(()) => debug!("Refreshed backend caches"),
-        Err(e) => error!("Failed to refresh backend caches: {e}"),
+        Ok(()) => debug!("Post-start: Successfully refreshed backend connection caches"),
+        Err(e) => error!("Post-start: Failed to refresh backend connection caches: {e}"),
     }
 
     #[cfg(feature = "tray")]
     if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone()).await {
-        error!("Failed to update tray menu: {e}");
+        error!("Post-start: Failed to update tray menu: {e}");
     }
 }

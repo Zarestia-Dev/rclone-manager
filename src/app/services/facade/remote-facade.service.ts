@@ -7,6 +7,8 @@ import {
   Signal,
   WritableSignal,
   linkedSignal,
+  effect,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge, concatMap, from } from 'rxjs';
@@ -23,6 +25,7 @@ import { NautilusService } from '../ui/nautilus.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
 import {
   Remote,
   JobInfo,
@@ -79,6 +82,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly statusService = inject(RcloneStatusService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -157,13 +161,14 @@ export class RemoteFacadeService extends TauriBaseService {
   constructor() {
     super();
 
-    this.eventListeners
-      .listenToRcloneEngineReady()
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => {
-        console.log('Rclone engine ready, refreshing all...');
-        this.refreshAll();
-      });
+    effect(() => {
+      const status = this.statusService.rcloneStatus();
+      if (status === 'active') {
+        untracked(() => {
+          void this.refreshAll();
+        });
+      }
+    });
 
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),

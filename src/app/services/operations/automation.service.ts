@@ -22,6 +22,7 @@ export class AutomationService extends TauriBaseService {
   constructor() {
     super();
     this.initializeEventListeners();
+    void this.refreshAutomations();
   }
 
   /**
@@ -108,10 +109,7 @@ export class AutomationService extends TauriBaseService {
    */
   public async refreshAutomations(): Promise<void> {
     try {
-      const automations = await this.getAutomations();
-      const stats = await this.getAutomationStats();
-      this._automations.set(automations);
-      this._stats.set(stats);
+      await Promise.all([this.getAutomations(), this.getAutomationStats()]);
     } catch (error) {
       console.error('Failed to refresh automations:', error);
     }

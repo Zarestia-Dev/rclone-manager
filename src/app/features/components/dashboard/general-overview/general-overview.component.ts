@@ -173,7 +173,6 @@ export class GeneralOverviewComponent {
   readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
-  readonly isLoadingAutomations = signal(false);
 
   readonly automations = this.automationService.automations;
 
@@ -239,7 +238,7 @@ export class GeneralOverviewComponent {
   }
 
   private async initDashboardData(): Promise<void> {
-    await Promise.all([this.loadLayoutSettings(), this.loadAutomations()]);
+    await this.loadLayoutSettings();
   }
 
   // --- Layout management ---
@@ -398,17 +397,6 @@ export class GeneralOverviewComponent {
       if (savedVariant) this.cardDisplayMode.set(savedVariant);
     } catch {
       console.debug('Failed to load layout settings, using defaults');
-    }
-  }
-
-  private async loadAutomations(): Promise<void> {
-    this.isLoadingAutomations.set(true);
-    try {
-      await this.automationService.getAutomations();
-    } catch (error) {
-      console.error('Error loading automations:', error);
-    } finally {
-      this.isLoadingAutomations.set(false);
     }
   }
 

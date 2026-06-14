@@ -1,5 +1,4 @@
 import { Component, computed, input, output } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -11,7 +10,6 @@ import { AppTab, PrimaryActionType, Remote, CardDisplayMode } from '@app/types';
 @Component({
   selector: 'app-remotes-panel',
   imports: [
-    MatCardModule,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
@@ -21,6 +19,11 @@ import { AppTab, PrimaryActionType, Remote, CardDisplayMode } from '@app/types';
   ],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
+  host: {
+    class: 'remotes-panel',
+    '[class.active-remotes-panel]': 'isActive()',
+    '[attr.aria-label]': 'title()',
+  },
 })
 export class RemotesPanelComponent {
   title = input('');

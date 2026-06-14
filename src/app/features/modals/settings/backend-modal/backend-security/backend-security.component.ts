@@ -139,7 +139,7 @@ export class BackendSecurityComponent implements OnInit {
       this.keychainPassword.reset();
       await this.loadEncryptionStatus();
     } catch (error) {
-      this.notificationService.showError(this.translate.instant(String(error)));
+      console.error('Failed to store password in keychain:', error);
     } finally {
       this.encryptionLoading.set(false);
     }

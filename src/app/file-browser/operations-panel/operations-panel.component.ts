@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,8 +12,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
-import { Subject, interval } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -38,11 +36,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
 })
-export class OperationsPanelComponent implements OnInit, OnDestroy {
+export class OperationsPanelComponent implements OnInit {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
   private translate = inject(TranslateService);
-  private destroy$ = new Subject<void>();
 
   // Subscribe to reactive job stream
   jobs = this.jobManagementService.nautilusJobs;
@@ -57,32 +54,6 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Initial load from backend
     this.jobManagementService.refreshJobs();
-
-    // Adaptive polling: only poll when there are active jobs
-    interval(1000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        const active = this.activeJobs();
-        // Only poll if there are active running jobs
-        if (active.length > 0) {
-          this.jobManagementService.refreshJobs();
-
-          // Also ensure we're watching the groups of these jobs to get transfer details
-          active.forEach(job => {
-            if (job.group) {
-              this.jobManagementService.watchGroup(job.group);
-            }
-          });
-        }
-      });
-
-    console.log('[OperationsPanel] Initialized, subscribed to job stream');
-    console.log('[OperationsPanel] Current jobs:', this.jobs());
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   toggleExpanded(): void {
@@ -210,22 +181,14 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     return Array.isArray(errors) ? errors.join('\n') : errors;
   }
 
-  /** Get list of transferred files for a job, prioritizing groupTransfersMap */
+  /** Get list of transferred files for a job */
   getTransferredFiles(job: JobInfo): string[] {
-    // 1. Try group transfers map (live data)
-    const filesFromGroup = job.group
-      ? (this.jobManagementService.groupTransfersMap().get(job.group) || []).map(t => t.name)
-      : [];
-
-    if (filesFromGroup.length > 0) return filesFromGroup;
-
-    // 2. Try final stats completion list (for finished jobs)
     const stats = job.stats as any;
     if (stats?.completed && Array.isArray(stats.completed)) {
       return stats.completed.map((t: any) => t.name || t.path || 'Unknown file');
     }
 
-    // 3. Fallback to legacy uploaded_files
+    // Fallback to legacy uploaded_files
     return job.uploaded_files || [];
   }
 
