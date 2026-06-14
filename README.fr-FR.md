@@ -71,32 +71,31 @@ Installez RClone Manager à l'aide de votre gestionnaire de paquets préféré, 
 
 ### Linux
 
-| Source | Commande d'installation / Téléchargement |
-| :--- | :--- |
-| **AUR** | `yay -S rclone-manager` |
-| **AUR (Git)** | `yay -S rclone-manager-git` |
-| **Flathub** | `flatpak install io.github.zarestia_dev.rclone-manager` |
-| **Snap Store** | `sudo snap install rclone-manager` |
-| **Téléchargement direct** | [Dernières versions (.deb, .AppImage, tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source                    | Commande d'installation / Téléchargement                                                                                      |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**                   | `yay -S rclone-manager`                                                                                                       |
+| **AUR (Git)**             | `yay -S rclone-manager-git`                                                                                                   |
+| **Flathub**               | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                       |
+| **Téléchargement direct** | [Dernières versions (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) (résolution des problèmes Flatpak, snapshots, etc.)
 
 ### macOS
 
-| Source | Commande d'installation / Téléchargement |
-| :--- | :--- |
-| **Homebrew** | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
+| Source                    | Commande d'installation / Téléchargement                                           |
+| :------------------------ | :--------------------------------------------------------------------------------- |
+| **Homebrew**              | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`             |
 | **Téléchargement direct** | [Installateur DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (correctifs macFUSE & Gatekeeper)
 
 ### Windows
 
-| Source | Commande d'installation / Téléchargement |
-| :--- | :--- |
-| **Winget** | `winget install RClone-Manager.rclone-manager` |
-| **Chocolatey** | `choco install rclone-manager` |
-| **Scoop** | `scoop bucket add extras && scoop install rclone-manager` |
+| Source                    | Commande d'installation / Téléchargement                                                      |
+| :------------------------ | :-------------------------------------------------------------------------------------------- |
+| **Winget**                | `winget install RClone-Manager.rclone-manager`                                                |
+| **Chocolatey**            | `choco install rclone-manager`                                                                |
+| **Scoop**                 | `scoop bucket add extras && scoop install rclone-manager`                                     |
 | **Téléchargement direct** | [Installateur / EXE Portable](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (conditions de montage WinFsp & SmartScreen)

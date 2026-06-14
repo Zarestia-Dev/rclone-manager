@@ -71,13 +71,12 @@ Install RClone Manager using your preferred package manager, or download standal
 
 ### Linux
 
-| Source              | Install Command / Download                                                                                  |
-| :------------------ | :---------------------------------------------------------------------------------------------------------- |
-| **AUR**             | `yay -S rclone-manager`                                                                                     |
-| **AUR (Git)**       | `yay -S rclone-manager-git`                                                                                 |
-| **Flathub**         | `flatpak install io.github.zarestia_dev.rclone-manager`                                                     |
-| **Snap Store**      | `sudo snap install rclone-manager`                                                                          |
-| **Direct Download** | [Latest Releases (.deb, .AppImage, tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source              | Install Command / Download                                                                                                 |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**             | `yay -S rclone-manager`                                                                                                    |
+| **AUR (Git)**       | `yay -S rclone-manager-git`                                                                                                |
+| **Flathub**         | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                    |
+| **Direct Download** | [Latest Releases (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) (troubleshooting Flatpak, snapshots, etc.)
 

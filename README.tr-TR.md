@@ -71,13 +71,12 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 
 ### Linux
 
-| Kaynak               | Kurulum Komutu / İndirme                                                                                 |
-| :------------------- | :------------------------------------------------------------------------------------------------------- |
-| **AUR**              | `yay -S rclone-manager`                                                                                  |
-| **AUR (Git)**        | `yay -S rclone-manager-git`                                                                              |
-| **Flathub**          | `flatpak install io.github.zarestia_dev.rclone-manager`                                                  |
-| **Snap Store**       | `sudo snap install rclone-manager`                                                                       |
-| **Doğrudan İndirme** | [Son Sürümler (.deb, .AppImage, tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Kaynak               | Kurulum Komutu / İndirme                                                                                                |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------- |
+| **AUR**              | `yay -S rclone-manager`                                                                                                 |
+| **AUR (Git)**        | `yay -S rclone-manager-git`                                                                                             |
+| **Flathub**          | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                 |
+| **Doğrudan İndirme** | [Son Sürümler (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Kılavuz:** [Wiki: Kurulum - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) (Flatpak sorun giderme vb.)
 

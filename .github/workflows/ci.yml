@@ -80,7 +80,8 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
         working-directory: src-tauri
 
-      # 8. Check Rust Formatting
+      # 8. Check Rust Formatting (Only on Linux to avoid CRLF differences)
       - name: Check Formatting (Rust)
+        if: matrix.os == 'ubuntu-22.04'
         run: cargo fmt -- --check
         working-directory: src-tauri
