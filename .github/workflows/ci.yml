@@ -19,8 +19,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v5
 
-      # 1. Setup Node.js with caching
+      # 1. Setup Node.js with caching (Only on Linux for Angular lints)
       - name: Setup Node
+        if: matrix.os == 'ubuntu-22.04'
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
@@ -64,8 +65,9 @@ jobs:
 
           sudo apt-get install -y /tmp/ubuntu-packages/*.deb
 
-      # 5. Clean Install npm dependencies (uses cache)
+      # 5. Clean Install npm dependencies (Only on Linux for Angular lints)
       - name: Install Node Dependencies
+        if: matrix.os == 'ubuntu-22.04'
         run: npm ci
 
       # 6. Run frontend lints (Only on Linux to avoid duplicate work)
