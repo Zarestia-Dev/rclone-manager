@@ -41,18 +41,21 @@ impl RcApiEngine {
     }
 }
 
+#[cfg(feature = "updater")]
 pub async fn set_engine_updating(app: &AppHandle, updating: bool) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.set_updating(updating);
 }
 
+#[cfg(feature = "updater")]
 pub async fn shutdown_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.shutdown(app).await;
 }
 
+#[cfg(feature = "updater")]
 pub async fn resume_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;

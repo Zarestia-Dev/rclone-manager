@@ -45,7 +45,6 @@
       "resources/serve-template.html": "serve-template.html"
     },
     "createUpdaterArtifacts": true,
-    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
     "category": "Utility",
     "shortDescription": "User-friendly GUI for RClone",
     "homepage": "https://github.com/Zarestia-Dev/rclone-manager",

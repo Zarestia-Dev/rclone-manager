@@ -94,17 +94,17 @@ tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
 
 [features]
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
+updater = ["dep:tauri-plugin-updater"]
+
+web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "updater"]
 
 # Container
 container = ["web-server"]
 
-updater = ["dep:tauri-plugin-updater"]
-
 # For GUI features
-default = ["desktop", "tray", "updater"]
-desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools", "tauri-plugin-clipboard-manager"]
+desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools", "tauri-plugin-clipboard-manager", "updater"]
 tray = ["tauri/tray-icon", "tauri/image-png"]
+default = ["desktop", "tray"]
 
 # Managed by package managers or not compatible with updater
 portable = ["desktop", "tray"]

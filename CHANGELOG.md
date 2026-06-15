@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **PowerShell**: Added PowerShell 7+ (pwsh) support for mount plugin installer. If pwsh is not available on Windows, default to Windows PowerShell (powershell.exe). #229
 
 ### Changed
-- 
+- **Updater Feature**: Gate the application and Rclone update system behind "updater" feature.
 
 ### Fixed
 - Detached dialog and other dialog fixes. #228

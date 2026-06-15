@@ -50,7 +50,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
     );
 
-    #[cfg(desktop)]
+    #[cfg(feature = "updater")]
     crate::core::lifecycle::auto_updater::stop_auto_updater(&app_handle);
 
     match scheduler_state.stop().await {

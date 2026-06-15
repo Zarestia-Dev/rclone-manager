@@ -218,20 +218,19 @@
 
       .channel-badge {
         flex-shrink: 0;
-        padding: 1px var(--space-sm);
+        padding: 2px var(--space-sm);
         border-radius: var(--radius-sm);
         font-size: var(--font-size-xs);
         font-weight: 700;
-        letter-spacing: 0.04em;
+
+        &.stable {
+          background: rgba(var(--primary-color-rgb), 0.12);
+          color: var(--primary-color);
+        }
 
         &.beta {
           background: rgba(var(--orange-rgb), 0.12);
           color: var(--orange);
-        }
-
-        &.dev {
-          background: rgba(var(--accent-color-rgb), 0.12);
-          color: var(--accent-color);
         }
       }
     }

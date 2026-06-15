@@ -1,6 +1,5 @@
 pub mod app_updates {
     use crate::core::{lifecycle::shutdown::handle_shutdown, settings::AppSettingsManager};
-    use crate::utils::app::platform::relaunch_app;
     use crate::utils::github_client::{OWNER, REPO};
     use crate::utils::types::{
         events::APP_EVENT,
@@ -414,7 +413,7 @@ pub mod app_updates {
                     }),
                 );
                 app.state::<AppUpdaterState>().data.lock().state = UpdateState::Idle;
-                if let Err(e) = relaunch_app(app).await {
+                if let Err(e) = crate::utils::app::platform::relaunch_app(app).await {
                     log::error!("Failed to relaunch app: {e}");
                 }
             });
