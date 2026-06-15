@@ -64,10 +64,17 @@
                 [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
               ></mat-icon>
             }
-            <ng-container
-              [ngTemplateOutlet]="itemCard"
-              [ngTemplateOutletContext]="{ item, isCut }"
-            ></ng-container>
+            <div
+              class="folder-card"
+              [class.file-card]="!item.entry.IsDir"
+              [class.hidden-item]="item.entry.Name.startsWith('.')"
+            >
+              <ng-container
+                [ngTemplateOutlet]="fileEntryIcon"
+                [ngTemplateOutletContext]="{ item, isCut, sizeBinding: true }"
+              ></ng-container>
+              <p class="folder-title">{{ item.entry.Name }}</p>
+            </div>
           </div>
         }
       </div>
@@ -120,9 +127,10 @@
             @let isCut = cutItemPaths().has(key);
             <div class="cell-content name-cell">
               <ng-container
-                [ngTemplateOutlet]="nameCellContent"
-                [ngTemplateOutletContext]="{ item, isCut }"
+                [ngTemplateOutlet]="fileEntryIcon"
+                [ngTemplateOutletContext]="{ item, isCut, sizeBinding: false }"
               ></ng-container>
+              <span>{{ item.entry.Name }}</span>
             </div>
           </td>
         </ng-container>
@@ -265,26 +273,4 @@
       [svgIcon]="iconService.getIconForEntry(item.entry)"
     ></mat-icon>
   }
-</ng-template>
-
-<ng-template #itemCard let-item="item" let-isCut="isCut">
-  <div
-    class="folder-card"
-    [class.file-card]="!item.entry.IsDir"
-    [class.hidden-item]="item.entry.Name.startsWith('.')"
-  >
-    <ng-container
-      [ngTemplateOutlet]="fileEntryIcon"
-      [ngTemplateOutletContext]="{ item, isCut, sizeBinding: true }"
-    ></ng-container>
-    <p class="folder-title">{{ item.entry.Name }}</p>
-  </div>
-</ng-template>
-
-<ng-template #nameCellContent let-item="item" let-isCut="isCut">
-  <ng-container
-    [ngTemplateOutlet]="fileEntryIcon"
-    [ngTemplateOutletContext]="{ item, isCut, sizeBinding: false }"
-  ></ng-container>
-  <span>{{ item.entry.Name }}</span>
 </ng-template>

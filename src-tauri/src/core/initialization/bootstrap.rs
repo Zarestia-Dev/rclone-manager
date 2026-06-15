@@ -11,6 +11,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_rclone_state(app_handle).await?;
 
     // Apply any pending rclone updates before starting the engine
+    #[cfg(feature = "updater")]
     let _ = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await;
 
     // Initialize Alert Engine Worker

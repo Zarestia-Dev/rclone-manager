@@ -20,14 +20,6 @@
   border-radius: 0 !important;
 }
 
-.nautilus-sidenav mat-toolbar {
-  display: flex;
-  justify-content: space-between;
-  background-color: var(--sidebar-bg-color) !important;
-  padding-inline: var(--space-sm);
-  height: var(--titlebar-height);
-}
-
 /* ==========================================================================
    2. Main Content Area
    ========================================================================== */
@@ -40,24 +32,18 @@
 }
 
 .nautilus-content {
+  display: grid;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
   flex: 1;
   min-height: 0;
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
 
 /* ==========================================================================
    3. Split View
    ========================================================================== */
-
-.split-container {
-  display: grid;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
 
 .split-divider {
   width: 0.5rem;

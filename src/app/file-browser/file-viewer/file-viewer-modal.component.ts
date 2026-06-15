@@ -10,8 +10,9 @@ import {
   computed,
   ViewChild,
   ElementRef,
+  DestroyRef,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
@@ -107,14 +108,11 @@ const gnomeLightHighlighting = HighlightStyle.define([
     TranslateModule,
     FormsModule,
     MatTooltip,
-    CommonModule,
   ],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })
 export class FileViewerModalComponent implements OnInit, OnDestroy {
-  private static readonly FILE_OPERATION_ORIGIN = ORIGINS.FILEMANAGER;
-
   public data!: {
     items: Entry[];
     currentIndex: number;
@@ -134,6 +132,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -185,7 +184,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private editorView: EditorView | null = null;
 
   // Cancel pending requests when component updates or destroys
-  private destroy$ = new Subject<void>();
   private cancelCurrentRequest$ = new Subject<void>();
 
   @Output() closeViewer = new EventEmitter<void>();
@@ -196,8 +194,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
     this.cancelCurrentRequest$.complete();
     void this.stopReadJobs();
     this.fileViewerService.setActiveFileName(null);
@@ -492,6 +488,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     // 1. Immediately reset state entirely, clear URLs so media elements unmount.
     this.cancelCurrentRequest$.next();
     this.isLoading.set(true);
+    this.currentFileType.set('loading');
     this.currentUrl.set('');
     this.textContent.set('');
     this.folderSize.set(null);
@@ -503,10 +500,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.errorMessage.set(null);
 
     try {
-      const [type, url] = await Promise.all([
-        this.fileViewerService.getFileType(item, this.data.remoteName, this.data.isLocal),
-        this.fileViewerService.generateUrl(item, this.data.remoteName, this.data.isLocal),
-      ]);
+      const url = await this.fileViewerService.generateUrl(
+        item,
+        this.data.remoteName,
+        this.data.isLocal
+      );
+      const type = this.fileCategory();
 
       this.currentFileType.set(type);
       this.rawUrl.set(url);
@@ -564,7 +563,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
           })
           .pipe(
             takeUntil(this.cancelCurrentRequest$),
-            takeUntil(this.destroy$),
+            takeUntilDestroyed(this.destroyRef),
             catchError(err => {
               console.warn('Browser cannot render file:', err);
               this.currentFileType.set('error');
@@ -773,19 +772,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.errorMessage.set(
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
-
-    // Try to fetch the specific error message from the protocol handler (e.g. Locked, Permission Denied)
-    this.http
-      .get(this.rawUrl(), { responseType: 'text' })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        error: err => {
-          const body = err.error instanceof Blob ? 'Binary data' : err.error;
-          if (body && typeof body === 'string' && body.length < 500) {
-            this.errorMessage.set(body);
-          }
-        },
-      });
 
     console.error('Failed to load file:', this.fileName());
   }

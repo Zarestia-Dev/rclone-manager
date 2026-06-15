@@ -4,7 +4,6 @@ import {
   output,
   viewChild,
   afterRenderEffect,
-  afterNextRender,
   ElementRef,
   ChangeDetectionStrategy,
   signal,
@@ -81,14 +80,6 @@ export class NautilusTabsComponent {
       const activeIndex = this.activeTabIndex();
       this.tabs();
       this.scrollToActiveTab(activeIndex);
-    });
-
-    afterNextRender(() => {
-      window.addEventListener('dragover', this.onGlobalDragOver);
-
-      this.destroyRef.onDestroy(() => {
-        window.removeEventListener('dragover', this.onGlobalDragOver);
-      });
     });
   }
 

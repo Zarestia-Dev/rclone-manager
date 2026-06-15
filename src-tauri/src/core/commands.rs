@@ -40,6 +40,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // PLATFORM
             // =================================================================
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
+            (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
 
             // =================================================================
@@ -47,10 +48,15 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
             (refresh_system, $crate::core::initialization::refresh_system, []);
+            #[cfg(feature = "updater")]
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
+            #[cfg(feature = "updater")]
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
+            #[cfg(feature = "updater")]
             (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
+            #[cfg(feature = "updater")]
             (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
+            #[cfg(feature = "updater")]
             (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
             (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
 
@@ -323,10 +329,15 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // DESKTOP & HEADLESS UTILITIES
             // =================================================================
+            #[cfg(feature = "updater")]
             (fetch_update, $crate::utils::app::updater::app_updates::fetch_update, [channel: String]);
+            #[cfg(feature = "updater")]
             (get_app_update_info, $crate::utils::app::updater::app_updates::get_app_update_info, []);
+            #[cfg(feature = "updater")]
             (install_update, $crate::utils::app::updater::app_updates::install_update, []);
+            #[cfg(feature = "updater")]
             (cancel_app_update, $crate::utils::app::updater::app_updates::cancel_app_update, []);
+            #[cfg(feature = "updater")]
             (apply_app_update, $crate::utils::app::updater::app_updates::apply_app_update, []);
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
 

@@ -1,6 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { UiStateService } from '../../ui/state/ui-state.service';
 import { EventListenersService } from '../system/event-listeners.service';
 import { UpdateInfo, DownloadStatus, BackendUpdateStatus, DownloadStateStatus } from '@app/types';
 import { AppSettingsService } from '../../settings/app-settings.service';
@@ -18,7 +17,6 @@ const DEFAULT_DOWNLOAD_STATUS: DownloadStatus = {
 
 @Injectable({ providedIn: 'root' })
 export class AppUpdaterService extends TauriBaseService {
-  private readonly uiStateService = inject(UiStateService);
   private readonly eventListenersService = inject(EventListenersService);
   private readonly appSettingsService = inject(AppSettingsService);
 
@@ -35,12 +33,14 @@ export class AppUpdaterService extends TauriBaseService {
   // State signals
   // ---------------------------------------------------------------------------
 
+  private readonly _isUpdaterEnabled = signal<boolean>(true);
   private readonly _buildType = signal<string | null>(null);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _downloadStatus = signal<DownloadStatus>(DEFAULT_DOWNLOAD_STATUS);
   private readonly _isChecking = signal<boolean>(false);
 
   // Public readonly surface (Derived to prevent state tears)
+  public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
   public readonly buildType = this._buildType.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly downloadStatus = this._downloadStatus.asReadonly();
@@ -140,16 +140,6 @@ export class AppUpdaterService extends TauriBaseService {
     }
 
     try {
-      if (this.uiStateService.platform === 'windows') {
-        const confirmed = await this.notificationService.confirmModal(
-          'updates.confirmInstall.title',
-          'updates.confirmInstall.message',
-          'updates.confirmInstall.confirm',
-          'updates.confirmInstall.cancel'
-        );
-        if (!confirmed) return;
-      }
-
       this._updateState.update(u => (u ? { ...u, status: BackendUpdateStatus.Downloading } : null));
       this._downloadStatus.set(DEFAULT_DOWNLOAD_STATUS);
 
@@ -190,6 +180,14 @@ export class AppUpdaterService extends TauriBaseService {
   /** Restarts the app and applies the staged update. */
   async finishUpdate(): Promise<void> {
     try {
+      const confirmed = await this.notificationService.confirmModal(
+        'updates.confirmApply.title',
+        'updates.confirmApply.message',
+        'updates.confirmApply.confirm',
+        'updates.confirmApply.cancel'
+      );
+      if (!confirmed) return;
+
       await this.invokeWithNotification('apply_app_update', undefined, {
         errorKey: 'updates.restartFailed',
         showSuccess: false,
@@ -240,6 +238,11 @@ export class AppUpdaterService extends TauriBaseService {
 
   async initialize(): Promise<void> {
     try {
+      const enabled = await this.invokeCommand<boolean>('is_updater_enabled');
+      this._isUpdaterEnabled.set(enabled);
+      if (!enabled) {
+        return;
+      }
       await this.settings.initialize();
       this._buildType.set(await this.invokeCommand<string>('get_build_type'));
 
@@ -260,6 +263,7 @@ export class AppUpdaterService extends TauriBaseService {
       .listenToAppUpdateFound()
       .pipe(takeUntilDestroyed())
       .subscribe(metadata => {
+        if (!this.isUpdaterEnabled()) return;
         const current = this._updateState();
         if (current?.version === metadata.version) return;
 
@@ -278,6 +282,7 @@ export class AppUpdaterService extends TauriBaseService {
       .listenToAppDownloadProgress()
       .pipe(takeUntilDestroyed())
       .subscribe(status => {
+        if (!this.isUpdaterEnabled()) return;
         this._downloadStatus.set(status);
 
         if (status.state.status === DownloadStateStatus.Failed) {

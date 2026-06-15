@@ -10,7 +10,7 @@ use crate::{
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
-        types::{events::APP_EVENT, state::RcloneState, updater::AppUpdaterState},
+        types::{events::APP_EVENT, state::RcloneState},
     },
 };
 
@@ -104,6 +104,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
     }
 
+    #[cfg(feature = "updater")]
     apply_pending_updates(&app_handle).await;
 }
 
@@ -123,26 +124,24 @@ pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
 }
 
 /// Applies any staged updates (app or rclone) during shutdown.
+#[cfg(feature = "updater")]
 async fn apply_pending_updates(app_handle: &AppHandle) {
     // App self-update (requires the 'updater' Tauri feature).
-    #[cfg(desktop)]
-    {
-        if let Some(state) = app_handle.try_state::<AppUpdaterState>() {
-            let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
-                let mut d = state.data.lock();
-                if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
-                    d.state = crate::utils::types::updater::UpdateState::Idle;
-                    Some((u, s))
-                } else {
-                    None
-                }
-            };
+    if let Some(state) = app_handle.try_state::<crate::utils::types::updater::AppUpdaterState>() {
+        let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
+            let mut d = state.data.lock();
+            if let (Some(u), Some(s)) = (d.pending_action.take(), d.signature.take()) {
+                d.state = crate::utils::types::updater::UpdateState::Idle;
+                Some((u, s))
+            } else {
+                None
+            }
+        };
 
-            if let Some((update, sig)) = staged {
-                info!("Applying staged app update...");
-                if let Err(e) = update.install(sig) {
-                    error!("Failed to apply app update: {e}");
-                }
+        if let Some((update, sig)) = staged {
+            info!("Applying staged app update...");
+            if let Err(e) = update.install(sig) {
+                error!("Failed to apply app update: {e}");
             }
         }
     }

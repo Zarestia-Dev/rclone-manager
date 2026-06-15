@@ -1268,10 +1268,10 @@
     "availableNotification": "Mise à jour disponible : {{version}}. Ouvert à l'installation.",
     "noUpdateAvailable": "Aucune mise à jour disponible",
     "skipVersion": "La mise à jour {{version}} sera ignorée",
-    "confirmInstall": {
-      "title": "Installer la mise à jour",
-      "message": "Voulez-vous télécharger et préparer la mise à jour ? Vous devrez redémarrer l'application pour appliquer les modifications une fois terminées.",
-      "confirm": "Installer",
+    "confirmApply": {
+      "title": "Appliquer la mise à jour",
+      "message": "Voulez-vous appliquer la mise à jour ? L'application va redémarrer pour appliquer les modifications.",
+      "confirm": "Appliquer",
       "cancel": "Annuler"
     },
     "restored": "Mise à jour de {{version}} restaurée",

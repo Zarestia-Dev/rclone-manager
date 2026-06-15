@@ -8,4 +8,6 @@ pub mod origin;
 pub mod rclone;
 pub mod remotes;
 pub mod state;
+
+#[cfg(feature = "updater")]
 pub mod updater;

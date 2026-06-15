@@ -1268,10 +1268,10 @@
     "availableNotification": "Actualización disponible: {{version}}. Abre Acerca de para instalarla.",
     "noUpdateAvailable": "No hay actualizaciones disponibles",
     "skipVersion": "Se omitirá la actualización {{version}}",
-    "confirmInstall": {
-      "title": "Instalar actualización",
-      "message": "La instalación de esta actualización reiniciará la aplicación automáticamente. ¿Quieres continuar?",
-      "confirm": "Instalar",
+    "confirmApply": {
+      "title": "Aplicar actualización",
+      "message": "¿Desea aplicar la actualización? La aplicación se reiniciará para aplicar los cambios.",
+      "confirm": "Aplicar",
       "cancel": "Cancelar"
     },
     "restored": "Actualización {{version}} restaurada",

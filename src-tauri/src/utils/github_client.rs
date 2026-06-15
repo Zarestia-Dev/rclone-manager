@@ -10,12 +10,15 @@ use once_cell::sync::Lazy;
 use reqwest::header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT};
 use serde::Deserialize;
 
+pub const OWNER: &str = "Zarestia-Dev";
+pub const REPO: &str = "rclone-manager";
+
 // --- Shared reqwest Client For GitHub API ---
 static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     let mut headers = HeaderMap::new();
 
     // Set a custom User-Agent for organizational identification
-    let user_agent_string = format!("Zarestia-Dev/rclone-manager/v{}", env!("CARGO_PKG_VERSION"));
+    let user_agent_string = format!("{}/{}/v{}", OWNER, REPO, env!("CARGO_PKG_VERSION"));
 
     headers.insert(
         USER_AGENT,

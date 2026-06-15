@@ -35,7 +35,6 @@ use crate::{
     utils::types::{
         logs::LogCache,
         state::{RcApiEngine, RcloneState},
-        updater::{AppUpdaterState, RcloneUpdaterState},
     },
 };
 
@@ -149,7 +148,7 @@ pub fn run() {
     // -------------------------------------------------------------------------
     // Updater Plugin (Desktop)
     // -------------------------------------------------------------------------
-    #[cfg(desktop)]
+    #[cfg(feature = "updater")]
     {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
@@ -351,8 +350,11 @@ fn setup_app(
     app.manage(crate::core::automation::watcher::WatcherManager::new());
     app.manage(core::alerts::dispatch::DispatchContext::new());
 
-    app.manage(AppUpdaterState::default());
-    app.manage(RcloneUpdaterState::default());
+    #[cfg(feature = "updater")]
+    app.manage(utils::types::updater::AppUpdaterState::default());
+    #[cfg(feature = "updater")]
+    app.manage(utils::types::updater::RcloneUpdaterState::default());
+
     #[cfg(all(desktop, feature = "tray"))]
     app.manage(crate::core::tray::TrayMenuState::default());
 

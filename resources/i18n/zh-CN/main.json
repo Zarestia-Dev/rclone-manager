@@ -1268,10 +1268,10 @@
     "availableNotification": "有可用更新：{{version}}，打开关于页面安装",
     "noUpdateAvailable": "暂无更新",
     "skipVersion": "将跳过更新 {{version}}",
-    "confirmInstall": {
-      "title": "安装更新",
-      "message": "是否下载并准备更新？完成后需要重启应用才能生效。",
-      "confirm": "安装",
+    "confirmApply": {
+      "title": "应用更新",
+      "message": "是否应用更新？应用将重新启动以使更改生效。",
+      "confirm": "应用",
       "cancel": "取消"
     },
     "restored": "已恢复版本 {{version}}",

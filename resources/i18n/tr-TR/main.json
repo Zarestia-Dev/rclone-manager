@@ -1268,10 +1268,10 @@
     "availableNotification": "Güncelleme mevcut: {{version}}. Kurmak için Hakkında bölümünü açın.",
     "noUpdateAvailable": "Güncelleme yok",
     "skipVersion": "{{version}} sürümü atlanacak",
-    "confirmInstall": {
-      "title": "Güncellemeyi Kur",
-      "message": "Güncellemeyi indirip hazırlamak istiyor musunuz? Değişiklikleri uygulamak için işlem bittiğinde uygulamayı yeniden başlatmanız gerekecektir.",
-      "confirm": "Kur",
+    "confirmApply": {
+      "title": "Güncellemeyi Uygula",
+      "message": "Güncellemeyi uygulamak istiyor musunuz? Değişiklikleri uygulamak için uygulama yeniden başlatılacaktır.",
+      "confirm": "Uygula",
       "cancel": "İptal"
     },
     "restored": "Güncelleme {{version}} geri yüklendi",

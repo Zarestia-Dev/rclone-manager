@@ -25,23 +25,21 @@
       (blur)="onSearchBlur()"
     />
   } @else if (!isEditingPath()) {
-    @if (starredMode()) {
-      <div class="path-scroll-view hide-scrollbar">
+    <div
+      class="path-scroll-view hide-scrollbar"
+      #pathScrollView
+      appScrollShadow
+      [class.show-left-shadow]="!starredMode() && showLeft()"
+      [class.show-right-shadow]="!starredMode() && showRight()"
+      (leftShadow)="showLeft.set($event)"
+      (rightShadow)="showRight.set($event)"
+    >
+      @if (starredMode()) {
         <button class="path-segment">
           <mat-icon svgIcon="star"></mat-icon>
           {{ 'nautilus.titles.starred' | translate }}
         </button>
-      </div>
-    } @else {
-      <div
-        class="path-scroll-view hide-scrollbar"
-        #pathScrollView
-        appScrollShadow
-        [class.show-left-shadow]="showLeft()"
-        [class.show-right-shadow]="showRight()"
-        (leftShadow)="showLeft.set($event)"
-        (rightShadow)="showRight.set($event)"
-      >
+      } @else {
         <button
           class="path-segment"
           data-segment-index="-1"
@@ -74,8 +72,8 @@
             {{ segment.name }}
           </button>
         }
-      </div>
-    }
+      }
+    </div>
 
     <button
       class="nav-button nav-button--flush"

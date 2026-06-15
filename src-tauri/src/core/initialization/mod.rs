@@ -47,7 +47,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         error!("❌ Failed to initialize automations: {e}");
     }
 
-    #[cfg(desktop)]
+    #[cfg(feature = "updater")]
     crate::core::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
     info!("🎉 Phase 5: Applying runtime settings");

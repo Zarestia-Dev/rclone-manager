@@ -56,7 +56,6 @@ async fn run_update_checks(app: &AppHandle) {
         .get_all()
         .unwrap_or_default();
 
-    #[cfg(desktop)]
     if config.runtime.app_auto_check_updates {
         let channel = config.runtime.app_update_channel.clone();
         info!("Checking for app updates (channel: {channel})...");
@@ -76,7 +75,6 @@ async fn run_update_checks(app: &AppHandle) {
     }
 }
 
-#[cfg(desktop)]
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
     crate::utils::app::updater::app_updates::fetch_update(app.clone(), channel.to_string())
         .await

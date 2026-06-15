@@ -21,12 +21,14 @@ export class RcloneUpdateService extends TauriBaseService {
 
   private _latestCheckId = 0;
 
+  private readonly _isUpdaterEnabled = signal<boolean>(true);
   private readonly _isChecking = signal<boolean>(false);
   private readonly _updateState = signal<UpdateInfo | null>(null);
   private readonly _error = signal<string | null>(null);
   private readonly _lastCheck = signal<Date | null>(null);
 
   // Public readonly surface (Derived to prevent state tears)
+  public readonly isUpdaterEnabled = this._isUpdaterEnabled.asReadonly();
   public readonly isChecking = this._isChecking.asReadonly();
   public readonly error = this._error.asReadonly();
   public readonly lastCheck = this._lastCheck.asReadonly();
@@ -214,6 +216,11 @@ export class RcloneUpdateService extends TauriBaseService {
 
   async initialize(): Promise<void> {
     try {
+      const enabled = await this.invokeCommand<boolean>('is_updater_enabled');
+      this._isUpdaterEnabled.set(enabled);
+      if (!enabled) {
+        return;
+      }
       await this.settings.initialize();
       if (this.settings.autoCheckEnabled()) {
         await this.restoreUpdateState();
@@ -227,23 +234,28 @@ export class RcloneUpdateService extends TauriBaseService {
     this.eventListenersService
       .listenToRcloneEngineUpdating()
       .pipe(takeUntilDestroyed())
-      .subscribe(() =>
+      .subscribe(() => {
+        if (!this.isUpdaterEnabled()) return;
         this._updateState.update(u =>
           u ? { ...u, status: BackendUpdateStatus.Downloading } : null
-        )
-      );
+        );
+      });
 
     this.eventListenersService
       .listenToEngineRestarted('rclone_update')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
+        if (!this.isUpdaterEnabled()) return;
         void this.checkForUpdates();
       });
 
     this.eventListenersService
       .listenToRcloneUpdateFound()
       .pipe(takeUntilDestroyed())
-      .subscribe(data => this.processUpdateResult(data));
+      .subscribe(data => {
+        if (!this.isUpdaterEnabled()) return;
+        this.processUpdateResult(data);
+      });
   }
 
   private async restoreUpdateState(): Promise<void> {

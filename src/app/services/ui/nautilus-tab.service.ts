@@ -23,6 +23,9 @@ export interface PaneState {
   isLoading: WritableSignal<boolean>;
   error: WritableSignal<string | null>;
   refreshTrigger: WritableSignal<number>;
+  loadedRemote?: ExplorerRoot | null;
+  loadedPath?: string;
+  loadedTrigger?: number;
 }
 
 export interface Tab {
@@ -345,6 +348,14 @@ export class NautilusTabService {
   refresh(paneIndex: 0 | 1): void {
     const ref = this.getPaneRef(paneIndex);
     ref.refreshTrigger.update(v => v + 1);
+
+    const activeTab = this.tabs()[this.activeTabIndex()];
+    if (activeTab) {
+      const pane = paneIndex === 0 ? activeTab.left : activeTab.right;
+      if (pane) {
+        pane.refreshTrigger.set(ref.refreshTrigger());
+      }
+    }
   }
 
   /**
@@ -748,10 +759,30 @@ export class NautilusTabService {
 
     toObservable(loadParams)
       .pipe(
-        switchMap(({ remote, path }) => {
+        switchMap(({ remote, path, _trigger }) => {
           if (!remote) {
             ref.rawFiles.set([]);
             return EMPTY;
+          }
+
+          // Check if this path was already loaded for this specific pane state
+          const activeTab = this.tabs()[this.activeTabIndex()];
+          if (activeTab) {
+            const pane = paneIndex === 0 ? activeTab.left : activeTab.right;
+            if (
+              pane &&
+              pane.remote?.name === remote.name &&
+              pane.path === path &&
+              pane.loadedRemote?.name === remote.name &&
+              pane.loadedPath === path &&
+              pane.loadedTrigger === _trigger
+            ) {
+              // Restore cached signals instead of re-fetching
+              ref.rawFiles.set(pane.rawFiles());
+              ref.loading.set(pane.isLoading());
+              ref.error.set(pane.error());
+              return EMPTY;
+            }
           }
 
           ref.loading.set(true);
@@ -812,6 +843,11 @@ export class NautilusTabService {
         if (pane) {
           pane.rawFiles.set(files);
           pane.isLoading.set(false);
+          pane.error.set(ref.error());
+          // Save the loaded state!
+          pane.loadedRemote = pane.remote;
+          pane.loadedPath = pane.path;
+          pane.loadedTrigger = ref.refreshTrigger();
         }
 
         const pending = this.pendingPreviewFilePath();

@@ -184,6 +184,7 @@ export class AboutModalComponent implements OnInit {
 
   // Sourced from the service — already resolved during service init.
   readonly buildType = computed(() => this.appUpdaterService.buildType());
+  readonly updaterEnabled = computed(() => this.appUpdaterService.isUpdaterEnabled());
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
 

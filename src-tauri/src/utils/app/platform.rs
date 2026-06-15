@@ -140,3 +140,9 @@ pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
 
     let _ = app_handle.set_activation_policy(policy);
 }
+
+#[tauri::command]
+#[must_use]
+pub fn is_updater_enabled() -> bool {
+    cfg!(feature = "updater")
+}

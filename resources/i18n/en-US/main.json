@@ -1268,10 +1268,10 @@
     "availableNotification": "Update available: {{version}}. Open About to install.",
     "noUpdateAvailable": "No update available",
     "skipVersion": "Update {{version}} will be skipped",
-    "confirmInstall": {
-      "title": "Install Update",
-      "message": "Do you want to download and prepare the update? You will need to restart the application to apply changes when finished.",
-      "confirm": "Install",
+    "confirmApply": {
+      "title": "Apply Update",
+      "message": "Do you want to apply the update? The application will restart to apply the changes.",
+      "confirm": "Apply",
       "cancel": "Cancel"
     },
     "restored": "Update {{version}} restored",

@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Detached dialog and other dialog fixes. #228
+- Fixed silent update crash for windows.
+- Fixed restart problem after apply update the application.
 
 ## [v0.2.7] - 2026-06-13
 

@@ -95,50 +95,48 @@
       ></app-nautilus-tabs>
     }
 
-    <div class="nautilus-content" [class.split-view]="tabSvc.isSplitEnabled()">
-      <div class="split-container" [style.gridTemplateColumns]="tabSvc.splitGridColumns()">
-        @for (pane of visiblePanes(); track pane.index) {
-          @if (!$first) {
-            <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
-          }
-          <app-nautilus-view-pane
-            [files]="pane.files"
-            [selection]="pane.selection"
-            [paneIndex]="pane.index"
-            [isSplitEnabled]="tabSvc.isSplitEnabled()"
-            [loading]="tabSvc.isLoading()"
-            [error]="pane.error"
-            [layout]="settings.layout()"
-            [iconSize]="settings.iconSize()"
-            [listRowHeight]="settings.listRowHeight()"
-            [isDragging]="dragDrop.isDragging()"
-            [hoveredFolder]="dragDrop.hoveredFolder()"
-            [hoveredFolderPaneIndex]="dragDrop.hoveredFolderPaneIndex()"
-            [cutItemPaths]="fileOps.cutItemPaths()"
-            [starredMode]="pane.starredMode"
-            [sortKey]="settings.sortKey()"
-            [sortDirection]="settings.sortDirection()"
-            [activePaneIndex]="tabSvc.activePaneIndex()"
-            [isItemSelectable]="isItemSelectable"
-            [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
-            [isMobile]="isMobile()"
-            [fileMenu]="fileMenu"
-            (switchPane)="tabSvc.switchPane($event)"
-            (clearSelection)="selectionSvc.clearSelection(pane.index)"
-            (setContextItem)="setContextItem($event, pane.index)"
-            (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
-            (dragStarted)="onDragStarted($event.event, $event.item)"
-            (dragEnded)="onDragEnded()"
-            (itemClick)="onItemClick($event.item, $event.event, $event.index, pane.index)"
-            (navigateTo)="navigateTo($event)"
-            (toggleStar)="nautilusService.toggleItem('starred', $event)"
-            (toggleSort)="settings.toggleSort($event)"
-            (refresh)="tabSvc.refresh(tabSvc.activePaneIndex())"
-            (cancelLoad)="cancelLoad($event)"
-            (updateSelection)="onUpdateSelection($event, pane.index)"
-          ></app-nautilus-view-pane>
+    <div class="nautilus-content" [style.gridTemplateColumns]="tabSvc.splitGridColumns()">
+      @for (pane of visiblePanes(); track pane.index) {
+        @if (!$first) {
+          <div class="split-divider" (mousedown)="onSplitDividerDrag($event)"></div>
         }
-      </div>
+        <app-nautilus-view-pane
+          [files]="pane.files"
+          [selection]="pane.selection"
+          [paneIndex]="pane.index"
+          [isSplitEnabled]="tabSvc.isSplitEnabled()"
+          [loading]="pane.loading"
+          [error]="pane.error"
+          [layout]="settings.layout()"
+          [iconSize]="settings.iconSize()"
+          [listRowHeight]="settings.listRowHeight()"
+          [isDragging]="dragDrop.isDragging()"
+          [hoveredFolder]="dragDrop.hoveredFolder()"
+          [hoveredFolderPaneIndex]="dragDrop.hoveredFolderPaneIndex()"
+          [cutItemPaths]="fileOps.cutItemPaths()"
+          [starredMode]="pane.starredMode"
+          [sortKey]="settings.sortKey()"
+          [sortDirection]="settings.sortDirection()"
+          [activePaneIndex]="tabSvc.activePaneIndex()"
+          [isItemSelectable]="isItemSelectable"
+          [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
+          [isMobile]="isMobile()"
+          [fileMenu]="fileMenu"
+          (switchPane)="tabSvc.switchPane($event)"
+          (clearSelection)="selectionSvc.clearSelection(pane.index)"
+          (setContextItem)="setContextItem($event, pane.index)"
+          (dropToCurrentDirectory)="onDropToCurrentDirectory($event.event, $event.paneIndex)"
+          (dragStarted)="onDragStarted($event.event, $event.item)"
+          (dragEnded)="onDragEnded()"
+          (itemClick)="onItemClick($event.item, $event.event, $event.index, pane.index)"
+          (navigateTo)="navigateTo($event)"
+          (toggleStar)="nautilusService.toggleItem('starred', $event)"
+          (toggleSort)="settings.toggleSort($event)"
+          (refresh)="tabSvc.refresh(tabSvc.activePaneIndex())"
+          (cancelLoad)="cancelLoad($event)"
+          (updateSelection)="onUpdateSelection($event, pane.index)"
+        ></app-nautilus-view-pane>
+      }
     </div>
 
     @if (isMobile()) {
