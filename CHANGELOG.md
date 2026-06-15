@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [v0.2.8] - 2026-06-15
 
 ### Added
 - **Language**: Added Ukrainian language support. (Thanks to @maksam07!) PR #230
