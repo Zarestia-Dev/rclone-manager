@@ -401,7 +401,6 @@ pub mod app_updates {
                 let mut data = state.data.lock();
                 data.state = UpdateState::Available;
                 data.pending_action = Some(update);
-                return;
             }
 
             #[cfg(not(target_os = "windows"))]
