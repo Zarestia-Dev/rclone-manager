@@ -5,27 +5,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ServeListItem } from '@app/types';
+import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
-
-interface TypeInfo {
-  icon: string;
-}
-
-const TYPE_INFO: Record<string, TypeInfo> = {
-  http: { icon: 'globe' },
-  webdav: { icon: 'cloud' },
-  ftp: { icon: 'file-arrow-up' },
-  sftp: { icon: 'lock' },
-  nfs: { icon: 'server' },
-  dlna: { icon: 'tv' },
-  restic: { icon: 'shield' },
-  s3: { icon: 'bucket' },
-};
-
-const DEFAULT_ICON = 'satellite-dish';
-const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
 
 @Component({
   selector: 'app-serve-card',

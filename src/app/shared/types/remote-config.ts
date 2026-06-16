@@ -215,6 +215,22 @@ export interface AppConfig {
   runtimeRemoteProfile?: string;
 }
 
+export interface ProfileConfig {
+  app?: AppConfig;
+  rclone?: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    path1?: string;
+    path2?: string;
+    fs?: string;
+    mountPoint?: string;
+    type?: string;
+    addr?: string;
+    _config?: Record<string, unknown>;
+  };
+}
+
+
 export interface MountConfig {
   app: AppConfig;
   rclone: {
@@ -409,3 +425,19 @@ export const RCLONE_PATH_KEYS = [
   'source',
   'path',
 ] as const;
+
+export interface JobProfile {
+  autoStart?: boolean;
+  srcFs?: string | string[];
+  dstFs?: string;
+  path1?: string;
+  path2?: string;
+  fs?: string;
+  mountPoint?: string;
+}
+
+export type JobMap = Record<string, JobProfile>;
+
+
+export type WizardStep = 'setup' | 'operations' | 'interactive';
+export type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';

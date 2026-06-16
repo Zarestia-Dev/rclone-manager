@@ -67,7 +67,7 @@
     "successUnmount": "Successfully unmounted {{remote}}",
     "failedUnmount": "Failed to unmount {{remote}}: {{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "Sync Operations Available",
     "syncing": "Syncing",
     "copying": "Copying",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "General",
     "mount": "Mount",
-    "sync": "Sync",
+    "operations": "Operations",
     "serve": "Serve"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "Password is required",
         "passwordEmpty": "Password cannot be empty or whitespace",
-        "passwordLength": "Password must be at least 4 characters",
         "wrongPassword": "Incorrect password. Please try again.",
         "integrityFailed": "Backup file is corrupted or has been tampered with.",
         "verificationFailed": "File verification failed. The backup may be corrupted.",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "Mount",
-      "startSync": "Start Sync",
+      "startOperations": "Start Operation",
       "startServe": "Start Serve"
     },
     "panelTitles": {
       "mountedRemotes": "Mounted Remotes",
-      "activeSync": "Active Sync Operations",
+      "activeOperations": "Active Operations",
       "activeServes": "Active Serves",
       "unmountedRemotes": "Unmounted Remotes",
       "inactiveRemotes": "Inactive Remotes",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "Mount point {{mountPoint}} is already in use by remote {{remote}}",
       "configIncomplete": "Mount configuration incomplete for profile '{{profile}}'"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "Mount Overview",
-      "sync": "Sync Overview",
+      "operations": "Operations Overview",
       "serve": "Serve Overview",
       "general": "RClone Manager",
       "default": "Remotes Overview"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "Mount Status",
-        "sync": "Sync Status",
+        "operations": "Operations Status",
         "serve": "Serve Status",
         "general": "System Status"
       },

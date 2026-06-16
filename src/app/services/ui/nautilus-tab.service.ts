@@ -9,8 +9,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS } from '@app/types';
-import { TabItem } from '../../file-browser/nautilus/tabs/nautilus-tabs.component';
+import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS, NautilusTabItem } from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
 
 export interface PaneState {
@@ -104,7 +103,7 @@ export class NautilusTabService {
   );
 
   // -- Computeds --
-  readonly mappedTabs = computed((): TabItem[] =>
+  readonly mappedTabs = computed((): NautilusTabItem[] =>
     this.tabs().map(tab => ({
       id: tab.id,
       title: tab.title,

@@ -67,7 +67,7 @@
     "successUnmount": "Se desmontó correctamente {{remote}}",
     "failedUnmount": "Error al desmontar {{remote}}: {{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "Operaciones de sincronización disponibles",
     "syncing": "Sincronizando",
     "copying": "Copiando",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "General",
     "mount": "Montar",
-    "sync": "Sincronizar",
+    "operations": "Operaciones",
     "serve": "Servir"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "Se requiere contraseña",
         "passwordEmpty": "La contraseña no puede estar vacía ni contener espacios en blanco",
-        "passwordLength": "La contraseña debe tener al menos 4 caracteres",
         "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
         "integrityFailed": "El archivo de copia de seguridad está dañado o ha sido manipulado.",
         "verificationFailed": "Error en la verificación del archivo. Es posible que la copia de seguridad esté dañada.",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "Montar",
-      "startSync": "Iniciar sincronización",
+      "startOperations": "Iniciar operación",
       "startServe": "Iniciar servicio"
     },
     "panelTitles": {
       "mountedRemotes": "Remotos montados",
-      "activeSync": "Operaciones de sincronización activas",
+      "activeOperations": "Operaciones activas",
       "activeServes": "Servicios activos",
       "unmountedRemotes": "Remotos desmontados",
       "inactiveRemotes": "Remotos inactivos",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "El punto de montaje {{mountPoint}} ya está en uso por el remoto {{remote}}",
       "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "Resumen de montaje",
-      "sync": "Resumen de sincronización",
+      "operations": "Resumen de operaciones",
       "serve": "Resumen de servicio",
       "general": "RClone Manager",
       "default": "Resumen de remotos"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "Estado de montaje",
-        "sync": "Estado de sincronización",
+        "operations": "Estado de operaciones",
         "serve": "Estado de servicio",
         "general": "Estado del sistema"
       },

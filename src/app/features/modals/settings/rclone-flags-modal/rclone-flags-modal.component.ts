@@ -27,7 +27,7 @@ import {
   matchesConfigSearch,
   stripCliPrefix,
 } from 'src/app/services/remote/utils/remote-config.utils';
-import { RcConfigOption, SharedProfileType } from '@app/types';
+import { RcConfigOption, SharedProfileType, PageType, GroupedRCloneOptions, RCloneService, RCloneFlagsSearchResult, ServiceConfig } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
@@ -38,26 +38,6 @@ import {
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-type PageType = 'home' | string;
-type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
-
-interface RCloneService {
-  name: string;
-  expanded: boolean;
-  categories: string[];
-}
-
-interface SearchResult {
-  service: string;
-  category: string;
-  option: RcConfigOption;
-}
-
-interface ServiceConfig {
-  icon: string;
-  description: string;
-  mainCategory: string;
-}
 
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {
@@ -278,13 +258,13 @@ export class RcloneFlagsModalComponent implements OnInit {
     }))
   );
 
-  readonly globalSearchResults = computed<SearchResult[]>(() => {
+  readonly globalSearchResults = computed<RCloneFlagsSearchResult[]>(() => {
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return [];
 
     const cleanQuery = stripCliPrefix(query);
 
-    const results: SearchResult[] = [];
+    const results: RCloneFlagsSearchResult[] = [];
     const options = this.groupedOptions();
 
     for (const service in options) {
@@ -667,7 +647,7 @@ export class RcloneFlagsModalComponent implements OnInit {
     return option.Name;
   }
 
-  trackBySearchResult(_index: number, result: SearchResult): string {
+  trackBySearchResult(_index: number, result: RCloneFlagsSearchResult): string {
     return `${result.service}-${result.category}-${result.option.Name}`;
   }
 

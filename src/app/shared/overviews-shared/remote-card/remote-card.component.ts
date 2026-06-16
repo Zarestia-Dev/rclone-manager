@@ -15,89 +15,20 @@ import {
   RemoteServeState,
   RemoteCardVariant,
   CardDisplayMode,
+  StartJobEvent,
+  StopJobEvent,
+  OPERATION_META,
+  SYNC_TYPES,
+  BROWSABLE_OPS,
+  ALL_PRIMARY_ACTIONS,
+  MODE_DEFAULTS,
+  OpenInFilesEvent,
+  OpenableFolder,
 } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { ACTION_ANIMATION_CLASS } from '@app/types';
-
-interface OpenInFilesEvent {
-  remoteName: string;
-  path?: string;
-}
-
-interface OperationMeta {
-  startIcon: string;
-  stopIcon: string;
-  startTooltip: string;
-  stopTooltip: string;
-  cssClass: string;
-}
-
-export interface OpenableFolder {
-  operation: PrimaryActionType;
-  profile: string;
-  cssClass: string;
-  tooltip: string;
-  path: string;
-  isLocal: boolean;
-  icon: string;
-}
-
-const OPERATION_META: Record<PrimaryActionType, OperationMeta> = {
-  mount: {
-    startIcon: 'mount',
-    stopIcon: 'eject',
-    startTooltip: 'overviews.remoteCard.actions.mount',
-    stopTooltip: 'overviews.remoteCard.actions.unmount',
-    cssClass: 'accent',
-  },
-  sync: {
-    startIcon: 'refresh',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startSync',
-    stopTooltip: 'overviews.remoteCard.actions.stopSync',
-    cssClass: 'primary',
-  },
-  copy: {
-    startIcon: 'copy',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startCopy',
-    stopTooltip: 'overviews.remoteCard.actions.stopCopy',
-    cssClass: 'yellow',
-  },
-  move: {
-    startIcon: 'move',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startMove',
-    stopTooltip: 'overviews.remoteCard.actions.stopMove',
-    cssClass: 'orange',
-  },
-  bisync: {
-    startIcon: 'right-left',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startBisync',
-    stopTooltip: 'overviews.remoteCard.actions.stopBisync',
-    cssClass: 'purple',
-  },
-  serve: {
-    startIcon: 'satellite-dish',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startServe',
-    stopTooltip: 'overviews.remoteCard.actions.stopServe',
-    cssClass: 'accent',
-  },
-};
-
-const SYNC_TYPES: PrimaryActionType[] = ['sync', 'copy', 'move', 'bisync'];
-const BROWSABLE_OPS: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync'];
-
-const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
-  general: ['mount', 'sync', 'bisync'],
-  sync: ['sync', 'bisync', 'copy', 'move'],
-  mount: ['mount'],
-  serve: ['serve'],
-};
 
 @Component({
   selector: 'app-remote-card',
@@ -146,17 +77,8 @@ export class RemoteCardComponent {
 
   readonly remoteClick = output<Remote>();
   readonly openInFiles = output<OpenInFilesEvent>();
-  readonly startJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
-  // Emits the remote name so the panel can call toggleHidden.emit(name)
+  readonly startJob = output<StartJobEvent>();
+  readonly stopJob = output<StopJobEvent>();
   readonly toggleHidden = output<string>();
 
   readonly actionStates = computed(
@@ -171,7 +93,7 @@ export class RemoteCardComponent {
     switch (this.mode()) {
       case 'mount':
         return this.isOpActive('mount') ? 'active' : 'inactive';
-      case 'sync':
+      case 'operations':
         return this.anySyncActive() ? 'active' : 'inactive';
       case 'serve':
         return this.isOpActive('serve') ? 'active' : 'inactive';
@@ -202,7 +124,7 @@ export class RemoteCardComponent {
         return this.buildButtons(this.primaryActionsFor(this.maxGeneralButtons()));
       case 'mount':
         return this.buildButtons(this.primaryActionsFor(this.maxMountButtons()));
-      case 'sync':
+      case 'operations':
         return this.buildButtons(this.primaryActionsFor(this.maxSyncButtons(), false));
       case 'serve': {
         const btn = this.buildOpButton('serve');
@@ -214,8 +136,7 @@ export class RemoteCardComponent {
   });
 
   readonly visibleStatusIndicators = computed<PrimaryActionType[]>(() => {
-    const allOps: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync', 'serve'];
-    const activeOps = allOps.filter(op => this.isOpActive(op));
+    const activeOps = ALL_PRIMARY_ACTIONS.filter(op => this.isOpActive(op));
     const displayedActionButtonIds = this.actionButtons().map(btn => btn.id as PrimaryActionType);
     return activeOps.filter(op => !displayedActionButtonIds.includes(op));
   });
@@ -234,7 +155,7 @@ export class RemoteCardComponent {
     const relevantOps: PrimaryActionType[] =
       currentMode === 'general'
         ? BROWSABLE_OPS
-        : currentMode === 'sync'
+        : currentMode === 'operations'
           ? SYNC_TYPES
           : currentMode === 'mount'
             ? ['mount']
@@ -333,7 +254,7 @@ export class RemoteCardComponent {
         return this.primaryActionsFor(this.maxGeneralButtons());
       case 'mount':
         return ['mount'];
-      case 'sync':
+      case 'operations':
         return this.primaryActionsFor(this.maxSyncButtons(), false);
       case 'serve':
         return ['serve'];
@@ -483,7 +404,8 @@ export class RemoteCardComponent {
       if (typeof active === 'string') paths.push(active);
     }
 
-    if (SYNC_TYPES.includes(op) && !this.isProfileActive(op, profile)) return paths;
+    if ((SYNC_TYPES as PrimaryActionType[]).includes(op) && !this.isProfileActive(op, profile))
+      return paths;
 
     const browsePaths = (this.opStatus(op) as RemoteOperationState)?.profileBrowsePaths;
     const configuredPaths = browsePaths?.[profile];

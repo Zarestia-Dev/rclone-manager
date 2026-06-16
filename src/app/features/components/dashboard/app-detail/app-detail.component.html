@@ -3,7 +3,7 @@
     <div
       class="icon-container"
       [ngClass]="{
-        sync: isSyncType() && operationActiveState(),
+        sync: isOperationsType() && operationActiveState(),
         copy: selectedSyncOperation() === 'copy' && operationActiveState(),
         move: selectedSyncOperation() === 'move' && operationActiveState(),
         bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
@@ -24,7 +24,7 @@
     </div>
   </header>
 
-  @if (mainOperationType() === 'sync') {
+  @if (mainOperationType() === 'operations') {
     <div
       class="operation-toggle-group"
       role="group"
@@ -56,7 +56,7 @@
           <div
             class="profile-selector-container"
             [ngClass]="{
-              'operation-sync': selectedSyncOperation() === 'sync' && isSyncType(),
+              'operation-sync': selectedSyncOperation() === 'sync' && isOperationsType(),
               'operation-bisync': selectedSyncOperation() === 'bisync',
               'operation-move': selectedSyncOperation() === 'move',
               'operation-copy': selectedSyncOperation() === 'copy',
@@ -137,7 +137,7 @@
           </app-operation-control>
         }
 
-        @if (isSyncType()) {
+        @if (isOperationsType()) {
           @if (selectedCronSchedule(); as schedule) {
             <div
               class="cron-human-readable"

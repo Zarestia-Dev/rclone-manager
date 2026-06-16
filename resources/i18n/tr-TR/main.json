@@ -67,7 +67,7 @@
     "successUnmount": "{{remote}} başarıyla çıkarıldı",
     "failedUnmount": "{{remote}} çıkarılamadı: {{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "Senkronizasyon İşlemleri Mevcut",
     "syncing": "Senkronize Ediliyor",
     "copying": "Kopyalanıyor",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "Genel",
     "mount": "Bağlama",
-    "sync": "Senkronizasyon",
+    "operations": "İşlemler",
     "serve": "Sunucu"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "Şifre gerekli",
         "passwordEmpty": "Şifre boş veya sadece boşluk olamaz",
-        "passwordLength": "Şifre en az 4 karakter olmalıdır",
         "wrongPassword": "Yanlış şifre. Lütfen tekrar deneyin.",
         "integrityFailed": "Yedekleme dosyası bozuk veya değiştirilmiş.",
         "verificationFailed": "Dosya doğrulaması başarısız. Yedek bozuk olabilir.",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "Bağla",
-      "startSync": "Senk. Başlat",
+      "startOperations": "İşlemi Başlat",
       "startServe": "Sunumu Başlat"
     },
     "panelTitles": {
       "mountedRemotes": "Bağlı Uzak Bağlantılar",
-      "activeSync": "Aktif Senkronizasyon İşlemleri",
+      "activeOperations": "Aktif İşlemler",
       "activeServes": "Aktif Sunumlar",
       "unmountedRemotes": "Bağlı Olmayan Uzak Bağlantılar",
       "inactiveRemotes": "İnaktif Uzak Bağlantılar",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "{{mountPoint}} bağlama noktası {{remote}} tarafından zaten kullanılıyor",
       "configIncomplete": "'{{profile}}' profili için bağlama yapılandırması eksik"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "'{{profile}}' profili için yapılandırma eksik"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "Bağlama Özeti",
-      "sync": "Senkronizasyon Özeti",
+      "operations": "İşlemler Özeti",
       "serve": "Sunucu Özeti",
       "general": "RClone Yöneticisi",
       "default": "Uzak Bağlantı Özeti"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "Bağlama Durumu",
-        "sync": "Senkronizasyon Durumu",
+        "operations": "İşlemler Durumu",
         "serve": "Sunucu Durumu",
         "general": "Sistem Durumu"
       },

@@ -1,5 +1,13 @@
 import { Component, computed, input, output, inject, signal, linkedSignal } from '@angular/core';
-import { CardDisplayMode, OperationTab, PrimaryActionType, Remote } from '@app/types';
+import {
+  CardDisplayMode,
+  OperationTab,
+  PrimaryActionType,
+  Remote,
+  MODE_CONFIG,
+  StopJobEvent,
+  OpenInFilesEvent,
+} from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,41 +18,6 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-
-interface StopJobEvent {
-  type: PrimaryActionType;
-  remoteName: string;
-  serveId?: string;
-  profileName?: string;
-}
-
-interface ModeConfig {
-  label: string;
-  icon: string;
-  activeTitle: string;
-  inactiveTitle: string;
-}
-
-const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
-  mount: {
-    label: 'appOverview.labels.mount',
-    icon: 'mount',
-    activeTitle: 'appOverview.panelTitles.mountedRemotes',
-    inactiveTitle: 'appOverview.panelTitles.unmountedRemotes',
-  },
-  sync: {
-    label: 'appOverview.labels.startSync',
-    icon: 'sync',
-    activeTitle: 'appOverview.panelTitles.activeSync',
-    inactiveTitle: 'appOverview.panelTitles.inactiveRemotes',
-  },
-  serve: {
-    label: 'appOverview.labels.startServe',
-    icon: 'satellite-dish',
-    activeTitle: 'appOverview.panelTitles.activeServes',
-    inactiveTitle: 'appOverview.panelTitles.availableRemotes',
-  },
-};
 
 @Component({
   selector: 'app-app-overview',
@@ -76,7 +49,7 @@ export class AppOverviewComponent {
 
   // --- Outputs ---
   readonly remoteSelected = output<Remote>();
-  readonly openInFiles = output<{ remoteName: string; path?: string }>();
+  readonly openInFiles = output<OpenInFilesEvent>();
   readonly startJob = output<{
     type: PrimaryActionType;
     remoteName: string;
@@ -94,7 +67,7 @@ export class AppOverviewComponent {
   readonly isEditingLayout = signal(false);
 
   // --- Derived state ---
-  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()]);
+  private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()] ?? MODE_CONFIG.mount);
 
   readonly activeRemotes = computed(() =>
     this.remoteFacade.orderedVisibleRemotes().filter(r => this.isActive(r))
@@ -145,7 +118,7 @@ export class AppOverviewComponent {
     switch (this.mode()) {
       case 'mount':
         return remote.status.mount.active;
-      case 'sync':
+      case 'operations':
         return (
           remote.status.sync.active ||
           remote.status.copy.active ||

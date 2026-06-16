@@ -27,27 +27,15 @@ import { MatSliderModule } from '@angular/material/slider';
 import { filter, retry, switchMap } from 'rxjs/operators';
 import { timer } from 'rxjs';
 
-import {
-  VfsList,
-  VfsQueueItem,
-  VfsService,
-  VfsStats,
-} from 'src/app/services/operations/vfs.service';
+import { VfsList, VfsQueueItem, VfsService } from 'src/app/services/operations/vfs.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MountManagementService } from 'src/app/services/operations/mount-management.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { ServeManagementService } from 'src/app/services/operations/serve-management.service';
 
-interface VfsInstance {
-  name: string;
-  stats: VfsStats | null;
-  queue: VfsQueueItem[];
-  pollInterval: string;
-  pollIntervalSupported?: boolean;
-}
+import { VfsInstance } from '@app/types';
 
 const POLL_INTERVAL_MS = 5000;
 const PRIORITY_EXPIRY = -999_999_999;
@@ -87,7 +75,6 @@ export class VfsControlPanelComponent {
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
   private readonly translate = inject(TranslateService);
-  private readonly facade = inject(RemoteFacadeService);
   private readonly mapper = inject(RcloneValueMapperService);
 
   readonly changeNotify = computed(() => this.selectedVfs()?.pollIntervalSupported !== false);

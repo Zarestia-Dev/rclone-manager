@@ -8,18 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
-
-interface SettingEntry {
-  key: string;
-  display: string;
-  tooltip: string;
-}
-
-interface GroupedSettings {
-  category: string;
-  entries: SettingEntry[];
-}
+import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } from '@app/types';
 
 @Component({
   selector: 'app-settings-panel',

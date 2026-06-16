@@ -68,7 +68,7 @@ impl std::fmt::Display for RcloneError {
             RcloneError::ConfigError(e) => write!(
                 f,
                 "{}",
-                crate::localized_error!("backendErrors.sync.configIncomplete", "profile" => e)
+                crate::localized_error!("backendErrors.operations.configIncomplete", "profile" => e)
             ),
         }
     }

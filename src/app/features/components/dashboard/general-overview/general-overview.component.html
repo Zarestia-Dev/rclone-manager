@@ -250,9 +250,13 @@
                             <span class="label" role="gridcell">{{
                               'generalOverview.system.memoryUsage' | translate
                             }}</span>
-                            <span class="value" role="gridcell">{{
-                              memoryUsage() | formatMemoryUsage
-                            }}</span>
+                            <span class="value" role="gridcell">
+                              @if (memoryUsage()?.HeapAlloc; as alloc) {
+                                {{ alloc | formatFileSize }}
+                              } @else {
+                                -
+                              }
+                            </span>
                           </div>
                           <div class="info-item" role="row">
                             <span class="label" role="gridcell">{{

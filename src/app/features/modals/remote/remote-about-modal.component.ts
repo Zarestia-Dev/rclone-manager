@@ -26,18 +26,13 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { DiskUsage, FsInfo } from '@app/types';
-
-interface RemoteAboutData {
-  remote: { displayName: string; normalizedName: string; type?: string };
-}
+import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
 
 @Component({
   selector: 'app-remote-about-modal',
   standalone: true,
   imports: [
     TitleCasePipe,
-
     MatDividerModule,
     MatIconModule,
     MatButtonModule,

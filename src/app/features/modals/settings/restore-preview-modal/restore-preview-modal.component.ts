@@ -13,8 +13,6 @@ import { BackupRestoreService } from 'src/app/services/settings/backup-restore.s
 import { BackupAnalysis } from '@app/types';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
-const MIN_PASSWORD_LENGTH = 4;
-
 @Component({
   selector: 'app-restore-preview-modal',
   standalone: true,
@@ -89,11 +87,6 @@ export class RestorePreviewModalComponent {
           ? 'backup.restore.errors.passwordEmpty'
           : 'backup.restore.errors.passwordRequired';
         this.passwordError.set(this.translate.instant(key));
-        return;
-      }
-
-      if (trimmed.length < MIN_PASSWORD_LENGTH) {
-        this.passwordError.set(this.translate.instant('backup.restore.errors.passwordLength'));
         return;
       }
     }

@@ -45,6 +45,26 @@ export interface GlobalStats {
   startTime?: string;
 }
 
+export interface RawTransfer {
+  name?: string;
+  size?: number;
+  bytes?: number;
+  checked?: boolean;
+  error?: string;
+  group?: string;
+  started_at?: string;
+  completed_at?: string;
+  src_fs?: string;
+  dst_fs?: string;
+  srcFs?: string;
+  dstFs?: string;
+}
+
+export interface JobStatsWithCompleted extends GlobalStats {
+  completed?: RawTransfer[];
+}
+
+
 export const DEFAULT_JOB_STATS: GlobalStats = {
   bytes: 0,
   totalBytes: 0,
@@ -108,3 +128,25 @@ export interface BatchMasterJob {
   origin?: Origin;
   group?: string;
 }
+
+export const JOB_STATUS_BADGE_MAP: Record<string, string> = {
+  completed: 'p-primary',
+  failed: 'p-warn',
+  stopped: 'p-orange',
+};
+
+export const JOB_ICON_MAP: Record<string, string> = {
+  sync: 'refresh',
+  copy: 'copy',
+  move: 'move',
+  bisync: 'right-left',
+  serve: 'serve',
+  mount: 'mount',
+  copy_url: 'copy',
+  delete: 'trash',
+  rename: 'pen',
+  cleanup: 'broom',
+  rmdirs: 'broom',
+  upload: 'file-arrow-up',
+};
+

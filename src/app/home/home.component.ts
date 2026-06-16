@@ -104,11 +104,13 @@ export class HomeComponent {
   readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
     const remote = this.selectedRemote();
     if (!remote) return 'sync';
-    return this.localStorage.getScoped<SyncOperationType>(
+    const val = this.localStorage.getScoped<SyncOperationType>(
       `remote.${remote.name}`,
       'selectedSyncOperation',
       'sync'
     );
+    const valid: SyncOperationType[] = ['sync', 'copy', 'move', 'bisync'];
+    return valid.includes(val) ? val : 'sync';
   });
 
   readonly isLoading = this.remoteFacadeService.loading;

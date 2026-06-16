@@ -21,7 +21,17 @@ export class UiStateService {
   public readonly platform: string;
 
   private readonly _currentTab = signal<AppTab>(
-    this.localStorage.get<AppTab>('ui.currentTab', 'general' as AppTab)
+    ((): AppTab => {
+      const stored = this.localStorage.get<string>('ui.currentTab', 'general');
+      const validTabs: AppTab[] = ['mount', 'operations', 'serve', 'general'];
+      if (validTabs.includes(stored as AppTab)) {
+        return stored as AppTab;
+      }
+      if (stored === 'sync') {
+        return 'operations';
+      }
+      return 'general';
+    })()
   );
   public readonly currentTab = this._currentTab.asReadonly();
   // Selected remote state

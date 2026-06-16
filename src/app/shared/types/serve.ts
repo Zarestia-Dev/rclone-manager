@@ -48,3 +48,22 @@ export interface ServeListItem {
 export interface ServeListResponse {
   list: ServeListItem[];
 }
+
+export interface TypeInfo {
+  icon: string;
+}
+
+export const TYPE_INFO: Record<string, TypeInfo> = {
+  http: { icon: 'globe' },
+  webdav: { icon: 'cloud' },
+  ftp: { icon: 'file-arrow-up' },
+  sftp: { icon: 'lock' },
+  nfs: { icon: 'server' },
+  dlna: { icon: 'tv' },
+  restic: { icon: 'shield' },
+  s3: { icon: 'bucket' },
+};
+
+export const DEFAULT_ICON = 'satellite-dish';
+export const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
+

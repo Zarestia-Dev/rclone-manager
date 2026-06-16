@@ -61,6 +61,20 @@ export interface ActionState {
 
 export type RemoteActionProgress = Record<string, ActionState[]>;
 
+export interface StartJobEvent {
+  type: PrimaryActionType;
+  remoteName: string;
+  profileName?: string;
+}
+
+export interface StopJobEvent {
+  type: PrimaryActionType;
+  remoteName: string;
+  serveId?: string;
+  profileName?: string;
+}
+
+
 // ── Static operation metadata ───────────────────────────────────────────────
 // No runtime state here — use SyncOperationViewModel when you need isActive.
 
@@ -93,3 +107,41 @@ export interface QuickActionButton {
   isDisabled?: boolean;
   cssClass?: string;
 }
+
+export const OPERATION_ICONS: Record<PrimaryActionType, string> = {
+  mount: 'mount',
+  sync: 'refresh',
+  bisync: 'right-left',
+  move: 'move',
+  copy: 'copy',
+  serve: 'serve',
+};
+
+export const SYNC_TYPES: SyncOperationType[] = ['sync', 'copy', 'move', 'bisync'];
+
+export const BROWSABLE_OPS: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync'];
+
+export const ALL_PRIMARY_ACTIONS: PrimaryActionType[] = [
+  'mount',
+  'sync',
+  'copy',
+  'move',
+  'bisync',
+  'serve',
+];
+
+/**
+ * Maps sync operation types to their capitalized labels used by the rclone API.
+ */
+export const BATCH_OP_LABELS: Record<SyncOperationType, 'Sync' | 'Copy' | 'Move' | 'Bisync'> = {
+  sync: 'Sync',
+  copy: 'Copy',
+  move: 'Move',
+  bisync: 'Bisync',
+};
+
+/**
+ * Set of primary operation-type keys for efficient lookup.
+ */
+export const OPERATION_TYPE_KEYS = new Set<string>(ALL_PRIMARY_ACTIONS);
+

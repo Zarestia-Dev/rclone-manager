@@ -21,7 +21,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { ExportModalData, ExportType } from '@app/types';
+import { ExportModalData, ExportType, BackupExportOption } from '@app/types';
 import {
   BackupRestoreService,
   ExportCategory,
@@ -29,14 +29,6 @@ import {
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 
-interface ExportOption {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  categoryType?: string;
-  isTranslationKey?: boolean;
-}
 
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -105,7 +97,7 @@ export class ExportModalComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly isExporting = signal(false);
   readonly userNote = signal('');
-  readonly exportOptions = signal<ExportOption[]>([]);
+  readonly exportOptions = signal<BackupExportOption[]>([]);
   readonly includeSecrets = signal(false);
 
   readonly canExport = computed(() => {
@@ -153,7 +145,7 @@ export class ExportModalComponent implements OnInit {
   }
 
   private buildExportOptions(categories: ExportCategory[]): void {
-    const options: ExportOption[] = [
+    const options: BackupExportOption[] = [
       {
         id: 'full',
         label: 'modals.export.fullBackup',

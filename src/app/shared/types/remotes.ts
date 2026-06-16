@@ -1,3 +1,4 @@
+import { Signal, WritableSignal } from '@angular/core';
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
@@ -100,3 +101,11 @@ export interface RemotesLayout {
 
 /** Keyed by backend name */
 export type BackendsRemotesLayout = Record<string, RemotesLayout>;
+
+export type ProfileConfigMap = Record<string, Record<string, unknown>>;
+
+export interface RemoteState {
+  base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
+  disk: WritableSignal<DiskUsage>;
+  enriched: Signal<Remote>;
+}

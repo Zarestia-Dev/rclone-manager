@@ -20,10 +20,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
-import { InstallationOptionsData, InstallationTabOption } from '../../types';
-
-type LocationType = 'default' | 'custom' | 'existing';
-type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+import {
+  InstallationOptionsData,
+  InstallationTabOption,
+  LocationType,
+  BinaryStatus,
+} from '../../types';
 
 @Component({
   selector: 'app-installation-options',

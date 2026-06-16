@@ -1,1 +1,2 @@
-npm run lint:all
+npm run lint:rust && npm run format:rust:check
+

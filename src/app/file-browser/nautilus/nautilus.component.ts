@@ -27,7 +27,13 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
-import { Entry, ExplorerRoot, FileBrowserItem, FilePickerConfig } from '@app/types';
+import {
+  Entry,
+  ExplorerRoot,
+  FileBrowserItem,
+  FilePickerConfig,
+  DEFAULT_PICKER_OPTIONS,
+} from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
@@ -46,21 +52,6 @@ import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 import { SlideMenuController } from './slide-menu';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
-  mode: 'both',
-  selection: 'both',
-  multi: false,
-  minSelection: 0,
-};
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 @Component({
   selector: 'app-nautilus',

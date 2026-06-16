@@ -22,7 +22,7 @@ export class TabsButtonsComponent {
   readonly tabs: { id: AppTab; icon: string; label: string }[] = [
     { id: 'general', icon: 'home', label: 'tabs.general' },
     { id: 'mount', icon: 'mount', label: 'tabs.mount' },
-    { id: 'sync', icon: 'sync', label: 'tabs.sync' },
+    { id: 'operations', icon: 'operations', label: 'tabs.operations' },
     { id: 'serve', icon: 'satellite-dish', label: 'tabs.serve' },
   ];
 

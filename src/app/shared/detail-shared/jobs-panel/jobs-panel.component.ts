@@ -7,24 +7,16 @@ import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
+import {
+  JobInfo,
+  JobsPanelConfig,
+  PrimaryActionType,
+  StopJobEvent,
+  JOB_STATUS_BADGE_MAP,
+  JOB_ICON_MAP,
+} from '../../types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
-
-const STATUS_BADGE_MAP: Record<string, string> = {
-  completed: 'p-primary',
-  failed: 'p-warn',
-  stopped: 'p-orange',
-};
-
-const ICON_MAP: Record<string, string> = {
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  serve: 'serve',
-  mount: 'mount',
-};
 
 @Component({
   selector: 'app-jobs-panel',
@@ -169,11 +161,7 @@ const ICON_MAP: Record<string, string> = {
 export class JobsPanelComponent {
   readonly config = input.required<JobsPanelConfig>();
 
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
+  readonly stopJob = output<StopJobEvent>();
   readonly deleteJob = output<number>();
 
   private readonly modalService = inject(ModalService);
@@ -195,11 +183,11 @@ export class JobsPanelComponent {
       return {
         ...job,
         statusLower,
-        badgeClass: STATUS_BADGE_MAP[statusLower] || 'p-accent',
+        badgeClass: JOB_STATUS_BADGE_MAP[statusLower] || 'p-accent',
         relativeTime,
         durationSeconds,
         progress: hasProgress ? Math.round((job.stats.bytes / job.stats.totalBytes) * 100) : 0,
-        icon: ICON_MAP[job.job_type] || 'jobs',
+        icon: JOB_ICON_MAP[job.job_type] || 'jobs',
         iconClass: `job-icon-${job.job_type}`,
         hasProgress,
         hasFooter: hasProgress || !!job.dry_run || !!relativeTime || durationSeconds > 0,

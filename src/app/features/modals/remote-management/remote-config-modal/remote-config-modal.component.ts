@@ -53,6 +53,8 @@ import {
   SharedProfileType,
   FilterConfig,
   LINKED_PROFILE_TYPES,
+  JobMap,
+  SYNC_TYPES,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
@@ -63,22 +65,6 @@ import {
   convertBoolAnswerToString,
   getDefaultAnswerFromQuestion,
 } from '../../../../services/remote/utils/remote-config.utils';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface JobProfile {
-  autoStart?: boolean;
-  srcFs?: string | string[];
-  dstFs?: string;
-  path1?: string;
-  path2?: string;
-  fs?: string;
-  mountPoint?: string;
-}
-
-type JobMap = Record<string, JobProfile>;
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -474,8 +460,7 @@ export class RemoteConfigModalComponent {
       }
     }
 
-    const JOB_TYPES = ['copy', 'sync', 'bisync', 'move'] as const;
-    for (const jobType of JOB_TYPES) {
+    for (const jobType of SYNC_TYPES) {
       const configs = finalConfig[REMOTE_CONFIG_KEYS[jobType]] as JobMap | undefined;
       if (!configs) continue;
       for (const [profileName, config] of Object.entries(configs)) {

@@ -11,7 +11,13 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bott
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { InstallationOptionsData, RepairData, InstallationTabOption } from '@app/types';
+import {
+  InstallationOptionsData,
+  RepairData,
+  RepairMode,
+  CONFIG_TAB_OPTIONS,
+  DEFAULT_INSTALLATION_DATA,
+} from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
@@ -21,20 +27,6 @@ import { SystemInfoService } from 'src/app/services/infrastructure/system/system
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
-
-type RepairMode = 'standard' | 'install' | 'config';
-
-const CONFIG_TAB_OPTIONS: InstallationTabOption[] = [
-  { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
-  { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
-];
-
-const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
-  installLocation: 'default',
-  customPath: '',
-  existingBinaryPath: '',
-  binaryTestResult: 'untested',
-};
 
 @Component({
   selector: 'app-repair-sheet',

@@ -205,3 +205,33 @@ export interface LocalDiskUsage {
   used: number;
   dir?: string;
 }
+
+export interface PendingChange {
+  category: string;
+  key: string;
+  value: unknown;
+  metadata: SettingMetadata;
+}
+
+export interface PendingChangeDisplay {
+  displayName: string;
+  category: string;
+  key: string;
+  value: unknown;
+}
+
+export type ViewId =
+  | 'details'
+  | 'about-app'
+  | 'about-rclone'
+  | 'credits'
+  | 'legal'
+  | 'whats-new-app'
+  | 'whats-new-rclone'
+  | 'memory'
+  | 'debugging';
+
+export interface OverlayView {
+  id: ViewId;
+}
+

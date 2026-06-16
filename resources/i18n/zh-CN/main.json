@@ -67,7 +67,7 @@
     "successUnmount": "{{remote}} 卸载成功",
     "failedUnmount": "{{remote}} 卸载失败：{{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "可执行同步操作",
     "syncing": "同步中",
     "copying": "复制中",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "通用",
     "mount": "挂载",
-    "sync": "同步",
+    "operations": "操作",
     "serve": "服务"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "必须输入密码",
         "passwordEmpty": "密码不能为空或空白字符",
-        "passwordLength": "密码长度至少 4 位",
         "wrongPassword": "密码错误，请重试",
         "integrityFailed": "备份文件已损坏或被篡改",
         "verificationFailed": "文件验证失败，备份可能已损坏",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "挂载",
-      "startSync": "开始同步",
+      "startOperations": "开始操作",
       "startServe": "启动服务"
     },
     "panelTitles": {
       "mountedRemotes": "已挂载远程存储",
-      "activeSync": "活动同步任务",
+      "activeOperations": "活动操作",
       "activeServes": "活动服务",
       "unmountedRemotes": "未挂载远程存储",
       "inactiveRemotes": "未活动远程存储",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "挂载点 {{mountPoint}} 已被远程存储 {{remote}} 使用",
       "configIncomplete": "配置文件 '{{profile}}' 的挂载配置不完整"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "挂载概览",
-      "sync": "同步概览",
+      "operations": "操作概览",
       "serve": "服务概览",
       "general": "RClone Manager",
       "default": "远程存储概览"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "挂载状态",
-        "sync": "同步状态",
+        "operations": "操作状态",
         "serve": "服务状态",
         "general": "系统状态"
       },

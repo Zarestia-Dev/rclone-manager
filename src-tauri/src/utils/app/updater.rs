@@ -395,6 +395,9 @@ pub mod app_updates {
         // install() triggers on_before_exit which calls block_on — that panics on a Tokio
         // worker thread. A native OS thread has no active runtime, so block_on works fine.
         std::thread::spawn(move || {
+            #[cfg(not(target_os = "windows"))]
+            let version = update.version.clone();
+
             if let Err(e) = update.install(signature) {
                 log::error!("Failed to install update: {e}");
                 let state = app.state::<AppUpdaterState>();
@@ -407,9 +410,7 @@ pub mod app_updates {
             tauri::async_runtime::block_on(async move {
                 notify(
                     &app,
-                    NotificationEvent::AppUpdate(UpdateStage::Installed {
-                        version: update.version.clone(),
-                    }),
+                    NotificationEvent::AppUpdate(UpdateStage::Installed { version }),
                 );
                 app.state::<AppUpdaterState>().data.lock().state = UpdateState::Idle;
                 if let Err(e) = crate::utils::app::platform::relaunch_app(app).await {

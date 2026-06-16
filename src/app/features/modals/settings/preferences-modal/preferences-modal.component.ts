@@ -36,21 +36,7 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
-import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
-
-interface PendingChange {
-  category: string;
-  key: string;
-  value: unknown;
-  metadata: SettingMetadata;
-}
-
-interface PendingChangeDisplay {
-  displayName: string;
-  category: string;
-  key: string;
-  value: unknown;
-}
+import { SearchResult, SettingMetadata, SettingTab, PendingChange, PendingChangeDisplay } from '@app/types';
 
 @Component({
   selector: 'app-preferences-modal',

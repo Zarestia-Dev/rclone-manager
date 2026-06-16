@@ -1,3 +1,5 @@
+import { InstallationOptionsData, InstallationTabOption } from './components';
+
 export interface RepairData {
   type:
     | 'rclone_binary'
@@ -12,3 +14,17 @@ export interface RepairData {
   showStoreOption?: boolean;
   passwordDescription?: string;
 }
+
+export type RepairMode = 'standard' | 'install' | 'config';
+
+export const CONFIG_TAB_OPTIONS: InstallationTabOption[] = [
+  { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
+  { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
+];
+
+export const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
+  installLocation: 'default',
+  customPath: '',
+  existingBinaryPath: '',
+  binaryTestResult: 'untested',
+};

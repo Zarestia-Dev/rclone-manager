@@ -67,7 +67,7 @@
     "successUnmount": "Démonté avec succès {{remote}}",
     "failedUnmount": "Échec de démontage de {{remote}}: {{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "Opérations de synchronisation disponibles",
     "syncing": "Synchronisation",
     "copying": "Copie en cours",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "Général",
     "mount": "Monter",
-    "sync": "Synchroniser",
+    "operations": "Opérations",
     "serve": "Service"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "Mot de passe requis",
         "passwordEmpty": "Le mot de passe ne peut pas être vide ou un espace blanc",
-        "passwordLength": "Le mot de passe doit être composé d'au moins 4 caractères",
         "wrongPassword": "Mot de passe incorrect, veuillez réessayer.",
         "integrityFailed": "Le fichier de sauvegarde est corrompu ou a été altéré.",
         "verificationFailed": "La vérification du fichier a échoué. La sauvegarde est peut-être corrompue.",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "Montage",
-      "startSync": "Démarrer la synchronisation",
+      "startOperations": "Démarrer l'opération",
       "startServe": "Démarrer le service de partage"
     },
     "panelTitles": {
       "mountedRemotes": "Dépôts distants montés",
-      "activeSync": "Opérations de synchronisation actives",
+      "activeOperations": "Opérations actives",
       "activeServes": "Services de partage actifs",
       "unmountedRemotes": "Dépôts distants démontés",
       "inactiveRemotes": "Dépôts distants inactifs",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "Le point de montage {{mountPoint}} est déjà utilisé par le dépôt distant {{remote}}",
       "configIncomplete": "Configuration du montage incomplète pour le profil '{{profile}}'"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "Aperçu du montage",
-      "sync": "Aperçu de la synchronisation",
+      "operations": "Aperçu des opérations",
       "serve": "Aperçu des services de partage",
       "general": "RClone Manager",
       "default": "Vue d'ensemble des dépôts distants"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "Statut du montage",
-        "sync": "Statut synchronisation",
+        "operations": "Statut des opérations",
         "serve": "Statut du service de partage",
         "general": "État du système"
       },

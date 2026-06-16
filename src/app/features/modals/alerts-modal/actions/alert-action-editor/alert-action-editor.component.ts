@@ -11,12 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { AlertAction, AlertActionKind, ScriptAction, WebhookAction } from '@app/types';
-
-export interface KindOption {
-  value: AlertActionKind;
-  label: string;
-}
+import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption } from '@app/types';
 
 @Component({
   selector: 'app-alert-action-editor',

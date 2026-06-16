@@ -46,26 +46,11 @@ import {
   BackendsRemotesLayout,
   RemotesLayout,
   RCLONE_PATH_KEYS,
+  ProfileConfigMap,
+  RemoteState,
+  BATCH_OP_LABELS,
+  OPERATION_TYPE_KEYS,
 } from '@app/types';
-
-type ProfileConfigMap = Record<string, Record<string, unknown>>;
-
-interface RemoteState {
-  base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
-  disk: WritableSignal<DiskUsage>;
-  enriched: Signal<Remote>;
-}
-
-// Capitalize first letter for the startProfileBatch API
-const BATCH_OP_LABELS: Partial<Record<SyncOperationType, string>> = {
-  sync: 'Sync',
-  copy: 'Copy',
-  bisync: 'Bisync',
-  move: 'Move',
-};
-
-// Treated as operation-type keys in openRemoteInFiles
-const OPERATION_TYPE_KEYS = new Set(['mount', 'sync', 'copy', 'bisync', 'move', 'serve']);
 
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService extends TauriBaseService {

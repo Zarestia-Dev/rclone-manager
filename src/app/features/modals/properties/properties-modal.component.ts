@@ -26,14 +26,9 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
-import { Entry, FileBrowserItem, RemoteFeatures } from '@app/types';
+import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
-interface ExpiryOption {
-  value: string;
-  label: string;
-}
 
 @Component({
   selector: 'app-properties-modal',

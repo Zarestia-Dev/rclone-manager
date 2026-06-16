@@ -2,6 +2,12 @@ import type { Origin } from './origin';
 
 export type AlertSeverity = 'critical' | 'high' | 'average' | 'warning' | 'info';
 
+export interface SeverityStyle {
+  color: string;
+  bg: string;
+  border: string;
+}
+
 export type AlertEventKind =
   | 'job'
   | 'serve'
@@ -174,3 +180,9 @@ export interface AlertHistoryPage {
   offset: number;
   limit: number;
 }
+
+export interface KindOption {
+  value: AlertActionKind;
+  label: string;
+}
+

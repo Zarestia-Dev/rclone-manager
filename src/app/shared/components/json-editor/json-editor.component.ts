@@ -20,7 +20,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
-import { RcConfigOption, SENSITIVE_KEYS, SharedProfileType } from '@app/types';
+import { RcConfigOption, SENSITIVE_KEYS, SharedProfileType, TranslationResult, ChipDef } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import {
@@ -54,25 +54,11 @@ import {
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-export interface TranslationResult {
-  key: string;
-  params?: Record<string, unknown>;
-}
 
 export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<
   Signal<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>>
 >('JSON_EDITOR_LOOKUP_TABLE');
 
-interface ChipDef {
-  controlKey: string;
-  displayKey: string;
-  currentValue: unknown;
-  displayValue: string;
-  fullValue: string;
-  isChanged: boolean;
-  isActive: boolean;
-  field: RcConfigOption;
-}
 
 function toCamelCase(str: string): string {
   return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());

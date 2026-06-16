@@ -20,17 +20,26 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 
 import {
   JobInfo,
-  PrimaryActionType,
   Remote,
   Automation,
   ServeListItem,
   CardDisplayMode,
+  StartJobEvent,
+  StopJobEvent,
+  PanelConfig,
+  DashboardPanel,
+  SCROLL_DELAY_MS,
+  JOB_ICON_MAP,
+  ALL_PANELS,
+  BandwidthDetailItem,
+  JobStatItem,
+  OpenInFilesEvent,
 } from '@app/types';
 
 import {
   FormatTimePipe,
   FormatEtaPipe,
-  FormatMemoryUsagePipe,
+  FormatFileSizePipe,
   FormatRateValuePipe,
   FormatBytes,
 } from '@app/pipes';
@@ -48,54 +57,6 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { AutomationCardComponent } from '../../../../shared/detail-shared';
-
-const SCROLL_DELAY_MS = 60;
-
-const JOB_ICON_MAP: Record<string, string> = {
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  copy_url: 'copy',
-  delete: 'trash',
-  rename: 'pen',
-  cleanup: 'broom',
-  rmdirs: 'broom',
-  upload: 'file-arrow-up',
-};
-
-export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves';
-
-interface PanelConfig {
-  id: PanelId;
-  title: string;
-  defaultVisible: boolean;
-}
-
-export interface DashboardPanel extends PanelConfig {
-  visible: boolean;
-}
-
-interface BandwidthDetailItem {
-  labelKey: string;
-  bytesPerSec: number | undefined;
-}
-
-interface JobStatItem {
-  labelKey: string;
-  value: string | number;
-  error?: boolean;
-  formatAsBytes?: boolean;
-}
-
-const ALL_PANELS: PanelConfig[] = [
-  { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
-  { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
-  { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
-  { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
-  { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
-  { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
-];
 
 @Component({
   selector: 'app-general-overview',
@@ -115,7 +76,7 @@ const ALL_PANELS: PanelConfig[] = [
     DragDropModule,
     FormatTimePipe,
     FormatEtaPipe,
-    FormatMemoryUsagePipe,
+    FormatFileSizePipe,
     RemotesPanelComponent,
     ServeCardComponent,
     FormatRateValuePipe,
@@ -144,18 +105,9 @@ export class GeneralOverviewComponent {
 
   // --- Outputs ---
   readonly selectRemote = output<Remote>();
-  readonly startJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    serveId?: string;
-    profileName?: string;
-  }>();
-  readonly browseRemote = output<{ remoteName: string; path?: string }>();
+  readonly startJob = output<StartJobEvent>();
+  readonly stopJob = output<StopJobEvent>();
+  readonly browseRemote = output<OpenInFilesEvent>();
   readonly openBackendModal = output<void>();
 
   // --- State ---

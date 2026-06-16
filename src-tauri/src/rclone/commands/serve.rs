@@ -460,7 +460,7 @@ pub async fn start_serve_profile(
     let mut serve_params = ServeParams::from_config(params.remote_name.clone(), &config, &settings)
         .ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.sync.configIncomplete",
+                "backendErrors.operations.configIncomplete",
                 "profile" => &params.profile_name
             )
         })?;

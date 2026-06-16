@@ -5,7 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
-import { AppTab, PrimaryActionType, Remote, CardDisplayMode } from '@app/types';
+import { AppTab, Remote, CardDisplayMode, StartJobEvent, StopJobEvent, OpenInFilesEvent } from '@app/types';
 
 @Component({
   selector: 'app-remotes-panel',
@@ -39,9 +39,9 @@ export class RemotesPanelComponent {
   activeIcon = input('circle-check');
 
   remoteSelected = output<Remote>();
-  openInFiles = output<{ remoteName: string; path?: string }>();
-  startJob = output<{ type: PrimaryActionType; remoteName: string; profileName?: string }>();
-  stopJob = output<{ type: PrimaryActionType; remoteName: string; profileName?: string }>();
+  openInFiles = output<OpenInFilesEvent>();
+  startJob = output<StartJobEvent>();
+  stopJob = output<StopJobEvent>();
   layoutChanged = output<string[]>();
   toggleHidden = output<string>();
 

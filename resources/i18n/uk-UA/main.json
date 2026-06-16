@@ -67,7 +67,7 @@
     "successUnmount": "Успішно демонтовано {{remote}}",
     "failedUnmount": "Не вдалося демонтувати {{remote}}: {{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "Доступні операції синхронізації",
     "syncing": "Синхронізація",
     "copying": "Копіювання",
@@ -540,7 +540,7 @@
   "tabs": {
     "general": "Загальні",
     "mount": "Монтування",
-    "sync": "Синхронізація",
+    "operations": "Операції",
     "serve": "Доступ"
   },
   "titlebar": {
@@ -1246,7 +1246,6 @@
       "errors": {
         "passwordRequired": "Пароль обовʼязковий",
         "passwordEmpty": "Пароль не може бути порожнім або складатися з пробілів",
-        "passwordLength": "Пароль має містити щонайменше 4 символи",
         "wrongPassword": "Невірний пароль. Спробуйте ще раз.",
         "integrityFailed": "Файл резервної копії пошкоджено або змінено.",
         "verificationFailed": "Не вдалося перевірити файл. Резервну копію може бути пошкоджено.",
@@ -2403,12 +2402,12 @@
   "appOverview": {
     "labels": {
       "mount": "Монтувати",
-      "startSync": "Запустити синхронізацію",
+      "startOperations": "Запустити операцію",
       "startServe": "Запустити надання доступу"
     },
     "panelTitles": {
       "mountedRemotes": "Змонтовані сховища",
-      "activeSync": "Активні операції синхронізації",
+      "activeOperations": "Активні операції",
       "activeServes": "Активні роздачі",
       "unmountedRemotes": "Демонтовані сховища",
       "inactiveRemotes": "Неактивні сховища",
@@ -2421,7 +2420,7 @@
       "alreadyInUse": "Точка монтування {{mountPoint}} вже використовується сховищем {{remote}}",
       "configIncomplete": "Конфігурація монтування неповна для профілю «{{profile}}»"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»"
     },
     "serve": {
@@ -2586,7 +2585,7 @@
   "overviews": {
     "headers": {
       "mount": "Огляд монтування",
-      "sync": "Огляд синхронізації",
+      "operations": "Огляд операцій",
       "serve": "Огляд надання доступу",
       "general": "RClone Manager",
       "default": "Огляд сховищ"
@@ -2594,7 +2593,7 @@
     "status": {
       "titles": {
         "mount": "Стан монтування",
-        "sync": "Стан синхронізації",
+        "operations": "Стан операцій",
         "serve": "Стан надання доступу",
         "general": "Стан системи"
       },

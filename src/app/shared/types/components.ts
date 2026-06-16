@@ -17,6 +17,17 @@ export interface SettingsPanelConfig {
   buttonLabel?: string;
 }
 
+export interface SettingEntry {
+  key: string;
+  display: string;
+  tooltip: string;
+}
+
+export interface GroupedSettings {
+  category: string;
+  entries: SettingEntry[];
+}
+
 // ── Stats Panel ─────────────────────────────────────────────────────────────
 export interface StatItem {
   value: string | number;
@@ -113,15 +124,18 @@ export interface TransferActivityPanelConfig {
 }
 
 // ── Installation wizard ─────────────────────────────────────────────────────
+export type LocationType = 'default' | 'custom' | 'existing';
+export type BinaryStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+
 export interface InstallationOptionsData {
-  installLocation: 'default' | 'custom' | 'existing';
+  installLocation: LocationType;
   customPath: string;
   existingBinaryPath: string;
-  binaryTestResult: 'untested' | 'testing' | 'valid' | 'invalid';
+  binaryTestResult: BinaryStatus;
 }
 
 export interface InstallationTabOption {
-  key: 'default' | 'custom' | 'existing';
+  key: LocationType;
   label: string;
   icon: string;
 }

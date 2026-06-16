@@ -42,6 +42,8 @@ import {
   DEFAULT_PROFILE_NAME,
   REMOTE_CONFIG_KEYS,
   CommandOption,
+  WizardStep,
+  OperationType,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -58,8 +60,6 @@ import {
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-type WizardStep = 'setup' | 'operations' | 'interactive';
-type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';
 
 @Component({
   selector: 'app-quick-add-remote',

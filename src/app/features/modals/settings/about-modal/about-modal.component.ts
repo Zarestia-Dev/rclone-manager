@@ -31,7 +31,7 @@ import { DebugService, DebugInfo } from 'src/app/services/infrastructure/system/
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import { DownloadStateStatus } from '@app/types';
+import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 // Configure renderer once at module level
@@ -40,21 +40,6 @@ renderer.link = ({ href, title, text }): string => {
   const titleAttr = title ? ` title="${title}"` : '';
   return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
 };
-
-export type ViewId =
-  | 'details'
-  | 'about-app'
-  | 'about-rclone'
-  | 'credits'
-  | 'legal'
-  | 'whats-new-app'
-  | 'whats-new-rclone'
-  | 'memory'
-  | 'debugging';
-
-export interface OverlayView {
-  id: ViewId;
-}
 
 @Component({
   selector: 'app-about-modal',

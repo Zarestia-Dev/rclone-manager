@@ -8,8 +8,10 @@ import {
   DiskUsage,
   JobsPanelConfig,
   PrimaryActionType,
-  Remote,
   SettingsPanelConfig,
+  StopJobEvent,
+  ActionViewModel,
+  ACTION_CONFIGS,
 } from '@app/types';
 import {
   DiskUsagePanelComponent,
@@ -22,75 +24,6 @@ import { AutomationService } from 'src/app/services/operations/automation.servic
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
-interface ActionConfig {
-  key: PrimaryActionType;
-  label: string;
-  icon: string;
-  getTooltip: (remote: Remote) => string;
-  getActiveState: (remote: Remote) => boolean;
-}
-
-interface ActionViewModel {
-  key: PrimaryActionType;
-  label: string;
-  icon: string;
-  isSelected: boolean;
-  isActive: boolean;
-  /** 1-based position in primaryActions, 0 when not selected. */
-  position: number;
-  /** False when max actions are selected and this action is not one of them. */
-  canInteract: boolean;
-  /** Already a translation key — apply | translate in template. */
-  tooltip: string;
-  /** Already translated — do NOT apply | translate in template. */
-  ariaLabel: string;
-}
-
-const ACTION_CONFIGS: ActionConfig[] = [
-  {
-    key: 'mount',
-    label: 'actions.mount',
-    icon: 'mount',
-    getTooltip: remote => (remote.status.mount.active ? 'mount.mounted' : 'mount.toggleAction'),
-    getActiveState: remote => remote.status.mount.active || false,
-  },
-  {
-    key: 'sync',
-    label: 'actions.sync',
-    icon: 'refresh',
-    getTooltip: remote => (remote.status.sync.active ? 'sync.syncing' : 'sync.toggleSync'),
-    getActiveState: remote => remote.status.sync.active || false,
-  },
-  {
-    key: 'copy',
-    label: 'actions.copy',
-    icon: 'copy',
-    getTooltip: remote => (remote.status.copy.active ? 'sync.copying' : 'sync.toggleCopy'),
-    getActiveState: remote => remote.status.copy.active || false,
-  },
-  {
-    key: 'move',
-    label: 'actions.move',
-    icon: 'move',
-    getTooltip: remote => (remote.status.move.active ? 'sync.moving' : 'sync.toggleMove'),
-    getActiveState: remote => remote.status.move.active || false,
-  },
-  {
-    key: 'bisync',
-    label: 'actions.bisync',
-    icon: 'right-left',
-    getTooltip: remote => (remote.status.bisync.active ? 'sync.bisyncActive' : 'sync.toggleBisync'),
-    getActiveState: remote => remote.status.bisync.active || false,
-  },
-  {
-    key: 'serve',
-    label: 'actions.serve',
-    icon: 'serve',
-    getTooltip: remote => (remote.status.serve.active ? 'serve.serving' : 'serve.toggleAction'),
-    getActiveState: remote => remote.status.serve.active || false,
-  },
-];
 
 @Component({
   selector: 'app-general-detail',
@@ -128,11 +61,7 @@ export class GeneralDetailComponent {
   readonly openRemoteConfigModal = output<{
     editTarget?: string;
   }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
+  readonly stopJob = output<StopJobEvent>();
   readonly deleteJob = output<number>();
   readonly togglePrimaryAction = output<PrimaryActionType>();
   readonly retryDiskUsage = output<void>();

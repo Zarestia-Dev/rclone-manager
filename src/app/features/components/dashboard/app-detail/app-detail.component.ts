@@ -19,6 +19,7 @@ import {
   OperationControlConfig,
   PathDisplayConfig,
   PrimaryActionType,
+  OperationTab,
   RemoteStatus,
   RemoteOperationState,
   RemoteServeState,
@@ -36,11 +37,16 @@ import {
   OPERATION_METADATA,
   ACTION_ANIMATION_CLASS,
   OPERATION_COLOR_VAR,
-  AppConfig,
   SyncConfig,
   CopyConfig,
   MoveConfig,
   BisyncConfig,
+  ProfileConfig,
+  JobStatsWithCompleted,
+  StartJobEvent,
+  StopJobEvent,
+  ALL_PRIMARY_ACTIONS,
+  SYNC_TYPES,
 } from '@app/types';
 import {
   JobInfoPanelComponent,
@@ -53,7 +59,6 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
 import { IconService } from 'src/app/services/ui/icon.service';
 import {
   JobManagementService,
-  RawTransfer,
   mapRawTransfer,
 } from 'src/app/services/operations/job-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -61,25 +66,6 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
-
-interface JobStatsWithCompleted extends GlobalStats {
-  completed?: RawTransfer[];
-}
-
-interface ProfileConfig {
-  app?: AppConfig;
-  rclone?: {
-    srcFs?: string | string[];
-    dstFs?: string;
-    path1?: string;
-    path2?: string;
-    fs?: string;
-    mountPoint?: string;
-    type?: string;
-    addr?: string;
-    _config?: Record<string, unknown>;
-  };
-}
 
 @Component({
   selector: 'app-app-detail',
@@ -108,7 +94,7 @@ interface ProfileConfig {
 })
 export class AppDetailComponent {
   // --- Inputs ---
-  readonly mainOperationType = input<PrimaryActionType>('mount');
+  readonly mainOperationType = input<OperationTab>('mount');
   readonly selectedSyncOperation = model<SyncOperationType>('sync');
   readonly remoteSettings = input<RemoteSettings>({});
 
@@ -121,17 +107,8 @@ export class AppDetailComponent {
     autoAddProfile?: boolean;
   }>();
   readonly openInFiles = output<{ remoteName: string; path: string }>();
-  readonly startJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-  }>();
-  readonly stopJob = output<{
-    type: PrimaryActionType;
-    remoteName: string;
-    profileName?: string;
-    serveId?: string;
-  }>();
+  readonly startJob = output<StartJobEvent>();
+  readonly stopJob = output<StopJobEvent>();
 
   // --- Services ---
   private readonly remoteFacade = inject(RemoteFacadeService);
@@ -177,13 +154,27 @@ export class AppDetailComponent {
   );
 
   // --- Derived: Operation Type ---
-  readonly isSyncType = computed(() => this.mainOperationType() === 'sync');
+  readonly isOperationsType = computed(() => this.mainOperationType() === 'operations');
 
-  readonly currentOpType = computed<PrimaryActionType>(() =>
-    this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType()
-  );
+  readonly currentOpType = computed<PrimaryActionType>(() => {
+    const op = this.isOperationsType()
+      ? this.selectedSyncOperation()
+      : (this.mainOperationType() as PrimaryActionType);
+    return ALL_PRIMARY_ACTIONS.includes(op) ? op : 'mount';
+  });
 
-  readonly currentOpMetadata = computed(() => OPERATION_METADATA[this.currentOpType()]);
+  readonly currentOpMetadata = computed(() => {
+    const type = this.currentOpType();
+    return (
+      OPERATION_METADATA[type] ?? {
+        label: 'dashboard.appDetail.syncSettings',
+        icon: 'refresh',
+        cssClass: 'primary',
+        supportsVfs: false,
+        supportsProfiles: false,
+      }
+    );
+  });
 
   readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
 
@@ -201,7 +192,7 @@ export class AppDetailComponent {
 
   // --- Derived: Sync Operations ---
   readonly syncOperations = computed<SyncOperationViewModel[]>(() =>
-    (['sync', 'bisync', 'move', 'copy'] as const).map(type => ({
+    SYNC_TYPES.map(type => ({
       type,
       ...OPERATION_METADATA[type],
       isActive: this.isOperationActive(type),
@@ -269,7 +260,7 @@ export class AppDetailComponent {
   );
 
   readonly jobId = computed(() => {
-    if (!this.isSyncType()) return undefined;
+    if (!this.isOperationsType()) return undefined;
     const state = this.getOpState(this.selectedSyncOperation()) as RemoteOperationState;
     if (!state) return undefined;
     const profile = this.selectedProfile() ?? 'default';
@@ -539,7 +530,9 @@ export class AppDetailComponent {
     const duration = elapsedSeconds > 0 ? this.formatTime.transform(elapsedSeconds) : undefined;
 
     return {
-      operationType: this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType(),
+      operationType: this.isOperationsType()
+        ? this.selectedSyncOperation()
+        : (this.mainOperationType() as unknown as PrimaryActionType),
       jobId: this.jobId() ? Number(this.jobId()) : undefined,
       status: this.activeGroupJob()?.status,
       startTime,
@@ -559,7 +552,7 @@ export class AppDetailComponent {
 
     return {
       title: t('dashboard.appDetail.transferStatistics', { op: meta ? t(meta.label) : 'Transfer' }),
-      icon: meta?.icon ?? 'bar_chart',
+      icon: meta?.icon ?? 'chart',
       operationColor: this.operationColor(),
       stats: [
         {
@@ -805,7 +798,7 @@ export class AppDetailComponent {
     let specificSettings: Record<string, unknown>;
     if (profileName) {
       specificSettings = (profiles?.[profileName] as Record<string, unknown>) ?? {};
-    } else if (profiles && (['sync', 'bisync', 'move', 'copy'] as string[]).includes(key)) {
+    } else if (profiles && (SYNC_TYPES as string[]).includes(key)) {
       specificSettings =
         (profiles['default'] as Record<string, unknown>) ?? Object.values(profiles)[0] ?? {};
     } else {

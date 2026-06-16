@@ -32,8 +32,8 @@ describe('TabsButtonsComponent', () => {
     it('should set tabs in uiService', () => {
       // Replaced tabSelected logic check with setTab
       spyOn(component['uiStateService'], 'setTab');
-      component.setTab('sync');
-      expect(component['uiStateService'].setTab).toHaveBeenCalledWith('sync');
+      component.setTab('operations');
+      expect(component['uiStateService'].setTab).toHaveBeenCalledWith('operations');
     });
   });
 });

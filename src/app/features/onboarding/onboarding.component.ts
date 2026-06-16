@@ -21,27 +21,16 @@ import { TranslateModule } from '@ngx-translate/core';
 import { InstallationService } from 'src/app/services/settings/installation.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { SystemHealthService } from 'src/app/services/infrastructure/maintenance/system-health.service';
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
 import { BackendService } from '../../services/infrastructure/system/backend.service';
-import { InstallationOptionsData, InstallationTabOption } from '@app/types';
-
-interface OnboardingCard {
-  key: string;
-  image: string;
-  title: string;
-  content: string;
-}
-
-type OnboardingAction =
-  | 'install-rclone'
-  | 'install-plugin'
-  | 'config-next'
-  | 'unlock'
-  | 'finish'
-  | 'next';
+import {
+  InstallationOptionsData,
+  InstallationTabOption,
+  OnboardingCard,
+  OnboardingAction,
+} from '@app/types';
 
 @Component({
   selector: 'app-onboarding',
@@ -68,7 +57,6 @@ export class OnboardingComponent {
   private readonly installationService = inject(InstallationService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly fileSystemService = inject(FileSystemService);
   private readonly rclonePasswordService = inject(RclonePasswordService);
   private readonly backendService = inject(BackendService);
   readonly systemHealth = inject(SystemHealthService);

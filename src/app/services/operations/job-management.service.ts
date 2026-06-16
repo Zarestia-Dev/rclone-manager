@@ -2,24 +2,10 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { interval, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin, ORIGINS, CompletedTransfer } from '@app/types';
+import { JobInfo, Origin, ORIGINS, CompletedTransfer, RawTransfer } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
-export interface RawTransfer {
-  name?: string;
-  size?: number;
-  bytes?: number;
-  checked?: boolean;
-  error?: string;
-  group?: string;
-  started_at?: string;
-  completed_at?: string;
-  src_fs?: string;
-  dst_fs?: string;
-  srcFs?: string;
-  dstFs?: string;
-}
 
 export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
   let status: CompletedTransfer['status'] = 'completed';
@@ -158,13 +144,13 @@ export class JobManagementService extends TauriBaseService {
       'start_profile_batch',
       { transferType, params },
       {
-        successKey: 'sync.successStart',
+        successKey: 'operations.successStart',
         successParams: {
           type: transferType,
           remote: params.remoteName,
           profile: params.profileName,
         },
-        errorKey: 'sync.failedStart',
+        errorKey: 'operations.failedStart',
         errorParams: {
           type: transferType,
           remote: params.remoteName,

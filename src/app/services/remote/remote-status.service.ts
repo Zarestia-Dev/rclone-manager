@@ -57,17 +57,25 @@ export class RemoteStatusService {
       details: string[] = [];
     const sy = Object.keys(s.sync.activeProfiles || {});
     if (sy.length)
-      details.push(this.translate.instant('sync.syncWithProfile', { profiles: sy.join(', ') }));
+      details.push(
+        this.translate.instant('operations.syncWithProfile', { profiles: sy.join(', ') })
+      );
     const cp = Object.keys(s.copy.activeProfiles || {});
     if (cp.length)
-      details.push(this.translate.instant('sync.copyWithProfile', { profiles: cp.join(', ') }));
+      details.push(
+        this.translate.instant('operations.copyWithProfile', { profiles: cp.join(', ') })
+      );
     const mv = Object.keys(s.move.activeProfiles || {});
     if (mv.length)
-      details.push(this.translate.instant('sync.moveWithProfile', { profiles: mv.join(', ') }));
+      details.push(
+        this.translate.instant('operations.moveWithProfile', { profiles: mv.join(', ') })
+      );
     const bi = Object.keys(s.bisync.activeProfiles || {});
     if (bi.length)
-      details.push(this.translate.instant('sync.bisyncWithProfile', { profiles: bi.join(', ') }));
-    return details.length ? details.join(' • ') : this.translate.instant('sync.available');
+      details.push(
+        this.translate.instant('operations.bisyncWithProfile', { profiles: bi.join(', ') })
+      );
+    return details.length ? details.join(' • ') : this.translate.instant('operations.available');
   }
 
   getOperationState(
@@ -130,7 +138,9 @@ export class RemoteStatusService {
       );
     if (this.getActiveSyncOperationType(remote))
       summary.push(
-        this.translate.instant('sync.syncSummary', { count: this.getSyncProfileCount(remote) })
+        this.translate.instant('operations.syncSummary', {
+          count: this.getSyncProfileCount(remote),
+        })
       );
     if (this.isServing(remote))
       summary.push(

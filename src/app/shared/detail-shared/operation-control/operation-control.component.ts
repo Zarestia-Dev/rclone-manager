@@ -17,19 +17,16 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { PathDisplayComponent } from '../path-display/path-display.component';
-import { OperationControlConfig, PrimaryActionType, LocalDiskUsage } from '@app/types';
+import {
+  OperationControlConfig,
+  PrimaryActionType,
+  LocalDiskUsage,
+  OPERATION_ICONS,
+  SYNC_TYPES,
+} from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { TranslateModule } from '@ngx-translate/core';
-
-const OPERATION_ICONS: Record<PrimaryActionType, string> = {
-  mount: 'mount',
-  sync: 'refresh',
-  bisync: 'right-left',
-  move: 'move',
-  copy: 'copy',
-  serve: 'serve',
-};
 
 @Component({
   selector: 'app-operation-control',
@@ -59,7 +56,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           <mat-icon [svgIcon]="operationIcon()" style="color: var(--mat-sys-primary)"></mat-icon>
           <div class="profile-info">
             <span class="profile-name">{{ config().profileName || 'default' }}</span>
-            @if (dryRun() && isSyncType()) {
+            @if (dryRun() && isOperationsType()) {
               <span
                 class="app-pill p-accent"
                 [matTooltip]="'dashboard.appDetail.dryRunActive' | translate"
@@ -139,7 +136,7 @@ const OPERATION_ICONS: Record<PrimaryActionType, string> = {
           </div>
         }
 
-        @if (isSyncType()) {
+        @if (isOperationsType()) {
           <div class="controls">
             <mat-slide-toggle
               class="control"
@@ -288,8 +285,8 @@ export class OperationControlComponent {
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
   readonly isDiskUsageLoading = signal(false);
 
-  readonly isSyncType = computed(() =>
-    ['sync', 'bisync', 'move', 'copy'].includes(this.config().operationType)
+  readonly isOperationsType = computed(() =>
+    (SYNC_TYPES as string[]).includes(this.config().operationType)
   );
 
   readonly shouldPollDiskUsage = computed(() => {
