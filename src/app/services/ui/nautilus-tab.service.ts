@@ -9,7 +9,13 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { ExplorerRoot, FileBrowserItem, FilePickerConfig, ORIGINS, NautilusTabItem } from '@app/types';
+import {
+  ExplorerRoot,
+  FileBrowserItem,
+  FilePickerConfig,
+  ORIGINS,
+  NautilusTabItem,
+} from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
 
 export interface PaneState {

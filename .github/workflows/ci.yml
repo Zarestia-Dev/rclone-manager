@@ -74,8 +74,8 @@ jobs:
       - name: Run Lints (Angular)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          npm run lint
-          npm run format:check
+          npx eslint "**/*.{ts,html}"
+          npx prettier --check "**/*.{ts,html,scss,json}"
 
       # 7. Check if Rust backend compiles (Checks ALL features & target-specific code per OS)
       - name: Run Clippy (Rust)

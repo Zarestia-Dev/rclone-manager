@@ -29,7 +29,6 @@ import {
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 
-
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
   settings: 'gear',

@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **Updater Feature**: Gate the application and Rclone update system behind "updater" feature.
+- Sync tab renamed to Operations tab.
 
 ### Fixed
 - Detached dialog and other dialog fixes. #228

@@ -185,4 +185,3 @@ export interface KindOption {
   value: AlertActionKind;
   label: string;
 }
-

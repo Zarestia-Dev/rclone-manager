@@ -6,7 +6,6 @@ import { JobInfo, Origin, ORIGINS, CompletedTransfer, RawTransfer } from '@app/t
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
-
 export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
   let status: CompletedTransfer['status'] = 'completed';
   if (t.error) status = 'failed';

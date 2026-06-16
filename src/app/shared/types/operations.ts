@@ -74,7 +74,6 @@ export interface StopJobEvent {
   profileName?: string;
 }
 
-
 // ── Static operation metadata ───────────────────────────────────────────────
 // No runtime state here — use SyncOperationViewModel when you need isActive.
 
@@ -144,4 +143,3 @@ export const BATCH_OP_LABELS: Record<SyncOperationType, 'Sync' | 'Copy' | 'Move'
  * Set of primary operation-type keys for efficient lookup.
  */
 export const OPERATION_TYPE_KEYS = new Set<string>(ALL_PRIMARY_ACTIONS);
-

@@ -230,7 +230,6 @@ export interface ProfileConfig {
   };
 }
 
-
 export interface MountConfig {
   app: AppConfig;
   rclone: {
@@ -437,7 +436,6 @@ export interface JobProfile {
 }
 
 export type JobMap = Record<string, JobProfile>;
-
 
 export type WizardStep = 'setup' | 'operations' | 'interactive';
 export type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';

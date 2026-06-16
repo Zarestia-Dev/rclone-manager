@@ -234,4 +234,3 @@ export type ViewId =
 export interface OverlayView {
   id: ViewId;
 }
-

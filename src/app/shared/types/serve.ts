@@ -66,4 +66,3 @@ export const TYPE_INFO: Record<string, TypeInfo> = {
 
 export const DEFAULT_ICON = 'satellite-dish';
 export const URL_BASED_PROTOCOLS = new Set(['http', 'webdav', 'ftp', 'sftp', 's3']);
-

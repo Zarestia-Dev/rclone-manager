@@ -14,17 +14,10 @@
     "build:flatpak": "npm run tauri build -- --bundles deb --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}' --features flatpak",
     "build:snap": "npm run tauri build -- --bundles deb && cp src-tauri/target/release/bundle/deb/rclone-manager_*.deb ./rclone-manager.deb && snapcraft",
     "build:headless": "npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,tray -- --no-default-features",
-    "lint": "ng lint",
-    "lint:fix": "ng lint --fix",
-    "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
-    "lint:rust": "cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings",
-    "format:rust": "cd src-tauri && cargo fmt",
-    "format:rust:check": "cd src-tauri && cargo fmt -- --check",
-    "lint:all": "npm run lint && npm run format:check && npm run lint:rust && npm run format:rust:check",
+    "lint": "eslint \"**/*.{ts,html}\" && cd src-tauri && cargo clippy -- -D warnings",
+    "format": "prettier --write \"**/*.{ts,html,scss,json}\" && cd src-tauri && cargo fmt",
+    "fix:all": "node scripts/fix-svg-ids.cjs && npm run format && eslint --fix \"**/*.{ts,html}\"",
     "audit:i18n": "node scripts/audit-i18n-keys.cjs",
-    "fix:svg": "node scripts/fix-svg-ids.cjs",
-    "fix:all": "npm run fix:svg && npm run lint:fix && npm run format && npm run format:rust",
     "sync:flags": "node scripts/update-flags.cjs",
     "sync:providers": "node scripts/update-providers.cjs",
     "prepare": "husky"
@@ -84,8 +77,22 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.2.0",
+    "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.3"
+  },
+  "lint-staged": {
+    "**/*.{ts,html}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{scss,json}": [
+      "prettier --write"
+    ],
+    "src-tauri/**/*.rs": [
+      "sh -c 'cd src-tauri && cargo fmt'",
+      "sh -c 'cd src-tauri && cargo clippy -- -D warnings'"
+    ]
   }
 }

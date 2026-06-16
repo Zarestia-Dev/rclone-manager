@@ -27,7 +27,15 @@ import {
   matchesConfigSearch,
   stripCliPrefix,
 } from 'src/app/services/remote/utils/remote-config.utils';
-import { RcConfigOption, SharedProfileType, PageType, GroupedRCloneOptions, RCloneService, RCloneFlagsSearchResult, ServiceConfig } from '@app/types';
+import {
+  RcConfigOption,
+  SharedProfileType,
+  PageType,
+  GroupedRCloneOptions,
+  RCloneService,
+  RCloneFlagsSearchResult,
+  ServiceConfig,
+} from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
@@ -37,7 +45,6 @@ import {
 } from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
 
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {

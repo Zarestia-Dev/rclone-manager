@@ -60,7 +60,6 @@ import {
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-
 @Component({
   selector: 'app-quick-add-remote',
   standalone: true,

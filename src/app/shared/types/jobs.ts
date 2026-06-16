@@ -64,7 +64,6 @@ export interface JobStatsWithCompleted extends GlobalStats {
   completed?: RawTransfer[];
 }
 
-
 export const DEFAULT_JOB_STATS: GlobalStats = {
   bytes: 0,
   totalBytes: 0,
@@ -149,4 +148,3 @@ export const JOB_ICON_MAP: Record<string, string> = {
   rmdirs: 'broom',
   upload: 'file-arrow-up',
 };
-
