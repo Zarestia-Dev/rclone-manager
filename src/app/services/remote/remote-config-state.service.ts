@@ -564,10 +564,13 @@ export class RemoteConfigStateService {
 
   async init(dialogData: DialogData): Promise<void> {
     this.dialogData = dialogData;
+    if (dialogData?.cloneFrom || dialogData?.name) {
+      await this.remoteFacade.loadRemotes();
+    }
+
     if (dialogData?.cloneFrom) {
       this.existingConfig = await this.remoteFacade.cloneRemote(dialogData.cloneFrom);
     } else if (dialogData?.name) {
-      await this.remoteFacade.loadRemotes();
       this.existingConfig = {
         config: this.remoteFacade.activeRemotes().find(r => r.name === dialogData.name)?.config,
         ...this.remoteFacade.getRemoteSettings(dialogData.name),

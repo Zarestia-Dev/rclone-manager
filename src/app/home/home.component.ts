@@ -291,7 +291,7 @@ export class HomeComponent {
     this.modalService
       .openQuickAddRemote()
       .afterClosed()
-      .subscribe(saved => {
+      .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
@@ -313,7 +313,7 @@ export class HomeComponent {
         autoAddProfile,
       })
       .afterClosed()
-      .subscribe(saved => {
+      .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
@@ -331,7 +331,7 @@ export class HomeComponent {
         remoteType: remote.type,
       })
       .afterClosed()
-      .subscribe(saved => {
+      .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
   }
