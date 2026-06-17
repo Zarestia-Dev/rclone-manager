@@ -1,0 +1,36 @@
+name: Publish release to WinGet
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without leading v, e.g. 0.2.8'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish to WinGet (from release)
+        if: github.event_name == 'release'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: RClone-Manager.rclone-manager
+          installers-regex: 'RClone.*(x64|arm64).*\.exe$'
+          token: ${{ secrets.WINGET_ACC_TOKEN }}
+
+      - name: Publish to WinGet (manual)
+        if: github.event_name == 'workflow_dispatch'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: RClone-Manager.rclone-manager
+          version: ${{ inputs.version }}
+          release-tag: v${{ inputs.version }}
+          installers-regex: 'RClone.*(x64|arm64).*\.exe$'
+          token: ${{ secrets.GITHUB_TOKEN }}

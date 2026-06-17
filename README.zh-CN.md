@@ -71,32 +71,32 @@
 
 ### Linux
 
-| 来源          | 安装命令 / 下载                                                                                                     |
-| :------------ | :------------------------------------------------------------------------------------------------------------------ |
-| **AUR**       | `yay -S rclone-manager`                                                                                             |
-| **AUR (Git)** | `yay -S rclone-manager-git`                                                                                         |
-| **Flathub**   | `flatpak install io.github.zarestia_dev.rclone-manager`                                                             |
-| **直接下载**  | [最新版本 (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| 来源         | 版本 | 安装命令 / 下载                                                                                                     |
+| :----------- | :--- | :------------------------------------------------------------------------------------------------------------------ |
+| **AUR**      | [![AUR 版本](https://img.shields.io/aur/version/rclone-manager?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager) | `yay -S rclone-manager` |
+| **AUR (Git)** | [![AUR 版本](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-git) | `yay -S rclone-manager-git` |
+| **Flathub**  | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/apps/io.github.zarestia_dev.rclone-manager) | `flatpak install io.github.zarestia_dev.rclone-manager` |
+| **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [最新版本 (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **指南:** [Wiki: 安装 - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux)（Flatpak 问题排查、Snap 等）
 
 ### macOS
 
-| 来源         | 安装命令 / 下载                                                              |
-| :----------- | :--------------------------------------------------------------------------- |
-| **Homebrew** | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`       |
-| **直接下载** | [DMG 安装包](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| 来源         | 版本 | 安装命令 / 下载                                                              |
+| :----------- | :--- | :--------------------------------------------------------------------------- |
+| **Homebrew** | [![Homebrew 版本](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
+| **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [DMG 安装包](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **指南:** [Wiki: 安装 - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)（macFUSE 与 Gatekeeper 修复）
 
 ### Windows
 
-| 来源           | 安装命令 / 下载                                                                       |
-| :------------- | :------------------------------------------------------------------------------------ |
-| **Winget**     | `winget install RClone-Manager.rclone-manager`                                        |
-| **Chocolatey** | `choco install rclone-manager`                                                        |
-| **Scoop**      | `scoop bucket add extras && scoop install rclone-manager`                             |
-| **直接下载**   | [安装包 / 便携式 EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| 来源           | 版本 | 安装命令 / 下载                                                                       |
+| :------------- | :--- | :------------------------------------------------------------------------------------ |
+| **Winget**     | [![Winget 版本](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/RClone-Manager/rclone-manager) | `winget install RClone-Manager.rclone-manager` |
+| **Chocolatey** | [![Chocolatey 版本](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager) | `choco install rclone-manager` |
+| **Scoop**      | [![Scoop 版本](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras && scoop install rclone-manager` |
+| **直接下载**   | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [安装包 / 便携式 EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **指南:** [Wiki: 安装 - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows)（WinFsp 挂载要求与 SmartScreen）
 

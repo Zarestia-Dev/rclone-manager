@@ -13,7 +13,7 @@ jobs:
         include:
           - platform: "windows-latest"
             args: "--target x86_64-pc-windows-msvc"
-            arch: "arm64"
+            arch: "x64"
             type: "x86_64"
             assetPattern: "[name]_[ver]_[arch][ext]"
           - platform: "windows-latest"

@@ -71,32 +71,32 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 
 ### Linux
 
-| Kaynak               | Kurulum Komutu / İndirme                                                                                                |
-| :------------------- | :---------------------------------------------------------------------------------------------------------------------- |
-| **AUR**              | `yay -S rclone-manager`                                                                                                 |
-| **AUR (Git)**        | `yay -S rclone-manager-git`                                                                                             |
-| **Flathub**          | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                 |
-| **Doğrudan İndirme** | [Son Sürümler (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Kaynak               | Sürüm | Kurulum Komutu / İndirme                                                                                                                                                                                                                                                                  |
+| :------------------- | :---- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**              | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager) | `yay -S rclone-manager` |
+| **AUR (Git)**        | [![AUR Sürümü](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-git) | `yay -S rclone-manager-git` |
+| **Flathub**          | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/apps/io.github.zarestia_dev.rclone-manager) | `flatpak install io.github.zarestia_dev.rclone-manager` |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Son Sürümler (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Kılavuz:** [Wiki: Kurulum - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) (Flatpak sorun giderme vb.)
 
 ### macOS
 
-| Kaynak               | Kurulum Komutu / İndirme                                                        |
-| :------------------- | :------------------------------------------------------------------------------ |
-| **Homebrew**         | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`          |
-| **Doğrudan İndirme** | [DMG Yükleyici](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Kaynak               | Sürüm | Kurulum Komutu / İndirme                                                        |
+| :------------------- | :---- | :------------------------------------------------------------------------------ |
+| **Homebrew**         | [![Homebrew Sürümü](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [DMG Yükleyici](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Kılavuz:** [Wiki: Kurulum - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (macFUSE & Gatekeeper düzeltmeleri)
 
 ### Windows
 
-| Kaynak               | Kurulum Komutu / İndirme                                                                      |
-| :------------------- | :-------------------------------------------------------------------------------------------- |
-| **Winget**           | `winget install RClone-Manager.rclone-manager`                                                |
-| **Chocolatey**       | `choco install rclone-manager`                                                                |
-| **Scoop**            | `scoop bucket add extras && scoop install rclone-manager`                                     |
-| **Doğrudan İndirme** | [Yükleyici / Taşınabilir EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Kaynak               | Sürüm | Kurulum Komutu / İndirme                                                                      |
+| :------------------- | :---- | :-------------------------------------------------------------------------------------------- |
+| **Winget**           | [![Winget Sürümü](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/RClone-Manager/rclone-manager) | `winget install RClone-Manager.rclone-manager` |
+| **Chocolatey**       | [![Chocolatey Sürümü](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager) | `choco install rclone-manager` |
+| **Scoop**           | [![Scoop Sürümü](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras && scoop install rclone-manager` |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Yükleyici / Taşınabilir EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Kılavuz:** [Wiki: Kurulum - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (WinFsp bağlama gereksinimleri & SmartScreen)
 
