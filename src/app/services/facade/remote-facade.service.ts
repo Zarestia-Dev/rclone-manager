@@ -146,12 +146,17 @@ export class RemoteFacadeService extends TauriBaseService {
   constructor() {
     super();
 
+    // Primary trigger: engine ready event (fires after caches are populated)
+    this.eventListeners
+      .listenToRcloneEngineReady()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => void this.refreshAll());
+
+    // Secondary trigger: status changes (handles reconnection after disconnects)
     effect(() => {
       const status = this.statusService.rcloneStatus();
       if (status === 'active') {
-        untracked(() => {
-          void this.refreshAll();
-        });
+        untracked(() => void this.refreshAll());
       }
     });
 
