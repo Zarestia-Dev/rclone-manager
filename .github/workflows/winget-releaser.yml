@@ -33,4 +33,4 @@ jobs:
           version: ${{ inputs.version }}
           release-tag: v${{ inputs.version }}
           installers-regex: 'RClone.*(x64|arm64).*\.exe$'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WINGET_ACC_TOKEN }}
