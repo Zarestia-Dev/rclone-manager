@@ -19,7 +19,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -59,7 +59,7 @@ import {
     MatButtonModule,
     MatProgressSpinnerModule,
     SearchContainerComponent,
-    TranslateModule,
+    TranslatePipe,
     NgTemplateOutlet,
     NumberInputComponent,
   ],

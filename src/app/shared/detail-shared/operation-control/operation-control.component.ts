@@ -26,7 +26,7 @@ import {
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operation-control',
@@ -42,7 +42,7 @@ import { TranslateModule } from '@ngx-translate/core';
     MatProgressBarModule,
     MatSlideToggleModule,
     PathDisplayComponent,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
   ],
   template: `

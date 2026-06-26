@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.
   - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
 
+### Changed
+- **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
+  - Migrated the translation system from `TranslateModule` to a standalone, signal-driven `TranslatePipe`.
+- **Tauri Backend**: Updated Rust cargo crate constraints (`tower-http`, `notify`), while pinning `sysinfo` and `keyring` for compatibility.
+
+### Fixed
+- **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.
+
 ## [v0.2.8] - 2026-06-17
 
 ### Added

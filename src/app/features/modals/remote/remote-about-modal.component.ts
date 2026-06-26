@@ -25,7 +25,7 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FormatFileSizePipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
 
 @Component({
@@ -42,7 +42,7 @@ import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
     MatProgressSpinnerModule,
     MatCardModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../styles/_shared-modal.scss'],

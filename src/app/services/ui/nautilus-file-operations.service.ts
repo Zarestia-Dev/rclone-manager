@@ -298,11 +298,13 @@ export class NautilusFileOperationsService {
           const dstParentPath = this.pathService.getParentPath(item.path);
           const key = `${item.remote}:${dstParentPath}`;
 
-          if (!groups.has(key)) {
-            groups.set(key, { dstRemote: item.remote, dstPath: dstParentPath, items: [] });
+          let group = groups.get(key);
+          if (!group) {
+            group = { dstRemote: item.remote, dstPath: dstParentPath, items: [] };
+            groups.set(key, group);
           }
 
-          groups.get(key)!.items.push({
+          group.items.push({
             remote: item.dstRemote,
             path: item.dstFullPath,
             name: item.name,

@@ -12,7 +12,7 @@ import {
   untracked,
   ViewChild,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { fromEvent } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -62,7 +62,7 @@ import { SlideMenuController } from './slide-menu';
     NautilusTabsComponent,
     NautilusViewPaneComponent,
     NautilusBottomBarComponent,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatSidenavModule,
     MatButtonModule,

@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -24,7 +24,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
     MatTooltipModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `

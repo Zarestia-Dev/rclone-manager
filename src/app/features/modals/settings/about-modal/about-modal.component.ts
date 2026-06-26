@@ -21,7 +21,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NgClass, NgTemplateOutlet, DecimalPipe } from '@angular/common';
 
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
@@ -58,7 +58,7 @@ renderer.link = ({ href, title, text }): string => {
     MatTooltipModule,
     MatProgressBarModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './about-modal.component.html',
@@ -520,7 +520,7 @@ export class AboutModalComponent implements OnInit {
 
   formatReleaseDate(dateString: string): string {
     try {
-      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang(), {
+      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang() ?? 'en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

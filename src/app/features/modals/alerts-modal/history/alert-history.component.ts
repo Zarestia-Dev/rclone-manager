@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -23,7 +23,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     MatTooltipModule,
     MatTableModule,
     MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `

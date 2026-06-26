@@ -34,7 +34,7 @@ export class FlagConfigService extends TauriBaseService {
     if (current) return current;
     if (this.groupedOptionsPromise) return this.groupedOptionsPromise;
 
-    this.groupedOptionsPromise = (async () => {
+    this.groupedOptionsPromise = (async (): Promise<GroupedRCloneOptions> => {
       try {
         const options = await this.invokeCommand<GroupedRCloneOptions>(
           'get_grouped_options_with_values'
@@ -83,7 +83,7 @@ export class FlagConfigService extends TauriBaseService {
     if (current) return current;
     if (this.allFlagFieldsPromise) return this.allFlagFieldsPromise;
 
-    this.allFlagFieldsPromise = (async () => {
+    this.allFlagFieldsPromise = (async (): Promise<Record<FlagType, RcConfigOption[]>> => {
       try {
         const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
 
@@ -129,12 +129,13 @@ export class FlagConfigService extends TauriBaseService {
    */
   async loadServeFlagFields(serveType: string): Promise<RcConfigOption[]> {
     const currentMap = this._serveFlagsMap();
-    if (currentMap.has(serveType)) return currentMap.get(serveType)!;
+    const cached = currentMap.get(serveType);
+    if (cached) return cached;
 
     const existing = this.serveFlagsPromises.get(serveType);
     if (existing) return existing;
 
-    const promise = (async () => {
+    const promise = (async (): Promise<RcConfigOption[]> => {
       try {
         const flags = await this.invokeCommand<RcConfigOption[]>('get_serve_flags', {
           serveType,

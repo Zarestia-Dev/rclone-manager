@@ -22,7 +22,7 @@ import { startWith } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthStateService } from 'src/app/services/security/auth-state.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
@@ -72,7 +72,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     InteractiveConfigStepComponent,
     RemoteConfigStepComponent,
     OperationConfigComponent,
-    TranslateModule,
+    TranslatePipe,
     MatTooltipModule,
     CopyToClipboardDirective,
   ],
@@ -161,15 +161,15 @@ export class QuickAddRemoteComponent {
   );
 
   readonly setupTypeValue = toSignal(
-    this.quickAddForm
-      .get('setup.type')!
-      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.type')!.value as string))
+    (this.quickAddForm.get('setup.type') ?? new FormControl('')).valueChanges.pipe(
+      startWith((this.quickAddForm.get('setup.type')?.value ?? '') as string)
+    )
   );
 
   readonly setupNameValue = toSignal(
-    this.quickAddForm
-      .get('setup.name')!
-      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.name')!.value as string))
+    (this.quickAddForm.get('setup.name') ?? new FormControl('')).valueChanges.pipe(
+      startWith((this.quickAddForm.get('setup.name')?.value ?? '') as string)
+    )
   );
 
   // ── Auth state ───────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ export class QuickAddRemoteComponent {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (!selectedPath) return;
 
-      const getControlPath = () => {
+      const getControlPath = (): string | null => {
         if (opName === 'mount' && pathType === 'dest') return 'operations.mount.dest.path';
 
         const opGroup = this.quickAddForm.get(`operations.${opName}`);
@@ -444,7 +444,7 @@ export class QuickAddRemoteComponent {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const buildProfile = (type: string, opData: any) => {
+    const buildProfile = (type: string, opData: any): any => {
       return mapFormToConfigProfile(type, opData, {
         remoteName,
         pathService: this.pathService,

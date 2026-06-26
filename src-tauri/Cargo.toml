@@ -68,14 +68,14 @@ futures = { version = "0.3" }
 
 # Web server dependencies (optional)
 axum = { version = "0.8", features = ["multipart"], optional = true }
-tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
+tower-http = { version = "0.7", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
 anyhow = {version = "1", optional = true}
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
 parking_lot = "0.12"
-notify = "8.2.0"
+notify = "8.2"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"

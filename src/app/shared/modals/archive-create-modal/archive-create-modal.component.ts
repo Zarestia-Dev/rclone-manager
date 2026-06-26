@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileBrowserItem, RcConfigOption } from '@app/types';
 import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
 import { SettingControlComponent } from '../../components/setting-control/setting-control.component';
@@ -24,7 +24,7 @@ export interface ArchiveCreateData {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    TranslateModule,
+    TranslatePipe,
     SettingControlComponent,
   ],
   host: {

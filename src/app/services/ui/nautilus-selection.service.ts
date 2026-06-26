@@ -62,9 +62,10 @@ export class NautilusSelectionService {
     const itemKey = this.getItemKey(item);
     const newSel = new Set<string>();
 
-    if (event.shiftKey && this.lastSelectedIndex[paneIndex] !== null && multi) {
-      const start = Math.min(this.lastSelectedIndex[paneIndex]!, index);
-      const end = Math.max(this.lastSelectedIndex[paneIndex]!, index);
+    const lastIdx = this.lastSelectedIndex[paneIndex];
+    if (event.shiftKey && lastIdx !== null && multi) {
+      const start = Math.min(lastIdx, index);
+      const end = Math.max(lastIdx, index);
       for (let i = start; i <= end; i++) {
         if (currentFiles[i]) newSel.add(this.getItemKey(currentFiles[i]));
       }

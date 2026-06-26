@@ -1,6 +1,6 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
 import { Component, computed, input, inject, output } from '@angular/core';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -39,7 +39,7 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './remote-card.component.html',
   styleUrl: './remote-card.component.scss',
@@ -381,7 +381,12 @@ export class RemoteCardComponent {
     },
   };
 
-  getStatusIndicatorMeta(op: PrimaryActionType) {
+  getStatusIndicatorMeta(op: PrimaryActionType): {
+    icon: string;
+    pillClass: string;
+    ariaKey: string;
+    animateContainer?: boolean;
+  } {
     return RemoteCardComponent.STATUS_INDICATOR_META[op];
   }
 

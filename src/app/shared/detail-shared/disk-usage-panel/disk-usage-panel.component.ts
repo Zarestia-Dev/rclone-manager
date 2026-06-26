@@ -1,6 +1,6 @@
 import { Component, input, output, computed } from '@angular/core';
 import { NgClass, NgStyle } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,7 +17,7 @@ import { FormatFileSizePipe } from '@app/pipes';
     MatIconModule,
     MatButtonModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   styleUrls: ['./disk-usage-panel.component.scss'],
   template: `

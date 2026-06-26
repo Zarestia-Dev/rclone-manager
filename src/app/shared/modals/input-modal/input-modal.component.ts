@@ -14,7 +14,7 @@ import {
   AbstractControl,
   ValidationErrors,
 } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 export interface InputFieldConfig {
@@ -54,7 +54,7 @@ export interface InputModalData {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './input-modal.component.html',
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],

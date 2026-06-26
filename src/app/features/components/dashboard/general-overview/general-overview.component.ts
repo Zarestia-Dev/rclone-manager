@@ -7,7 +7,7 @@ import {
   computed,
   output,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -82,7 +82,7 @@ import { AutomationCardComponent } from '../../../../shared/detail-shared';
     FormatRateValuePipe,
     FormatBytes,
     OverviewHeaderComponent,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
     AutomationCardComponent,
   ],

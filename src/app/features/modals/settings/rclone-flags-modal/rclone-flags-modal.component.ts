@@ -9,7 +9,7 @@ import {
   ChangeDetectionStrategy,
   viewChild,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -171,7 +171,7 @@ const MAIN_CATEGORY_CONFIG: Record<
     SettingControlComponent,
     JsonEditorComponent,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     RcloneOptionTranslatePipe,
   ],
   templateUrl: './rclone-flags-modal.component.html',
@@ -180,7 +180,7 @@ const MAIN_CATEGORY_CONFIG: Record<
   providers: [
     {
       provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (modal: RcloneFlagsModalComponent) => modal.lookupTable,
+      useFactory: (modal: RcloneFlagsModalComponent): any => modal.lookupTable,
       deps: [RcloneFlagsModalComponent],
     },
   ],
@@ -449,8 +449,9 @@ export class RcloneFlagsModalComponent implements OnInit {
     this.currentCategory.set(category ?? null);
     this.optionToFocus = optionName ?? null;
 
-    if (this.optionToFocus) {
-      queueMicrotask(() => this.scrollToOption(this.optionToFocus!));
+    const focus = this.optionToFocus;
+    if (focus) {
+      queueMicrotask(() => this.scrollToOption(focus));
     }
   }
 

@@ -16,7 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatTableModule } from '@angular/material/table';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
@@ -33,7 +33,7 @@ import { Entry, FileBrowserItem } from '@app/types';
     MatButtonModule,
     CdkMenuModule,
     MatTableModule,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
   ],
   templateUrl: './nautilus-view-pane.component.html',

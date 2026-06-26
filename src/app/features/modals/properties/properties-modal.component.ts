@@ -27,7 +27,7 @@ import { JobManagementService } from 'src/app/services/operations/job-management
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { Entry, FileBrowserItem, RemoteFeatures, ExpiryOption } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-properties-modal',
@@ -44,7 +44,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     MatSelectModule,
     MatFormFieldModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './properties-modal.component.html',

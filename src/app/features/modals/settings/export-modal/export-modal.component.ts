@@ -19,7 +19,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { ExportModalData, ExportType, BackupExportOption } from '@app/types';
 import {
@@ -70,7 +70,7 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatRadioModule,
     MatSlideToggleModule,
     MatCheckboxModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],

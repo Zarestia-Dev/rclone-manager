@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
@@ -27,7 +27,7 @@ import { NautilusTabItem } from '@app/types';
     MatTooltipModule,
     MatDividerModule,
     CdkMenuModule,
-    TranslateModule,
+    TranslatePipe,
     ScrollShadowDirective,
   ],
   templateUrl: './nautilus-tabs.component.html',

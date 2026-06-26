@@ -2,7 +2,6 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
 import {
@@ -16,14 +15,7 @@ import {
 
 @Component({
   selector: 'app-remotes-panel',
-  imports: [
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule,
-    TranslateModule,
-    DragDropModule,
-    RemoteCardComponent,
-  ],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, DragDropModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
   host: {

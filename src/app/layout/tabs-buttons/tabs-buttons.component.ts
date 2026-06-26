@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppTab } from '@app/types';
@@ -9,7 +9,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 @Component({
   selector: 'app-tabs',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslateModule],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
   templateUrl: './tabs-buttons.component.html',
   styleUrl: './tabs-buttons.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

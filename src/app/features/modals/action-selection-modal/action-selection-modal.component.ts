@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { ACTION_CONFIGS, ActionConfig, PrimaryActionType, MODE_DEFAULTS } from '@app/types';
 
 export interface ActionSelectionModalData {
@@ -22,7 +22,7 @@ export interface ActionSelectionItem {
 
 @Component({
   selector: 'app-action-selection-modal',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, DragDropModule, TranslateModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, DragDropModule, TranslatePipe],
   templateUrl: './action-selection-modal.component.html',
   styleUrls: ['./action-selection-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

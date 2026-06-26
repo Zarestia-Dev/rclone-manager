@@ -10,7 +10,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
 import { CompletedTransfer } from '@app/types';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -26,7 +26,7 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
   selector: 'app-completed-transfers-table',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatTooltipModule, MatButtonModule, TranslateModule, FormatFileSizePipe],
+  imports: [MatIconModule, MatTooltipModule, MatButtonModule, TranslatePipe, FormatFileSizePipe],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
       @if (transfers().length > 0) {

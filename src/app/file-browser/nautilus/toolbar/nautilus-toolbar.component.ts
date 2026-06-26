@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
@@ -29,7 +29,7 @@ import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.
   imports: [
     MatToolbarModule,
     MatIconModule,
-    TranslateModule,
+    TranslatePipe,
     CdkMenuModule,
     WindowControlsComponent,
     ScrollShadowDirective,

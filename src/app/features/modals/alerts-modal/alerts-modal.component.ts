@@ -3,7 +3,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogRef } from '@angular/material/dialog';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { AlertHistoryComponent } from './history/alert-history.component';
@@ -17,7 +17,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
-    TranslateModule,
+    TranslatePipe,
     AlertHistoryComponent,
     AlertRulesComponent,
     AlertActionsComponent,

@@ -153,16 +153,16 @@ export class RemoteConfigStateService {
     { initialValue: this.remoteConfigForm.status }
   );
   readonly remoteTypeSignal = toSignal(
-    this.remoteForm
-      .get('type')!
-      .valueChanges.pipe(startWith(this.remoteForm.get('type')!.value as string)),
-    { initialValue: this.remoteForm.get('type')!.value as string }
+    this.remoteForm.controls['type'].valueChanges.pipe(
+      startWith(this.remoteForm.controls['type'].value as string)
+    ),
+    { initialValue: this.remoteForm.controls['type'].value as string }
   );
   readonly remoteNameSignal = toSignal(
-    this.remoteForm
-      .get('name')!
-      .valueChanges.pipe(startWith(this.remoteForm.get('name')!.value as string)),
-    { initialValue: this.remoteForm.get('name')!.value as string }
+    this.remoteForm.controls['name'].valueChanges.pipe(
+      startWith(this.remoteForm.controls['name'].value as string)
+    ),
+    { initialValue: this.remoteForm.controls['name'].value as string }
   );
 
   readonly editTarget = signal<EditTarget>(null);
@@ -1091,8 +1091,9 @@ export class RemoteConfigStateService {
   returnFromShared(): void {
     const stack = this.editStack();
     if (!stack.length) return;
-    const target = stack.at(-1)!,
-      curr = this.editTarget();
+    const target = stack[stack.length - 1];
+    if (target === undefined) return;
+    const curr = this.editTarget();
     if (curr) this.saveCurrentAndMarkDirty(curr);
     this.editStack.update(s => s.slice(0, -1));
     this.editTarget.set(target);
@@ -1470,8 +1471,12 @@ export class RemoteConfigStateService {
         const cKey = matchedField
           ? getControlKey(matchedField, type)
           : getControlKey({ FieldName: k, Name: k } as any, type);
-        if (optsGroup.contains(cKey)) optsGroup.get(cKey)!.setValue(v, { emitEvent: false });
-        else optsGroup.addControl(cKey, new FormControl(v), { emitEvent: false });
+        const control = optsGroup.get(cKey);
+        if (control) {
+          control.setValue(v, { emitEvent: false });
+        } else {
+          optsGroup.addControl(cKey, new FormControl(v), { emitEvent: false });
+        }
       }
     }
 

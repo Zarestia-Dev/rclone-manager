@@ -12,7 +12,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operations-panel',
@@ -30,7 +30,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     FormatFileSizePipe,
     FormatEtaPipe,
     FormatRateValuePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './operations-panel.component.html',

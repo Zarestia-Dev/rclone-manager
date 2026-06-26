@@ -28,7 +28,7 @@ describe('TitlebarComponent', () => {
     };
 
     // override the read-only signal by casting to any
-    (component['rcloneUpdateService']['_updateState'] as any) = () => fakeState;
+    (component['rcloneUpdateService']['_updateState'] as any) = (): any => fakeState;
 
     expect(component.rcloneRestartRequired()).toBeTrue();
     expect(component.updateTooltip()).toContain('Restart');

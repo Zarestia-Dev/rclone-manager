@@ -1,7 +1,7 @@
 import { TitleCasePipe } from '@angular/common';
 import { Component, inject, computed, input, model, output, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
@@ -95,7 +95,7 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
     TransferActivityPanelComponent,
     VfsControlPanelComponent,
     ServeCardComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   providers: [FormatFileSizePipe, FormatTimePipe],
   templateUrl: './app-detail.component.html',
@@ -465,7 +465,7 @@ export class AppDetailComponent {
         const cronExpression = cfg.app.cronExpression ?? '';
         try {
           humanReadable = cronstrue(cronExpression, {
-            locale: getCronstrueLocale(this.translate.getCurrentLang()),
+            locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
           });
         } catch {
           console.warn(`Invalid cron expression for profile ${profileName}: ${cronExpression}`);

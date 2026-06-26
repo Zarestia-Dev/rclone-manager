@@ -1,12 +1,12 @@
 import { Component, input, computed } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AppTab, ACTIVE_LABELS, INACTIVE_LABELS } from '@app/types';
 
 @Component({
   selector: 'app-status-overview-panel',
-  imports: [MatCardModule, MatIconModule, TranslateModule],
+  imports: [MatCardModule, MatIconModule, TranslatePipe],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
 })

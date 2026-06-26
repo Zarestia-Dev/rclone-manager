@@ -13,7 +13,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
 import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remote-config.utils';
@@ -29,7 +29,7 @@ import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remo
     MatInputModule,
     MatIconModule,
     LineBreaksPipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './interactive-config-step.component.html',
   styleUrls: ['./interactive-config-step.component.scss'],
@@ -51,9 +51,10 @@ export class InteractiveConfigStepComponent {
 
   readonly selectedIndex = linkedSignal<number | null>(() => {
     const q = this.question();
-    const examples = q?.Option?.Examples;
+    if (!q) return null;
+    const examples = q.Option?.Examples;
     if (!examples?.length) return null;
-    const initial = getDefaultAnswerFromQuestion(q!);
+    const initial = getDefaultAnswerFromQuestion(q);
     const idx = examples.findIndex(ex => ex.Value === initial);
     return idx >= 0 ? idx : null;
   });

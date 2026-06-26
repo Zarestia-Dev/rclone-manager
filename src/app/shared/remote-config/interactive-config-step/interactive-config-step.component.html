@@ -66,7 +66,7 @@
                   (ngModelChange)="onAnswerChange($event)"
                   [disabled]="canceling()"
                   class="toggle-input primary"
-                  [attr.aria-label]="q.Option?.Name || 'Toggle option'"
+                  [attr.aria-label]="q.Option.Name || 'Toggle option'"
                 >
                   <span class="toggle-label">{{
                     answer()
@@ -82,20 +82,20 @@
               <div class="input-card select-input">
                 <mat-form-field appearance="fill">
                   <mat-label>{{
-                    q.Option?.Name || ('wizards.remoteConfig.chooseOption' | translate)
+                    q.Option.Name || ('wizards.remoteConfig.chooseOption' | translate)
                   }}</mat-label>
                   <mat-select
                     [ngModel]="selectedIndex()"
                     (ngModelChange)="onSelectionChange($event)"
                     [disabled]="canceling()"
                     [attr.aria-label]="
-                      q.Option?.Name || ('wizards.remoteConfig.selectOption' | translate)
+                      q.Option.Name || ('wizards.remoteConfig.selectOption' | translate)
                     "
                   >
                     <mat-select-trigger>
                       {{ selectedDisplayValue() }}
                     </mat-select-trigger>
-                    @for (ex of q.Option?.Examples; track $index; let index = $index) {
+                    @for (ex of q.Option.Examples; track $index; let index = $index) {
                       <mat-option [value]="index">
                         <div class="option-content">
                           <span class="option-label">{{ ex.Help || ex.Value }}</span>

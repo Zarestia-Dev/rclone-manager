@@ -38,7 +38,8 @@ export class RemoteManagementService extends TauriBaseService {
     group?: string
   ): Promise<FsInfo> {
     const key = this.pathService.normalizeRemoteName(remoteName);
-    if (this.metadataCache.has(key)) return this.metadataCache.get(key)!;
+    const cached = this.metadataCache.get(key);
+    if (cached !== undefined) return cached;
 
     const fsName = this.pathService.isLocalPath(key) ? key : `${key}:`;
     try {

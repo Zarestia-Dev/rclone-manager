@@ -55,7 +55,7 @@ export class FileViewerService extends TauriBaseService {
       remoteName,
     };
 
-    const cleanup = () => {
+    const cleanup = (): void => {
       overlayRef.dispose();
       this._isViewerOpen.set(false);
       this._activeFileName.set(null);

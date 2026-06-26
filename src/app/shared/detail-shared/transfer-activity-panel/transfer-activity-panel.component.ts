@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
@@ -22,7 +22,7 @@ import { TransferActivityPanelConfig } from '../../types';
     MatTabsModule,
     MatButtonModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
     CheckResultsTableComponent,

@@ -11,7 +11,7 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 import { Remote } from '@app/types';
@@ -29,7 +29,7 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
     MatCardModule,
     MatIconModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   templateUrl: './sidebar.component.html',

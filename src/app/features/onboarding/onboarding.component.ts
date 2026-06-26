@@ -16,7 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { InstallationService } from 'src/app/services/settings/installation.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
@@ -43,7 +43,7 @@ import {
     InstallationOptionsComponent,
     MatProgressSpinnerModule,
     PasswordManagerComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],

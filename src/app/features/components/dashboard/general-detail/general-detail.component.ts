@@ -29,7 +29,7 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { ActionSelectionModalComponent } from 'src/app/features/modals/action-selection-modal/action-selection-modal.component';
 
@@ -47,7 +47,7 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,
-    TranslateModule,
+    TranslatePipe,
     AutomationCardComponent,
   ],
   templateUrl: './general-detail.component.html',

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NautilusToolbarComponent } from './nautilus-toolbar.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { provideTranslateService } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { IconService } from 'src/app/services/ui/icon.service';
 
@@ -13,8 +13,8 @@ describe('NautilusToolbarComponent', () => {
     mockIconService = jasmine.createSpyObj('IconService', ['getIconName']);
 
     await TestBed.configureTestingModule({
-      imports: [NautilusToolbarComponent, TranslateModule.forRoot(), MatIconTestingModule],
-      providers: [{ provide: IconService, useValue: mockIconService }],
+      imports: [NautilusToolbarComponent, MatIconTestingModule],
+      providers: [{ provide: IconService, useValue: mockIconService }, provideTranslateService()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NautilusToolbarComponent);

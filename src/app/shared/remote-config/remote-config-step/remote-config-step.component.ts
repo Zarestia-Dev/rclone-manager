@@ -21,7 +21,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import {
   RcConfigOption,
   RemoteType,
@@ -54,7 +54,7 @@ export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
     MatSelectModule,
     SettingControlComponent,
     JsonEditorComponent,
-    TranslateModule,
+    TranslatePipe,
     MatIcon,
   ],
   templateUrl: './remote-config-step.component.html',

@@ -23,7 +23,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   CronValidationResponse,
@@ -43,7 +43,7 @@ import {
   PathSelectionService,
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { PathService, PathGroup } from 'src/app/services/infrastructure/platform/path.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 
@@ -77,7 +77,7 @@ interface PathItem {
     NumberInputComponent,
     MatProgressSpinner,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
@@ -223,13 +223,13 @@ export class OperationConfigComponent {
       const sub = form.valueChanges.subscribe(() => this.formVersion.update((v: number) => v + 1));
       onCleanup(() => sub.unsubscribe());
     });
-
     effect(() => {
       if (this.isNewRemote()) {
         this.clearAutocomplete();
         return;
       }
-      const items = [...this.sourceItems(), ...(this.destItem() ? [this.destItem()!] : [])];
+      const dest = this.destItem();
+      const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
       this.syncAutocomplete(items);
     });
 
@@ -450,7 +450,7 @@ export class OperationConfigComponent {
       : `${remote}:`;
   }
 
-  private getPathData(item: FileBrowserItem, group: PathDirection) {
+  private getPathData(item: FileBrowserItem, group: PathDirection): PathGroup | null {
     const data = this.pathService.resolvePathGroup(item, this.currentRemoteName());
 
     if (this.isMount() && group === 'dest' && data.type !== 'local') {

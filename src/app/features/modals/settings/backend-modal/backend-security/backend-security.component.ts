@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
@@ -37,7 +37,7 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
     MatTooltipModule,
     MatSlideToggleModule,
     MatExpansionModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './backend-security.component.html',
   styleUrls: ['./backend-security.component.scss'],
@@ -127,7 +127,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const password = this.keychainPassword.value!;
+    const password = this.keychainPassword.value || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.validatePassword(password);
@@ -157,7 +157,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const newPassword = this.encryptForm.value.newPassword!;
+    const newPassword = this.encryptForm.value.newPassword || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.encryptConfig(newPassword);
@@ -180,7 +180,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const password = this.decryptPassword.value!;
+    const password = this.decryptPassword.value || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.unencryptConfig(password);

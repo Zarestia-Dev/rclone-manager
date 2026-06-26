@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
 import { AlertService } from 'src/app/services/alerts/alert.service';
@@ -29,7 +29,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -105,9 +105,8 @@ export class AlertRuleEditorComponent {
   });
 
   constructor() {
-    this.data = this.dialogData?.ruleId
-      ? this.alertService.rules().find(r => r.id === this.dialogData!.ruleId)
-      : undefined;
+    const ruleId = this.dialogData?.ruleId;
+    this.data = ruleId ? this.alertService.rules().find(r => r.id === ruleId) : undefined;
 
     if (this.data) this.form.patchValue(this.data);
   }

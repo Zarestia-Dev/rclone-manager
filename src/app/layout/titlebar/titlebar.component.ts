@@ -7,7 +7,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 
 // Services
 import { BackupRestoreUiService } from 'src/app/services/settings/backup-restore-ui.service';
@@ -33,7 +33,7 @@ import { WindowControlsComponent } from 'src/app/shared/components/window-contro
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatBadgeModule,
-    TranslateModule,
+    TranslatePipe,
     WindowControlsComponent,
   ],
   templateUrl: './titlebar.component.html',

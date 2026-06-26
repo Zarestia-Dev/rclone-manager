@@ -15,7 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { FlagType, RcConfigOption } from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
@@ -40,7 +40,7 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     SettingControlComponent,
     OperationConfigComponent,
     JsonEditorComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',

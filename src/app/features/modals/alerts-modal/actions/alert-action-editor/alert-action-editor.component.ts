@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption } from '@app/types';
@@ -27,7 +27,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption }
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -92,9 +92,8 @@ export class AlertActionEditorComponent {
   });
 
   constructor() {
-    this.data = this.dialogData?.actionId
-      ? this.alertService.actions().find(a => a.id === this.dialogData!.actionId)
-      : undefined;
+    const actionId = this.dialogData?.actionId;
+    this.data = actionId ? this.alertService.actions().find(a => a.id === actionId) : undefined;
 
     if (this.data) {
       const patch: any = { ...this.data };
@@ -147,7 +146,7 @@ export class AlertActionEditorComponent {
     all.forEach(f => this.form.get(f)?.clearValidators());
 
     const kind = this.form.controls.kind.value;
-    const required = (fields: string[]) =>
+    const required = (fields: string[]): void =>
       fields.forEach(f => this.form.get(f)?.setValidators([Validators.required]));
 
     if (kind === 'webhook') required(['url']);
@@ -161,7 +160,7 @@ export class AlertActionEditorComponent {
 
   // ── Headers ──────────────────────────────────────────────────────
 
-  get headers() {
+  get headers(): FormArray {
     return this.form.get('headers') as FormArray;
   }
 

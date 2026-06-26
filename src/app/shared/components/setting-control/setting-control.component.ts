@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -57,7 +57,7 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
     MatTimepickerModule,
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
-    TranslateModule,
+    TranslatePipe,
     NumberInputComponent,
   ],
   templateUrl: './setting-control.component.html',
@@ -632,7 +632,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       'enum',
     ];
     for (const key of keys) {
-      if (errors[key]?.message) return errors[key].message!;
+      const message = errors[key]?.message;
+      if (message) return message;
     }
     return this.translate.instant('shared.settingControl.errors.invalidValue');
   }

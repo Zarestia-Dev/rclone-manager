@@ -11,7 +11,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
@@ -31,7 +31,7 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
     MatIconModule,
     MatTooltipModule,
     MatButtonModule,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
   ],

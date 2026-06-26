@@ -15,7 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { SharedProfileType, EditTarget } from '@app/types';
 import {
@@ -36,7 +36,7 @@ type ProfileMode = 'new' | 'override' | 'patch';
     MatButtonModule,
     MatRadioModule,
     MatCheckboxModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './cli-import.component.html',
   styleUrl: './cli-import.component.scss',

@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -75,7 +75,7 @@ import {
   selector: 'app-remote-config-modal',
   imports: [
     ReactiveFormsModule,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatSelectModule,
@@ -97,7 +97,7 @@ import {
     RemoteConfigStateService,
     {
       provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (state: RemoteConfigStateService) => state.lookupTable,
+      useFactory: (state: RemoteConfigStateService): any => state.lookupTable,
       deps: [RemoteConfigStateService],
     },
   ],

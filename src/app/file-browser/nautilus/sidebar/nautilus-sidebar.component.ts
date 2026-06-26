@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
@@ -20,7 +20,7 @@ import { SlideMenuController } from '../slide-menu';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
@@ -78,8 +78,9 @@ export class NautilusSidebarComponent {
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {
-    if (this.starredMode() || !this.nautilusRemote()) return null;
-    return `${this.nautilusRemote()!.name}::${this.currentPath()}`;
+    const remote = this.nautilusRemote();
+    if (this.starredMode() || !remote) return null;
+    return `${remote.name}::${this.currentPath()}`;
   });
 
   readonly anyBookmarkSelected = computed(() => {

@@ -335,8 +335,8 @@ export class NautilusTabService {
     if (cfg.mode === 'local') return localDrives.length > 0;
     if (cfg.mode === 'remote') {
       if (cloudRemotes.length === 0) return false;
-      if (cfg.allowedRemotes?.length)
-        return cloudRemotes.some(x => cfg.allowedRemotes!.includes(x.name));
+      const allowed = cfg.allowedRemotes;
+      if (allowed?.length) return cloudRemotes.some(x => allowed.includes(x.name));
       return true;
     }
     return true;

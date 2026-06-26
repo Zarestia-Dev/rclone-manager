@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { JobInfo, PathDisplayConfig, TransferActivityPanelConfig, NON_JOB_OPS } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
 import {
@@ -31,7 +31,7 @@ import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-cli
     MatButtonModule,
     MatProgressBarModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
     FormatEtaPipe,

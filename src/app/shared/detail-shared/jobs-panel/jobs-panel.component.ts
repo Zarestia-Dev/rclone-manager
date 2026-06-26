@@ -1,6 +1,6 @@
 import { Component, input, output, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
@@ -31,7 +31,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
     MatTooltipModule,
     FormatFileSizePipe,
     FormatTimePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `

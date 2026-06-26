@@ -26,7 +26,7 @@ import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService } from 'src/app/services/infrastructure/platform/logging.service';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 import { AnsiToHtmlPipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 
 @Component({
@@ -45,7 +45,7 @@ import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-
     AnsiToHtmlPipe,
     DatePipe,
     UpperCasePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './logs-modal.component.html',

@@ -1,6 +1,6 @@
 import { Component, input, output, inject, computed } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -13,7 +13,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslateModule],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslatePipe],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     @let cfg = config();

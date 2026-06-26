@@ -221,7 +221,7 @@ export class ValidatorRegistryService {
       watchDelayCtrl.setValidators(this.requiredIfWatchEnabled());
     }
 
-    const updatePathsValidity = () => {
+    const updatePathsValidity = (): void => {
       if (sourceCtrl instanceof FormArray) {
         sourceCtrl.controls.forEach((c: AbstractControl) =>
           c.get('path')?.updateValueAndValidity()

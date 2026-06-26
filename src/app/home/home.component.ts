@@ -17,7 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   OperationTab,
@@ -61,7 +61,7 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -129,8 +129,8 @@ export class HomeComponent {
 
   private setupResponsiveLayout(): void {
     const mql = window.matchMedia('(min-width: 900px)');
-    const update = (matches: boolean) => this.sidebarMode.set(matches ? 'side' : 'over');
-    const handler = (e: MediaQueryListEvent) => update(e.matches);
+    const update = (matches: boolean): void => this.sidebarMode.set(matches ? 'side' : 'over');
+    const handler = (e: MediaQueryListEvent): void => update(e.matches);
 
     update(mql.matches);
     mql.addEventListener('change', handler);

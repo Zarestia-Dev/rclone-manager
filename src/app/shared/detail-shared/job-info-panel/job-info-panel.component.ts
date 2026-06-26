@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { JobInfoConfig } from '../../types';
@@ -8,7 +8,7 @@ import { JobInfoConfig } from '../../types';
 @Component({
   selector: 'app-job-info-panel',
   standalone: true,
-  imports: [DatePipe, TitleCasePipe, MatCardModule, MatIconModule, TranslateModule],
+  imports: [DatePipe, TitleCasePipe, MatCardModule, MatIconModule, TranslatePipe],
   styleUrls: ['./job-info-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

@@ -16,7 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-number-input',
@@ -27,7 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
     MatIconModule,
     MatInputModule,
     MatFormFieldModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './number-input.component.html',
   styleUrl: './number-input.component.scss',

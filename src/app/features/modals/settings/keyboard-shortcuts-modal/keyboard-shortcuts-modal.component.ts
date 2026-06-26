@@ -14,7 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 
 @Component({
@@ -28,7 +28,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
     FormsModule,
     MatButtonModule,
     SearchContainerComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './keyboard-shortcuts-modal.component.html',
   styleUrls: ['./keyboard-shortcuts-modal.component.scss', '../../../../styles/_shared-modal.scss'],

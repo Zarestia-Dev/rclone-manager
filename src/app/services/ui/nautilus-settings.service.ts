@@ -35,9 +35,10 @@ export class NautilusSettingsService {
       ? (this.LIST_ICON_SIZES as readonly number[])
       : (this.GRID_ICON_SIZES as readonly number[])
   );
-  readonly increaseIconDisabled = computed(
-    () => this.iconSize() >= this._currentIconSizes().at(-1)!
-  );
+  readonly increaseIconDisabled = computed(() => {
+    const sizes = this._currentIconSizes();
+    return this.iconSize() >= sizes[sizes.length - 1];
+  });
   readonly decreaseIconDisabled = computed(() => this.iconSize() <= this._currentIconSizes()[0]);
 
   constructor() {

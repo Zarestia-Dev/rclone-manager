@@ -28,7 +28,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { BackendSecurityComponent } from './backend-security/backend-security.component';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -50,7 +50,7 @@ import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
     MatCheckboxModule,
     MatTabsModule,
     BackendSecurityComponent,
-    TranslateModule,
+    TranslatePipe,
     MatExpansionModule,
     MatSlideToggle,
   ],
