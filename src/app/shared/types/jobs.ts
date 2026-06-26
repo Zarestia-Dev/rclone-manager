@@ -1,4 +1,6 @@
 import { JobActionType } from './operations';
+import { OPERATION_REGISTRY } from './operation-registry';
+import { Origin } from './origin';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 
@@ -43,6 +45,15 @@ export interface GlobalStats {
   transfers: number;
   listed: number;
   startTime?: string;
+  checkOutput?: {
+    differ?: string[];
+    missingOnDst?: string[];
+    missingOnSrc?: string[];
+    error?: string[];
+    status?: string;
+    success?: boolean;
+    hashType?: string;
+  };
 }
 
 export interface RawTransfer {
@@ -64,7 +75,8 @@ export interface JobStatsWithCompleted extends GlobalStats {
   completed?: RawTransfer[];
 }
 
-export const DEFAULT_JOB_STATS: GlobalStats = {
+// Frozen to prevent accidental mutation of the default state
+export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
   bytes: 0,
   totalBytes: 0,
   speed: 0,
@@ -88,9 +100,7 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   transferTime: 0,
   transferring: [],
   listed: 0,
-};
-
-import { Origin } from './origin';
+});
 
 export interface JobInfo {
   jobid: number;
@@ -113,6 +123,7 @@ export interface JobInfo {
   backend_name?: string;
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
+  parent_job_id?: number;
 }
 
 export interface BatchMasterJob {
@@ -128,23 +139,17 @@ export interface BatchMasterJob {
   group?: string;
 }
 
-export const JOB_STATUS_BADGE_MAP: Record<string, string> = {
+export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   completed: 'p-primary',
   failed: 'p-warn',
   stopped: 'p-orange',
-};
+});
 
-export const JOB_ICON_MAP: Record<string, string> = {
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  serve: 'serve',
-  mount: 'mount',
-  copy_url: 'copy',
-  delete: 'trash',
+export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
+  ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
+  copyurl: 'link',
   rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',
   upload: 'file-arrow-up',
-};
+});

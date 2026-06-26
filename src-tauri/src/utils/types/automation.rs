@@ -1,51 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::types::jobs::JobType;
-use crate::utils::types::remotes::ProfileParams;
-
-/// Type of automation
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum AutomationType {
-    Copy,
-    Sync,
-    Move,
-    Bisync,
-}
-
-impl std::fmt::Display for AutomationType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AutomationType::Copy => write!(f, "Copy"),
-            AutomationType::Sync => write!(f, "Sync"),
-            AutomationType::Move => write!(f, "Move"),
-            AutomationType::Bisync => write!(f, "Bisync"),
-        }
-    }
-}
-
-impl AutomationType {
-    #[must_use]
-    pub fn as_job_type(&self) -> JobType {
-        match self {
-            AutomationType::Copy => JobType::Copy,
-            AutomationType::Sync => JobType::Sync,
-            AutomationType::Move => JobType::Move,
-            AutomationType::Bisync => JobType::Bisync,
-        }
-    }
-
-    #[must_use]
-    pub fn config_key(&self) -> crate::utils::types::remotes::OperationConfigKey {
-        match self {
-            Self::Sync => crate::utils::types::remotes::OperationConfigKey::Sync,
-            Self::Copy => crate::utils::types::remotes::OperationConfigKey::Copy,
-            Self::Move => crate::utils::types::remotes::OperationConfigKey::Move,
-            Self::Bisync => crate::utils::types::remotes::OperationConfigKey::Bisync,
-        }
-    }
-}
+use crate::utils::types::remotes::{OperationType, ProfileParams};
 
 /// Status of an automation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,7 +54,7 @@ pub struct Automation {
     pub id: String,
 
     /// Type of rclone operation
-    pub automation_type: AutomationType,
+    pub automation_type: OperationType,
 
     /// Remote name this automation is associated with
     pub remote_name: String,
@@ -278,7 +234,7 @@ mod tests {
     fn create_test_automation() -> Automation {
         Automation {
             id: "test-id".to_string(),
-            automation_type: AutomationType::Sync,
+            automation_type: OperationType::Sync,
             remote_name: "remote".to_string(),
             profile_name: "profile".to_string(),
             cron_expression: Some("0 0 * * *".to_string()),
@@ -311,10 +267,21 @@ mod tests {
 
     #[test]
     fn test_automation_type_conversion() {
-        assert_eq!(AutomationType::Sync.as_job_type(), JobType::Sync);
-        assert_eq!(AutomationType::Copy.as_job_type(), JobType::Copy);
-        assert_eq!(AutomationType::Move.as_job_type(), JobType::Move);
-        assert_eq!(AutomationType::Bisync.as_job_type(), JobType::Bisync);
+        assert_eq!(OperationType::Sync.as_job_type(), Some(JobType::Sync));
+        assert_eq!(OperationType::Copy.as_job_type(), Some(JobType::Copy));
+        assert_eq!(OperationType::Move.as_job_type(), Some(JobType::Move));
+        assert_eq!(OperationType::Bisync.as_job_type(), Some(JobType::Bisync));
+        assert_eq!(OperationType::Check.as_job_type(), Some(JobType::Check));
+        assert_eq!(OperationType::Delete.as_job_type(), Some(JobType::Delete));
+        assert_eq!(OperationType::Copyurl.as_job_type(), Some(JobType::CopyUrl));
+        assert_eq!(
+            OperationType::Archivecreate.as_job_type(),
+            Some(JobType::ArchiveCreate)
+        );
+        assert_eq!(
+            OperationType::Cryptcheck.as_job_type(),
+            Some(JobType::CryptCheck)
+        );
     }
 
     #[test]

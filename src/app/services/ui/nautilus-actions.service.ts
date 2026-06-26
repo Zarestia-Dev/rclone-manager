@@ -4,7 +4,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import { ExplorerRoot, FileBrowserItem, ORIGINS, RemoteFeatures } from '@app/types';
+import { ExplorerRoot, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
@@ -83,7 +83,7 @@ export class NautilusActionsService {
 
     try {
       const normalized = r.isLocal ? r.name : this.pathSvc.normalizeRemoteForRclone(r.name);
-      await this.remoteOps.cleanup(normalized, undefined, ORIGINS.FILEMANAGER);
+      await this.remoteOps.cleanup(normalized, undefined, 'filemanager');
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.trashEmptied')
       );

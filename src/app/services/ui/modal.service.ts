@@ -335,7 +335,7 @@ export class ModalService {
   }
 
   openJobDetail(job: JobInfo): any {
-    const data = { jobid: job.jobid, execute_id: job.execute_id };
+    const data = { ...job };
     return this.openModal(
       'job-detail',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
@@ -472,6 +472,11 @@ export class ModalService {
   }
 
   openArchiveCreate(data: { items: any[]; defaultName: string }): any {
-    return this.openModal('archive-create', { width: '450px', disableClose: true, data });
+    return this.openModal('archive-create', {
+      width: '450px',
+      height: '600px',
+      disableClose: true,
+      data,
+    });
   }
 }

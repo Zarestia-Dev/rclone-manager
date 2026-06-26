@@ -14,6 +14,7 @@ pub enum JobType {
     Copy,
     Move,
     Bisync,
+    Check,
     Mount,
     List,
     Stat,
@@ -21,7 +22,6 @@ pub enum JobType {
     About,
     Size,
     Hash,
-    #[serde(rename = "copy_url")]
     CopyUrl,
     Mkdir,
     Cleanup,
@@ -32,6 +32,7 @@ pub enum JobType {
     ArchiveCreate,
     ArchiveExtract,
     ArchiveList,
+    CryptCheck,
     Unknown(String),
 }
 
@@ -77,7 +78,13 @@ impl JobType {
     pub fn is_tray_relevant(&self) -> bool {
         matches!(
             self,
-            JobType::Sync | JobType::Copy | JobType::Move | JobType::Bisync | JobType::Mount
+            JobType::Sync
+                | JobType::Copy
+                | JobType::Move
+                | JobType::Bisync
+                | JobType::Check
+                | JobType::Mount
+                | JobType::CryptCheck
         )
     }
 }
@@ -130,6 +137,8 @@ pub struct JobInfo {
     /// Whether this job was started with the `--dry-run` flag (no actual changes).
     #[serde(default)]
     pub dry_run: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_job_id: Option<u64>,
 }
 
 impl JobInfo {

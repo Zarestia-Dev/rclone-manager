@@ -2,7 +2,8 @@ use crate::core::automation::engine::execute_automation;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::state::automations::AutomationsCache;
 use crate::rclone::state::cache::is_local_path;
-use crate::utils::types::automation::{Automation, AutomationStatus, AutomationType};
+use crate::utils::types::automation::{Automation, AutomationStatus};
+use crate::utils::types::remotes::OperationType;
 use chrono::Utc;
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use serde_json::Value;
@@ -103,7 +104,7 @@ impl WatcherManager {
         let automation_id = automation.id.clone();
         let watch_delay = automation.watch_delay;
 
-        let config_key = automation.automation_type.config_key().as_str();
+        let config_key = automation.automation_type.config_key();
 
         let filter_options = match crate::rclone::commands::common::resolve_profile_settings(
             &app_handle,
@@ -281,7 +282,7 @@ fn local_paths(automation: &Automation) -> Vec<String> {
         .cloned()
         .collect();
 
-    if automation.automation_type == AutomationType::Bisync {
+    if automation.automation_type == OperationType::Bisync {
         paths.extend(
             automation
                 .args
@@ -326,7 +327,7 @@ async fn is_automation_running_or_in_cooldown(
 
     let job_cache = &backend_manager.job_cache;
     let remote_name = automation.args.params.remote_name.trim_end_matches(':');
-    let job_type = automation.automation_type.as_job_type();
+    let job_type = automation.automation_type.as_job_type().unwrap();
     let profile = Some(automation.args.params.profile_name.as_str());
 
     let active_jobs = job_cache.get_active_jobs().await;

@@ -38,39 +38,40 @@ header {
 
 .item-overview {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-md);
-  padding-bottom: var(--space-xs);
+  gap: var(--space-sm);
 
   .item-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--icon-size-xl);
-    height: var(--icon-size-xl);
-    background: rgba(var(--primary-color-rgb), 0.1);
+    width: var(--icon-size-2xl);
+    height: var(--icon-size-2xl);
+    background: rgba(var(--primary-color-rgb), var(--active-opacity));
     border-radius: var(--radius-md);
     color: var(--primary-color);
 
     mat-icon {
-      width: var(--icon-size-lg);
-      height: var(--icon-size-lg);
-      font-size: var(--icon-size-lg);
+      width: var(--icon-size-xl);
+      height: var(--icon-size-xl);
+      font-size: var(--icon-size-xl);
     }
   }
 
   .item-details {
-    flex: 1;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xxs);
 
     .item-name {
-      margin: 0;
-      font-size: var(--font-size-lg);
-      font-weight: 600;
-      white-space: nowrap;
       overflow: hidden;
+      white-space: nowrap;
       text-overflow: ellipsis;
       color: var(--window-fg-color);
+      font-weight: 500;
+      font-size: var(--font-size-md);
     }
 
     .item-type {
@@ -83,24 +84,14 @@ header {
 .properties-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-
-  // Checksums section specific styling
-  &.checksums-group {
-    .hash-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-  }
+  gap: var(--space-xs);
 
   .group-title {
-    margin: 0 0 var(--space-xs) 0;
+    margin: 0;
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--primary-color);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
   .prop-row {
@@ -120,13 +111,13 @@ header {
       text-align: right;
 
       &.path {
-        word-break: break-all;
         max-width: 60%;
-        text-align: right;
-        font-family: var(--font-mono);
-        background: rgba(var(--window-fg-color-rgb), 0.05);
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
+        background: var(--sidebar-bg-color);
+        padding: 4px 6px;
+        border-radius: var(--radius-xxs);
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
       }
     }
   }
@@ -135,24 +126,22 @@ header {
   .hash-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: var(--space-sm);
+    gap: var(--space-xxs);
+    padding: var(--space-xs) var(--space-sm);
     background: rgba(var(--window-fg-color-rgb), 0.03);
     border-radius: var(--radius-sm);
 
-    .hash-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .hash-type {
+      font-size: var(--font-size-sm);
+      color: var(--primary-color);
+      font-weight: 600;
     }
 
     .hash-value {
-      font-family: var(--font-mono);
       font-size: var(--font-size-xs);
       word-break: break-all;
       color: var(--window-fg-color);
       user-select: all;
-      cursor: text;
       line-height: 1.4;
     }
   }
@@ -179,6 +168,43 @@ header {
     color: var(--dim-color);
     font-size: var(--font-size-sm);
     font-style: italic;
+  }
+
+  .bulk-instruction {
+    font-size: var(--font-size-sm);
+    color: var(--dim-color);
+    margin: 0;
+  }
+
+  .bulk-result-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+
+    .bulk-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+
+      .bulk-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+      }
+    }
+
+    .bulk-textarea {
+      width: 100%;
+      height: 150px;
+      resize: none;
+      border-radius: var(--radius-sm);
+      background: rgba(var(--window-fg-color-rgb), 0.03);
+      color: var(--window-fg-color);
+      padding: var(--space-sm);
+      white-space: pre;
+      box-sizing: border-box;
+      border: none;
+      outline: none;
+    }
   }
 }
 
@@ -215,12 +241,6 @@ header {
         user-select: all;
         cursor: text;
       }
-
-      mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-      }
     }
 
     .remove-link-btn {
@@ -238,52 +258,5 @@ header {
   .link-error {
     @extend .error-block;
     margin-top: var(--space-xs);
-  }
-}
-
-// Bulk Hash styles
-.bulk-hash-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-
-  .bulk-instruction {
-    font-size: var(--font-size-sm);
-    color: var(--dim-color);
-    margin: 0;
-  }
-
-  .bulk-result-area {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-
-    .bulk-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-
-      .bulk-label {
-        font-size: var(--font-size-sm);
-        font-weight: 500;
-      }
-    }
-
-    .bulk-textarea {
-      width: 100%;
-      height: 150px;
-      resize: none;
-      border-radius: var(--radius-sm);
-      background: rgba(var(--window-fg-color-rgb), 0.03);
-      color: var(--window-fg-color);
-      font-family: var(--font-mono);
-      font-size: var(--font-size-xs);
-      padding: var(--space-sm);
-      line-height: 1.5;
-      white-space: pre;
-      box-sizing: border-box;
-      border: none;
-      outline: none;
-    }
   }
 }

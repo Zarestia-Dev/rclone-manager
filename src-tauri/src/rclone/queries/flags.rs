@@ -69,6 +69,12 @@ const COPY_GROUPS: &[&str] = &["Copy"];
 /// NOTE: `Performance` is intentionally absent — same reason as `COPY_GROUPS`.
 const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 
+/// Groups for check operations.
+///
+/// Matches the "Check Options" section in `rclone check --help` /
+/// <https://rclone.org/commands/rclone_check/#check-options>
+const CHECK_GROUPS: &[&str] = &["Check"];
+
 /// Returns the flag's groups as a `Vec<&str>`, trimmed.
 fn flag_groups(flag: &Value) -> Vec<&str> {
     flag["Groups"]
@@ -306,46 +312,46 @@ pub async fn get_flags_by_category(
     ))
 }
 
-/// Copy flags — matches `rclone copy --help` "Copy Options" section.
-/// <https://rclone.org/commands/rclone_copy/#copy-options>
-///
-/// Does NOT include Performance (`checkers/transfers/buffer_size`) — those are
-/// global daemon settings shown in the backend panel instead.
+/// Unified flag fetcher for all operation types.
+/// Maps each operation to the correct rclone flag groups it supports.
 #[tauri::command]
-pub async fn get_copy_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(COPY_GROUPS),
-        None,
-    ))
-}
+pub async fn get_operation_flags(app: AppHandle, operation: String) -> Result<Vec<Value>, String> {
+    match operation.as_str() {
+        // Copy group: copy, move
+        "copy" | "move" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(COPY_GROUPS),
+                None,
+            ))
+        }
+        // Copy + Sync groups: sync, bisync
+        "sync" | "bisync" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(SYNC_GROUPS),
+                None,
+            ))
+        }
+        // Check group: check
+        "check" => {
+            let merged = get_all_options_with_values(app).await?;
+            Ok(get_flags_by_category_internal(
+                &merged,
+                "main",
+                Some(CHECK_GROUPS),
+                None,
+            ))
+        }
+        // These operations have only static/frontend-defined flags
+        "delete" | "copyurl" | "archivecreate" | "cryptcheck" => Ok(vec![]),
 
-/// Move shares the same rclone option flags as copy.
-#[tauri::command]
-pub async fn get_move_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    get_copy_flags(app).await
-}
-
-/// Sync flags — matches `rclone sync --help` "Copy Options" + "Sync Options".
-/// <https://rclone.org/commands/rclone_sync/#sync-options>
-///
-/// Does NOT include Performance — same reasoning as `get_copy_flags`.
-#[tauri::command]
-pub async fn get_sync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        "main",
-        Some(SYNC_GROUPS),
-        None,
-    ))
-}
-
-#[tauri::command]
-pub async fn get_bisync_flags(app: AppHandle) -> Result<Vec<Value>, String> {
-    get_sync_flags(app).await
+        _ => Err(format!("Unknown operation type for flags: {operation}")),
+    }
 }
 
 #[tauri::command]

@@ -73,15 +73,22 @@
     "copying": "Copie en cours",
     "moving": "Déplacement en cours",
     "bisyncActive": "Bisync Actif",
+    "checkActive": "Vérification active",
+    "cryptcheckActive": "Vérification chiffrée active",
+    "deleteActive": "Suppression active",
+    "copyurlActive": "Copie d'URL active",
+    "archivecreateActive": "Archivage actif",
+    "archivecreating": "Archivage en cours",
     "syncSummary": "Synchronisation en cours ({{count}})",
-    "syncWithProfile": "Sync: {{profiles}}",
-    "copyWithProfile": "Copy : {{profiles}}",
-    "moveWithProfile": "Move : {{profiles}}",
-    "bisyncWithProfile": "BiSync : {{profiles}}",
     "toggleSync": "Activer/désactiver Sync comme action rapide",
     "toggleCopy": "Activer/désactiver Copy comme action rapide",
     "toggleMove": "Activer/désactiver Move comme action rapide",
     "toggleBisync": "Activer/Désactiver BiSync comme action rapide",
+    "toggleCheck": "Basculer la vérification comme action rapide",
+    "toggleCryptcheck": "Basculer la vérification chiffrée comme action rapide",
+    "toggleDelete": "Basculer la suppression comme action rapide",
+    "toggleCopyurl": "Basculer la copie d'URL comme action rapide",
+    "toggleArchivecreate": "Basculer l'archivage comme action rapide",
     "successStart": "A démarré avec succès {{type}} pour {{remote}} ({{profile}})",
     "failedStart": "Échec du démarrage de {{type}} pour {{remote}}: {{error}}"
   },
@@ -134,6 +141,10 @@
     "copy": "Copier",
     "move": "Déplacer",
     "bisync": "Bisync",
+    "check": "Vérifier",
+    "delete": "Supprimer",
+    "copyurl": "Copier l'URL",
+    "archivecreate": "Archiver",
     "serve": "Service de partage",
     "start": "Démarrer",
     "stop": "Arrêter"
@@ -710,10 +721,12 @@
     },
     "transferActivity": {
       "title": "Activité de transfert",
+      "titleCheck": "Activité de vérification",
       "resetStats": "Réinitialiser les Statistiques",
       "tabs": {
         "active": "Actif ({{count}})",
-        "recent": "Récent ({{count}})"
+        "recent": "Récent ({{count}})",
+        "recentCheck": "Vérifié ({{count}})"
       },
       "table": {
         "size": "Taille",
@@ -728,13 +741,35 @@
         "transferError": "Erreur de transfert",
         "transferCompleted": "Transfert terminé",
         "preparing": "Préparation",
-        "finalizing": "Finalisation..."
+        "finalizing": "Finalisation...",
+        "missingDst": "Manquant sur la destination",
+        "missingSrc": "Manquant sur la source",
+        "differ": "Le contenu des fichiers diffère",
+        "error": "Erreur"
+      },
+      "actions": {
+        "resolveToDst": "Copier vers la destination",
+        "resolveToSrc": "Copier vers la source",
+        "resolveOverwrite": "Résoudre l'incohérence du fichier",
+        "resolveOverwriteTitle": "Résoudre l'incohérence du fichier",
+        "resolveOverwriteMessage": "Le fichier '{{name}}' existe à la fois sur la source et la destination mais diffère. Voulez-vous écraser le fichier sur la destination par le fichier source ?",
+        "overwriteDst": "Écraser la destination",
+        "copyUrl": "Copier l'URL",
+        "download": "Télécharger le fichier",
+        "successSync": "Opération de synchronisation du fichier démarrée avec succès",
+        "failSync": "Échec de la synchronisation du fichier : {{error}}",
+        "successCopyUrl": "URL de téléchargement copiée dans le presse-papiers",
+        "failCopyUrl": "Échec de la génération de l'URL de téléchargement",
+        "successDownload": "Fichier téléchargé avec succès",
+        "failDownload": "Échec du téléchargement du fichier"
       },
       "empty": {
         "noActive": "Aucun transfert actif",
         "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
         "noRecent": "Aucun transfert récemment terminé",
-        "recentHint": "Les transferts terminés apparaîtront ici à la fin des jobs"
+        "recentHint": "Les transferts terminés apparaîtront ici à la fin des jobs",
+        "noRecentCheck": "Aucun fichier vérifié",
+        "recentHintCheck": "Les fichiers vérifiés apparaîtront ici à la fin de la tâche"
       },
       "time": {
         "daysAgo": "Il y a {{count}} jour(s)",
@@ -975,6 +1010,7 @@
       "jsonEditorInfo": {
         "sync": "Sync/Copy/Move Profil : Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les flags rclone dans '_config'.",
         "bisync": "Profil de Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil, et place tous les flags rclone dans '_config'.",
+        "check": "Profil de vérification : définissez les chemins 'srcFs' et 'dstFs', les champs au niveau du profil, et placez tous les drapeaux de vérification dans '_config'.",
         "mount": "Profil de montage : Définissez les chemins 'fs' et 'mountPoint', 'mountType', les champs au niveau du profil, et placez toutes les options de montage dans 'mountOpt'.",
         "serve": "Partage Profile : Définissez le chemin 'fs', 'serveType', les champs au niveau du profil, et placez toutes les options de service dans '_config'.",
         "vfs": "Profil de VFS : Définissez les options de mise en cache du système de fichiers virtuels, de mise en mémoire tampon et de compatibilité comme paires de valeurs clés.",
@@ -1042,6 +1078,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "Plusieurs chemins source détectés. La vérification unidirectionnelle a été automatiquement activée pour s'assurer que rclone vérifie chaque source par rapport à la destination.",
       "enableAutoStart": "Activer Auto-{{type}} au démarrage",
       "enableScheduled": "Activer la planification {{type}}",
       "enableWatch": "Activer la surveillance des fichiers en temps réel",
@@ -1062,8 +1099,13 @@
       "enterSourcePath": "Entrez le chemin de la source...",
       "otherRemotes": "Autres dépôts distants",
       "enterDestPath": "Entrez le chemin de destination...",
+      "enterDownloadUrl": "Entrez l'URL de téléchargement (ex. https://example.com/fichier.zip)",
+      "copyUrlCustomFilenamePlaceholder": "Nom de fichier automatique (optionnel)",
+      "copyUrlFileSettingsWarning": "Les noms de fichiers personnalisés sont définis individuellement pour chaque ligne d'URL ci-dessus. Toute ligne avec un nom de fichier vide utilisera les noms déterminés automatiquement.",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "La destination du montage doit être un dossier local",
       "completionNote": "L'autocomplétion du chemin distant sera disponible après la création du dépôt distant.",
+      "coreCommandNote": "Cette opération s'exécute comme une commande CLI via rclone plutôt qu'en utilisant l'API de transfert native. Elle ne fonctionne pas de la même manière que les opérations de l'API native. Certains bogues, problèmes de performance ou manques de mise à jour de la progression (comme le temps estimé restant, le débit) peuvent survenir.",
       "loading": "Chargement...",
       "upFolder": "Dossier supérieur",
       "noItemsFound": "Aucun élément trouvé dans ce dossier.",
@@ -1341,7 +1383,6 @@
       "close": "Fermer",
       "directory": "Dossier",
       "file": "Fichier",
-      "copied": "Copié !",
       "copyToClipboard": "Copier dans le Presse-papier",
       "getLink": "Obtenir le lien",
       "removeLink": "Supprimer le lien",
@@ -1436,6 +1477,11 @@
       "syncSettings": "Paramètres Synchronisation",
       "moveSettings": "Paramètres Déplacement",
       "bisyncSettings": "Paramètres BiSync",
+      "checkSettings": "Paramètres de vérification",
+      "cryptcheckSettings": "Paramètres de vérification chiffrée",
+      "deleteSettings": "Paramètres de suppression",
+      "copyUrlSettings": "Paramètres de copie d'URL",
+      "archivecreateSettings": "Paramètres d'archivage",
       "sync": "Synchronisation",
       "syncDesc": "Synchronisation unidirectionnelle",
       "bisync": "Bysync",
@@ -1444,6 +1490,16 @@
       "moveDesc": "Déplacer les fichiers (supprimer à la source)",
       "copy": "Copier",
       "copyDesc": "Copier les fichiers (conserver à la source)",
+      "check": "Vérifier",
+      "checkDesc": "Vérifier que la source et la destination correspondent",
+      "cryptcheck": "Vérification chiffrée",
+      "cryptcheckDesc": "Vérifier l'intégrité des remotes chiffrés",
+      "delete": "Supprimer",
+      "deleteDesc": "Supprimer définitivement les fichiers correspondant aux filtres",
+      "copyurl": "Copier l'URL",
+      "copyUrlDesc": "Générer des URLs de téléchargement publiques pour les fichiers",
+      "archivecreate": "Archiver",
+      "archivecreateDesc": "Compresser des dossiers/fichiers dans une archive (Zip, Tar, etc.)",
       "default": "Défaut",
       "serveBehave": "Configurer les protocoles de partage (HTTP, FTP, WebDAV, SFTP, etc.). Multi-profil supporté.",
       "mountBehave": "Configurer le comportement du montage et le réglage du système de fichiers virtuel.",
@@ -1495,8 +1551,6 @@
       "nextAutomationTooltip": "Prochaine automatisation",
       "remoteConfiguration": "Configurations du dépôt distant",
       "editConfiguration": "Modifier la configuration",
-      "toggleQuickAction": "Activer/désactiver {{label}} en tant qu'action rapide",
-      "quickActionSelected": "{{label}} sélectionné comme action rapide {{position}}",
       "remoteActionQuickSelection": "Sélection rapide des actions du dépôt distant"
     }
   },
@@ -1542,6 +1596,17 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "Configurer les actions rapides",
+      "description": "Choisissez les actions à afficher sous forme de boutons sur le tableau de bord distant pour {{name}}. Marquez d'une étoile jusqu'à {{max}} actions, et faites-les glisser pour modifier leur ordre.",
+      "removeStar": "Retirer des actions rapides",
+      "addStar": "Ajouter aux actions rapides",
+      "cancel": "Annuler",
+      "save": "Enregistrer les modifications",
+      "moreButton": "Plus",
+      "moreButtonTooltip": "Plus d'opérations",
+      "configureTooltip": "Configurer les actions rapides"
+    },
     "jobDetail": {
       "title": "Détails du job #{{id}}",
       "sections": {
@@ -1986,6 +2051,7 @@
         "bisync": "Bysync",
         "move": "Déplacer",
         "copy": "Copier",
+        "check": "Vérifier",
         "filter": "Filtre",
         "vfs": "VFS",
         "backend": "Backend",
@@ -2194,11 +2260,7 @@
       "archiveCreate": {
         "title": "Créer une archive",
         "filenameLabel": "Nom du fichier d'archive",
-        "formatLabel": "Format d'archive",
-        "prefixLabel": "Chemin du préfixe",
-        "prefixHint": "Remplace les chemins complets si définis",
-        "fullPathLabel": "Inclure les chemins sources complets",
-        "fullPathHint": "Conserve la structure du répertoire de la racine",
+        "filenameDesc": "Entrez le nom de l'archive compressée à créer",
         "compress": "Compresser"
       }
     },
@@ -2309,7 +2371,6 @@
     },
     "errors": {
       "generic": "Une erreur inattendue s'est produite. Veuillez vérifier les logs pour plus de détails.",
-      "updateActionsFailed": "Échec de la mise à jour des actions rapides",
       "openFailed": "Impossible d'ouvrir {{name}}",
       "resetSettingsFailed": "Échec de la réinitialisation des paramètres du dépôt distant",
       "deleteRemoteFailed": "Impossible de supprimer le remote"
@@ -2600,8 +2661,6 @@
       "labels": {
         "unmounted": "Démonté",
         "mounted": "Monté",
-        "syncing": "Synchronisation en cours",
-        "offSync": "Pas synchronisation en cours",
         "active": "Actif",
         "inactive": "Inactif"
       }
@@ -2618,6 +2677,16 @@
         "stopMove": "Arrêter le déplacement",
         "startBisync": "Démarrer Bi-Sync",
         "stopBisync": "Arrêter Bi-Sync",
+        "startCheck": "Démarrer la vérification",
+        "stopCheck": "Arrêter la vérification",
+        "startCryptcheck": "Démarrer la vérification chiffrée",
+        "stopCryptcheck": "Arrêter la vérification chiffrée",
+        "startDelete": "Démarrer la suppression",
+        "stopDelete": "Arrêter la suppression",
+        "startCopyurl": "Démarrer la copie d'URL",
+        "stopCopyurl": "Arrêter la copie d'URL",
+        "startArchivecreate": "Démarrer l'archivage",
+        "stopArchivecreate": "Arrêter l'archivage",
         "startServe": "Démarrer le service de partage",
         "stopServe": "Arrêter le service de partage"
       },
@@ -2649,6 +2718,11 @@
     "copyCount": "Copie [{{active}}/{{total}}]",
     "moveCount": "Déplacement [{{active}}/{{total}}]",
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
+    "checkCount": "Vérifier [{{active}}/{{total}}]",
+    "cryptcheckCount": "Vérification chiffrée [{{active}}/{{total}}]",
+    "deleteCount": "Supprimer [{{active}}/{{total}}]",
+    "copyurlCount": "Copier l'URL [{{active}}/{{total}}]",
+    "archivecreateCount": "Archiver [{{active}}/{{total}}]",
     "serveCount": "Partage [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 job",

@@ -474,6 +474,12 @@ impl Backend {
     ) -> serde_json::Value {
         args.push("--ask-password=false".to_string());
 
+        if let Some(config_path) = &self.config_path
+            && let Some(path_str) = config_path.to_str()
+        {
+            args.push(format!("--config={path_str}"));
+        }
+
         // Handle password command
         if let Some(pass) = &self.config_password {
             let is_windows = os

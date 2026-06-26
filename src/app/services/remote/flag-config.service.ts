@@ -1,9 +1,13 @@
 import { Injectable, signal } from '@angular/core';
-import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
+import {
+  FLAG_TYPES,
+  FlagType,
+  RcConfigOption,
+  GroupedRCloneOptions,
+  OPERATION_REGISTRY,
+} from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { staticFlagDefinitions } from './flag-definitions';
-
-type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 
 @Injectable({
   providedIn: 'root',
@@ -103,6 +107,13 @@ export class FlagConfigService extends TauriBaseService {
 
   async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
+      const isSyncOperation = OPERATION_REGISTRY.some(op => op.key === type && op.isSyncType);
+      if (isSyncOperation) {
+        const flags = await this.invokeCommand<RcConfigOption[]>('get_operation_flags', {
+          operation: type,
+        });
+        return flags ?? [];
+      }
       const command = `get_${type}_flags`;
       const flags = await this.invokeCommand<RcConfigOption[]>(command);
       return flags ?? [];

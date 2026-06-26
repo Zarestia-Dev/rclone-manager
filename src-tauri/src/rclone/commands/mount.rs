@@ -12,7 +12,7 @@ use crate::{
         types::{
             jobs::JobType,
             logs::LogLevel,
-            remotes::{OperationConfigKey, ProfileParams},
+            remotes::{OperationType, ProfileParams},
             state::RcloneState,
         },
     },
@@ -173,6 +173,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         group: None,
         no_cache: params.no_cache.unwrap_or(false),
         dry_run: false,
+        parent_job_id: None,
     };
 
     // Submit as a job and wait for completion for mount operations.
@@ -378,7 +379,7 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
         &app,
         &params.remote_name,
         &params.profile_name,
-        OperationConfigKey::Mount.as_str(),
+        OperationType::Mount.config_key(),
     )
     .await
     {

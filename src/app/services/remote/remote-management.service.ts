@@ -13,6 +13,7 @@ import {
   FsInfo,
   RemoteFeatures,
   Origin,
+  CompletedTransfer,
 } from '@app/types';
 
 interface RawProvider {
@@ -64,8 +65,28 @@ export class RemoteManagementService extends TauriBaseService {
           PublicLink: false,
           ChangeNotify: false,
           Hashes: [],
+          loading: true,
         }
     );
+  }
+
+  publicLinkSupported(remoteName: string): boolean {
+    const nameKey = this.pathService.normalizeRemoteName(remoteName);
+    if (!nameKey || this.pathService.isLocalPath(nameKey)) {
+      return false;
+    }
+
+    const cached = this._features()[nameKey];
+    if (cached) {
+      return !!cached.PublicLink;
+    }
+
+    // Trigger asynchronous load in background
+    this.getFeatures(remoteName).catch(err =>
+      console.error(`Failed to load features for ${remoteName}:`, err)
+    );
+
+    return false;
   }
 
   async getFeatures(
@@ -80,6 +101,18 @@ export class RemoteManagementService extends TauriBaseService {
     if (this._features()[typeKey]) return this._features()[typeKey];
     if (this._features()[nameKey]) return this._features()[nameKey];
 
+    const loadingState: RemoteFeatures = {
+      IsLocal: this.pathService.isLocalPath(nameKey),
+      About: false,
+      BucketBased: false,
+      CleanUp: false,
+      PublicLink: false,
+      ChangeNotify: false,
+      Hashes: [],
+      loading: true,
+    };
+    this._features.update(c => ({ ...c, [nameKey]: loadingState, [typeKey]: loadingState }));
+
     try {
       const info = await this.getFsInfo(remoteName, source, group);
       const feats: RemoteFeatures = {
@@ -90,6 +123,7 @@ export class RemoteManagementService extends TauriBaseService {
         PublicLink: info.Features?.['PublicLink'] !== false && !!info.Features?.['PublicLink'],
         ChangeNotify: !!info.Features?.['ChangeNotify'],
         Hashes: info.Hashes ?? [],
+        loading: false,
       };
       this._features.update(c => ({ ...c, [nameKey]: feats, [typeKey]: feats }));
       return feats;
@@ -102,10 +136,148 @@ export class RemoteManagementService extends TauriBaseService {
         PublicLink: false,
         ChangeNotify: false,
         Hashes: [],
+        loading: false,
       };
       this._features.update(c => ({ ...c, [nameKey]: fallback, [typeKey]: fallback }));
       return fallback;
     }
+  }
+
+  resolvePublicLinkTarget(
+    item: CompletedTransfer,
+    jobType?: string,
+    activeRemote?: string
+  ): { remote: string; path: string } | null {
+    // If the transfer failed, we cannot generate a public link
+    if (item.status === 'failed') {
+      return null;
+    }
+
+    const getRemoteName = (fs: string): string => {
+      if (!fs || this.pathService.isLocalPath(fs)) return '';
+      const parts = fs.split(':');
+      if (parts.length > 1) {
+        const name = parts[0];
+        if (name === 'http' || name === 'https' || name === 'ftp') return '';
+        return name;
+      }
+      return '';
+    };
+
+    const dstRemote = getRemoteName(item.dstFs || '');
+    const srcRemote = getRemoteName(item.srcFs || '');
+
+    const isDeleteOrCleanup = (): boolean => {
+      const type = jobType?.toLowerCase() || '';
+      if (type === 'delete' || type === 'cleanup' || type === 'rmdirs') {
+        return true;
+      }
+      if (item.group) {
+        const groupType = item.group.split('/')[0]?.toLowerCase();
+        if (
+          groupType === 'move' ||
+          groupType === 'delete' ||
+          groupType === 'cleanup' ||
+          groupType === 'rmdirs'
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const isMove = (): boolean => {
+      const type = jobType?.toLowerCase() || '';
+      if (type === 'move') return true;
+      if (item.group) {
+        const groupType = item.group.split('/')[0]?.toLowerCase();
+        if (groupType === 'move') return true;
+      }
+      return false;
+    };
+
+    // If it's a delete/cleanup job, the file is deleted. No public link possible.
+    if (isDeleteOrCleanup()) {
+      return null;
+    }
+
+    // Determine target based on transfer status and job type
+    if (item.status === 'missing_dst') {
+      // File only exists on source
+      if (srcRemote && this.publicLinkSupported(srcRemote)) {
+        return { remote: item.srcFs || '', path: item.name };
+      }
+    } else if (item.status === 'missing_src') {
+      // File only exists on destination
+      if (dstRemote && this.publicLinkSupported(dstRemote)) {
+        return { remote: item.dstFs || '', path: item.name };
+      }
+    } else {
+      // For completed, checked, partial, etc.
+
+      // If it's a move, the file was deleted from source and exists only at the destination.
+      // So we can only get public link from destination.
+      if (isMove()) {
+        if (dstRemote && this.publicLinkSupported(dstRemote)) {
+          return { remote: item.dstFs || '', path: item.name };
+        }
+        return null;
+      }
+
+      // For copy/sync/check, file is on both (or we check destination first, then source)
+      if (dstRemote && this.publicLinkSupported(dstRemote)) {
+        return { remote: item.dstFs || '', path: item.name };
+      }
+
+      if (srcRemote && this.publicLinkSupported(srcRemote)) {
+        return { remote: item.srcFs || '', path: item.name };
+      }
+
+      // Fallback: If both dstFs and srcFs are empty/falsy, check active remote
+      if (!item.dstFs && !item.srcFs && activeRemote) {
+        const fallbackRemote = this.pathService.normalizeRemoteName(activeRemote);
+        if (fallbackRemote && this.publicLinkSupported(fallbackRemote)) {
+          return {
+            remote: this.pathService.normalizeRemoteForRclone(activeRemote),
+            path: item.name,
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  resolveDownloadRemote(item: CompletedTransfer, activeRemote?: string): string {
+    const getRemoteName = (fs: string): string => {
+      if (!fs || this.pathService.isLocalPath(fs)) return '';
+      const parts = fs.split(':');
+      if (parts.length > 1) {
+        const name = parts[0];
+        if (name === 'http' || name === 'https' || name === 'ftp') return '';
+        return name;
+      }
+      return '';
+    };
+
+    const dstFs = item.dstFs || '';
+    const srcFs = item.srcFs || '';
+
+    if (getRemoteName(dstFs)) {
+      return dstFs;
+    }
+    if (getRemoteName(srcFs)) {
+      return srcFs;
+    }
+
+    if (!dstFs && !srcFs && activeRemote) {
+      const fallback = this.pathService.normalizeRemoteForRclone(activeRemote);
+      if (!this.pathService.isLocalPath(fallback)) {
+        return fallback;
+      }
+    }
+
+    return dstFs || srcFs || '';
   }
 
   clearCache(remoteName?: string): void {

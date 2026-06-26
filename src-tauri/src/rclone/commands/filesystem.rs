@@ -65,6 +65,7 @@ pub async fn mkdir(
             group,
             no_cache: true,
             dry_run: false,
+            parent_job_id: None,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -112,6 +113,7 @@ pub async fn cleanup(
             group,
             no_cache: true,
             dry_run: false,
+            parent_job_id: None,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -161,6 +163,7 @@ pub async fn copy_url(
             group,
             no_cache: false,
             dry_run: false,
+            parent_job_id: None,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -207,6 +210,7 @@ pub async fn remove_empty_dirs(
             group,
             no_cache: true,
             dry_run: false,
+            parent_job_id: None,
         },
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
@@ -218,6 +222,7 @@ pub async fn remove_empty_dirs(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     app: AppHandle,
     items: Vec<FsItem>,
@@ -226,6 +231,7 @@ pub async fn transfer(
     mode: String,
     origin: Option<Origin>,
     group: Option<String>,
+    parent_job_id: Option<u64>,
 ) -> Result<String, String> {
     let dst_path = if dst_path == "/" {
         String::new()
@@ -318,6 +324,7 @@ pub async fn transfer(
             group,
             no_cache: false,
             dry_run: false,
+            parent_job_id,
         },
     )
     .await
@@ -369,6 +376,7 @@ pub async fn delete(
             group,
             no_cache: false,
             dry_run: false,
+            parent_job_id: None,
         },
     )
     .await
@@ -489,6 +497,7 @@ pub async fn execute_upload_batch(
         group,
         no_cache,
         dry_run: false,
+        parent_job_id: None,
     };
 
     if existing_jobid.is_none() {
@@ -665,6 +674,7 @@ pub async fn rename(
             group,
             no_cache: false,
             dry_run: false,
+            parent_job_id: None,
         },
     )
     .await

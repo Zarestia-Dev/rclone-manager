@@ -2,9 +2,9 @@ use crate::core::alerts::types::{AlertEventKind, AlertSeverity};
 use crate::utils::app::notification::{
     AutomationStage, EngineStage, JobStage, MountStage, NotificationEvent, ServeStage, UpdateStage,
 };
-use crate::utils::types::automation::AutomationType;
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::origin::Origin;
+use crate::utils::types::remotes::OperationType;
 
 #[derive(Clone, Debug)]
 pub struct AlertMeta {
@@ -189,7 +189,7 @@ impl AutomationStage {
         }
     }
 
-    pub fn automation_type(&self) -> &AutomationType {
+    pub fn automation_type(&self) -> &OperationType {
         match self {
             Self::Started {
                 automation_type, ..

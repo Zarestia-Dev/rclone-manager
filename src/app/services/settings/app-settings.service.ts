@@ -2,7 +2,12 @@ import { inject, Injectable, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { firstValueFrom, Observable } from 'rxjs';
 import { map, distinctUntilChanged, filter, first } from 'rxjs/operators';
-import { SettingMetadata, SettingsChangeEvent, BackendsRemotesLayout } from '@app/types';
+import {
+  SettingMetadata,
+  SettingsChangeEvent,
+  BackendsRemotesLayout,
+  ConfigValue,
+} from '@app/types';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
@@ -75,47 +80,14 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   async saveSetting(category: string, key: string, value: unknown): Promise<void> {
-    const fullKey = `${category}.${key}`;
-    const currentState = this._options();
-
-    if (currentState && currentState[fullKey]) {
-      const newState = {
-        ...currentState,
-        [fullKey]: {
-          ...currentState[fullKey],
-          value: value,
-        },
-      };
-      this._options.set(newState);
-    }
-
     return this.invokeCommand('save_setting', { category, key, value });
   }
 
-  /**
-   * Reset a single setting to its default value (backend command `reset_setting`).
-   * Updates the local options state to reflect the default returned by the backend.
-   */
   async resetSetting(category: string, key: string): Promise<unknown> {
     const fullKey = `${category}.${key}`;
-    const currentState = this._options();
 
     try {
-      // Backend returns the default value for the setting
-      const defaultValue = await this.invokeCommand('reset_setting', { category, key });
-
-      if (currentState && currentState[fullKey]) {
-        const newState = {
-          ...currentState,
-          [fullKey]: {
-            ...currentState[fullKey],
-            value: defaultValue,
-          },
-        };
-        this._options.set(newState);
-      }
-
-      return defaultValue;
+      return await this.invokeCommand('reset_setting', { category, key });
     } catch (err) {
       console.error(`Failed to reset setting ${fullKey}:`, err);
       this.notificationService.showError(
@@ -167,11 +139,11 @@ export class AppSettingsService extends TauriBaseService {
     if (currentState[fullKey]) {
       // Only update if the value actually changed
       if (currentState[fullKey].value !== newValue) {
-        const newState = {
+        const newState: Record<string, SettingMetadata> = {
           ...currentState,
           [fullKey]: {
             ...currentState[fullKey],
-            value: newValue,
+            value: newValue as ConfigValue,
           },
         };
         this._options.set(newState);

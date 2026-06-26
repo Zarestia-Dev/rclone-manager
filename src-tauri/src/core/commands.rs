@@ -82,7 +82,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // SYNC OPERATIONS
             // =================================================================
-            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::rclone::commands::sync::TransferType, params: $crate::utils::types::remotes::ProfileParams]);
+            (start_profile_batch, $crate::rclone::commands::sync::start_profile_batch, [transfer_type: $crate::utils::types::remotes::OperationType, params: $crate::utils::types::remotes::ProfileParams]);
 
             // =================================================================
             // MOUNT OPERATIONS
@@ -154,10 +154,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (get_option_blocks, $crate::rclone::queries::flags::get_option_blocks, []);
             (get_flags_by_category, $crate::rclone::queries::flags::get_flags_by_category, [category: String, filter_groups: Option<Vec<String>>, exclude_flags: Option<Vec<String>>]);
-            (get_copy_flags, $crate::rclone::queries::flags::get_copy_flags, []);
-            (get_sync_flags, $crate::rclone::queries::flags::get_sync_flags, []);
-            (get_bisync_flags, $crate::rclone::queries::flags::get_bisync_flags, []);
-            (get_move_flags, $crate::rclone::queries::flags::get_move_flags, []);
+            (get_operation_flags, $crate::rclone::queries::flags::get_operation_flags, [operation: String]);
             (get_filter_flags, $crate::rclone::queries::flags::get_filter_flags, []);
             (get_vfs_flags, $crate::rclone::queries::flags::get_vfs_flags, []);
             (get_mount_flags, $crate::rclone::queries::flags::get_mount_flags, []);

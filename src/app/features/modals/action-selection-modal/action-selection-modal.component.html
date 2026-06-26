@@ -1,0 +1,73 @@
+<header data-tauri-drag-region>
+  <button>
+    <mat-icon svgIcon="operations"></mat-icon>
+  </button>
+  <p data-tauri-drag-region>{{ 'modals.actionSelection.title' | translate }}</p>
+  <button
+    mat-icon-button
+    (click)="onCancel()"
+    [attr.aria-label]="'modals.actionSelection.cancel' | translate"
+  >
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <p class="modal-description">
+    {{ 'modals.actionSelection.description' | translate: { name: remoteName } }}
+  </p>
+
+  <div class="action-list" cdkDropList (cdkDropListDropped)="onDrop($event)">
+    @for (item of items(); track item.key) {
+      @let starToggleLabel =
+        (item.isStarred ? 'modals.actionSelection.removeStar' : 'modals.actionSelection.addStar')
+          | translate;
+
+      <div
+        class="action-item"
+        [class.is-starred]="item.isStarred"
+        [class.is-disabled]="!item.isStarred && !canStarMore()"
+        cdkDrag
+        cdkDragPreviewClass="action-drag-preview"
+      >
+        <div class="drag-handle" cdkDragHandle>
+          <mat-icon svgIcon="drag-indicator"></mat-icon>
+        </div>
+
+        <div class="action-index-badge" [class.unstarred]="!item.isStarred">
+          {{ item.isStarred ? getStarredIndex(item) : '-' }}
+        </div>
+
+        <div class="action-info">
+          <mat-icon [svgIcon]="item.icon" class="action-icon"></mat-icon>
+          <span class="action-label">{{ item.label | translate }}</span>
+        </div>
+
+        <button
+          mat-icon-button
+          class="star-button"
+          [class.starred]="item.isStarred"
+          (click)="toggleStar(item.key)"
+          [disabled]="!item.isStarred && !canStarMore()"
+          [attr.aria-label]="starToggleLabel"
+          [matTooltip]="starToggleLabel"
+        >
+          <mat-icon [svgIcon]="item.isStarred ? 'star' : 'star-outline'"></mat-icon>
+        </button>
+
+        <div class="drag-placeholder" *cdkDragPlaceholder>
+          <mat-icon svgIcon="move"></mat-icon>
+        </div>
+      </div>
+    }
+  </div>
+</main>
+
+<footer>
+  <button mat-button (click)="onCancel()">
+    {{ 'modals.actionSelection.cancel' | translate }}
+  </button>
+  <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!hasChanges()">
+    {{ 'modals.actionSelection.save' | translate }}
+  </button>
+</footer>

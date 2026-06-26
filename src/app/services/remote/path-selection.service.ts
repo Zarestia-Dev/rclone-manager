@@ -39,7 +39,6 @@ export class PathSelectionService {
     });
 
     this.pathStates.set(fieldId, stateSignal);
-    this.fetchEntries(fieldId, remoteName, path);
     return stateSignal;
   }
 
@@ -47,6 +46,10 @@ export class PathSelectionService {
     this.abortControllers.get(fieldId)?.abort();
     this.abortControllers.delete(fieldId);
     this.pathStates.delete(fieldId);
+  }
+
+  triggerLoad(fieldId: string, remoteName: string, path: string): void {
+    this.fetchEntries(fieldId, remoteName, path);
   }
 
   updateInput(fieldId: string, value: string): void {
@@ -77,8 +80,15 @@ export class PathSelectionService {
   }
 
   resetPath(fieldId: string): void {
-    const state = this.pathStates.get(fieldId)?.();
-    if (state) this.fetchEntries(fieldId, state.remoteName, '');
+    const stateSignal = this.pathStates.get(fieldId);
+    if (stateSignal) {
+      stateSignal.update(s => ({
+        ...s,
+        currentPath: '',
+        options: [],
+        isLoading: false,
+      }));
+    }
   }
 
   private async fetchEntries(

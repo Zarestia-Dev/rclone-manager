@@ -1,3 +1,4 @@
+use crate::utils::types::jobs::JobType;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::RwLock;
@@ -95,20 +96,37 @@ impl ProfileConfig {
     }
 }
 
-/// All operational profile config section keys in `RemoteSettings`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum OperationConfigKey {
+/// All operational profile config types and settings section keys.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum OperationType {
+    #[serde(alias = "Mount")]
     Mount,
+    #[serde(alias = "Sync")]
     Sync,
+    #[serde(alias = "Copy")]
     Copy,
+    #[serde(alias = "Move")]
     Move,
+    #[serde(alias = "Bisync")]
     Bisync,
+    #[serde(alias = "Serve")]
     Serve,
+    #[serde(alias = "Check")]
+    Check,
+    #[serde(alias = "Delete")]
+    Delete,
+    #[serde(alias = "Copyurl")]
+    Copyurl,
+    #[serde(alias = "Archivecreate")]
+    Archivecreate,
+    #[serde(alias = "Cryptcheck")]
+    Cryptcheck,
 }
 
-impl OperationConfigKey {
+impl OperationType {
     /// The JSON key in `RemoteSettings` (e.g. `"mountConfigs"`)
-    pub const fn as_str(self) -> &'static str {
+    pub const fn config_key(self) -> &'static str {
         match self {
             Self::Mount => "mountConfigs",
             Self::Sync => "syncConfigs",
@@ -116,6 +134,91 @@ impl OperationConfigKey {
             Self::Move => "moveConfigs",
             Self::Bisync => "bisyncConfigs",
             Self::Serve => "serveConfigs",
+            Self::Check => "checkConfigs",
+            Self::Delete => "deleteConfigs",
+            Self::Copyurl => "copyurlConfigs",
+            Self::Archivecreate => "archivecreateConfigs",
+            Self::Cryptcheck => "cryptcheckConfigs",
+        }
+    }
+
+    /// Maps the operation to its corresponding `JobType`, if applicable.
+    pub fn as_job_type(self) -> Option<JobType> {
+        match self {
+            Self::Mount => Some(JobType::Mount),
+            Self::Sync => Some(JobType::Sync),
+            Self::Copy => Some(JobType::Copy),
+            Self::Move => Some(JobType::Move),
+            Self::Bisync => Some(JobType::Bisync),
+            Self::Check => Some(JobType::Check),
+            Self::Delete => Some(JobType::Delete),
+            Self::Copyurl => Some(JobType::CopyUrl),
+            Self::Archivecreate => Some(JobType::ArchiveCreate),
+            Self::Cryptcheck => Some(JobType::CryptCheck),
+            Self::Serve => None,
+        }
+    }
+
+    /// Maps the operation to its Rclone RC endpoint, if applicable.
+    pub fn endpoint(self) -> Option<&'static str> {
+        match self {
+            Self::Sync => Some(crate::utils::rclone::endpoints::sync::SYNC),
+            Self::Copy => Some(crate::utils::rclone::endpoints::sync::COPY),
+            Self::Move => Some(crate::utils::rclone::endpoints::sync::MOVE),
+            Self::Bisync => Some(crate::utils::rclone::endpoints::sync::BISYNC),
+            Self::Check => Some(crate::utils::rclone::endpoints::operations::CHECK),
+            Self::Delete => Some(crate::utils::rclone::endpoints::operations::PURGE),
+            Self::Copyurl => Some(crate::utils::rclone::endpoints::operations::COPYURL),
+            _ => None,
+        }
+    }
+
+    /// Checks if this is a directory/file transfer operation.
+    pub fn is_transfer(self) -> bool {
+        matches!(
+            self,
+            Self::Sync
+                | Self::Copy
+                | Self::Move
+                | Self::Bisync
+                | Self::Check
+                | Self::Delete
+                | Self::Copyurl
+                | Self::Archivecreate
+                | Self::Cryptcheck
+        )
+    }
+
+    /// Checks if this operation supports cron/filesystem-watcher automation.
+    pub fn is_automation(self) -> bool {
+        matches!(
+            self,
+            Self::Sync
+                | Self::Copy
+                | Self::Move
+                | Self::Bisync
+                | Self::Check
+                | Self::Delete
+                | Self::Copyurl
+                | Self::Archivecreate
+                | Self::Cryptcheck
+        )
+    }
+
+    /// Return the string representation.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Mount => "mount",
+            Self::Sync => "sync",
+            Self::Copy => "copy",
+            Self::Move => "move",
+            Self::Bisync => "bisync",
+            Self::Serve => "serve",
+            Self::Check => "check",
+            Self::Delete => "delete",
+            Self::Copyurl => "copyurl",
+            Self::Archivecreate => "archivecreate",
+            Self::Cryptcheck => "cryptcheck",
         }
     }
 
@@ -127,7 +230,51 @@ impl OperationConfigKey {
         Self::Move,
         Self::Bisync,
         Self::Serve,
+        Self::Check,
+        Self::Delete,
+        Self::Copyurl,
+        Self::Archivecreate,
+        Self::Cryptcheck,
     ];
+}
+
+impl std::str::FromStr for OperationType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mount" => Ok(Self::Mount),
+            "sync" => Ok(Self::Sync),
+            "copy" => Ok(Self::Copy),
+            "move" => Ok(Self::Move),
+            "bisync" => Ok(Self::Bisync),
+            "serve" => Ok(Self::Serve),
+            "check" => Ok(Self::Check),
+            "delete" => Ok(Self::Delete),
+            "copyurl" => Ok(Self::Copyurl),
+            "archivecreate" => Ok(Self::Archivecreate),
+            "cryptcheck" => Ok(Self::Cryptcheck),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for OperationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Mount => write!(f, "Mount"),
+            Self::Sync => write!(f, "Sync"),
+            Self::Copy => write!(f, "Copy"),
+            Self::Move => write!(f, "Move"),
+            Self::Bisync => write!(f, "Bisync"),
+            Self::Serve => write!(f, "Serve"),
+            Self::Check => write!(f, "Check"),
+            Self::Delete => write!(f, "Delete"),
+            Self::Copyurl => write!(f, "Copyurl"),
+            Self::Archivecreate => write!(f, "Archivecreate"),
+            Self::Cryptcheck => write!(f, "Cryptcheck"),
+        }
+    }
 }
 
 /// Helper profile config section keys.
@@ -162,6 +309,8 @@ pub struct RemoteSettings {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub primary_actions: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_actions: Option<Vec<String>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mount_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
@@ -175,6 +324,16 @@ pub struct RemoteSettings {
     pub bisync_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub serve_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delete_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copyurl_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archivecreate_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cryptcheck_configs: Option<std::collections::HashMap<String, ProfileConfig>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter_configs: Option<std::collections::HashMap<String, serde_json::Value>>,

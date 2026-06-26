@@ -30,6 +30,11 @@ import {
   EditTarget,
   FileBrowserItem,
   FilePickerSelection,
+  CORE_COMMAND_OPS,
+  WATCH_SUPPORTED_OPS,
+  CORE_SYNC_OPS,
+  MULTI_SOURCE_OPS,
+  FILE_SOURCE_OPS,
 } from '@app/types';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -39,17 +44,16 @@ import {
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
-type PathGroup = 'source' | 'dest';
+type PathDirection = 'source' | 'dest';
 
 interface PathItem {
   control: FormGroup;
   index: number;
-  group: PathGroup;
+  group: PathDirection;
   type: PathType;
   remoteName: string;
   pathControl: FormControl;
@@ -95,7 +99,6 @@ export class OperationConfigComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly backendService = inject(BackendService);
 
   readonly cronPanelExpanded = linkedSignal<boolean>(() => {
@@ -117,6 +120,9 @@ export class OperationConfigComponent {
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
+  readonly isCoreCommandOp = computed(() =>
+    (CORE_COMMAND_OPS as readonly string[]).includes(this.operationType() as string)
+  );
   readonly otherRemotes = computed(() =>
     this.existingRemotes().filter(r => r !== this.currentRemoteName())
   );
@@ -127,7 +133,7 @@ export class OperationConfigComponent {
   readonly isWatchSupported = computed(
     () =>
       this.backendService.isLocalBackend() &&
-      ['sync', 'copy', 'move', 'bisync'].includes(this.operationType() as string)
+      (WATCH_SUPPORTED_OPS as readonly string[]).includes(this.operationType() as string)
   );
 
   readonly sourceItems = computed(() => {
@@ -156,7 +162,7 @@ export class OperationConfigComponent {
 
   readonly hasMixedSources = computed(
     () =>
-      ['sync', 'copy', 'move'].includes(this.operationType() as string) &&
+      (CORE_SYNC_OPS as readonly string[]).includes(this.operationType() as string) &&
       this.hasLocalSource() &&
       this.hasRemoteSource()
   );
@@ -185,14 +191,16 @@ export class OperationConfigComponent {
   readonly showWatchSection = computed(() => this.isWatchSupported() && this.showCronSection());
   readonly showSourcePath = computed(() => this.matchesSearch(['source', 'path', 'origin']));
   readonly showDestPath = computed(
-    () => !this.isServe() && this.matchesSearch(['dest', 'output', 'target'])
+    () =>
+      !['serve', 'delete'].includes(this.operationType() as string) &&
+      this.matchesSearch(['dest', 'output', 'target'])
   );
 
   readonly canAddSource = computed(() =>
-    ['sync', 'copy', 'move'].includes(this.operationType() as string)
+    (MULTI_SOURCE_OPS as readonly string[]).includes(this.operationType() as string)
   );
   readonly supportsFileSource = computed(() =>
-    ['copy', 'move'].includes(this.operationType() as string)
+    (FILE_SOURCE_OPS as readonly string[]).includes(this.operationType() as string)
   );
 
   readonly isSourcePickerDisabled = computed(() => {
@@ -203,6 +211,10 @@ export class OperationConfigComponent {
   readonly isDestPickerDisabled = computed(() => {
     if (!this.isNewRemote()) return false;
     return this.destItem()?.type === 'currentRemote' && !this.destItem()?.pathControl.value;
+  });
+
+  readonly autoFilenameControl = computed(() => {
+    return this.opFormGroup().get('options.autoFilename') as FormControl | null;
   });
 
   constructor() {
@@ -233,10 +245,66 @@ export class OperationConfigComponent {
       }
     });
 
+    effect(onCleanup => {
+      const type = this.operationType();
+      if (type !== 'copyurl') return;
+
+      const form = this.opFormGroup();
+      const autoCtrl = this.autoFilenameControl();
+      if (!form || !autoCtrl) return;
+
+      // Sync filename -> autoFilename
+      const sub1 = form.valueChanges.subscribe(() => {
+        const sources = this.sourceItems();
+        const hasCustomFilename = sources.some(item => {
+          const val = item.control.get('filename')?.value;
+          return !!(val && String(val).trim());
+        });
+
+        if (autoCtrl.value === hasCustomFilename) {
+          autoCtrl.setValue(!hasCustomFilename, { emitEvent: false });
+        }
+      });
+
+      // Sync autoFilename -> filename
+      const sub2 = autoCtrl.valueChanges.subscribe(val => {
+        if (val === true) {
+          this.sourceItems().forEach(item => {
+            const fileCtrl = item.control.get('filename');
+            if (fileCtrl && fileCtrl.value !== '') {
+              fileCtrl.setValue('', { emitEvent: false });
+            }
+          });
+        }
+      });
+
+      onCleanup(() => {
+        sub1.unsubscribe();
+        sub2.unsubscribe();
+      });
+    });
+
+    effect(() => {
+      const type = this.operationType();
+      if (type !== 'check' && type !== 'cryptcheck') return;
+
+      const sources = this.sourceItems();
+      if (sources.length > 1) {
+        const oneWayCtrl =
+          this.opFormGroup().get('options.oneWay') || this.opFormGroup().get('options.one-way');
+        if (oneWayCtrl && !oneWayCtrl.value) {
+          oneWayCtrl.setValue(true);
+          this.notificationService.showInfo(
+            this.translate.instant('wizards.appOperation.multiSourceOneWayInfo')
+          );
+        }
+      }
+    });
+
     this.destroyRef.onDestroy(() => this.clearAutocomplete());
   }
 
-  private getPathItems(group: PathGroup): PathItem[] {
+  private getPathItems(group: PathDirection): PathItem[] {
     const ctrl = this.opFormGroup().get(group);
     const controls = ctrl instanceof FormArray ? ctrl.controls : [ctrl];
 
@@ -277,22 +345,29 @@ export class OperationConfigComponent {
     this.pathStructureVersion.update((v: number) => v + 1);
   }
 
-  addPath(group: PathGroup, initial?: { type: string; path: string; remote?: string }): void {
+  addPath(
+    group: PathDirection,
+    initial?: { type: string; path: string; remote?: string; filename?: string }
+  ): void {
     if (group === 'dest') return;
     const array = this.opFormGroup().get(group) as FormArray;
     if (!array) return;
 
-    array.push(
-      new FormGroup({
-        type: new FormControl(initial?.type ?? 'currentRemote'),
-        path: new FormControl(initial?.path ?? ''),
-        remote: new FormControl(initial?.remote ?? ''),
-      })
-    );
+    const controls: Record<string, any> = {
+      type: new FormControl(initial?.type ?? 'currentRemote'),
+      path: new FormControl(initial?.path ?? ''),
+      remote: new FormControl(initial?.remote ?? ''),
+    };
+
+    if (this.operationType() === 'copyurl') {
+      controls['filename'] = new FormControl(initial?.filename ?? '');
+    }
+
+    array.push(new FormGroup(controls));
     this.pathStructureVersion.update((v: number) => v + 1);
   }
 
-  removePath(group: PathGroup, index: number): void {
+  removePath(group: PathDirection, index: number): void {
     const array = this.opFormGroup().get(group) as FormArray;
     if (!array || (group === 'source' && array.length <= 1)) return;
 
@@ -375,7 +450,7 @@ export class OperationConfigComponent {
       : `${remote}:`;
   }
 
-  private getPathData(item: FileBrowserItem, group: PathGroup) {
+  private getPathData(item: FileBrowserItem, group: PathDirection) {
     const data = this.pathService.resolvePathGroup(item, this.currentRemoteName());
 
     if (this.isMount() && group === 'dest' && data.type !== 'local') {
@@ -447,5 +522,10 @@ export class OperationConfigComponent {
     event.stopPropagation();
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
+  }
+
+  onMenuOpened(item: PathItem): void {
+    const id = `${item.group}-${item.index}`;
+    this.pathSelectionService.triggerLoad(id, item.remoteName, item.pathControl.value);
   }
 }

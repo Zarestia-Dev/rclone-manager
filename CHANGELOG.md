@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Operations Support**: Expanded Rclone operations support by adding `check`, `delete`, `copyurl`, `archivecreate`, and `cryptcheck`.
+  - Added a new Action Selection Modal to choose and trigger these operations directly from the UI.
+  - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.
+  - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
+
 ## [v0.2.8] - 2026-06-17
 
 ### Added

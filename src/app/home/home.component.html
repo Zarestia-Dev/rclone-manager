@@ -89,10 +89,10 @@
       @switch (currentTab()) {
         @case ('general') {
           <app-general-detail
+            (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, undefined, $event.profileName)"
             (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget)"
             (deleteJob)="deleteJob($event)"
-            (togglePrimaryAction)="togglePrimaryAction($event)"
             (retryDiskUsage)="handleRetryDiskUsage(remote.name)"
           >
           </app-general-detail>

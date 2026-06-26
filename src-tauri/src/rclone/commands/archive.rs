@@ -66,6 +66,7 @@ pub async fn archive_create(
         group: Some(group_id),
         no_cache: false,
         dry_run: false,
+        parent_job_id: None,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
@@ -115,6 +116,7 @@ pub async fn archive_extract(
         group: Some(group_id),
         no_cache: false,
         dry_run: false,
+        parent_job_id: None,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(

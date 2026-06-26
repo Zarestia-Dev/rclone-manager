@@ -116,8 +116,9 @@ export class OperationsPanelComponent implements OnInit {
       case 'rmdirs':
         return 'broom';
       case 'copy':
-      case 'copy_url':
         return 'copy';
+      case 'copyurl':
+        return 'link';
       case 'upload':
         return 'file-arrow-up';
       case 'move':
@@ -127,6 +128,8 @@ export class OperationsPanelComponent implements OnInit {
       case 'sync':
       case 'bisync':
         return 'refresh';
+      case 'check':
+        return 'search';
       case 'archivecreate':
         return 'box-archive';
       case 'archiveextract':
@@ -203,7 +206,7 @@ export class OperationsPanelComponent implements OnInit {
       case 'rename':
         return 'fileBrowser.operations.details.movedFiles';
       case 'copy':
-      case 'copy_url':
+      case 'copyurl':
         return 'fileBrowser.operations.details.copiedFiles';
       case 'sync':
       case 'bisync':

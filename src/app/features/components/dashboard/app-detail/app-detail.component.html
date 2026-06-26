@@ -1,16 +1,6 @@
 <div class="remote-details" [style.--mat-sys-primary]="operationColorCssVar()">
   <header class="detail-header">
-    <div
-      class="icon-container"
-      [ngClass]="{
-        sync: isOperationsType() && operationActiveState(),
-        copy: selectedSyncOperation() === 'copy' && operationActiveState(),
-        move: selectedSyncOperation() === 'move' && operationActiveState(),
-        bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
-        mount: selectedRemote().status.mount.active,
-        serve: selectedRemote().status.serve.active,
-      }"
-    >
+    <div class="icon-container" [class]="iconContainerClass()">
       <mat-icon
         [svgIcon]="iconService.getIconName(selectedRemote().type)"
         class="remote-type-icon"
@@ -25,27 +15,76 @@
   </header>
 
   @if (mainOperationType() === 'operations') {
-    <div
-      class="operation-toggle-group"
-      role="group"
-      [style.--selected-index]="selectedSyncOpIndex()"
-      [style.--selected-col]="selectedSyncOpCol()"
-      [style.--selected-row]="selectedSyncOpRow()"
-    >
-      @for (operation of syncOperations(); track operation.type) {
+    <div class="toggle-container">
+      <div class="operation-toggle-group" role="group">
+        @for (opType of primarySyncOps(); track opType) {
+          @let operation = syncOperations().find(o => o.type === opType);
+          @if (operation) {
+            <button
+              type="button"
+              class="operation-toggle"
+              [class]="opType"
+              [class.is-selected]="selectedSyncOperation() === opType"
+              [class.is-running]="operation.isActive"
+              (click)="onSyncOpSelect(opType)"
+              [matTooltip]="operation.description | translate"
+              matTooltipPosition="below"
+              matTooltipShowDelay="600"
+            >
+              <span>{{ operation.typeLabel | translate }}</span>
+            </button>
+          }
+        }
+
         <button
           type="button"
-          class="operation-toggle"
-          [class.is-selected]="selectedSyncOperation() === operation.type"
-          [class.is-running]="operation.isActive"
-          (click)="onSyncOpSelect(operation.type)"
-          [matTooltip]="operation.description | translate"
+          class="operation-toggle more-toggle"
+          [class.is-selected]="isMoreSelected()"
+          [class.is-running]="isAnyMoreRunning()"
+          [class]="isMoreSelected() ? selectedSyncOperation() : ''"
+          [cdkMenuTriggerFor]="moreMenu"
+          [matTooltip]="'modals.actionSelection.moreButtonTooltip' | translate"
           matTooltipPosition="below"
           matTooltipShowDelay="600"
         >
-          <span>{{ operation.typeLabel | translate }}</span>
+          <span>{{ moreButtonLabel() }}</span>
+          <mat-icon svgIcon="chevron-down" class="more-chevron"></mat-icon>
         </button>
-      }
+
+        <ng-template #moreMenu>
+          <div class="material-context-menu" cdkMenu>
+            @for (opType of moreSyncOps(); track opType) {
+              @let operation = syncOperations().find(o => o.type === opType);
+              @if (operation) {
+                <button
+                  class="menu-item"
+                  [class]="opType"
+                  [class.is-running]="operation.isActive"
+                  (click)="onSyncOpSelect(opType)"
+                  cdkMenuItem
+                >
+                  <mat-icon [svgIcon]="operation.icon" class="menu-item-icon"></mat-icon>
+                  <span class="menu-item-label">{{ operation.typeLabel | translate }}</span>
+                  @if (operation.isActive) {
+                    <span class="menu-item-dot"></span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </ng-template>
+      </div>
+
+      <button
+        mat-icon-button
+        class="configure-toggle-btn"
+        (click)="onConfigureActions()"
+        [matTooltip]="'modals.actionSelection.configureTooltip' | translate"
+        matTooltipPosition="after"
+        matTooltipShowDelay="600"
+      >
+        <mat-icon svgIcon="settings"></mat-icon>
+      </button>
     </div>
   }
 
@@ -53,17 +92,7 @@
     <mat-tab [label]="'dashboard.appDetail.monitoring' | translate">
       <div class="operation-monitor">
         @if (showProfileSelector()) {
-          <div
-            class="profile-selector-container"
-            [ngClass]="{
-              'operation-sync': selectedSyncOperation() === 'sync' && isOperationsType(),
-              'operation-bisync': selectedSyncOperation() === 'bisync',
-              'operation-move': selectedSyncOperation() === 'move',
-              'operation-copy': selectedSyncOperation() === 'copy',
-              'operation-mount': mainOperationType() === 'mount',
-              'operation-serve': mainOperationType() === 'serve',
-            }"
-          >
+          <div class="profile-selector-container" [class]="operationColorClass()">
             <div class="profile-selector-header">
               <span class="profile-selector-label">{{
                 'dashboard.appDetail.selectedProfile' | translate
@@ -139,15 +168,7 @@
 
         @if (isOperationsType()) {
           @if (selectedCronSchedule(); as schedule) {
-            <div
-              class="cron-human-readable"
-              [ngClass]="{
-                'operation-sync': selectedSyncOperation() === 'sync',
-                'operation-bisync': selectedSyncOperation() === 'bisync',
-                'operation-move': selectedSyncOperation() === 'move',
-                'operation-copy': selectedSyncOperation() === 'copy',
-              }"
-            >
+            <div class="cron-human-readable" [class]="operationColorClass()">
               <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
               <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
                 schedule.humanReadable
@@ -156,15 +177,7 @@
           }
 
           @if (selectedWatcher(); as watcher) {
-            <div
-              class="cron-human-readable"
-              [ngClass]="{
-                'operation-sync': selectedSyncOperation() === 'sync',
-                'operation-bisync': selectedSyncOperation() === 'bisync',
-                'operation-move': selectedSyncOperation() === 'move',
-                'operation-copy': selectedSyncOperation() === 'copy',
-              }"
-            >
+            <div class="cron-human-readable" [class]="operationColorClass()">
               <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
               <span class="cron-schedule">
                 {{ 'automation.monitoring.realtimeSchedule' | translate }}
@@ -182,7 +195,7 @@
             [config]="transferActivityConfig()"
             [isJobRunning]="operationActiveState()"
             (resetStats)="onResetStats()"
-            (deleteJob)="onResetStats()"
+            (deleteJob)="onDeleteJob()"
             class="activity-panel"
           ></app-transfer-activity-panel>
         }

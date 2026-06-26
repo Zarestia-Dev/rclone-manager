@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Comprobar Archivo Remoto",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes."
+  },
+  "combined": {
+    "title": "Combinado",
+    "help": "Crear un informe combinado de cambios."
+  },
+  "missing_on_src": {
+    "title": "Faltante en Origen",
+    "help": "Reportar todos los archivos que faltan en el origen."
+  },
+  "missing_on_dst": {
+    "title": "Faltante en Destino",
+    "help": "Reportar todos los archivos que faltan en el destino."
+  },
+  "match": {
+    "title": "Coincidente",
+    "help": "Reportar todos los archivos coincidentes."
+  },
+  "differ": {
+    "title": "Diferente",
+    "help": "Reportar todos los archivos no coincidentes."
+  },
+  "error": {
+    "title": "Error",
+    "help": "Reportar todos los archivos con errores (de lectura o hash)."
+  },
   "addr": {
     "title": "Dirección",
     "help": "Direccion IP o puerto del servidor"
@@ -1214,5 +1242,41 @@
   "serve_type_s3": {
     "title": "Servidor compatible con Amazon S3",
     "help": "Servir el remoto a través de la API S3 de Amazon"
+  },
+  "check_file_hash": {
+    "title": "Comprobar hash de archivo",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes del tipo dado."
+  },
+  "check_file_fs": {
+    "title": "Comprobar sistema de archivos",
+    "help": "Tratar checkFileFs:checkFileRemote como un archivo SUM con hashes."
+  },
+  "one_way": {
+    "title": "Comprobación unidireccional",
+    "help": "Realizar comprobación solo de una vía: buscar archivos en el origen que no existen en el destino."
+  },
+  "auto_filename": {
+    "title": "Nombre de archivo automático",
+    "help": "Obtener el nombre del archivo de la URL o de las cabeceras si el destino es un directorio."
+  },
+  "rmdirs": {
+    "title": "Eliminar directorios vacíos",
+    "help": "Eliminar directorios vacíos después de borrar archivos."
+  },
+  "format": {
+    "title": "Formato de archivo",
+    "help": "Formato de compresión del archivo (zip, tar, tgz, tbz, txz, etc.)"
+  },
+  "prefix": {
+    "title": "Prefijo de ruta",
+    "help": "Añadir un directorio de prefijo en el archivo"
+  },
+  "full_path": {
+    "title": "Ruta completa",
+    "help": "Usar la ruta completa de los archivos en el archivo comprimido"
+  },
+  "download": {
+    "title": "Descargar y comprobar",
+    "help": "Descargar archivos para verificar la integridad / comparar hashes."
   }
 }

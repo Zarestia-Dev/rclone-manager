@@ -73,15 +73,22 @@
     "copying": "Copying",
     "moving": "Moving",
     "bisyncActive": "Bisync Active",
+    "checkActive": "Check Active",
+    "cryptcheckActive": "Crypt Check Active",
+    "deleteActive": "Delete Active",
+    "copyurlActive": "Copy URL Active",
+    "archivecreateActive": "Archive Active",
+    "archivecreating": "Archiving",
     "syncSummary": "Syncing ({{count}})",
-    "syncWithProfile": "Sync: {{profiles}}",
-    "copyWithProfile": "Copy: {{profiles}}",
-    "moveWithProfile": "Move: {{profiles}}",
-    "bisyncWithProfile": "BiSync: {{profiles}}",
     "toggleSync": "Toggle Sync as Quick Action",
     "toggleCopy": "Toggle Copy as Quick Action",
     "toggleMove": "Toggle Move as Quick Action",
     "toggleBisync": "Toggle BiSync as Quick Action",
+    "toggleCheck": "Toggle Check as Quick Action",
+    "toggleCryptcheck": "Toggle Crypt Check as Quick Action",
+    "toggleDelete": "Toggle Delete as Quick Action",
+    "toggleCopyurl": "Toggle Copy URL as Quick Action",
+    "toggleArchivecreate": "Toggle Archive as Quick Action",
     "successStart": "Successfully started {{type}} for {{remote}} ({{profile}})",
     "failedStart": "Failed to start {{type}} for {{remote}}: {{error}}"
   },
@@ -134,6 +141,10 @@
     "copy": "Copy",
     "move": "Move",
     "bisync": "Bisync",
+    "check": "Check",
+    "delete": "Delete",
+    "copyurl": "Copy URL",
+    "archivecreate": "Archive",
     "serve": "Serve",
     "start": "Start",
     "stop": "Stop"
@@ -710,10 +721,12 @@
     },
     "transferActivity": {
       "title": "Transfer Activity",
+      "titleCheck": "Check Activity",
       "resetStats": "Reset Stats",
       "tabs": {
         "active": "Active ({{count}})",
-        "recent": "Recent ({{count}})"
+        "recent": "Recent ({{count}})",
+        "recentCheck": "Checked ({{count}})"
       },
       "table": {
         "size": "Size",
@@ -728,13 +741,35 @@
         "transferError": "Transfer error",
         "transferCompleted": "Transfer completed",
         "preparing": "Preparing",
-        "finalizing": "Finalizing..."
+        "finalizing": "Finalizing...",
+        "missingDst": "Missing on Destination",
+        "missingSrc": "Missing on Source",
+        "differ": "File contents differ",
+        "error": "Error"
+      },
+      "actions": {
+        "resolveToDst": "Copy to Destination",
+        "resolveToSrc": "Copy to Source",
+        "resolveOverwrite": "Resolve File Mismatch",
+        "resolveOverwriteTitle": "Resolve File Mismatch",
+        "resolveOverwriteMessage": "The file '{{name}}' exists on both source and destination but differs. Do you want to overwrite the file on destination with the source file?",
+        "overwriteDst": "Overwrite Destination",
+        "copyUrl": "Copy URL",
+        "download": "Download File",
+        "successSync": "File sync operation started successfully",
+        "failSync": "Failed to sync file: {{error}}",
+        "successCopyUrl": "Download URL copied to clipboard",
+        "failCopyUrl": "Failed to generate download URL",
+        "successDownload": "File downloaded successfully",
+        "failDownload": "Failed to download file"
       },
       "empty": {
         "noActive": "No active transfers",
         "activeHint": "Transfers will appear here when an operation starts",
         "noRecent": "No recently completed transfers",
-        "recentHint": "Completed transfers will appear here when jobs finish"
+        "recentHint": "Completed transfers will appear here when jobs finish",
+        "noRecentCheck": "No checked files",
+        "recentHintCheck": "Checked files will appear here when the job completes"
       },
       "time": {
         "daysAgo": "{{count}} days ago",
@@ -975,6 +1010,7 @@
       "jsonEditorInfo": {
         "sync": "Sync/Copy/Move Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and place all rclone flags inside '_config'.",
         "bisync": "Bisync Profile: Set 'path1' and 'path2' paths, profile-level fields, and place all rclone flags inside '_config'.",
+        "check": "Check Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and place all check flags inside '_config'.",
         "mount": "Mount Profile: Set 'fs' and 'mountPoint' paths, 'mountType', profile-level fields, and place all mount options inside 'mountOpt'.",
         "serve": "Serve Profile: Set 'fs' path, 'serveType', profile-level fields, and place all serve options inside '_config'.",
         "vfs": "VFS Profile: Set custom Virtual File System caching, buffering, and compatibility options as key-value pairs.",
@@ -1042,6 +1078,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
       "enableScheduled": "Enable Scheduled {{type}}",
       "enableWatch": "Enable Real-time File Monitoring",
@@ -1062,8 +1099,13 @@
       "enterSourcePath": "Enter source path...",
       "otherRemotes": "Other Remotes",
       "enterDestPath": "Enter destination path...",
+      "enterDownloadUrl": "Enter download URL (e.g., https://example.com/file.zip)",
+      "copyUrlCustomFilenamePlaceholder": "Auto filename (optional)",
+      "copyUrlFileSettingsWarning": "Custom filenames are set individually per URL row above. Any row with an empty filename will use auto-determined names.",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "Mount destination must be a local folder",
       "completionNote": "Remote path completion available after creation of the remote.",
+      "coreCommandNote": "This operation runs as a CLI command via rclone rather than using the native transfer API. These are not works like native API operations. Some bugs, performance issues, missing progress updates (like ETA, throughput) may occur.",
       "loading": "Loading...",
       "upFolder": "Up Folder",
       "noItemsFound": "No items found in this directory.",
@@ -1341,7 +1383,6 @@
       "close": "Close",
       "directory": "Directory",
       "file": "File",
-      "copied": "Copied!",
       "copyToClipboard": "Copy to clipboard",
       "getLink": "Get Link",
       "removeLink": "Remove Link",
@@ -1436,6 +1477,11 @@
       "syncSettings": "Sync Settings",
       "moveSettings": "Move Settings",
       "bisyncSettings": "BiSync Settings",
+      "checkSettings": "Check Settings",
+      "cryptcheckSettings": "Crypt Check Settings",
+      "deleteSettings": "Delete Settings",
+      "copyUrlSettings": "Copy URL Settings",
+      "archivecreateSettings": "Archive Settings",
       "sync": "Sync",
       "syncDesc": "One-way synchronization",
       "bisync": "BiSync",
@@ -1444,6 +1490,16 @@
       "moveDesc": "Move files (delete source)",
       "copy": "Copy",
       "copyDesc": "Copy files (keep source)",
+      "check": "Check",
+      "checkDesc": "Check source and destination match",
+      "cryptcheck": "Crypt Check",
+      "cryptcheckDesc": "Verify integrity of crypt remotes",
+      "delete": "Delete",
+      "deleteDesc": "Permanently delete files matching filters",
+      "copyurl": "Copy URL",
+      "copyUrlDesc": "Generate public download URLs for files",
+      "archivecreate": "Archive",
+      "archivecreateDesc": "Compress folders/files into an archive (Zip, Tar, etc.)",
       "default": "Default",
       "serveBehave": "Configure serving protocols (HTTP, FTP, etc). Multi-profile supported.",
       "mountBehave": "Configure mount behavior and virtual file system tuning.",
@@ -1495,8 +1551,6 @@
       "nextAutomationTooltip": "Next automation",
       "remoteConfiguration": "Remote Configuration",
       "editConfiguration": "Edit Configuration",
-      "toggleQuickAction": "Toggle {{label}} as quick action",
-      "quickActionSelected": "{{label}} selected as quick action {{position}}",
       "remoteActionQuickSelection": "Remote action quick selection"
     }
   },
@@ -1542,6 +1596,17 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "Configure Quick Actions",
+      "description": "Choose which actions to display as buttons on the remote dashboard for {{name}}. Star up to {{max}} actions, and drag to change their order.",
+      "removeStar": "Remove from quick actions",
+      "addStar": "Add to quick actions",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "moreButton": "More",
+      "moreButtonTooltip": "More Operations",
+      "configureTooltip": "Configure Quick Actions"
+    },
     "jobDetail": {
       "title": "Job Details #{{id}}",
       "sections": {
@@ -1986,6 +2051,7 @@
         "bisync": "Bisync",
         "move": "Move",
         "copy": "Copy",
+        "check": "Check",
         "filter": "Filter",
         "vfs": "VFS",
         "backend": "Backend",
@@ -2194,11 +2260,7 @@
       "archiveCreate": {
         "title": "Create Archive",
         "filenameLabel": "Archive Filename",
-        "formatLabel": "Archive Format",
-        "prefixLabel": "Prefix Path",
-        "prefixHint": "Overrides full paths if set",
-        "fullPathLabel": "Include full source paths",
-        "fullPathHint": "Keeps the directory structure from the root",
+        "filenameDesc": "Enter the name of the compressed archive to create",
         "compress": "Compress"
       }
     },
@@ -2309,7 +2371,6 @@
     },
     "errors": {
       "generic": "An unexpected error occurred. Please check the logs for more details.",
-      "updateActionsFailed": "Failed to update quick actions",
       "openFailed": "Failed to open {{name}}",
       "resetSettingsFailed": "Failed to reset remote settings",
       "deleteRemoteFailed": "Failed to delete remote"
@@ -2600,8 +2661,6 @@
       "labels": {
         "unmounted": "Unmounted",
         "mounted": "Mounted",
-        "syncing": "Syncing",
-        "offSync": "Not Syncing",
         "active": "Active",
         "inactive": "Inactive"
       }
@@ -2618,6 +2677,16 @@
         "stopMove": "Stop Move",
         "startBisync": "Start Bi-Sync",
         "stopBisync": "Stop Bi-Sync",
+        "startCheck": "Start Check",
+        "stopCheck": "Stop Check",
+        "startCryptcheck": "Start Crypt Check",
+        "stopCryptcheck": "Stop Crypt Check",
+        "startDelete": "Start Delete",
+        "stopDelete": "Stop Delete",
+        "startCopyurl": "Start Copy URL",
+        "stopCopyurl": "Stop Copy URL",
+        "startArchivecreate": "Start Archive",
+        "stopArchivecreate": "Stop Archive",
         "startServe": "Start Serve",
         "stopServe": "Stop Serve"
       },
@@ -2649,6 +2718,11 @@
     "copyCount": "Copy [{{active}}/{{total}}]",
     "moveCount": "Move [{{active}}/{{total}}]",
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
+    "checkCount": "Check [{{active}}/{{total}}]",
+    "cryptcheckCount": "Crypt Check [{{active}}/{{total}}]",
+    "deleteCount": "Delete [{{active}}/{{total}}]",
+    "copyurlCount": "Copy URL [{{active}}/{{total}}]",
+    "archivecreateCount": "Archive [{{active}}/{{total}}]",
     "serveCount": "Serve [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Job",

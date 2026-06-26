@@ -6,11 +6,12 @@
 use crate::core::settings::AppSettingsManager;
 use crate::{
     rclone::commands::{
-        mount::mount_remote_profile,
-        serve::start_serve_profile,
-        sync::{TransferType, start_profile_batch},
+        mount::mount_remote_profile, serve::start_serve_profile, sync::start_profile_batch,
     },
-    utils::{types::origin::Origin, types::remotes::ProfileParams},
+    utils::{
+        types::origin::Origin,
+        types::remotes::{OperationType, ProfileParams},
+    },
 };
 use log::{error, info, warn};
 use tauri::{AppHandle, Manager};
@@ -109,6 +110,71 @@ pub async fn handle_startup(app: AppHandle) {
                 }
             }
         }
+
+        if let Some(map) = &settings.check_configs {
+            for (pname, cfg) in map {
+                if cfg.app.auto_start {
+                    let app = app.clone();
+                    let remote = remote_name.clone();
+                    let profile = pname.clone();
+                    tasks.push(tokio::spawn(async move {
+                        auto_start_sync(&app, &remote, &profile, "check").await;
+                    }));
+                }
+            }
+        }
+
+        if let Some(map) = &settings.delete_configs {
+            for (pname, cfg) in map {
+                if cfg.app.auto_start {
+                    let app = app.clone();
+                    let remote = remote_name.clone();
+                    let profile = pname.clone();
+                    tasks.push(tokio::spawn(async move {
+                        auto_start_sync(&app, &remote, &profile, "delete").await;
+                    }));
+                }
+            }
+        }
+
+        if let Some(map) = &settings.copyurl_configs {
+            for (pname, cfg) in map {
+                if cfg.app.auto_start {
+                    let app = app.clone();
+                    let remote = remote_name.clone();
+                    let profile = pname.clone();
+                    tasks.push(tokio::spawn(async move {
+                        auto_start_sync(&app, &remote, &profile, "copyurl").await;
+                    }));
+                }
+            }
+        }
+
+        if let Some(map) = &settings.archivecreate_configs {
+            for (pname, cfg) in map {
+                if cfg.app.auto_start {
+                    let app = app.clone();
+                    let remote = remote_name.clone();
+                    let profile = pname.clone();
+                    tasks.push(tokio::spawn(async move {
+                        auto_start_sync(&app, &remote, &profile, "archivecreate").await;
+                    }));
+                }
+            }
+        }
+
+        if let Some(map) = &settings.cryptcheck_configs {
+            for (pname, cfg) in map {
+                if cfg.app.auto_start {
+                    let app = app.clone();
+                    let remote = remote_name.clone();
+                    let profile = pname.clone();
+                    tasks.push(tokio::spawn(async move {
+                        auto_start_sync(&app, &remote, &profile, "cryptcheck").await;
+                    }));
+                }
+            }
+        }
     }
 
     let task_count = tasks.len();
@@ -169,10 +235,15 @@ async fn auto_start_sync(app: &AppHandle, remote_name: &str, profile_name: &str,
     };
 
     let transfer_type = match op_type {
-        "sync" => TransferType::Sync,
-        "copy" => TransferType::Copy,
-        "move" => TransferType::Move,
-        "bisync" => TransferType::Bisync,
+        "sync" => OperationType::Sync,
+        "copy" => OperationType::Copy,
+        "move" => OperationType::Move,
+        "bisync" => OperationType::Bisync,
+        "check" => OperationType::Check,
+        "delete" => OperationType::Delete,
+        "copyurl" => OperationType::Copyurl,
+        "archivecreate" => OperationType::Archivecreate,
+        "cryptcheck" => OperationType::Cryptcheck,
         _ => {
             error!("Unknown sync type: {op_type}");
             return;

@@ -69,21 +69,21 @@ pub enum AutomationStage {
         remote: String,
         profile: String,
         automation_name: String,
-        automation_type: crate::utils::types::automation::AutomationType,
+        automation_type: crate::utils::types::remotes::OperationType,
     },
     Completed {
         backend: String,
         remote: String,
         profile: String,
         automation_name: String,
-        automation_type: crate::utils::types::automation::AutomationType,
+        automation_type: crate::utils::types::remotes::OperationType,
     },
     Failed {
         backend: String,
         remote: String,
         profile: String,
         automation_name: String,
-        automation_type: crate::utils::types::automation::AutomationType,
+        automation_type: crate::utils::types::remotes::OperationType,
         error: String,
     },
     Stopped {
@@ -91,7 +91,7 @@ pub enum AutomationStage {
         remote: String,
         profile: String,
         automation_name: String,
-        automation_type: crate::utils::types::automation::AutomationType,
+        automation_type: crate::utils::types::remotes::OperationType,
     },
 }
 

@@ -4,7 +4,7 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -147,7 +147,7 @@ export class NautilusDragDropService {
             normalized,
             target.path,
             event.payload.paths,
-            ORIGINS.FILEMANAGER
+            'filemanager'
           );
 
           if (batchId) {
@@ -645,7 +645,7 @@ export class NautilusDragDropService {
 
       if (item.isDir) {
         await this.remoteOps
-          .makeDirectory(normalized, `${target.path}/${item.relativePath}`, ORIGINS.FILEMANAGER)
+          .makeDirectory(normalized, `${target.path}/${item.relativePath}`, 'filemanager')
           .catch(error => {
             console.error(error);
             this.notifications.showError(
@@ -666,7 +666,7 @@ export class NautilusDragDropService {
       normalized,
       target.path,
       filesToUpload,
-      ORIGINS.FILEMANAGER
+      'filemanager'
     );
 
     this._cb.refresh(target.remote.name, target.path);

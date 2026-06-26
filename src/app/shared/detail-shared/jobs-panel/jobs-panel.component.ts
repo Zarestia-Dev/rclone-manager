@@ -46,7 +46,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content card-list-container">
+      <mat-card-content class="card-list-container">
         @for (job of enrichedJobs(); track job.jobid) {
           <div
             class="card-row-item"

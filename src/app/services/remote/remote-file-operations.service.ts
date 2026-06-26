@@ -108,7 +108,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     dstPath: string,
     mode: 'copy' | 'move',
     source?: Origin,
-    group?: string
+    group?: string,
+    parentJobId?: number
   ): Promise<string> {
     return this.invokeCommand<string>('transfer', {
       items,
@@ -117,6 +118,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       mode,
       origin: source,
       group,
+      parentJobId,
     });
   }
 
@@ -142,10 +144,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     group?: string
   ): Promise<string> {
     return this.invokeCommand<string>('rename', {
-      remote,
-      srcPath,
-      dstPath,
-      isDir,
+      items: [
+        {
+          remote,
+          srcPath,
+          dstPath,
+          isDir,
+        },
+      ],
       origin: source,
       group,
     });

@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "检查远程文件",
+    "help": "将 checkFileFs:checkFileRemote 视为包含哈希值的 SUM 文件。"
+  },
+  "combined": {
+    "title": "合并报告",
+    "help": "生成变化的合并报告。"
+  },
+  "missing_on_src": {
+    "title": "源中缺失",
+    "help": "报告所有在源中缺失的文件。"
+  },
+  "missing_on_dst": {
+    "title": "目标中缺失",
+    "help": "报告所有在目标中缺失的文件。"
+  },
+  "match": {
+    "title": "匹配",
+    "help": "报告所有匹配的文件。"
+  },
+  "differ": {
+    "title": "差异",
+    "help": "报告所有不匹配的文件。"
+  },
+  "error": {
+    "title": "错误",
+    "help": "报告所有发生错误（哈希或读取）的文件。"
+  },
   "addr": {
     "title": "地址",
     "help": "服务器绑定的IP地址:端口 或 :端口"
@@ -1214,5 +1242,41 @@
   "serve_type_s3": {
     "title": "兼容 Amazon S3 的服务器",
     "help": "通过 Amazon S3 API 服务远程存储"
+  },
+  "check_file_hash": {
+    "title": "检查文件哈希",
+    "help": "将 checkFileFs:checkFileRemote 视为包含给定类型哈希值的 SUM 文件。"
+  },
+  "check_file_fs": {
+    "title": "检查文件系统",
+    "help": "将 checkFileFs:checkFileRemote 视为包含哈希值的 SUM 文件。"
+  },
+  "one_way": {
+    "title": "单向检查",
+    "help": "仅进行单向检查：查找源中存在但目标中不存在的文件。"
+  },
+  "auto_filename": {
+    "title": "自动文件名",
+    "help": "若目标为目录，则从 URL 或响应头中获取文件名。"
+  },
+  "rmdirs": {
+    "title": "移除空目录",
+    "help": "删除文件后移除空目录。"
+  },
+  "format": {
+    "title": "归档格式",
+    "help": "归档压缩格式（zip, tar, tgz, tbz, txz 等）"
+  },
+  "prefix": {
+    "title": "前缀路径",
+    "help": "在归档文件中添加前缀目录"
+  },
+  "full_path": {
+    "title": "完整路径",
+    "help": "在归档文件中使用文件的完整路径"
+  },
+  "download": {
+    "title": "下载并检查",
+    "help": "下载文件以验证完整性/对比哈希值。"
   }
 }

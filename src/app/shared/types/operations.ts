@@ -1,42 +1,21 @@
-// Operation type hierarchy:
-//
-//   SyncOperationType ('sync' | 'copy' | 'move' | 'bisync')  ┐
-//   'mount'                                                    ├──▶ PrimaryActionType
-//   'serve'                                                    ┘
-//
-// Note: 'sync' appears in both SyncOperationType and PrimaryActionType.
-// As a PrimaryActionType it means "enter the sync tab"; the active sub-operation
-// (copy / move / bisync) is tracked separately via SyncOperationType.
-// They share the string 'sync' intentionally so tab routing and dispatch align.
+import { OPERATION_REGISTRY } from './operation-registry';
 
-// ── Core operation discriminants ────────────────────────────────────────────
+// ── Types inferred directly from the registry! ──────────────────────────────
+export type OperationDefinitionItem = (typeof OPERATION_REGISTRY)[number];
 
-export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
-
-export type PrimaryActionType = SyncOperationType | 'mount' | 'serve';
+export type SyncOperationType = Extract<OperationDefinitionItem, { isSyncType: true }>['key'];
+export type PrimaryActionType = Extract<OperationDefinitionItem, { isPrimary: true }>['key'];
 
 // ── Job-level types ─────────────────────────────────────────────────────────
+export type JobType = Extract<OperationDefinitionItem, { isJobType: true }>['key'];
 
-export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check' | 'serve';
-
-export type RemoteAction =
-  | 'mount'
-  | 'unmount'
-  | 'sync'
-  | 'copy'
-  | 'move'
-  | 'bisync'
-  | 'serve'
-  | 'stop'
-  | 'open'
-  | 'delete'
-  | null;
+export type RemoteAction = PrimaryActionType | 'unmount' | 'stop' | 'open' | null;
 
 export type FileOperationType =
   | 'delete'
   | 'rename'
   | 'upload'
-  | 'copy_url'
+  | 'copyurl'
   | 'cleanup'
   | 'rmdirs'
   | 'list'
@@ -52,7 +31,6 @@ export type FileOperationType =
 export type JobActionType = PrimaryActionType | FileOperationType;
 
 // ── Runtime action state ────────────────────────────────────────────────────
-
 export interface ActionState {
   type: RemoteAction;
   profileName?: string;
@@ -75,8 +53,6 @@ export interface StopJobEvent {
 }
 
 // ── Static operation metadata ───────────────────────────────────────────────
-// No runtime state here — use SyncOperationViewModel when you need isActive.
-
 export interface SyncOperationConfig {
   type: SyncOperationType;
   /** i18n key for the full label. */
@@ -90,14 +66,12 @@ export interface SyncOperationConfig {
 }
 
 // ── View model ──────────────────────────────────────────────────────────────
-
 export interface SyncOperationViewModel extends SyncOperationConfig {
   /** True when this specific operation is currently running on the remote. */
   isActive: boolean;
 }
 
 // ── Misc UI helpers ─────────────────────────────────────────────────────────
-
 export interface QuickActionButton {
   id: string;
   icon: string;
@@ -107,39 +81,57 @@ export interface QuickActionButton {
   cssClass?: string;
 }
 
-export const OPERATION_ICONS: Record<PrimaryActionType, string> = {
-  mount: 'mount',
-  sync: 'refresh',
-  bisync: 'right-left',
-  move: 'move',
-  copy: 'copy',
-  serve: 'serve',
-};
+export const OPERATION_ICONS = Object.freeze(
+  Object.fromEntries(OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [op.key, op.icon]))
+) as Readonly<Record<PrimaryActionType, string>>;
 
-export const SYNC_TYPES: SyncOperationType[] = ['sync', 'copy', 'move', 'bisync'];
+export const SYNC_TYPES = OPERATION_REGISTRY.filter(op => op.isSyncType).map(
+  op => op.key
+) as SyncOperationType[];
 
-export const BROWSABLE_OPS: PrimaryActionType[] = ['mount', 'sync', 'copy', 'move', 'bisync'];
+export const BROWSABLE_OPS = OPERATION_REGISTRY.filter(op => op.isBrowsable).map(
+  op => op.key
+) as PrimaryActionType[];
 
-export const ALL_PRIMARY_ACTIONS: PrimaryActionType[] = [
-  'mount',
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-  'serve',
-];
+export const ALL_PRIMARY_ACTIONS = OPERATION_REGISTRY.filter(op => op.isPrimary).map(
+  op => op.key
+) as PrimaryActionType[];
 
 /**
  * Maps sync operation types to their capitalized labels used by the rclone API.
  */
-export const BATCH_OP_LABELS: Record<SyncOperationType, 'Sync' | 'Copy' | 'Move' | 'Bisync'> = {
-  sync: 'Sync',
-  copy: 'Copy',
-  move: 'Move',
-  bisync: 'Bisync',
-};
+export const BATCH_OP_LABELS = Object.freeze(
+  Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.isSyncType).map(op => [op.key, op.apiLabel])
+  )
+) as Readonly<Record<SyncOperationType, string>>;
 
 /**
  * Set of primary operation-type keys for efficient lookup.
  */
-export const OPERATION_TYPE_KEYS = new Set<string>(ALL_PRIMARY_ACTIONS);
+export const OPERATION_TYPE_KEYS: ReadonlySet<string> = new Set<string>(ALL_PRIMARY_ACTIONS);
+
+// ── Operation Category Constants for unifying inline lists ──────────────────
+export const CORE_SYNC_OPS = ['sync', 'copy', 'move'] as const;
+export const WATCH_SUPPORTED_OPS = ['sync', 'copy', 'move', 'bisync', 'check'] as const;
+export const CORE_COMMAND_OPS = ['archivecreate', 'cryptcheck'] as const;
+export const MULTI_SOURCE_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'delete',
+  'copyurl',
+  'check',
+  'cryptcheck',
+] as const;
+export const FILE_SOURCE_OPS = ['copy', 'move', 'delete', 'archivecreate'] as const;
+export const BACKEND_PROFILE_SUPPORTED_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'check',
+  'delete',
+  'copyurl',
+  'archivecreate',
+] as const;
+export const NON_JOB_OPS = ['mount', 'serve'] as const;

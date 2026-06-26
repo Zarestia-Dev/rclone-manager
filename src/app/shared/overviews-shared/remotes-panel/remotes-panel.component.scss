@@ -68,14 +68,11 @@
 
 // ── Remotes Grid ─────────────────────────────────────────────────────────────
 
-.remotes-grid-wrap {
+.remotes-grid {
   flex: 1;
   overflow-y: auto;
   max-height: 50vh;
   padding: var(--space-lg);
-}
-
-.remotes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-md);
@@ -124,13 +121,9 @@
     padding: var(--space-md);
   }
 
-  .remotes-grid-wrap {
+  .remotes-grid {
     padding: var(--space-md);
     max-height: 350px;
-    overflow-y: auto;
-  }
-
-  .remotes-grid {
     gap: var(--space-sm);
   }
 }

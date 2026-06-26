@@ -8,38 +8,36 @@
 </div>
 
 <!-- Remotes Grid -->
-<div class="remotes-grid-wrap">
-  <div
-    class="remotes-grid"
-    cdkDropList
-    cdkDropListOrientation="mixed"
-    (cdkDropListDropped)="onDrop($event)"
-    [cdkDropListDisabled]="!isEditingLayout()"
-  >
-    @for (remote of displayRemotes(); track remote.name) {
-      @let isHidden = hiddenSet().has(remote.name);
-      <app-remote-card
-        cdkDrag
-        [cdkDragDisabled]="!isEditingLayout()"
-        [remote]="remote"
-        [mode]="mode()"
-        [displayMode]="displayMode()"
-        [primaryActionLabel]="primaryActionLabel()"
-        [activeIcon]="activeIcon()"
-        [primaryActions]="remote.primaryActions"
-        [isEditingLayout]="isEditingLayout()"
-        [isHidden]="isHidden"
-        (remoteClick)="remoteSelected.emit($event)"
-        (openInFiles)="openInFiles.emit($event)"
-        (startJob)="startJob.emit($event)"
-        (stopJob)="stopJob.emit($event)"
-        (toggleHidden)="toggleHidden.emit($event)"
-      >
-        <!-- Custom placeholder shown in the grid when a card is being dragged -->
-        <div class="remote-drag-placeholder" *cdkDragPlaceholder>
-          <mat-icon svgIcon="plus" class="placeholder-icon"></mat-icon>
-        </div>
-      </app-remote-card>
-    }
-  </div>
+<div
+  class="remotes-grid"
+  cdkDropList
+  cdkDropListOrientation="mixed"
+  (cdkDropListDropped)="onDrop($event)"
+  [cdkDropListDisabled]="!isEditingLayout()"
+>
+  @for (remote of displayRemotes(); track remote.name) {
+    @let isHidden = hiddenSet().has(remote.name);
+    <app-remote-card
+      cdkDrag
+      [cdkDragDisabled]="!isEditingLayout()"
+      [remote]="remote"
+      [mode]="mode()"
+      [displayMode]="displayMode()"
+      [primaryActionLabel]="primaryActionLabel()"
+      [activeIcon]="activeIcon()"
+      [primaryActions]="remote.primaryActions"
+      [syncActions]="remote.syncActions"
+      [isEditingLayout]="isEditingLayout()"
+      [isHidden]="isHidden"
+      (remoteClick)="remoteSelected.emit($event)"
+      (openInFiles)="openInFiles.emit($event)"
+      (startJob)="startJob.emit($event)"
+      (stopJob)="stopJob.emit($event)"
+      (toggleHidden)="toggleHidden.emit($event)"
+    >
+      <div class="remote-drag-placeholder" *cdkDragPlaceholder>
+        <mat-icon svgIcon="plus" class="placeholder-icon"></mat-icon>
+      </div>
+    </app-remote-card>
+  }
 </div>

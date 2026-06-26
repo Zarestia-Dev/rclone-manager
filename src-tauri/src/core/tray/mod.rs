@@ -48,6 +48,11 @@ pub struct TrayRemoteSummary {
     pub copy_profiles: Vec<TrayProfileSummary>,
     pub move_profiles: Vec<TrayProfileSummary>,
     pub bisync_profiles: Vec<TrayProfileSummary>,
+    pub check_profiles: Vec<TrayProfileSummary>,
+    pub delete_profiles: Vec<TrayProfileSummary>,
+    pub copyurl_profiles: Vec<TrayProfileSummary>,
+    pub archivecreate_profiles: Vec<TrayProfileSummary>,
+    pub cryptcheck_profiles: Vec<TrayProfileSummary>,
     pub mount_profiles: Vec<TrayProfileSummary>,
     pub serve_profiles: Vec<TrayProfileSummary>,
 }
@@ -73,6 +78,7 @@ impl TraySnapshot {
 
         let active_jobs = active_jobs_raw
             .iter()
+            .filter(|j| j.parent_job_id.is_none())
             .map(|j| TrayJobSummary {
                 remote_name: j.remote_name.clone(),
             })
@@ -170,6 +176,20 @@ impl TraySnapshot {
                     copy_profiles: build_job_profiles(&s_parsed.copy_configs, &JobType::Copy),
                     move_profiles: build_job_profiles(&s_parsed.move_configs, &JobType::Move),
                     bisync_profiles: build_job_profiles(&s_parsed.bisync_configs, &JobType::Bisync),
+                    check_profiles: build_job_profiles(&s_parsed.check_configs, &JobType::Check),
+                    delete_profiles: build_job_profiles(&s_parsed.delete_configs, &JobType::Delete),
+                    copyurl_profiles: build_job_profiles(
+                        &s_parsed.copyurl_configs,
+                        &JobType::CopyUrl,
+                    ),
+                    archivecreate_profiles: build_job_profiles(
+                        &s_parsed.archivecreate_configs,
+                        &JobType::ArchiveCreate,
+                    ),
+                    cryptcheck_profiles: build_job_profiles(
+                        &s_parsed.cryptcheck_configs,
+                        &JobType::CryptCheck,
+                    ),
                     name,
                     show_on_tray,
                     primary_actions,

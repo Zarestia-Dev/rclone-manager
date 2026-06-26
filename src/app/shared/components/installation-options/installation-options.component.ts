@@ -46,7 +46,7 @@ import {
 export class InstallationOptionsComponent implements OnInit {
   disabled = input(false);
   mode = input<'install' | 'config'>('install');
-  tabOptions = input<InstallationTabOption[]>([
+  tabOptions = input<readonly InstallationTabOption[]>([
     { key: 'default', label: 'shared.installationOptions.tabs.quickFix', icon: 'bolt' },
     { key: 'custom', label: 'shared.installationOptions.tabs.custom', icon: 'folder' },
     { key: 'existing', label: 'shared.installationOptions.tabs.existing', icon: 'file' },

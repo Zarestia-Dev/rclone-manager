@@ -26,6 +26,7 @@ import {
   SharedProfileType,
   TranslationResult,
   ChipDef,
+  LINKED_PROFILE_TYPES,
 } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
@@ -72,20 +73,19 @@ function toSnakeCase(str: string): string {
   return str.replace(/^--?/, '').replace(/-/g, '_');
 }
 
-const PROFILE_TYPES: SharedProfileType[] = ['sync', 'copy', 'move', 'bisync', 'mount', 'serve'];
-const NESTED_OPTIONS_TYPES: SharedProfileType[] = ['vfs', 'filter', 'backend'];
-const HAS_OPTIONS_GROUP_TYPES: SharedProfileType[] = [...PROFILE_TYPES, ...NESTED_OPTIONS_TYPES];
+const NESTED_OPTIONS_TYPES = new Set<SharedProfileType>(['vfs', 'filter', 'backend']);
+const HAS_OPTIONS_GROUP_TYPES = new Set<string>([...LINKED_PROFILE_TYPES, ...NESTED_OPTIONS_TYPES]);
 
 function isProfileType(type: string | null): boolean {
-  return !!type && PROFILE_TYPES.includes(type as SharedProfileType);
+  return !!type && LINKED_PROFILE_TYPES.has(type);
 }
 
 function isNestedOptionsType(type: string | null): boolean {
-  return !!type && NESTED_OPTIONS_TYPES.includes(type as SharedProfileType);
+  return !!type && NESTED_OPTIONS_TYPES.has(type as SharedProfileType);
 }
 
 function hasOptionsGroup(type: string | null): boolean {
-  return !!type && HAS_OPTIONS_GROUP_TYPES.includes(type as SharedProfileType);
+  return !!type && HAS_OPTIONS_GROUP_TYPES.has(type);
 }
 
 function buildRcloneCompletionSource(
@@ -242,6 +242,8 @@ export class JsonEditorComponent {
         return 'wizards.remoteConfig.jsonEditorInfo.sync';
       case 'bisync':
         return 'wizards.remoteConfig.jsonEditorInfo.bisync';
+      case 'check':
+        return 'wizards.remoteConfig.jsonEditorInfo.check';
       case 'mount':
         return 'wizards.remoteConfig.jsonEditorInfo.mount';
       case 'serve':
@@ -1264,7 +1266,7 @@ export class JsonEditorComponent {
 
     if (cb === ob) return true;
 
-    if (['sync', 'copy', 'move', 'bisync', 'backend'].includes(cb) && ob === 'main') {
+    if (['sync', 'copy', 'move', 'bisync', 'check', 'backend'].includes(cb) && ob === 'main') {
       return true;
     }
 

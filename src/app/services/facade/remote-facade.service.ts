@@ -47,10 +47,16 @@ import {
   RemotesLayout,
   RCLONE_PATH_KEYS,
   ProfileConfigMap,
-  RemoteState,
   BATCH_OP_LABELS,
   OPERATION_TYPE_KEYS,
+  RemoteStatus,
 } from '@app/types';
+
+interface RemoteState {
+  base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
+  disk: WritableSignal<DiskUsage>;
+  enriched: Signal<Remote>;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RemoteFacadeService extends TauriBaseService {
@@ -106,7 +112,8 @@ export class RemoteFacadeService extends TauriBaseService {
     const backend = this.backendService.activeBackend();
     if (!options) return { order: [], hidden: [] };
 
-    const allLayouts = (options['runtime.remote_layouts']?.value as BackendsRemotesLayout) || {};
+    const allLayouts =
+      (options['runtime.remote_layouts']?.value as unknown as BackendsRemotesLayout) || {};
     let layout = allLayouts[backend] || { order: [], hidden: [] };
 
     if (Array.isArray(layout)) layout = { order: [], hidden: [] };
@@ -175,14 +182,26 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {
-    const updated = { ...this.getRemoteSettings(remoteName), ...updates };
-    await this.appSettingsService.saveRemoteSettings(remoteName, updated);
+    try {
+      const updated = { ...this.getRemoteSettings(remoteName), ...updates };
+      await this.appSettingsService.saveRemoteSettings(remoteName, updated);
+      this.notificationService.showSuccess(
+        this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
+          ? `Saved settings for remote ${remoteName}`
+          : `Saved settings for remote ${remoteName}`
+      );
+    } catch (error) {
+      this.notificationService.showError(
+        `Failed to save settings for remote ${remoteName}: ${error}`
+      );
+      throw error;
+    }
   }
 
   // --- Disk Usage ---
 
   updateDiskUsage(remoteName: string, usage: Partial<DiskUsage>): void {
-    this.getOrCreateRemoteState(remoteName).disk.update(cur => ({ ...cur, ...usage }));
+    this.getOrCreateRemoteState(remoteName).disk.update((cur: DiskUsage) => ({ ...cur, ...usage }));
   }
 
   async getCachedOrFetchDiskUsage(
@@ -201,7 +220,7 @@ export class RemoteFacadeService extends TauriBaseService {
     );
 
     if (features.Error) {
-      state.disk.update(cur => ({
+      state.disk.update((cur: DiskUsage) => ({
         ...cur,
         loading: false,
         error: true,
@@ -210,7 +229,12 @@ export class RemoteFacadeService extends TauriBaseService {
       return null;
     }
     if (!features.About) {
-      state.disk.update(cur => ({ ...cur, notSupported: true, loading: false, error: false }));
+      state.disk.update((cur: DiskUsage) => ({
+        ...cur,
+        notSupported: true,
+        loading: false,
+        error: false,
+      }));
       return null;
     }
 
@@ -220,7 +244,12 @@ export class RemoteFacadeService extends TauriBaseService {
     }
 
     const fsName = normalizedName ?? `${remoteName}:`;
-    state.disk.update(cur => ({ ...cur, loading: true, error: false, total_space: undefined }));
+    state.disk.update((cur: DiskUsage) => ({
+      ...cur,
+      loading: true,
+      error: false,
+      total_space: undefined,
+    }));
 
     try {
       const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source, group);
@@ -235,7 +264,7 @@ export class RemoteFacadeService extends TauriBaseService {
       state.disk.set(result);
       return result;
     } catch (error) {
-      state.disk.update(cur => ({
+      state.disk.update((cur: DiskUsage) => ({
         ...cur,
         loading: false,
         error: true,
@@ -277,7 +306,7 @@ export class RemoteFacadeService extends TauriBaseService {
             this.remoteService.clearCache(name);
             void this.remoteService.getFeatures(name, config.type);
           }
-          state.base.update(b => ({ ...b, config }));
+          state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
         } else {
           newAdded = true;
           this.getOrCreateRemoteState(name, config, settings[name] as RemoteSettings);
@@ -320,7 +349,8 @@ export class RemoteFacadeService extends TauriBaseService {
 
   private async persistLayout(backendName: string, layout: RemotesLayout): Promise<void> {
     const options = this.appSettingsService.options();
-    const allLayouts = (options?.['runtime.remote_layouts']?.value as BackendsRemotesLayout) || {};
+    const allLayouts =
+      (options?.['runtime.remote_layouts']?.value as unknown as BackendsRemotesLayout) || {};
     allLayouts[backendName] = layout;
     this._remoteLayout.set(layout);
     await this.appSettingsService.saveSetting('runtime', 'remote_layouts', allLayouts);
@@ -647,23 +677,26 @@ export class RemoteFacadeService extends TauriBaseService {
     config?: RemoteConfig,
     settings?: RemoteSettings
   ): RemoteState {
-    let state = this.remoteStates.get(name);
-    if (!state) {
-      const baseSig = signal<Omit<Remote, 'status' | 'features'>>({
-        name,
-        type: config?.type ?? '',
-        config: config ?? { name, type: '' },
-        primaryActions: (settings?.['primaryActions'] as PrimaryActionType[]) ?? [],
-      });
-
-      state = {
-        base: baseSig,
-        disk: signal<DiskUsage>({ loading: true, error: false }),
-        enriched: this.createEnrichedSignal(name, baseSig),
-      };
-      this.remoteStates.set(name, state);
-      void this.remoteService.getFeatures(name, config?.type);
+    const existing = this.remoteStates.get(name);
+    if (existing) {
+      return existing;
     }
+
+    const baseSig = signal<Omit<Remote, 'status' | 'features'>>({
+      name,
+      type: config?.type ?? '',
+      config: config ?? { name, type: '' },
+      primaryActions: (settings?.['primaryActions'] as PrimaryActionType[]) ?? [],
+      syncActions: (settings?.['syncActions'] as PrimaryActionType[]) ?? [],
+    });
+
+    const state: RemoteState = {
+      base: baseSig,
+      disk: signal<DiskUsage>({ loading: true, error: false }),
+      enriched: this.createEnrichedSignal(name, baseSig),
+    };
+    this.remoteStates.set(name, state);
+    void this.remoteService.getFeatures(name, config?.type);
     return state;
   }
 
@@ -675,7 +708,13 @@ export class RemoteFacadeService extends TauriBaseService {
   ): Signal<Remote> {
     return computed(() => {
       const state = this.remoteStates.get(name);
-      if (!state) return { ...baseSig(), status: {} as any, features: {} as any };
+      if (!state) {
+        return {
+          ...baseSig(),
+          status: {} as unknown as RemoteStatus,
+          features: {} as unknown as RemoteFeatures,
+        };
+      }
 
       const enriched = this.enrichRemote(
         baseSig(),
@@ -710,12 +749,18 @@ export class RemoteFacadeService extends TauriBaseService {
       ...base,
       config: (settings['config'] as RemoteConfig) || base.config,
       primaryActions: (settings['primaryActions'] as PrimaryActionType[]) ?? [],
+      syncActions: (settings['syncActions'] as PrimaryActionType[]) ?? [],
       status: {
         diskUsage: { loading: true },
         sync: this.buildOperationState('sync', jobs, settings),
         copy: this.buildOperationState('copy', jobs, settings),
         bisync: this.buildOperationState('bisync', jobs, settings),
         move: this.buildOperationState('move', jobs, settings),
+        check: this.buildOperationState('check', jobs, settings),
+        delete: this.buildOperationState('delete', jobs, settings),
+        copyurl: this.buildOperationState('copyurl', jobs, settings),
+        archivecreate: this.buildOperationState('archivecreate', jobs, settings),
+        cryptcheck: this.buildOperationState('cryptcheck', jobs, settings),
         mount: {
           ...buildStatusEntry(
             mounts,

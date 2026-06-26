@@ -118,7 +118,7 @@ export function groupBy<T, K extends PropertyKey>(
  * Gets the standard control key for a given config option.
  */
 export function getControlKey(field: RcConfigOption, type?: string): string {
-  if (type === 'serve') {
+  if (type === 'serve' || type === 'cryptcheck' || type === 'archivecreate') {
     return field.Name || field.FieldName;
   }
   return field.FieldName || field.Name;
@@ -136,7 +136,12 @@ export const OPERATION_PATH_MAPPINGS: Record<string, PathMappingInfo> = {
   sync: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
   copy: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
   move: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
+  check: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
+  archivecreate: { sourceKey: 'srcFs', destKey: 'dstFs' },
+  cryptcheck: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
   bisync: { sourceKey: 'path1', destKey: 'path2' },
+  delete: { sourceKey: 'srcFs', isSourceArray: true },
+  copyurl: { sourceKey: 'srcFs', destKey: 'dstFs', isSourceArray: true },
 };
 
 /** Keys excluded from dynamic options when mapping config→form (structural/metadata fields). */
@@ -188,6 +193,7 @@ export interface FormToConfigContext {
   pathService: {
     buildPathString(p: PathGroup | string, remoteName: string): string;
     buildPathStrings(p: PathGroup | PathGroup[] | null | undefined, remoteName: string): string[];
+    joinPath(...segments: string[]): string;
   };
   runtimeRemoteProfileNames?: string[];
   cleanData?: (options: Record<string, any>, fields: RcConfigOption[]) => Record<string, any>;
@@ -235,15 +241,39 @@ export function mapFormToConfigProfile(
   const rclone: Record<string, any> = {};
 
   if (formData['source'] !== undefined) {
-    const sourcePaths = ctx.pathService.buildPathStrings(
-      Array.isArray(formData['source']) ? formData['source'] : [formData['source']],
-      ctx.remoteName
-    );
-    rclone[mapping.sourceKey] = mapping.isSourceArray
-      ? sourcePaths.length > 1
-        ? sourcePaths
-        : (sourcePaths[0] ?? '')
-      : (sourcePaths[0] ?? '');
+    if (type === 'copyurl') {
+      const sources = Array.isArray(formData['source']) ? formData['source'] : [formData['source']];
+      const urls = sources
+        .map((s: any) => (typeof s === 'string' ? s : s?.path || ''))
+        .filter(Boolean);
+      rclone[mapping.sourceKey] = mapping.isSourceArray
+        ? urls.length > 1
+          ? urls
+          : (urls[0] ?? '')
+        : (urls[0] ?? '');
+
+      const filenames = sources.map((s: any) => s?.filename || '');
+      if (filenames.some(Boolean)) {
+        rclone['filenames'] = filenames;
+        if (formData['options']) {
+          formData['options']['autoFilename'] = false;
+        }
+      } else {
+        if (formData['options']) {
+          formData['options']['autoFilename'] = true;
+        }
+      }
+    } else {
+      const sourcePaths = ctx.pathService.buildPathStrings(
+        Array.isArray(formData['source']) ? formData['source'] : [formData['source']],
+        ctx.remoteName
+      );
+      rclone[mapping.sourceKey] = mapping.isSourceArray
+        ? sourcePaths.length > 1
+          ? sourcePaths
+          : (sourcePaths[0] ?? '')
+        : (sourcePaths[0] ?? '');
+    }
   }
 
   if (mapping.destKey && formData['dest'] !== undefined) {
@@ -305,6 +335,8 @@ export interface ConfigToFormContext {
       remoteName?: string,
       existingRemotes?: string[]
     ): PathGroup;
+    getFilename(path: string): string;
+    getParentPath(path: string): string;
   };
 }
 
@@ -335,37 +367,64 @@ export function mapConfigToFormProfile(
       Array.isArray(sourceVal) ? sourceVal : sourceVal ? [sourceVal] : []
     ) as string[];
 
-    if (mapping.isSourceArray) {
-      result['source'] = configSources.map(s =>
-        ctx.pathService.parseFsString(s, 'currentRemote', ctx.remoteName, ctx.existingRemotes)
-      );
-    } else {
-      const parsedSrc = ctx.pathService.parseFsString(
-        configSources[0] ?? '',
-        'currentRemote',
-        ctx.remoteName,
-        ctx.existingRemotes
-      );
-      if (type === 'mount' || type === 'serve') {
-        parsedSrc.type = 'currentRemote';
-        parsedSrc.remote = '';
-      }
-      result['source'] = parsedSrc;
-    }
-
-    if (mapping.destKey) {
-      const destVal = rcloneConfig[mapping.destKey] ?? '';
+    if (type === 'copyurl') {
+      const filenames = rcloneConfig['filenames'] as string[] | undefined;
+      const autoFilename =
+        rcloneConfig['autoFilename'] ?? rcloneConfig['_config']?.['autoFilename'] ?? false;
+      const destVal = (mapping.destKey ? rcloneConfig[mapping.destKey] : '') ?? '';
       const parsedDst = ctx.pathService.parseFsString(
         destVal,
         'local',
         ctx.remoteName,
         ctx.existingRemotes
       );
-      if (type === 'mount') {
-        parsedDst.type = 'local';
-        parsedDst.remote = '';
+
+      let legacyFilename = '';
+      if (!filenames && !autoFilename && parsedDst.path) {
+        legacyFilename = ctx.pathService.getFilename(parsedDst.path);
+        parsedDst.path = ctx.pathService.getParentPath(parsedDst.path);
       }
+
+      result['source'] = configSources.map((s, idx) => ({
+        type: 'local',
+        path: s,
+        remote: '',
+        filename: filenames?.[idx] || (idx === 0 ? legacyFilename : ''),
+      }));
       result['dest'] = parsedDst;
+    } else {
+      if (mapping.isSourceArray) {
+        result['source'] = configSources.map(s =>
+          ctx.pathService.parseFsString(s, 'currentRemote', ctx.remoteName, ctx.existingRemotes)
+        );
+      } else {
+        const parsedSrc = ctx.pathService.parseFsString(
+          configSources[0] ?? '',
+          'currentRemote',
+          ctx.remoteName,
+          ctx.existingRemotes
+        );
+        if (type === 'mount' || type === 'serve') {
+          parsedSrc.type = 'currentRemote';
+          parsedSrc.remote = '';
+        }
+        result['source'] = parsedSrc;
+      }
+
+      if (mapping.destKey) {
+        const destVal = rcloneConfig[mapping.destKey] ?? '';
+        const parsedDst = ctx.pathService.parseFsString(
+          destVal,
+          'local',
+          ctx.remoteName,
+          ctx.existingRemotes
+        );
+        if (type === 'mount') {
+          parsedDst.type = 'local';
+          parsedDst.remote = '';
+        }
+        result['dest'] = parsedDst;
+      }
     }
   }
 

@@ -47,6 +47,8 @@ import {
   BisyncConfig,
   MoveConfig,
   ServeConfig,
+  CheckConfig,
+  CryptcheckConfig,
   VfsConfig,
   BackendConfig,
   RuntimeRemoteConfig,
@@ -55,6 +57,9 @@ import {
   LINKED_PROFILE_TYPES,
   JobMap,
   SYNC_TYPES,
+  DeleteConfig,
+  CopyurlConfig,
+  ArchivecreateConfig,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
@@ -132,6 +137,8 @@ export class RemoteConfigModalComponent {
     move: 'move',
     bisync: 'right-left',
     serve: 'server',
+    check: 'search',
+    cryptcheck: 'shield',
     vfs: 'vfs',
     filter: 'filter',
     backend: 'database',
@@ -313,6 +320,11 @@ export class RemoteConfigModalComponent {
       [REMOTE_CONFIG_KEYS.bisync]: p['bisync'] as Record<string, BisyncConfig>,
       [REMOTE_CONFIG_KEYS.move]: p['move'] as Record<string, MoveConfig>,
       [REMOTE_CONFIG_KEYS.serve]: p['serve'] as unknown as Record<string, ServeConfig>,
+      [REMOTE_CONFIG_KEYS.check]: p['check'] as Record<string, CheckConfig>,
+      [REMOTE_CONFIG_KEYS.cryptcheck]: p['cryptcheck'] as Record<string, CryptcheckConfig>,
+      [REMOTE_CONFIG_KEYS.delete]: p['delete'] as Record<string, DeleteConfig>,
+      [REMOTE_CONFIG_KEYS.copyurl]: p['copyurl'] as Record<string, CopyurlConfig>,
+      [REMOTE_CONFIG_KEYS.archivecreate]: p['archivecreate'] as Record<string, ArchivecreateConfig>,
       [REMOTE_CONFIG_KEYS.filter]: p['filter'] as Record<string, FilterConfig>,
       [REMOTE_CONFIG_KEYS.vfs]: p['vfs'] as Record<string, VfsConfig>,
       [REMOTE_CONFIG_KEYS.backend]: p['backend'] as Record<string, BackendConfig>,
@@ -473,7 +485,12 @@ export class RemoteConfigModalComponent {
             | 'Copy'
             | 'Sync'
             | 'Bisync'
-            | 'Move';
+            | 'Move'
+            | 'Check'
+            | 'Delete'
+            | 'Copyurl'
+            | 'Archivecreate'
+            | 'Cryptcheck';
           void this.jobManagementService.startProfileBatch(batchType, {
             remoteName,
             profileName,

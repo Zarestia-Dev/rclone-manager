@@ -52,15 +52,13 @@ export class RemotesPanelComponent {
   layoutChanged = output<string[]>();
   toggleHidden = output<string>();
 
-  // Shows all remotes in edit mode, only visible ones otherwise
+  readonly hiddenSet = computed(() => new Set(this.hiddenRemoteNames()));
+
   readonly displayRemotes = computed(() =>
     this.isEditingLayout() ? this.allRemotes() : this.remotes()
   );
 
-  // Always shows the visible count, not the edit-mode count
   readonly count = computed(() => this.remotes().length);
-
-  readonly hiddenSet = computed(() => new Set(this.hiddenRemoteNames()));
 
   onDrop(event: CdkDragDrop<Remote[]>): void {
     if (!this.isEditingLayout()) return;

@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Hedef Kontrol Dosyası",
+    "help": "checkFileFs:checkFileRemote dosyasını özet (SUM) dosyası olarak ele al."
+  },
+  "combined": {
+    "title": "Birleştirilmiş",
+    "help": "Değişikliklerin birleştirilmiş bir raporunu oluştur."
+  },
+  "missing_on_src": {
+    "title": "Kaynakta Eksik",
+    "help": "Kaynakta eksik olan tüm dosyaları raporla."
+  },
+  "missing_on_dst": {
+    "title": "Hedefte Eksik",
+    "help": "Hedefte eksik olan tüm dosyaları raporla."
+  },
+  "match": {
+    "title": "Eşleşen",
+    "help": "Tüm eşleşen dosyaları raporla."
+  },
+  "differ": {
+    "title": "Farklı",
+    "help": "Tüm eşleşmeyen dosyaları raporla."
+  },
+  "error": {
+    "title": "Hata",
+    "help": "Hatalı olan tüm dosyaları raporla (karma oluşturma veya okuma)."
+  },
   "addr": {
     "title": "Adres",
     "help": "Sunucunun bağlanacağı IPadresi:Port veya :Port"
@@ -1214,5 +1242,41 @@
   "serve_type_s3": {
     "title": "Amazon S3 uyumlu sunucu",
     "help": "Uzak bağlantıyı Amazon S3 API üzerinden sunar"
+  },
+  "check_file_hash": {
+    "title": "Dosya Hashing Kontrolü",
+    "help": "checkFileFs:checkFileRemote girdisini belirtilen türde hash içeren bir SUM dosyası olarak işle."
+  },
+  "check_file_fs": {
+    "title": "Dosya Sistemi Kontrolü",
+    "help": "checkFileFs:checkFileRemote girdisini hash içeren bir SUM dosyası olarak işle."
+  },
+  "one_way": {
+    "title": "Tek Yönlü Kontrol",
+    "help": "Yalnızca tek yönlü kontrol yap - hedefte olmayan dosyaları kaynakta bul."
+  },
+  "auto_filename": {
+    "title": "Otomatik Dosya Adı",
+    "help": "Hedef bir dizinse, dosya adını URL veya başlıklardan (headers) al."
+  },
+  "rmdirs": {
+    "title": "Boş Dizinleri Sil",
+    "help": "Dosyaları sildikten sonra boş dizinleri kaldır."
+  },
+  "format": {
+    "title": "Arşiv Formatı",
+    "help": "Arşiv formatı (zip, tar, tgz, tbz, txz, vb.)"
+  },
+  "prefix": {
+    "title": "Önek Yolu",
+    "help": "Arşive eklenecek önek dizini"
+  },
+  "full_path": {
+    "title": "Tam Yol",
+    "help": "Arşiv içinde dosyaların tam yollarını kullan"
+  },
+  "download": {
+    "title": "İndir ve Kontrol Et",
+    "help": "Sağlama toplamlarını karşılaştırmak için her iki tarafı indirip kontrol et."
   }
 }

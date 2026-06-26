@@ -118,9 +118,11 @@
       color: white;
     }
 
-    // Type-specific active states
     &.serve,
-    &.mount {
+    &.mount,
+    &.check,
+    &.copyurl,
+    &.cryptcheck {
       background: rgba(var(--accent-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--accent-color);
@@ -129,7 +131,8 @@
         color: var(--accent-color);
       }
     }
-    &.sync {
+    &.sync,
+    &.archivecreate {
       background: rgba(var(--primary-color-rgb), var(--active-opacity));
       .status-dot {
         background: var(--primary-color);
@@ -165,24 +168,34 @@
         color: var(--purple);
       }
     }
-  }
-
-  // Hover effects
-  &:hover {
-    &:not(.active) {
-      background: var(--hover-bg-color);
-    }
-
-    &.active {
+    &.delete {
+      background: rgba(var(--warn-color-rgb), var(--active-opacity));
       .status-dot {
-        transform: scale(1.05);
+        background: var(--warn-color);
+      }
+      .status-label {
+        color: var(--warn-color);
       }
     }
   }
 
   &.disabled {
-    opacity: 0.5;
-    pointer-events: none;
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+
+    &:hover {
+      transform: none !important;
+    }
+  }
+}
+
+.configure-toggle-btn {
+  color: var(--dim-color);
+  &:hover {
+    mat-icon {
+      color: var(--primary-color);
+    }
   }
 }
 
@@ -201,6 +214,20 @@
     height: var(--icon-size-sm);
     font-size: var(--icon-size-sm);
     color: var(--dim-color);
+  }
+
+  mat-spinner {
+    ::ng-deep circle {
+      stroke: var(--dim-color);
+    }
+  }
+}
+
+.status-chip.active {
+  .status-dot mat-spinner {
+    ::ng-deep circle {
+      stroke: white;
+    }
   }
 }
 

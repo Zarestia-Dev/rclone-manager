@@ -859,6 +859,8 @@ code,
 input,
 textarea,
 [contenteditable="true"] {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
   user-select: text;
   cursor: text;
   -webkit-user-drag: auto;
@@ -1171,6 +1173,41 @@ mat-accordion {
 
     border-radius: var(--radius-xs);
     transition: background-color 0.1s ease;
+
+    .menu-item-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: auto;
+      background-color: var(--dim-color);
+      transition: background-color 0.2s ease;
+    }
+
+    &.is-running .menu-item-dot {
+      animation: pulse 2s infinite;
+    }
+
+    &.sync .menu-item-dot {
+      background-color: var(--primary-color);
+    }
+    &.copy .menu-item-dot {
+      background-color: var(--yellow);
+    }
+    &.move .menu-item-dot {
+      background-color: var(--orange);
+    }
+    &.bisync .menu-item-dot {
+      background-color: var(--purple);
+    }
+    &.check .menu-item-dot {
+      background-color: var(--accent-color);
+    }
+    &.delete .menu-item-dot {
+      background-color: var(--warn-color);
+    }
+    &.copyurl .menu-item-dot {
+      background-color: var(--accent-color);
+    }
 
     &.space-between {
       justify-content: space-between;
@@ -1547,6 +1584,24 @@ mat-accordion {
   contain: layout style paint; // Isolates row renders to protect frame updates in zoneless modes
 }
 
+.infinite-scroll-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-top: 1px solid var(--border-color);
+  background: var(--window-bg-color);
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .card-row-item {
   display: flex;
   flex-direction: column;
@@ -1622,6 +1677,12 @@ mat-accordion {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+
+  .actions-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
 }
 
 .card-paths {
@@ -1652,6 +1713,99 @@ mat-accordion {
     width: 16px;
     height: 16px;
     color: var(--dim-color);
+  }
+}
+
+.card-paths-v2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  margin-left: 26px;
+  flex-wrap: wrap;
+
+  .path-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(var(--window-fg-color-rgb), 0.03);
+    border-radius: 6px;
+    padding: var(--space-xxs) var(--space-xs);
+    border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: rgba(var(--window-fg-color-rgb), 0.06);
+      border-color: rgba(var(--window-fg-color-rgb), 0.1);
+    }
+
+    .path-pill {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &.src {
+        color: var(--primary-color);
+      }
+      &.dst {
+        color: var(--accent-color);
+      }
+    }
+
+    .path-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: 4px;
+      padding-left: 6px;
+      border-left: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+    }
+
+    .small-action-btn {
+      all: unset;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      color: var(--dim-color);
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: rgba(var(--window-fg-color-rgb), 0.1);
+        color: var(--window-fg-color);
+      }
+
+      &.delete-btn:hover {
+        background: rgba(var(--warn-color-rgb), 0.15) !important;
+        color: var(--warn-color) !important;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .arrow-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--dim-color);
+    flex-shrink: 0;
   }
 }
 
@@ -1754,6 +1908,7 @@ mat-accordion {
     padding: var(--space-xs) var(--space-sm);
 
     .card-paths,
+    .card-paths-v2,
     .card-progress,
     .card-footer {
       margin-left: 0;

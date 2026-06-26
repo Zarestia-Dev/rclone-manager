@@ -1,37 +1,29 @@
+import { OPERATION_REGISTRY } from './operation-registry';
+import { ConfigValue } from './system';
+
+// Dynamic extraction of FlagTypes based on registry
 export type FlagType =
-  | 'mount'
-  | 'bisync'
-  | 'move'
-  | 'copy'
-  | 'sync'
+  | Extract<(typeof OPERATION_REGISTRY)[number], { isFlagType: true }>['key']
   | 'filter'
   | 'vfs'
-  | 'backend'
-  | 'serve';
-export const FLAG_TYPES: FlagType[] = [
-  'mount',
-  'serve',
-  'sync',
-  'bisync',
-  'move',
-  'copy',
+  | 'backend';
+
+// List is frozen
+export const FLAG_TYPES = Object.freeze([
+  ...OPERATION_REGISTRY.filter(op => op.isFlagType).map(op => op.key),
   'filter',
   'vfs',
   'backend',
-];
+]) as readonly FlagType[];
+
 export const DEFAULT_PROFILE_NAME = 'default';
 
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 
-export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set([
-  'mount',
-  'serve',
-  'sync',
-  'copy',
-  'move',
-  'bisync',
-]);
+export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set(
+  OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
+);
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
@@ -48,7 +40,7 @@ export interface CommandOption {
   description?: string;
 }
 
-export const PREDEFINED_OPTIONS: CommandOption[] = [
+export const PREDEFINED_OPTIONS: readonly CommandOption[] = Object.freeze([
   {
     key: 'obscure',
     label: 'wizards.remoteConfig.predefinedOptions.obscure.label',
@@ -79,22 +71,37 @@ export const PREDEFINED_OPTIONS: CommandOption[] = [
     description: 'wizards.remoteConfig.predefinedOptions.noOutput.description',
     value: true,
   },
-];
+]);
 
-export const REMOTE_CONFIG_KEYS = {
-  mount: 'mountConfigs',
-  sync: 'syncConfigs',
-  copy: 'copyConfigs',
-  bisync: 'bisyncConfigs',
-  move: 'moveConfigs',
-  serve: 'serveConfigs',
+export interface RemoteConfigKeysRecord {
+  mount: 'mountConfigs';
+  sync: 'syncConfigs';
+  copy: 'copyConfigs';
+  bisync: 'bisyncConfigs';
+  move: 'moveConfigs';
+  serve: 'serveConfigs';
+  check: 'checkConfigs';
+  delete: 'deleteConfigs';
+  copyurl: 'copyurlConfigs';
+  archivecreate: 'archivecreateConfigs';
+  cryptcheck: 'cryptcheckConfigs';
+  filter: 'filterConfigs';
+  vfs: 'vfsConfigs';
+  backend: 'backendConfigs';
+  runtimeRemote: 'runtimeRemoteConfigs';
+}
+
+export const REMOTE_CONFIG_KEYS = Object.freeze({
+  ...Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.configKey).map(op => [op.key, op.configKey])
+  ),
   filter: 'filterConfigs',
   vfs: 'vfsConfigs',
   backend: 'backendConfigs',
   runtimeRemote: 'runtimeRemoteConfigs',
-} as const;
+}) as unknown as Readonly<RemoteConfigKeysRecord>;
 
-export type RemoteConfigKeyType = (typeof REMOTE_CONFIG_KEYS)[keyof typeof REMOTE_CONFIG_KEYS];
+export type RemoteConfigKeyType = RemoteConfigKeysRecord[keyof RemoteConfigKeysRecord];
 
 export interface UIOperationMetadata {
   label: string;
@@ -106,57 +113,21 @@ export interface UIOperationMetadata {
   supportsProfiles?: boolean;
 }
 
-export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
-  sync: {
-    label: 'dashboard.appDetail.syncSettings',
-    icon: 'refresh',
-    cssClass: 'primary',
-    description: 'dashboard.appDetail.syncDesc',
-    typeLabel: 'dashboard.appDetail.sync',
-    supportsProfiles: true,
-  },
-  bisync: {
-    label: 'dashboard.appDetail.bisyncSettings',
-    icon: 'right-left',
-    cssClass: 'purple',
-    description: 'dashboard.appDetail.bisyncDesc',
-    typeLabel: 'dashboard.appDetail.bisync',
-    supportsProfiles: true,
-  },
-  move: {
-    label: 'dashboard.appDetail.moveSettings',
-    icon: 'move',
-    cssClass: 'orange',
-    description: 'dashboard.appDetail.moveDesc',
-    typeLabel: 'dashboard.appDetail.move',
-    supportsProfiles: true,
-  },
-  copy: {
-    label: 'dashboard.appDetail.copySettings',
-    icon: 'copy',
-    cssClass: 'yellow',
-    description: 'dashboard.appDetail.copyDesc',
-    typeLabel: 'dashboard.appDetail.copy',
-    supportsProfiles: true,
-  },
-  mount: {
-    label: 'dashboard.appDetail.mountSettings',
-    icon: 'mount',
-    cssClass: 'accent',
-    description: 'dashboard.appDetail.mountBehave',
-    typeLabel: 'dashboard.appDetail.mount',
-    supportsVfs: true,
-    supportsProfiles: true,
-  },
-  serve: {
-    label: 'dashboard.appDetail.serveSettings',
-    icon: 'satellite-dish',
-    cssClass: 'accent',
-    description: 'dashboard.appDetail.serveBehave',
-    typeLabel: 'dashboard.appDetail.serving',
-    supportsVfs: true,
-    supportsProfiles: true,
-  },
+export const OPERATION_METADATA: Readonly<Record<string, UIOperationMetadata>> = Object.freeze({
+  ...Object.fromEntries(
+    OPERATION_REGISTRY.map(op => [
+      op.key,
+      {
+        label: op.settingsLabel,
+        icon: op.icon,
+        cssClass: op.cssClass,
+        description: op.settingsDescription,
+        typeLabel: op.typeLabel,
+        supportsVfs: op.supportsVfs,
+        supportsProfiles: op.supportsProfiles,
+      },
+    ])
+  ),
   vfs: {
     label: 'dashboard.appDetail.vfsOptions',
     icon: 'vfs',
@@ -181,7 +152,7 @@ export const OPERATION_METADATA: Record<string, UIOperationMetadata> = {
     cssClass: 'accent',
     supportsProfiles: true,
   },
-};
+});
 
 export interface LoadingState {
   saving: boolean;
@@ -226,7 +197,7 @@ export interface ProfileConfig {
     mountPoint?: string;
     type?: string;
     addr?: string;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
   };
 }
 
@@ -236,7 +207,7 @@ export interface MountConfig {
     fs?: string;
     mountPoint?: string;
     mountType?: string;
-    mountOpt?: Record<string, unknown>;
+    mountOpt?: Record<string, ConfigValue>;
   };
 }
 
@@ -246,7 +217,7 @@ export interface CopyConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
   };
 }
 
@@ -256,15 +227,15 @@ export interface SyncConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
   };
 }
 
-export type FilterConfig = Record<string, any>;
-
-export type VfsConfig = Record<string, any>;
-
-export type BackendConfig = Record<string, any>;
+// Replaced Record<string, any>
+export type FilterConfig = Record<string, ConfigValue>;
+export type VfsConfig = Record<string, ConfigValue>;
+export type BackendConfig = Record<string, ConfigValue>;
+export type RuntimeRemoteConfig = Record<string, ConfigValue>;
 
 export interface MoveConfig {
   app: AppConfig;
@@ -273,7 +244,7 @@ export interface MoveConfig {
     dstFs?: string;
     createEmptySrcDirs?: boolean;
     deleteEmptySrcDirs?: boolean;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
   };
 }
 
@@ -298,34 +269,87 @@ export interface BisyncConfig {
     backupDir1?: string;
     backupDir2?: string;
     noCleanup?: boolean;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
   };
 }
-
-export type RuntimeRemoteConfig = Record<string, any>;
 
 export interface ServeConfig {
   app: AppConfig;
   rclone: {
     fs?: string;
     type?: string;
-    _config?: Record<string, unknown>;
+    _config?: Record<string, ConfigValue>;
+  };
+}
+
+export interface CheckConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    download?: boolean;
+    checkFileHash?: string;
+    checkFileFs?: string;
+    _config?: Record<string, ConfigValue>;
+  };
+}
+
+export interface DeleteConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    _config?: Record<string, ConfigValue>;
+  };
+}
+
+export interface CopyurlConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    autoFilename?: boolean;
+    filenames?: string[];
+    _config?: Record<string, ConfigValue>;
+  };
+}
+
+export interface ArchivecreateConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    format?: string;
+    prefix?: string;
+    fullPath?: boolean;
+    _config?: Record<string, ConfigValue>;
+  };
+}
+
+export interface CryptcheckConfig {
+  app: AppConfig;
+  rclone: {
+    srcFs?: string | string[];
+    dstFs?: string;
+    _config?: Record<string, ConfigValue>;
   };
 }
 
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
-  [remoteName: string]: any; // keep permissive for now; UI accesses dynamic keys
+  [remoteName: string]: unknown;
 
-  // Multiple configs per type (profiles) - keyed by profile name
   mountConfigs?: Record<string, MountConfig>;
   copyConfigs?: Record<string, CopyConfig>;
   syncConfigs?: Record<string, SyncConfig>;
   moveConfigs?: Record<string, MoveConfig>;
   bisyncConfigs?: Record<string, BisyncConfig>;
   serveConfigs?: Record<string, ServeConfig>;
+  checkConfigs?: Record<string, CheckConfig>;
+  deleteConfigs?: Record<string, DeleteConfig>;
+  copyurlConfigs?: Record<string, CopyurlConfig>;
+  archivecreateConfigs?: Record<string, ArchivecreateConfig>;
+  cryptcheckConfigs?: Record<string, CryptcheckConfig>;
 
-  // Multiple configs for shared types - keyed by profile name
   filterConfigs?: Record<string, FilterConfig>;
   backendConfigs?: Record<string, BackendConfig>;
   vfsConfigs?: Record<string, VfsConfig>;
@@ -348,8 +372,8 @@ export interface RcConfigOption {
   Help: string;
   Provider?: string;
   Groups?: string;
-  Default?: any;
-  Value?: any;
+  Default?: ConfigValue;
+  Value?: ConfigValue;
   Examples?: RcConfigExample[];
   Hide?: number;
   Required?: boolean;
@@ -438,4 +462,15 @@ export interface JobProfile {
 export type JobMap = Record<string, JobProfile>;
 
 export type WizardStep = 'setup' | 'operations' | 'interactive';
-export type OperationType = 'mount' | 'sync' | 'copy' | 'bisync' | 'move' | 'serve';
+export type OperationType =
+  | 'mount'
+  | 'sync'
+  | 'copy'
+  | 'bisync'
+  | 'move'
+  | 'serve'
+  | 'check'
+  | 'cryptcheck'
+  | 'delete'
+  | 'copyurl'
+  | 'archivecreate';

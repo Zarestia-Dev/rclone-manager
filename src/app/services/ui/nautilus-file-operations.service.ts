@@ -7,7 +7,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
-import { ExplorerRoot, FileBrowserItem, ORIGINS } from '@app/types';
+import { ExplorerRoot, FileBrowserItem } from '@app/types';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -125,7 +125,7 @@ export class NautilusFileOperationsService {
         normalizedDst,
         dstPath,
         mode,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       const succeededItems: UndoEntry['items'] = items.map(item => ({
@@ -183,7 +183,7 @@ export class NautilusFileOperationsService {
     }));
 
     try {
-      await this.remoteOps.deleteItems(deleteItems, ORIGINS.FILEMANAGER);
+      await this.remoteOps.deleteItems(deleteItems, 'filemanager');
       return true;
     } catch (e) {
       console.error('Batch delete failed', e);
@@ -228,15 +228,20 @@ export class NautilusFileOperationsService {
         item.entry.Path,
         newPath,
         !!item.entry.IsDir,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.renameStarted')
       );
       return true;
-    } catch {
-      this.notifications.showError(this.translate.instant('nautilus.errors.renameFailed'));
+    } catch (e) {
+      this.notifications.showError(
+        this.translate.instant('nautilus.errors.renameFailed', {
+          name: item.entry.Name,
+          error: (e as Error).message || String(e),
+        })
+      );
       return false;
     }
   }
@@ -258,7 +263,7 @@ export class NautilusFileOperationsService {
       this.notifications.showInfo(
         this.translate.instant('nautilus.notifications.rmdirsStarted', { name: item.entry.Name })
       );
-      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, ORIGINS.FILEMANAGER);
+      await this.remoteOps.removeEmptyDirs(normalizedRemote, item.entry.Path, 'filemanager');
       return true;
     } catch (e) {
       this.notifications.showError(
@@ -285,7 +290,7 @@ export class NautilusFileOperationsService {
           path: item.dstFullPath,
           isDir: item.isDir,
         }));
-        await this.remoteOps.deleteItems(itemsToDelete, ORIGINS.FILEMANAGER);
+        await this.remoteOps.deleteItems(itemsToDelete, 'filemanager');
       } else {
         const groups = new Map<string, { dstRemote: string; dstPath: string; items: unknown[] }>();
 
@@ -311,7 +316,7 @@ export class NautilusFileOperationsService {
             group.dstRemote,
             group.dstPath,
             'move',
-            ORIGINS.FILEMANAGER
+            'filemanager'
           );
         }
       }
@@ -349,7 +354,7 @@ export class NautilusFileOperationsService {
         firstItem.dstRemote,
         parentPath,
         entry.mode,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       this._undoStack.update(s => [...s.slice(-(this.MAX_UNDO_STACK - 1)), entry]);
@@ -407,7 +412,7 @@ export class NautilusFileOperationsService {
       normalized,
       currentPath,
       filesArray,
-      ORIGINS.FILEMANAGER
+      'filemanager'
     );
 
     if (failedPaths.length === 0) {
@@ -451,7 +456,7 @@ export class NautilusFileOperationsService {
       if (!folderName) return false;
 
       const newPath = this.pathService.joinPath(currentPath, folderName);
-      await this.remoteOps.makeDirectory(normalizedRemote, newPath, ORIGINS.FILEMANAGER);
+      await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
       return true;
     } catch {
       this.notifications.showError(this.translate.instant('nautilus.errors.createFolderFailed'));
@@ -502,7 +507,7 @@ export class NautilusFileOperationsService {
         targetPath,
         url.trim(),
         autoFilename,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       return true;
@@ -592,7 +597,7 @@ export class NautilusFileOperationsService {
         normalized,
         currentPath,
         paths,
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
       return !!batchId;
     } catch (err) {

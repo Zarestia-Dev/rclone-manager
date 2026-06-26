@@ -25,6 +25,7 @@ import {
   Remote,
   RemoteSettings,
   SyncOperationType,
+  SYNC_TYPES,
 } from '@app/types';
 
 import { RemoteFacadeService } from '../services/facade/remote-facade.service';
@@ -109,8 +110,7 @@ export class HomeComponent {
       'selectedSyncOperation',
       'sync'
     );
-    const valid: SyncOperationType[] = ['sync', 'copy', 'move', 'bisync'];
-    return valid.includes(val) ? val : 'sync';
+    return SYNC_TYPES.includes(val) ? val : 'sync';
   });
 
   readonly isLoading = this.remoteFacadeService.loading;
@@ -152,23 +152,6 @@ export class HomeComponent {
       this.localStorage.setScoped(`remote.${remote.name}`, 'selectedSyncOperation', operation);
     }
   }
-
-  // --- Primary Actions ---
-
-  async togglePrimaryAction(type: PrimaryActionType): Promise<void> {
-    const remote = this.selectedRemote();
-    if (!remote) return;
-
-    const current = remote.primaryActions ?? [];
-    const next = current.includes(type) ? current.filter(a => a !== type) : [...current, type];
-
-    try {
-      await this.saveRemoteSettings(remote.name, { primaryActions: next });
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.updateActionsFailed'), error);
-    }
-  }
-
   // --- Jobs ---
 
   async startJob(

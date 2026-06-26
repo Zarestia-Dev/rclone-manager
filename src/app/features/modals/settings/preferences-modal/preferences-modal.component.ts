@@ -42,6 +42,7 @@ import {
   SettingTab,
   PendingChange,
   PendingChangeDisplay,
+  ConfigValue,
 } from '@app/types';
 
 @Component({
@@ -323,7 +324,7 @@ export class PreferencesModalComponent {
 
   // ── Settings CRUD ─────────────────────────────────────────────────────────
 
-  updateSetting(category: string, key: string, value: unknown): void {
+  updateSetting(category: string, key: string, value: ConfigValue): void {
     const control = this.getFormControl(category, key);
     if (!control?.valid) return;
 
@@ -513,7 +514,7 @@ export class PreferencesModalComponent {
     if (!ctrl?.errors) return '';
 
     const meta = this.getMetadata(category, key);
-    const t = (k: string, p?: object) =>
+    const t = (k: string, p?: object): string =>
       this.translate.instant(`modals.preferences.validation.${k}`, p);
 
     if (ctrl.hasError('required')) return t('required');

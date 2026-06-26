@@ -51,7 +51,7 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, ORIGINS, FilePickerResult, gnomeLightHighlighting } from '@app/types';
+import { Entry, FilePickerResult, gnomeLightHighlighting } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -804,7 +804,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         selectedPath,
         '',
         'copy',
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       this.notificationService.showInfo(

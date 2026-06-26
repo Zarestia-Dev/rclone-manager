@@ -44,6 +44,7 @@ impl JobCache {
             origin: metadata.origin,
             backend_name,
             dry_run: metadata.dry_run,
+            parent_job_id: metadata.parent_job_id,
         };
 
         self.add_job(job, app).await;
@@ -61,14 +62,47 @@ impl JobCache {
     }
 
     pub async fn delete_job(&self, jobid: u64, app: Option<&AppHandle>) -> Result<(), String> {
-        let job = self.jobs.write().await.remove(&jobid);
-        if let Some(job) = job {
-            self.notify_change(app, Some(&job));
-            Ok(())
-        } else {
-            log::warn!("Attempted to delete job {jobid}, but it was not found in cache");
-            Err(crate::localized_error!("backendErrors.job.notFound"))
+        let mut ids_to_delete = vec![jobid];
+        let mut index = 0;
+
+        let mut jobs = self.jobs.write().await;
+
+        while index < ids_to_delete.len() {
+            let current_id = ids_to_delete[index];
+            index += 1;
+
+            let children: Vec<u64> = jobs
+                .values()
+                .filter(|j| j.parent_job_id == Some(current_id))
+                .map(|j| j.jobid)
+                .collect();
+
+            for child_id in children {
+                if !ids_to_delete.contains(&child_id) {
+                    ids_to_delete.push(child_id);
+                }
+            }
         }
+
+        let mut removed_jobs = Vec::new();
+        for id in ids_to_delete {
+            if let Some(job) = jobs.remove(&id) {
+                removed_jobs.push(job);
+            }
+        }
+
+        drop(jobs);
+
+        if removed_jobs.is_empty() {
+            log::warn!("Attempted to delete job {jobid}, but it was not found in cache");
+            return Err(crate::localized_error!("backendErrors.job.notFound"));
+        }
+
+        for job in removed_jobs {
+            self.notify_change(app, Some(&job));
+        }
+
+        Ok(())
     }
 
     pub async fn update_job(
@@ -230,6 +264,28 @@ impl JobCache {
                 removed_jobs.push(job);
             }
         }
+
+        // Clean up orphaned sub-jobs whose parents were removed
+        loop {
+            let mut orphaned = Vec::new();
+            for job in jobs.values() {
+                if job
+                    .parent_job_id
+                    .is_some_and(|parent_id| !jobs.contains_key(&parent_id))
+                {
+                    orphaned.push(job.jobid);
+                }
+            }
+            if orphaned.is_empty() {
+                break;
+            }
+            for id in orphaned {
+                if let Some(job) = jobs.remove(&id) {
+                    removed_jobs.push(job);
+                }
+            }
+        }
+
         drop(jobs);
 
         for job in removed_jobs {
@@ -285,6 +341,7 @@ mod tests {
             origin: None,
             backend_name: default_backend_name(),
             dry_run: false,
+            parent_job_id: None,
         }
     }
 
@@ -392,5 +449,31 @@ mod tests {
         assert_eq!(stats_val["transferring"].as_array().unwrap().len(), 0);
         assert_eq!(stats_val["speed"].as_f64().unwrap(), 0.0);
         assert!(stats_val["eta"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_delete_job_recursive() {
+        let cache = JobCache::new();
+        let parent = mock_job(1, "gdrive:", JobType::Check, None);
+        cache.add_job(parent, None).await;
+
+        let mut child = mock_job(2, "gdrive:", JobType::Copy, None);
+        child.parent_job_id = Some(1);
+        cache.add_job(child, None).await;
+
+        let mut grandchild = mock_job(3, "gdrive:", JobType::Copy, None);
+        grandchild.parent_job_id = Some(2);
+        cache.add_job(grandchild, None).await;
+
+        let other = mock_job(4, "s3:", JobType::Copy, None);
+        cache.add_job(other, None).await;
+
+        assert_eq!(cache.get_jobs().await.len(), 4);
+
+        // Delete parent job, should delete child and grandchild
+        assert!(cache.delete_job(1, None).await.is_ok());
+        let remaining = cache.get_jobs().await;
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].jobid, 4);
     }
 }

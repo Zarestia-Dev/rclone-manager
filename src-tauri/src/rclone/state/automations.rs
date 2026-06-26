@@ -1,10 +1,8 @@
 use crate::{
     core::automation::engine::get_next_run,
     utils::types::{
-        automation::{
-            Automation, AutomationArgs, AutomationStats, AutomationStatus, AutomationType,
-        },
-        remotes::{OperationConfigKey, ProfileParams},
+        automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+        remotes::{OperationType, ProfileParams},
     },
 };
 use log::info;
@@ -121,7 +119,7 @@ impl AutomationsCache {
     pub fn generate_automation_id(
         backend_name: &str,
         remote_name: &str,
-        automation_type: &AutomationType,
+        automation_type: &OperationType,
         profile_name: &str,
     ) -> String {
         format!("{backend_name}:{remote_name}-{automation_type:?}-{profile_name}")
@@ -227,10 +225,15 @@ impl AutomationsCache {
         };
 
         let operations = [
-            (OperationConfigKey::Sync, AutomationType::Sync),
-            (OperationConfigKey::Copy, AutomationType::Copy),
-            (OperationConfigKey::Move, AutomationType::Move),
-            (OperationConfigKey::Bisync, AutomationType::Bisync),
+            (OperationType::Sync, OperationType::Sync),
+            (OperationType::Copy, OperationType::Copy),
+            (OperationType::Move, OperationType::Move),
+            (OperationType::Bisync, OperationType::Bisync),
+            (OperationType::Check, OperationType::Check),
+            (OperationType::Delete, OperationType::Delete),
+            (OperationType::Copyurl, OperationType::Copyurl),
+            (OperationType::Archivecreate, OperationType::Archivecreate),
+            (OperationType::Cryptcheck, OperationType::Cryptcheck),
         ];
 
         for (config_key, automation_type) in operations {
@@ -289,7 +292,7 @@ impl AutomationsCache {
         backend_name: &str,
         remote_name: &str,
         profile_name: &str,
-        automation_type: &AutomationType,
+        automation_type: &OperationType,
         config: &ProfileConfig,
     ) -> Option<Automation> {
         let cron_enabled = config.cron_enabled.unwrap_or(false);
@@ -318,16 +321,24 @@ impl AutomationsCache {
 
         // Validate path counts based on automation type
         match automation_type {
-            AutomationType::Bisync => {
+            OperationType::Bisync => {
                 if src_paths.len() != 1 || dst_paths.len() != 1 {
                     return None;
                 }
             }
-            AutomationType::Sync | AutomationType::Copy | AutomationType::Move => {
+            OperationType::Sync
+            | OperationType::Copy
+            | OperationType::Move
+            | OperationType::Check
+            | OperationType::Delete
+            | OperationType::Copyurl
+            | OperationType::Archivecreate
+            | OperationType::Cryptcheck => {
                 if src_paths.is_empty() || dst_paths.len() != 1 {
                     return None;
                 }
             }
+            _ => return None,
         }
 
         let automation_id =
@@ -716,7 +727,7 @@ mod tests {
         let id = AutomationsCache::generate_automation_id(
             "mybackend",
             "gdrive",
-            &AutomationType::Sync,
+            &OperationType::Sync,
             "daily",
         );
         assert_eq!(id, "mybackend:gdrive-Sync-daily");
@@ -724,10 +735,8 @@ mod tests {
 
     #[test]
     fn test_generate_automation_id_uniqueness_across_types() {
-        let sync_id =
-            AutomationsCache::generate_automation_id("b", "r", &AutomationType::Sync, "p");
-        let copy_id =
-            AutomationsCache::generate_automation_id("b", "r", &AutomationType::Copy, "p");
+        let sync_id = AutomationsCache::generate_automation_id("b", "r", &OperationType::Sync, "p");
+        let copy_id = AutomationsCache::generate_automation_id("b", "r", &OperationType::Copy, "p");
         assert_ne!(sync_id, copy_id);
     }
 
@@ -753,7 +762,7 @@ mod tests {
     fn test_create_automation_struct_disabled_returns_none() {
         let cache = make_cache();
         let cfg = make_full_profile_config(false, "* * * * *");
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(result.is_none(), "disabled automation should return None");
     }
 
@@ -767,7 +776,7 @@ mod tests {
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(result.is_none(), "empty cron should return None");
     }
 
@@ -782,7 +791,7 @@ mod tests {
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(
             result.is_some(),
             "empty cron with watcher enabled should return Some"
@@ -804,7 +813,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "missing source should return None"
         );
@@ -822,7 +831,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "empty source should return None"
         );
@@ -840,7 +849,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "missing dest should return None"
         );
@@ -858,7 +867,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "empty dest should return None"
         );
@@ -875,12 +884,12 @@ mod tests {
             ..Default::default()
         };
         let automation = cache
-            .create_automation_struct("backend", "remote", "daily", &AutomationType::Copy, &cfg)
+            .create_automation_struct("backend", "remote", "daily", &OperationType::Copy, &cfg)
             .expect("should produce an automation");
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
         assert_eq!(automation.cron_expression.as_deref(), Some("*/5 * * * *"));
-        assert_eq!(automation.automation_type, AutomationType::Copy);
+        assert_eq!(automation.automation_type, OperationType::Copy);
         assert!(automation.scheduler_job_id.is_none());
         assert!(automation.current_job_id.is_none());
 
@@ -908,7 +917,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_valid
                 )
                 .is_some()
@@ -928,7 +937,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_multisrc
                 )
                 .is_none()
@@ -948,7 +957,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_multidst
                 )
                 .is_none()
@@ -973,7 +982,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_one_to_one
                 )
                 .is_some()
@@ -993,7 +1002,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_multi_to_one
                 )
                 .is_some()
@@ -1013,7 +1022,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_one_to_multi
                 )
                 .is_none()
@@ -1027,7 +1036,7 @@ mod tests {
     fn base_automation() -> Automation {
         Automation {
             id: "b:r-sync-p".to_string(),
-            automation_type: AutomationType::Sync,
+            automation_type: OperationType::Sync,
             remote_name: "r".to_string(),
             profile_name: "p".to_string(),
             cron_expression: Some("* * * * *".to_string()),

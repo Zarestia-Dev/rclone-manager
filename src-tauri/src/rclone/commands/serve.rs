@@ -12,7 +12,7 @@ use crate::{
         rclone::endpoints::serve,
         types::{
             logs::LogLevel,
-            remotes::{OperationConfigKey, ProfileParams},
+            remotes::{OperationType, ProfileParams},
             state::RcloneState,
         },
     },
@@ -453,7 +453,7 @@ pub async fn start_serve_profile(
         &app,
         &params.remote_name,
         &params.profile_name,
-        OperationConfigKey::Serve.as_str(),
+        OperationType::Serve.config_key(),
     )
     .await?;
 

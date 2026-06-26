@@ -1,4 +1,3 @@
-import { Signal, WritableSignal } from '@angular/core';
 import { PrimaryActionType } from './operations';
 import { ServeListItem } from './serve';
 
@@ -69,6 +68,11 @@ export interface RemoteStatus {
   copy: RemoteOperationState;
   bisync: RemoteOperationState;
   move: RemoteOperationState;
+  check: RemoteOperationState;
+  delete: RemoteOperationState;
+  copyurl: RemoteOperationState;
+  archivecreate: RemoteOperationState;
+  cryptcheck: RemoteOperationState;
   serve: RemoteServeState;
 }
 
@@ -81,6 +85,7 @@ export interface RemoteFeatures {
   ChangeNotify: boolean;
   Hashes: string[];
   Error?: string;
+  loading?: boolean;
 }
 
 export interface Remote {
@@ -90,6 +95,7 @@ export interface Remote {
   status: RemoteStatus;
   features: RemoteFeatures;
   primaryActions: PrimaryActionType[];
+  syncActions: PrimaryActionType[];
 }
 
 // ── Remote layout ───────────────────────────────────────────────────────────
@@ -103,9 +109,3 @@ export interface RemotesLayout {
 export type BackendsRemotesLayout = Record<string, RemotesLayout>;
 
 export type ProfileConfigMap = Record<string, Record<string, unknown>>;
-
-export interface RemoteState {
-  base: WritableSignal<Omit<Remote, 'status' | 'features'>>;
-  disk: WritableSignal<DiskUsage>;
-  enriched: Signal<Remote>;
-}

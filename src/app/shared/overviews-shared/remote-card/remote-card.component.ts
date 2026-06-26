@@ -32,7 +32,6 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 @Component({
   selector: 'app-remote-card',
-  standalone: true,
   imports: [
     NgClass,
     TitleCasePipe,
@@ -55,7 +54,7 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
   },
 })
 export class RemoteCardComponent {
-  readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
   readonly pathService = inject(PathService);
@@ -67,8 +66,9 @@ export class RemoteCardComponent {
   readonly primaryActionLabel = input('Start');
   readonly activeIcon = input('circle-check');
   readonly primaryActions = input<PrimaryActionType[]>([]);
+  readonly syncActions = input<PrimaryActionType[]>([]);
   readonly maxGeneralButtons = input(3);
-  readonly maxSyncButtons = input(4);
+  readonly maxSyncButtons = input(3);
   readonly maxMountButtons = input(1);
 
   // Layout-edit inputs — set by the parent panel
@@ -123,7 +123,7 @@ export class RemoteCardComponent {
       case 'general':
         return this.buildButtons(this.primaryActionsFor(this.maxGeneralButtons()));
       case 'mount':
-        return this.buildButtons(this.primaryActionsFor(this.maxMountButtons()));
+        return this.buildButtons(['mount']);
       case 'operations':
         return this.buildButtons(this.primaryActionsFor(this.maxSyncButtons(), false));
       case 'serve': {
@@ -240,10 +240,14 @@ export class RemoteCardComponent {
   }
 
   private primaryActionsFor(limit: number, includeMount = true): PrimaryActionType[] {
-    const source =
-      this.mode() === 'general' && this.primaryActions().length > 0
-        ? this.primaryActions()
-        : (MODE_DEFAULTS[this.mode()] ?? ['mount', 'bisync']);
+    const isOps = this.mode() === 'operations';
+    const actionsSource = isOps ? this.syncActions() : this.primaryActions();
+    const hasActions = actionsSource && actionsSource.length > 0;
+    let source = hasActions ? actionsSource : (MODE_DEFAULTS[this.mode()] as PrimaryActionType[]);
+
+    if (isOps) {
+      source = source.filter(a => (SYNC_TYPES as PrimaryActionType[]).includes(a));
+    }
 
     return [...new Set(source)].filter(a => includeMount || a !== 'mount').slice(0, limit);
   }
@@ -349,6 +353,36 @@ export class RemoteCardComponent {
 
   getOperationCssClass(op: PrimaryActionType): string {
     return OPERATION_META[op]?.cssClass ?? 'primary';
+  }
+
+  private static readonly STATUS_INDICATOR_META: Record<
+    PrimaryActionType,
+    { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean }
+  > = {
+    mount: { icon: 'mount', pillClass: 'p-accent', ariaKey: 'detailShared.status.mounted' },
+    sync: { icon: 'refresh', pillClass: 'p-primary', ariaKey: 'detailShared.status.syncing' },
+    copy: { icon: 'copy', pillClass: 'p-yellow', ariaKey: 'detailShared.status.copying' },
+    move: { icon: 'move', pillClass: 'p-orange', ariaKey: 'detailShared.status.moving' },
+    bisync: { icon: 'right-left', pillClass: 'p-purple', ariaKey: 'detailShared.status.bisyncing' },
+    serve: {
+      icon: 'satellite-dish',
+      pillClass: 'p-accent',
+      ariaKey: 'detailShared.status.serving',
+      animateContainer: true,
+    },
+    check: { icon: 'search', pillClass: 'p-accent', ariaKey: 'operations.checkActive' },
+    cryptcheck: { icon: 'shield', pillClass: 'p-accent', ariaKey: 'operations.cryptcheckActive' },
+    delete: { icon: 'trash', pillClass: 'p-warn', ariaKey: 'operations.deleteActive' },
+    copyurl: { icon: 'link', pillClass: 'p-accent', ariaKey: 'operations.copyurlActive' },
+    archivecreate: {
+      icon: 'compress',
+      pillClass: 'p-primary',
+      ariaKey: 'operations.archivecreateActive',
+    },
+  };
+
+  getStatusIndicatorMeta(op: PrimaryActionType) {
+    return RemoteCardComponent.STATUS_INDICATOR_META[op];
   }
 
   // ── Operation state helpers ────────────────────────────────────────────────

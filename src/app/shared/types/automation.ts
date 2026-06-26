@@ -1,7 +1,16 @@
 /**
  * Type of automation
  */
-export type AutomationType = 'copy' | 'sync' | 'move' | 'bisync';
+export type AutomationType =
+  | 'copy'
+  | 'sync'
+  | 'move'
+  | 'bisync'
+  | 'check'
+  | 'delete'
+  | 'copyurl'
+  | 'archivecreate'
+  | 'cryptcheck';
 
 /**
  * Status of an automation

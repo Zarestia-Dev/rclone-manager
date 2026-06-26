@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Check File Remote",
+    "help": "Treat checkFileFs:checkFileRemote as a SUM file with hashes."
+  },
+  "combined": {
+    "title": "Combined",
+    "help": "Make a combined report of changes."
+  },
+  "missing_on_src": {
+    "title": "Missing On Source",
+    "help": "Report all files missing from the source."
+  },
+  "missing_on_dst": {
+    "title": "Missing On Destination",
+    "help": "Report all files missing from the destination."
+  },
+  "match": {
+    "title": "Match",
+    "help": "Report all matching files."
+  },
+  "differ": {
+    "title": "Differ",
+    "help": "Report all non-matching files."
+  },
+  "error": {
+    "title": "Error",
+    "help": "Report all files with errors (hashing or reading)."
+  },
   "addr": {
     "title": "Address",
     "help": "IPaddress:Port or :Port to bind server to"
@@ -1214,5 +1242,41 @@
   "serve_type_s3": {
     "title": "Amazon S3 compatible server",
     "help": "Serve the remote over Amazon S3 API"
+  },
+  "check_file_hash": {
+    "title": "Check File Hash",
+    "help": "Treat checkFileFs:checkFileRemote as a SUM file with hashes of given type."
+  },
+  "check_file_fs": {
+    "title": "Check File FS",
+    "help": "Treat checkFileFs:checkFileRemote as a SUM file with hashes."
+  },
+  "one_way": {
+    "title": "One Way Check",
+    "help": "Do check one way only - find files on source which don't exist on destination."
+  },
+  "auto_filename": {
+    "title": "Auto Filename",
+    "help": "Get the filename from the URL or headers if destination is a directory."
+  },
+  "rmdirs": {
+    "title": "Remove Empty Dirs",
+    "help": "Remove empty directories after deleting files."
+  },
+  "format": {
+    "title": "Archive Format",
+    "help": "Archive format (zip, tar, tgz, tbz, txz, etc.)"
+  },
+  "prefix": {
+    "title": "Prefix Path",
+    "help": "Add prefix directory in the archive"
+  },
+  "full_path": {
+    "title": "Full Path",
+    "help": "Use full path of files in the archive"
+  },
+  "download": {
+    "title": "Download and Check",
+    "help": "Download files to check integrity / compare hashes."
   }
 }

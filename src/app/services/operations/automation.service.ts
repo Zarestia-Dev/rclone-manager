@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { Automation, CronValidationResponse, AutomationStats } from '@app/types';
+import { Automation, CronValidationResponse } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 /**
@@ -13,9 +13,6 @@ import { EventListenersService } from '../infrastructure/system/event-listeners.
 export class AutomationService extends TauriBaseService {
   private readonly _automations = signal<Automation[]>([]);
   public readonly automations = this._automations.asReadonly();
-
-  private readonly _stats = signal<AutomationStats | null>(null);
-  public readonly stats = this._stats.asReadonly();
 
   private eventListeners = inject(EventListenersService);
 
@@ -52,20 +49,10 @@ export class AutomationService extends TauriBaseService {
   }
 
   /**
-   * Get statistics about automations
-   */
-  async getAutomationStats(): Promise<AutomationStats> {
-    const stats = await this.invokeCommand<AutomationStats>('get_automation_stats');
-    this._stats.set(stats);
-    return stats;
-  }
-
-  /**
    * Toggle an automation's enabled/disabled status
    */
   async toggleAutomation(automationId: string): Promise<Automation> {
     const automation = await this.invokeCommand<Automation>('toggle_automation', { automationId });
-    await this.refreshAutomations();
     return automation;
   }
 
@@ -81,7 +68,6 @@ export class AutomationService extends TauriBaseService {
    */
   async reloadAutomations(): Promise<void> {
     await this.invokeCommand('reload_automations');
-    await this.refreshAutomations();
   }
 
   /**
@@ -92,7 +78,6 @@ export class AutomationService extends TauriBaseService {
     const loadedCount = await this.invokeCommand<number>('reload_automations_from_configs', {
       remote_configs: remoteConfigs,
     });
-    await this.refreshAutomations();
     return loadedCount;
   }
 
@@ -101,7 +86,6 @@ export class AutomationService extends TauriBaseService {
    */
   async clearAllAutomations(): Promise<void> {
     await this.invokeCommand('clear_all_automations');
-    await this.refreshAutomations();
   }
 
   /**
@@ -109,7 +93,7 @@ export class AutomationService extends TauriBaseService {
    */
   public async refreshAutomations(): Promise<void> {
     try {
-      await Promise.all([this.getAutomations(), this.getAutomationStats()]);
+      await this.getAutomations();
     } catch (error) {
       console.error('Failed to refresh automations:', error);
     }

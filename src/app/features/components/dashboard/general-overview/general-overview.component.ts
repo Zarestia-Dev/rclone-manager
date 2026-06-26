@@ -139,7 +139,7 @@ export class GeneralOverviewComponent {
   // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
   readonly runningJobs = computed(() =>
-    this.remoteFacade.jobs().filter(j => j.status === 'Running')
+    this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id)
   );
   readonly activeJobsCount = computed(() => this.runningJobs().length);
   readonly allRunningServes = computed(() =>

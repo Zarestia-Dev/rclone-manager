@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { interval, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin, ORIGINS, CompletedTransfer, RawTransfer } from '@app/types';
+import { JobInfo, Origin, CompletedTransfer, RawTransfer } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
@@ -28,6 +28,49 @@ export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
   };
 }
 
+export function mapCheckOutput(job: JobInfo): CompletedTransfer[] {
+  const rawOutput = (job.stats as any)?.checkOutput;
+  if (!rawOutput) return [];
+
+  const checkResultsArray = Array.isArray(rawOutput.results) ? rawOutput.results : [rawOutput];
+  const items: CompletedTransfer[] = [];
+  const jobId = job.jobid || 0;
+  const completedAt = job.end_time || new Date().toISOString();
+  const srcFs = (job.source as string[])?.[0] || '';
+  const dstFs = job.destination || '';
+
+  const statusMap: { key: string; status: CompletedTransfer['status']; error: string }[] = [
+    { key: 'missingOnDst', status: 'missing_dst', error: 'Missing on Destination' },
+    { key: 'missingOnSrc', status: 'missing_src', error: 'Missing on Source remote' },
+    { key: 'differ', status: 'partial', error: 'File contents differ (Mismatched hash/size)' },
+  ];
+
+  for (const checkResults of checkResultsArray) {
+    if (!checkResults) continue;
+    for (const { key, status, error } of statusMap) {
+      if (Array.isArray(checkResults[key])) {
+        for (const name of checkResults[key]) {
+          items.push({
+            name,
+            size: 0,
+            bytes: 0,
+            checked: false,
+            status,
+            error,
+            jobid: jobId,
+            completedAt,
+            group: job.group,
+            srcFs,
+            dstFs,
+          });
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -38,7 +81,7 @@ export class JobManagementService extends TauriBaseService {
   public readonly activeJobs = computed(() => this._jobs().filter(job => job.status === 'Running'));
 
   public readonly nautilusJobs = computed(() =>
-    this._jobs().filter(job => job.origin === ORIGINS.FILEMANAGER)
+    this._jobs().filter(job => job.origin === 'filemanager')
   );
 
   public readonly jobsByRemote = computed(() => groupBy(this._jobs(), j => j.remote_name));
@@ -80,23 +123,12 @@ export class JobManagementService extends TauriBaseService {
       });
   }
 
-  getJobsSnapshot(): JobInfo[] {
-    return this._jobs();
-  }
-
-  getActiveJobsSnapshot(): JobInfo[] {
-    return this.activeJobs();
-  }
-
   getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
     return this.activeJobs().filter(job => {
+      if (job.parent_job_id) return false;
       const matchRemote = job.remote_name === remoteName;
       return profile ? matchRemote && job.profile === profile : matchRemote;
     });
-  }
-
-  getJobsForRemote(remoteName: string): JobInfo[] {
-    return this._jobs().filter(job => job.remote_name === remoteName);
   }
 
   getLatestJobForRemote(
@@ -104,7 +136,7 @@ export class JobManagementService extends TauriBaseService {
     profile?: string,
     operationType?: string
   ): JobInfo | null {
-    let jobs = this._jobs().filter(job => job.remote_name === remoteName);
+    let jobs = this._jobs().filter(job => job.remote_name === remoteName && !job.parent_job_id);
 
     if (operationType) jobs = jobs.filter(j => j.job_type === operationType);
     if (profile) jobs = jobs.filter(j => j.profile === profile);
@@ -121,17 +153,20 @@ export class JobManagementService extends TauriBaseService {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
     this._jobs.set(jobs);
     console.log(jobs);
-
     return jobs;
   }
 
-  async getActiveJobs(): Promise<JobInfo[]> {
-    await this.refreshJobs();
-    return this.getActiveJobsSnapshot();
-  }
-
   async startProfileBatch(
-    transferType: 'Sync' | 'Copy' | 'Move' | 'Bisync',
+    transferType:
+      | 'Sync'
+      | 'Copy'
+      | 'Move'
+      | 'Bisync'
+      | 'Check'
+      | 'Delete'
+      | 'Copyurl'
+      | 'Archivecreate'
+      | 'Cryptcheck',
     params: {
       remoteName: string;
       profileName: string;
@@ -139,9 +174,10 @@ export class JobManagementService extends TauriBaseService {
       noCache?: boolean;
     }
   ): Promise<number> {
+    const lowercaseType = transferType.toLowerCase() as unknown;
     return this.invokeWithNotification<number>(
       'start_profile_batch',
-      { transferType, params },
+      { transferType: lowercaseType, params },
       {
         successKey: 'operations.successStart',
         successParams: {
@@ -184,20 +220,8 @@ export class JobManagementService extends TauriBaseService {
     );
   }
 
-  async getJobStatus(jobid: number): Promise<JobInfo | null> {
-    return this.invokeCommand('get_job_status', { jobid });
-  }
-
-  async getStatsGroups(): Promise<string[]> {
-    return this.invokeCommand<string[]>('get_stats_groups');
-  }
-
   async resetGroupStats(group?: string): Promise<void> {
     await this.invokeCommand('reset_group_stats', { group });
-  }
-
-  async deleteStatsGroup(group: string): Promise<void> {
-    await this.invokeCommand('delete_stats_group', { group });
   }
 
   async stopJobsByGroup(group: string): Promise<void> {

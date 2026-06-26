@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Vérifier le Fichier Distant",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM avec des hachages."
+  },
+  "combined": {
+    "title": "Combiné",
+    "help": "Générer un rapport combiné des modifications."
+  },
+  "missing_on_src": {
+    "title": "Manquant sur la Source",
+    "help": "Signaler tous les fichiers manquants sur la source."
+  },
+  "missing_on_dst": {
+    "title": "Manquant sur la Destination",
+    "help": "Signaler tous les fichiers manquants sur la destination."
+  },
+  "match": {
+    "title": "Correspondant",
+    "help": "Signaler tous les fichiers correspondants."
+  },
+  "differ": {
+    "title": "Différent",
+    "help": "Signaler tous les fichiers non correspondants."
+  },
+  "error": {
+    "title": "Erreur",
+    "help": "Signaler tous les fichiers avec des erreurs (lecture ou hachage)."
+  },
   "addr": {
     "title": "Adresse",
     "help": "AdresseIP:Port ou :Port auquel lier le serveur"
@@ -1214,5 +1242,41 @@
   "serve_type_s3": {
     "title": "Serveur Amazon S3 compatible",
     "help": "Partager le dépôt distant via l'API Amazon S3"
+  },
+  "check_file_hash": {
+    "title": "Vérifier le hash du fichier",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM contenant des hashes du type spécifié."
+  },
+  "check_file_fs": {
+    "title": "Vérifier le système de fichiers",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM contenant des hashes."
+  },
+  "one_way": {
+    "title": "Vérification unidirectionnelle",
+    "help": "Effectuer uniquement une vérification unidirectionnelle - trouver les fichiers dans la source qui n'existent pas sur la destination."
+  },
+  "auto_filename": {
+    "title": "Nom de fichier automatique",
+    "help": "Obtenir le nom du fichier depuis l'URL ou les en-têtes si la destination est un répertoire."
+  },
+  "rmdirs": {
+    "title": "Supprimer les répertoires vides",
+    "help": "Supprimer les répertoires vides après avoir effacé des fichiers."
+  },
+  "format": {
+    "title": "Format d'archive",
+    "help": "Format de compression de l'archive (zip, tar, tgz, tbz, txz, etc.)"
+  },
+  "prefix": {
+    "title": "Préfixe de chemin",
+    "help": "Ajouter un répertoire de préfixe dans l'archive"
+  },
+  "full_path": {
+    "title": "Chemin complet",
+    "help": "Utiliser le chemin complet des fichiers dans l'archive"
+  },
+  "download": {
+    "title": "Télécharger et vérifier",
+    "help": "Télécharger les fichiers pour valider l'intégrité / comparer les hashes."
   }
 }

@@ -15,6 +15,7 @@ import {
   LINKED_PROFILE_TYPES,
   RemoteSettings,
   FlagType,
+  SYNC_TYPES,
 } from '@app/types';
 
 import { AuthStateService } from '../security/auth-state.service';
@@ -81,6 +82,11 @@ const FLAG_TYPE_FIELDS: Partial<Record<string, readonly string[]>> = {
   copy: OPERATION_FIELDS,
   move: OPERATION_FIELDS,
   bisync: OPERATION_FIELDS,
+  check: OPERATION_FIELDS,
+  archivecreate: OPERATION_FIELDS,
+  cryptcheck: OPERATION_FIELDS,
+  delete: ['autoStart', 'cronEnabled', 'cronExpression', 'watchEnabled', 'watchDelay', 'source'],
+  copyurl: OPERATION_FIELDS,
 };
 
 @Injectable()
@@ -202,7 +208,7 @@ export class RemoteConfigStateService {
   );
 
   readonly PROFILE_TYPES: SharedProfileType[] = [...FLAG_TYPES, 'runtimeRemote'];
-  readonly JOB_TYPES = new Set<SharedProfileType>(['sync', 'copy', 'move', 'bisync']);
+  readonly JOB_TYPES = new Set<SharedProfileType>(SYNC_TYPES);
 
   readonly profileState = signal(
     this.profileRecord(() => ({ mode: 'view' as 'view' | 'edit' | 'add', tempName: '' }))
@@ -379,11 +385,17 @@ export class RemoteConfigStateService {
     );
   }
 
-  createSourcePathGroup(initial?: { type?: string; path?: string; remote?: string }): FormGroup {
+  createSourcePathGroup(initial?: {
+    type?: string;
+    path?: string;
+    remote?: string;
+    filename?: string;
+  }): FormGroup {
     return this.fb.group({
       type: [initial?.type || 'currentRemote'],
       path: [initial?.path || ''],
       remote: [initial?.remote || ''],
+      filename: [initial?.filename || ''],
     });
   }
 
@@ -409,7 +421,10 @@ export class RemoteConfigStateService {
     }
     if (fields.includes('source'))
       group['source'] =
-        flagType === 'mount' || flagType === 'serve' || flagType === 'bisync'
+        flagType === 'mount' ||
+        flagType === 'serve' ||
+        flagType === 'bisync' ||
+        flagType === 'archivecreate'
           ? this.createSourcePathGroup()
           : this.fb.array([this.createSourcePathGroup()]);
     if (fields.includes('dest'))
@@ -435,7 +450,7 @@ export class RemoteConfigStateService {
       const optGroup = this.remoteConfigForm.get(`${type}Config.options`) as FormGroup;
       if (!optGroup || !fields[type]) continue;
       for (const f of fields[type]) {
-        const key = getControlKey(f);
+        const key = getControlKey(f, type);
         this.optionToFlagTypeMap[key] = type;
         this.optionToFieldNameMap[key] = f.FieldName;
         optGroup.addControl(
@@ -495,7 +510,11 @@ export class RemoteConfigStateService {
       const f = map.get(k);
       if (f) {
         if (!this.valueMapper.isDefaultValue(v, f))
-          acc[type === 'serve' ? f.Name || f.FieldName : f.FieldName] = v;
+          acc[
+            type === 'serve' || type === 'cryptcheck' || type === 'archivecreate'
+              ? f.Name || f.FieldName
+              : f.FieldName
+          ] = v;
       } else if (v !== undefined && v !== null && v !== '') acc[k] = v;
       return acc;
     }, {} as any);
@@ -595,11 +614,10 @@ export class RemoteConfigStateService {
     await this.populateFormIfEditingOrCloning();
 
     for (const t of FLAG_TYPES) {
-      if (t === 'mount' || RemoteConfigStateService.AUTO_START_OP_TYPES.has(t))
-        this.validatorRegistry.setupOperationValidation(
-          this.remoteConfigForm.get(`${t}Config`) as FormGroup,
-          this.destroyRef
-        );
+      const group = this.remoteConfigForm.get(`${t}Config`) as FormGroup;
+      if (group?.contains('autoStart')) {
+        this.validatorRegistry.setupOperationValidation(group, this.destroyRef);
+      }
     }
   }
 
@@ -717,14 +735,6 @@ export class RemoteConfigStateService {
     ]);
     ctrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
   }
-
-  private static readonly AUTO_START_OP_TYPES = new Set([
-    'serve',
-    'sync',
-    'copy',
-    'move',
-    'bisync',
-  ]);
 
   private setFormState(disabled: boolean): void {
     const opts = { emitEvent: false };
@@ -1456,7 +1466,10 @@ export class RemoteConfigStateService {
       }
       for (const [k, v] of Object.entries(vals['options'] || {})) {
         if (k === 'fs') continue;
-        const cKey = getControlKey({ FieldName: k, Name: k } as any, type);
+        const matchedField = fields.find(f => f.FieldName === k || f.Name === k);
+        const cKey = matchedField
+          ? getControlKey(matchedField, type)
+          : getControlKey({ FieldName: k, Name: k } as any, type);
         if (optsGroup.contains(cKey)) optsGroup.get(cKey)!.setValue(v, { emitEvent: false });
         else optsGroup.addControl(cKey, new FormControl(v), { emitEvent: false });
       }

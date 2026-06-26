@@ -83,42 +83,44 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
         }}</code>
       </div>
 
-      <div class="path-arrow">
-        <mat-icon
-          [svgIcon]="isMobile() ? 'arrow-down' : 'right-arrow'"
-          class="arrow-icon"
-        ></mat-icon>
-      </div>
-
-      <div class="path-item">
-        @if (config().showOpenButtons && config().hasDestination) {
-          <button
-            matIconButton
-            class="folder-button"
-            [class.active]="config().isDestinationActive"
-            [class.inactive]="!config().isDestinationActive"
-            [disabled]="config().actionInProgress === 'open' || !config().isDestinationActive"
-            (click)="openPath.emit(config().destination)"
-            [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
-          >
-            @if (config().actionInProgress === 'open') {
-              <mat-spinner diameter="24"></mat-spinner>
-            } @else {
-              <mat-icon
-                [svgIcon]="isLocal(config().destination) ? 'folder' : 'folder-open'"
-              ></mat-icon>
-            }
-          </button>
-        } @else {
-          <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
-        }
-        <div class="path-label">
-          {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
+      @if (!config().hideDestination) {
+        <div class="path-arrow">
+          <mat-icon
+            [svgIcon]="isMobile() ? 'arrow-down' : 'right-arrow'"
+            class="arrow-icon"
+          ></mat-icon>
         </div>
-        <code class="path-value" [matTooltip]="config().destination">{{
-          config().destination
-        }}</code>
-      </div>
+
+        <div class="path-item">
+          @if (config().showOpenButtons && config().hasDestination) {
+            <button
+              matIconButton
+              class="folder-button"
+              [class.active]="config().isDestinationActive"
+              [class.inactive]="!config().isDestinationActive"
+              [disabled]="config().actionInProgress === 'open' || !config().isDestinationActive"
+              (click)="openPath.emit(config().destination)"
+              [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
+            >
+              @if (config().actionInProgress === 'open') {
+                <mat-spinner diameter="24"></mat-spinner>
+              } @else {
+                <mat-icon
+                  [svgIcon]="isLocal(config().destination) ? 'folder' : 'folder-open'"
+                ></mat-icon>
+              }
+            </button>
+          } @else {
+            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+          }
+          <div class="path-label">
+            {{ config().destinationLabel || ('detailShared.pathDisplay.destination' | translate) }}
+          </div>
+          <code class="path-value" [matTooltip]="config().destination">{{
+            config().destination
+          }}</code>
+        </div>
+      }
     </div>
   `,
 })
