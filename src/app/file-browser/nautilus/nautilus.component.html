@@ -377,7 +377,7 @@
           </button>
 
           @if (!tabSvc.activeStarredMode()) {
-            @if (isWindows() && tabSvc.activeRemote() && !tabSvc.activeRemote()?.isLocal) {
+            @if (tabSvc.activeRemote() && !tabSvc.activeRemote()?.isLocal) {
               <mat-divider></mat-divider>
               <button class="menu-item" cdkMenuItem (click)="toggleSendToRegistration()">
                 <span class="item-label">

@@ -148,7 +148,6 @@ export class NautilusComponent implements OnInit {
   // ── UI state ─────────────────────────────────────────────────────────────────
   protected readonly isEditingPath = signal(false);
   protected readonly isSearchMode = signal(false);
-  protected readonly isWindows = signal(false);
   protected readonly isCurrentPathRegistered = signal(false);
   protected readonly searchFilter = signal('');
   protected readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
@@ -309,13 +308,6 @@ export class NautilusComponent implements OnInit {
     const applied = await this.tabSvc.setupInitialTab(this.localDrives(), this.cloudRemotes());
     this.initialLocationApplied.set(applied);
     void this.dragDrop.setupDesktopNativeDropListener();
-
-    this.nautilusService
-      .isSendToSupported()
-      .then(val => {
-        this.isWindows.set(val);
-      })
-      .catch(err => console.error(err));
   }
 
   // ---------------------------------------------------------------------------
@@ -330,11 +322,10 @@ export class NautilusComponent implements OnInit {
 
     // Check SendTo registration status
     effect(() => {
-      const isWin = this.isWindows();
       const remote = this.tabSvc.activeRemote();
       const path = this.tabSvc.activePath();
 
-      if (isWin && remote && !remote.isLocal) {
+      if (remote && !remote.isLocal) {
         this.nautilusService
           .isSendToRegistered(remote.name, path)
           .then(registered => {

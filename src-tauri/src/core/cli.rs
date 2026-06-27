@@ -41,17 +41,14 @@ pub struct GeneralArgs {
     pub tray: bool,
 
     /// Send files/folders to a remote destination (Windows SendTo integration)
-    #[cfg(target_os = "windows")]
     #[arg(long)]
     pub send_to_remote: Option<String>,
 
     /// Destination path on the remote (Windows SendTo integration)
-    #[cfg(target_os = "windows")]
     #[arg(long)]
     pub send_to_path: Option<String>,
 
     /// Source paths to send (Windows SendTo integration)
-    #[cfg(target_os = "windows")]
     pub send_to_sources: Vec<PathBuf>,
 }
 
@@ -169,7 +166,6 @@ mod tests {
         assert!(args.general.tray);
     }
 
-    #[cfg(target_os = "windows")]
     #[test]
     fn test_send_to_args() {
         let args = CliArgs::parse_from([

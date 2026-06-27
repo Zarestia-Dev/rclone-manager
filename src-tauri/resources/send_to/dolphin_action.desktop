@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Service
+MimeType=all/all;
+Actions=sendToRemote;
+X-KDE-Priority=TopLevel
+
+[Desktop Action sendToRemote]
+Name=Upload to {name}
+Name[tr]={name} Konumuna Yükle
+Name[es]=Subir a {name}
+Name[fr]=Transférer vers {name}
+Name[uk]=Вивантажити до {name}
+Name[zh_CN]=上传至 {name}
+Icon=rclone-manager
+Exec="{exec_path}" --send-to-remote "{remote}" --send-to-path "{path}" %F

@@ -1,0 +1,18 @@
+[Nemo Action]
+Active=true
+Name=Upload to {name}
+Name[tr]={name} Konumuna Yükle
+Name[es]=Subir a {name}
+Name[fr]=Transférer vers {name}
+Name[uk]=Вивантажити до {name}
+Name[zh_CN]=上传至 {name}
+Comment=Upload selected items using RClone Manager
+Comment[tr]=Seçili ögeleri RClone Yöneticisi kullanarak yükle
+Comment[es]=Subir los elementos seleccionados usando RClone Manager
+Comment[fr]=Transférer les éléments sélectionnés à l'aide de RClone Manager
+Comment[uk]=Вивантажити вибрані елементи за допомогою RClone Manager
+Comment[zh_CN]=使用 RClone Manager 上传选中项
+Exec="{exec_path}" --send-to-remote "{remote}" --send-to-path "{path}" %F
+Icon-Name=rclone-manager
+Selection=any
+Extensions=any

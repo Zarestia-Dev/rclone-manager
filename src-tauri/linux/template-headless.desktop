@@ -1,6 +1,11 @@
 [Desktop Entry]
 Name=RClone Manager Headless
 Comment=User-friendly WebUI for Rclone (Headless Server)
+Comment[tr]=Rclone için kullanıcı dostu Web Arayüzü (Headless Sunucu)
+Comment[es]=Interfaz Web amigable para Rclone (Servidor sin cabeza)
+Comment[fr]=Interface Web conviviale pour Rclone (Serveur sans tête)
+Comment[uk]=Зручний веб-інтерфейс для Rclone (сервер без графічної оболонки)
+Comment[zh_CN]=易于使用的 Rclone Web 界面（无头服务器）
 Exec=rclone-manager-headless --host 127.0.0.1 --port 8080
 Icon=rclone-manager-headless
 Terminal=false

@@ -42,14 +42,9 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
-            #[cfg(target_os = "windows")]
-            (is_send_to_supported, $crate::utils::app::platform::is_send_to_supported, [], [sync, no_app, infallible]);
-            #[cfg(target_os = "windows")]
-            (register_send_to, $crate::utils::app::platform::register_send_to, [remote: String, path: Option<String>]);
-            #[cfg(target_os = "windows")]
-            (unregister_send_to, $crate::utils::app::platform::unregister_send_to, [remote: String, path: Option<String>]);
-            #[cfg(target_os = "windows")]
-            (is_send_to_registered, $crate::utils::app::platform::is_send_to_registered, [remote: String, path: Option<String>]);
+            (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>]);
+            (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>]);
+            (is_send_to_registered, $crate::utils::app::send_to::is_send_to_registered, [remote: String, path: Option<String>]);
 
             // =================================================================
             // RCLONE OPERATIONS

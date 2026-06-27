@@ -2287,7 +2287,7 @@
       "copyUrlFailed": "Impossible de télécharger depuis l'URL : {{error}}",
       "archiveCreateFailed": "Impossible de créer l'archive : {{error}}",
       "externalDropFailed": "Échec du traitement du dépôt de fichier externe.",
-      "sendToFailed": "Échec de la mise à jour du menu 'Envoyer vers' : {{error}}"
+      "sendToFailed": "Échec de la mise à jour du menu du gestionnaire de fichiers : {{error}}"
     },
     "contextMenu": {
       "open": "Ouvrir",
@@ -2299,8 +2299,8 @@
       "refresh": "Actualiser",
       "properties": "Propriétés",
       "reload": "Recharger",
-      "addToSendTo": "Ajouter au menu 'Envoyer vers'",
-      "removeFromSendTo": "Retirer du menu 'Envoyer vers'",
+      "addToSendTo": "Ajouter au menu du gestionnaire de fichiers",
+      "removeFromSendTo": "Retirer du menu du gestionnaire de fichiers",
       "copyLocation": "Copier l'emplacement",
       "selectAll": "Tout sélectionner",
       "removeBookmark": "Supprimer le signet",
@@ -2349,8 +2349,8 @@
       "redoComplete": "Rétablissement réussi",
       "copyUrlStarted": "Téléchargement depuis l'URL...",
       "archiveCreateStarted": "Création de l'archive démarrée...",
-      "sendToAdded": "'{{remote}}{{path}}' ajouté au menu Windows 'Envoyer vers'",
-      "sendToRemoved": "'{{remote}}{{path}}' retiré du menu Windows 'Envoyer vers'"
+      "sendToAdded": "'{{remote}}{{path}}' ajouté au menu du gestionnaire de fichiers",
+      "sendToRemoved": "'{{remote}}{{path}}' retiré du menu du gestionnaire de fichiers"
     }
   },
   "home": {

@@ -2287,7 +2287,7 @@
       "copyUrlFailed": "Не вдалося завантажити з URL: {{error}}",
       "archiveCreateFailed": "Не вдалося створити архів: {{error}}",
       "externalDropFailed": "Не вдалося обробити перетягнутий зовнішній файл.",
-      "sendToFailed": "Не вдалося оновити меню 'Надіслати': {{error}}"
+      "sendToFailed": "Не вдалося оновити контекстне меню файлового менеджера: {{error}}"
     },
     "contextMenu": {
       "open": "Відкрити",
@@ -2299,8 +2299,8 @@
       "refresh": "Оновити",
       "properties": "Властивості",
       "reload": "Перезавантажити",
-      "addToSendTo": "Додати до меню 'Надіслати'",
-      "removeFromSendTo": "Вилучити з меню 'Надіслати'",
+      "addToSendTo": "Додати до меню файлового менеджера",
+      "removeFromSendTo": "Вилучити з меню файлового менеджера",
       "copyLocation": "Копіювати розташування",
       "selectAll": "Вибрати все",
       "removeBookmark": "Вилучити закладку",
@@ -2349,8 +2349,8 @@
       "redoComplete": "Дію успішно повторено",
       "copyUrlStarted": "Завантаження з URL...",
       "archiveCreateStarted": "Створення архіву розпочато...",
-      "sendToAdded": "Додано '{{remote}}{{path}}' до меню Windows 'Надіслати'",
-      "sendToRemoved": "Вилучено '{{remote}}{{path}}' з меню Windows 'Надіслати'"
+      "sendToAdded": "Додано '{{remote}}{{path}}' до контекстного меню файлового менеджера",
+      "sendToRemoved": "Вилучено '{{remote}}{{path}}' з контекстного меню файлового менеджера"
     }
   },
   "home": {

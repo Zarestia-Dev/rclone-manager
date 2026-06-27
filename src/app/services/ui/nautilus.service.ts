@@ -414,10 +414,6 @@ export class NautilusService extends TauriBaseService {
     this.appSettingsService.saveSetting(category, key, items);
   }
 
-  isSendToSupported(): Promise<boolean> {
-    return this.invokeCommand<boolean>('is_send_to_supported').catch(() => false);
-  }
-
   isSendToRegistered(remote: string, path: string | null): Promise<boolean> {
     return this.invokeCommand<boolean>('is_send_to_registered', { remote, path }).catch(
       () => false

@@ -2287,7 +2287,7 @@
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
       "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
       "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
-      "sendToFailed": "Failed to update 'Send to' menu: {{error}}"
+      "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2299,8 +2299,8 @@
       "refresh": "Actualizar",
       "properties": "Propiedades",
       "reload": "Recargar",
-      "addToSendTo": "Add to 'Send to' Menu",
-      "removeFromSendTo": "Remove from 'Send to' Menu",
+      "addToSendTo": "Agregar al Menú del Administrador de Archivos",
+      "removeFromSendTo": "Quitar del Menú del Administrador de Archivos",
       "copyLocation": "Copiar ubicación",
       "selectAll": "Seleccionar todo",
       "removeBookmark": "Eliminar marcador",
@@ -2349,8 +2349,8 @@
       "redoComplete": "Rehacer exitoso",
       "copyUrlStarted": "Descargando desde URL...",
       "archiveCreateStarted": "Creación de archivo iniciada...",
-      "sendToAdded": "Added '{{remote}}{{path}}' to Windows 'Send to' menu",
-      "sendToRemoved": "Removed '{{remote}}{{path}}' from Windows 'Send to' menu"
+      "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
+      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"
     }
   },
   "home": {

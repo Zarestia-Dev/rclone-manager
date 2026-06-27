@@ -88,6 +88,7 @@ futures-lite = "2"
 windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
 shellexpand = "3"
+winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

@@ -2287,7 +2287,7 @@
       "copyUrlFailed": "Failed to download from URL: {{error}}",
       "archiveCreateFailed": "Failed to create archive: {{error}}",
       "externalDropFailed": "Failed to process external file drop.",
-      "sendToFailed": "Failed to update 'Send to' menu: {{error}}"
+      "sendToFailed": "Failed to update File Manager menu: {{error}}"
     },
     "contextMenu": {
       "open": "Open",
@@ -2299,8 +2299,8 @@
       "refresh": "Refresh",
       "properties": "Properties",
       "reload": "Reload",
-      "addToSendTo": "Add to 'Send to' Menu",
-      "removeFromSendTo": "Remove from 'Send to' Menu",
+      "addToSendTo": "Add to File Manager Menu",
+      "removeFromSendTo": "Remove from File Manager Menu",
       "copyLocation": "Copy Location",
       "selectAll": "Select All",
       "removeBookmark": "Remove Bookmark",
@@ -2349,8 +2349,8 @@
       "redoComplete": "Redo successful",
       "copyUrlStarted": "Downloading from URL...",
       "archiveCreateStarted": "Archive creation started...",
-      "sendToAdded": "Added '{{remote}}{{path}}' to Windows 'Send to' menu",
-      "sendToRemoved": "Removed '{{remote}}{{path}}' from Windows 'Send to' menu"
+      "sendToAdded": "Added '{{remote}}{{path}}' to File Manager menu",
+      "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu"
     }
   },
   "home": {

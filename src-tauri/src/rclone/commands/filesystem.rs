@@ -459,6 +459,11 @@ pub async fn execute_upload_batch(
         no_cache,
     } = params;
 
+    let mut remote = remote;
+    if !remote.ends_with(':') && !remote.contains('/') && !remote.contains('\\') {
+        remote.push(':');
+    }
+
     debug!(
         "execute_upload_batch: {} paths to {remote}:{path}",
         local_paths.len()
@@ -490,7 +495,7 @@ pub async fn execute_upload_batch(
     let metadata = JobMetadata {
         remote_name: remote.clone(),
         job_type: JobType::Upload,
-        source: vec!["local paths".to_string()],
+        source: local_paths.clone(),
         destination,
         profile: None,
         origin: origin.clone(),

@@ -59,25 +59,29 @@
         "recommends": ["rclone"],
         "files": {
           "/usr/share/metainfo/io.github.zarestia_dev.rclone-manager.metainfo.xml": "linux/flatpak.metainfo.xml"
-        }
+        },
+        "preRemoveScript": "linux/preremove-gui.sh"
       },
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
         "depends": ["libappindicator"],
-        "recommends": ["rclone"]
+        "recommends": ["rclone"],
+        "preRemoveScript": "linux/preremove-gui.sh"
       }
     },
     "windows": {
       "wix": {
         "bannerPath": "icons/wix-banner.bmp",
-        "dialogImagePath": "icons/wix-dialog.bmp"
+        "dialogImagePath": "icons/wix-dialog.bmp",
+        "fragmentPaths": ["windows/wix-fragment.wxs"],
+        "componentRefs": ["CleanupSendToShortcuts"]
       },
       "nsis": {
         "headerImage": "icons/nsis-header.bmp",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "installerIcon": "icons/icon.ico",
         "startMenuFolder": "RClone Manager",
-        "installerHooks": "hooks.nsh"
+        "installerHooks": "windows/hooks.nsh"
       }
     },
     "macOS": {

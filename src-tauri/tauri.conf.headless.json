@@ -32,31 +32,33 @@
     "license": "GNU GPLv3",
     "linux": {
       "deb": {
-        "desktopTemplate": "linux/headless/template-headless.desktop",
+        "desktopTemplate": "linux/template-headless.desktop",
         "depends": ["xvfb", "dbus-x11"],
         "recommends": ["rclone"],
-        "postInstallScript": "linux/headless/postinstall.sh",
-        "preRemoveScript": "linux/headless/preremove.sh"
+        "postInstallScript": "linux/postinstall.sh",
+        "preRemoveScript": "linux/preremove.sh"
       },
       "rpm": {
-        "desktopTemplate": "linux/headless/template-headless.desktop",
+        "desktopTemplate": "linux/template-headless.desktop",
         "depends": ["xorg-x11-server-Xvfb", "dbus-x11"],
         "recommends": ["rclone"],
-        "postInstallScript": "linux/headless/postinstall.sh",
-        "preRemoveScript": "linux/headless/preremove.sh"
+        "postInstallScript": "linux/postinstall.sh",
+        "preRemoveScript": "linux/preremove.sh"
       }
     },
     "windows": {
       "wix": {
         "bannerPath": "icons/wix-banner.bmp",
-        "dialogImagePath": "icons/wix-dialog.bmp"
+        "dialogImagePath": "icons/wix-dialog.bmp",
+        "fragmentPaths": ["windows/wix-fragment.wxs"],
+        "componentRefs": ["CleanupSendToShortcuts"]
       },
       "nsis": {
         "headerImage": "icons/nsis-header.bmp",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "installerIcon": "icons/icon.ico",
         "startMenuFolder": "RClone Manager Headless",
-        "installerHooks": "hooks.nsh"
+        "installerHooks": "windows/hooks.nsh"
       }
     },
     "macOS": {
