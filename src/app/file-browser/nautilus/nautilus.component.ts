@@ -148,6 +148,8 @@ export class NautilusComponent implements OnInit {
   // ── UI state ─────────────────────────────────────────────────────────────────
   protected readonly isEditingPath = signal(false);
   protected readonly isSearchMode = signal(false);
+  protected readonly isWindows = signal(false);
+  protected readonly isCurrentPathRegistered = signal(false);
   protected readonly searchFilter = signal('');
   protected readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
   private readonly initialLocationApplied = signal(false);
@@ -307,6 +309,13 @@ export class NautilusComponent implements OnInit {
     const applied = await this.tabSvc.setupInitialTab(this.localDrives(), this.cloudRemotes());
     this.initialLocationApplied.set(applied);
     void this.dragDrop.setupDesktopNativeDropListener();
+
+    this.nautilusService
+      .isSendToSupported()
+      .then(val => {
+        this.isWindows.set(val);
+      })
+      .catch(err => console.error(err));
   }
 
   // ---------------------------------------------------------------------------
@@ -317,6 +326,26 @@ export class NautilusComponent implements OnInit {
     // Sync sidenav open state with screen size.
     effect(() => {
       this.isSidenavOpen.set(!this.isMobile());
+    });
+
+    // Check SendTo registration status
+    effect(() => {
+      const isWin = this.isWindows();
+      const remote = this.tabSvc.activeRemote();
+      const path = this.tabSvc.activePath();
+
+      if (isWin && remote && !remote.isLocal) {
+        this.nautilusService
+          .isSendToRegistered(remote.name, path)
+          .then(registered => {
+            this.isCurrentPathRegistered.set(registered);
+          })
+          .catch(err => {
+            console.error('Failed to check SendTo registration:', err);
+          });
+      } else {
+        this.isCurrentPathRegistered.set(false);
+      }
     });
 
     // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
@@ -976,5 +1005,33 @@ export class NautilusComponent implements OnInit {
           return 0;
       }
     });
+  }
+
+  protected async toggleSendToRegistration(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
+    if (!remote || remote.isLocal) return;
+
+    const registered = this.isCurrentPathRegistered();
+
+    try {
+      if (registered) {
+        await this.nautilusService.unregisterSendTo(remote.name, path);
+      } else {
+        await this.nautilusService.registerSendTo(remote.name, path);
+      }
+      this.isCurrentPathRegistered.set(!registered);
+
+      const msgKey = registered
+        ? 'nautilus.notifications.sendToRemoved'
+        : 'nautilus.notifications.sendToAdded';
+      this.notificationService.showSuccess(
+        this.translate.instant(msgKey, { remote: remote.name, path: path || '/' })
+      );
+    } catch (e) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.sendToFailed', { error: (e as Error).message })
+      );
+    }
   }
 }

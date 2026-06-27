@@ -105,9 +105,44 @@ pub fn run() {
 
         builder = builder.plugin(
             si_builder
-                .callback(|_app: &tauri::AppHandle, _, _| {
+                .callback(|_app: &tauri::AppHandle, _argv, _cwd| {
+                    #[cfg(target_os = "windows")]
+                    {
+                        if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&_argv) {
+                            if let Some(remote) = cli_args.general.send_to_remote {
+                                let path = cli_args.general.send_to_path.unwrap_or_default();
+                                let sources = cli_args.general.send_to_sources;
+                                let app_handle_clone = _app.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    let source_strings = sources.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>();
+                                    let params = crate::rclone::commands::filesystem::UploadBatchParams {
+                                        remote,
+                                        path,
+                                        local_paths: source_strings,
+                                        origin: Some(crate::utils::types::origin::Origin::FileManager),
+                                        group: Some("send_to".to_string()),
+                                        cleanup_dir: None,
+                                        existing_jobid: None,
+                                        no_cache: false,
+                                    };
+
+                                    log::info!("Executing SendTo transfer in running instance: {:?} -> {}:{}", params.local_paths, params.remote, params.path);
+                                    match crate::rclone::commands::filesystem::execute_upload_batch(app_handle_clone, params).await {
+                                        Ok(jobid) => {
+                                            log::info!("SendTo transfer initiated successfully in running instance. Job ID: {}", jobid);
+                                        }
+                                        Err(e) => {
+                                            log::error!("SendTo transfer failed in running instance: {}", e);
+                                        }
+                                    }
+                                });
+                                return;
+                            }
+                        }
+                    }
+
                     #[cfg(feature = "web-server")]
-                    log::info!("Another instance attempted to run.");
+                    log::info!("Another instance attempted to run with args: {:?}", _argv);
 
                     #[cfg(not(feature = "web-server"))]
                     {
@@ -423,9 +458,91 @@ fn setup_app(
     // Window Creation (Desktop, non-web-server)
     // -------------------------------------------------------------------------
     #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
-    if !cli_args.general.tray {
-        log::debug!("Creating main window");
-        utils::app::builder::create_app_window(app.handle().clone());
+    {
+        let is_send_to = {
+            #[cfg(target_os = "windows")]
+            {
+                cli_args.general.send_to_remote.is_some()
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                false
+            }
+        };
+        if !cli_args.general.tray && !is_send_to {
+            log::debug!("Creating main window");
+            utils::app::builder::create_app_window(app.handle().clone());
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    if cli_args.general.send_to_remote.is_some() {
+        let app_handle_clone = app.handle().clone();
+        let cli_args_clone = cli_args.clone();
+        tauri::async_runtime::spawn(async move {
+            // Wait for engine to start
+            let mut engine_ready = false;
+            for _ in 0..100 {
+                // try for 10 seconds
+                let (running, _, _) =
+                    crate::rclone::engine::lifecycle::get_engine_status(&app_handle_clone).await;
+                if running {
+                    engine_ready = true;
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+
+            if !engine_ready {
+                log::error!("SendTo failed: Rclone engine failed to start in time");
+                app_handle_clone.exit(1);
+                return;
+            }
+
+            // Run transfer
+            if let Some(remote) = cli_args_clone.general.send_to_remote {
+                let path = cli_args_clone.general.send_to_path.unwrap_or_default();
+                let sources = cli_args_clone.general.send_to_sources;
+
+                log::info!(
+                    "Executing SendTo transfer: {:?} -> {}:{}",
+                    sources,
+                    remote,
+                    path
+                );
+
+                let source_strings = sources
+                    .iter()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect::<Vec<String>>();
+
+                let params = crate::rclone::commands::filesystem::UploadBatchParams {
+                    remote,
+                    path,
+                    local_paths: source_strings,
+                    origin: Some(crate::utils::types::origin::Origin::FileManager),
+                    group: Some("send_to".to_string()),
+                    cleanup_dir: None,
+                    existing_jobid: None,
+                    no_cache: false,
+                };
+
+                match crate::rclone::commands::filesystem::execute_upload_batch(
+                    app_handle_clone.clone(),
+                    params,
+                )
+                .await
+                {
+                    Ok(jobid) => {
+                        log::info!("SendTo transfer completed successfully. Job ID: {}", jobid);
+                    }
+                    Err(e) => {
+                        log::error!("SendTo transfer failed: {}", e);
+                    }
+                }
+            }
+            app_handle_clone.exit(0);
+        });
     }
 
     #[cfg(target_os = "macos")]

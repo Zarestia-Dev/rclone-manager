@@ -2286,7 +2286,8 @@
       "minSelection": "Виберіть щонайменше {{min}} елемент{{s}}.",
       "copyUrlFailed": "Не вдалося завантажити з URL: {{error}}",
       "archiveCreateFailed": "Не вдалося створити архів: {{error}}",
-      "externalDropFailed": "Не вдалося обробити перетягнутий зовнішній файл."
+      "externalDropFailed": "Не вдалося обробити перетягнутий зовнішній файл.",
+      "sendToFailed": "Не вдалося оновити меню 'Надіслати': {{error}}"
     },
     "contextMenu": {
       "open": "Відкрити",
@@ -2298,6 +2299,8 @@
       "refresh": "Оновити",
       "properties": "Властивості",
       "reload": "Перезавантажити",
+      "addToSendTo": "Додати до меню 'Надіслати'",
+      "removeFromSendTo": "Вилучити з меню 'Надіслати'",
       "copyLocation": "Копіювати розташування",
       "selectAll": "Вибрати все",
       "removeBookmark": "Вилучити закладку",
@@ -2345,7 +2348,9 @@
       "undoComplete": "Дію успішно скасовано",
       "redoComplete": "Дію успішно повторено",
       "copyUrlStarted": "Завантаження з URL...",
-      "archiveCreateStarted": "Створення архіву розпочато..."
+      "archiveCreateStarted": "Створення архіву розпочато...",
+      "sendToAdded": "Додано '{{remote}}{{path}}' до меню Windows 'Надіслати'",
+      "sendToRemoved": "Вилучено '{{remote}}{{path}}' з меню Windows 'Надіслати'"
     }
   },
   "home": {

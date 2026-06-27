@@ -56,7 +56,7 @@
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "installerIcon": "icons/icon.ico",
         "startMenuFolder": "RClone Manager Headless",
-        "compression": "lzma"
+        "installerHooks": "hooks.nsh"
       }
     },
     "macOS": {

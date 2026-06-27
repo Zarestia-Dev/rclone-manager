@@ -2285,8 +2285,9 @@
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
-      "archiveCreateFailed": "Error al crear el archivo: {{error}}",
-      "externalDropFailed": "Error al procesar la caída de archivos externos."
+      "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
+      "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
+      "sendToFailed": "Failed to update 'Send to' menu: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2298,6 +2299,8 @@
       "refresh": "Actualizar",
       "properties": "Propiedades",
       "reload": "Recargar",
+      "addToSendTo": "Add to 'Send to' Menu",
+      "removeFromSendTo": "Remove from 'Send to' Menu",
       "copyLocation": "Copiar ubicación",
       "selectAll": "Seleccionar todo",
       "removeBookmark": "Eliminar marcador",
@@ -2345,7 +2348,9 @@
       "undoComplete": "Deshacer exitoso",
       "redoComplete": "Rehacer exitoso",
       "copyUrlStarted": "Descargando desde URL...",
-      "archiveCreateStarted": "Operación de creación de archivo iniciada"
+      "archiveCreateStarted": "Creación de archivo iniciada...",
+      "sendToAdded": "Added '{{remote}}{{path}}' to Windows 'Send to' menu",
+      "sendToRemoved": "Removed '{{remote}}{{path}}' from Windows 'Send to' menu"
     }
   },
   "home": {

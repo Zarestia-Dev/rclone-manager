@@ -377,6 +377,19 @@
           </button>
 
           @if (!tabSvc.activeStarredMode()) {
+            @if (isWindows() && tabSvc.activeRemote() && !tabSvc.activeRemote()?.isLocal) {
+              <mat-divider></mat-divider>
+              <button class="menu-item" cdkMenuItem (click)="toggleSendToRegistration()">
+                <span class="item-label">
+                  {{
+                    (isCurrentPathRegistered()
+                      ? 'nautilus.contextMenu.removeFromSendTo'
+                      : 'nautilus.contextMenu.addToSendTo'
+                    ) | translate
+                  }}
+                </span>
+              </button>
+            }
             <mat-divider></mat-divider>
             <button
               class="menu-item"

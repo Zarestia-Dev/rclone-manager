@@ -2286,7 +2286,8 @@
       "minSelection": "请至少选择 {{min}} 项。",
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
       "archiveCreateFailed": "创建归档失败: {{error}}",
-      "externalDropFailed": "处理外部文件拖放失败。"
+      "externalDropFailed": "处理外部文件拖放失败。",
+      "sendToFailed": "更新“发送到”菜单失败：{{error}}"
     },
     "contextMenu": {
       "open": "打开",
@@ -2298,6 +2299,8 @@
       "refresh": "刷新",
       "properties": "属性",
       "reload": "重新加载",
+      "addToSendTo": "添加至“发送到”菜单",
+      "removeFromSendTo": "从“发送到”菜单移除",
       "copyLocation": "复制位置",
       "selectAll": "全选",
       "removeBookmark": "移除书签",
@@ -2345,7 +2348,9 @@
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
       "copyUrlStarted": "正在从 URL 下载...",
-      "archiveCreateStarted": "已开始创建归档操作"
+      "archiveCreateStarted": "已开始创建归档操作",
+      "sendToAdded": "已将“{{remote}}{{path}}”添加至 Windows“发送到”菜单",
+      "sendToRemoved": "已将“{{remote}}{{path}}”从 Windows“发送到”菜单移除"
     }
   },
   "home": {

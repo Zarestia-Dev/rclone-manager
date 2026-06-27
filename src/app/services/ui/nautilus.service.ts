@@ -414,6 +414,24 @@ export class NautilusService extends TauriBaseService {
     this.appSettingsService.saveSetting(category, key, items);
   }
 
+  isSendToSupported(): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_send_to_supported').catch(() => false);
+  }
+
+  isSendToRegistered(remote: string, path: string | null): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_send_to_registered', { remote, path }).catch(
+      () => false
+    );
+  }
+
+  registerSendTo(remote: string, path: string | null): Promise<void> {
+    return this.invokeCommand<void>('register_send_to', { remote, path });
+  }
+
+  unregisterSendTo(remote: string, path: string | null): Promise<void> {
+    return this.invokeCommand<void>('unregister_send_to', { remote, path });
+  }
+
   openProperties(options: PropertiesModalOptions): any {
     return this.modalService.openProperties(options);
   }

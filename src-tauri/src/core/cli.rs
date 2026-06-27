@@ -39,6 +39,20 @@ pub struct GeneralArgs {
     #[cfg(feature = "tray")]
     #[arg(long)]
     pub tray: bool,
+
+    /// Send files/folders to a remote destination (Windows SendTo integration)
+    #[cfg(target_os = "windows")]
+    #[arg(long)]
+    pub send_to_remote: Option<String>,
+
+    /// Destination path on the remote (Windows SendTo integration)
+    #[cfg(target_os = "windows")]
+    #[arg(long)]
+    pub send_to_path: Option<String>,
+
+    /// Source paths to send (Windows SendTo integration)
+    #[cfg(target_os = "windows")]
+    pub send_to_sources: Vec<PathBuf>,
 }
 
 /// Headless web server specific arguments
@@ -153,6 +167,29 @@ mod tests {
     fn test_tray_flag() {
         let args = CliArgs::parse_from(["rclone-manager", "--tray"]);
         assert!(args.general.tray);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_send_to_args() {
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "--send-to-path",
+            "/Photos",
+            "C:\\file1.txt",
+            "C:\\file2.txt",
+        ]);
+        assert_eq!(args.general.send_to_remote, Some("Dropbox:".to_string()));
+        assert_eq!(args.general.send_to_path, Some("/Photos".to_string()));
+        assert_eq!(
+            args.general.send_to_sources,
+            vec![
+                PathBuf::from("C:\\file1.txt"),
+                PathBuf::from("C:\\file2.txt")
+            ]
+        );
     }
 
     #[cfg(feature = "web-server")]
