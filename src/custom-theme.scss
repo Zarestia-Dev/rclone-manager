@@ -1640,6 +1640,45 @@ mat-accordion {
   }
 }
 
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  transition: var(--transition-fast);
+  background: color-mix(in srgb, var(--window-fg-color) 6%, transparent);
+  color: var(--dim-color);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--window-fg-color) 12%, transparent);
+    color: var(--window-fg-color);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: color-mix(in srgb, var(--window-fg-color) 3%, transparent) !important;
+    color: color-mix(in srgb, var(--window-fg-color) 30%, transparent) !important;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 .card-header {
   display: flex;
   align-items: center;

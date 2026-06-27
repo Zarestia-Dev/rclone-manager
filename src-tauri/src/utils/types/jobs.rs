@@ -114,6 +114,21 @@ impl JobStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ResolveState {
+    pub status: String,
+    pub percentage: u8,
+    pub is_preparing: bool,
+    pub bytes: i64,
+    pub size: i64,
+    pub speed: f64,
+    pub speed_class: String,
+    pub eta: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompletedTransfer {
     pub name: String,
     pub size: i64,
@@ -132,6 +147,10 @@ pub struct CompletedTransfer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolve_job_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolve_state: Option<ResolveState>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,6 +258,8 @@ pub fn compute_completed_transfers(
                                 dst_fs: Some(dst_fs.clone()),
                                 group: Some(group.to_string()),
                                 status: status.to_string(),
+                                resolve_job_id: None,
+                                resolve_state: None,
                             });
                         }
                     }
@@ -316,6 +337,8 @@ pub fn compute_completed_transfers(
                 dst_fs,
                 group: group_val,
                 status,
+                resolve_job_id: None,
+                resolve_state: None,
             });
         }
 

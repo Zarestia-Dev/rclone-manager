@@ -58,7 +58,14 @@ impl JobCache {
 
     pub async fn add_job(&self, job: JobInfo, app: Option<&AppHandle>) {
         let jobid = job.jobid;
-        self.jobs.write().await.insert(jobid, job.clone());
+        let parent_id = job.parent_job_id;
+        {
+            let mut jobs = self.jobs.write().await;
+            jobs.insert(jobid, job.clone());
+            if let Some(p_id) = parent_id {
+                Self::link_resolving_jobs_internal(&mut jobs, p_id);
+            }
+        }
         self.notify_change(app, Some(&job));
     }
 
@@ -86,8 +93,13 @@ impl JobCache {
         }
 
         let mut removed_jobs = Vec::new();
-        for id in ids_to_delete {
-            if let Some(job) = jobs.remove(&id) {
+        for id in &ids_to_delete {
+            if let Some(job) = jobs.remove(id) {
+                if let Some(parent_id) = job.parent_job_id
+                    && !ids_to_delete.contains(&parent_id)
+                {
+                    Self::link_resolving_jobs_internal(&mut jobs, parent_id);
+                }
                 removed_jobs.push(job);
             }
         }
@@ -118,10 +130,33 @@ impl JobCache {
             .ok_or_else(|| crate::localized_error!("backendErrors.job.notFound"))?;
 
         update_fn(job);
-        let result = job.clone();
+
+        let parent_id = job.parent_job_id;
+        let is_check = job.job_type == JobType::Check || job.job_type == JobType::CryptCheck;
+
+        let mut result = job.clone();
+        let mut parent_job_to_notify: Option<JobInfo> = None;
+
+        if let Some(p_id) = parent_id {
+            Self::link_resolving_jobs_internal(&mut jobs, p_id);
+            if let Some(p_job) = jobs.get(&p_id) {
+                parent_job_to_notify = Some(p_job.clone());
+            }
+        }
+        if is_check {
+            Self::link_resolving_jobs_internal(&mut jobs, jobid);
+            if let Some(updated_job) = jobs.get(&jobid) {
+                result = updated_job.clone();
+            }
+        }
+
         drop(jobs);
 
+        if let Some(ref p_job) = parent_job_to_notify {
+            self.notify_change(app, Some(p_job));
+        }
         self.notify_change(app, Some(&result));
+
         Ok(result)
     }
 
@@ -298,6 +333,182 @@ impl JobCache {
     }
 
     // ---- Private helpers ----
+    fn link_resolving_jobs_internal(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64) {
+        let child_jobs: Vec<JobInfo> = jobs
+            .values()
+            .filter(|j| j.parent_job_id == Some(parent_job_id))
+            .cloned()
+            .collect();
+
+        if let Some(parent_job) = jobs.get_mut(&parent_job_id) {
+            let completed_transfers = match parent_job.completed_transfers.as_mut() {
+                Some(ct) => ct,
+                None => return,
+            };
+
+            for item in completed_transfers {
+                let normalized_item_name = item.name.replace('\\', "/");
+                let mut matching_child_job: Option<&JobInfo> = None;
+
+                for job in &child_jobs {
+                    if job.job_type == JobType::Check || job.job_type == JobType::CryptCheck {
+                        continue;
+                    }
+
+                    let sources = &job.source;
+                    let has_direct_match = sources.iter().any(|src| {
+                        let norm_src = src.replace('\\', "/");
+                        norm_src.ends_with(&format!("/{}", normalized_item_name))
+                            || norm_src.ends_with(&format!(":{}", normalized_item_name))
+                    });
+
+                    if has_direct_match {
+                        if matching_child_job.is_none()
+                            || job.jobid > matching_child_job.unwrap().jobid
+                        {
+                            matching_child_job = Some(job);
+                        }
+                        continue;
+                    }
+
+                    let is_folder_match = sources.iter().any(|src| {
+                        let norm_src = src.replace('\\', "/");
+                        let colon_idx = norm_src.find(':');
+                        let remote = if let Some(idx) = colon_idx {
+                            &norm_src[..=idx]
+                        } else {
+                            ""
+                        };
+                        let folder_path = if let Some(idx) = colon_idx {
+                            &norm_src[idx + 1..]
+                        } else {
+                            &norm_src
+                        };
+
+                        let item_src_fs = item.src_fs.as_deref().unwrap_or("").replace('\\', "/");
+                        let item_dst_fs = item.dst_fs.as_deref().unwrap_or("").replace('\\', "/");
+                        let remote_matches =
+                            item_src_fs.starts_with(remote) || item_dst_fs.starts_with(remote);
+
+                        if !remote_matches {
+                            return false;
+                        }
+                        if folder_path.is_empty() || folder_path == "/" {
+                            return true;
+                        }
+
+                        let clean_folder = folder_path.trim_end_matches('/');
+                        normalized_item_name == clean_folder
+                            || normalized_item_name.starts_with(&format!("{}/", clean_folder))
+                    });
+
+                    if is_folder_match
+                        && (matching_child_job.is_none()
+                            || job.jobid > matching_child_job.unwrap().jobid)
+                    {
+                        matching_child_job = Some(job);
+                    }
+                }
+
+                item.resolve_job_id = matching_child_job.map(|j| j.jobid);
+
+                if let Some(child_job) = matching_child_job {
+                    use crate::utils::types::jobs::ResolveState;
+
+                    let mut percentage = 0;
+                    let mut is_preparing = true;
+                    let mut bytes = 0;
+                    let mut size = 0;
+                    let mut speed = 0.0;
+                    let mut speed_class = "speed-slow".to_string();
+                    let mut eta = 0;
+
+                    if let Some(stats) = &child_job.stats {
+                        let total_bytes = stats
+                            .get("totalBytes")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+                        let current_bytes =
+                            stats.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let current_speed =
+                            stats.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let current_eta = stats.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
+
+                        if total_bytes > 0 {
+                            percentage =
+                                ((current_bytes as f64 / total_bytes as f64) * 100.0) as u8;
+                            is_preparing = false;
+                            bytes = current_bytes;
+                            size = total_bytes;
+                            speed = current_speed;
+                            eta = current_eta;
+                        } else if let Some(transferring) =
+                            stats.get("transferring").and_then(|v| v.as_array())
+                            && !transferring.is_empty()
+                        {
+                            let tf = transferring
+                                .iter()
+                                .find(|t| {
+                                    let t_name = t
+                                        .get("name")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("")
+                                        .replace('\\', "/");
+                                    t_name == normalized_item_name
+                                        || t_name.ends_with(&format!("/{}", normalized_item_name))
+                                })
+                                .unwrap_or(&transferring[0]);
+
+                            percentage =
+                                tf.get("percentage").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
+                            is_preparing = false;
+                            bytes = tf.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
+                            size = tf.get("size").and_then(|v| v.as_i64()).unwrap_or(0);
+                            speed = tf.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            eta = tf.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
+                        }
+
+                        if speed > 1024.0 * 1024.0 * 5.0 {
+                            speed_class = "speed-fast".to_string();
+                        } else if speed > 1024.0 * 1024.0 {
+                            speed_class = "speed-medium".to_string();
+                        }
+                    }
+
+                    let status_str = serde_json::to_value(&child_job.status)
+                        .ok()
+                        .and_then(|v| v.as_str().map(String::from))
+                        .unwrap_or_else(|| "Running".to_string());
+
+                    // Overwrite item status if resolved
+                    if child_job.status == JobStatus::Completed {
+                        item.status = "checked".to_string();
+                    } else if child_job.status == JobStatus::Failed {
+                        item.status = "failed".to_string();
+                        item.error = child_job
+                            .error
+                            .clone()
+                            .unwrap_or_else(|| "Resolve job failed".to_string());
+                    }
+
+                    item.resolve_state = Some(ResolveState {
+                        status: status_str,
+                        percentage,
+                        is_preparing,
+                        bytes,
+                        size,
+                        speed,
+                        speed_class,
+                        eta,
+                        error: child_job.error.clone(),
+                    });
+                } else {
+                    item.resolve_state = None;
+                }
+            }
+        }
+    }
+
     fn notify_change(&self, app: Option<&AppHandle>, job: Option<&JobInfo>) {
         if let (Some(app), Some(job)) = (app, job) {
             let _ = app.emit(

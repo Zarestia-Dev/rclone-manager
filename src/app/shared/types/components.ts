@@ -102,6 +102,18 @@ export interface OperationControlConfig {
   profileName?: string;
 }
 
+export interface ResolveState {
+  status: string;
+  percentage: number;
+  isPreparing: boolean;
+  bytes: number;
+  size: number;
+  speed: number;
+  speedClass: string;
+  eta: number;
+  error?: string;
+}
+
 // ── Transfer Activity Panel ─────────────────────────────────────────────────
 export interface CompletedTransfer {
   name: string;
@@ -117,6 +129,8 @@ export interface CompletedTransfer {
   group?: string;
   status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
   uniqueId?: string;
+  resolveJobId?: number;
+  resolveState?: ResolveState;
 }
 
 export interface TransferActivityPanelConfig {

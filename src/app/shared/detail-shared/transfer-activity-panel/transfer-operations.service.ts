@@ -25,11 +25,10 @@ export class TransferOperationsService {
 
   getRemoteName(fs: string): string {
     if (!fs || this.pathService.isLocalPath(fs)) return '';
-    const parts = fs.split(':');
-    if (parts.length > 1) {
-      const name = parts[0];
-      if (name === 'http' || name === 'https' || name === 'ftp') return '';
-      return name;
+    const idx = fs.indexOf(':');
+    if (idx > 0) {
+      const name = fs.substring(0, idx);
+      if (name !== 'http' && name !== 'https' && name !== 'ftp') return name;
     }
     return '';
   }
@@ -46,19 +45,26 @@ export class TransferOperationsService {
     return !!this.remoteManagement.getFeaturesSignal(fallback)().loading;
   }
 
+  private isDeleteJob(jobType: string, group?: string): boolean {
+    if (jobType === 'delete' || jobType === 'cleanup' || jobType === 'rmdirs') return true;
+    const subType = group?.split('/')[0]?.toLowerCase();
+    return subType === 'delete' || subType === 'cleanup' || subType === 'rmdirs';
+  }
+
+  private isMoveJob(jobType: string, group?: string): boolean {
+    return jobType === 'move' || group?.split('/')[0]?.toLowerCase() === 'move';
+  }
+
   canCopyUrlSource(
     item: { srcFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
     if (item.status === 'missing_src') return false;
-
-    const isMove = jobType === 'move' || item.group?.split('/')[0]?.toLowerCase() === 'move';
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if ((isMove || isDelete) && item.status !== 'failed') {
+    if (
+      (this.isMoveJob(jobType, item.group) || this.isDeleteJob(jobType, item.group)) &&
+      item.status !== 'failed'
+    )
       return false;
-    }
 
     const srcRemote = this.getRemoteName(item.srcFs || '');
     if (!srcRemote) return false;
@@ -67,15 +73,18 @@ export class TransferOperationsService {
   }
 
   canCopyUrlDst(
-    item: { dstFs?: string; group?: string; status?: string },
+    item: {
+      dstFs?: string;
+      group?: string;
+      status?: string;
+      isCompleted?: boolean;
+      completedAt?: string;
+    },
     jobType: string
   ): boolean {
     if (item.status === 'failed' || item.status === 'missing_dst') return false;
-
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
+    if (!(item.isCompleted || !!item.completedAt || !!item.status)) return false;
+    if (this.isDeleteJob(jobType, item.group)) return false;
 
     const dstRemote = this.getRemoteName(item.dstFs || '');
     if (!dstRemote) return false;
@@ -88,12 +97,8 @@ export class TransferOperationsService {
     jobType: string,
     remoteName: string
   ): boolean {
-    if (!remoteName || item.status === 'failed') return false;
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
+    if (!remoteName || item.status === 'failed' || this.isDeleteJob(jobType, item.group))
+      return false;
     const fallback = this.pathService.normalizeRemoteName(remoteName);
     if (!fallback) return false;
     const feats = this.remoteManagement.getFeaturesSignal(fallback)();
@@ -105,32 +110,28 @@ export class TransferOperationsService {
     jobType: string
   ): boolean {
     if (item.status === 'missing_src') return false;
-
-    const isMove = jobType === 'move' || item.group?.split('/')[0]?.toLowerCase() === 'move';
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if ((isMove || isDelete) && item.status !== 'failed') {
+    if (
+      (this.isMoveJob(jobType, item.group) || this.isDeleteJob(jobType, item.group)) &&
+      item.status !== 'failed'
+    )
       return false;
-    }
-
-    const srcRemote = this.getRemoteName(item.srcFs || '');
-    return !!srcRemote;
+    return !!this.getRemoteName(item.srcFs || '');
   }
 
   canDownloadDst(
-    item: { dstFs?: string; group?: string; status?: string },
+    item: {
+      dstFs?: string;
+      group?: string;
+      status?: string;
+      isCompleted?: boolean;
+      completedAt?: string;
+    },
     jobType: string
   ): boolean {
     if (item.status === 'failed' || item.status === 'missing_dst') return false;
-
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const dstRemote = this.getRemoteName(item.dstFs || '');
-    return !!dstRemote;
+    if (!(item.isCompleted || !!item.completedAt || !!item.status)) return false;
+    if (this.isDeleteJob(jobType, item.group)) return false;
+    return !!this.getRemoteName(item.dstFs || '');
   }
 
   canDownloadFallback(
@@ -138,14 +139,9 @@ export class TransferOperationsService {
     jobType: string,
     remoteName: string
   ): boolean {
-    if (!remoteName || item.status === 'failed') return false;
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(jobType) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const fallback = this.pathService.normalizeRemoteForRclone(remoteName);
-    return !this.pathService.isLocalPath(fallback);
+    if (!remoteName || item.status === 'failed' || this.isDeleteJob(jobType, item.group))
+      return false;
+    return !this.pathService.isLocalPath(this.pathService.normalizeRemoteForRclone(remoteName));
   }
 
   canDeleteSource(
@@ -154,14 +150,12 @@ export class TransferOperationsService {
   ): boolean {
     return this.canDownloadSource(item, jobType);
   }
-
   canDeleteDst(
     item: { dstFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
     return this.canDownloadDst(item, jobType);
   }
-
   canDeleteFallback(
     item: { group?: string; status?: string },
     jobType: string,
@@ -181,25 +175,22 @@ export class TransferOperationsService {
         undefined,
         'dashboard'
       );
-      if (result?.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
+      if (!result?.url) throw new Error('No link generated');
+      await navigator.clipboard.writeText(result.url);
+      this.notifications.showSuccess(
+        this.translate.instant('shared.transferActivity.actions.successCopyUrl')
+      );
     } catch (e) {
-      console.error('Failed to get source public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
+        this.translate.instant('shared.transferActivity.actions.failCopyUrl') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -215,25 +206,22 @@ export class TransferOperationsService {
         undefined,
         'dashboard'
       );
-      if (result?.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
+      if (!result?.url) throw new Error('No link generated');
+      await navigator.clipboard.writeText(result.url);
+      this.notifications.showSuccess(
+        this.translate.instant('shared.transferActivity.actions.successCopyUrl')
+      );
     } catch (e) {
-      console.error('Failed to get destination public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
+        this.translate.instant('shared.transferActivity.actions.failCopyUrl') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -246,33 +234,29 @@ export class TransferOperationsService {
     const key = `${uniqueId}-fallback`;
     this.loadingUrlIds.update(s => new Set(s).add(key));
     try {
-      const fallback = this.pathService.normalizeRemoteForRclone(remoteName);
       const result = await this.remoteOps.getPublicLink(
-        fallback,
+        this.pathService.normalizeRemoteForRclone(remoteName),
         item.name,
         false,
         undefined,
         'dashboard'
       );
-      if (result?.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
+      if (!result?.url) throw new Error('No link generated');
+      await navigator.clipboard.writeText(result.url);
+      this.notifications.showSuccess(
+        this.translate.instant('shared.transferActivity.actions.successCopyUrl')
+      );
     } catch (e) {
-      console.error('Failed to get fallback public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
+        this.translate.instant('shared.transferActivity.actions.failCopyUrl') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -282,19 +266,18 @@ export class TransferOperationsService {
     this.downloadingIds.update(s => new Set(s).add(key));
     try {
       const fileRemote = item.srcFs || '';
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fileRemote, path, fileName);
+      await this.performDownload(fileRemote, item.name, this.pathService.extractName(item.name));
     } catch (e) {
-      console.error('Download from source failed:', e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
+        this.translate.instant('shared.transferActivity.actions.failDownload') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -304,19 +287,18 @@ export class TransferOperationsService {
     this.downloadingIds.update(s => new Set(s).add(key));
     try {
       const fileRemote = item.dstFs || '';
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fileRemote, path, fileName);
+      await this.performDownload(fileRemote, item.name, this.pathService.extractName(item.name));
     } catch (e) {
-      console.error('Download from destination failed:', e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
+        this.translate.instant('shared.transferActivity.actions.failDownload') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -329,31 +311,32 @@ export class TransferOperationsService {
     const key = `${uniqueId}-fallback`;
     this.downloadingIds.update(s => new Set(s).add(key));
     try {
-      const fallback = this.pathService.normalizeRemoteForRclone(remoteName);
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fallback, path, fileName);
+      await this.performDownload(
+        this.pathService.normalizeRemoteForRclone(remoteName),
+        item.name,
+        this.pathService.extractName(item.name)
+      );
     } catch (e) {
-      console.error('Download from fallback failed:', e);
       this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
+        this.translate.instant('shared.transferActivity.actions.failDownload') +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
 
   private async performDownload(fileRemote: string, path: string, fileName: string): Promise<void> {
     if (isHeadlessMode()) {
-      const isLocal = this.pathService.isLocalPath(fileRemote) || fileRemote === '/';
       const rawUrl = await this.fileViewerService.generateUrl(
         { Path: path, Name: fileName } as unknown as Entry,
         fileRemote,
-        isLocal
+        this.pathService.isLocalPath(fileRemote) || fileRemote === '/'
       );
       const url = new URL(rawUrl);
       url.searchParams.set('download', 'true');
@@ -393,10 +376,7 @@ export class TransferOperationsService {
     uniqueId: string,
     onDeleted?: () => void
   ): Promise<void> {
-    const key = `${uniqueId}-src-del`;
-    const remote = item.srcFs || '';
-    if (!remote) return;
-    await this.confirmAndDelete(item, remote, key, onDeleted);
+    if (item.srcFs) await this.confirmAndDelete(item, item.srcFs, `${uniqueId}-src-del`, onDeleted);
   }
 
   async deleteDst(
@@ -404,10 +384,7 @@ export class TransferOperationsService {
     uniqueId: string,
     onDeleted?: () => void
   ): Promise<void> {
-    const key = `${uniqueId}-dst-del`;
-    const remote = item.dstFs || '';
-    if (!remote) return;
-    await this.confirmAndDelete(item, remote, key, onDeleted);
+    if (item.dstFs) await this.confirmAndDelete(item, item.dstFs, `${uniqueId}-dst-del`, onDeleted);
   }
 
   async deleteFallback(
@@ -416,9 +393,12 @@ export class TransferOperationsService {
     remoteName: string,
     onDeleted?: () => void
   ): Promise<void> {
-    const key = `${uniqueId}-fallback-del`;
-    const remote = this.pathService.normalizeRemoteForRclone(remoteName);
-    await this.confirmAndDelete(item, remote, key, onDeleted);
+    await this.confirmAndDelete(
+      item,
+      this.pathService.normalizeRemoteForRclone(remoteName),
+      `${uniqueId}-fallback-del`,
+      onDeleted
+    );
   }
 
   private async confirmAndDelete(
@@ -427,10 +407,11 @@ export class TransferOperationsService {
     key: string,
     onDeleted?: () => void
   ): Promise<void> {
-    const fileName = this.pathService.extractName(item.name);
     const confirmed = await this.notifications.confirmModal(
       this.translate.instant('nautilus.modals.delete.title'),
-      this.translate.instant('nautilus.modals.delete.messageSingle', { name: fileName }),
+      this.translate.instant('nautilus.modals.delete.messageSingle', {
+        name: this.pathService.extractName(item.name),
+      }),
       'common.delete',
       'common.cancel',
       { icon: 'trash', color: 'warn' }
@@ -443,19 +424,18 @@ export class TransferOperationsService {
       this.notifications.showSuccess(
         this.translate.instant('nautilus.notifications.deleteStarted', { count: 1 })
       );
-      if (onDeleted) {
-        onDeleted();
-      }
+      if (onDeleted) onDeleted();
     } catch (e) {
-      console.error('Delete failed:', e);
       this.notifications.showError(
-        this.translate.instant('nautilus.errors.deleteFailed', { count: 1, total: 1 })
+        this.translate.instant('nautilus.errors.deleteFailed', { count: 1, total: 1 }) +
+          ': ' +
+          (e instanceof Error ? e.message : String(e))
       );
     } finally {
       this.deletingIds.update(s => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
       });
     }
   }
@@ -464,12 +444,12 @@ export class TransferOperationsService {
     const remotes = new Set<string>();
     for (const item of items) {
       if (item.srcFs) {
-        const src = this.getRemoteName(item.srcFs);
-        if (src) remotes.add(src);
+        const s = this.getRemoteName(item.srcFs);
+        if (s) remotes.add(s);
       }
       if (item.dstFs) {
-        const dst = this.getRemoteName(item.dstFs);
-        if (dst) remotes.add(dst);
+        const d = this.getRemoteName(item.dstFs);
+        if (d) remotes.add(d);
       }
     }
     for (const remote of remotes) {

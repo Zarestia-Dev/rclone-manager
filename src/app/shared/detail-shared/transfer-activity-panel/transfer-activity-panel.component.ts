@@ -59,23 +59,21 @@ import { TransferActivityPanelConfig } from '../../types';
           }
 
           @if (config().showHistory) {
-            @if (isJobRunning()) {
-              <button
-                mat-icon-button
-                (click)="resetStats.emit()"
-                [matTooltip]="'shared.transferActivity.resetStats' | translate"
-              >
-                <mat-icon svgIcon="broom" class="primary"></mat-icon>
-              </button>
-            } @else {
-              <button
-                mat-icon-button
-                (click)="deleteJob.emit()"
-                [matTooltip]="'detailShared.jobs.actions.delete' | translate"
-              >
-                <mat-icon svgIcon="trash" class="warn"></mat-icon>
-              </button>
-            }
+            <button
+              mat-icon-button
+              (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
+              [matTooltip]="
+                (isJobRunning()
+                  ? 'shared.transferActivity.resetStats'
+                  : 'detailShared.jobs.actions.delete'
+                ) | translate
+              "
+            >
+              <mat-icon
+                [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
+                [class]="isJobRunning() ? 'primary' : 'warn'"
+              ></mat-icon>
+            </button>
           }
         </mat-card-title>
       </mat-card-header>
@@ -178,8 +176,6 @@ export class TransferActivityPanelComponent {
   toggleSearch(): void {
     const nextVal = !this.searchVisible();
     this.searchVisible.set(nextVal);
-    if (!nextVal) {
-      this.searchTerm.set('');
-    }
+    if (!nextVal) this.searchTerm.set('');
   }
 }
