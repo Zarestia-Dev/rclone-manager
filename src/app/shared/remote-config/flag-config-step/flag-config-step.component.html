@@ -22,6 +22,17 @@
     </div>
   }
 
+  <!-- FUSE allow-other warning banner -->
+  @if (isMount() && isAllowOtherEnabled()) {
+    <app-alert-banner
+      [title]="'wizards.remoteConfig.allowOtherWarning.title' | translate"
+      [description]="'wizards.remoteConfig.allowOtherWarning.description' | translate"
+      severity="warning"
+      linkUrl="https://forum.rclone.org/search?q=allow_other%20fuse.conf"
+      [linkText]="'wizards.remoteConfig.allowOtherWarning.learnMore' | translate"
+    />
+  }
+
   <!-- Dynamic flag fields -->
   @if (dynamicFieldBindings().length && !(isServe() && isLoadingServeFields())) {
     <div class="dynamic-fields-header">

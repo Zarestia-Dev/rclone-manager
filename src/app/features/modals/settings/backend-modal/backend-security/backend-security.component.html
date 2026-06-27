@@ -172,10 +172,10 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        <p class="warning-text">
-          <mat-icon svgIcon="circle-exclamation"></mat-icon>
-          {{ 'modals.backend.security.decryptWarning' | translate }}
-        </p>
+        <app-alert-banner
+          [description]="'modals.backend.security.decryptWarning' | translate"
+          severity="warning"
+        />
 
         <mat-form-field>
           <mat-label>{{ 'modals.backend.security.currentPassword' | translate }}</mat-label>

@@ -46,7 +46,6 @@ import {
   CopyurlConfig,
   ArchivecreateConfig,
   ProfileConfig,
-  JobStatsWithCompleted,
   StartJobEvent,
   StopJobEvent,
   ALL_PRIMARY_ACTIONS,
@@ -64,11 +63,7 @@ import {
 } from '../../../../shared/detail-shared';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
-import {
-  JobManagementService,
-  mapRawTransfer,
-  mapCheckOutput,
-} from 'src/app/services/operations/job-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
@@ -391,10 +386,9 @@ export class AppDetailComponent {
   });
 
   readonly activeTransfers = computed<TransferFile[]>(() => {
-    const transferring =
-      (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? [];
+    const transferring = this.jobStats().transferring ?? [];
 
-    return (transferring as TransferFile[]).map(f => ({
+    return transferring.map(f => ({
       ...f,
       percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
       isError: false,
@@ -404,14 +398,7 @@ export class AppDetailComponent {
 
   readonly completedTransfers = computed<CompletedTransfer[]>(() => {
     const activeJob = this.activeGroupJob();
-    if (!activeJob) return [];
-
-    if (this.currentOpType() === 'check' || this.currentOpType() === 'cryptcheck') {
-      return mapCheckOutput(activeJob);
-    }
-
-    const completed = (activeJob.stats as JobStatsWithCompleted | undefined)?.completed;
-    return Array.isArray(completed) ? completed.map(mapRawTransfer) : [];
+    return activeJob?.completed_transfers ?? [];
   });
 
   // --- Derived: Timing ---

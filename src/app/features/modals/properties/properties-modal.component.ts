@@ -158,7 +158,7 @@ export class PropertiesModalComponent implements OnInit {
   readonly bulkHashError = signal<string | null>(null);
 
   ngOnInit(): void {
-    const { remoteName, path, isLocal, item } = this.data;
+    const { remoteName, path, isLocal } = this.data;
 
     const currentItem = this.item();
     const targetIsDir = currentItem ? !!currentItem.IsDir : true;
@@ -181,21 +181,16 @@ export class PropertiesModalComponent implements OnInit {
     }
 
     // 2. Get Disk Usage - try cache first for remote roots
-    this.loadDiskUsage(remoteName, path, isLocal, item);
+    this.loadDiskUsage(remoteName, path, isLocal);
 
     // 3. Load remote features (hashes, public links, etc.)
     this.loadRemoteFeatures();
   }
 
-  private async loadDiskUsage(
-    remoteName: string,
-    path: string,
-    isLocal: boolean,
-    item: Entry | null | undefined
-  ): Promise<void> {
+  private async loadDiskUsage(remoteName: string, path: string, isLocal: boolean): Promise<void> {
     try {
-      // For remote roots, use centralized caching method
-      if (!isLocal && (!path || path === '/')) {
+      // For remote paths, use centralized caching method on the remote root
+      if (!isLocal) {
         const diskUsage = await this.remoteFacadeService.getCachedOrFetchDiskUsage(
           remoteName,
           this.pathService.normalizeRemoteForRclone(remoteName),
@@ -204,28 +199,15 @@ export class PropertiesModalComponent implements OnInit {
         );
 
         if (diskUsage) {
-          this.diskUsage.set({
-            total: diskUsage.total_space,
-            used: diskUsage.used_space,
-            free: diskUsage.free_space,
-          });
+          this.diskUsage.set(diskUsage);
         }
-        this.loadingDiskUsage.set(false);
         return;
       }
 
-      // Fall back to direct API call for subdirectories or local paths
-      let diskUsageRemote = remoteName;
-      let diskUsagePath = path;
-
-      if (isLocal && !(item && item.IsDir)) {
-        diskUsageRemote = this.pathService.getParentPath(remoteName) || '/';
-        diskUsagePath = '';
-      }
-
+      // Fall back to direct API call for local paths (resolved by backend if it's a file)
       const diskUsage = await this.remoteOps.getDiskUsage(
-        diskUsageRemote,
-        diskUsagePath,
+        remoteName,
+        path,
         'filemanager',
         this.readJobGroup
       );

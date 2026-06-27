@@ -2,74 +2,9 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { interval, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin, CompletedTransfer, RawTransfer } from '@app/types';
+import { JobInfo, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
-
-export function mapRawTransfer(t: RawTransfer): CompletedTransfer {
-  let status: CompletedTransfer['status'] = 'completed';
-  if (t.error) status = 'failed';
-  else if (t.checked) status = 'checked';
-  else if (t.bytes != null && t.size != null && t.bytes > 0 && t.bytes < t.size) status = 'partial';
-
-  return {
-    name: t.name ?? '',
-    size: t.size ?? 0,
-    bytes: t.bytes ?? 0,
-    checked: t.checked ?? false,
-    error: t.error ?? '',
-    jobid: 0,
-    startedAt: t.started_at,
-    completedAt: t.completed_at,
-    srcFs: t.srcFs ?? t.src_fs,
-    dstFs: t.dstFs ?? t.dst_fs,
-    group: t.group,
-    status,
-  };
-}
-
-export function mapCheckOutput(job: JobInfo): CompletedTransfer[] {
-  const rawOutput = (job.stats as any)?.checkOutput;
-  if (!rawOutput) return [];
-
-  const checkResultsArray = Array.isArray(rawOutput.results) ? rawOutput.results : [rawOutput];
-  const items: CompletedTransfer[] = [];
-  const jobId = job.jobid || 0;
-  const completedAt = job.end_time || new Date().toISOString();
-  const srcFs = (job.source as string[])?.[0] || '';
-  const dstFs = job.destination || '';
-
-  const statusMap: { key: string; status: CompletedTransfer['status']; error: string }[] = [
-    { key: 'missingOnDst', status: 'missing_dst', error: 'Missing on Destination' },
-    { key: 'missingOnSrc', status: 'missing_src', error: 'Missing on Source remote' },
-    { key: 'differ', status: 'partial', error: 'File contents differ (Mismatched hash/size)' },
-  ];
-
-  for (const checkResults of checkResultsArray) {
-    if (!checkResults) continue;
-    for (const { key, status, error } of statusMap) {
-      if (Array.isArray(checkResults[key])) {
-        for (const name of checkResults[key]) {
-          items.push({
-            name,
-            size: 0,
-            bytes: 0,
-            checked: false,
-            status,
-            error,
-            jobid: jobId,
-            completedAt,
-            group: job.group,
-            srcFs,
-            dstFs,
-          });
-        }
-      }
-    }
-  }
-
-  return items;
-}
 
 @Injectable({
   providedIn: 'root',

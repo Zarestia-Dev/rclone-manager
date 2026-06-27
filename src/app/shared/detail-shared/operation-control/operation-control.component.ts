@@ -128,9 +128,9 @@ import { TranslatePipe } from '@ngx-translate/core';
               </div>
               <mat-progress-bar
                 mode="determinate"
-                [value]="(usage.used / usage.total) * 100"
+                [value]="usage.usagePercentage"
                 class="usage-bar"
-                [color]="getUsageColor(usage.used / usage.total)"
+                [color]="usage.usageColor"
               ></mat-progress-bar>
             }
           </div>
@@ -333,12 +333,6 @@ export class OperationControlComponent {
     } else {
       this.startJob.emit(operationType);
     }
-  }
-
-  getUsageColor(ratio: number): string {
-    if (ratio > 0.9) return 'warn';
-    if (ratio > 0.7) return 'accent';
-    return 'primary';
   }
 
   readonly operationIcon = computed(

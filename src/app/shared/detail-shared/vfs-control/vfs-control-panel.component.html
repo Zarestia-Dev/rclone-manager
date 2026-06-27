@@ -43,22 +43,13 @@
 
       <!-- Warning for indexed VFS entries -->
       @if (isIndexedVfs()) {
-        <div class="indexed-vfs-warning">
-          <mat-icon svgIcon="warning" class="warn"></mat-icon>
-          <div class="warning-content">
-            <strong>{{ 'shared.vfsControl.controlsUnavailable' | translate }}</strong>
-            <p>
-              {{ 'shared.vfsControl.indexedWarning' | translate: { suffix: ':[0]' } }}
-            </p>
-            <a
-              href="https://github.com/rclone/rclone/issues/9120"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              #9120
-            </a>
-          </div>
-        </div>
+        <app-alert-banner
+          [title]="'shared.vfsControl.controlsUnavailable' | translate"
+          [description]="'shared.vfsControl.indexedWarning' | translate: { suffix: ':[0]' }"
+          severity="warning"
+          linkUrl="https://github.com/rclone/rclone/issues/9120"
+          linkText="#9120"
+        />
       }
 
       @if (selectedVfs(); as vfs) {

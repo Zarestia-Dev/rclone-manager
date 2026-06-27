@@ -1045,6 +1045,11 @@
       "loadingServeOptions": "加载 {{type}} 选项...",
       "serveDescription": "选择要提供服务的远程路径，可选择整个远程或特定文件夹",
       "operationDescription": "为此操作配置源路径、目标路径和自动启动选项",
+      "allowOtherWarning": {
+        "title": "需要配置 FUSE",
+        "description": "启用 '--allow-other' 需要在主机系统上配置 /etc/fuse.conf 以避免挂载失败。请确保 /etc/fuse.conf 中的 'user_allow_other' 已取消注释/启用。",
+        "learnMore": "在 Rclone 论坛中搜索支持"
+      },
       "hideCommandOptions": "隐藏命令行选项",
       "showCommandOptions": "显示命令行选项",
       "quickAdd": "快速添加",

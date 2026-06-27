@@ -14,18 +14,13 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFileSizePipe } from '@app/pipes';
 import { CompletedTransfer } from '@app/types';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
-import { NotificationService } from 'src/app/services/ui/notification.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { TransferOperationsService } from './transfer-operations.service';
 
 @Component({
   selector: 'app-completed-transfers-table',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [TransferOperationsService],
   imports: [MatIconModule, MatTooltipModule, MatButtonModule, TranslatePipe, FormatFileSizePipe],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
@@ -66,64 +61,70 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
                     }}</code>
                     @if (transfer.status !== 'checked') {
                       <div class="path-actions">
-                        @if (canCopyUrlSource(transfer)) {
+                        @if (ops.canCopyUrlSource(transfer, jobType())) {
                           <button
                             class="small-action-btn"
-                            (click)="onCopyUrlSource(transfer); $event.stopPropagation()"
+                            (click)="
+                              ops.copyUrlSource(transfer, transfer.uniqueId);
+                              $event.stopPropagation()
+                            "
                             [disabled]="
-                              loadingUrlIds().has(transfer.uniqueId + '-src') ||
-                              isFeaturesLoading(transfer.srcFs)
+                              ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
+                              ops.isFeaturesLoading(transfer.srcFs)
                             "
                             [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                loadingUrlIds().has(transfer.uniqueId + '-src') ||
-                                isFeaturesLoading(transfer.srcFs)
+                                ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
+                                ops.isFeaturesLoading(transfer.srcFs)
                                   ? 'refresh'
                                   : 'link'
                               "
                               [class.animate-spin]="
-                                loadingUrlIds().has(transfer.uniqueId + '-src') ||
-                                isFeaturesLoading(transfer.srcFs)
+                                ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
+                                ops.isFeaturesLoading(transfer.srcFs)
                               "
                             ></mat-icon>
                           </button>
                         }
-                        @if (canDownloadSource(transfer)) {
+                        @if (ops.canDownloadSource(transfer, jobType())) {
                           <button
                             class="small-action-btn"
-                            (click)="onDownloadSource(transfer); $event.stopPropagation()"
-                            [disabled]="downloadingIds().has(transfer.uniqueId + '-src')"
+                            (click)="
+                              ops.downloadSource(transfer, transfer.uniqueId);
+                              $event.stopPropagation()
+                            "
+                            [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
                             [matTooltip]="'shared.transferActivity.actions.download' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                downloadingIds().has(transfer.uniqueId + '-src')
+                                ops.downloadingIds().has(transfer.uniqueId + '-src')
                                   ? 'refresh'
                                   : 'download'
                               "
                               [class.animate-spin]="
-                                downloadingIds().has(transfer.uniqueId + '-src')
+                                ops.downloadingIds().has(transfer.uniqueId + '-src')
                               "
                             ></mat-icon>
                           </button>
                         }
-                        @if (canDeleteSource(transfer)) {
+                        @if (ops.canDeleteSource(transfer, jobType())) {
                           <button
                             class="small-action-btn delete-btn"
                             (click)="onDeleteSource(transfer); $event.stopPropagation()"
-                            [disabled]="deletingIds().has(transfer.uniqueId + '-src-del')"
+                            [disabled]="ops.deletingIds().has(transfer.uniqueId + '-src-del')"
                             [matTooltip]="'common.delete' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                deletingIds().has(transfer.uniqueId + '-src-del')
+                                ops.deletingIds().has(transfer.uniqueId + '-src-del')
                                   ? 'refresh'
                                   : 'trash'
                               "
                               [class.animate-spin]="
-                                deletingIds().has(transfer.uniqueId + '-src-del')
+                                ops.deletingIds().has(transfer.uniqueId + '-src-del')
                               "
                             ></mat-icon>
                           </button>
@@ -140,64 +141,68 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
                     }}</code>
                     @if (transfer.status !== 'checked') {
                       <div class="path-actions">
-                        @if (canCopyUrlDst(transfer)) {
+                        @if (ops.canCopyUrlDst(transfer, jobType())) {
                           <button
                             class="small-action-btn"
-                            (click)="onCopyUrlDst(transfer); $event.stopPropagation()"
+                            (click)="
+                              ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                            "
                             [disabled]="
-                              loadingUrlIds().has(transfer.uniqueId + '-dst') ||
-                              isFeaturesLoading(transfer.dstFs)
+                              ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
+                              ops.isFeaturesLoading(transfer.dstFs)
                             "
                             [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                loadingUrlIds().has(transfer.uniqueId + '-dst') ||
-                                isFeaturesLoading(transfer.dstFs)
+                                ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
+                                ops.isFeaturesLoading(transfer.dstFs)
                                   ? 'refresh'
                                   : 'link'
                               "
                               [class.animate-spin]="
-                                loadingUrlIds().has(transfer.uniqueId + '-dst') ||
-                                isFeaturesLoading(transfer.dstFs)
+                                ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
+                                ops.isFeaturesLoading(transfer.dstFs)
                               "
                             ></mat-icon>
                           </button>
                         }
-                        @if (canDownloadDst(transfer)) {
+                        @if (ops.canDownloadDst(transfer, jobType())) {
                           <button
                             class="small-action-btn"
-                            (click)="onDownloadDst(transfer); $event.stopPropagation()"
-                            [disabled]="downloadingIds().has(transfer.uniqueId + '-dst')"
+                            (click)="
+                              ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                            "
+                            [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
                             [matTooltip]="'shared.transferActivity.actions.download' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                downloadingIds().has(transfer.uniqueId + '-dst')
+                                ops.downloadingIds().has(transfer.uniqueId + '-dst')
                                   ? 'refresh'
                                   : 'download'
                               "
                               [class.animate-spin]="
-                                downloadingIds().has(transfer.uniqueId + '-dst')
+                                ops.downloadingIds().has(transfer.uniqueId + '-dst')
                               "
                             ></mat-icon>
                           </button>
                         }
-                        @if (canDeleteDst(transfer)) {
+                        @if (ops.canDeleteDst(transfer, jobType())) {
                           <button
                             class="small-action-btn delete-btn"
                             (click)="onDeleteDst(transfer); $event.stopPropagation()"
-                            [disabled]="deletingIds().has(transfer.uniqueId + '-dst-del')"
+                            [disabled]="ops.deletingIds().has(transfer.uniqueId + '-dst-del')"
                             [matTooltip]="'common.delete' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
-                                deletingIds().has(transfer.uniqueId + '-dst-del')
+                                ops.deletingIds().has(transfer.uniqueId + '-dst-del')
                                   ? 'refresh'
                                   : 'trash'
                               "
                               [class.animate-spin]="
-                                deletingIds().has(transfer.uniqueId + '-dst-del')
+                                ops.deletingIds().has(transfer.uniqueId + '-dst-del')
                               "
                             ></mat-icon>
                           </button>
@@ -211,64 +216,70 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
                   <div class="path-group dst">
                     <code class="path-pill dst" [title]="remoteName()">{{ remoteName() }}</code>
                     <div class="path-actions">
-                      @if (canCopyUrlFallback(transfer)) {
+                      @if (ops.canCopyUrlFallback(transfer, jobType(), remoteName())) {
                         <button
                           class="small-action-btn"
-                          (click)="onCopyUrlFallback(transfer); $event.stopPropagation()"
+                          (click)="
+                            ops.copyUrlFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
                           [disabled]="
-                            loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
-                            isFallbackFeaturesLoading()
+                            ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
+                            ops.isFallbackFeaturesLoading(remoteName())
                           "
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
-                              loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
-                              isFallbackFeaturesLoading()
+                              ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
+                              ops.isFallbackFeaturesLoading(remoteName())
                                 ? 'refresh'
                                 : 'link'
                             "
                             [class.animate-spin]="
-                              loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
-                              isFallbackFeaturesLoading()
+                              ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
+                              ops.isFallbackFeaturesLoading(remoteName())
                             "
                           ></mat-icon>
                         </button>
                       }
-                      @if (canDownloadFallback(transfer)) {
+                      @if (ops.canDownloadFallback(transfer, jobType(), remoteName())) {
                         <button
                           class="small-action-btn"
-                          (click)="onDownloadFallback(transfer); $event.stopPropagation()"
-                          [disabled]="downloadingIds().has(transfer.uniqueId + '-fallback')"
+                          (click)="
+                            ops.downloadFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
                           [matTooltip]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
-                              downloadingIds().has(transfer.uniqueId + '-fallback')
+                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
                                 ? 'refresh'
                                 : 'download'
                             "
                             [class.animate-spin]="
-                              downloadingIds().has(transfer.uniqueId + '-fallback')
+                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
                             "
                           ></mat-icon>
                         </button>
                       }
-                      @if (canDeleteFallback(transfer)) {
+                      @if (ops.canDeleteFallback(transfer, jobType(), remoteName())) {
                         <button
                           class="small-action-btn delete-btn"
                           (click)="onDeleteFallback(transfer); $event.stopPropagation()"
-                          [disabled]="deletingIds().has(transfer.uniqueId + '-fallback-del')"
+                          [disabled]="ops.deletingIds().has(transfer.uniqueId + '-fallback-del')"
                           [matTooltip]="'common.delete' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
-                              deletingIds().has(transfer.uniqueId + '-fallback-del')
+                              ops.deletingIds().has(transfer.uniqueId + '-fallback-del')
                                 ? 'refresh'
                                 : 'trash'
                             "
                             [class.animate-spin]="
-                              deletingIds().has(transfer.uniqueId + '-fallback-del')
+                              ops.deletingIds().has(transfer.uniqueId + '-fallback-del')
                             "
                           ></mat-icon>
                         </button>
@@ -350,16 +361,8 @@ export class CompletedTransfersTableComponent {
   readonly searchTerm = input('');
 
   private readonly translate = inject(TranslateService);
-  private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly remoteManagement = inject(RemoteManagementService);
-  private readonly notifications = inject(NotificationService);
-  private readonly pathService = inject(PathService);
-  private readonly fileSystemService = inject(FileSystemService);
-  private readonly fileViewerService = inject(FileViewerService);
+  protected readonly ops = inject(TransferOperationsService);
 
-  readonly loadingUrlIds = signal<Set<string>>(new Set());
-  readonly downloadingIds = signal<Set<string>>(new Set());
-  readonly deletingIds = signal<Set<string>>(new Set());
   readonly hiddenIds = signal<Set<string>>(new Set());
   readonly displayLimit = signal(50);
 
@@ -381,33 +384,8 @@ export class CompletedTransfersTableComponent {
 
   constructor() {
     effect(() => {
-      const items = this.transfers();
-      const remotes = new Set<string>();
-      for (const item of items) {
-        if (item.srcFs) {
-          const src = this.getRemoteName(item.srcFs);
-          if (src) remotes.add(src);
-        }
-        if (item.dstFs) {
-          const dst = this.getRemoteName(item.dstFs);
-          if (dst) remotes.add(dst);
-        }
-      }
-      for (const remote of remotes) {
-        void this.remoteManagement.getFeatures(remote);
-      }
+      this.ops.preloadFeatures(this.transfers());
     });
-  }
-
-  private getRemoteName(fs: string): string {
-    if (!fs || this.pathService.isLocalPath(fs)) return '';
-    const parts = fs.split(':');
-    if (parts.length > 1) {
-      const name = parts[0];
-      if (name === 'http' || name === 'https' || name === 'ftp') return '';
-      return name;
-    }
-    return '';
   }
 
   protected readonly enrichedTransfers = computed(() => {
@@ -460,331 +438,6 @@ export class CompletedTransfersTableComponent {
       .filter(t => !hidden.has(t.uniqueId));
   });
 
-  isFeaturesLoading(fs: string | undefined): boolean {
-    const remote = this.getRemoteName(fs || '');
-    if (!remote) return false;
-    return !!this.remoteManagement.getFeaturesSignal(remote)().loading;
-  }
-
-  isFallbackFeaturesLoading(): boolean {
-    const fallback = this.pathService.normalizeRemoteName(this.remoteName());
-    if (!fallback) return false;
-    return !!this.remoteManagement.getFeaturesSignal(fallback)().loading;
-  }
-
-  canCopyUrlSource(item: CompletedTransfer): boolean {
-    if (item.status === 'missing_src') return false;
-
-    const isMove = this.jobType() === 'move' || item.group?.split('/')[0]?.toLowerCase() === 'move';
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if ((isMove || isDelete) && item.status !== 'failed') {
-      return false;
-    }
-
-    const srcRemote = this.getRemoteName(item.srcFs || '');
-    if (!srcRemote) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(srcRemote)();
-    return feats.PublicLink || !!feats.loading;
-  }
-
-  canCopyUrlDst(item: CompletedTransfer): boolean {
-    if (item.status === 'failed' || item.status === 'missing_dst') return false;
-
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const dstRemote = this.getRemoteName(item.dstFs || '');
-    if (!dstRemote) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(dstRemote)();
-    return feats.PublicLink || !!feats.loading;
-  }
-
-  canCopyUrlFallback(item: CompletedTransfer): boolean {
-    if (item.status === 'failed' || !this.remoteName()) return false;
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const fallback = this.pathService.normalizeRemoteName(this.remoteName());
-    if (!fallback) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(fallback)();
-    return feats.PublicLink || !!feats.loading;
-  }
-
-  canDownloadSource(item: CompletedTransfer): boolean {
-    if (item.status === 'missing_src') return false;
-
-    const isMove = this.jobType() === 'move' || item.group?.split('/')[0]?.toLowerCase() === 'move';
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if ((isMove || isDelete) && item.status !== 'failed') {
-      return false;
-    }
-
-    const srcRemote = this.getRemoteName(item.srcFs || '');
-    return !!srcRemote;
-  }
-
-  canDownloadDst(item: CompletedTransfer): boolean {
-    if (item.status === 'failed' || item.status === 'missing_dst') return false;
-
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const dstRemote = this.getRemoteName(item.dstFs || '');
-    return !!dstRemote;
-  }
-
-  canDownloadFallback(item: CompletedTransfer): boolean {
-    if (item.status === 'failed' || !this.remoteName()) return false;
-    const isDelete =
-      ['delete', 'cleanup', 'rmdirs'].includes(this.jobType()) ||
-      ['delete', 'cleanup', 'rmdirs'].includes(item.group?.split('/')[0]?.toLowerCase() || '');
-    if (isDelete) return false;
-
-    const fallback = this.pathService.normalizeRemoteForRclone(this.remoteName());
-    return !this.pathService.isLocalPath(fallback);
-  }
-
-  canDeleteSource(item: CompletedTransfer): boolean {
-    return this.canDownloadSource(item);
-  }
-
-  canDeleteDst(item: CompletedTransfer): boolean {
-    return this.canDownloadDst(item);
-  }
-
-  canDeleteFallback(item: CompletedTransfer): boolean {
-    return this.canDownloadFallback(item);
-  }
-
-  async onCopyUrlSource(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-src`;
-    this.loadingUrlIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const result = await this.remoteOps.getPublicLink(
-        item.srcFs || '',
-        item.name,
-        false,
-        undefined,
-        'dashboard'
-      );
-
-      if (result && result.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
-    } catch (e) {
-      console.error('Failed to get source public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
-      );
-    } finally {
-      this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  async onCopyUrlDst(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-dst`;
-    this.loadingUrlIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const result = await this.remoteOps.getPublicLink(
-        item.dstFs || '',
-        item.name,
-        false,
-        undefined,
-        'dashboard'
-      );
-
-      if (result && result.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
-    } catch (e) {
-      console.error('Failed to get destination public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
-      );
-    } finally {
-      this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  async onCopyUrlFallback(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-fallback`;
-    this.loadingUrlIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const fallback = this.pathService.normalizeRemoteForRclone(this.remoteName());
-      const result = await this.remoteOps.getPublicLink(
-        fallback,
-        item.name,
-        false,
-        undefined,
-        'dashboard'
-      );
-
-      if (result && result.url) {
-        await navigator.clipboard.writeText(result.url);
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-        );
-      } else {
-        throw new Error('No link generated');
-      }
-    } catch (e) {
-      console.error('Failed to get fallback public link:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') + ': ' + errorMsg
-      );
-    } finally {
-      this.loadingUrlIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  async onDownloadSource(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-src`;
-    this.downloadingIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const fileRemote = item.srcFs || '';
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fileRemote, path, fileName);
-    } catch (e) {
-      console.error('Download from source failed:', e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
-      );
-    } finally {
-      this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  async onDownloadDst(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-dst`;
-    this.downloadingIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const fileRemote = item.dstFs || '';
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fileRemote, path, fileName);
-    } catch (e) {
-      console.error('Download from destination failed:', e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
-      );
-    } finally {
-      this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  async onDownloadFallback(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-fallback`;
-    this.downloadingIds.update(s => new Set(s).add(uniqueId));
-
-    try {
-      const fallback = this.pathService.normalizeRemoteForRclone(this.remoteName());
-      const path = item.name;
-      const fileName = this.pathService.extractName(path);
-      await this.performDownload(fallback, path, fileName);
-    } catch (e) {
-      console.error('Download from fallback failed:', e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload')
-      );
-    } finally {
-      this.downloadingIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
-  }
-
-  private async performDownload(fileRemote: string, path: string, fileName: string): Promise<void> {
-    if (isHeadlessMode()) {
-      const isLocal = this.pathService.isLocalPath(fileRemote) || fileRemote === '/';
-      const rawUrl = await this.fileViewerService.generateUrl(
-        { Path: path, Name: fileName } as any,
-        fileRemote,
-        isLocal
-      );
-      const url = new URL(rawUrl);
-      url.searchParams.set('download', 'true');
-
-      const link = document.createElement('a');
-      link.href = url.toString();
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      this.notifications.showInfo(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
-      );
-    } else {
-      const selectedPath = await this.fileSystemService.selectFolder();
-      if (selectedPath) {
-        this.notifications.showInfo(
-          this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
-        );
-        await this.remoteOps.transferItems(
-          [{ remote: fileRemote, path, name: fileName, isDir: false }],
-          selectedPath,
-          '',
-          'copy',
-          'dashboard'
-        );
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successDownload')
-        );
-      }
-    }
-  }
-
   private getRelativeTime(timestamp: string): string {
     const diff = Date.now() - Date.parse(timestamp);
     const minutes = Math.floor(diff / 60000);
@@ -820,59 +473,24 @@ export class CompletedTransfersTableComponent {
   }
 
   async onDeleteSource(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-src-del`;
-    const remote = item.srcFs || '';
-    if (!remote) return;
-    await this.confirmAndDelete(item, remote, uniqueId);
+    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    await this.ops.deleteSource(item, uniqueId, () => {
+      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+    });
   }
 
   async onDeleteDst(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-dst-del`;
-    const remote = item.dstFs || '';
-    if (!remote) return;
-    await this.confirmAndDelete(item, remote, uniqueId);
+    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    await this.ops.deleteDst(item, uniqueId, () => {
+      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+    });
   }
 
   async onDeleteFallback(item: CompletedTransfer): Promise<void> {
-    const uniqueId = `${item.uniqueId || `${item.jobid}-${item.name}`}-fallback-del`;
-    const remote = this.pathService.normalizeRemoteForRclone(this.remoteName());
-    await this.confirmAndDelete(item, remote, uniqueId);
-  }
-
-  private async confirmAndDelete(
-    item: CompletedTransfer,
-    remote: string,
-    uniqueId: string
-  ): Promise<void> {
-    const fileName = this.pathService.extractName(item.name);
-    const confirmed = await this.notifications.confirmModal(
-      this.translate.instant('nautilus.modals.delete.title'),
-      this.translate.instant('nautilus.modals.delete.messageSingle', { name: fileName }),
-      'common.delete',
-      'common.cancel',
-      { icon: 'trash', color: 'warn' }
-    );
-    if (!confirmed) return;
-
-    this.deletingIds.update(s => new Set(s).add(uniqueId));
-    try {
-      await this.remoteOps.deleteItems([{ remote, path: item.name, isDir: false }], 'dashboard');
-      this.notifications.showSuccess(
-        this.translate.instant('nautilus.notifications.deleteStarted', { count: 1 })
-      );
-      this.hiddenIds.update(s => new Set(s).add(item.uniqueId || `${item.jobid}-${item.name}`));
-    } catch (e) {
-      console.error('Delete failed:', e);
-      this.notifications.showError(
-        this.translate.instant('nautilus.errors.deleteFailed', { count: 1, total: 1 })
-      );
-    } finally {
-      this.deletingIds.update(s => {
-        const next = new Set(s);
-        next.delete(uniqueId);
-        return next;
-      });
-    }
+    const uniqueId = item.uniqueId || `${item.jobid}-${item.name}`;
+    await this.ops.deleteFallback(item, uniqueId, this.remoteName(), () => {
+      this.hiddenIds.update(s => new Set(s).add(uniqueId));
+    });
   }
 
   onScroll(event: Event): void {

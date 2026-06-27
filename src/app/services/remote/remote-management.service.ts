@@ -99,8 +99,8 @@ export class RemoteManagementService extends TauriBaseService {
     const nameKey = this.pathService.normalizeRemoteName(remoteName);
     const typeKey = remoteType ? remoteType.toLowerCase() : nameKey;
 
-    if (this._features()[typeKey]) return this._features()[typeKey];
-    if (this._features()[nameKey]) return this._features()[nameKey];
+    const cached = this._features()[typeKey] || this._features()[nameKey];
+    if (cached && !cached.loading) return cached;
 
     const loadingState: RemoteFeatures = {
       IsLocal: this.pathService.isLocalPath(nameKey),

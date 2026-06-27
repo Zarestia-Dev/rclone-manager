@@ -20,6 +20,7 @@ import { FlagType, RcConfigOption } from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import {
   matchesConfigSearch,
@@ -41,6 +42,7 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     OperationConfigComponent,
     JsonEditorComponent,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
@@ -79,6 +81,7 @@ export class FlagConfigStepComponent {
   );
 
   readonly serveTypeValue = signal('');
+  readonly isAllowOtherEnabled = signal(false);
 
   readonly dynamicFieldBindings = computed(() => {
     const query = this.searchQuery();
@@ -111,6 +114,28 @@ export class FlagConfigStepComponent {
       if (this.isServe()) {
         this.serveTypeChange.emit(type || 'http');
       }
+    });
+
+    // Track allow-other control value changes to show warning banner
+    effect(onCleanup => {
+      const options = this.optionsGroup();
+      if (!options) {
+        this.isAllowOtherEnabled.set(false);
+        return;
+      }
+
+      const checkValue = (): void => {
+        const allowOtherVal =
+          options.get('AllowOther')?.value ||
+          options.get('allow_other')?.value ||
+          options.get('allow-other')?.value;
+        this.isAllowOtherEnabled.set(!!allowOtherVal);
+      };
+
+      checkValue();
+
+      const sub = options.valueChanges.subscribe(() => checkValue());
+      onCleanup(() => sub.unsubscribe());
     });
   }
 

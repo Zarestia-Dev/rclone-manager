@@ -17,6 +17,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const newPassword = group.get('newPassword')?.value;
@@ -38,6 +39,7 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
     MatSlideToggleModule,
     MatExpansionModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './backend-security.component.html',
   styleUrls: ['./backend-security.component.scss'],

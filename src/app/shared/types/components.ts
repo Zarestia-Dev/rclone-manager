@@ -117,15 +117,6 @@ export interface CompletedTransfer {
   group?: string;
   status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
   uniqueId?: string;
-  resolveStatus?: string;
-  resolvePercentage?: number;
-  resolveIsPreparing?: boolean;
-  resolveBytes?: number;
-  resolveSize?: number;
-  resolveSpeed?: number;
-  resolveSpeedClass?: string;
-  resolveEta?: number;
-  resolveError?: string;
 }
 
 export interface TransferActivityPanelConfig {

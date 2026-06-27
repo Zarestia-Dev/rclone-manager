@@ -73,7 +73,7 @@ import { FormatFileSizePipe } from '@app/pipes';
               [ngClass]="cfg.loading ? '' : usageSeverity()"
               [ngStyle]="{
                 width: (cfg.loading ? 100 : usagePercentage()) + '%',
-                'min-width': !cfg.loading && (cfg.used_space ?? 0) > 0 ? '8px' : '0',
+                'min-width': !cfg.loading && (cfg.used ?? 0) > 0 ? '8px' : '0',
               }"
             ></div>
           </div>
@@ -100,18 +100,18 @@ import { FormatFileSizePipe } from '@app/pipes';
               <div class="legend-item">
                 <span class="legend-dot used" [ngClass]="usageSeverity()" aria-hidden="true"></span>
                 <span class="legend-label">{{ 'detailShared.diskUsage.used' | translate }}</span>
-                <span class="legend-value">{{ cfg.used_space ?? 0 | formatFileSize }}</span>
+                <span class="legend-value">{{ cfg.used ?? 0 | formatFileSize }}</span>
               </div>
 
               <div class="legend-item">
                 <span class="legend-dot free" aria-hidden="true"></span>
                 <span class="legend-label">{{ 'detailShared.diskUsage.free' | translate }}</span>
-                <span class="legend-value">{{ cfg.free_space ?? 0 | formatFileSize }}</span>
+                <span class="legend-value">{{ cfg.free ?? 0 | formatFileSize }}</span>
               </div>
 
               <div class="legend-item total-item">
                 <span class="legend-label">{{ 'detailShared.diskUsage.total' | translate }}</span>
-                <span class="legend-value">{{ cfg.total_space ?? 0 | formatFileSize }}</span>
+                <span class="legend-value">{{ cfg.total ?? 0 | formatFileSize }}</span>
               </div>
             }
           </div>
@@ -124,22 +124,7 @@ export class DiskUsagePanelComponent {
   readonly config = input.required<DiskUsage>();
   readonly retry = output<void>();
 
-  readonly usagePercentage = computed(() => {
-    const conf = this.config();
-    if (conf.notSupported || conf.error) return 0;
-    const used = conf.used_space ?? 0;
-    const total = conf.total_space;
-    if (!total) return 0;
-    return (used / total) * 100;
-  });
-
-  readonly usagePercentageLabel = computed(() => `${Math.round(this.usagePercentage())}%`);
-
-  readonly usageSeverity = computed(() => {
-    const pct = this.usagePercentage();
-    if (pct >= 90) return 'critical';
-    if (pct >= 80) return 'high';
-    if (pct >= 60) return 'warning';
-    return 'healthy';
-  });
+  readonly usagePercentage = computed(() => this.config().usagePercentage ?? 0);
+  readonly usagePercentageLabel = computed(() => this.config().usagePercentageLabel ?? '0%');
+  readonly usageSeverity = computed(() => this.config().usageSeverity ?? 'healthy');
 }

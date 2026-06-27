@@ -59,12 +59,23 @@ struct RcloneDiskUsageResponse {
     info: RcloneDiskInfo,
 }
 
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum LocalDiskUsageColor {
+    Primary,
+    Accent,
+    Warn,
+}
+
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalDiskUsageResponse {
     free: u64,
     total: u64,
     used: u64,
     dir: String,
+    pub usage_percentage: f64,
+    pub usage_color: LocalDiskUsageColor,
 }
 
 /// Get local disk usage for a directory using rclone's core/du endpoint
@@ -92,10 +103,36 @@ pub async fn get_local_disk_usage(
     let response: RcloneDiskUsageResponse = serde_json::from_value(response_json)
         .map_err(|e| format!("Failed to parse rclone response: {e}"))?;
 
+    let total = response.info.total;
+    let used = response.info.total.saturating_sub(response.info.free);
+    let free = response.info.free;
+
+    let usage_percentage = if total > 0 {
+        (used as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    let ratio = if total > 0 {
+        used as f64 / total as f64
+    } else {
+        0.0
+    };
+
+    let usage_color = if ratio > 0.9 {
+        LocalDiskUsageColor::Warn
+    } else if ratio > 0.7 {
+        LocalDiskUsageColor::Accent
+    } else {
+        LocalDiskUsageColor::Primary
+    };
+
     Ok(LocalDiskUsageResponse {
-        free: response.info.free,
-        total: response.info.total,
-        used: response.info.total.saturating_sub(response.info.free),
+        free,
+        total,
+        used,
         dir: response.dir,
+        usage_percentage,
+        usage_color,
     })
 }

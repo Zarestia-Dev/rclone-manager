@@ -46,6 +46,7 @@ import {
 import { PathService, PathGroup } from 'src/app/services/infrastructure/platform/path.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -78,6 +79,7 @@ interface PathItem {
     MatProgressSpinner,
     MatTooltipModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
@@ -217,6 +219,42 @@ export class OperationConfigComponent {
     return this.opFormGroup().get('options.autoFilename') as FormControl | null;
   });
 
+  readonly warningBanners = computed(() => {
+    const banners: string[] = [];
+    if (this.isNewRemote()) {
+      banners.push('wizards.appOperation.completionNote');
+    }
+    if (this.showWatchSection() && !this.isWatchPossible()) {
+      banners.push(
+        this.operationType() === 'bisync'
+          ? 'wizards.appOperation.watchRequiresLocal'
+          : 'wizards.appOperation.watchRequiresLocalSource'
+      );
+    }
+    return banners;
+  });
+
+  readonly infoBanners = computed(() => {
+    const banners: string[] = [];
+    if (this.isCoreCommandOp()) {
+      banners.push('wizards.appOperation.coreCommandNote');
+    }
+    if (this.operationType() === 'copyurl') {
+      banners.push('wizards.appOperation.copyUrlFileSettingsWarning');
+    }
+    if (this.showWatchSection() && this.isWatchPossible()) {
+      banners.push('wizards.appOperation.watchFilterNote');
+      if (this.hasMixedSources()) {
+        banners.push('wizards.appOperation.watchMixedSourcesNote');
+      }
+    }
+    const type = this.operationType();
+    if ((type === 'check' || type === 'cryptcheck') && this.sourceItems().length > 1) {
+      banners.push('wizards.appOperation.multiSourceOneWayInfo');
+    }
+    return banners;
+  });
+
   constructor() {
     effect(onCleanup => {
       const form = this.opFormGroup();
@@ -294,9 +332,6 @@ export class OperationConfigComponent {
           this.opFormGroup().get('options.oneWay') || this.opFormGroup().get('options.one-way');
         if (oneWayCtrl && !oneWayCtrl.value) {
           oneWayCtrl.setValue(true);
-          this.notificationService.showInfo(
-            this.translate.instant('wizards.appOperation.multiSourceOneWayInfo')
-          );
         }
       }
     });

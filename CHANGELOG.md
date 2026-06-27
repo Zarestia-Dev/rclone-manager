@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.
+- Fix the overloaded time for DirCacheTime: '1000h' to default rclone value.
 
 ## [v0.2.8] - 2026-06-17
 

@@ -106,28 +106,7 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (!isWatchPossible()) {
-          <div class="message warning" role="alert">
-            <span>{{
-              (operationType() === 'bisync'
-                ? 'wizards.appOperation.watchRequiresLocal'
-                : 'wizards.appOperation.watchRequiresLocalSource'
-              ) | translate
-            }}</span>
-          </div>
-        }
-
         @if (isWatchPossible()) {
-          @if (hasMixedSources()) {
-            <div class="message info" role="alert">
-              <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
-            </div>
-          }
-
-          <div class="message info" role="alert">
-            <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
-          </div>
-
           <div class="watch-delay-section">
             <span class="watch-delay-label">{{
               'wizards.appOperation.watchDelay' | translate
@@ -160,25 +139,24 @@
     }
   </mat-accordion>
 
+  @if (warningBanners().length > 0 || infoBanners().length > 0) {
+    @if (warningBanners().length > 0) {
+      <app-alert-banner severity="warning">
+        @for (banner of warningBanners(); track banner) {
+          <p>{{ banner | translate }}</p>
+        }
+      </app-alert-banner>
+    }
+    @if (infoBanners().length > 0) {
+      <app-alert-banner severity="info">
+        @for (banner of infoBanners(); track banner) {
+          <p>{{ banner | translate }}</p>
+        }
+      </app-alert-banner>
+    }
+  }
+
   <div class="paths-container">
-    @if (isNewRemote()) {
-      <div class="message warning" role="alert">
-        <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>
-      </div>
-    }
-
-    @if (isCoreCommandOp()) {
-      <div class="message info" role="alert">
-        <span>{{ 'wizards.appOperation.coreCommandNote' | translate }}</span>
-      </div>
-    }
-
-    @if (operationType() === 'copyurl') {
-      <div class="message info">
-        <span>{{ 'wizards.appOperation.copyUrlFileSettingsWarning' | translate }}</span>
-      </div>
-    }
-
     @if (showSourcePath()) {
       <div class="section-header">
         <span class="section-title">
@@ -228,12 +206,7 @@
               </div>
               @if (sourceItems().length > 1) {
                 <div class="action-suffix">
-                  <button
-                    mat-icon-button
-                    class="remove-btn"
-                    (click)="removePath('source', item.index)"
-                    type="button"
-                  >
+                  <button mat-icon-button (click)="removePath('source', item.index)" type="button">
                     <mat-icon svgIcon="trash" class="warn"></mat-icon>
                   </button>
                 </div>

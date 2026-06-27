@@ -37,6 +37,8 @@ import { ServeManagementService } from 'src/app/services/operations/serve-manage
 
 import { VfsInstance } from '@app/types';
 
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+
 const POLL_INTERVAL_MS = 5000;
 const PRIORITY_EXPIRY = -999_999_999;
 const DELAY_EXPIRY = 999_999_999;
@@ -62,6 +64,7 @@ const INDEXED_VFS_RE = /:\[\d+\]$/;
     MatSliderModule,
     MatProgressSpinnerModule,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',

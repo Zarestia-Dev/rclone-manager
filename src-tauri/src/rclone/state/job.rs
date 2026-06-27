@@ -45,6 +45,7 @@ impl JobCache {
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
+            completed_transfers: None,
         };
 
         self.add_job(job, app).await;
@@ -133,6 +134,7 @@ impl JobCache {
                     sanitize_finished_stats(&mut stats);
                 }
                 j.stats = Some(stats);
+                j.recompute_completed_transfers();
             },
             None,
         )
@@ -161,6 +163,7 @@ impl JobCache {
                     if let Some(stats) = j.stats.as_mut() {
                         sanitize_finished_stats(stats);
                     }
+                    j.recompute_completed_transfers();
                 }
             },
             app,
@@ -178,6 +181,7 @@ impl JobCache {
                     if let Some(stats) = j.stats.as_mut() {
                         sanitize_finished_stats(stats);
                     }
+                    j.recompute_completed_transfers();
                 }
             },
             app,
@@ -342,6 +346,7 @@ mod tests {
             backend_name: default_backend_name(),
             dry_run: false,
             parent_job_id: None,
+            completed_transfers: None,
         }
     }
 
@@ -475,5 +480,52 @@ mod tests {
         let remaining = cache.get_jobs().await;
         assert_eq!(remaining.len(), 1);
         assert_eq!(remaining[0].jobid, 4);
+    }
+
+    #[tokio::test]
+    async fn test_recompute_completed_transfers() {
+        let cache = JobCache::new();
+        let jobid = 1;
+        cache
+            .add_job(mock_job(jobid, "gdrive:", JobType::Copy, None), None)
+            .await;
+
+        let active_stats = serde_json::json!({
+            "bytes": 100,
+            "totalBytes": 1000,
+            "completed": [
+                {
+                    "name": "file1.txt",
+                    "size": 500,
+                    "bytes": 500,
+                    "completed_at": "2026-06-26T12:00:00Z",
+                    "checked": false,
+                    "error": ""
+                },
+                {
+                    "name": "file2.txt",
+                    "size": 300,
+                    "bytes": 150,
+                    "completed_at": "2026-06-26T12:05:00Z",
+                    "checked": false,
+                    "error": "some error"
+                }
+            ]
+        });
+
+        cache.update_job_stats(jobid, active_stats).await.unwrap();
+
+        let job = cache.get_job(jobid).await.unwrap();
+        let completed = job.completed_transfers.unwrap();
+        assert_eq!(completed.len(), 2);
+
+        // They should be sorted newest completed first
+        assert_eq!(completed[0].name, "file2.txt");
+        assert_eq!(completed[0].status, "failed");
+        assert_eq!(completed[0].error, "some error");
+
+        assert_eq!(completed[1].name, "file1.txt");
+        assert_eq!(completed[1].status, "completed");
+        assert_eq!(completed[1].error, "");
     }
 }

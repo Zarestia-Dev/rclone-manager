@@ -1045,6 +1045,11 @@
       "loadingServeOptions": "Chargement des options {{type}}...",
       "serveDescription": "Sélectionnez le chemin du dépôt distant que vous souhaitez servir. Vous pouvez servir le dépôt distant entier ou un dossier spécifique.",
       "operationDescription": "Configurez les options source, destination et démarrage automatique pour cette opération.",
+      "allowOtherWarning": {
+        "title": "Configuration FUSE requise",
+        "description": "L'activation de '--allow-other' nécessite la configuration de /etc/fuse.conf sur le système hôte pour éviter les échecs de montage. Veuillez vous assurer que 'user_allow_other' est décommenté/activé dans /etc/fuse.conf.",
+        "learnMore": "Rechercher sur le forum Rclone"
+      },
       "hideCommandOptions": "Masquer les options de commande",
       "showCommandOptions": "Afficher les options de commande",
       "quickAdd": "Ajout rapide",

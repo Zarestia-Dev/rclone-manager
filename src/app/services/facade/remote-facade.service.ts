@@ -239,7 +239,7 @@ export class RemoteFacadeService extends TauriBaseService {
     }
 
     const cached = state.disk();
-    if (!forceRefresh && cached.total_space !== undefined && !cached.loading && !cached.error) {
+    if (!forceRefresh && cached.total !== undefined && !cached.loading && !cached.error) {
       return cached;
     }
 
@@ -248,15 +248,13 @@ export class RemoteFacadeService extends TauriBaseService {
       ...cur,
       loading: true,
       error: false,
-      total_space: undefined,
+      total: undefined,
     }));
 
     try {
       const usage = await this.remoteOpsService.getDiskUsage(fsName, undefined, source, group);
       const result: DiskUsage = {
-        total_space: usage.total ?? -1,
-        used_space: usage.used ?? -1,
-        free_space: usage.free ?? -1,
+        ...usage,
         loading: false,
         error: false,
         notSupported: false,

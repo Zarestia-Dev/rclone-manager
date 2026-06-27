@@ -186,9 +186,8 @@ export class OperationsPanelComponent implements OnInit {
 
   /** Get list of transferred files for a job */
   getTransferredFiles(job: JobInfo): string[] {
-    const stats = job.stats as any;
-    if (stats?.completed && Array.isArray(stats.completed)) {
-      return stats.completed.map((t: any) => t.name || t.path || 'Unknown file');
+    if (job.completed_transfers && job.completed_transfers.length > 0) {
+      return job.completed_transfers.map(t => t.name || 'Unknown file');
     }
 
     // Fallback to legacy uploaded_files

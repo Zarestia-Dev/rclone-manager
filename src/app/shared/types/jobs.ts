@@ -1,6 +1,7 @@
 import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
+import type { CompletedTransfer } from './components';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 
@@ -56,25 +57,6 @@ export interface GlobalStats {
   };
 }
 
-export interface RawTransfer {
-  name?: string;
-  size?: number;
-  bytes?: number;
-  checked?: boolean;
-  error?: string;
-  group?: string;
-  started_at?: string;
-  completed_at?: string;
-  src_fs?: string;
-  dst_fs?: string;
-  srcFs?: string;
-  dstFs?: string;
-}
-
-export interface JobStatsWithCompleted extends GlobalStats {
-  completed?: RawTransfer[];
-}
-
 // Frozen to prevent accidental mutation of the default state
 export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
   bytes: 0,
@@ -124,6 +106,7 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
+  completed_transfers?: CompletedTransfer[];
 }
 
 export interface BatchMasterJob {

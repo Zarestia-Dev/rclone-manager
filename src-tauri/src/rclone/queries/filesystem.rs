@@ -8,7 +8,7 @@ use crate::utils::{
     rclone::util::build_full_path,
     types::{
         jobs::{JobStatus, JobType},
-        rclone::DiskUsage,
+        rclone::{DiskUsage, DiskUsageSeverity},
         remotes::ListOptions,
         state::RcloneState,
     },
@@ -336,16 +336,63 @@ pub async fn get_disk_usage(
     origin: Option<crate::utils::types::origin::Origin>,
     group: Option<String>,
 ) -> Result<DiskUsage, String> {
-    let json = get_about_remote(app, remote.clone(), path.clone(), origin, group).await?;
+    let target_remote = if crate::rclone::state::cache::is_local_path(&remote) {
+        let full_path = match path.as_deref() {
+            Some(p) if !p.is_empty() => build_full_path(&remote, p),
+            _ => remote.clone(),
+        };
+        let path_buf = std::path::PathBuf::from(&full_path);
+        if path_buf.is_file() {
+            path_buf
+                .parent()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "/".to_string())
+        } else {
+            full_path
+        }
+    } else if let Some(colon_idx) = remote.find(':') {
+        remote[..=colon_idx].to_string()
+    } else {
+        format!("{remote}:")
+    };
+
+    let json = get_about_remote(app, target_remote.clone(), None, origin, group).await?;
 
     let total = json["total"].as_i64().unwrap_or(0);
     let used = json["used"].as_i64().unwrap_or(0);
     let free = json["free"].as_i64().unwrap_or(0);
 
     let fs_path = build_full_path(&remote, path.as_deref().unwrap_or(""));
-    debug!("💾 Disk Usage for {fs_path}: total={total} used={used} free={free}");
+    debug!(
+        "💾 Disk Usage for {fs_path} (resolved to {target_remote}): total={total} used={used} free={free}"
+    );
 
-    Ok(DiskUsage { free, used, total })
+    let usage_percentage = if total > 0 {
+        (used as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    let usage_percentage_label = format!("{}%", usage_percentage.round() as i64);
+
+    let usage_severity = if usage_percentage >= 90.0 {
+        DiskUsageSeverity::Critical
+    } else if usage_percentage >= 80.0 {
+        DiskUsageSeverity::High
+    } else if usage_percentage >= 60.0 {
+        DiskUsageSeverity::Warning
+    } else {
+        DiskUsageSeverity::Healthy
+    };
+
+    Ok(DiskUsage {
+        free,
+        used,
+        total,
+        usage_percentage,
+        usage_percentage_label,
+        usage_severity,
+    })
 }
 
 #[tauri::command]

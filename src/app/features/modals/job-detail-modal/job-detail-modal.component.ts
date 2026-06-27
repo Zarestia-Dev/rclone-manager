@@ -13,11 +13,7 @@ import {
   PathDisplayComponent,
 } from '../../../shared/detail-shared';
 import { IconService } from 'src/app/services/ui/icon.service';
-import {
-  JobManagementService,
-  mapRawTransfer,
-  mapCheckOutput,
-} from 'src/app/services/operations/job-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -122,14 +118,7 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const combined =
-      job.job_type === 'check' || job.job_type === 'cryptcheck'
-        ? mapCheckOutput(job)
-        : (((stats as any)?.completed ?? []) as any[]).map(mapRawTransfer).sort((a, b) => {
-            const timeA = a.completedAt ? Date.parse(a.completedAt) : 0;
-            const timeB = b.completedAt ? Date.parse(b.completedAt) : 0;
-            return timeB - timeA;
-          });
+    const combined = job.completed_transfers ?? [];
 
     return {
       activeTransfers: stats?.transferring ?? [],

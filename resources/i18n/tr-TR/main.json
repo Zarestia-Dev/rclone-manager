@@ -1045,6 +1045,11 @@
       "loadingServeOptions": "{{type}} seçenekleri yükleniyor...",
       "serveDescription": "Sunmak istediğiniz uzak yolu seçin. Tüm uzak bağlantıyı veya belirli bir klasörü sunabilirsiniz.",
       "operationDescription": "Bu işlem için kaynak, hedef ve otomatik başlatma seçeneklerini yapılandırın.",
+      "allowOtherWarning": {
+        "title": "FUSE Yapılandırması Gerekli",
+        "description": "'--allow-other' seçeneğini etkinleştirmek, bağlama hatalarını önlemek için ana sistemde /etc/fuse.conf dosyasının yapılandırılmasını gerektirir. Lütfen /etc/fuse.conf dosyasında 'user_allow_other' seçeneğinin etkinleştirildiğinden (yorum işaretinin kaldırıldığından) emin olun.",
+        "learnMore": "Rclone Forum Desteğinde Ara"
+      },
       "hideCommandOptions": "Komut Seçeneklerini Gizle",
       "showCommandOptions": "Komut Seçeneklerini Göster",
       "quickAdd": "Hızlı Ekle",

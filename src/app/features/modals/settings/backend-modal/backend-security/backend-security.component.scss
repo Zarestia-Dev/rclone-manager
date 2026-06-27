@@ -134,20 +134,3 @@
     align-items: stretch;
   }
 }
-
-// Warning text
-.warning-text {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) 0;
-  color: var(--warning-color);
-  font-size: var(--font-size-sm);
-  margin: 0;
-
-  mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-  }
-}

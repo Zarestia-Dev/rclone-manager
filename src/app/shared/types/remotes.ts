@@ -32,14 +32,19 @@ export interface MountedRemote {
 
 // ── Remote runtime state ────────────────────────────────────────────────────
 
+export type DiskUsageSeverity = 'healthy' | 'warning' | 'high' | 'critical';
+
 export interface DiskUsage {
-  total_space?: number;
-  used_space?: number;
-  free_space?: number;
+  total?: number;
+  used?: number;
+  free?: number;
   loading?: boolean;
   error?: boolean;
   errorMessage?: string;
   notSupported?: boolean;
+  usagePercentage?: number;
+  usagePercentageLabel?: string;
+  usageSeverity?: DiskUsageSeverity;
 }
 
 export interface RemoteOperationState {

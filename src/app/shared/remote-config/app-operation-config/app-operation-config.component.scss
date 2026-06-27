@@ -23,6 +23,10 @@
   }
 }
 
+app-alert-banner {
+  margin-top: var(--space-sm);
+}
+
 // ── Automation accordion ──────────────────────────────────────────────────────
 .unavailable {
   position: relative;
@@ -250,50 +254,7 @@
   .action-suffix {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding-right: 0.75rem;
-
-    button {
-      width: 36px;
-      height: 36px;
-    }
-  }
-}
-
-// Global alert/message banners
-.message {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-xs);
-  font-size: var(--font-size-md);
-  margin-bottom: var(--space-md);
-
-  mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
-  }
-
-  &.info {
-    color: var(--accent-color);
-    background: rgba(var(--accent-color-rgb), 0.1);
-  }
-
-  &.warning {
-    color: var(--orange);
-    background: rgba(var(--orange-rgb), 0.1);
-  }
-
-  &.error {
-    color: var(--warn-color);
-    background: rgba(var(--warn-color-rgb), 0.1);
-  }
-
-  &.success {
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.1);
+    padding-right: var(--space-xxs);
   }
 }
 
@@ -313,6 +274,7 @@
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: var(--space-sm);
   gap: var(--space-md);
 
   .watch-delay-label {
@@ -379,16 +341,6 @@
       height: 56px;
       width: 100%;
     }
-
-    > .action-suffix {
-      grid-column: 2;
-      grid-row: 2;
-      padding: 0 var(--space-sm) 0 0;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      height: 56px;
-    }
   }
 
   // Overrides and styling specific to copyurl rows/wrappers
@@ -424,18 +376,6 @@
       border-right: none;
       border-bottom: 1px solid var(--border-color);
       padding: var(--space-xs) var(--space-md);
-    }
-
-    > .action-suffix {
-      grid-column: 2;
-      grid-row: 1;
-      border-top: none;
-      border-bottom: 1px solid var(--border-color);
-      padding: var(--space-xs) var(--space-md);
-      justify-content: flex-end;
-      display: flex;
-      align-items: center;
-      height: auto;
     }
   }
 }

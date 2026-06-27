@@ -1045,6 +1045,11 @@
       "loadingServeOptions": "Cargando opciones de {{type}}...",
       "serveDescription": "Seleccione la ruta remota que desea servir. Puede servir todo el control remoto o una carpeta específica.",
       "operationDescription": "Configure las opciones de origen, destino e inicio automático para esta operación.",
+      "allowOtherWarning": {
+        "title": "Configuración de FUSE requerida",
+        "description": "Habilitar '--allow-other' requiere configurar /etc/fuse.conf en el sistema host para evitar fallos de montaje. Asegúrese de que 'user_allow_other' esté descomentado/habilitado en /etc/fuse.conf.",
+        "learnMore": "Buscar soporte en el foro de Rclone"
+      },
       "hideCommandOptions": "Ocultar opciones de comando",
       "showCommandOptions": "Mostrar opciones de comando",
       "quickAdd": "Añadir rápido",

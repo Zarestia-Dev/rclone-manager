@@ -112,6 +112,7 @@ describe('RemotePresetsService', () => {
       mockBackendService.activeBackend.set('Local');
       const presets = service.resolvePresets('sftp');
       expect(presets.mount?.['NoAppleXattr']).toBe(true);
+      expect(presets.mount?.['NoAppleDouble']).toBe(true);
     });
   });
 });

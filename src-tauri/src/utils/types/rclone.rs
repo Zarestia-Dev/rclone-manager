@@ -8,11 +8,24 @@ pub struct CheckResult {
     pub retries_used: HashMap<String, usize>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DiskUsageSeverity {
+    Healthy,
+    Warning,
+    High,
+    Critical,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiskUsage {
     pub free: i64,
     pub used: i64,
     pub total: i64,
+    pub usage_percentage: f64,
+    pub usage_percentage_label: String,
+    pub usage_severity: DiskUsageSeverity,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

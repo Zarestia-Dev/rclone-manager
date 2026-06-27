@@ -1045,6 +1045,11 @@
       "loadingServeOptions": "Loading {{type}} options...",
       "serveDescription": "Select the remote path you want to serve. You can serve the entire remote or a specific folder.",
       "operationDescription": "Configure source, destination, and auto-start options for this operation.",
+      "allowOtherWarning": {
+        "title": "FUSE Configuration Required",
+        "description": "Enabling '--allow-other' requires configuring /etc/fuse.conf on the host system to avoid mount failures. Please ensure 'user_allow_other' is uncommented/enabled in /etc/fuse.conf.",
+        "learnMore": "Search Rclone Forum Support"
+      },
       "hideCommandOptions": "Hide Command Options",
       "showCommandOptions": "Show Command Options",
       "quickAdd": "Quick Add",
