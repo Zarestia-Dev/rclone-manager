@@ -2267,6 +2267,25 @@
         "filenameLabel": "归档文件名",
         "filenameDesc": "输入要创建的压缩归档文件的名称",
         "compress": "压缩"
+      },
+      "multiRename": {
+        "title": "重命名 {{count}} 个文件",
+        "templateMode": "使用模板重命名",
+        "replaceMode": "查找和替换文本",
+        "templateInput": "模板",
+        "addPlaceholder": "添加",
+        "findLabel": "查找文本",
+        "replaceLabel": "替换为",
+        "caseSensitive": "区分大小写",
+        "counterStart": "计数器起始值",
+        "counterStep": "步长",
+        "counterPadding": "位数 (填充)",
+        "rename": "重命名",
+        "original": "原名称",
+        "newName": "新名称",
+        "counter": "计数器",
+        "date": "日期",
+        "extension": "扩展名"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "下一个标签页",
       "previousTab": "上一个标签页",
       "toggleSplit": "切换分屏视图",
-      "switchPane": "切换窗格"
+      "switchPane": "切换窗格",
+      "copyPublicLink": "复制公共链接",
+      "createFolderWithItems": "用所选项目新建文件夹...",
+      "renameMultiple": "批量重命名..."
     },
     "view": {
       "iconSize": "图标大小",
@@ -2348,7 +2370,8 @@
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
       "copyUrlStarted": "正在从 URL 下载...",
-      "archiveCreateStarted": "已开始创建归档操作",
+      "getPublicLinkStarted": "正在生成公共链接...",
+      "archiveCreateStarted": "已开始创建归档操作...",
       "sendToAdded": "已将“{{remote}}{{path}}”添加至文件管理器右键菜单",
       "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除"
     }

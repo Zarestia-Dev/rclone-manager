@@ -2267,6 +2267,25 @@
         "filenameLabel": "Nom du fichier d'archive",
         "filenameDesc": "Entrez le nom de l'archive compressée à créer",
         "compress": "Compresser"
+      },
+      "multiRename": {
+        "title": "Renommer {{count}} fichiers",
+        "templateMode": "Renommer à l'aide d'un modèle",
+        "replaceMode": "Rechercher et remplacer du texte",
+        "templateInput": "Modèle",
+        "addPlaceholder": "Ajouter",
+        "findLabel": "Rechercher",
+        "replaceLabel": "Remplacer par",
+        "caseSensitive": "Respecter la casse",
+        "counterStart": "Début du compteur",
+        "counterStep": "Pas",
+        "counterPadding": "Chiffres (remplissage)",
+        "rename": "Renommer",
+        "original": "Nom d'origine",
+        "newName": "Nouveau nom",
+        "counter": "Compteur",
+        "date": "Date",
+        "extension": "Extension"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "Onglet suivant",
       "previousTab": "Onglet précédent",
       "toggleSplit": "Activer/désactiver La vue fractionnée",
-      "switchPane": "Basculer le volet"
+      "switchPane": "Basculer le volet",
+      "copyPublicLink": "Copier le lien public",
+      "createFolderWithItems": "Nouveau dossier avec la sélection...",
+      "renameMultiple": "Renommer plusieurs..."
     },
     "view": {
       "iconSize": "Taille de l’icône",
@@ -2348,6 +2370,7 @@
       "undoComplete": "Annulation réussie",
       "redoComplete": "Rétablissement réussi",
       "copyUrlStarted": "Téléchargement depuis l'URL...",
+      "getPublicLinkStarted": "Génération du lien public...",
       "archiveCreateStarted": "Création de l'archive démarrée...",
       "sendToAdded": "'{{remote}}{{path}}' ajouté au menu du gestionnaire de fichiers",
       "sendToRemoved": "'{{remote}}{{path}}' retiré du menu du gestionnaire de fichiers"

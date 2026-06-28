@@ -2267,6 +2267,25 @@
         "filenameLabel": "Archive Filename",
         "filenameDesc": "Enter the name of the compressed archive to create",
         "compress": "Compress"
+      },
+      "multiRename": {
+        "title": "Rename {{count}} Files",
+        "templateMode": "Rename using a template",
+        "replaceMode": "Find and replace text",
+        "templateInput": "Template",
+        "addPlaceholder": "Add",
+        "findLabel": "Find text",
+        "replaceLabel": "Replace with",
+        "caseSensitive": "Case sensitive",
+        "counterStart": "Start counter",
+        "counterStep": "Step",
+        "counterPadding": "Digits (padding)",
+        "rename": "Rename",
+        "original": "Original name",
+        "newName": "New name",
+        "counter": "Counter",
+        "date": "Date",
+        "extension": "Extension"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "Next Tab",
       "previousTab": "Previous Tab",
       "toggleSplit": "Toggle Split View",
-      "switchPane": "Switch Pane"
+      "switchPane": "Switch Pane",
+      "copyPublicLink": "Copy Public Link",
+      "createFolderWithItems": "New Folder with Selection...",
+      "renameMultiple": "Rename Multiple..."
     },
     "view": {
       "iconSize": "Icon Size",
@@ -2348,6 +2370,7 @@
       "undoComplete": "Undo successful",
       "redoComplete": "Redo successful",
       "copyUrlStarted": "Downloading from URL...",
+      "getPublicLinkStarted": "Generating public link...",
       "archiveCreateStarted": "Archive creation started...",
       "sendToAdded": "Added '{{remote}}{{path}}' to File Manager menu",
       "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu"

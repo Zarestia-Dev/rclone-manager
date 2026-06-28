@@ -184,14 +184,11 @@ export class OperationsPanelComponent implements OnInit {
     return Array.isArray(errors) ? errors.join('\n') : errors;
   }
 
-  /** Get list of transferred files for a job */
   getTransferredFiles(job: JobInfo): string[] {
-    if (job.completed_transfers && job.completed_transfers.length > 0) {
-      return job.completed_transfers.map(t => t.name || 'Unknown file');
+    if (job.stats?.completed && job.stats.completed.length > 0) {
+      return job.stats.completed.map(t => t.name || 'Unknown file');
     }
-
-    // Fallback to legacy uploaded_files
-    return job.uploaded_files || [];
+    return [];
   }
 
   /** Get appropriate label for the list of transferred items */

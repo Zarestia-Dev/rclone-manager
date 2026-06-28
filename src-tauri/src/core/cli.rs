@@ -120,6 +120,18 @@ impl CliArgs {
             }
         }
 
+        // SendTo validation
+        if self.general.send_to_path.is_some() && self.general.send_to_remote.is_none() {
+            return Err("Cannot use --send-to-path without specifying a destination remote via --send-to-remote".into());
+        }
+
+        if self.general.send_to_remote.is_some() && self.general.send_to_sources.is_empty() {
+            return Err(
+                "At least one source file or folder must be provided when using --send-to-remote"
+                    .into(),
+            );
+        }
+
         Ok(())
     }
 
@@ -230,6 +242,37 @@ mod tests {
             "/path/to/cert",
             "--tls-key",
             "/path/to/key",
+        ]);
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_send_to() {
+        // Failing: path without remote
+        let args = CliArgs::parse_from(["rclone-manager", "--send-to-path", "/Photos"]);
+        assert!(args.validate().is_err());
+
+        // Failing: remote without sources
+        let args = CliArgs::parse_from(["rclone-manager", "--send-to-remote", "Dropbox:"]);
+        assert!(args.validate().is_err());
+
+        // Passing: remote with sources
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "/file.txt",
+        ]);
+        assert!(args.validate().is_ok());
+
+        // Passing: remote, path, and sources
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "--send-to-path",
+            "/Photos",
+            "/file.txt",
         ]);
         assert!(args.validate().is_ok());
     }

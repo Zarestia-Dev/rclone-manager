@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80
+  - **Windows**: Creates a cascading "RClone Manager" right-click submenu ("Upload to [Remote]") and Send To folder shortcuts.
+  - **Linux**: Installs GNOME Nautilus Python extensions, Nautilus fallback shell scripts, KDE Dolphin service menus, and Nemo actions.
+  - **macOS**: Registers Finder Quick Actions (automator workflow services).
+  - **CLI Commands**: Added `--send-to-remote` and `--send-to-path` command line arguments to trigger uploads directly from system context menus and custom scripts. Added strict argument validation to require a destination remote when `--send-to-path` is used, and at least one source file/folder when `--send-to-remote` is specified.
+  - **Cleanup**: Automatically cleans up all custom integrations, registry entries, extensions, and shortcuts upon application uninstallation or manual path unregistration.
 - **Operations Support**: Expanded Rclone operations support by adding `check`, `delete`, `copyurl`, `archivecreate`, and `cryptcheck`.
   - Added a new Action Selection Modal to choose and trigger these operations directly from the UI.
   - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.

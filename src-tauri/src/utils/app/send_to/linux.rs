@@ -57,7 +57,13 @@ pub fn register(
 ) -> Result<(), String> {
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
-    let exec_path = current_exe.to_string_lossy();
+    let exec_path = if cfg!(feature = "flatpak") {
+        let app_id = std::env::var("FLATPAK_ID")
+            .unwrap_or_else(|_| crate::utils::app::platform::APP_ID.to_string());
+        format!("flatpak run {app_id}")
+    } else {
+        format!("\"{}\"", current_exe.to_string_lossy())
+    };
 
     // 1. Nautilus script
     install_template(

@@ -276,6 +276,24 @@
     grid-column: 1 / -1;
   }
 
+  .transferring-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 120px;
+    overflow: auto;
+    padding-right: 4px;
+    margin-top: 4px;
+  }
+
+  .transferring-file-entry {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(var(--window-fg-color-rgb), 0.04);
+    word-break: break-word;
+  }
+
   .uploaded-files-section {
     margin-top: var(--space-xs);
   }

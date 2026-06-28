@@ -2267,6 +2267,25 @@
         "filenameLabel": "Назва файлу архіву",
         "filenameDesc": "Введіть назву стиснутого архіву, який буде створено",
         "compress": "Стиснути"
+      },
+      "multiRename": {
+        "title": "Перейменувати {{count}} файлів",
+        "templateMode": "Перейменувати за шаблоном",
+        "replaceMode": "Знайти та замінити текст",
+        "templateInput": "Шаблон",
+        "addPlaceholder": "Додати",
+        "findLabel": "Знайти текст",
+        "replaceLabel": "Замінити на",
+        "caseSensitive": "Чутливий до регістру",
+        "counterStart": "Початкове значення",
+        "counterStep": "Крок",
+        "counterPadding": "Цифри (доповнення)",
+        "rename": "Перейменувати",
+        "original": "Оригінальна назва",
+        "newName": "Нова назва",
+        "counter": "Лічильник",
+        "date": "Дата",
+        "extension": "Розширення"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "Наступна вкладка",
       "previousTab": "Попередня вкладка",
       "toggleSplit": "Перемкнути розділений перегляд",
-      "switchPane": "Перемкнути панель"
+      "switchPane": "Перемкнути панель",
+      "copyPublicLink": "Копіювати публічне посилання",
+      "createFolderWithItems": "Нова папка з виділеним...",
+      "renameMultiple": "Перейменувати декілька..."
     },
     "view": {
       "iconSize": "Розмір значків",
@@ -2348,6 +2370,7 @@
       "undoComplete": "Дію успішно скасовано",
       "redoComplete": "Дію успішно повторено",
       "copyUrlStarted": "Завантаження з URL...",
+      "getPublicLinkStarted": "Створення публічного посилання...",
       "archiveCreateStarted": "Створення архіву розпочато...",
       "sendToAdded": "Додано '{{remote}}{{path}}' до контекстного меню файлового менеджера",
       "sendToRemoved": "Вилучено '{{remote}}{{path}}' з контекстного меню файлового менеджера"

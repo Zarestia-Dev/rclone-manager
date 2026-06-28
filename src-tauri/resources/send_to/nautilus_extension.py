@@ -8,7 +8,11 @@ class {class_name}(GObject.GObject, Nautilus.MenuProvider):
 		super().__init__()
 
 	def menu_activate_cb(self, menu, files):
-		args = ["{exec_path}", "--send-to-remote", "{remote}", "--send-to-path", "{path}"]
+		exec_path = "{exec_path}".strip('"')
+		if exec_path.startswith("flatpak "):
+			args = exec_path.split() + ["--send-to-remote", "{remote}", "--send-to-path", "{path}"]
+		else:
+			args = [exec_path, "--send-to-remote", "{remote}", "--send-to-path", "{path}"]
 		for f in files:
 			uri = f.get_uri()
 			if uri.startswith("file://"):

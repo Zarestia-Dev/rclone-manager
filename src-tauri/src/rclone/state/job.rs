@@ -45,7 +45,6 @@ impl JobCache {
             backend_name,
             dry_run: metadata.dry_run,
             parent_job_id: metadata.parent_job_id,
-            completed_transfers: None,
         };
 
         self.add_job(job, app).await;
@@ -169,7 +168,7 @@ impl JobCache {
                     sanitize_finished_stats(&mut stats);
                 }
                 j.stats = Some(stats);
-                j.recompute_completed_transfers();
+                j.normalize_job_stats();
             },
             None,
         )
@@ -198,7 +197,7 @@ impl JobCache {
                     if let Some(stats) = j.stats.as_mut() {
                         sanitize_finished_stats(stats);
                     }
-                    j.recompute_completed_transfers();
+                    j.normalize_job_stats();
                 }
             },
             app,
@@ -216,7 +215,7 @@ impl JobCache {
                     if let Some(stats) = j.stats.as_mut() {
                         sanitize_finished_stats(stats);
                     }
-                    j.recompute_completed_transfers();
+                    j.normalize_job_stats();
                 }
             },
             app,
@@ -341,13 +340,19 @@ impl JobCache {
             .collect();
 
         if let Some(parent_job) = jobs.get_mut(&parent_job_id) {
-            let completed_transfers = match parent_job.completed_transfers.as_mut() {
+            let completed = match parent_job
+                .stats
+                .as_mut()
+                .and_then(|s| s.get_mut("completed"))
+                .and_then(|c| c.as_array_mut())
+            {
                 Some(ct) => ct,
                 None => return,
             };
 
-            for item in completed_transfers {
-                let normalized_item_name = item.name.replace('\\', "/");
+            for item in completed {
+                let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                let normalized_item_name = name.replace('\\', "/");
                 let mut matching_child_job: Option<&JobInfo> = None;
 
                 for job in &child_jobs {
@@ -385,8 +390,16 @@ impl JobCache {
                             &norm_src
                         };
 
-                        let item_src_fs = item.src_fs.as_deref().unwrap_or("").replace('\\', "/");
-                        let item_dst_fs = item.dst_fs.as_deref().unwrap_or("").replace('\\', "/");
+                        let item_src_fs = item
+                            .get("srcFs")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .replace('\\', "/");
+                        let item_dst_fs = item
+                            .get("dstFs")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .replace('\\', "/");
                         let remote_matches =
                             item_src_fs.starts_with(remote) || item_dst_fs.starts_with(remote);
 
@@ -410,62 +423,70 @@ impl JobCache {
                     }
                 }
 
-                item.resolve_job_id = matching_child_job.map(|j| j.jobid);
+                if let Some(obj) = item.as_object_mut() {
+                    obj.insert(
+                        "resolveJobId".to_string(),
+                        serde_json::json!(matching_child_job.map(|j| j.jobid)),
+                    );
 
-                if let Some(child_job) = matching_child_job {
-                    use crate::utils::types::jobs::ResolveState;
+                    if let Some(child_job) = matching_child_job {
+                        use crate::utils::types::jobs::ResolveState;
 
-                    let mut percentage = 0;
-                    let mut is_preparing = true;
-                    let mut bytes = 0;
-                    let mut size = 0;
-                    let mut speed = 0.0;
-                    let mut speed_class = "speed-slow".to_string();
-                    let mut eta = 0;
+                        let mut percentage = 0;
+                        let mut is_preparing = true;
+                        let mut bytes = 0;
+                        let mut size = 0;
+                        let mut speed = 0.0;
+                        let mut speed_class = "speed-slow".to_string();
+                        let mut eta = 0;
 
-                    if let Some(stats) = &child_job.stats {
-                        let total_bytes = stats
-                            .get("totalBytes")
-                            .and_then(|v| v.as_i64())
-                            .unwrap_or(0);
-                        let current_bytes =
-                            stats.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
-                        let current_speed =
-                            stats.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let current_eta = stats.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
+                        if let Some(stats) = &child_job.stats {
+                            let total_bytes = stats
+                                .get("totalBytes")
+                                .and_then(|v| v.as_i64())
+                                .unwrap_or(0);
+                            let current_bytes =
+                                stats.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
+                            let current_speed =
+                                stats.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let current_eta =
+                                stats.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
 
-                        if total_bytes > 0 {
-                            percentage =
-                                ((current_bytes as f64 / total_bytes as f64) * 100.0) as u8;
-                            is_preparing = false;
-                            bytes = current_bytes;
-                            size = total_bytes;
-                            speed = current_speed;
-                            eta = current_eta;
-                        } else if let Some(transferring) =
-                            stats.get("transferring").and_then(|v| v.as_array())
-                            && !transferring.is_empty()
-                        {
-                            let tf = transferring
-                                .iter()
-                                .find(|t| {
-                                    let t_name = t
-                                        .get("name")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .replace('\\', "/");
-                                    t_name == normalized_item_name
-                                        || t_name.ends_with(&format!("/{}", normalized_item_name))
-                                })
-                                .unwrap_or(&transferring[0]);
+                            if total_bytes > 0 {
+                                percentage =
+                                    ((current_bytes as f64 / total_bytes as f64) * 100.0) as u8;
+                                is_preparing = false;
+                                bytes = current_bytes;
+                                size = total_bytes;
+                                speed = current_speed;
+                                eta = current_eta;
+                            } else if let Some(transferring) =
+                                stats.get("transferring").and_then(|v| v.as_array())
+                                && !transferring.is_empty()
+                            {
+                                let tf = transferring
+                                    .iter()
+                                    .find(|t| {
+                                        let t_name = t
+                                            .get("name")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .replace('\\', "/");
+                                        t_name == normalized_item_name
+                                            || t_name
+                                                .ends_with(&format!("/{}", normalized_item_name))
+                                    })
+                                    .unwrap_or(&transferring[0]);
 
-                            percentage =
-                                tf.get("percentage").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
-                            is_preparing = false;
-                            bytes = tf.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
-                            size = tf.get("size").and_then(|v| v.as_i64()).unwrap_or(0);
-                            speed = tf.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                            eta = tf.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
+                                percentage =
+                                    tf.get("percentage").and_then(|v| v.as_u64()).unwrap_or(0)
+                                        as u8;
+                                is_preparing = false;
+                                bytes = tf.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
+                                size = tf.get("size").and_then(|v| v.as_i64()).unwrap_or(0);
+                                speed = tf.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                eta = tf.get("eta").and_then(|v| v.as_u64()).unwrap_or(0);
+                            }
                         }
 
                         if speed > 1024.0 * 1024.0 * 5.0 {
@@ -473,37 +494,46 @@ impl JobCache {
                         } else if speed > 1024.0 * 1024.0 {
                             speed_class = "speed-medium".to_string();
                         }
+
+                        let status_str = serde_json::to_value(&child_job.status)
+                            .ok()
+                            .and_then(|v| v.as_str().map(String::from))
+                            .unwrap_or_else(|| "Running".to_string());
+
+                        // Overwrite item status if resolved
+                        if child_job.status == JobStatus::Completed {
+                            obj.insert("status".to_string(), serde_json::json!("checked"));
+                        } else if child_job.status == JobStatus::Failed {
+                            obj.insert("status".to_string(), serde_json::json!("failed"));
+                            obj.insert(
+                                "error".to_string(),
+                                serde_json::json!(
+                                    child_job
+                                        .error
+                                        .clone()
+                                        .unwrap_or_else(|| "Resolve job failed".to_string())
+                                ),
+                            );
+                        }
+
+                        let resolve_state = ResolveState {
+                            status: status_str,
+                            percentage,
+                            is_preparing,
+                            bytes,
+                            size,
+                            speed,
+                            speed_class,
+                            eta,
+                            error: child_job.error.clone(),
+                        };
+                        obj.insert(
+                            "resolveState".to_string(),
+                            serde_json::to_value(resolve_state).unwrap_or(Value::Null),
+                        );
+                    } else {
+                        obj.insert("resolveState".to_string(), Value::Null);
                     }
-
-                    let status_str = serde_json::to_value(&child_job.status)
-                        .ok()
-                        .and_then(|v| v.as_str().map(String::from))
-                        .unwrap_or_else(|| "Running".to_string());
-
-                    // Overwrite item status if resolved
-                    if child_job.status == JobStatus::Completed {
-                        item.status = "checked".to_string();
-                    } else if child_job.status == JobStatus::Failed {
-                        item.status = "failed".to_string();
-                        item.error = child_job
-                            .error
-                            .clone()
-                            .unwrap_or_else(|| "Resolve job failed".to_string());
-                    }
-
-                    item.resolve_state = Some(ResolveState {
-                        status: status_str,
-                        percentage,
-                        is_preparing,
-                        bytes,
-                        size,
-                        speed,
-                        speed_class,
-                        eta,
-                        error: child_job.error.clone(),
-                    });
-                } else {
-                    item.resolve_state = None;
                 }
             }
         }
@@ -557,7 +587,6 @@ mod tests {
             backend_name: default_backend_name(),
             dry_run: false,
             parent_job_id: None,
-            completed_transfers: None,
         }
     }
 
@@ -727,16 +756,17 @@ mod tests {
         cache.update_job_stats(jobid, active_stats).await.unwrap();
 
         let job = cache.get_job(jobid).await.unwrap();
-        let completed = job.completed_transfers.unwrap();
+        let stats = job.stats.unwrap();
+        let completed = stats.get("completed").unwrap().as_array().unwrap();
         assert_eq!(completed.len(), 2);
 
         // They should be sorted newest completed first
-        assert_eq!(completed[0].name, "file2.txt");
-        assert_eq!(completed[0].status, "failed");
-        assert_eq!(completed[0].error, "some error");
+        assert_eq!(completed[0]["name"].as_str().unwrap(), "file2.txt");
+        assert_eq!(completed[0]["status"].as_str().unwrap(), "failed");
+        assert_eq!(completed[0]["error"].as_str().unwrap(), "some error");
 
-        assert_eq!(completed[1].name, "file1.txt");
-        assert_eq!(completed[1].status, "completed");
-        assert_eq!(completed[1].error, "");
+        assert_eq!(completed[1]["name"].as_str().unwrap(), "file1.txt");
+        assert_eq!(completed[1]["status"].as_str().unwrap(), "completed");
+        assert_eq!(completed[1]["error"].as_str().unwrap(), "");
     }
 }

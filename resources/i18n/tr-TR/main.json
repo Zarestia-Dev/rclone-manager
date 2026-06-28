@@ -2267,6 +2267,25 @@
         "filenameLabel": "Arşiv Dosya Adı",
         "filenameDesc": "Oluşturulacak sıkıştırılmış arşivin adını girin",
         "compress": "Sıkıştır"
+      },
+      "multiRename": {
+        "title": "{{count}} Dosyayı Yeniden Adlandır",
+        "templateMode": "Şablon kullanarak yeniden adlandır",
+        "replaceMode": "Metni bul ve değiştir",
+        "templateInput": "Şablon",
+        "addPlaceholder": "Ekle",
+        "findLabel": "Aranan metin",
+        "replaceLabel": "Yeni değer",
+        "caseSensitive": "Büyük/küçük harf duyarlı",
+        "counterStart": "Sayacı başlat",
+        "counterStep": "Artış",
+        "counterPadding": "Basamaklar (dolgu)",
+        "rename": "Yeniden Adlandır",
+        "original": "Orijinal ad",
+        "newName": "Yeni ad",
+        "counter": "Sayaç",
+        "date": "Tarih",
+        "extension": "Uzantı"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "Sonraki Sekme",
       "previousTab": "Önceki Sekme",
       "toggleSplit": "Bölünmüş Görünüm",
-      "switchPane": "Panele Geç"
+      "switchPane": "Panele Geç",
+      "copyPublicLink": "Ortak Bağlantıyı Kopyala",
+      "createFolderWithItems": "Seçilenlerle Yeni Klasör...",
+      "renameMultiple": "Çoklu Yeniden Adlandır..."
     },
     "view": {
       "iconSize": "Simge Boyutu",
@@ -2348,6 +2370,7 @@
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı",
       "copyUrlStarted": "URL'den indiriliyor...",
+      "getPublicLinkStarted": "Ortak bağlantı oluşturuluyor...",
       "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
       "sendToAdded": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsüne eklendi",
       "sendToRemoved": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsünden kaldırıldı"

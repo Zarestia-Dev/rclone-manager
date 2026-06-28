@@ -2267,6 +2267,25 @@
         "filenameLabel": "Nombre del archivo",
         "filenameDesc": "Introduzca el nombre del archivo comprimido que se va a crear",
         "compress": "Comprimir"
+      },
+      "multiRename": {
+        "title": "Renombrar {{count}} archivos",
+        "templateMode": "Renombrar usando una plantilla",
+        "replaceMode": "Buscar y reemplazar texto",
+        "templateInput": "Plantilla",
+        "addPlaceholder": "Añadir",
+        "findLabel": "Buscar texto",
+        "replaceLabel": "Reemplazar con",
+        "caseSensitive": "Sensible a mayúsculas",
+        "counterStart": "Iniciar contador",
+        "counterStep": "Paso",
+        "counterPadding": "Dígitos (relleno)",
+        "rename": "Renombrar",
+        "original": "Nombre original",
+        "newName": "Nuevo nombre",
+        "counter": "Contador",
+        "date": "Fecha",
+        "extension": "Extensión"
       }
     },
     "errors": {
@@ -2328,7 +2347,10 @@
       "nextTab": "Siguiente Pestaña",
       "previousTab": "Pestaña Anterior",
       "toggleSplit": "Alternar Vista Dividida",
-      "switchPane": "Cambiar de Panel"
+      "switchPane": "Cambiar de Panel",
+      "copyPublicLink": "Copiar enlace público",
+      "createFolderWithItems": "Nueva carpeta con selección...",
+      "renameMultiple": "Renombrar varios..."
     },
     "view": {
       "iconSize": "Tamaño del ícono",
@@ -2348,6 +2370,7 @@
       "undoComplete": "Deshacer exitoso",
       "redoComplete": "Rehacer exitoso",
       "copyUrlStarted": "Descargando desde URL...",
+      "getPublicLinkStarted": "Generando enlace público...",
       "archiveCreateStarted": "Creación de archivo iniciada...",
       "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
       "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"

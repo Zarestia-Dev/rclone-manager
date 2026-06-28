@@ -397,8 +397,7 @@ export class AppDetailComponent {
   });
 
   readonly completedTransfers = computed<CompletedTransfer[]>(() => {
-    const activeJob = this.activeGroupJob();
-    return activeJob?.completed_transfers ?? [];
+    return this.jobStats().completed ?? [];
   });
 
   // --- Derived: Timing ---

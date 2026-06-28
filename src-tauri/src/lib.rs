@@ -32,7 +32,7 @@ use crate::{
         alerts::AlertHistoryCache, automation::engine::AutomationScheduler,
         initialization::initialization, paths::AppPaths,
     },
-    rclone::commands::filesystem::{UploadBatchParams, execute_upload_batch},
+    rclone::commands::upload::{UploadBatchParams, execute_upload_batch},
     utils::types::{
         logs::LogCache,
         state::{RcApiEngine, RcloneState},
@@ -130,17 +130,15 @@ pub fn run() {
 
         #[cfg(target_os = "linux")]
         let si_builder = si_builder.dbus_id(if cfg!(debug_assertions) {
-            "io.github.zarestia_dev.rclone-manager-dev"
+            crate::utils::app::platform::APP_ID_DEV
         } else {
-            "io.github.zarestia_dev.rclone-manager"
+            crate::utils::app::platform::APP_ID
         });
 
         builder = builder.plugin(
             si_builder
                 .callback(|app: &tauri::AppHandle, argv, cwd| {
-                    #[allow(clippy::collapsible_if)]
-                    if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&argv) {
-                        if let Some(remote) = cli_args.general.send_to_remote {
+                    if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&argv) && let Some(remote) = cli_args.general.send_to_remote {
                             let path = cli_args.general.send_to_path;
                             let sources = cli_args.general.send_to_sources;
                             let app_handle_clone = app.clone();
@@ -162,7 +160,6 @@ pub fn run() {
                                 }
                             });
                             return;
-                        }
                     }
 
                     #[cfg(feature = "web-server")]

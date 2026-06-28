@@ -118,7 +118,7 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const combined = job.completed_transfers ?? [];
+    const combined = stats?.completed ?? [];
 
     return {
       activeTransfers: stats?.transferring ?? [],

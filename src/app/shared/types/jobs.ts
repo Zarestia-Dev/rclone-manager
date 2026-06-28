@@ -45,6 +45,7 @@ export interface GlobalStats {
   transferring: TransferFile[];
   transfers: number;
   listed: number;
+  completed?: CompletedTransfer[];
   startTime?: string;
   checkOutput?: {
     differ?: string[];
@@ -82,6 +83,7 @@ export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
   transferTime: 0,
   transferring: [],
   listed: 0,
+  completed: [],
 });
 
 export interface JobInfo {
@@ -96,7 +98,6 @@ export interface JobInfo {
   error?: string;
   remote_name: string;
   stats: GlobalStats;
-  uploaded_files?: string[];
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
@@ -106,7 +107,6 @@ export interface JobInfo {
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
   parent_job_id?: number;
-  completed_transfers?: CompletedTransfer[];
 }
 
 export interface BatchMasterJob {

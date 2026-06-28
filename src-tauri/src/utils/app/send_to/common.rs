@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 const INVALID_NAME_CHARS: &str = r#"<>:"/\|?*"#;
 
 pub fn sanitize_name(name: &str) -> String {
@@ -25,7 +23,13 @@ pub fn get_sanitized_name(remote: &str, path: Option<&str>) -> String {
         })
         .unwrap_or_default();
 
-    sanitize_name(&format!("{remote}{path_suffix} (RClone Manager)"))
+    let app_suffix = if cfg!(feature = "web-server") {
+        " (RClone Manager Headless)"
+    } else {
+        " (RClone Manager)"
+    };
+
+    sanitize_name(&format!("{remote}{path_suffix}{app_suffix}"))
 }
 
 pub fn apply_template(template: &str, replacements: &[(&str, &str)]) -> String {
@@ -37,8 +41,8 @@ pub fn apply_template(template: &str, replacements: &[(&str, &str)]) -> String {
 }
 
 #[cfg(unix)]
-pub fn get_home_dir() -> Result<PathBuf, String> {
+pub fn get_home_dir() -> Result<std::path::PathBuf, String> {
     std::env::var("HOME")
-        .map(PathBuf::from)
+        .map(std::path::PathBuf::from)
         .map_err(|_| "Could not find HOME environment variable".to_string())
 }

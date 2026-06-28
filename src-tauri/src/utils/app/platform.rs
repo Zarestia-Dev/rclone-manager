@@ -1,3 +1,6 @@
+pub const APP_ID: &str = "io.github.zarestia_dev.rclone-manager";
+pub const APP_ID_DEV: &str = "io.github.zarestia_dev.rclone-manager-dev";
+
 #[tauri::command]
 #[must_use]
 pub fn get_build_type() -> Option<&'static str> {

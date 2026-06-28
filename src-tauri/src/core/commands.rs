@@ -42,9 +42,9 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
-            (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>]);
-            (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>]);
-            (is_send_to_registered, $crate::utils::app::send_to::is_send_to_registered, [remote: String, path: Option<String>]);
+            (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>], [no_app]);
+            (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>], [no_app]);
+            (is_send_to_registered, $crate::utils::app::send_to::is_send_to_registered, [remote: String, path: Option<String>], [no_app]);
 
             // =================================================================
             // RCLONE OPERATIONS
@@ -136,12 +136,12 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (mkdir, $crate::rclone::commands::filesystem::mkdir, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (cleanup, $crate::rclone::commands::filesystem::cleanup, [remote: String, path: Option<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (transfer, $crate::rclone::commands::filesystem::transfer, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, dst_remote: String, dst_path: String, mode: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>, parent_job_id: Option<u64>]);
             (delete, $crate::rclone::commands::filesystem::delete, [items: Vec<$crate::rclone::commands::filesystem::FsItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (rename, $crate::rclone::commands::filesystem::rename, [items: Vec<$crate::rclone::commands::filesystem::RenameItem>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (copy_url, $crate::rclone::commands::filesystem::copy_url, [remote: String, path: String, url_to_copy: String, auto_filename: bool, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_local_drop_paths, $crate::rclone::commands::filesystem::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
-            (upload_file, $crate::rclone::commands::filesystem::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
+            (upload_local_drop_paths, $crate::rclone::commands::upload::upload_local_drop_paths, [remote: String, path: String, local_paths: Vec<String>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
+            (upload_file, $crate::rclone::commands::upload::upload_file, [remote: String, path: String, name: String, content: Vec<u8>]);
             (remove_empty_dirs, $crate::rclone::commands::filesystem::remove_empty_dirs, [remote: String, path: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_drives, $crate::rclone::queries::get_local_drives, []);
 

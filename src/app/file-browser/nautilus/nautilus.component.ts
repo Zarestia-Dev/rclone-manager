@@ -35,7 +35,6 @@ import {
   DEFAULT_PICKER_OPTIONS,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
 
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
@@ -51,7 +50,7 @@ import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
-import { SlideMenuController } from './slide-menu';
+import { NautilusContextMenuComponent } from './context-menu/nautilus-context-menu.component';
 
 @Component({
   selector: 'app-nautilus',
@@ -68,7 +67,7 @@ import { SlideMenuController } from './slide-menu';
     MatButtonModule,
     MatDividerModule,
     CdkMenuModule,
-    CopyToClipboardDirective,
+    NautilusContextMenuComponent,
   ],
   providers: [
     FormatFileSizePipe,
@@ -106,6 +105,7 @@ export class NautilusComponent implements OnInit {
   @ViewChild('sidenav') sidenav!: MatSidenav;
   @ViewChild('fileUploadInput') fileUploadInput!: ElementRef<HTMLInputElement>;
   @ViewChild('folderUploadInput') folderUploadInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('contextMenu') contextMenu!: NautilusContextMenuComponent;
 
   // ── Responsive layout ────────────────────────────────────────────────────────
   private readonly _windowWidth = toSignal(
@@ -150,7 +150,6 @@ export class NautilusComponent implements OnInit {
   protected readonly isSearchMode = signal(false);
   protected readonly isCurrentPathRegistered = signal(false);
   protected readonly searchFilter = signal('');
-  protected readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
   private readonly initialLocationApplied = signal(false);
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
@@ -654,7 +653,9 @@ export class NautilusComponent implements OnInit {
   }
 
   setContextItem(item: FileBrowserItem | null, paneIndex?: 0 | 1): void {
-    this.menuCtrl.reset();
+    if (this.contextMenu) {
+      this.contextMenu.reset();
+    }
     const pIdx = paneIndex ?? this.tabSvc.activePaneIndex();
     const files = pIdx === 0 ? this.files() : this.filesRight();
     this.selectionSvc.handleContextItem(item, pIdx, files);

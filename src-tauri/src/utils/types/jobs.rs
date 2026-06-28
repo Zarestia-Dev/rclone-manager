@@ -180,8 +180,6 @@ pub struct JobInfo {
     pub dry_run: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_job_id: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completed_transfers: Option<Vec<CompletedTransfer>>,
 }
 
 impl JobInfo {
@@ -190,8 +188,8 @@ impl JobInfo {
         self.job_type.is_meta()
     }
 
-    pub fn recompute_completed_transfers(&mut self) {
-        self.completed_transfers = compute_completed_transfers(
+    pub fn normalize_job_stats(&mut self) {
+        let completed = compute_completed_transfers(
             self.jobid,
             &self.job_type,
             &self.group,
@@ -200,6 +198,12 @@ impl JobInfo {
             self.end_time,
             &self.stats,
         );
+        if let (Some(val), Some(obj)) = (
+            completed.and_then(|c| serde_json::to_value(c).ok()),
+            self.stats.as_mut().and_then(|s| s.as_object_mut()),
+        ) {
+            obj.insert("completed".to_string(), val);
+        }
     }
 }
 

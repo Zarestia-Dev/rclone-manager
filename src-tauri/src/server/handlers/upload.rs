@@ -90,9 +90,9 @@ pub async fn stream_upload_handler(
                         entries.push(entry.path().to_string_lossy().to_string());
                     }
 
-                    let res = crate::rclone::commands::filesystem::execute_upload_batch(
+                    let res = crate::rclone::commands::upload::execute_upload_batch(
                         state.app_handle.clone(),
-                        crate::rclone::commands::filesystem::UploadBatchParams {
+                        crate::rclone::commands::upload::UploadBatchParams {
                             remote,
                             path,
                             local_paths: entries,
@@ -108,9 +108,9 @@ pub async fn stream_upload_handler(
                     return Ok(Json(ApiResponse::success(res)));
                 }
 
-                let res = crate::rclone::commands::filesystem::execute_upload_batch(
+                let res = crate::rclone::commands::upload::execute_upload_batch(
                     state.app_handle.clone(),
-                    crate::rclone::commands::filesystem::UploadBatchParams {
+                    crate::rclone::commands::upload::UploadBatchParams {
                         remote,
                         path,
                         local_paths: vec![temp_path.to_string_lossy().to_string()],
