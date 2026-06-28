@@ -214,6 +214,7 @@ export class AboutModalComponent implements OnInit {
   ];
 
   readonly bottomNavItems: { label: string; viewId: ViewId; icon: string }[] = [
+    { label: 'modals.about.sponsor', viewId: 'sponsor', icon: 'chevron-right' },
     { label: 'modals.about.credits', viewId: 'credits', icon: 'chevron-right' },
     { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];
@@ -234,6 +235,7 @@ export class AboutModalComponent implements OnInit {
     'whats-new-rclone': 'modals.about.whatsNew',
     memory: 'modals.about.memoryStats',
     debugging: 'modals.about.debugTools',
+    sponsor: 'modals.about.sponsor',
   };
 
   // ---------------------------------------------------------------------------

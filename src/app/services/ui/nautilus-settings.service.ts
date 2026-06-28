@@ -19,6 +19,8 @@ export class NautilusSettingsService {
   readonly iconSize = signal(96);
   readonly savedGridIconSize = signal<number | null>(null);
   readonly savedListIconSize = signal<number | null>(null);
+  readonly operationsPanelPosition = signal<'sidebar' | 'bottom'>('sidebar');
+  readonly operationsPanelHeight = signal<number>(200);
 
   private readonly _sortColumn = signal<'name' | 'size' | 'modified'>('name');
   private readonly _sortAscending = signal(true);
@@ -130,6 +132,16 @@ export class NautilusSettingsService {
     this.localStorage.set('nautilus.split_divider_pos', Math.round(pos));
   }
 
+  saveOperationsPanelPosition(pos: 'sidebar' | 'bottom'): void {
+    this.operationsPanelPosition.set(pos);
+    this.localStorage.set('nautilus.operations_panel_pos', pos);
+  }
+
+  saveOperationsPanelHeight(height: number): void {
+    this.operationsPanelHeight.set(height);
+    this.localStorage.set('nautilus.operations_panel_height', height);
+  }
+
   // ── Private ─────────────────────────────────────────────────────────────────
 
   private _loadFromLocalStorage(): void {
@@ -138,10 +150,20 @@ export class NautilusSettingsService {
     const showHidden = this.localStorage.get<boolean>('nautilus.show_hidden_items', false);
     const gridIconSize = this.localStorage.get<number | null>('nautilus.grid_icon_size', null);
     const listIconSize = this.localStorage.get<number | null>('nautilus.list_icon_size', null);
+    const operationsPanelPos = this.localStorage.get<'sidebar' | 'bottom'>(
+      'nautilus.operations_panel_pos',
+      'sidebar'
+    );
+    const operationsPanelHeight = this.localStorage.get<number>(
+      'nautilus.operations_panel_height',
+      200
+    );
 
     this.layout.set(layout);
     this.applySort(sortKey);
     this.showHidden.set(showHidden);
+    this.operationsPanelPosition.set(operationsPanelPos);
+    this.operationsPanelHeight.set(operationsPanelHeight);
     if (gridIconSize) this.savedGridIconSize.set(gridIconSize);
     if (listIconSize) this.savedListIconSize.set(listIconSize);
 

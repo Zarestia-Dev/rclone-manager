@@ -13,6 +13,7 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { SlideMenuController } from '../slide-menu';
+import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 
 @Component({
   selector: 'app-nautilus-sidebar',
@@ -35,6 +36,7 @@ export class NautilusSidebarComponent {
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
+  protected readonly settings = inject(NautilusSettingsService);
 
   // Inputs
   readonly isMobile = input.required<boolean>();

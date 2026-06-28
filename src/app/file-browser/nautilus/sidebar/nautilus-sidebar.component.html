@@ -114,7 +114,9 @@
     </nav>
   </div>
 
-  <app-operations-panel></app-operations-panel>
+  @if (settings.operationsPanelPosition() === 'sidebar') {
+    <app-operations-panel></app-operations-panel>
+  }
 </div>
 
 <!-- Remote item template -->

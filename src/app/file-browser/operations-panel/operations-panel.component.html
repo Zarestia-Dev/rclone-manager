@@ -1,225 +1,590 @@
 @if (hasJobs()) {
-  <mat-accordion class="operations-accordion">
-    <mat-expansion-panel
-      [expanded]="isExpanded()"
-      (opened)="isExpanded.set(true)"
-      (closed)="isExpanded.set(false)"
-    >
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon svgIcon="download"></mat-icon>
-          <span>{{ 'fileBrowser.operations.title' | translate }}</span>
-          @if (activeJobs().length > 0) {
-            <span class="job-count">{{ activeJobs().length }}</span>
-          }
-        </mat-panel-title>
-      </mat-expansion-panel-header>
+  @if (isDockedAtBottom()) {
+    <div class="bottom-panel-container" [style.height.px]="settings.operationsPanelHeight()">
+      <!-- Resize Handle -->
+      <div class="resize-handle" (mousedown)="onResizeMouseDown($event)"></div>
 
-      <div class="panel-content">
-        @for (job of jobs(); track job.jobid) {
-          <div
-            class="job-item"
-            [class.completed]="job.status !== 'Running'"
-            row="button"
-            tabindex="0"
-            [cdkMenuTriggerFor]="detailsMenu"
-            [cdkMenuPosition]="[
-              {
-                originX: 'end',
-                originY: 'top',
-                overlayX: 'start',
-                overlayY: 'top',
-                offsetX: 8,
-                offsetY: -8,
-              },
-              {
-                originX: 'start',
-                originY: 'top',
-                overlayX: 'end',
-                overlayY: 'top',
-                offsetX: -8,
-              },
-            ]"
-          >
-            <!-- Row 1: Name and action -->
-            <div class="job-row">
-              <mat-icon class="job-type-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
-              <div class="job-content">
-                <span class="job-name">{{ getFileName(job) }}</span>
-                <span
-                  class="job-subname"
-                  [matTooltip]="job.destination || getFormattedSource(job.source)"
-                >
-                  {{ getActualFileName(job) }}
+      <!-- Main Layout -->
+      <div class="bottom-panel-layout">
+        <!-- Left Sidebar: Jobs list -->
+        <div class="panel-left-sidebar">
+          <div class="sidebar-header">
+            <mat-icon svgIcon="download" class="drag-handle-icon"></mat-icon>
+            <span class="header-title">{{ 'fileBrowser.operations.title' | translate }}</span>
+            @if (activeJobs().length > 0) {
+              <span class="job-count">{{ activeJobs().length }}</span>
+            }
+            <button
+              mat-icon-button
+              class="dock-btn"
+              (click)="setDockPosition('sidebar'); $event.stopPropagation()"
+              matTooltip="Dock to Sidebar"
+            >
+              <mat-icon svgIcon="chevron-left"></mat-icon>
+            </button>
+          </div>
+          <div class="jobs-list-scroll">
+            @for (job of jobs(); track job.jobid) {
+              <div
+                class="job-list-item"
+                [class.selected]="selectedJob()?.jobid === job.jobid"
+                (click)="selectJob(job)"
+                role="button"
+                tabindex="0"
+                (keydown.enter)="selectJob(job)"
+              >
+                <mat-icon class="job-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
+                <div class="job-meta">
+                  <span class="job-title">{{ getFileName(job) }}</span>
+                  <span class="job-subtitle">{{ getActualFileName(job) }}</span>
+                </div>
+                <span class="job-status-badge" [class]="job.status.toLowerCase()">
+                  {{ job.status }}
                 </span>
               </div>
-              <mat-icon
-                class="action-btn"
-                (click)="
-                  job.status === 'Running' ? stopJob(job) : deleteJob(job); $event.stopPropagation()
-                "
-                [matTooltip]="
-                  (job.status === 'Running'
-                    ? 'fileBrowser.operations.cancelJob'
-                    : 'fileBrowser.operations.removeJob'
-                  ) | translate
-                "
-                matTooltipShowDelay="500"
-                svgIcon="circle-xmark"
-              >
-              </mat-icon>
-            </div>
-
-            <!-- Row 2: Progress bar (only for running) -->
-            @if (job.status === 'Running') {
-              @if (isDeleteOperation(job)) {
-                <mat-progress-bar mode="indeterminate" class="job-progress"></mat-progress-bar>
-              } @else {
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="getProgress(job)"
-                  class="job-progress"
-                ></mat-progress-bar>
-              }
             }
+          </div>
+        </div>
 
-            <!-- Row 3: Stats -->
-            <div class="job-stats">
-              @if (job.status === 'Running' && job.stats) {
-                <span class="stats-text"
-                  >{{ job.stats.bytes | formatFileSize }} /
-                  {{ job.stats.totalBytes | formatFileSize }}</span
-                >
-              } @else if (job.status === 'Completed') {
-                <span class="stats-text success">{{
-                  'fileBrowser.operations.completed' | translate
-                }}</span>
-              } @else if (job.status === 'Failed') {
-                <span class="stats-text error">{{
-                  'fileBrowser.operations.failed' | translate
-                }}</span>
-              } @else if (job.status === 'Stopped') {
-                <span class="stats-text">{{ 'fileBrowser.operations.cancelled' | translate }}</span>
-              }
-            </div>
-
-            <ng-template #detailsMenu>
-              <div class="details-content job-details-menu" cdkMenu>
-                <div class="detail-header">
-                  <mat-icon [svgIcon]="getJobTypeIcon(job)"></mat-icon>
-                  <span class="detail-title">{{ job.status }} - {{ getJobTypeLabel(job) }}</span>
+        <!-- Right Content: Detailed job details -->
+        <div class="panel-main-content">
+          @if (selectedJob(); as job) {
+            <div class="details-pane-content">
+              <!-- Top bar with title and action buttons -->
+              <div class="details-pane-header">
+                <div class="header-title-group">
+                  <mat-icon class="job-type-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
+                  <span class="job-type-label"
+                    >{{ getJobTypeLabel(job) }} (ID: {{ job.jobid }})</span
+                  >
                 </div>
-                <mat-divider></mat-divider>
+                <div class="header-action-group">
+                  @if (job.status === 'Running') {
+                    <button mat-flat-button color="warn" class="btn-cancel" (click)="stopJob(job)">
+                      <mat-icon svgIcon="stop"></mat-icon>
+                      Cancel Job
+                    </button>
+                  } @else {
+                    <button mat-stroked-button class="btn-remove" (click)="deleteJob(job)">
+                      <mat-icon svgIcon="trash"></mat-icon>
+                      Remove
+                    </button>
+                  }
+                </div>
+              </div>
 
-                @if (job.status === 'Running' && job.stats) {
-                  <div class="detail-grid upload-stats-grid">
-                    <div class="detail-item">
-                      <span class="detail-label">Progress</span>
-                      <span class="value"
-                        >{{ job.stats.bytes | formatFileSize }} /
-                        {{ job.stats.totalBytes | formatFileSize }}</span
-                      >
+              <!-- Main grid of stats and information -->
+              <div class="details-pane-body">
+                <div class="details-columns">
+                  <!-- Col 1: Progress, transfer rates, times -->
+                  <div class="details-col-left">
+                    <div class="details-group">
+                      <span class="group-label">Status & Details</span>
+                      <div class="stats-card">
+                        <div class="stat-line">
+                          <span class="lbl">Status</span>
+                          <span class="val status-text" [class]="job.status.toLowerCase()">{{
+                            job.status
+                          }}</span>
+                        </div>
+                        <div class="stat-line">
+                          <span class="lbl">Start Time</span>
+                          <span class="val">{{ job.start_time | date: 'medium' }}</span>
+                        </div>
+                        @if (job.end_time) {
+                          <div class="stat-line">
+                            <span class="lbl">End Time</span>
+                            <span class="val">{{ job.end_time | date: 'medium' }}</span>
+                          </div>
+                        }
+                      </div>
                     </div>
 
-                    <div class="detail-item">
-                      <span class="detail-label">Files</span>
-                      <span class="value"
-                        >{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span
-                      >
-                    </div>
+                    <!-- Progress section -->
+                    @if (job.status === 'Running' || job.stats) {
+                      <div class="details-group progress-group">
+                        <span class="group-label">Progress</span>
+                        <div class="progress-card">
+                          @if (job.status === 'Running') {
+                            @if (isDeleteOperation(job)) {
+                              <mat-progress-bar
+                                mode="indeterminate"
+                                class="job-progress"
+                              ></mat-progress-bar>
+                            } @else {
+                              <mat-progress-bar
+                                mode="determinate"
+                                [value]="getProgress(job)"
+                                class="job-progress"
+                              ></mat-progress-bar>
+                            }
+                          }
+                          <div class="progress-stats">
+                            @if (job.stats) {
+                              <div class="stat-item-box">
+                                <span class="lbl">Transferred</span>
+                                <span class="val"
+                                  >{{ job.stats.bytes | formatFileSize }} /
+                                  {{ job.stats.totalBytes | formatFileSize }}</span
+                                >
+                              </div>
+                              <div class="stat-item-box">
+                                <span class="lbl">Files</span>
+                                <span class="val"
+                                  >{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span
+                                >
+                              </div>
+                              @if (job.status === 'Running') {
+                                <div class="stat-item-box">
+                                  <span class="lbl">Speed</span>
+                                  <span class="val">{{ job.stats.speed | formatRateValue }}</span>
+                                </div>
+                                <div class="stat-item-box">
+                                  <span class="lbl">ETA</span>
+                                  <span class="val">{{ job.stats.eta | formatEta }}</span>
+                                </div>
+                              }
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    }
 
-                    <div class="detail-item">
-                      <span class="detail-label">Speed</span>
-                      <span class="value">{{ job.stats.speed | formatRateValue }}</span>
+                    <!-- Path Info -->
+                    <div class="details-group path-group">
+                      <span class="group-label">Directories</span>
+                      <div class="path-card">
+                        @if (job.source) {
+                          <div class="path-line">
+                            <mat-icon svgIcon="folder"></mat-icon>
+                            <div class="path-info">
+                              <span class="lbl">Source</span>
+                              <span
+                                class="val path-text"
+                                [matTooltip]="getFormattedSource(job.source)"
+                                >{{ getFormattedSource(job.source) }}</span
+                              >
+                            </div>
+                          </div>
+                        }
+                        @if (job.destination) {
+                          <div class="path-line">
+                            <mat-icon svgIcon="folder"></mat-icon>
+                            <div class="path-info">
+                              <span class="lbl">Destination</span>
+                              <span class="val path-text" [matTooltip]="job.destination">{{
+                                job.destination
+                              }}</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
                     </div>
+                  </div>
 
-                    <div class="detail-item">
-                      <span class="detail-label">ETA</span>
-                      <span class="value">{{ job.stats.eta | formatEta }}</span>
-                    </div>
-
-                    @if (job.stats.transferring && job.stats.transferring.length > 0) {
-                      <div class="detail-item upload-current-file">
-                        <span class="detail-label">
-                          {{
-                            job.stats.transferring.length === 1 ? 'Current file' : 'Current files'
-                          }}
-                        </span>
-                        <div class="transferring-files-list">
+                  <!-- Col 2: Transferred/Transferring files list -->
+                  <div class="details-col-right">
+                    <!-- Current transferring files -->
+                    @if (
+                      job.status === 'Running' &&
+                      job.stats.transferring &&
+                      job.stats.transferring.length > 0
+                    ) {
+                      <div class="details-group files-group transferring-section">
+                        <span class="group-label">Transferring Files</span>
+                        <div class="transferring-scroll-box">
                           @for (t of job.stats.transferring; track t.name) {
-                            <span class="value transferring-file-entry">{{ t.name }}</span>
+                            <div class="transferring-file-card">
+                              <div class="card-header">
+                                <div class="file-info-left">
+                                  <mat-icon svgIcon="file"></mat-icon>
+                                  <span
+                                    class="file-name"
+                                    [matTooltip]="t.name"
+                                    matTooltipShowDelay="500"
+                                    >{{ t.name }}</span
+                                  >
+                                </div>
+                                <span class="percentage-text">
+                                  @if (t.percentage === 100) {
+                                    finalizing
+                                  } @else {
+                                    {{ t.percentage }}%
+                                  }
+                                </span>
+                              </div>
+
+                              <mat-progress-bar
+                                mode="determinate"
+                                [value]="t.percentage"
+                                class="file-progress"
+                              ></mat-progress-bar>
+
+                              <div class="card-footer">
+                                <span class="footer-left"
+                                  >{{ t.bytes | formatFileSize }} /
+                                  {{ t.size | formatFileSize }}</span
+                                >
+                                <div class="footer-right">
+                                  @if (t.speed > 0) {
+                                    <span class="speed-text">{{ t.speed | formatRateValue }}</span>
+                                  }
+                                  @if (t.eta > 0) {
+                                    <span class="eta-text">{{ t.eta | formatEta }}</span>
+                                  }
+                                </div>
+                              </div>
+                            </div>
                           }
                         </div>
                       </div>
                     }
-                  </div>
-                }
 
-                @if (getTransferredFiles(job).length > 0) {
-                  <div class="detail-item uploaded-files-section">
-                    <span class="detail-label">{{ getTransferredLabel(job) | translate }}</span>
-                    <div class="uploaded-files-list">
-                      @for (file of getTransferredFiles(job); track $index) {
-                        <span class="value uploaded-file-entry">{{ file }}</span>
-                      }
+                    <!-- Transferred/Completed files -->
+                    <div class="details-group files-group completed-section">
+                      <span class="group-label"
+                        >{{ getTransferredLabel(job) | translate }} ({{
+                          getTransferredFiles(job).length
+                        }})</span
+                      >
+                      <div class="completed-transfers-list">
+                        @for (file of getTransferredFiles(job); track $index) {
+                          <div
+                            class="completed-transfer-card"
+                            [class.failed]="file.status === 'failed'"
+                          >
+                            <div class="card-header">
+                              <div class="file-info-left">
+                                <mat-icon svgIcon="file"></mat-icon>
+                                <span
+                                  class="file-name"
+                                  [matTooltip]="file.name"
+                                  matTooltipShowDelay="500"
+                                  >{{ file.name }}</span
+                                >
+                              </div>
+                              <div class="card-info-right">
+                                @if (file.status === 'failed') {
+                                  <span class="failed-pill" [matTooltip]="file.error || 'Failed'">
+                                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                                    Failed
+                                  </span>
+                                } @else {
+                                  <span class="success-pill">
+                                    <mat-icon svgIcon="circle-check"></mat-icon>
+                                    Completed
+                                  </span>
+                                }
+                              </div>
+                            </div>
+                            <div class="card-footer">
+                              <span class="size-text">
+                                @if (file.size > 0) {
+                                  {{ file.size | formatFileSize }}
+                                }
+                              </span>
+                              @if (file.status === 'failed') {
+                                <button
+                                  type="button"
+                                  class="action-button retry-btn"
+                                  (click)="retryTransfer(file, job); $event.stopPropagation()"
+                                  matTooltip="Retry/Copy to destination"
+                                >
+                                  <mat-icon svgIcon="right-arrow"></mat-icon>
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        } @empty {
+                          <p class="empty-files-hint">No files processed yet</p>
+                        }
+                      </div>
                     </div>
+
+                    <!-- Error logs if any -->
+                    @if (job.error) {
+                      <div class="details-group error-group">
+                        <span class="group-label">Error Logs</span>
+                        <div class="error-card">
+                          <span class="err-msg">{{ job.error }}</span>
+                          <button
+                            mat-icon-button
+                            class="copy-err-btn"
+                            [appCopyToClipboard]="getFormattedJobError(job.error)"
+                            matTooltip="Copy Error Log"
+                          >
+                            <mat-icon svgIcon="copy"></mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                    }
                   </div>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="empty-details-state">
+              <mat-icon svgIcon="jobs" class="empty-icon"></mat-icon>
+              <span>Select a job to view detailed progress</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Sidebar Accordion (Compact Mode) -->
+    <mat-accordion class="operations-accordion">
+      <mat-expansion-panel
+        [expanded]="isExpanded()"
+        (opened)="isExpanded.set(true)"
+        (closed)="isExpanded.set(false)"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon svgIcon="download" class="drag-handle-icon"></mat-icon>
+            <span>{{ 'fileBrowser.operations.title' | translate }}</span>
+            @if (activeJobs().length > 0) {
+              <span class="job-count">{{ activeJobs().length }}</span>
+            }
+            <button
+              mat-icon-button
+              class="dock-btn-compact"
+              (click)="setDockPosition('bottom'); $event.stopPropagation()"
+              matTooltip="Dock to Bottom"
+            >
+              <mat-icon svgIcon="chevron-down"></mat-icon>
+            </button>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="panel-content">
+          @for (job of jobs(); track job.jobid) {
+            <div
+              class="job-item"
+              [class.completed]="job.status !== 'Running'"
+              row="button"
+              tabindex="0"
+              [cdkMenuTriggerFor]="detailsMenu"
+              [cdkMenuPosition]="[
+                {
+                  originX: 'end',
+                  originY: 'top',
+                  overlayX: 'start',
+                  overlayY: 'top',
+                  offsetX: 8,
+                  offsetY: -8,
+                },
+                {
+                  originX: 'start',
+                  originY: 'top',
+                  overlayX: 'end',
+                  overlayY: 'top',
+                  offsetX: -8,
+                },
+              ]"
+            >
+              <!-- Row 1: Name and action -->
+              <div class="job-row">
+                <mat-icon class="job-type-icon" [svgIcon]="getJobTypeIcon(job)"></mat-icon>
+                <div class="job-content">
+                  <span class="job-name">{{ getFileName(job) }}</span>
+                  <span
+                    class="job-subname"
+                    [matTooltip]="job.destination || getFormattedSource(job.source)"
+                  >
+                    {{ getActualFileName(job) }}
+                  </span>
+                </div>
+                <mat-icon
+                  class="action-btn"
+                  (click)="
+                    job.status === 'Running' ? stopJob(job) : deleteJob(job);
+                    $event.stopPropagation()
+                  "
+                  [matTooltip]="
+                    (job.status === 'Running'
+                      ? 'fileBrowser.operations.cancelJob'
+                      : 'fileBrowser.operations.removeJob'
+                    ) | translate
+                  "
+                  matTooltipShowDelay="500"
+                  svgIcon="circle-xmark"
+                >
+                </mat-icon>
+              </div>
+
+              <!-- Row 2: Progress bar (only for running) -->
+              @if (job.status === 'Running') {
+                @if (isDeleteOperation(job)) {
+                  <mat-progress-bar mode="indeterminate" class="job-progress"></mat-progress-bar>
+                } @else {
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="getProgress(job)"
+                    class="job-progress"
+                  ></mat-progress-bar>
                 }
+              }
 
-                @if (job.source) {
-                  <div class="detail-item">
-                    <span class="detail-label">{{
-                      'fileBrowser.operations.details.source' | translate
-                    }}</span>
-                    <span class="path-text">{{ getFormattedSource(job.source) }}</span>
-                  </div>
+              <!-- Row 3: Stats -->
+              <div class="job-stats">
+                @if (job.status === 'Running' && job.stats) {
+                  <span class="stats-text"
+                    >{{ job.stats.bytes | formatFileSize }} /
+                    {{ job.stats.totalBytes | formatFileSize }}</span
+                  >
+                } @else if (job.status === 'Completed') {
+                  <span class="stats-text success">{{
+                    'fileBrowser.operations.completed' | translate
+                  }}</span>
+                } @else if (job.status === 'Failed') {
+                  <span class="stats-text error">{{
+                    'fileBrowser.operations.failed' | translate
+                  }}</span>
+                } @else if (job.status === 'Stopped') {
+                  <span class="stats-text">{{
+                    'fileBrowser.operations.cancelled' | translate
+                  }}</span>
                 }
+              </div>
 
-                @if (job.destination) {
-                  <div class="detail-item">
-                    <span class="detail-label">{{
-                      'fileBrowser.operations.details.destination' | translate
-                    }}</span>
-                    <span class="path-text">{{ job.destination }}</span>
+              <ng-template #detailsMenu>
+                <div class="details-content job-details-menu" cdkMenu>
+                  <div class="detail-header">
+                    <mat-icon [svgIcon]="getJobTypeIcon(job)"></mat-icon>
+                    <span class="detail-title">{{ job.status }} - {{ getJobTypeLabel(job) }}</span>
                   </div>
-                }
+                  <mat-divider></mat-divider>
 
-                <div class="detail-grid">
-                  <div class="detail-item">
-                    <span class="detail-label">{{
-                      'fileBrowser.operations.details.startTime' | translate
-                    }}</span>
-                    <span class="value">{{ job.start_time | date: 'shortTime' }}</span>
-                  </div>
+                  @if (job.status === 'Running' && job.stats) {
+                    <div class="detail-grid upload-stats-grid">
+                      <div class="detail-item">
+                        <span class="detail-label">Progress</span>
+                        <span class="value"
+                          >{{ job.stats.bytes | formatFileSize }} /
+                          {{ job.stats.totalBytes | formatFileSize }}</span
+                        >
+                      </div>
 
-                  @if ((job.status === 'Failed' || job.status === 'Running') && job.error) {
-                    <div class="detail-item error-item">
-                      <div class="error-container">
-                        <div class="error-text">
-                          <span class="detail-label">{{
-                            'fileBrowser.operations.failed' | translate
-                          }}</span>
-                          <div class="errors-list">
-                            <span class="value error-entry">{{ job.error }}</span>
+                      <div class="detail-item">
+                        <span class="detail-label">Files</span>
+                        <span class="value"
+                          >{{ job.stats.transfers }} / {{ job.stats.totalTransfers }}</span
+                        >
+                      </div>
+
+                      <div class="detail-item">
+                        <span class="detail-label">Speed</span>
+                        <span class="value">{{ job.stats.speed | formatRateValue }}</span>
+                      </div>
+
+                      <div class="detail-item">
+                        <span class="detail-label">ETA</span>
+                        <span class="value">{{ job.stats.eta | formatEta }}</span>
+                      </div>
+
+                      @if (job.stats.transferring && job.stats.transferring.length > 0) {
+                        <div class="detail-item upload-current-file">
+                          <span class="detail-label">
+                            {{
+                              job.stats.transferring.length === 1 ? 'Current file' : 'Current files'
+                            }}
+                          </span>
+                          <div class="transferring-files-list">
+                            @for (t of job.stats.transferring; track t.name) {
+                              <span class="value transferring-file-entry">{{ t.name }}</span>
+                            }
                           </div>
                         </div>
-                        <button
-                          mat-icon-button
-                          class="copy-error-btn"
-                          [appCopyToClipboard]="getFormattedJobError(job.error)"
-                          [matTooltip]="'common.copy' | translate"
-                        >
-                          <mat-icon svgIcon="copy"></mat-icon>
-                        </button>
+                      }
+                    </div>
+                  }
+
+                  @if (getTransferredFiles(job).length > 0) {
+                    <div class="detail-item uploaded-files-section">
+                      <span class="detail-label">{{ getTransferredLabel(job) | translate }}</span>
+                      <div class="uploaded-files-list">
+                        @for (file of getTransferredFiles(job); track $index) {
+                          <div
+                            class="uploaded-file-entry"
+                            [class.failed]="file.status === 'failed'"
+                            [matTooltip]="file.error || null"
+                          >
+                            <div class="file-info">
+                              <span
+                                class="file-name"
+                                [matTooltip]="file.name"
+                                matTooltipShowDelay="500"
+                                >{{ file.name }}</span
+                              >
+                              @if (file.size > 0) {
+                                <span class="file-size">{{ file.size | formatFileSize }}</span>
+                              }
+                            </div>
+                            @if (file.status === 'failed') {
+                              <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                            }
+                          </div>
+                        }
                       </div>
                     </div>
                   }
+
+                  @if (job.source) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{
+                        'fileBrowser.operations.details.source' | translate
+                      }}</span>
+                      <span class="path-text">{{ getFormattedSource(job.source) }}</span>
+                    </div>
+                  }
+
+                  @if (job.destination) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{
+                        'fileBrowser.operations.details.destination' | translate
+                      }}</span>
+                      <span class="path-text">{{ job.destination }}</span>
+                    </div>
+                  }
+
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <span class="detail-label">{{
+                        'fileBrowser.operations.details.startTime' | translate
+                      }}</span>
+                      <span class="value">{{ job.start_time | date: 'shortTime' }}</span>
+                    </div>
+
+                    @if ((job.status === 'Failed' || job.status === 'Running') && job.error) {
+                      <div class="detail-item error-item">
+                        <div class="error-container">
+                          <div class="error-text">
+                            <span class="detail-label">{{
+                              'fileBrowser.operations.failed' | translate
+                            }}</span>
+                            <div class="errors-list">
+                              <span class="value error-entry">{{ job.error }}</span>
+                            </div>
+                          </div>
+                          <button
+                            mat-icon-button
+                            class="copy-error-btn"
+                            [appCopyToClipboard]="getFormattedJobError(job.error)"
+                            [matTooltip]="'common.copy' | translate"
+                          >
+                            <mat-icon svgIcon="copy"></mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
                 </div>
-              </div>
-            </ng-template>
-          </div>
-        }
-      </div>
-    </mat-expansion-panel>
-  </mat-accordion>
+              </ng-template>
+            </div>
+          }
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  }
 }

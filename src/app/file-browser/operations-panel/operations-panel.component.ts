@@ -10,9 +10,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
-import { JobInfo } from '@app/types';
+import { JobInfo, CompletedTransfer } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
+import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
+import { NotificationService } from 'src/app/services/ui/notification.service';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-operations-panel',
@@ -40,11 +44,120 @@ export class OperationsPanelComponent implements OnInit {
   private jobManagementService = inject(JobManagementService);
   private uiStateService = inject(UiStateService);
   private translate = inject(TranslateService);
+  protected settings = inject(NautilusSettingsService);
+  private remoteOps = inject(RemoteFileOperationsService);
+  private notifications = inject(NotificationService);
+  private pathService = inject(PathService);
 
   // Subscribe to reactive job stream
   jobs = this.jobManagementService.nautilusJobs;
   isExpanded = signal(true);
   isLoading = signal(false);
+
+  // Selected job for bottom dock split view
+  selectedJobId = signal<number | null>(null);
+
+  selectedJob = computed(() => {
+    const jobs = this.jobs();
+    const id = this.selectedJobId();
+    if (id !== null) {
+      const found = jobs.find(j => j.jobid === id);
+      if (found) return found;
+    }
+    return jobs.length > 0 ? jobs[0] : null;
+  });
+
+  selectJob(job: JobInfo): void {
+    this.selectedJobId.set(job.jobid);
+  }
+
+  isDockedAtBottom = computed(() => this.settings.operationsPanelPosition() === 'bottom');
+
+  setDockPosition(pos: 'sidebar' | 'bottom'): void {
+    this.settings.saveOperationsPanelPosition(pos);
+  }
+
+  onResizeMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = this.settings.operationsPanelHeight();
+
+    const onMouseMove = (moveEvent: MouseEvent): void => {
+      const deltaY = startY - moveEvent.clientY;
+      const newHeight = Math.max(100, Math.min(600, startHeight + deltaY));
+      this.settings.saveOperationsPanelHeight(newHeight);
+    };
+
+    const onMouseUp = (): void => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+
+  async retryTransfer(file: CompletedTransfer, job: JobInfo): Promise<void> {
+    let srcFs: string;
+    let srcPath: string;
+    if (file.srcFs) {
+      srcFs = file.srcFs;
+      srcPath = file.name;
+    } else {
+      let sourceStr: string;
+      if (Array.isArray(job.source)) {
+        sourceStr = job.source.find(s => s.endsWith(file.name)) || job.source[0] || '';
+      } else {
+        sourceStr = job.source || '';
+      }
+      const split = this.pathService.splitFsPath(sourceStr);
+      srcFs = this.pathService.normalizeRemoteForRclone(split.remote);
+      srcPath = split.path;
+    }
+
+    let dstFsRemote = '';
+    let dstFsPath = '';
+    if (job.destination) {
+      const split = this.pathService.splitFsPath(job.destination);
+      dstFsRemote = this.pathService.normalizeRemoteForRclone(split.remote);
+      dstFsPath = split.path;
+    } else if (file.dstFs) {
+      dstFsRemote = file.dstFs;
+    }
+
+    const parentPathInFile = this.pathService.getParentPath(file.name);
+    const dstPath = this.pathService.joinPath(dstFsPath, parentPathInFile);
+
+    try {
+      await this.remoteOps.transferItems(
+        [
+          {
+            remote: srcFs,
+            path: srcPath,
+            name: this.pathService.extractName(srcPath),
+            isDir: false,
+          },
+        ],
+        dstFsRemote,
+        dstPath,
+        'copy',
+        'filemanager',
+        undefined,
+        job.jobid
+      );
+
+      this.notifications.showSuccess(
+        this.translate.instant('shared.transferActivity.messages.resolveStarted', {
+          name: this.pathService.extractName(srcPath),
+        })
+      );
+    } catch (e) {
+      console.error('Failed to retry failed transfer:', e);
+      this.notifications.showError(
+        this.translate.instant('shared.transferActivity.messages.resolveFailed', { error: e })
+      );
+    }
+  }
 
   // Computed
   activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
@@ -184,9 +297,9 @@ export class OperationsPanelComponent implements OnInit {
     return Array.isArray(errors) ? errors.join('\n') : errors;
   }
 
-  getTransferredFiles(job: JobInfo): string[] {
+  getTransferredFiles(job: JobInfo): CompletedTransfer[] {
     if (job.stats?.completed && job.stats.completed.length > 0) {
-      return job.stats.completed.map(t => t.name || 'Unknown file');
+      return job.stats.completed;
     }
     return [];
   }

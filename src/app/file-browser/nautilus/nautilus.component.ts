@@ -51,6 +51,7 @@ import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
 import { NautilusContextMenuComponent } from './context-menu/nautilus-context-menu.component';
+import { OperationsPanelComponent } from '../operations-panel/operations-panel.component';
 
 @Component({
   selector: 'app-nautilus',
@@ -68,6 +69,7 @@ import { NautilusContextMenuComponent } from './context-menu/nautilus-context-me
     MatDividerModule,
     CdkMenuModule,
     NautilusContextMenuComponent,
+    OperationsPanelComponent,
   ],
   providers: [
     FormatFileSizePipe,

@@ -115,15 +115,16 @@ impl UploadProgress {
             "transferring": self.transferring,
             "transfers": self.completed.len(),
             "listed": total_files,
+            "completed": self.completed,
         })
     }
 }
 
-/// Discovers files within folders recursively, mapping their local path to their remote folder paths.
+/// Discovers files within folders recursively, mapping their local path to their remote folder paths and a relative filename display name.
 async fn discover_upload_entries(
     local_paths: &[String],
     remote_path: &str,
-) -> Vec<(std::path::PathBuf, String)> {
+) -> Vec<(std::path::PathBuf, String, String)> {
     let remote_path = if remote_path == "/" { "" } else { remote_path };
     let mut entries = Vec::new();
     for raw in local_paths {
@@ -132,13 +133,20 @@ async fn discover_upload_entries(
             continue;
         }
 
+        let parent = p.parent().unwrap_or(&p);
+
         let top_name = p
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
         if p.is_file() {
-            entries.push((p, remote_path.to_string()));
+            let rel_name = p
+                .strip_prefix(parent)
+                .unwrap_or(&p)
+                .to_string_lossy()
+                .to_string();
+            entries.push((p, remote_path.to_string(), rel_name));
         } else if p.is_dir() {
             for entry in walkdir::WalkDir::new(&p)
                 .min_depth(1)
@@ -146,10 +154,17 @@ async fn discover_upload_entries(
                 .filter_map(std::result::Result::ok)
                 .filter(|e| e.file_type().is_file())
             {
-                let rel = entry
-                    .path()
+                let file_path = entry.path();
+                let rel_name = file_path
+                    .strip_prefix(parent)
+                    .unwrap_or(file_path)
+                    .to_string_lossy()
+                    .to_string()
+                    .replace('\\', "/");
+
+                let rel = file_path
                     .strip_prefix(&p)
-                    .unwrap_or(entry.path())
+                    .unwrap_or(file_path)
                     .parent()
                     .unwrap_or(std::path::Path::new(""))
                     .to_string_lossy()
@@ -164,7 +179,7 @@ async fn discover_upload_entries(
                 } else {
                     format!("{}/{}", base, rel.replace('\\', "/"))
                 };
-                entries.push((entry.path().to_path_buf(), remote_dir));
+                entries.push((file_path.to_path_buf(), remote_dir, rel_name));
             }
         }
     }
@@ -215,7 +230,7 @@ pub async fn execute_upload_batch(
 
     let total_files = file_entries.len();
     let total_bytes: u64 =
-        futures::future::join_all(file_entries.iter().map(|(p, _)| tokio::fs::metadata(p)))
+        futures::future::join_all(file_entries.iter().map(|(p, _, _)| tokio::fs::metadata(p)))
             .await
             .into_iter()
             .filter_map(std::result::Result::ok)
@@ -237,6 +252,8 @@ pub async fn execute_upload_batch(
         parent_job_id: None,
     };
 
+    let group_name = metadata.group_name();
+
     if existing_jobid.is_none() {
         let execute_id = Some(uuid::Uuid::new_v4().to_string());
         job_cache
@@ -257,19 +274,22 @@ pub async fn execute_upload_batch(
     let progress = Arc::new(Mutex::new(UploadProgress::new()));
 
     let mut stream = futures::stream::iter(file_entries)
-        .map(|(file_path, remote_dir)| {
+        .map(|(file_path, remote_dir, rel_name)| {
             let backend = backend.clone();
             let client = client.clone();
             let remote = remote.clone();
             let progress = progress.clone();
             let job_cache = job_cache.clone();
+            let group_name = group_name.clone();
 
             async move {
-                let filename = file_path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
+                let filename = rel_name;
+                let started_at = chrono::Utc::now();
+                let src_fs = file_path
+                    .parent()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let dst_fs = build_full_path(&remote, &remote_dir);
 
                 let file = match tokio::fs::File::open(&file_path).await {
                     Ok(f) => f,
@@ -281,8 +301,13 @@ pub async fn execute_upload_batch(
                             "name": filename,
                             "size": 0,
                             "bytes": 0,
+                            "checked": false,
                             "error": err_msg,
-                            "completed_at": chrono::Utc::now()
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
                         }));
                         let stats = state.build_stats(total_bytes, total_files);
                         let job_cache_clone = job_cache.clone();
@@ -298,9 +323,14 @@ pub async fn execute_upload_batch(
                 // Add to transferring list
                 {
                     let mut state = progress.lock().unwrap();
-                    state
-                        .transferring
-                        .push(json!({ "name": filename.clone(), "size": size, "bytes": 0 }));
+                    state.transferring.push(json!({
+                        "name": filename.clone(),
+                        "size": size,
+                        "bytes": 0,
+                        "srcFs": src_fs.clone(),
+                        "dstFs": dst_fs.clone(),
+                        "group": group_name.clone(),
+                    }));
                     let stats = state.build_stats(total_bytes, total_files);
                     let job_cache_clone = job_cache.clone();
                     tokio::spawn(async move {
@@ -308,8 +338,14 @@ pub async fn execute_upload_batch(
                     });
                 }
 
+                let base_filename = file_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+
                 let part_res = reqwest::multipart::Part::stream(reqwest::Body::from(file))
-                    .file_name(filename.clone())
+                    .file_name(base_filename)
                     .mime_str("application/octet-stream");
 
                 let part = match part_res {
@@ -323,8 +359,13 @@ pub async fn execute_upload_batch(
                             "name": filename,
                             "size": size,
                             "bytes": 0,
+                            "checked": false,
                             "error": err_msg,
-                            "completed_at": chrono::Utc::now()
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
                         }));
                         let stats = state.build_stats(total_bytes, total_files);
                         let job_cache_clone = job_cache.clone();
@@ -350,8 +391,9 @@ pub async fn execute_upload_batch(
                     Ok(r) => {
                         let status = r.status();
                         let err_text = r.text().await.unwrap_or_default();
+                        let err_msg = parse_rclone_error(&err_text);
                         Err(format!(
-                            "Upload failed for {filename}: {status} - {err_text}"
+                            "Upload failed for {filename}: {status} - {err_msg}"
                         ))
                     }
                     Err(e) => Err(format!("Network error for {filename}: {e}")),
@@ -367,7 +409,13 @@ pub async fn execute_upload_batch(
                                 "name": filename,
                                 "size": uploaded_size,
                                 "bytes": uploaded_size,
-                                "completed_at": chrono::Utc::now()
+                                "checked": false,
+                                "error": "",
+                                "started_at": started_at,
+                                "completed_at": chrono::Utc::now(),
+                                "srcFs": src_fs,
+                                "dstFs": dst_fs,
+                                "group": group_name,
                             }));
                         }
                         Err(err_msg) => {
@@ -376,8 +424,13 @@ pub async fn execute_upload_batch(
                                 "name": filename,
                                 "size": size,
                                 "bytes": 0,
+                                "checked": false,
                                 "error": err_msg,
-                                "completed_at": chrono::Utc::now()
+                                "started_at": started_at,
+                                "completed_at": chrono::Utc::now(),
+                                "srcFs": src_fs,
+                                "dstFs": dst_fs,
+                                "group": group_name,
                             }));
                         }
                     }
@@ -400,6 +453,13 @@ pub async fn execute_upload_batch(
             .then(|| format!("{} failed: {}", state.errors.len(), state.errors.join("; ")));
         (success, error_msg)
     };
+
+    // Update job stats synchronously to ensure final stats are written to cache before complete_job
+    let stats = {
+        let state = progress.lock().unwrap();
+        state.build_stats(total_bytes, total_files)
+    };
+    let _ = job_cache.update_job_stats(jobid, stats).await;
 
     if !metadata.no_cache {
         if success {
@@ -487,8 +547,16 @@ pub async fn upload_file(
         Ok(r) => {
             let status = r.status();
             let err_text = r.text().await.unwrap_or_default();
-            Err(format!("Upload failed: {status} - {err_text}"))
+            let err_msg = parse_rclone_error(&err_text);
+            Err(format!("Upload failed: {status} - {err_msg}"))
         }
         Err(e) => Err(format!("Network error: {e}")),
     }
+}
+
+fn parse_rclone_error(err_text: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(err_text)
+        .ok()
+        .and_then(|val| val.get("error").and_then(|e| e.as_str()).map(String::from))
+        .unwrap_or_else(|| err_text.to_string())
 }

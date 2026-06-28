@@ -686,6 +686,39 @@
           }
         </div>
       }
+      @case ('sponsor') {
+        <div class="modal-content sponsor-content">
+          <div class="sponsor-hero">
+            <div class="heart-pulse-container">
+              <mat-icon svgIcon="heart" class="heart-icon"></mat-icon>
+            </div>
+            <h3>{{ 'modals.about.sponsorHeading' | translate }}</h3>
+            <p class="sponsor-desc">{{ 'modals.about.sponsorDescription' | translate }}</p>
+          </div>
+
+          <a
+            matButton
+            class="about-item"
+            href="https://github.com/sponsors/Zarestia-Dev"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span>GitHub Sponsors</span>
+            <mat-icon svgIcon="github"></mat-icon>
+          </a>
+          <!-- <mat-divider></mat-divider>
+            <a
+              matButton
+              class="about-item"
+              href="https://kreosus.com/hakanismailinfo"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>Kreosus</span>
+              <mat-icon svgIcon="open-link"></mat-icon>
+            </a> -->
+        </div>
+      }
       @case ('credits') {
         <div class="modal-content">
           <div class="debug-section">
