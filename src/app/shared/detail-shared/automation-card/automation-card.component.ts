@@ -1,4 +1,4 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import cronstrue from 'cronstrue';
 import { DatePipe, NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -31,6 +31,7 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
 
 @Component({
   selector: 'app-automation-card',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     NgClass,

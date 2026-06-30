@@ -1,5 +1,14 @@
 import { TitleCasePipe } from '@angular/common';
-import { Component, inject, computed, input, model, output, linkedSignal } from '@angular/core';
+import {
+  Component,
+  inject,
+  computed,
+  input,
+  model,
+  output,
+  linkedSignal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -74,6 +83,7 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
 
 @Component({
   selector: 'app-app-detail',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     TitleCasePipe,

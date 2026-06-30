@@ -256,29 +256,25 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
 
 fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
     debug!("Rclone binary changed to: {path}");
-    match crate::rclone::engine::lifecycle::restart_for_config_change(
+    crate::rclone::engine::lifecycle::restart_for_config_change(
         app,
         "rclone_binary",
         "previous",
         path,
-    ) {
-        Ok(()) => info!("Rclone binary updated to: {path}"),
-        Err(e) => error!("Failed to restart engine for rclone binary change: {e}"),
-    }
+    );
+    info!("Rclone binary updated to: {path}");
 }
 
 fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
     debug!("Rclone additional flags changed to: {flags:?}");
     let flags_str = serde_json::to_string(flags).unwrap_or_default();
-    match crate::rclone::engine::lifecycle::restart_for_config_change(
+    crate::rclone::engine::lifecycle::restart_for_config_change(
         app,
         "rclone_additional_flags",
         "previous",
         &flags_str,
-    ) {
-        Ok(()) => info!("Engine restarting due to additional flags change"),
-        Err(e) => error!("Failed to restart engine for flags change: {e}"),
-    }
+    );
+    info!("Engine restarting due to additional flags change");
 }
 
 fn handle_job_cache_changed(app: &AppHandle) {
@@ -325,8 +321,6 @@ fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
     });
 }
 
-// These listeners all just trigger a tray update; keep them as a group rather
-// than duplicating the boilerplate across separate functions.
 #[cfg(feature = "tray")]
 fn register_tray_refresh_listeners(app: &AppHandle) {
     use crate::utils::types::events::{

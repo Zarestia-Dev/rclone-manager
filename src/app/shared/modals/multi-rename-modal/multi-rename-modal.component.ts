@@ -1,4 +1,12 @@
-import { Component, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  viewChild,
+  ElementRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -23,6 +31,7 @@ export interface MultiRenameData {
 
 @Component({
   selector: 'app-multi-rename-modal',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     ReactiveFormsModule,
@@ -47,7 +56,7 @@ export class MultiRenameModalComponent {
   protected readonly notifications = inject(NotificationService);
   public readonly data = inject<MultiRenameData>(MAT_DIALOG_DATA);
 
-  @ViewChild('templateInput') templateInput!: ElementRef<HTMLInputElement>;
+  readonly templateInput = viewChild<ElementRef<HTMLInputElement>>('templateInput');
 
   readonly mode = signal<'template' | 'replace'>('template');
   readonly isSaving = signal(false);
@@ -116,8 +125,9 @@ export class MultiRenameModalComponent {
   }
 
   insertPlaceholder(placeholder: string): void {
-    if (!this.templateInput) return;
-    const inputEl = this.templateInput.nativeElement;
+    const templateInput = this.templateInput();
+    if (!templateInput) return;
+    const inputEl = templateInput.nativeElement;
     const start = inputEl.selectionStart ?? 0;
     const end = inputEl.selectionEnd ?? 0;
     const val = this.form.value.template || '';

@@ -136,3 +136,25 @@ pub async fn get_local_disk_usage(
         usage_color,
     })
 }
+
+#[tauri::command]
+pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, String> {
+    let state = app.state::<RcloneState>();
+    let backend_manager = app.state::<BackendManager>();
+    let backend = backend_manager.get_active().await;
+    let payload = json!({
+        "clear": clear,
+    });
+
+    let response_json = backend
+        .post_json(&state.client, core::OBSCURE, Some(&payload))
+        .await
+        .map_err(|e| format!("Failed to obscure value: {e}"))?;
+
+    let obscured = response_json
+        .get("obscured")
+        .and_then(|v| v.as_str())
+        .ok_or("No obscured field in response")?;
+
+    Ok(obscured.to_string())
+}

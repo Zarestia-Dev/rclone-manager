@@ -55,7 +55,7 @@ pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String>
 
 #[tauri::command]
 pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> {
-    info!("🔄 Switching to backend: {name}");
+    info!("Switching to backend: {name}");
 
     let backend_manager = app.state::<BackendManager>();
     let state = app.state::<RcloneState>();
@@ -73,7 +73,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await?;
 
     if backend.is_local {
-        info!("🚀 Starting Local engine after switching from remote backend...");
+        info!("Starting Local engine after switching from remote backend...");
         start_engine_if_not_running(&app).await;
     }
 
@@ -81,9 +81,12 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
 
     refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await?;
 
-    BackendManager::save_active_to_settings(settings_manager.inner(), &name);
+    crate::rclone::backend::manager::save_active_backend_to_settings(
+        settings_manager.inner(),
+        &name,
+    );
 
-    info!("✅ Switched to backend: {name}");
+    info!("Switched to backend: {name}");
     Ok(())
 }
 
@@ -108,7 +111,7 @@ pub struct AddBackendParams {
 #[tauri::command]
 pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
     info!(
-        "➕ Adding backend: {} ({}:{})",
+        "Adding backend: {} ({}:{})",
         params.name, params.host, params.port
     );
 
@@ -165,7 +168,7 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
-    info!("✅ Backend '{}' added", params.name);
+    info!("Backend '{}' added", params.name);
     Ok(())
 }
 
@@ -186,7 +189,7 @@ pub struct UpdateBackendParams {
 
 #[tauri::command]
 pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Result<(), String> {
-    info!("🔄 Updating backend: {}", params.name);
+    info!("Updating backend: {}", params.name);
 
     let backend_manager = app.state::<BackendManager>();
     let settings_manager = app.state::<AppSettingsManager>();
@@ -213,11 +216,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         config_path: params.config_path,
     };
 
-    // Credential update rules:
-    //   (None, None)         → client did not send credentials → preserve existing
-    //   (Some(u), Some(p))
-    //     both non-empty     → user set new credentials → update
-    //   anything else        → partial or explicitly cleared → clear both (or preserve for local if they are generated)
     match (params.username.as_deref(), params.password.as_deref()) {
         (None, None) => {
             backend.username = existing.username.clone();
@@ -241,10 +239,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    // Config-password update rules (same pattern):
-    //   None         → not sent → preserve existing
-    //   Some("")     → explicitly cleared
-    //   Some(value)  → update
     match params.config_password.as_deref() {
         None => { /* preserve */ }
         Some(cp) if !cp.is_empty() => {
@@ -268,24 +262,22 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
     if needs_engine_restart {
-        info!("🔄 Restarting Local engine — connection settings changed");
-        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+        info!("Restarting Local engine — connection settings changed");
+        crate::rclone::engine::lifecycle::restart_for_config_change(
             &app,
             "backend_settings",
             "updated",
             "updated",
-        ) {
-            warn!("Failed to restart engine: {e}");
-        }
+        );
     }
 
-    info!("✅ Backend '{}' updated", params.name);
+    info!("Backend '{}' updated", params.name);
     Ok(())
 }
 
 #[tauri::command]
 pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
-    info!("➖ Removing backend: {name}");
+    info!("Removing backend: {name}");
 
     let scheduler = app.state::<AutomationScheduler>();
     let automations_cache = app.state::<AutomationsCache>();
@@ -301,7 +293,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
     let automations = automations_cache.get_automations_for_backend(&name).await;
     if !automations.is_empty() {
         info!(
-            "🗑️ Cleaning up {} automations for backend '{name}'",
+            "Cleaning up {} automations for backend '{name}'",
             automations.len()
         );
         for automation in automations {
@@ -314,7 +306,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
         automations_cache.clear_backend_automations(&name).await;
     }
 
-    info!("✅ Backend '{name}' removed");
+    info!("Backend '{name}' removed");
     Ok(())
 }
 
@@ -323,7 +315,7 @@ pub async fn test_backend_connection(
     app: AppHandle,
     name: String,
 ) -> Result<TestConnectionResult, String> {
-    debug!("🔍 Testing connection: {name}");
+    debug!("Testing connection: {name}");
 
     let backend_manager = app.state::<BackendManager>();
     match crate::rclone::backend::connectivity::check_connectivity_with_timeout(
@@ -410,7 +402,7 @@ async fn test_remote_connection(
         return Ok(());
     }
 
-    debug!("📡 Testing remote backend connection...");
+    debug!("Testing remote backend connection...");
     match backend
         .make_request(
             client,
@@ -422,7 +414,7 @@ async fn test_remote_connection(
         .await
     {
         Ok(_) => {
-            info!("✅ Remote backend '{}' is reachable", backend.name);
+            info!("Remote backend '{}' is reachable", backend.name);
             backend_manager
                 .set_runtime_status(
                     &backend.name,
@@ -450,7 +442,7 @@ async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &r
 
     if let Some(config_path) = &backend.config_path {
         info!(
-            "📝 Setting config path for remote backend '{}' to: {}",
+            "Setting config path for remote backend '{}' to: {}",
             backend.name,
             config_path.display()
         );
@@ -459,16 +451,16 @@ async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &r
             .post_json(client, config::SETPATH, Some(&params))
             .await
         {
-            warn!("⚠️ Failed to set config path: {e}");
+            warn!("Failed to set config path: {e}");
         } else {
-            info!("✅ Config path set successfully");
+            info!("Config path set successfully");
         }
     }
 
     if backend.config_password.is_some()
         && let Err(e) = crate::rclone::commands::system::try_auto_unlock_config(app).await
     {
-        warn!("⚠️ Auto-unlock failed: {e}");
+        warn!("Auto-unlock failed: {e}");
     }
 }
 
@@ -487,20 +479,20 @@ async fn refresh_and_verify_cache(
     .await
     {
         Ok(Ok(())) => {
-            info!("✅ Cache refreshed for backend '{name}'");
+            info!("Cache refreshed for backend '{name}'");
             let _ = app.emit(REMOTE_CACHE_CHANGED, ());
             let _ = app.emit(BACKEND_SWITCHED, name);
             Ok(())
         }
         Ok(Err(e)) => {
-            warn!("⚠️ Cache refresh failed for backend '{name}': {e}");
+            warn!("Cache refresh failed for backend '{name}': {e}");
             revert_to_local(backend_manager, settings_manager, name).await;
             Err(format!(
                 "Backend connected but failed to list items: {e}. Reverted to Local."
             ))
         }
         Err(_) => {
-            warn!("⏱️ Cache refresh timed out for backend '{name}'");
+            warn!("Cache refresh timed out for backend '{name}'");
             if name != "Local" {
                 backend_manager
                     .set_runtime_status(
@@ -526,7 +518,7 @@ async fn revert_to_local(
     current_name: &str,
 ) {
     if current_name != "Local" {
-        info!("↩️ Reverting to previous backend due to failure");
+        info!("Reverting to previous backend due to failure");
         if let Err(e) = backend_manager.switch_to(settings_manager, "Local").await {
             warn!("Failed to revert to Local backend: {e}");
         }
@@ -578,8 +570,6 @@ mod tests {
 
     #[test]
     fn test_missing_optional_fields_use_none() {
-        // Fields absent from JS (not sent) should deserialize as None,
-        // triggering the preserve-existing fallback in update_backend.
         let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.oauth_port, None);
@@ -590,8 +580,6 @@ mod tests {
 
     #[test]
     fn test_credential_update_rules() {
-        // Verify the credential match arms handle all cases correctly.
-        // (None, None) should be handled differently from (Some(""), Some(""))
         let json_absent = r#"{"name":"NAS","host":"10.0.0.1","port":51900}"#;
         let json_cleared =
             r#"{"name":"NAS","host":"10.0.0.1","port":51900,"username":"","password":""}"#;

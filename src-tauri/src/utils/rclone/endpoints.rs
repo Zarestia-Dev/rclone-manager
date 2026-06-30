@@ -171,14 +171,14 @@ pub mod core {
     ///    - It is virtual memory so may include unused memory
     pub const MEMSTATS: &str = "core/memstats";
 
-    // /// Obscures a string passed in.
-    // ///
-    // /// Pass a clear string and rclone will obscure it for the config file:
-    // /// - clear - string
-    // ///
-    // /// Returns:
-    // /// - obscured - string
-    // pub const OBSCURE: &str = "core/obscure";
+    /// Obscures a string passed in.
+    ///
+    /// Pass a clear string and rclone will obscure it for the config file:
+    /// - clear - string
+    ///
+    /// Returns:
+    /// - obscured - string
+    pub const OBSCURE: &str = "core/obscure";
 
     /// Return PID of current process.
     ///

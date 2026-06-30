@@ -6,6 +6,7 @@ import {
   signal,
   computed,
   HostListener,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -57,6 +58,7 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
 
 @Component({
   selector: 'app-export-modal',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     MatIconModule,

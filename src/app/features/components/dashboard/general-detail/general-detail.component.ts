@@ -1,10 +1,21 @@
-import { Component, inject, signal, computed, output, effect, untracked } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  output,
+  effect,
+  untracked,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CommonModule, TitleCasePipe } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import {
   DiskUsage,
   JobsPanelConfig,
@@ -35,9 +46,9 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
 
 @Component({
   selector: 'app-general-detail',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
-    CommonModule,
     TitleCasePipe,
     MatCardModule,
     MatIconModule,
@@ -60,6 +71,7 @@ export class GeneralDetailComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   // State
   protected readonly selectedRemote = computed(() => {
@@ -217,6 +229,7 @@ export class GeneralDetailComponent {
         },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(async (result: PrimaryActionType[] | undefined) => {
         if (result !== undefined) {
           try {

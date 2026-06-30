@@ -4,6 +4,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { ExplorerRoot, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
@@ -25,6 +26,7 @@ export class NautilusActionsService {
   private readonly remoteFacadeSvc = inject(RemoteFacadeService);
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly modalService = inject(ModalService);
   private readonly clipboard = inject(Clipboard);
   private readonly dialog = inject(MatDialog);
 
@@ -48,7 +50,7 @@ export class NautilusActionsService {
     );
     const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
 
-    this.nautilusService.openProperties({
+    this.modalService.openProperties({
       remoteName,
       path,
       isLocal,
@@ -63,14 +65,14 @@ export class NautilusActionsService {
   }
 
   openShortcutsModal(): void {
-    this.nautilusService.openKeyboardShortcuts({ nautilus: true });
+    this.modalService.openKeyboardShortcuts({ nautilus: true });
   }
 
   openAboutModal(remote: ExplorerRoot): void {
     const normalized = remote.isLocal
       ? remote.name
       : this.pathSvc.normalizeRemoteForRclone(remote.name);
-    this.nautilusService.openRemoteAbout({
+    this.modalService.openRemoteAbout({
       displayName: remote.name,
       normalizedName: normalized,
       type: remote.type,

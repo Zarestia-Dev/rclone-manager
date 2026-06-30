@@ -40,6 +40,7 @@ export class ConfigModalSidebarComponent {
   readonly sharedNavigated = output<EditTarget>();
   readonly returnFromShared = output<void>();
   readonly cliImportToggled = output<void>();
+  readonly obscureToolToggled = output<void>();
 
   // ── Template helpers ──────────────────────────────────────────────────────
 

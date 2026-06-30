@@ -792,6 +792,11 @@ body {
 
   .mat-mdc-form-field .mat-mdc-text-field-wrapper {
     border-radius: var(--input-border-radius);
+
+    button {
+      margin-right: var(--space-xs);
+    }
+
     .mdc-line-ripple {
       display: none !important;
     }

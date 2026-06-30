@@ -804,6 +804,7 @@
     "settingControl": {
       "default": "Défaut : {{value}}",
       "resetToDefault": "Réinitialiser par défaut",
+      "obscureValue": "Masquer le mot de passe avec rclone",
       "enabled": "Activé",
       "disabled": "Désactivé",
       "addItem": "Ajouter un élément",
@@ -991,6 +992,17 @@
       "importDestPath": "Importer le chemin de destination",
       "importMountPoint": "Importer le point de montage"
     },
+    "obscure": {
+      "title": "Masquer le mot de passe",
+      "description": "Masque une chaîne en clair à l'aide de l'algorithme de masquage standard de rclone afin qu'elle puisse être enregistrée en toute sécurité dans les fichiers ou paramètres de configuration.",
+      "clearPlaceholder": "Mot de passe / Chaîne en clair",
+      "clearPlaceholderText": "Saisir le mot de passe en texte clair",
+      "action": "Masquer",
+      "resultTitle": "Valeur masquée",
+      "resultHelp": "Cliquez sur le bouton de copie et collez cette valeur là où c'est nécessaire.",
+      "applyToField": "Appliquer la valeur masquée au champ",
+      "apply": "Appliquer au champ"
+    },
     "remoteConfig": {
       "remoteName": "Nom du dépôt distant",
       "remoteNameRequired": "Le nom du dépôt distant est requis",
@@ -1017,6 +1029,10 @@
         "filter": "Filtre de profil : Définissez des motifs glob, des règles d'inclusion/exclusion et des options de filtrage de fichiers sous forme de paires clé-valeur.",
         "backend": "Profil de backend : Configurez les options avancées du protocole et les paramètres de connexion spécifiques à distance comme des paires clé-valeur.",
         "runtimeRemote": "Dépôt distant d'exécution : Définissez des substitutions de connexion dynamiques et des ajustements de performances sous forme de paires clé-valeur."
+      },
+      "runtimeRemoteWarning": {
+        "title": "Configuration du dépôt distant d'exécution",
+        "description": "Ces paramètres sont utilisés pour remplacer dynamiquement les propriétés de connexion ou appliquer des ajustements de performances lors de l'interaction avec ce dépôt distant à l'exécution. Ils ne sont pas stockés dans le fichier persistant rclone.conf. Si l'un de ces champs contient des valeurs sensibles telles que des mots de passe ou des clés API, ils doivent être manuellement obscurcis à l'aide de l'algorithme obscure de rclone avant l'enregistrement; rclone n'accepte pas les valeurs en texte clair pour ces champs."
       },
       "showAdvanced": "Afficher les options avancées",
       "hideAdvanced": "Masquer les options avancées",

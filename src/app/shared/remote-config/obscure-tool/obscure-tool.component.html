@@ -1,0 +1,118 @@
+<div class="obscure-tool-container" [class.visible]="visible()">
+  <div class="obscure-tool-inner">
+    <header class="obscure-tool-header">
+      <h3>
+        <mat-icon svgIcon="lock"></mat-icon>
+        {{ 'wizards.obscure.title' | translate }}
+      </h3>
+      <button
+        mat-icon-button
+        (click)="closeTool.emit()"
+        [attr.aria-label]="'common.close' | translate"
+      >
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </header>
+
+    <div class="obscure-tool-body">
+      <section class="input-section">
+        <p class="description">{{ 'wizards.obscure.description' | translate }}</p>
+
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>{{ 'wizards.obscure.clearPlaceholder' | translate }}</mat-label>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            [ngModel]="clearText()"
+            (ngModelChange)="clearText.set($event)"
+            [placeholder]="'wizards.obscure.clearPlaceholderText' | translate"
+            (keyup.enter)="clearText().trim() && performObscure()"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
+            [matTooltip]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
+            type="button"
+          >
+            <mat-icon [svgIcon]="hidePassword() ? 'eye' : 'eye-slash'"></mat-icon>
+          </button>
+        </mat-form-field>
+
+        @if (error(); as err) {
+          <div class="validation-error-message">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>{{ err }}</span>
+          </div>
+        }
+
+        <div class="actions">
+          <button
+            mat-stroked-button
+            (click)="clearInputs()"
+            [disabled]="!clearText() || isProcessing()"
+          >
+            <mat-icon svgIcon="broom"></mat-icon>
+            {{ 'common.clear' | translate }}
+          </button>
+          <button
+            mat-raised-button
+            class="accent"
+            (click)="performObscure()"
+            [disabled]="!clearText().trim() || isProcessing()"
+          >
+            <mat-icon svgIcon="lock"></mat-icon>
+            {{ 'wizards.obscure.action' | translate }}
+          </button>
+        </div>
+      </section>
+
+      @if (obscuredText()) {
+        <section class="result-section">
+          <h4>{{ 'wizards.obscure.resultTitle' | translate }}</h4>
+
+          <div class="result-box">
+            <code class="obscured-val">{{ obscuredText() }}</code>
+            <button
+              mat-icon-button
+              [appCopyToClipboard]="obscuredText()"
+              [attr.aria-label]="'modals.oauth.copyLink' | translate"
+              [matTooltip]="'modals.oauth.copyLink' | translate"
+            >
+              <mat-icon svgIcon="copy" class="accent"></mat-icon>
+            </button>
+          </div>
+          <p class="result-help">{{ 'wizards.obscure.resultHelp' | translate }}</p>
+
+          @if (sensitiveFields().length > 0) {
+            <div class="apply-to-field-section">
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>{{ 'wizards.obscure.applyToField' | translate }}</mat-label>
+                <mat-select [formControl]="targetFieldCtrl">
+                  @for (field of sensitiveFields(); track field.key) {
+                    <mat-option [value]="field.key">
+                      {{
+                        field.name | rcloneOptionTranslate: 'title' : field.name : provider()
+                      }}
+                      ({{ field.key }})
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button
+                mat-raised-button
+                class="accent full-width"
+                [disabled]="!targetFieldCtrl.value"
+                (click)="applyToField()"
+              >
+                <mat-icon svgIcon="circle-check"></mat-icon>
+                {{ 'wizards.obscure.apply' | translate }}
+              </button>
+            </div>
+          }
+        </section>
+      }
+    </div>
+  </div>
+</div>

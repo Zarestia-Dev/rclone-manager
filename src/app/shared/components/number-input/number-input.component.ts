@@ -12,6 +12,7 @@ import {
   FormControl,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -68,7 +69,7 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
   readonly disabled = signal(false);
 
   constructor() {
-    this.innerControl.valueChanges.subscribe(val => {
+    this.innerControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(val => {
       if (val === null || val === undefined || val === '') {
         this.onChange(null);
         return;

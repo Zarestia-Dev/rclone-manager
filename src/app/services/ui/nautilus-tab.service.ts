@@ -598,7 +598,7 @@ export class NautilusTabService {
         };
       })
     );
-    this._navigate(entry.remote, entry.path, false);
+    this.navigate(entry.remote, entry.path, false);
   }
 
   goBack(): void {
@@ -609,7 +609,7 @@ export class NautilusTabService {
     this.traverseHistory(1);
   }
 
-  async _navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
+  async navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
     if (this.pendingPreviewFilePath() !== path) {
       this.pendingPreviewFilePath.set(null);
     }

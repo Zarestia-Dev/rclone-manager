@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added a new Action Selection Modal to choose and trigger these operations directly from the UI.
   - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.
   - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
+- **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality.
+  - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
 
 ### Changed
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.

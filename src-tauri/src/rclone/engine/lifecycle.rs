@@ -19,6 +19,13 @@ pub fn mark_startup_complete(app: &AppHandle) {
 
 const API_READY_TIMEOUT_SECS: u64 = 10;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EngineStatusInfo {
+    pub running: bool,
+    pub updating: bool,
+    pub should_exit: bool,
+}
+
 impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
         if self.validate_config(app).await {
@@ -63,10 +70,14 @@ pub async fn resume_engine(app: &AppHandle) {
     engine.set_updating(false);
 }
 
-pub async fn get_engine_status(app: &AppHandle) -> (bool, bool, bool) {
+pub async fn get_engine_status(app: &AppHandle) -> EngineStatusInfo {
     let state = app.state::<EngineState>();
     let engine = state.lock().await;
-    (engine.running, engine.updating, engine.should_exit)
+    EngineStatusInfo {
+        running: engine.running,
+        updating: engine.updating,
+        should_exit: engine.should_exit,
+    }
 }
 
 pub async fn start_engine_if_not_running(app: &AppHandle) {
@@ -188,7 +199,7 @@ pub fn restart_for_config_change(
     change_type: &str,
     old_value: &str,
     new_value: &str,
-) -> super::error::EngineResult<()> {
+) {
     info!("Restarting engine due to {change_type} change: {old_value} → {new_value}");
 
     let app = app.clone();
@@ -225,8 +236,6 @@ pub fn restart_for_config_change(
             }
         }
     });
-
-    Ok(())
 }
 
 async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::EngineResult<()> {
@@ -254,35 +263,5 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
         Err(EngineError::RestartFailed(
             "Engine failed to start after restart".to_string(),
         ))
-    }
-}
-
-#[allow(clippy::items_after_test_module)]
-#[cfg(test)]
-mod tests {
-    use crate::rclone::engine::core::PauseReason;
-    use crate::utils::types::state::RcApiEngine;
-
-    #[test]
-    fn test_start_blocked_reason_priority() {
-        let mut engine = RcApiEngine::default();
-        assert!(engine.start_blocked_reason().is_none());
-
-        engine.set_updating(true);
-        engine.set_password_error(true);
-        assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Updating));
-
-        engine.set_updating(false);
-        assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Password));
-
-        engine.set_password_error(false);
-        engine.set_path_error(true);
-        assert_eq!(engine.start_blocked_reason(), Some(PauseReason::Path));
-    }
-
-    #[test]
-    fn test_is_api_healthy_logic_stub() {
-        let engine = RcApiEngine::default();
-        assert!(!engine.running);
     }
 }

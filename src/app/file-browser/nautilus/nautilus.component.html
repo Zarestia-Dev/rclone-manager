@@ -64,7 +64,7 @@
       [hoveredSegmentIndex]="dragDrop.hoveredSegmentIndex()"
       [fullPathInput]="fullPathInput()"
       [layout]="settings.layout()"
-      [pathOptionsMenu]="contextMenu.pathOptionsMenuTemplate"
+      [pathOptionsMenu]="contextMenu()?.pathOptionsMenuTemplate()"
       [viewMenu]="viewMenu"
       (goBack)="tabSvc.goBack()"
       (goForward)="tabSvc.goForward()"
@@ -121,7 +121,7 @@
           [isItemSelectable]="isItemSelectable"
           [isMultiSelectEnabled]="!isPickerMode() || !!pickerOptions().multi"
           [isMobile]="isMobile()"
-          [fileMenu]="contextMenu.fileMenuTemplate"
+          [fileMenu]="contextMenu()?.fileMenuTemplate()"
           (switchPane)="tabSvc.switchPane($event)"
           (clearSelection)="selectionSvc.clearSelection(pane.index)"
           (setContextItem)="setContextItem($event, pane.index)"
@@ -156,7 +156,6 @@
     }
 
     <app-nautilus-context-menu
-      #contextMenu
       [files]="files()"
       [filesRight]="filesRight()"
       [isPickerMode]="isPickerMode()"

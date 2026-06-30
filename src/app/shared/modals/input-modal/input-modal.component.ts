@@ -1,4 +1,11 @@
-import { Component, HostListener, inject, OnInit, DestroyRef } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  inject,
+  OnInit,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -46,6 +53,7 @@ export interface InputModalData {
 
 @Component({
   selector: 'app-input-modal',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     MatButtonModule,

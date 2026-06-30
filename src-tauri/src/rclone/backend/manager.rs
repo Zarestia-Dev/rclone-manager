@@ -106,25 +106,27 @@ impl BackendManager {
 
     /// List all backends with their active status and runtime info
     pub async fn list_all(&self) -> Vec<BackendInfo> {
-        let state = self.state.read().await;
+        let (backends, active_index) = {
+            let state = self.state.read().await;
+            (state.backends.clone(), state.active_index)
+        };
+
         let runtime_cache = self.runtime_info.read().await;
 
-        state
-            .backends
+        backends
             .iter()
             .enumerate()
             .map(|(i, b)| {
-                let info = BackendInfo::from_backend(b, i == state.active_index);
+                let mut info = BackendInfo::from_backend(b, i == active_index);
                 if let Some(runtime) = runtime_cache.get(&b.name) {
-                    info.with_runtime_info(
+                    info = info.with_runtime_info(
                         runtime.version.clone(),
                         runtime.os.clone(),
                         Some(runtime.status.clone()),
                         runtime.config_path.clone(),
-                    )
-                } else {
-                    info
+                    );
                 }
+                info
             })
             .collect()
     }
@@ -166,7 +168,7 @@ impl BackendManager {
             ));
         }
 
-        info!("➕ Adding backend: {}", backend.name);
+        info!("Adding backend: {}", backend.name);
 
         let setup_profile = |sub_name: &str, source: Option<&str>| {
             if let Ok(sub) = manager.sub_settings(sub_name)
@@ -177,10 +179,7 @@ impl BackendManager {
                         let src_profile = if src == "Local" { "default" } else { src };
                         pm.duplicate(src_profile, &backend.name)
                             .map(|()| {
-                                info!(
-                                    "📋 Copied {} from '{}' to '{}'",
-                                    sub_name, src, backend.name
-                                );
+                                info!("Copied {} from '{}' to '{}'", sub_name, src, backend.name);
                             })
                             .or_else(|e| {
                                 log::warn!("Failed to duplicate {sub_name} profile: {e}");
@@ -217,7 +216,7 @@ impl BackendManager {
                 || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
             )?;
 
-        info!("🔄 Updating backend: {name}");
+        info!("Updating backend: {name}");
         state.backends[index] = backend;
         Ok(())
     }
@@ -282,7 +281,7 @@ impl BackendManager {
     /// Task unscheduling/rescheduling is the caller's responsibility.
     pub async fn switch_to(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
         // Single read: capture everything we need atomically
-        let (new_index, is_local, current_name) = {
+        let (_new_index, is_local, current_name) = {
             let state = self.state.read().await;
             let new_index = state.find_index(name).ok_or_else(
                 || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
@@ -299,15 +298,22 @@ impl BackendManager {
         }
 
         let profile_name = if name == "Local" { "default" } else { name };
-        info!("👤 Switching profiles to: {profile_name}");
+        info!("Switching profiles to: {profile_name}");
 
         self.switch_sub_settings_profile(manager, "remotes", profile_name)?;
         self.switch_sub_settings_profile(manager, "backend", profile_name)?;
 
         // Brief write: only flip the index, all heavy work is already done
-        self.state.write().await.active_index = new_index;
+        {
+            let mut state = self.state.write().await;
+            // Re-validate index because a concurrent remove might have shifted it
+            let new_index = state.find_index(name).ok_or_else(
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => name),
+            )?;
+            state.active_index = new_index;
+        }
 
-        info!("🔄 Switched to backend: {name} (is_local: {is_local})");
+        info!("Switched to backend: {name} (is_local: {is_local})");
         Ok(())
     }
 
@@ -330,7 +336,7 @@ impl BackendManager {
                 log::error!("Failed to switch {sub_name} to profile '{profile_name}': {e}");
                 return Err(format!("Failed to switch {sub_name} profile: {e}"));
             }
-            log::info!("👤 Switched '{sub_name}' to profile: {profile_name}");
+            log::info!("Switched '{sub_name}' to profile: {profile_name}");
             Ok(())
         } else {
             log::error!("Failed to access '{sub_name}' sub-settings");
@@ -344,11 +350,10 @@ impl BackendManager {
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
-        // Update runtime cache
         self.runtime_info
             .write()
             .await
-            .insert(name.to_string(), info.clone());
+            .insert(name.to_string(), info);
     }
 
     /// Get runtime info for a specific backend
@@ -438,7 +443,7 @@ impl BackendManager {
         }
 
         let target_backend = active_name.unwrap_or_else(|| {
-            log::info!("ℹ️ No active backend saved, defaulting to Local");
+            log::info!("No active backend saved, defaulting to Local");
             "Local".to_string()
         });
 
@@ -452,35 +457,35 @@ impl BackendManager {
                 log::error!("Critical: Failed to revert to Local backend: {revert_e}");
             }
         } else {
-            log::info!("✅ Restored active backend: {target_backend}");
+            log::info!("Restored active backend: {target_backend}");
         }
 
         Ok(())
-    }
-
-    /// Persist the active backend name to settings.
-    ///
-    /// Logs a warning on failure; callers should not treat this as fatal.
-    pub fn save_active_to_settings(manager: &AppSettingsManager, name: &str) {
-        let result = (|| -> Result<(), String> {
-            let connections = manager
-                .sub_settings("connections")
-                .map_err(|e| e.to_string())?;
-            connections
-                .set("_active", &name)
-                .map_err(|e| format!("Failed to save active backend: {e}"))
-        })();
-
-        match result {
-            Ok(()) => log::debug!("💾 Saved active backend: {name}"),
-            Err(e) => log::warn!("Failed to persist active backend '{name}': {e}"),
-        }
     }
 }
 
 impl Default for BackendManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Persist the active backend name to settings.
+///
+/// Logs a warning on failure; callers should not treat this as fatal.
+pub fn save_active_backend_to_settings(manager: &AppSettingsManager, name: &str) {
+    let result = (|| -> Result<(), String> {
+        let connections = manager
+            .sub_settings("connections")
+            .map_err(|e| e.to_string())?;
+        connections
+            .set("_active", &name)
+            .map_err(|e| format!("Failed to save active backend: {e}"))
+    })();
+
+    match result {
+        Ok(()) => log::debug!("Saved active backend: {name}"),
+        Err(e) => log::warn!("Failed to persist active backend '{name}': {e}"),
     }
 }
 

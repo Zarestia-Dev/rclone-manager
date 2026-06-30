@@ -43,8 +43,10 @@ impl RcApiEngine {
         let is_encrypted = match crate::core::security::is_config_encrypted(app.clone()).await {
             Ok(encrypted) => encrypted,
             Err(e) => {
-                warn!("Unexpected error checking encryption: {e}");
-                false
+                error!("Failed to check configuration encryption status: {e}");
+                return Err(EngineError::ConfigValidationFailed(format!(
+                    "Failed to check encryption: {e}"
+                )));
             }
         };
 
@@ -121,44 +123,37 @@ impl RcApiEngine {
                 self.clear_errors();
                 true
             }
-            Err(ref e) => {
+            Err(e) => {
                 error!("Rclone configuration validation failed: {e}");
 
-                match e {
+                let status = match &e {
                     EngineError::RcloneNotFound => {
                         self.set_password_error(false);
                         self.set_path_error(true);
                         self.set_version_error(false);
+                        EngineStatus::PathError
                     }
-                    EngineError::VersionTooOld { .. } => {
+                    EngineError::VersionTooOld { version, required } => {
                         self.set_password_error(false);
                         self.set_path_error(false);
                         self.set_version_error(true);
-                    }
-                    EngineError::WrongPassword | EngineError::PasswordRequired => {
-                        self.set_password_error(true);
-                        self.set_path_error(false);
-                        self.set_version_error(false);
-                    }
-                    _ => {
-                        self.clear_errors();
-                    }
-                }
-
-                let status = match e {
-                    EngineError::RcloneNotFound => EngineStatus::PathError,
-                    EngineError::VersionTooOld { version, required } => {
                         EngineStatus::VersionError {
                             version: version.clone(),
                             required: required.clone(),
                         }
                     }
                     EngineError::WrongPassword | EngineError::PasswordRequired => {
+                        self.set_password_error(true);
+                        self.set_path_error(false);
+                        self.set_version_error(false);
                         EngineStatus::PasswordError
                     }
-                    other => EngineStatus::Error {
-                        message: other.to_string(),
-                    },
+                    other => {
+                        self.clear_errors();
+                        EngineStatus::Error {
+                            message: other.to_string(),
+                        }
+                    }
                 };
 
                 if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, &status) {

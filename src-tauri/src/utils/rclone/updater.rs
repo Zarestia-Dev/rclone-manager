@@ -203,7 +203,6 @@ pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Opti
         (d.state, d.pending_update.clone())
     };
 
-    // If no metadata and no binary, there's nothing to report
     if pending_metadata.is_none() && !has_pending_new {
         return Ok(None);
     }
@@ -488,8 +487,9 @@ pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
         "rclone_update",
         "unknown",
         &pending_version,
-    )
-    .map_err(|e| Error::Restart(e.to_string()))
+    );
+
+    Ok(())
 }
 
 /// Swaps the pending `.new` binary into the active location.
@@ -567,7 +567,6 @@ pub async fn activate_pending_rclone_update(
         Ok(metadata.version)
     } else {
         log::warn!("Rclone binary swap completed but no update metadata was found (state lost?)");
-        // We just promoted new_path to current_path, so current_path is now the new version.
         Ok(get_binary_version(&current_path)
             .await
             .unwrap_or_else(|| "unknown".to_string()))
@@ -584,8 +583,6 @@ async fn get_binary_version(path: &Path) -> Option<String> {
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
-        // rclone v1.66.0
-        // ...
         stdout.lines().next().and_then(|line| {
             line.split_whitespace()
                 .nth(1)
@@ -615,7 +612,6 @@ async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
         return Some(v);
     }
 
-    // Fallback for local backend if engine is not running
     let active = backend_manager.get_active().await;
     if active.is_local {
         let current_path = read_rclone_binary(app_handle);
@@ -740,7 +736,6 @@ async fn check_rclone_selfupdate(
     let backend = backend_manager.get_active().await;
     let client = &app_handle.state::<RcloneState>().client;
 
-    // Call `rclone selfupdate --check` through the running RC daemon.
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload =
         backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
@@ -750,7 +745,6 @@ async fn check_rclone_selfupdate(
         .await
         .map_err(Error::RcloneVersionCheck)?;
 
-    // core/command returns { "result": "<combined stdout+stderr>", "error": bool }
     let output = response
         .get("result")
         .and_then(|v| v.as_str())
@@ -840,7 +834,6 @@ async fn perform_rclone_selfupdate(
     let client = &app_handle.state::<RcloneState>().client;
 
     let mut args = vec![];
-    // ... rest up to post_json ...
     if let Some(output) = output_path {
         args.push("--output".to_string());
         args.push(output.to_string_lossy().to_string());

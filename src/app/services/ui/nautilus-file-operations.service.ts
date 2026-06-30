@@ -3,9 +3,9 @@ import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ModalService } from 'src/app/services/ui/modal.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 
@@ -26,7 +26,7 @@ export class NautilusFileOperationsService {
   private readonly MAX_UNDO_STACK = 20;
 
   private readonly translate = inject(TranslateService);
-  private readonly nautilusService = inject(NautilusService);
+  private readonly modalService = inject(ModalService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
@@ -533,7 +533,7 @@ export class NautilusFileOperationsService {
     const firstItem = items[0];
     const defaultName = items.length === 1 ? `${firstItem.entry.Name}.zip` : 'archive.zip';
 
-    const ref = this.nautilusService.openArchiveCreate({ items, defaultName });
+    const ref = this.modalService.openArchiveCreate({ items, defaultName });
     const result = (await firstValueFrom(ref.afterClosed())) as {
       filename: string;
       format: string;

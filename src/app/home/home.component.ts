@@ -6,7 +6,9 @@ import {
   computed,
   DestroyRef,
   linkedSignal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -44,6 +46,7 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 
 @Component({
   selector: 'app-home',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     MatSidenavModule,
@@ -248,7 +251,6 @@ export class HomeComponent {
   async resetRemoteSettings(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
-    // Same pattern as deleteRemote — confirmModal out of try/catch
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('home.resetRemote.title'),
       this.translate.instant('home.resetRemote.message', { name: remoteName }),
@@ -274,6 +276,7 @@ export class HomeComponent {
     this.modalService
       .openQuickAddRemote()
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
@@ -296,6 +299,7 @@ export class HomeComponent {
         autoAddProfile,
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
@@ -314,6 +318,7 @@ export class HomeComponent {
         remoteType: remote.type,
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });

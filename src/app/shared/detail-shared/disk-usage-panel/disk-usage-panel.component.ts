@@ -1,4 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output, computed, ChangeDetectionStrategy } from '@angular/core';
 import { NgClass, NgStyle } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
@@ -9,6 +9,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 
 @Component({
   selector: 'app-disk-usage-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     NgClass,

@@ -9,6 +9,7 @@ import {
   REMOTE_NAME_REGEX,
   DEFAULT_PROFILE_NAME,
   CommandOption,
+  PREDEFINED_OPTIONS,
   RcConfigOption,
   InteractiveFlowState,
   REMOTE_CONFIG_KEYS,
@@ -16,6 +17,7 @@ import {
   RemoteSettings,
   FlagType,
   SYNC_TYPES,
+  SENSITIVE_KEYS,
 } from '@app/types';
 
 import { AuthStateService } from '../security/auth-state.service';
@@ -171,10 +173,16 @@ export class RemoteConfigStateService {
   readonly currentStep = signal(1);
   readonly isInitializing = signal(true);
   readonly showCliImport = signal(false);
+  readonly showObscureTool = signal(false);
   readonly isSearchVisible = signal(false);
   readonly searchQuery = signal('');
   readonly showAdvancedOptions = signal(false);
-  readonly commandOptions = signal<CommandOption[]>([]);
+  readonly commandOptions = signal<CommandOption[]>(
+    ((): CommandOption[] => {
+      const obscure = PREDEFINED_OPTIONS.find(o => o.key === 'obscure');
+      return obscure ? [{ ...obscure }] : [];
+    })()
+  );
 
   readonly isAuthInProgress = this.authStateService.isAuthInProgress;
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
@@ -290,6 +298,43 @@ export class RemoteConfigStateService {
   readonly activeProfileType = computed<SharedProfileType | null>(() => {
     const t = this.editTarget();
     return !t || t === 'remote' ? null : (t as SharedProfileType);
+  });
+
+  readonly activeSensitiveFields = computed(() => {
+    const stepType = this.activeStepType();
+    if (!stepType) return [];
+
+    let fields: RcConfigOption[];
+    if (stepType === 'remote') {
+      fields = this.dynamicRemoteFields();
+    } else if (stepType === 'runtimeRemote') {
+      fields = this.dynamicRuntimeRemoteFields();
+    } else if (stepType === 'serve') {
+      fields = this.dynamicServeFields();
+    } else {
+      fields = (this.dynamicFlagFields() as any)[stepType] || [];
+    }
+
+    if (!fields) return [];
+
+    return fields
+      .filter(field => {
+        const name = (field.FieldName || field.Name || '').toLowerCase();
+        return (
+          field.IsPassword ||
+          field.Name === 'pass' ||
+          SENSITIVE_KEYS.some(key => name.includes(key))
+        );
+      })
+      .map(field => {
+        const key = getControlKey(field, stepType);
+        const name = field.FieldName || field.Name || '';
+        return {
+          key,
+          name,
+          help: field.Help || '',
+        };
+      });
   });
   readonly activeStepType = computed(
     () =>
@@ -1161,7 +1206,44 @@ export class RemoteConfigStateService {
     }
   }
   toggleCliImportVisibility(): void {
-    if (this.currentStep() !== 1 || this.editTarget()) this.showCliImport.update(v => !v);
+    if (this.currentStep() !== 1 || this.editTarget()) {
+      this.showCliImport.update(v => !v);
+      if (this.showCliImport()) {
+        this.showObscureTool.set(false);
+      }
+    }
+  }
+
+  toggleObscureToolVisibility(): void {
+    this.showObscureTool.update(v => !v);
+    if (this.showObscureTool()) {
+      this.showCliImport.set(false);
+    }
+  }
+
+  applyObscuredValue(controlKey: string, value: string): void {
+    const stepType = this.activeStepType();
+    if (!stepType) return;
+
+    let group: FormGroup | null;
+    if (stepType === 'remote') {
+      group = this.remoteForm;
+    } else if (stepType === 'runtimeRemote') {
+      group = this.runtimeRemoteConfigGroup;
+    } else if (stepType === 'serve') {
+      group = this.remoteConfigForm.get('serveConfig.options') as FormGroup;
+    } else {
+      group = this.remoteConfigForm.get(`${stepType}Config.options`) as FormGroup;
+    }
+
+    if (group) {
+      const control = group.get(controlKey);
+      if (control) {
+        control.setValue(value);
+        control.markAsDirty();
+        control.markAsTouched();
+      }
+    }
   }
 
   async applyImportResult(event: {
@@ -1324,6 +1406,7 @@ export class RemoteConfigStateService {
     processedLinked.forEach(t => this.dirtyProfileTypes.add(t));
     this.dirtyProfileTypes.add(targetType);
     this.showCliImport.set(false);
+    this.showObscureTool.set(false);
     this.dirtyProfileTypes.forEach(t => this.saveCurrentProfile(t));
   }
 

@@ -1,5 +1,5 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -20,9 +20,9 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 
 @Component({
   selector: 'app-operations-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatProgressBarModule,
@@ -40,26 +40,26 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
 })
-export class OperationsPanelComponent implements OnInit {
-  private jobManagementService = inject(JobManagementService);
-  private uiStateService = inject(UiStateService);
-  private translate = inject(TranslateService);
-  protected settings = inject(NautilusSettingsService);
-  private remoteOps = inject(RemoteFileOperationsService);
-  private notifications = inject(NotificationService);
-  private pathService = inject(PathService);
+export class OperationsPanelComponent {
+  private readonly jobManagementService = inject(JobManagementService);
+  private readonly uiStateService = inject(UiStateService);
+  private readonly translate = inject(TranslateService);
+  protected readonly settings = inject(NautilusSettingsService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
+  private readonly notifications = inject(NotificationService);
+  private readonly pathService = inject(PathService);
 
-  // Subscribe to reactive job stream
+  // Reactive state
   jobs = this.jobManagementService.nautilusJobs;
   isExpanded = signal(true);
   isLoading = signal(false);
-
-  // Selected job for bottom dock split view
   selectedJobId = signal<number | null>(null);
+  contextMenuJob = signal<JobInfo | null>(null);
 
+  // Computed State
   selectedJob = computed(() => {
-    const jobs = this.jobs();
     const id = this.selectedJobId();
+    const jobs = this.jobs();
     if (id !== null) {
       const found = jobs.find(j => j.jobid === id);
       if (found) return found;
@@ -67,11 +67,18 @@ export class OperationsPanelComponent implements OnInit {
     return jobs.length > 0 ? jobs[0] : null;
   });
 
+  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
+  completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
+  hasJobs = computed(() => this.jobs().length > 0);
+  isDockedAtBottom = computed(() => this.settings.operationsPanelPosition() === 'bottom');
+
+  constructor() {
+    this.jobManagementService.refreshJobs();
+  }
+
   selectJob(job: JobInfo): void {
     this.selectedJobId.set(job.jobid);
   }
-
-  isDockedAtBottom = computed(() => this.settings.operationsPanelPosition() === 'bottom');
 
   setDockPosition(pos: 'sidebar' | 'bottom'): void {
     this.settings.saveOperationsPanelPosition(pos);
@@ -100,16 +107,15 @@ export class OperationsPanelComponent implements OnInit {
   async retryTransfer(file: CompletedTransfer, job: JobInfo): Promise<void> {
     let srcFs: string;
     let srcPath: string;
+
     if (file.srcFs) {
       srcFs = file.srcFs;
       srcPath = file.name;
     } else {
-      let sourceStr: string;
-      if (Array.isArray(job.source)) {
-        sourceStr = job.source.find(s => s.endsWith(file.name)) || job.source[0] || '';
-      } else {
-        sourceStr = job.source || '';
-      }
+      const sourceStr = Array.isArray(job.source)
+        ? job.source.find(s => s.endsWith(file.name)) || job.source[0] || ''
+        : job.source || '';
+
       const split = this.pathService.splitFsPath(sourceStr);
       srcFs = this.pathService.normalizeRemoteForRclone(split.remote);
       srcPath = split.path;
@@ -117,6 +123,7 @@ export class OperationsPanelComponent implements OnInit {
 
     let dstFsRemote = '';
     let dstFsPath = '';
+
     if (job.destination) {
       const split = this.pathService.splitFsPath(job.destination);
       dstFsRemote = this.pathService.normalizeRemoteForRclone(split.remote);
@@ -125,8 +132,7 @@ export class OperationsPanelComponent implements OnInit {
       dstFsRemote = file.dstFs;
     }
 
-    const parentPathInFile = this.pathService.getParentPath(file.name);
-    const dstPath = this.pathService.joinPath(dstFsPath, parentPathInFile);
+    const dstPath = this.pathService.joinPath(dstFsPath, this.pathService.getParentPath(file.name));
 
     try {
       await this.remoteOps.transferItems(
@@ -159,40 +165,19 @@ export class OperationsPanelComponent implements OnInit {
     }
   }
 
-  // Computed
-  activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
-  completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
-  hasJobs = computed(() => this.jobs().length > 0);
-
-  ngOnInit(): void {
-    // Initial load from backend
-    this.jobManagementService.refreshJobs();
-  }
-
   toggleExpanded(): void {
     this.isExpanded.update(v => !v);
   }
 
-  /**
-   * Return a human-readable label for the job type, using translations when available.
-   */
   getJobTypeLabel(job: JobInfo): string {
     const key = `fileBrowser.operations.types.${job.job_type}`;
     const translated = this.translate.instant(key);
-    // If translation returns the key itself, fall back to a prettified name
-    if (translated === key) {
-      return job.job_type.replace(/_/g, ' ');
-    }
-    return translated;
+    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
   }
 
   getProgress(job: JobInfo): number {
     if (!job.stats || !job.stats.totalBytes) return 0;
     return Math.round((job.stats.bytes / job.stats.totalBytes) * 100);
-  }
-
-  getFileName(job: JobInfo): string {
-    return this.getJobTypeLabel(job);
   }
 
   resolveSourceString(source: string | string[]): string {
@@ -217,10 +202,9 @@ export class OperationsPanelComponent implements OnInit {
       return `${job.stats.totalTransfers} files`;
     }
     const path = job.destination || resolvedSource || '';
-    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination;
+    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination || '';
   }
 
-  /** Get icon for the job's operation type */
   getJobTypeIcon(job: JobInfo): string {
     switch (job.job_type) {
       case 'delete':
@@ -252,9 +236,8 @@ export class OperationsPanelComponent implements OnInit {
     }
   }
 
-  /** Whether this job is a delete-type operation (no byte progress) */
   isDeleteOperation(job: JobInfo): boolean {
-    return job.job_type === 'delete' || job.job_type === 'cleanup' || job.job_type === 'rmdirs';
+    return ['delete', 'cleanup', 'rmdirs'].includes(job.job_type);
   }
 
   getStatusIcon(job: JobInfo): string {
@@ -275,8 +258,7 @@ export class OperationsPanelComponent implements OnInit {
   async stopJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.stopJob(job.jobid, job.remote_name);
-      // Refresh the stream after stopping
-      await this.jobManagementService.refreshJobs();
+      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to stop job:', err);
     }
@@ -285,8 +267,7 @@ export class OperationsPanelComponent implements OnInit {
   async deleteJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.deleteJob(job.jobid);
-      // Refresh the stream after deleting
-      await this.jobManagementService.refreshJobs();
+      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to delete job:', err);
     }
@@ -298,13 +279,9 @@ export class OperationsPanelComponent implements OnInit {
   }
 
   getTransferredFiles(job: JobInfo): CompletedTransfer[] {
-    if (job.stats?.completed && job.stats.completed.length > 0) {
-      return job.stats.completed;
-    }
-    return [];
+    return job.stats?.completed?.length ? job.stats.completed : [];
   }
 
-  /** Get appropriate label for the list of transferred items */
   getTransferredLabel(job: JobInfo): string {
     switch (job.job_type) {
       case 'delete':

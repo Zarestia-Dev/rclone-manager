@@ -64,12 +64,6 @@ impl std::error::Error for EngineError {}
 
 pub type EngineResult<T> = Result<T, EngineError>;
 
-impl From<EngineError> for String {
-    fn from(e: EngineError) -> Self {
-        e.to_string()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,7 +111,7 @@ mod tests {
     #[test]
     fn test_engine_error_to_string_conversion() {
         let error = EngineError::SpawnFailed("conversion test".to_string());
-        let string: String = error.into();
+        let string = error.to_string();
         assert_eq!(string, "backendErrors.rclone.spawnFailed");
     }
 

@@ -425,4 +425,8 @@ export class RemoteManagementService extends TauriBaseService {
       ...(opt && { opt }),
     });
   }
+
+  async obscureValue(clear: string): Promise<string> {
+    return this.invokeCommand<string>('obscure_value', { clear });
+  }
 }

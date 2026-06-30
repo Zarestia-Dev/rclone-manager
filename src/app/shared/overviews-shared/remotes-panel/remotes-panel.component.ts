@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -15,6 +15,7 @@ import {
 
 @Component({
   selector: 'app-remotes-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, MatButtonModule, MatTooltipModule, DragDropModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',

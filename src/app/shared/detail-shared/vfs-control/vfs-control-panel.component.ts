@@ -1,7 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ViewChild,
+  viewChild,
   computed,
   effect,
   inject,
@@ -82,7 +82,7 @@ export class VfsControlPanelComponent {
 
   readonly changeNotify = computed(() => this.selectedVfs()?.pollIntervalSupported !== false);
 
-  @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
+  readonly table = viewChild(MatTable<VfsQueueItem>);
 
   readonly vfsInstances = signal<VfsInstance[]>([]);
   readonly selectedVfs = signal<VfsInstance | null>(null);
@@ -161,7 +161,7 @@ export class VfsControlPanelComponent {
     // Force MatTable to re-evaluate 'when' row predicates when delay slider state changes.
     effect(() => {
       this.showDelaySlider();
-      this.table?.renderRows();
+      this.table()?.renderRows();
     });
 
     timer(POLL_INTERVAL_MS, POLL_INTERVAL_MS)

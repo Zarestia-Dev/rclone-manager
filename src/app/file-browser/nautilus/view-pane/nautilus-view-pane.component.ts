@@ -6,9 +6,10 @@ import {
   TemplateRef,
   computed,
   signal,
-  ViewChild,
+  viewChild,
   ElementRef,
   OnDestroy,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,7 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FormatFileSizePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatRelativeDatePipe } from '@app/pipes';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
@@ -25,6 +26,7 @@ import { Entry, FileBrowserItem } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-view-pane',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     NgTemplateOutlet,
@@ -35,14 +37,14 @@ import { Entry, FileBrowserItem } from '@app/types';
     MatTableModule,
     TranslatePipe,
     FormatFileSizePipe,
+    FormatRelativeDatePipe,
   ],
   templateUrl: './nautilus-view-pane.component.html',
   styleUrl: './nautilus-view-pane.component.scss',
 })
 export class NautilusViewPaneComponent implements OnDestroy {
-  @ViewChild('paneWrapper') paneWrapper?: ElementRef<HTMLElement>;
-  @ViewChild('gridContainer', { read: ElementRef }) gridContainer?: ElementRef<HTMLElement>;
-  @ViewChild('listContainer', { read: ElementRef }) listContainer?: ElementRef<HTMLElement>;
+  readonly gridContainer = viewChild<ElementRef<HTMLElement>>('gridContainer');
+  readonly listContainer = viewChild<ElementRef<HTMLElement>>('listContainer');
 
   private readonly nautilusService = inject(NautilusService);
   protected readonly dragDrop = inject(NautilusDragDropService);
@@ -69,7 +71,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   public readonly activePaneIndex = input.required<0 | 1>();
   public readonly isItemSelectable = input.required<(entry: Entry) => boolean>();
   public readonly isMobile = input<boolean>(false);
-  public readonly fileMenu = input.required<TemplateRef<unknown>>();
+  public readonly fileMenu = input<TemplateRef<unknown> | null | undefined>(undefined);
   public readonly isMultiSelectEnabled = input<boolean>(true);
 
   // --- Outputs ---
@@ -177,16 +179,9 @@ export class NautilusViewPaneComponent implements OnDestroy {
     window.removeEventListener('pointercancel', this._onWindowPointerCancel);
   }
 
-  private readonly _dateFormatter = new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
   private get _activeContainer(): HTMLElement | undefined {
-    return (this.layout() === 'grid' ? this.gridContainer : this.listContainer)?.nativeElement;
+    const ref = this.layout() === 'grid' ? this.gridContainer() : this.listContainer();
+    return ref?.nativeElement;
   }
 
   // ---------------------------------------------------------------------------
@@ -267,11 +262,6 @@ export class NautilusViewPaneComponent implements OnDestroy {
 
   protected getItemKey(item: FileBrowserItem): string {
     return `${item.meta.remote}:${item.entry.Path}`;
-  }
-
-  protected formatRelativeDate(dateString: string): string {
-    if (!dateString) return '';
-    return this._dateFormatter.format(new Date(dateString));
   }
 
   // ---------------------------------------------------------------------------

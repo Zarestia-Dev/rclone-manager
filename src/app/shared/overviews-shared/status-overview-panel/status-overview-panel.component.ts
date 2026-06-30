@@ -1,4 +1,4 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { AppTab, ACTIVE_LABELS, INACTIVE_LABELS } from '@app/types';
 
 @Component({
   selector: 'app-status-overview-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatIconModule, TranslatePipe],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',

@@ -804,6 +804,7 @@
     "settingControl": {
       "default": "Predeterminado: {{value}}",
       "resetToDefault": "Restablecer al valor predeterminado",
+      "obscureValue": "Ocultar contraseña usando rclone",
       "enabled": "Activado",
       "disabled": "Desactivado",
       "addItem": "Añadir elemento",
@@ -991,6 +992,17 @@
       "importDestPath": "Importar ruta de destino",
       "importMountPoint": "Importar punto de montaje"
     },
+    "obscure": {
+      "title": "Ocultar contraseña",
+      "description": "Oculta una cadena en claro utilizando el algoritmo de oscurecimiento estándar de rclone para que pueda guardarse de forma segura en los archivos o parámetros de configuración.",
+      "clearPlaceholder": "Contraseña / Cadena en claro",
+      "clearPlaceholderText": "Ingrese la contraseña en texto plano",
+      "action": "Ocultar",
+      "resultTitle": "Valor ocultado",
+      "resultHelp": "Haga clic en el botón de copiar y pegue este valor donde sea necesario.",
+      "applyToField": "Aplicar valor ocultado al campo",
+      "apply": "Aplicar al campo"
+    },
     "remoteConfig": {
       "remoteName": "Nombre remoto",
       "remoteNameRequired": "Se requiere el nombre remoto",
@@ -1017,6 +1029,10 @@
         "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor.",
         "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor.",
         "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor."
+      },
+      "runtimeRemoteWarning": {
+        "title": "Configuración del remoto en tiempo de ejecución",
+        "description": "Estas configuraciones se utilizan para invalidar dinámicamente las propiedades de conexión o aplicar ajustes de rendimiento al interactuar con este remoto en tiempo de ejecución. No se almacenan en el archivo persistente rclone.conf. Si alguno de estos campos contiene valores sensibles como contraseñas o claves de API, deben ser oscurecidos manualmente mediante el algoritmo obscure de rclone antes de guardar; rclone no aceptará valores en texto plano para dichos campos."
       },
       "showAdvanced": "Mostrar opciones avanzadas",
       "hideAdvanced": "Ocultar opciones avanzadas",

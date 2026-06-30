@@ -21,8 +21,8 @@ use crate::utils::types::state::RcloneState;
 pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
 ) -> Result<SystemStatusPayload, String> {
-    let (running, updating, should_exit) = get_engine_status(&app_handle).await;
-    if !running || updating || should_exit {
+    let status = get_engine_status(&app_handle).await;
+    if !status.running || status.updating || status.should_exit {
         return Ok(SystemStatusPayload::inactive());
     }
 
@@ -40,7 +40,7 @@ pub fn set_poller_visibility(app_handle: AppHandle, visible: bool) -> Result<(),
     app_handle
         .state::<RcloneState>()
         .poller_visible
-        .store(visible, Ordering::SeqCst);
+        .store(visible, Ordering::Relaxed);
     Ok(())
 }
 
@@ -48,7 +48,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
     if app_handle
         .state::<RcloneState>()
         .poller_running
-        .swap(true, Ordering::SeqCst)
+        .swap(true, Ordering::AcqRel)
     {
         debug!("System poller already running");
         return;
@@ -65,7 +65,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
             interval.tick().await;
 
             let state = app_handle.state::<RcloneState>();
-            if !state.poller_running.load(Ordering::SeqCst) {
+            if !state.poller_running.load(Ordering::Acquire) {
                 debug!("Stopping system poller");
                 break;
             }
@@ -74,14 +74,14 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 break;
             }
 
-            let (running, updating, should_exit) = get_engine_status(&app_handle).await;
-            let should_skip = !running || updating || should_exit;
+            let status = get_engine_status(&app_handle).await;
+            let should_skip = !status.running || status.updating || status.should_exit;
 
             if should_skip {
                 burst_ticks = BURST_TICK_COUNT;
-                if !running {
+                if !status.running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
-                    if !updating && !should_exit {
+                    if !status.updating && !status.should_exit {
                         start_engine_if_not_running(&app_handle).await;
                     }
                 }
@@ -93,7 +93,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 continue;
             }
 
-            let is_visible = state.poller_visible.load(Ordering::SeqCst);
+            let is_visible = state.poller_visible.load(Ordering::Relaxed);
 
             if is_visible && !prev_visible {
                 debug!("Visibility restored, triggering burst mode");
@@ -137,25 +137,28 @@ pub fn start_system_poller(app_handle: AppHandle) {
         app_handle
             .state::<RcloneState>()
             .poller_running
-            .store(false, Ordering::SeqCst);
+            .store(false, Ordering::Release);
     });
 }
 
-fn parse_batch_result(result_obj: &serde_json::Value, endpoint_name: &str) -> serde_json::Value {
+fn get_batch_result<'a>(
+    result_obj: &'a serde_json::Value,
+    endpoint_name: &str,
+) -> Option<&'a serde_json::Value> {
     if result_obj.is_null() {
         debug!("Batch result for {endpoint_name} is null");
-        return serde_json::Value::Null;
+        return None;
     }
 
     if let Some(error) = result_obj.get("error") {
         let error_str = error.as_str().unwrap_or("");
         if !error_str.is_empty() {
             debug!("Batch result for {endpoint_name} has error: {error_str}");
-            return serde_json::Value::Null;
+            return None;
         }
     }
 
-    result_obj.clone()
+    Some(result_obj)
 }
 
 async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, String> {
@@ -174,8 +177,7 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
 
     let response = backend
         .post_json(client, job::BATCH, Some(&batch_payload))
-        .await
-        .map_err(|e| e.clone())?;
+        .await?;
 
     if let Some(error) = response.get("error") {
         return Err(error.as_str().unwrap_or("Unknown batch error").to_string());
@@ -189,17 +191,21 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         return Err("Invalid batch response: insufficient results".to_string());
     }
 
-    let stats = parse_batch_result(&results[0], "stats");
-    let memory = parse_batch_result(&results[1], "memstats");
-    let mount_result = parse_batch_result(&results[2], "mounts");
-    let serve_result = parse_batch_result(&results[3], "serves");
+    let stats = get_batch_result(&results[0], "stats")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let memory = get_batch_result(&results[1], "memstats")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let mount_result = get_batch_result(&results[2], "mounts");
+    let serve_result = get_batch_result(&results[3], "serves");
 
-    if !mount_result.is_null() {
-        update_mount_cache(app, &mount_result).await;
+    if let Some(mount_result) = mount_result {
+        update_mount_cache(app, mount_result).await;
     }
 
-    if !serve_result.is_null() {
-        update_serve_cache(app, &serve_result).await;
+    if let Some(serve_result) = serve_result {
+        update_serve_cache(app, serve_result).await;
     }
 
     let active_name = backend_manager.get_active_name().await;

@@ -13,13 +13,6 @@ import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import {
-  ModalService,
-  RemoteConfigModalOptions,
-  ExportModalOptions,
-  PropertiesModalOptions,
-  RemoteAboutModalOptions,
-} from 'src/app/services/ui/modal.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
@@ -44,7 +37,6 @@ export class NautilusService extends TauriBaseService {
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
-  private readonly modalService = inject(ModalService);
 
   private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
     isOpen: false,
@@ -426,38 +418,6 @@ export class NautilusService extends TauriBaseService {
 
   unregisterSendTo(remote: string, path: string | null): Promise<void> {
     return this.invokeCommand<void>('unregister_send_to', { remote, path });
-  }
-
-  openProperties(options: PropertiesModalOptions): any {
-    return this.modalService.openProperties(options);
-  }
-
-  openExport(options: ExportModalOptions): any {
-    return this.modalService.openExport(options);
-  }
-
-  openLogs(remoteName: string): any {
-    return this.modalService.openLogs(remoteName);
-  }
-
-  openRemoteConfig(options: RemoteConfigModalOptions): any {
-    return this.modalService.openRemoteConfig(options);
-  }
-
-  openQuickAddRemote(): any {
-    return this.modalService.openQuickAddRemote();
-  }
-
-  openArchiveCreate(data: any): any {
-    return this.modalService.openArchiveCreate(data);
-  }
-
-  openRemoteAbout(options: RemoteAboutModalOptions): any {
-    return this.modalService.openRemoteAbout(options);
-  }
-
-  openKeyboardShortcuts(data?: { nautilus?: boolean }): any {
-    return this.modalService.openKeyboardShortcuts(data);
   }
 
   private createNautilusOverlay(

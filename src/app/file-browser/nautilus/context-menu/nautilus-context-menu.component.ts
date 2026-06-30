@@ -1,4 +1,13 @@
-import { Component, inject, computed, ViewChild, TemplateRef, input, output } from '@angular/core';
+import {
+  Component,
+  inject,
+  computed,
+  viewChild,
+  TemplateRef,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -17,6 +26,7 @@ import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/
 
 @Component({
   selector: 'app-nautilus-context-menu',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     TranslatePipe,
@@ -54,9 +64,8 @@ export class NautilusContextMenuComponent {
   readonly toggleSendTo = output<void>();
 
   // Template references for parent integration
-  @ViewChild('fileMenuTemplate', { static: true }) readonly fileMenuTemplate!: TemplateRef<any>;
-  @ViewChild('pathOptionsMenuTemplate', { static: true })
-  readonly pathOptionsMenuTemplate!: TemplateRef<any>;
+  readonly fileMenuTemplate = viewChild<TemplateRef<unknown>>('fileMenuTemplate');
+  readonly pathOptionsMenuTemplate = viewChild<TemplateRef<unknown>>('pathOptionsMenuTemplate');
 
   // Slide animation controller
   readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');

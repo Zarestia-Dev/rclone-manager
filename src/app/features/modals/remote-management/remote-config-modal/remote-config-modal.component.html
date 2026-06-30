@@ -64,6 +64,7 @@
         (sharedNavigated)="state.navigateToShared($event)"
         (returnFromShared)="state.returnFromShared()"
         (cliImportToggled)="state.toggleCliImportVisibility()"
+        (obscureToolToggled)="state.toggleObscureToolVisibility()"
       />
     }
 
@@ -83,6 +84,14 @@
         [activeStep]="state.editTarget()"
         (apply)="state.applyImportResult($event)"
       ></app-cli-import>
+
+      <app-obscure-tool
+        [visible]="state.showObscureTool()"
+        [sensitiveFields]="state.activeSensitiveFields()"
+        [provider]="state.remoteTypeSignal()"
+        (closeTool)="state.showObscureTool.set(false)"
+        (applyObscured)="state.applyObscuredValue($event.key, $event.value)"
+      ></app-obscure-tool>
 
       @if (state.oauthHelperUrl(); as oauthUrlValue) {
         <section class="oauth-helper oauth-helper--actions" aria-live="polite">
@@ -269,6 +278,14 @@
               <!-- Final step: runtime remote configuration -->
               <section class="step-container">
                 <app-profile-header flagType="runtimeRemote" />
+
+                <app-alert-banner
+                  severity="info"
+                  [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
+                  [description]="
+                    'wizards.remoteConfig.runtimeRemoteWarning.description' | translate
+                  "
+                ></app-alert-banner>
 
                 <app-remote-config-step
                   class="step"

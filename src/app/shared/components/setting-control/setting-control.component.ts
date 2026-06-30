@@ -36,9 +36,11 @@ import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe, RcloneOptionTranslatePipe } from '@app/pipes';
 import { NumberInputComponent } from '../number-input/number-input.component';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-setting-control',
@@ -74,6 +76,8 @@ export class SettingControlComponent implements ControlValueAccessor {
   private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly remoteService = inject(RemoteManagementService);
+  private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
 
   // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);
@@ -88,6 +92,7 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly control = signal<AbstractControl | null>(null);
   readonly dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
   readonly timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
+  readonly isObscuring = signal(false);
 
   // Signal-backed list of FormArray controls — zoneless CD picks up add/remove.
   readonly formArrayControls = signal<FormControl[]>([]);
@@ -101,6 +106,21 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.IsPassword || opt.Sensitive) return true;
     const name = opt.Name.toLowerCase();
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
+  readonly showObscureButton = computed(() => {
+    if (!this.isSensitiveField()) return false;
+    if (this.remoteState) {
+      if (this.remoteState.activeStepType() === 'runtimeRemote') {
+        return true;
+      }
+      const opts = this.remoteState.commandOptions();
+      const obscureOpt = opts.find(o => o.key === 'obscure');
+      if (obscureOpt && obscureOpt.value === true) {
+        return false;
+      }
+    }
+    return true;
   });
 
   readonly displayDefault = computed(() => {
@@ -642,5 +662,28 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (value === null || value === undefined || value === '') return '';
     const example = examples?.find(e => (e.Value ?? e) === value);
     return example?.Help || example?.Value || String(value);
+  }
+
+  async obscureFieldValue(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    event.preventDefault();
+    const ctrl = this.control();
+    if (!ctrl || !ctrl.value) return;
+
+    const val = ctrl.value.toString().trim();
+    if (!val) return;
+
+    this.isObscuring.set(true);
+    try {
+      const res = await this.remoteService.obscureValue(val);
+      ctrl.setValue(res);
+      ctrl.markAsDirty();
+      ctrl.markAsTouched();
+      this.commitValue();
+    } catch (e) {
+      console.error('Failed to obscure password field:', e);
+    } finally {
+      this.isObscuring.set(false);
+    }
   }
 }

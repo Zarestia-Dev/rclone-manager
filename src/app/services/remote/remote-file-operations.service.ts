@@ -9,10 +9,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
-    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group }).catch(e => {
-      console.error(e);
-      throw e;
-    });
+    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
   }
 
   async getDiskUsage(

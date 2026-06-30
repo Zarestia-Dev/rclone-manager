@@ -12,6 +12,7 @@ import {
   signal,
   afterNextRender,
   afterRenderEffect,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,6 +26,7 @@ import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.
 
 @Component({
   selector: 'app-nautilus-toolbar',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [
     MatToolbarModule,
@@ -56,7 +58,7 @@ export class NautilusToolbarComponent {
   public readonly hoveredSegmentIndex = input.required<number | null>();
   public readonly fullPathInput = input.required<string>();
   public readonly layout = input.required<'grid' | 'list'>();
-  public readonly pathOptionsMenu = input.required<TemplateRef<unknown>>();
+  public readonly pathOptionsMenu = input<TemplateRef<unknown> | null | undefined>(undefined);
   public readonly viewMenu = input.required<TemplateRef<unknown>>();
 
   // --- Outputs ---

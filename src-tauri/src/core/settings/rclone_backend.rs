@@ -48,7 +48,6 @@ pub async fn save_rclone_backend_options(
         .sub_settings("backend")
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
-    // Save each top-level block
     if let Some(obj) = options.as_object() {
         for (block_name, block_value) in obj {
             sub.set(block_name, block_value)
@@ -118,8 +117,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
     info!("RClone backend options file cleared");
 
     use crate::rclone::engine::lifecycle::restart_for_config_change;
-    restart_for_config_change(&app, "backend_options_reset", "custom", "defaults")
-        .map_err(|e| format!("Failed to restart engine: {e}"))?;
+    restart_for_config_change(&app, "backend_options_reset", "custom", "defaults");
 
     info!("RClone engine restart initiated");
     Ok(())

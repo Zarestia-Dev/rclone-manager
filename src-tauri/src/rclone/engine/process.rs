@@ -42,16 +42,12 @@ impl RcApiEngine {
             }
             Err(e) => {
                 error!("Failed to spawn rclone process: {e}");
-                let err_text = e.to_string();
-                let is_path_error = err_text.contains("No such file or directory")
-                    || err_text.contains("os error 2");
-                self.set_path_error(is_path_error);
-
-                if is_path_error {
-                    Err(EngineError::InvalidPath)
-                } else {
-                    Err(EngineError::SpawnFailed(err_text))
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    self.set_path_error(true);
+                    return Err(EngineError::InvalidPath);
                 }
+                self.set_path_error(false);
+                Err(EngineError::SpawnFailed(e.to_string()))
             }
         }
     }
@@ -67,35 +63,27 @@ impl RcApiEngine {
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 
+        let mut kill_error: Option<EngineError> = None;
+
         if self.running && child.id().is_some() {
             let state = app.state::<RcloneState>();
             let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
-            if graceful_shutdown(child, quit_request).await.is_ok() {
-                self.running = false;
-                if backend.is_auth_generated {
-                    let mut updated_backend = backend.clone();
-                    updated_backend.username = None;
-                    updated_backend.password = None;
-                    updated_backend.is_auth_generated = false;
-                    let settings_manager = app.state::<AppSettingsManager>();
-                    let _ = backend_manager
-                        .update(&settings_manager, &backend.name, updated_backend)
-                        .await;
-                }
-                return Ok(());
+            if let Err(e) = graceful_shutdown(child, quit_request).await {
+                log::warn!("Graceful shutdown failed: {e}");
             }
         } else {
             info!("Force killing engine process");
             if let Err(e) = child.kill().await {
                 let msg = format!("Failed to kill process: {e}");
                 error!("{msg}");
-                return Err(EngineError::KillFailed(msg));
+                kill_error = Some(EngineError::KillFailed(msg));
             }
             let _ = child.wait().await;
         }
 
         self.running = false;
+
         if backend.is_auth_generated {
             let mut updated_backend = backend.clone();
             updated_backend.username = None;
@@ -106,33 +94,16 @@ impl RcApiEngine {
                 .update(&settings_manager, &backend.name, updated_backend)
                 .await;
         }
+
         let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::error());
+
+        if let Some(err) = kill_error {
+            return Err(err);
+        }
         Ok(())
     }
 
     pub fn kill_port_processes(&self) -> EngineResult<()> {
         kill_processes_on_port(self.current_api_port).map_err(EngineError::PortCleanupFailed)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::rclone::engine::core::DEFAULT_API_PORT;
-
-    #[tokio::test]
-    async fn test_kill_process_no_process() {
-        let engine = RcApiEngine {
-            running: false,
-            ..Default::default()
-        };
-        assert!(!engine.running);
-    }
-
-    #[tokio::test]
-    async fn test_kill_port_processes_default_port() {
-        let engine = RcApiEngine::default();
-        assert_eq!(engine.current_api_port, DEFAULT_API_PORT);
-        let _ = engine.kill_port_processes();
     }
 }

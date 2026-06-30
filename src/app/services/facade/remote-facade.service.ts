@@ -186,13 +186,14 @@ export class RemoteFacadeService extends TauriBaseService {
       const updated = { ...this.getRemoteSettings(remoteName), ...updates };
       await this.appSettingsService.saveRemoteSettings(remoteName, updated);
       this.notificationService.showSuccess(
-        this.translate.instant('settings.remoteResetSuccess', { remote: remoteName })
-          ? `Saved settings for remote ${remoteName}`
-          : `Saved settings for remote ${remoteName}`
+        this.translate.instant('settings.remoteSaved', { remote: remoteName })
       );
     } catch (error) {
       this.notificationService.showError(
-        `Failed to save settings for remote ${remoteName}: ${error}`
+        this.translate.instant('settings.remoteSaveFailed', {
+          remote: remoteName,
+          error: String(error),
+        })
       );
       throw error;
     }

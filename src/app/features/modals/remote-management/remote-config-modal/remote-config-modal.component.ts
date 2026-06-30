@@ -21,6 +21,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
+import { ObscureToolComponent } from '../../../../shared/remote-config/obscure-tool/obscure-tool.component';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { JSON_EDITOR_LOOKUP_TABLE } from '../../../../shared/components/json-editor/json-editor.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -86,6 +88,8 @@ import {
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     CliImportComponent,
+    ObscureToolComponent,
+    AlertBannerComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
@@ -205,6 +209,7 @@ export class RemoteConfigModalComponent {
     this.scrollToTop();
     if (step === 1 && !this.state.editTarget()) {
       this.state.showCliImport.set(false);
+      this.state.showObscureTool.set(false);
     }
   }
 

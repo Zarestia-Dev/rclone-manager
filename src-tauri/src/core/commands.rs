@@ -77,6 +77,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_hashsum_file, $crate::rclone::queries::get_hashsum_file, [remote: String, path: String, hash_type: String, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_public_link, $crate::rclone::queries::get_public_link, [remote: String, path: String, options: Option<$crate::rclone::queries::filesystem::PublicLinkParams>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (get_local_disk_usage, $crate::rclone::queries::system::get_local_disk_usage, [dir: Option<String>]);
+            (obscure_value, $crate::rclone::queries::system::obscure_value, [clear: String]);
             (get_remote_types, $crate::rclone::queries::get_remote_types, []);
             (get_oauth_supported_remotes, $crate::rclone::queries::get_oauth_supported_remotes, []);
             (get_rclone_config_file, $crate::rclone::queries::get_rclone_config_file, []);

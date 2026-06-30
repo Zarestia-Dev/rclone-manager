@@ -179,7 +179,7 @@
             </div>
           </th>
           <td mat-cell *matCellDef="let item">
-            {{ formatRelativeDate(item.entry.ModTime) }}
+            {{ item.entry.ModTime | formatRelativeDate }}
           </td>
         </ng-container>
 

@@ -1,5 +1,5 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
-import { Component, computed, input, inject, output } from '@angular/core';
+import { Component, computed, input, inject, output, ChangeDetectionStrategy } from '@angular/core';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,6 +32,7 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 @Component({
   selector: 'app-remote-card',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
     TitleCasePipe,

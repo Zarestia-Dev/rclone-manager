@@ -804,6 +804,7 @@
     "settingControl": {
       "default": "默认值：{{value}}",
       "resetToDefault": "恢复默认",
+      "obscureValue": "使用 rclone 混淆密码",
       "enabled": "已启用",
       "disabled": "已禁用",
       "addItem": "添加项",
@@ -991,6 +992,17 @@
       "importDestPath": "导入目标路径",
       "importMountPoint": "导入挂载点"
     },
+    "obscure": {
+      "title": "混淆密码",
+      "description": "使用 rclone 的标准混淆算法混淆明文字符串，以便安全地保存到配置文件或参数中。",
+      "clearPlaceholder": "明文密码/字符串",
+      "clearPlaceholderText": "输入明文密码",
+      "action": "混淆",
+      "resultTitle": "混淆后的值",
+      "resultHelp": "点击复制按钮并将该值粘贴到需要的地方。",
+      "applyToField": "应用混淆后的值到字段",
+      "apply": "应用到字段"
+    },
     "remoteConfig": {
       "remoteName": "远程存储名称",
       "remoteNameRequired": "远程存储名称为必填项",
@@ -1017,6 +1029,10 @@
         "filter": "过滤配置文件：以键值对形式设置通配符模式、包含/排除规则以及文件过滤选项。",
         "backend": "后端配置文件：以键值对形式配置高级协议选项和特定远程存储的连接设置。",
         "runtimeRemote": "运行时远程存储：以键值对形式设置动态连接覆盖及性能调整项。"
+      },
+      "runtimeRemoteWarning": {
+        "title": "运行时远程设置",
+        "description": "这些设置用于在运行时与该远程交互时动态覆盖连接属性或应用性能微调。它们不保存在持久的 rclone.conf 文件中。如果这些字段中有任何字段包含密码或 API 密钥等敏感值，则在保存之前必须使用 rclone 的 obscure 算法手动加密；rclone 不接受此类字段的明文值。"
       },
       "showAdvanced": "显示高级选项",
       "hideAdvanced": "隐藏高级选项",

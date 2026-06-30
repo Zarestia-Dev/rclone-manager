@@ -367,6 +367,13 @@ pub async fn monitor_job(
 
     let mut consecutive_errors = 0u8;
 
+    let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
+    if !metadata.no_cache {
+        let group = metadata.group_name();
+        inputs.push(json!({ "_path": core::STATS, "group": group }));
+        inputs.push(json!({ "_path": core::TRANSFERRED, "group": group }));
+    }
+
     loop {
         if !metadata.no_cache {
             let should_exit = job_cache
@@ -388,15 +395,8 @@ pub async fn monitor_job(
             }
         }
 
-        let mut inputs = vec![json!({ "_path": job::STATUS, "jobid": jobid })];
-        if !metadata.no_cache {
-            let group = metadata.group_name();
-            inputs.push(json!({ "_path": core::STATS, "group": group }));
-            inputs.push(json!({ "_path": core::TRANSFERRED, "group": group }));
-        }
-
         let poll_result = backend
-            .post_json(&client, job::BATCH, Some(&json!({ "inputs": inputs })))
+            .post_json(&client, job::BATCH, Some(&json!({ "inputs": &inputs })))
             .await;
 
         match poll_result {
@@ -411,10 +411,8 @@ pub async fn monitor_job(
                         continue;
                     }
 
-                    // Result 0 is always job/status (returned directly, not wrapped)
                     let status_result = &results[0];
 
-                    // Check if status result is valid
                     if status_result.is_null() {
                         warn!("Job {jobid} status result is null");
                         consecutive_errors += 1;
@@ -422,7 +420,6 @@ pub async fn monitor_job(
                         continue;
                     }
 
-                    // Results 1 and 2 are stats and transferred (if not no_cache)
                     if !metadata.no_cache && results.len() >= 3 {
                         let stats_result = &results[1];
                         let trans_result = &results[2];

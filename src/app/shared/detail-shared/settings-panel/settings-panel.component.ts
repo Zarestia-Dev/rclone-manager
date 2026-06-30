@@ -1,4 +1,4 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
@@ -12,6 +12,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
 
 @Component({
   selector: 'app-settings-panel',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslatePipe],
   styleUrls: ['./settings-panel.component.scss'],

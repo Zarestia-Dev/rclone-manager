@@ -804,6 +804,7 @@
     "settingControl": {
       "default": "Varsayılan: {{ value }}",
       "resetToDefault": "Varsayılana sıfırla",
+      "obscureValue": "Şifreyi rclone kullanarak gizle",
       "enabled": "Etkin",
       "disabled": "Devre Dışı",
       "addItem": "Öğe Ekle",
@@ -991,6 +992,17 @@
       "importDestPath": "Hedef Yolunu İçe Aktar",
       "importMountPoint": "Bağlama Noktasını İçe Aktar"
     },
+    "obscure": {
+      "title": "Şifreyi Gizle (Obscure)",
+      "description": "Düz metin şifreyi rclone'un standart karartma algoritmasını kullanarak gizler. Bu değeri yapılandırma dosyalarında veya parametrelerinde güvenle kullanabilirsiniz.",
+      "clearPlaceholder": "Düz Metin Şifre / Dizi",
+      "clearPlaceholderText": "Düz metin şifreyi girin",
+      "action": "Gizle",
+      "resultTitle": "Gizlenmiş Değer",
+      "resultHelp": "Kopyala düğmesine tıklayın ve bu değeri gereken yere yapıştırın.",
+      "applyToField": "Gizlenmiş değeri alana uygula",
+      "apply": "Alana Uygula"
+    },
     "remoteConfig": {
       "remoteName": "Uzak Bağlantı Adı",
       "remoteNameRequired": "Uzak bağlantı adı gerekli",
@@ -1017,6 +1029,10 @@
         "filter": "Filtre Profili: Dosya filtreleme seçeneklerini, dahil etme/hariç tutma kurallarını anahtar-değer çiftleri olarak ayarlayın.",
         "backend": "Arka Uç Profili: Gelişmiş protokol seçeneklerini ve uzak bağlantıya özel bağlantı ayarlarını anahtar-değer çiftleri olarak yapılandırın.",
         "runtimeRemote": "Çalışma Zamanı Uzak Bağlantısı: Dinamik bağlantı geçersiz kılmalarını ve performans ayarlarını anahtar-değer çiftleri olarak ayarlayın."
+      },
+      "runtimeRemoteWarning": {
+        "title": "Çalışma Zamanı Uzak Bağlantı Ayarları",
+        "description": "Bu ayarlar, çalışma zamanında bu uzak bağlantıyla etkileşim kurarken bağlantı özelliklerini dinamik olarak geçersiz kılmak veya performans ince ayarlarını uygulamak için kullanılır. Kalıcı rclone.conf dosyasına kaydedilmezler. Bu alanlardan herhangi biri şifre veya API anahtarı gibi hassas değerler içeriyorsa, kaydetmeden önce rclone'un obscure algoritması kullanılarak manuel olarak gizlenmeleri gerekir; rclone, bu tür alanlar için düz metin değerleri kabul etmez."
       },
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
       "hideAdvanced": "Gelişmiş Seçenekleri Gizle",

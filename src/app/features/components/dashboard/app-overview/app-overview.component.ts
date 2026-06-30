@@ -1,4 +1,13 @@
-import { Component, computed, input, output, inject, signal, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  output,
+  inject,
+  signal,
+  linkedSignal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import {
   CardDisplayMode,
   OperationTab,
@@ -21,6 +30,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 
 @Component({
   selector: 'app-app-overview',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconModule,
     MatButtonModule,

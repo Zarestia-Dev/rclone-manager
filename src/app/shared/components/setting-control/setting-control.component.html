@@ -50,6 +50,22 @@
             (cut)="preventClipboardOnSensitive($event)"
             (blur)="commitValue()"
           />
+          @if (isSensitiveField() && showObscureButton()) {
+            <button
+              matSuffix
+              type="button"
+              mat-icon-button
+              [disabled]="!control()?.value || isObscuring()"
+              (click)="obscureFieldValue($event)"
+              [matTooltip]="'shared.settingControl.obscureValue' | translate"
+              [attr.aria-label]="'shared.settingControl.obscureValue' | translate"
+            >
+              <mat-icon
+                [svgIcon]="isObscuring() ? 'refresh' : 'key'"
+                [class.spinning]="isObscuring()"
+              ></mat-icon>
+            </button>
+          }
           @if (control()?.invalid && control()?.touched) {
             <mat-error>{{ getControlError() }}</mat-error>
           }
