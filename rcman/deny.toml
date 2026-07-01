@@ -1,0 +1,36 @@
+# cargo-deny configuration
+# See https://embarkstudios.github.io/cargo-deny/
+
+[advisories]
+# Lint level for yanked versions: deny | warn | allow
+yanked = "warn"
+
+# Ignore advisories that use CVSS 4.0 (not yet supported by cargo-deny)
+# https://github.com/EmbarkStudios/cargo-deny/issues/635
+ignore = [
+    "RUSTSEC-2024-0445",  # cap-primitives: uses CVSS 4.0 format
+]
+
+[licenses]
+# Licenses explicitly allowed; everything else is denied by default
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "BSD-2-Clause",
+  "ISC",
+  "Zlib",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "CC0-1.0",
+]
+
+# Minimum matching confidence when inferring from LICENSE files
+confidence-threshold = 0.9
+
+[bans]
+# Treat multiple versions of the same crate as errors/warnings/allowed
+multiple-versions = "warn"
+
+# Warn on wildcard dependency versions
+wildcards = "warn"

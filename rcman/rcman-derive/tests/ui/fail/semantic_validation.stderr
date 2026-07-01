@@ -1,0 +1,48 @@
+error: `min` (10) cannot be greater than `max` (5)
+ --> tests/ui/fail/semantic_validation.rs:7:5
+  |
+7 | /     #[setting(min = 10, max = 5)]
+8 | |     pub invalid_range: i32,
+  | |__________________________^
+
+error: `step` must be positive, got -1
+  --> tests/ui/fail/semantic_validation.rs:10:5
+   |
+10 | /     #[setting(step = -1.0)]
+11 | |     pub invalid_step: i32,
+   | |_________________________^
+
+error: `min/max/step` are only valid for numeric settings, not booleans
+  --> tests/ui/fail/semantic_validation.rs:13:5
+   |
+13 | /     #[setting(min = 10)]
+14 | |     pub switch: bool, // min/max on bool
+   | |____________________^
+
+error: `pattern` is only valid for text settings, not booleans
+  --> tests/ui/fail/semantic_validation.rs:16:5
+   |
+16 | /     #[setting(pattern = "regex")]
+17 | |     pub switch2: bool, // pattern on bool
+   | |_____________________^
+
+error: `options` are only valid for text/number settings, not booleans
+  --> tests/ui/fail/semantic_validation.rs:19:5
+   |
+19 | /     #[setting(options(("a", "b")))]
+20 | |     pub switch3: bool, // options on bool
+   | |_____________________^
+
+error: `pattern` is only valid for text settings, not numbers
+  --> tests/ui/fail/semantic_validation.rs:22:5
+   |
+22 | /     #[setting(pattern = "regex")]
+23 | |     pub count: i32, // pattern on number
+   | |__________________^
+
+error: `min/max/step` are only valid for numeric settings, not text
+  --> tests/ui/fail/semantic_validation.rs:25:5
+   |
+25 | /     #[setting(min = 10)]
+26 | |     pub text: String, // min on text
+   | |____________________^

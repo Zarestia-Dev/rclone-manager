@@ -1,0 +1,138 @@
+[workspace]
+members = [".", "rcman-derive"]
+
+[package]
+name = "rcman"
+version = "0.1.9"
+edition = "2024"
+authors = ["Hakan İSMAİL <hakanismail53@gmail.com>"]
+description = "Framework-agnostic settings management with schema, backup/restore, secrets and derive macro support"
+license = "MIT"
+repository = "https://github.com/Zarestia-Dev/rcman"
+readme = "README.md"
+keywords = ["settings", "configuration", "backup", "preferences", "keychain"]
+categories = ["config", "filesystem", "development-tools"]
+rust-version = "1.88"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["json", "backup"]
+full = ["json", "toml", "yaml", "sqlite", "backup", "keychain", "encrypted-file", "derive", "profiles", "hot-reload"]
+json = []
+toml = ["dep:toml"]
+yaml = ["dep:serde_yaml"]
+sqlite = ["dep:rusqlite"]
+backup = ["dep:zip", "dep:sha2", "dep:tempfile"]
+keychain = [
+    "dep:keyring",
+    "dep:keyring-core",
+    "dep:dbus-secret-service-keyring-store",
+    "dep:apple-native-keyring-store",
+    "dep:windows-native-keyring-store",
+]
+encrypted-file = ["dep:aes-gcm", "dep:rand", "dep:base64", "dep:argon2"]
+derive = ["dep:rcman-derive"]
+profiles = []
+hot-reload = ["dep:notify"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+log = "0.4"
+time = { version = "0.3", features = ["serde", "serde-well-known", "formatting", "macros"] }
+regex = "1.12"
+dirs = "6.0"
+lru = "0.16"
+rcman-derive = { path = "rcman-derive", version = "0.1.7", optional = true }
+zip = { version = "8.2", default-features = false, features = ["deflate", "time", "aes-crypto"], optional = true }
+sha2 = { version = "0.11", optional = true }
+tempfile = { version = "3.26", optional = true }
+aes-gcm = { version = "0.10", optional = true }
+rand = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
+argon2 = { version = "0.5", features = ["std"], optional = true }
+toml = { version = "1.0", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+rusqlite = { version = "0.32", features = ["bundled"], optional = true }
+keyring-core = { version = "1", optional = true }
+notify = { version = "6.1", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"], optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", features = ["apple-native"], optional = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain", "protected"], optional = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = { version = "1", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+tempfile = "3.26"
+env_logger = "0.11"
+
+# -----------------------------------------------------------------------------
+# Examples — one per distinct, meaningful use case.
+#   * basic_usage      — core CRUD + schema (no extra features required)
+#   * backup_restore   — encrypted/unencrypted backups (backup feature)
+#   * derive_usage     — DeriveSettingsSchema macro (derive feature)
+#   * profiles_usage   — named profiles (profiles feature)
+#   * encrypted_storage — encrypted-file credential backend (encrypted-file feature)
+# -----------------------------------------------------------------------------
+
+[[example]]
+name = "derive_usage"
+required-features = ["derive"]
+
+[[example]]
+name = "encrypted_storage"
+required-features = ["encrypted-file"]
+
+[[example]]
+name = "backup_restore"
+required-features = ["backup"]
+
+[[example]]
+name = "profiles_usage"
+required-features = ["profiles"]
+
+# -----------------------------------------------------------------------------
+# Integration tests — gated tests require their backing feature to compile.
+# -----------------------------------------------------------------------------
+
+[[test]]
+name = "derive_macro"
+required-features = ["derive"]
+
+[[test]]
+name = "profiles"
+required-features = ["profiles"]
+
+[[test]]
+name = "toml_integration"
+required-features = ["toml"]
+
+[[test]]
+name = "yaml_integration"
+required-features = ["yaml"]
+
+[[test]]
+name = "sqlite_integration"
+required-features = ["sqlite"]
+
+[[test]]
+name = "hot_reload"
+required-features = ["hot-reload"]

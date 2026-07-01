@@ -1,0 +1,18 @@
+msrv = "1.88"
+
+# Documentation: Allow these uppercase acronyms in doc comments
+doc-valid-idents = [
+    "JSON", "TOML", "YAML", "SQLite",
+    "API", "UI", "CLI", "GUI",
+    "URL", "URI",
+    "OS", "ID", "IO",
+    "AES", "SHA", "GCM",
+    "LRU", # Cache
+]
+
+# Analysis thresholds
+too-many-arguments-threshold = 6
+cognitive-complexity-threshold = 20
+
+# Disallowed names (optional but good for strictness)
+# disallowed-names = ["foo", "bar", "baz", "quux"]
