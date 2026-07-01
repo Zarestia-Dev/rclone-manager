@@ -23,6 +23,9 @@
     "prepare": "husky"
   },
   "private": true,
+  "overrides": {
+    "esbuild": "0.27.4"
+  },
   "dependencies": {
     "@angular/cdk": "^22.0.2",
     "@angular/common": "^22.0.3",
