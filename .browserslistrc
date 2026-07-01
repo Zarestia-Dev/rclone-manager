@@ -1,0 +1,8 @@
+# This file is used by the build system to adjust CSS and JS output to support the specified browsers.
+# For query syntax, see: https://github.com/browserslist/browserslist#queries
+
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Edge versions
+Safari >= 14.1
+iOS >= 14.5
