@@ -229,7 +229,8 @@ export type ViewId =
   | 'whats-new-app'
   | 'whats-new-rclone'
   | 'memory'
-  | 'debugging';
+  | 'debugging'
+  | 'donate';
 
 export interface OverlayView {
   id: ViewId;

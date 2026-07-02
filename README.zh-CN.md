@@ -16,7 +16,7 @@
 
 <p align="center">
   <b>一个强大且跨平台的 GUI，用于以时尚、轻松的方式管理 Rclone 远程连接。</b><br>
-  <i>使用 Angular 21 + Tauri 构建 · 支持 Linux • Windows • macOS • ARM</i>
+  <i>使用 Angular 22 + Tauri 构建 · 支持 Linux • Windows • macOS • ARM</i>
 </p>
 
 <p align="center">
@@ -34,6 +34,9 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
+  </a>
+  <a href="https://hakanismail.info/zarestia/donate">
+    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -126,6 +129,7 @@
 
 - **许可证:** 采用 [GNU GPLv3](LICENSE) 授权 – 免费使用、修改和分发。
 - **支持:** 如果您喜欢这个项目，请考虑在 GitHub 上给它一个 ⭐！
+- **捐款:** 如果 RClone Manager 节省了您的时间，请考虑[支持项目开发](https://hakanismail.info/zarestia/donate) ❤️
 
 <p align="center">
   由 Zarestia 团队倾心制作<br>

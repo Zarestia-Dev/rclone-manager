@@ -16,7 +16,7 @@
 
 <p align="center">
   <b>Rclone uzak bağlantılarını stil ve kolaylıkla yönetmek için güçlü, çapraz platform bir GUI.</b><br>
-  <i>Angular 21 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
+  <i>Angular 22 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
 </p>
 
 <p align="center">
@@ -34,6 +34,9 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Durumu">
+  </a>
+  <a href="https://hakanismail.info/zarestia/donate">
+    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -126,6 +129,7 @@ Her türlü katkıyı memnuniyetle karşılıyoruz!
 
 - **Lisans:** [GNU GPLv3](LICENSE) altında lisanslanmıştır – kullanmak, değiştirmek ve dağıtmak serbesttir.
 - **Destek:** Bu projeyi beğendiyseniz, lütfen GitHub üzerinde bir ⭐ bırakmayı düşünün!
+- **Bağış:** RClone Manager size zaman kazandırıyorsa, [geliştirmeyi desteklemeyi](https://hakanismail.info/zarestia/donate) düşünün ❤️
 
 <p align="center">
   Zarestia Dev Ekibi tarafından ❤️ ile yapıldı<br>

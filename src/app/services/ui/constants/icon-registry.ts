@@ -131,6 +131,7 @@ export const BASE_ICONS: Record<string, string> = {
   core: 'assets/icons/general/core.svg',
   wind: 'assets/icons/general/wind.svg',
   bookmark: 'assets/icons/general/bookmark.svg',
+  heart: 'assets/icons/general/heart.svg',
   calendar: 'assets/icons/general/calendar.svg',
   clock: 'assets/icons/general/clock.svg',
   'clock-rotate-left': 'assets/icons/general/clock-rotate-left.svg',

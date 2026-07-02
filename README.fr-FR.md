@@ -16,7 +16,7 @@
 
 <p align="center">
   <b>Une interface graphique puissante et multiplateforme pour gérer les remotes Rclone avec style et simplicité.</b><br>
-  <i>Conçu avec Angular 21 + Tauri · Support Linux • Windows • macOS • ARM</i>
+  <i>Conçu avec Angular 22 + Tauri · Support Linux • Windows • macOS • ARM</i>
 </p>
 
 <p align="center">
@@ -34,6 +34,9 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
+  </a>
+  <a href="https://hakanismail.info/zarestia/donate">
+    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -126,6 +129,7 @@ Les contributions sous toutes leurs formes sont les bienvenues !
 
 - **Licence:** Publié sous licence [GNU GPLv3](LICENSE) – libre d'utilisation, de modification et de distribution.
 - **Soutien:** Si vous appréciez ce projet, merci de laisser une ⭐ sur GitHub !
+- **Don:** Si RClone Manager vous fait gagner du temps, pensez à [soutenir le développement](https://hakanismail.info/zarestia/donate) ❤️
 
 <p align="center">
   Fait avec ❤️ par l'équipe de développement Zarestia<br>

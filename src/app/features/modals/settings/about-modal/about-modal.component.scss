@@ -732,3 +732,93 @@
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Donate Button Zarestia Spirit of the Wind Custom Effects
+// ---------------------------------------------------------------------------
+
+@keyframes blowWind {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+@keyframes driftLeaves {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 240px 0;
+  }
+}
+
+.donate-btn-zarestia {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--zarestia-bg-start) 0%,
+    var(--zarestia-bg-end) 100%
+  ) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--zarestia-green-rgb), 0.3) !important;
+  color: var(--zarestia-white) !important;
+  transition: all 0.3s ease;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='54' viewBox='0 0 100 54'%3E%3Cpath d='M-20,15 Q10,10 40,20 T100,10' fill='none' stroke='rgba(57, 255, 20, 0.25)' stroke-width='1.5' stroke-dasharray='10,15'/%3E%3Cpath d='M-10,35 Q25,40 50,30 T110,35' fill='none' stroke='rgba(245, 245, 240, 0.2)' stroke-width='1' stroke-dasharray='15,10'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    animation: blowWind 7s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.85;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='54' viewBox='0 0 120 54'%3E%3Cpath d='M10,20 Q18,12 20,20 Q12,28 10,20' fill='%2339FF14' opacity='0.5' transform='rotate(15 15 20)'/%3E%3Cpath d='M50,15 Q56,7 60,15 Q52,21 50,15' fill='%23F5F5F0' opacity='0.5' transform='rotate(-20 55 15)'/%3E%3Cpath d='M90,35 Q98,27 100,35 Q92,43 90,35' fill='%2339FF14' opacity='0.4' transform='rotate(45 95 35)'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    animation: driftLeaves 5s linear infinite;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.8;
+  }
+
+  &:hover {
+    &::before {
+      opacity: 1;
+    }
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  span {
+    position: relative;
+    z-index: 3;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  mat-icon {
+    position: relative;
+    z-index: 3;
+    color: var(--zarestia-green) !important;
+    filter: drop-shadow(0 0 2px rgba(var(--zarestia-green-rgb), 0.6));
+  }
+}
