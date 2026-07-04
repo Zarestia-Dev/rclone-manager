@@ -96,14 +96,13 @@
         font-size: 0.75rem;
         background: rgba(var(--window-fg-color-rgb), 0.05);
 
-        &[data-status="running"],
+        &[data-status="running"] {
+          background: rgba(var(--accent-color-rgb), 0.1);
+          color: var(--accent-color);
+        }
         &[data-status="completed"] {
           background: rgba(var(--primary-color-rgb), 0.1);
           color: var(--primary-color);
-        }
-        &[data-status="completed"] {
-          background: rgba(var(--accent-color-rgb), 0.1);
-          color: var(--accent-color);
         }
         &[data-status="stopped"] {
           background: rgba(var(--orange-rgb), 0.1);

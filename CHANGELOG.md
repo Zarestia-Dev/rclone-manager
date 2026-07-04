@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
 - **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality.
   - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
+- New background for dmg installer.
 
 ### Changed
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
