@@ -303,7 +303,7 @@ export class NautilusActionsService {
     if (items.length === 0) return;
 
     const existingNames = this.tabSvc.activeFiles().map(f => f.entry.Name);
-    const ref = this.notificationService.openInput({
+    const ref = await this.notificationService.openInput({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',

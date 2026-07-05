@@ -56,12 +56,19 @@
                         | rcloneOptionTranslate
                           : 'title'
                           : result.option.FieldName || result.option.Name
+                          : undefined
+                          : translate.currentLang()
                     }}</span>
                     <small class="config-item-description">
                       {{ result.service | titlecase }} > {{ result.category }}
                     </small>
                     <small class="config-item-description result-help">{{
-                      result.option.Name | rcloneOptionTranslate: 'help' : result.option.Help
+                      result.option.Name
+                        | rcloneOptionTranslate
+                          : 'help'
+                          : result.option.Help
+                          : undefined
+                          : translate.currentLang()
                     }}</small>
                   </div>
                 </div>

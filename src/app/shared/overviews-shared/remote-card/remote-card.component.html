@@ -194,8 +194,9 @@
                     <span class="profile-name-text">{{ profile }}</span>
                   </button>
 
-                  @if (canOpenProfilePath(operation, profile)) {
-                    @for (path of getProfileOpenPaths(operation, profile); track path) {
+                  @let openPaths = getProfileOpenPaths(operation, profile);
+                  @if (openPaths.length > 0) {
+                    @for (path of openPaths; track path) {
                       <button
                         type="button"
                         class="profile-open-btn"

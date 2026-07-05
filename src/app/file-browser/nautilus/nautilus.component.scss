@@ -180,8 +180,3 @@
     padding-bottom: var(--space-sm);
   }
 }
-
-// Adjust menu items inside sliding container
-.sliding-container .menu-item {
-  width: calc(100% - 4px) !important;
-}

@@ -6,7 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
@@ -34,6 +34,7 @@ import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.p
 })
 export class ObscureToolComponent {
   private readonly remoteService = inject(RemoteManagementService);
+  readonly translate = inject(TranslateService);
 
   // Inputs & Outputs
   readonly visible = input(false);

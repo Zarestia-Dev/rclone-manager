@@ -48,7 +48,8 @@ export class SidebarComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
 
   readonly selectedRemote = this.uiStateService.selectedRemote;
-  readonly hiddenRemotes = this.remoteFacade.hiddenRemoteNames;
+
+  readonly hiddenRemotesSet = computed(() => new Set(this.remoteFacade.hiddenRemoteNames()));
 
   readonly searchTerm = signal('');
   readonly searchVisible = signal(false);

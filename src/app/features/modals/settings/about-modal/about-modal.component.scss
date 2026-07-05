@@ -29,13 +29,7 @@
   box-shadow: 0 1px 3px 0 rgba(0, 0, 6, 0.2);
   color: var(--window-fg-color) !important;
 
-  ::ng-deep .mat-mdc-button-persistent-ripple::before {
-    background-color: var(--dim-color) !important;
-  }
-
-  ::ng-deep .mat-ripple-element {
-    background-color: var(--shadow-color) !important;
-  }
+  --mat-ripple-color: var(--shadow-color);
 }
 
 .stacked-buttons {
@@ -385,7 +379,7 @@
 
     &.restart-required {
       background: rgba(var(--warn-color-rgb), 0.05);
-      box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.5);
+      box-shadow: var(--ring-warn);
 
       .update-header {
         mat-icon {
@@ -404,8 +398,8 @@
       flex-direction: row;
       align-items: flex-start;
       gap: var(--space-md);
-      background: rgba(var(--window-fg-color-rgb), 0.05);
-      box-shadow: 0 0 0 1px rgba(var(--window-fg-color-rgb), 0.1);
+      background: var(--bg-elevated-2);
+      box-shadow: var(--ring-border);
 
       mat-icon {
         color: var(--dim-color);
@@ -494,7 +488,7 @@
       transition: var(--transition-fast);
 
       &:hover {
-        background: rgba(var(--window-fg-color-rgb), 0.06);
+        background: var(--bg-hover);
       }
 
       .version {
@@ -564,11 +558,8 @@
   background: rgba(var(--accent-color-rgb), 0.05);
   transition: var(--transition-fast);
 
-  ::ng-deep .mat-ripple-element {
-    background: rgba(var(--accent-color-rgb), 0.2) !important;
-  }
+  --mat-ripple-color: rgba(var(--accent-color-rgb), 0.2);
 
-  ::ng-deep .mat-mdc-button-persistent-ripple::before,
   &:hover {
     background: rgba(var(--accent-color-rgb), 0.1);
   }

@@ -1,8 +1,9 @@
-import { Component, inject, ChangeDetectionStrategy, signal, HostListener } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { EscapeCloseDirective } from '../../../../../shared/directives/escape-close.directive';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -18,6 +19,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption }
   standalone: true,
   templateUrl: './alert-action-editor.component.html',
   styleUrls: ['./alert-action-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -310,7 +312,6 @@ export class AlertActionEditorComponent {
     this.dialogRef.close(action);
   }
 
-  @HostListener('document:keydown.escape')
   cancel(): void {
     this.dialogRef.close();
   }

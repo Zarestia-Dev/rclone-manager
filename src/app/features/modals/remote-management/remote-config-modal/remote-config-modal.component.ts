@@ -72,9 +72,11 @@ import {
   convertBoolAnswerToString,
   getDefaultAnswerFromQuestion,
 } from '../../../../services/remote/utils/remote-config.utils';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-remote-config-modal',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     TranslatePipe,
@@ -545,7 +547,6 @@ export class RemoteConfigModalComponent {
     }
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

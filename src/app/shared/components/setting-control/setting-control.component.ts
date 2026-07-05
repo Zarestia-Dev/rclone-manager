@@ -73,11 +73,11 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 export class SettingControlComponent implements ControlValueAccessor {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
-  private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteService = inject(RemoteManagementService);
   private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
+  readonly translate = inject(TranslateService);
 
   // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);

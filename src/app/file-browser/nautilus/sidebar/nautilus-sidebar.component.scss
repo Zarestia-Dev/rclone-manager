@@ -22,7 +22,7 @@
 }
 
 mat-toolbar {
-  background-color: var(--sidebar-bg-color) !important;
+  --mat-toolbar-container-color: var(--sidebar-bg-color);
   padding-inline: 6px;
   height: var(--titlebar-height);
   display: flex;

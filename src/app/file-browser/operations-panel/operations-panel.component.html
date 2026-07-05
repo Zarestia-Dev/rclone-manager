@@ -237,14 +237,15 @@
                       </div>
                     }
 
+                    @let transferredFiles = getTransferredFiles(job);
                     <div class="details-group files-group completed-section">
                       <span class="group-label"
                         >{{ getTransferredLabel(job) | translate }} ({{
-                          getTransferredFiles(job).length
+                          transferredFiles.length
                         }})</span
                       >
                       <div class="completed-transfers-list">
-                        @for (file of getTransferredFiles(job); track file.name) {
+                        @for (file of transferredFiles; track file.name) {
                           <div
                             class="completed-transfer-card"
                             [class.failed]="file.status === 'failed'"

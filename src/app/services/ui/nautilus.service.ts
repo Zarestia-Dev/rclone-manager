@@ -66,6 +66,15 @@ export class NautilusService extends TauriBaseService {
 
   readonly allRemotesLookup = computed(() => [...this._localDrives(), ...this._cloudRemotes()]);
 
+  readonly starredKeys = computed(() => {
+    const set = new Set<string>();
+    for (const i of this._starredItems()) {
+      const remote = this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal);
+      set.add(`${remote}:${i.entry.Path}`);
+    }
+    return set;
+  });
+
   private pickerOverlayRef: OverlayRef | null = null;
   private pickerComponentRef: ComponentRef<any> | null = null;
 
@@ -263,6 +272,10 @@ export class NautilusService extends TauriBaseService {
   }
 
   isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
+    if (type === 'starred') {
+      const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
+      return this.starredKeys().has(`${cleanRemote}:${path}`);
+    }
     const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
     return this.collectionConfig[type]
       .signal()
@@ -359,7 +372,6 @@ export class NautilusService extends TauriBaseService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (path: string) => {
-          console.log('Browse in app event:', path);
           if (path) {
             if (this._isStandaloneWindow()) {
               this.targetPath.set(path);

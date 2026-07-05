@@ -58,7 +58,7 @@
     }
 
     &.error .value {
-      color: var(--matwarn-color);
+      color: var(--warn-color);
     }
   }
 }
@@ -365,7 +365,7 @@
   color: var(--dim-color);
   padding: 0 var(--space-sm);
   min-height: 48px;
-  background: rgba(var(--window-fg-color-rgb), 0.04);
+  background: var(--bg-elevated-1);
   border-radius: var(--border-radius);
 }
 

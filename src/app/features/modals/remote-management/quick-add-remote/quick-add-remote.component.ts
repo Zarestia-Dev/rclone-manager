@@ -5,7 +5,6 @@ import {
   signal,
   ChangeDetectionStrategy,
   DestroyRef,
-  HostListener,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -35,6 +34,7 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import {
   RemoteType,
   RemoteConfigSections,
@@ -63,6 +63,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 @Component({
   selector: 'app-quick-add-remote',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatProgressSpinnerModule,
@@ -670,7 +671,6 @@ export class QuickAddRemoteComponent {
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

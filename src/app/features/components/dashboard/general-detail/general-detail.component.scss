@@ -206,7 +206,7 @@
   width: var(--icon-size-md);
   height: var(--icon-size-md);
   border-radius: 50%;
-  background: rgba(var(--window-fg-color-rgb), 0.06);
+  background: var(--bg-elevated-2);
   transition: var(--transition-fast);
 
   mat-icon {
@@ -217,17 +217,13 @@
   }
 
   mat-spinner {
-    ::ng-deep circle {
-      stroke: var(--dim-color);
-    }
+    --mdc-circular-progress-active-indicator-color: var(--dim-color);
   }
 }
 
 .status-chip.active {
   .status-dot mat-spinner {
-    ::ng-deep circle {
-      stroke: white;
-    }
+    --mdc-circular-progress-active-indicator-color: white;
   }
 }
 

@@ -32,7 +32,7 @@
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
   padding: 2px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-gnome);
 
   .drag-handle {
     cursor: grab;
@@ -118,7 +118,7 @@
   }
 
   &.inactive-remote .remote-info .icon-container {
-    background: rgba(var(--window-fg-color-rgb), 0.1);
+    background: var(--bg-elevated-4);
     .remote-type-icon {
       color: rgba(var(--window-fg-color-rgb), 0.5);
     }

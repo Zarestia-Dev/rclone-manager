@@ -7,6 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { map } from 'rxjs/operators';
 import {
   AbstractControl,
@@ -48,6 +49,7 @@ import {
 @Component({
   selector: 'app-preferences-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatSlideToggleModule,
@@ -550,10 +552,7 @@ export class PreferencesModalComponent {
     this.searchQuery.set(searchText.toLowerCase());
   }
 
-  @HostListener('document:keydown.escape')
-  close(): void {
-    this.dialogRef.close();
-  }
+  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
 
   @HostListener('document:keydown.control.f', ['$event'])
   handleCtrlF(event: Event): void {
@@ -595,5 +594,9 @@ export class PreferencesModalComponent {
     const control = this.getFormControl(category, key) as FormArray;
     control.removeAt(index);
     this.updateSetting(category, key, control.value);
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }

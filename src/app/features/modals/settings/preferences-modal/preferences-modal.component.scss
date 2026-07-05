@@ -341,7 +341,7 @@
     font-size: var(--font-size-sm);
     color: var(--window-fg-color);
     font-weight: 600;
-    background: rgba(var(--window-fg-color-rgb), 0.05);
+    background: var(--bg-elevated-2);
     padding: 3px 8px;
     border-radius: var(--radius-sm);
     max-width: 250px;
@@ -357,7 +357,7 @@
   justify-content: flex-end;
   align-items: center;
   padding: var(--space-md);
-  background: rgba(var(--window-fg-color-rgb), 0.02);
+  background: var(--bg-elevated-1);
   border-top: 1px solid var(--card-shade-color);
   gap: var(--space-sm);
 

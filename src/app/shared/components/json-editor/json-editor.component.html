@@ -24,6 +24,7 @@
             : 'help'
             : chip.field.Help || chip.displayKey + ': ' + chip.fullValue
             : provider() || chip.field.Provider
+            : translateService.currentLang()
       "
       matTooltipShowDelay="700"
       matTooltipPosition="above"

@@ -94,7 +94,7 @@
         padding: 2px 8px;
         border-radius: 6px;
         font-size: 0.75rem;
-        background: rgba(var(--window-fg-color-rgb), 0.05);
+        background: var(--bg-elevated-2);
 
         &[data-status="running"] {
           background: rgba(var(--accent-color-rgb), 0.1);
@@ -116,7 +116,7 @@
     }
 
     &.highlight .value {
-      color: var(--secondary-color);
+      color: var(--accent-color);
     }
     &.active {
       background: rgba(var(--primary-color-rgb), 0.05);
@@ -125,9 +125,9 @@
       }
     }
     &.highlight-warn.active {
-      background: rgba(var(--secondary-color-rgb), 0.1);
+      background: rgba(var(--accent-color-rgb), 0.1);
       .value {
-        color: var(--secondary-color);
+        color: var(--accent-color);
       }
     }
     &.highlight-error.active {

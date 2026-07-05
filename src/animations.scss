@@ -556,7 +556,7 @@
   display: inline-block;
   height: 15px;
   border-radius: 4px;
-  background: rgba(var(--window-fg-color-rgb), 0.08);
+  background: var(--bg-elevated-3);
 }
 
 // ===== ANIMATION DURATION MODIFIERS =====

@@ -228,6 +228,9 @@ export class ModalService {
     if (standalone && this.standaloneEnabled) {
       return this.spawnStandaloneWindow({ type, data: config.data, ...standalone });
     }
+    if (config.height && !config.panelClass) {
+      config.panelClass = 'mobile-sheet-dialog';
+    }
     const dialogPromise = this.loaders[type]().then(comp => this.dialog.open(comp, config));
     return new AsyncDialogRef(dialogPromise);
   }
@@ -418,7 +421,6 @@ export class ModalService {
         maxWidth: '1200px',
         height: '85vh',
         disableClose: false,
-        panelClass: 'alerts-modal-panel',
       },
       {
         title: this.translate.instant('alerts.title') || 'Alerts & Notifications',

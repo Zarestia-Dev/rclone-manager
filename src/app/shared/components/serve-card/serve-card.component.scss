@@ -154,7 +154,7 @@
   gap: 4px;
   margin: 0 var(--space-md) var(--space-md);
   padding: var(--space-xs) var(--space-sm);
-  background: rgba(var(--window-fg-color-rgb), 0.03);
+  background: var(--bg-elevated-1);
   border-radius: var(--radius-xs);
   box-shadow: var(--box-shadow);
 }

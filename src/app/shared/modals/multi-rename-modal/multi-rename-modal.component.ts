@@ -18,6 +18,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -43,6 +45,8 @@ export interface MultiRenameData {
     MatSelectModule,
     MatCheckboxModule,
     MatProgressSpinnerModule,
+    MatButtonToggleModule,
+    ScrollingModule,
     TranslatePipe,
   ],
   templateUrl: './multi-rename-modal.component.html',

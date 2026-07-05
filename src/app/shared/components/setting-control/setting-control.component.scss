@@ -16,7 +16,7 @@
 
     .settings-description {
       font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       margin: 0;
     }
 
@@ -35,7 +35,7 @@
 
     .help-text {
       font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       line-height: 1.6;
       margin: 0 0 var(--space-xs);
       word-break: break-word;
@@ -96,7 +96,7 @@
     }
 
     .default-value {
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
     }
     .type-info {
       color: var(--warning-color);
@@ -169,7 +169,7 @@
 
     .additional-selection {
       font-size: var(--font-size-xs);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       margin-left: var(--space-xs);
       font-weight: 400;
     }

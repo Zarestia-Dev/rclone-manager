@@ -7,6 +7,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -20,6 +21,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     MatTableModule,
     MatIconModule,
@@ -261,10 +263,7 @@ export class KeyboardShortcutsModalComponent {
     }
   }
 
-  @HostListener('document:keydown.escape')
-  close(): void {
-    this.dialogRef.close();
-  }
+  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
 
   @HostListener('document:keydown.control.f')
   onF3(): void {
@@ -288,5 +287,9 @@ export class KeyboardShortcutsModalComponent {
   clearSearch(): void {
     this.searchText.set('');
     this.searchContainer()?.clear();
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }
