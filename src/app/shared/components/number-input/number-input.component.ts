@@ -5,6 +5,7 @@ import {
   input,
   signal,
   OnDestroy,
+  output,
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -50,6 +51,8 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
   readonly isSensitive = input<boolean>(false);
   readonly ariaLabel = input<string>('');
   readonly allowNegative = input<boolean>(true);
+
+  readonly inputBlur = output<void>();
 
   readonly innerControl = new FormControl<string | number | null>(null);
 
@@ -131,6 +134,7 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
       }
     }
     this.onTouched();
+    this.inputBlur.emit();
   }
 
   startHold(action: 'increment' | 'decrement'): void {

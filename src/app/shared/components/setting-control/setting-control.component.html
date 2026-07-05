@@ -96,7 +96,7 @@
         [isSensitive]="isSensitiveField()"
         [allowNegative]="!opt.Type?.startsWith('uint')"
         [ariaLabel]="opt.Name"
-        (blur)="commitValue()"
+        (inputBlur)="commitValue()"
       />
     </div>
   </ng-template>
