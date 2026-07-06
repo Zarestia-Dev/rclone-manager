@@ -97,6 +97,10 @@
 	<dict/>
 	<key>workflowMetaData</key>
 	<dict>
+		<key>serviceApplicationGroupName</key>
+		<string>Finder</string>
+		<key>serviceInputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
 		<key>workflowTypeIdentifier</key>
 		<string>com.apple.Automator.servicesMenu</string>
 	</dict>

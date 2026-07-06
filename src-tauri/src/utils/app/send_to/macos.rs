@@ -1,5 +1,5 @@
 use crate::utils::app::send_to::common::{apply_template, get_home_dir};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn escape_xml(s: &str) -> String {
     s.replace('&', "&amp;")
