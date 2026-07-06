@@ -58,7 +58,7 @@ pub fn handle_start_job_profile(
     let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
-    let type_label = format!("{transfer_type:?}"); // move öncesi yakala
+    let type_label = format!("{transfer_type:?}");
 
     tauri::async_runtime::spawn(async move {
         match start_profile_batch(app, transfer_type, params).await {

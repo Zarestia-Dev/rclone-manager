@@ -1,11 +1,9 @@
-// Backend management commands
-//
-// Tauri commands for backend CRUD operations and connection testing.
+use std::path::PathBuf;
+
+use log::{debug, info, warn};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::settings::AppSettingsManager;
-use log::{debug, info, warn};
-use tauri::{AppHandle, Manager};
-
 use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::{
     core::automation::engine::AutomationScheduler,
@@ -24,8 +22,6 @@ use crate::{
         },
     },
 };
-use std::path::PathBuf;
-use tauri::Emitter;
 
 #[tauri::command]
 pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
@@ -361,9 +357,7 @@ pub struct TestConnectionResult {
     pub config_path: Option<PathBuf>,
 }
 
-// =============================================================================
 // Persistence helpers
-// =============================================================================
 
 fn save_backend_to_settings(manager: &AppSettingsManager, backend: &Backend) -> Result<(), String> {
     let connections = manager

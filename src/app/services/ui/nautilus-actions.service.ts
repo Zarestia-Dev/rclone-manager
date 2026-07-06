@@ -345,6 +345,7 @@ export class NautilusActionsService {
     const ref = this.dialog.open(MultiRenameModalComponent, {
       data: { items, remote },
       disableClose: true,
+      panelClass: 'mobile-sheet-dialog',
     });
 
     const changed = await firstValueFrom(ref.afterClosed());

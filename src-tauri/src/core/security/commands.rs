@@ -1,11 +1,13 @@
+use log::{debug, error, info, warn};
+use tauri::{AppHandle, Emitter, Manager};
+
 use crate::core::settings::AppSettingsManager;
+use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     rclone::commands::system::unlock_rclone_config,
 };
-use log::{debug, error, info, warn};
-use tauri::{AppHandle, Emitter, Manager};
 
 fn update_local_config_password(
     manager: &AppSettingsManager,
@@ -36,7 +38,6 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
         error!("Failed to emit password_stored event: {e}");
     }
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get("Local").await {
         backend.config_password = Some(password.clone());
@@ -99,7 +100,6 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     update_local_config_password(manager.inner(), None)
         .map_err(|e| format!("Failed to clear config password: {e}"))?;
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get("Local").await {
         backend.config_password = None;
@@ -121,7 +121,6 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         ));
     }
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let config_path = backend_manager.get_local_config_path().await.map_err(
         |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
@@ -192,7 +191,6 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     }
     #[cfg(not(feature = "librclone"))]
     {
-        use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
         let config_path = backend_manager.get_local_config_path().await.map_err(
             |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
@@ -231,7 +229,6 @@ async fn run_encryption_command(
     action: &str,
     password: &str,
 ) -> Result<(String, String), String> {
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     let config_path = backend_manager.get_local_config_path().await.map_err(
         |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
@@ -301,7 +298,6 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
     if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
         warn!("Failed to store password after encryption: {e}");
     } else {
-        use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
         if let Some(mut backend) = backend_manager.get("Local").await {
             backend.config_password = Some(password.clone());
@@ -331,7 +327,6 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         warn!("Failed to remove stored config password: {e}");
     }
 
-    use crate::rclone::backend::BackendManager;
     let backend_manager = app.state::<BackendManager>();
     if let Some(mut backend) = backend_manager.get("Local").await {
         backend.config_password = None;

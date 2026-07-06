@@ -1,7 +1,10 @@
+use std::sync::OnceLock;
+
 use chrono::{Duration, Utc};
 use futures::future::join_all;
 use log::{debug, error, warn};
 use tauri::{AppHandle, Manager};
+use tokio::sync::mpsc;
 
 use crate::core::alerts::{
     cache::{self, AlertHistoryCache},
@@ -11,9 +14,6 @@ use crate::core::alerts::{
 };
 use crate::core::settings::AppSettingsManager;
 use crate::utils::app::notification::NotificationEvent;
-
-use std::sync::OnceLock;
-use tokio::sync::mpsc;
 
 struct AlertRequest {
     app: AppHandle,
@@ -165,7 +165,6 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         let source = event.alert_source();
         let destination = event.alert_destination();
 
-        // Prepare context
         let ctx = TemplateContext {
             title: title.clone(),
             body: body.clone(),

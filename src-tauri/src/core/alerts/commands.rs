@@ -1,11 +1,16 @@
+use std::collections::HashSet;
+
+use chrono::Utc;
+use tauri::{AppHandle, Manager};
+
+use crate::core::alerts::dispatch;
 use crate::core::alerts::{
     cache::{self, AlertHistoryCache},
     dispatch::DispatchContext,
+    template::TemplateContext,
     types::{AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRule, AlertStats},
 };
 use crate::core::settings::AppSettingsManager;
-use std::collections::HashSet;
-use tauri::{AppHandle, Manager};
 
 async fn prune_unused_mqtt_connections(app: &AppHandle) {
     let cache = app.state::<cache::AlertRuleCache>();
@@ -133,10 +138,6 @@ pub async fn delete_alert_action(app: AppHandle, id: String) -> Result<(), Strin
 
 #[tauri::command]
 pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, String> {
-    use crate::core::alerts::dispatch;
-    use crate::core::alerts::template::TemplateContext;
-    use chrono::Utc;
-
     let cache = app.state::<cache::AlertRuleCache>();
     let action = cache
         .get_action(&id)

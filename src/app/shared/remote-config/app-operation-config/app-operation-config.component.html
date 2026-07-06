@@ -142,14 +142,14 @@
   @if (warningBanners().length > 0 || infoBanners().length > 0) {
     @if (warningBanners().length > 0) {
       <app-alert-banner severity="warning">
-        @for (banner of warningBanners(); track banner) {
+        @for (banner of warningBanners(); track $index) {
           <p>{{ banner | translate }}</p>
         }
       </app-alert-banner>
     }
     @if (infoBanners().length > 0) {
       <app-alert-banner severity="info">
-        @for (banner of infoBanners(); track banner) {
+        @for (banner of infoBanners(); track $index) {
           <p>{{ banner | translate }}</p>
         }
       </app-alert-banner>

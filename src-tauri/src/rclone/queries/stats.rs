@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
+use crate::utils::json_helpers::normalize_windows_path;
 use crate::utils::rclone::endpoints::core;
 use crate::utils::types::state::RcloneState;
 
@@ -61,7 +62,6 @@ pub async fn get_completed_transfers(
         }
     }
 
-    use crate::utils::json_helpers::normalize_windows_path;
     if let Some(transferred) = value.get_mut("transferred").and_then(|v| v.as_array_mut()) {
         for transfer in transferred.iter_mut() {
             for field in ["dstFs", "srcFs"] {

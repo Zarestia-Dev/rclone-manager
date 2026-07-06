@@ -53,6 +53,7 @@ export class BackendSecurityComponent implements OnInit {
 
   readonly showCurrentPassword = signal(false);
   readonly showNewPassword = signal(false);
+  readonly showKeychainPassword = signal(false);
 
   readonly showKeychainInput = signal(false);
 
@@ -106,12 +107,17 @@ export class BackendSecurityComponent implements OnInit {
     this.showNewPassword.update(v => !v);
   }
 
+  toggleKeychainPasswordVisibility(): void {
+    this.showKeychainPassword.update(v => !v);
+  }
+
   onPanelOpened(): void {
     this.encryptForm.reset();
     this.changePasswordForm.reset();
     this.decryptPassword.reset();
     this.showCurrentPassword.set(false);
     this.showNewPassword.set(false);
+    this.showKeychainPassword.set(false);
   }
 
   async onKeychainToggle(event: { checked: boolean }): Promise<void> {
@@ -139,6 +145,7 @@ export class BackendSecurityComponent implements OnInit {
       );
       this.showKeychainInput.set(false);
       this.keychainPassword.reset();
+      this.showKeychainPassword.set(false);
       await this.loadEncryptionStatus();
     } catch (error) {
       console.error('Failed to store password in keychain:', error);
@@ -150,6 +157,7 @@ export class BackendSecurityComponent implements OnInit {
   async cancelKeychainStore(): Promise<void> {
     this.showKeychainInput.set(false);
     this.keychainPassword.reset();
+    this.showKeychainPassword.set(false);
     await this.loadEncryptionStatus();
   }
 

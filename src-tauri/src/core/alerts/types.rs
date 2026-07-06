@@ -4,16 +4,13 @@
 //! (`utils::app::notification`). It defines the data model for alert rules,
 //! actions, and history records.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::utils::types::origin::Origin;
-
-// =============================================================================
-// SEVERITY
-// =============================================================================
 
 /// Alert severity levels, ordered from lowest to highest.
 /// Used to filter which events trigger a rule.
@@ -45,16 +42,11 @@ impl AlertSeverity {
         }
     }
 
-    /// Returns the numeric severity code.
-    /// Delegates to the enum discriminant — always in sync with variant order.
+    /// Numeric severity code (delegates to the enum discriminant).
     pub fn as_code(&self) -> u8 {
         self.clone() as u8
     }
 }
-
-// =============================================================================
-// EVENT KIND
-// =============================================================================
 
 /// The class of event that triggered an alert.
 /// Derived from `NotificationEvent` variants in the alert engine.
@@ -99,10 +91,6 @@ impl AlertEventKind {
         }
     }
 }
-
-// =============================================================================
-// ALERT RULE
-// =============================================================================
 
 /// A user-defined rule: "When this event fires under these conditions →
 /// execute these actions."
@@ -205,10 +193,6 @@ impl Default for AlertRule {
     }
 }
 
-// =============================================================================
-// ALERT ACTIONS
-// =============================================================================
-
 /// Shared fields present on every action variant.
 /// Embed this in each concrete action struct so `AlertAction` accessor
 /// methods can be a single field access instead of a 6-arm match.
@@ -251,7 +235,6 @@ impl rcman::SettingsSchema for AlertAction {
         meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<EmailAction as rcman::SettingsSchema>::get_metadata());
 
-        // Add the enum tag field
         meta.insert(
             "kind".to_string(),
             rcman::SettingMetadata::select(
@@ -576,10 +559,6 @@ impl Default for EmailAction {
     }
 }
 
-// =============================================================================
-// ALERT RECORD  (history)
-// =============================================================================
-
 /// Immutable record of one alert firing. Written to the in-memory history cache.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertRecord {
@@ -660,10 +639,6 @@ pub struct ActionResult {
     pub duration_ms: u64,
 }
 
-// =============================================================================
-// ALERT STATS
-// =============================================================================
-
 /// Aggregate statistics about the alert history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertStats {
@@ -672,10 +647,6 @@ pub struct AlertStats {
     pub by_severity: HashMap<AlertSeverity, usize>,
     pub by_rule: HashMap<String, usize>,
 }
-
-// =============================================================================
-// PAGINATED HISTORY QUERY
-// =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlertHistoryFilter {

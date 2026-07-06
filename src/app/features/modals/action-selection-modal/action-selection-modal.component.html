@@ -14,7 +14,7 @@
 
 <main>
   <p class="modal-description">
-    {{ 'modals.actionSelection.description' | translate: { name: remoteName } }}
+    {{ 'modals.actionSelection.description' | translate: { name: remoteName, max: maxStarred } }}
   </p>
 
   <div class="action-list" cdkDropList (cdkDropListDropped)="onDrop($event)">
@@ -67,7 +67,7 @@
   <button mat-button (click)="onCancel()">
     {{ 'modals.actionSelection.cancel' | translate }}
   </button>
-  <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!hasChanges()">
+  <button mat-flat-button (click)="onSave()" [disabled]="!hasChanges()">
     {{ 'modals.actionSelection.save' | translate }}
   </button>
 </footer>

@@ -25,6 +25,24 @@ export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set(
   OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
 );
 
+export const PROFILE_ICONS: Readonly<Record<string, string>> = Object.freeze({
+  mount: 'hard-drive',
+  sync: 'refresh',
+  copy: 'copy',
+  move: 'move',
+  bisync: 'right-left',
+  serve: 'satellite-dish',
+  check: 'search',
+  delete: 'trash',
+  copyurl: 'download',
+  archivecreate: 'compress',
+  cryptcheck: 'shield',
+  vfs: 'vfs',
+  filter: 'filter',
+  backend: 'database',
+  runtimeRemote: 'gear',
+});
+
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
   'iclouddrive',

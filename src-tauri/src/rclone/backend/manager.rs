@@ -1,21 +1,18 @@
-// Backend Manager - Simplified single-active-backend architecture
-//
-// Stores multiple backends, but only one is active at runtime.
-
-use crate::core::settings::AppSettingsManager;
-use log::info;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use log::info;
 use tokio::sync::RwLock;
+
+use crate::core::settings::AppSettingsManager;
+use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
 use super::{
     runtime::RuntimeInfo,
     state::BackendState,
     types::{Backend, BackendInfo},
 };
-
-use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 
 /// Inner state that must always be read/written together to avoid index drift.
 ///
@@ -352,10 +349,6 @@ impl BackendManager {
             Err(format!("Failed to access '{sub_name}' sub-settings"))
         }
     }
-
-    // ============================================================================
-    // Internal helpers (visible to sibling modules in rclone::backend)
-    // ============================================================================
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {

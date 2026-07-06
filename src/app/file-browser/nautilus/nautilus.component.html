@@ -139,10 +139,6 @@
       }
     </div>
 
-    @if (settings.operationsPanelPosition() === 'bottom') {
-      <app-operations-panel></app-operations-panel>
-    }
-
     @if (isMobile()) {
       <app-nautilus-bottom-bar
         [layout]="settings.layout()"

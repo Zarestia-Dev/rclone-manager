@@ -138,18 +138,10 @@ impl CliArgs {
     /// Returns auth credentials if both user and pass are set
     #[cfg(feature = "web-server")]
     pub fn auth_credentials(&self) -> Option<(String, String)> {
-        match (&self.headless.user, &self.headless.headless_pass()) {
+        match (&self.headless.user, &self.headless.pass) {
             (Some(u), Some(p)) => Some((u.clone(), p.clone())),
             _ => None,
         }
-    }
-}
-
-#[cfg(feature = "web-server")]
-impl HeadlessArgs {
-    /// Helper to get optional password
-    pub fn headless_pass(&self) -> Option<String> {
-        self.pass.clone()
     }
 }
 

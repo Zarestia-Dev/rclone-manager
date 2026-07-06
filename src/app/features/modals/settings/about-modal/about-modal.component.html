@@ -340,7 +340,7 @@
                       }
                     </button>
                     @if (appDownloadInProgress()) {
-                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
+                      <button mat-stroked-button class="warn" (click)="cancelAppUpdate()">
                         {{ 'common.cancel' | translate }}
                       </button>
                     } @else {
@@ -633,7 +633,7 @@
                     }
                   </button>
                   @if (rcloneUpdateInProgress()) {
-                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
+                    <button mat-button class="warn" (click)="cancelRcloneUpdate()">
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {

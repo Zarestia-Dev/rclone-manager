@@ -1,16 +1,20 @@
 //! File operation handlers (streaming, etc.)
 
-use axum::http::header;
+use std::path::PathBuf;
+
 use axum::{
     extract::{Query, State},
+    http::header,
     response::IntoResponse,
 };
 use serde::Deserialize;
 use tauri::Manager;
 use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 use tokio_util::io::ReaderStream;
 
 use crate::server::state::{AppError, WebServerState};
+use crate::utils::types::state::RcloneState;
 
 #[derive(Deserialize)]
 pub struct StreamRemoteFileQuery {
@@ -23,10 +27,7 @@ pub async fn stream_remote_file_handler(
     State(state): State<WebServerState>,
     Query(query): Query<StreamRemoteFileQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    use crate::rclone::backend::RcloneTransport;
-    let rclone_state = state
-        .app_handle
-        .state::<crate::utils::types::state::RcloneState>();
+    let rclone_state = state.app_handle.state::<RcloneState>();
     let transport = rclone_state.transport.clone();
 
     let mut reader = transport
@@ -34,7 +35,6 @@ pub async fn stream_remote_file_handler(
         .await
         .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
 
-    use tokio::io::AsyncReadExt;
     let mut bytes = Vec::new();
     reader
         .read_to_end(&mut bytes)
@@ -48,19 +48,11 @@ pub async fn stream_remote_file_handler(
     let mut builder =
         axum::response::Response::builder().header(header::CONTENT_TYPE, content_type);
 
-    let filename = query.path.split('/').next_back().unwrap_or("file").replace(
-        |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
-        "_",
-    );
+    let filename = sanitize_filename(query.path.split('/').next_back().unwrap_or("file"));
 
-    let disposition_type = if query.download.unwrap_or(false) {
-        "attachment"
-    } else {
-        "inline"
-    };
     builder = builder.header(
         header::CONTENT_DISPOSITION,
-        format!("{disposition_type}; filename=\"{filename}\""),
+        content_disposition(query.download.unwrap_or(false), &filename),
     );
 
     builder
@@ -69,20 +61,17 @@ pub async fn stream_remote_file_handler(
 }
 
 #[derive(Deserialize)]
-pub struct ConvertFileSrcQuery {
+pub struct StreamFileQuery {
     pub path: String,
     pub download: Option<bool>,
 }
 
 pub async fn stream_file_handler(
     State(state): State<WebServerState>,
-    Query(query): Query<ConvertFileSrcQuery>,
+    Query(query): Query<StreamFileQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    use crate::rclone::backend::BackendManager;
-    use crate::utils::types::state::RcloneState;
-
     let path_str = query.path.clone();
-    let path = std::path::PathBuf::from(&path_str);
+    let path = PathBuf::from(&path_str);
 
     // Try standard file opening first
     let file_result = if path.exists() {
@@ -104,23 +93,12 @@ pub async fn stream_file_handler(
                 .header(header::CONTENT_TYPE, mime_type.as_ref());
 
             // Extract filename from path and clean it
-            let filename = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("file")
-                .replace(
-                    |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
-                    "_",
-                );
+            let filename =
+                sanitize_filename(path.file_name().and_then(|n| n.to_str()).unwrap_or("file"));
 
-            let disposition_type = if query.download.unwrap_or(false) {
-                "attachment"
-            } else {
-                "inline"
-            };
             builder = builder.header(
                 header::CONTENT_DISPOSITION,
-                format!("{disposition_type}; filename=\"{filename}\""),
+                content_disposition(query.download.unwrap_or(false), &filename),
             );
 
             builder
@@ -139,7 +117,6 @@ pub async fn stream_file_handler(
 
             match transport.read_file("", &path_str, None).await {
                 Ok(mut reader) => {
-                    use tokio::io::AsyncReadExt;
                     let mut bytes = Vec::new();
                     match reader.read_to_end(&mut bytes).await {
                         Ok(_) => {}
@@ -153,25 +130,13 @@ pub async fn stream_file_handler(
                     let mut builder = axum::response::Response::builder()
                         .header(header::CONTENT_TYPE, mime_type.as_ref());
 
-                    let filename = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("file")
-                        .replace(
-                            |c: char| {
-                                !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' '
-                            },
-                            "_",
-                        );
+                    let filename = sanitize_filename(
+                        path.file_name().and_then(|n| n.to_str()).unwrap_or("file"),
+                    );
 
-                    let disposition_type = if query.download.unwrap_or(false) {
-                        "attachment"
-                    } else {
-                        "inline"
-                    };
                     builder = builder.header(
                         header::CONTENT_DISPOSITION,
-                        format!("{disposition_type}; filename=\"{filename}\""),
+                        content_disposition(query.download.unwrap_or(false), &filename),
                     );
 
                     builder.body(axum::body::Body::from(bytes)).map_err(|e| {
@@ -195,4 +160,16 @@ pub async fn stream_file_handler(
             }
         }
     }
+}
+
+fn sanitize_filename(name: &str) -> String {
+    name.replace(
+        |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_' && c != ' ',
+        "_",
+    )
+}
+
+fn content_disposition(download: bool, filename: &str) -> String {
+    let disposition_type = if download { "attachment" } else { "inline" };
+    format!("{disposition_type}; filename=\"{filename}\"")
 }

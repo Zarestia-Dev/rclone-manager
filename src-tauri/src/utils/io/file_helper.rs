@@ -111,7 +111,6 @@ pub async fn open_in_files(
 
 #[command]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::DialogExt;
     debug!("Opening file picker dialog...");
 
     let file_location = window
@@ -127,7 +126,6 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
 
 #[command]
 pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
-    use tauri_plugin_dialog::DialogExt;
     debug!("Opening multi-file picker dialog...");
 
     let file_locations = window.dialog().file().blocking_pick_files().map(|paths| {

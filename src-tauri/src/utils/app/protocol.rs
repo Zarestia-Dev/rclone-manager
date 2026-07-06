@@ -1,25 +1,32 @@
-use crate::utils::app::audio;
-use log::{debug, error, warn};
 use std::path::Path;
+
+use log::{debug, error, warn};
 use tauri::{Builder, Manager, Runtime};
 
+use crate::utils::app::audio;
+
 pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
-    // -------------------------------------------------------------------------
-    // Custom Protocol for Remote File Streaming (Desktop)
-    // -------------------------------------------------------------------------
+    builder = register_rclone_protocol(builder);
+    builder = register_local_asset_protocol(builder);
+    builder = register_audio_cover_protocol(builder);
+    builder
+}
+
+fn cors_preflight_response() -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(204)
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        .header("Access-Control-Allow-Headers", "*")
+        .body(vec![])
+        .unwrap()
+}
+
+fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder =
         builder.register_asynchronous_uri_scheme_protocol("rclone", |app, request, responder| {
-            // Handle CORS Preflight for Angular's HttpClient
             if request.method() == tauri::http::Method::OPTIONS {
-                responder.respond(
-                    tauri::http::Response::builder()
-                        .status(204)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
-                        .header("Access-Control-Allow-Headers", "*")
-                        .body(vec![])
-                        .unwrap(),
-                );
+                responder.respond(cors_preflight_response());
                 return;
             }
 
@@ -152,20 +159,13 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                 }
             });
         });
+    builder
+}
 
-    // -------------------------------------------------------------------------
-    // Custom Protocol for Local Files Bypass (Desktop)
-    // -------------------------------------------------------------------------
+fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder = builder.register_asynchronous_uri_scheme_protocol("local-asset", |app, request, responder| {
-        // Handle CORS Preflight for Angular's HttpClient
         if request.method() == tauri::http::Method::OPTIONS {
-            responder.respond(tauri::http::Response::builder()
-                .status(204)
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, OPTIONS")
-                .header("Access-Control-Allow-Headers", "*") // Required for Angular
-                .body(vec![])
-                .unwrap());
+            responder.respond(cors_preflight_response());
             return;
         }
 
@@ -398,24 +398,15 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             }
         });
     });
+    builder
+}
 
-    // -------------------------------------------------------------------------
-    // Custom Protocol for Audio Cover Extraction (Desktop)
-    // -------------------------------------------------------------------------
+fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
     builder = builder.register_asynchronous_uri_scheme_protocol(
         "audio-cover",
         |app, request, responder| {
-            // Handle CORS Preflight
             if request.method() == tauri::http::Method::OPTIONS {
-                responder.respond(
-                    tauri::http::Response::builder()
-                        .status(204)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Methods", "GET, OPTIONS")
-                        .header("Access-Control-Allow-Headers", "*")
-                        .body(vec![])
-                        .unwrap(),
-                );
+                responder.respond(cors_preflight_response());
                 return;
             }
 
@@ -556,7 +547,6 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             }
         },
     );
-
     builder
 }
 

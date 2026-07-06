@@ -18,6 +18,7 @@ import {
   FlagType,
   SYNC_TYPES,
   SENSITIVE_KEYS,
+  PROFILE_ICONS,
 } from '@app/types';
 
 import { AuthStateService } from '../security/auth-state.service';
@@ -283,7 +284,7 @@ export class RemoteConfigStateService {
     },
     ...FLAG_TYPES.map(type => ({
       label: `modals.remoteConfig.steps.${type}`,
-      icon: type === 'serve' ? 'satellite-dish' : type,
+      icon: PROFILE_ICONS[type] || type,
       type,
     })),
     { label: 'modals.remoteConfig.steps.runtimeRemote', icon: 'gear', type: 'runtimeRemote' },

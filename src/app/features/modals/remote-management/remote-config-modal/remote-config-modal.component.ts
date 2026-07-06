@@ -62,6 +62,7 @@ import {
   DeleteConfig,
   CopyurlConfig,
   ArchivecreateConfig,
+  PROFILE_ICONS,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
@@ -136,20 +137,7 @@ export class RemoteConfigModalComponent {
   readonly FLAG_TYPES = FLAG_TYPES;
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
-  readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
-    mount: 'hard-drive',
-    sync: 'refresh',
-    copy: 'copy',
-    move: 'move',
-    bisync: 'right-left',
-    serve: 'server',
-    check: 'search',
-    cryptcheck: 'shield',
-    vfs: 'vfs',
-    filter: 'filter',
-    backend: 'database',
-    runtimeRemote: 'gear',
-  };
+  readonly PROFILE_ICONS = PROFILE_ICONS;
 
   readonly remoteEditCategories = [
     { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },

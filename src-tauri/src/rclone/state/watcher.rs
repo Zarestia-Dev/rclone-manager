@@ -1,12 +1,11 @@
-use log::{debug, warn};
 use std::sync::Arc;
+
+use log::{debug, warn};
 use tauri::{AppHandle, Manager};
 
+use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::queries::{get_mounted_remotes, list_serves};
-use crate::{
-    rclone::backend::{BackendManager, types::Backend},
-    utils::types::remotes::RemoteCache,
-};
+use crate::utils::types::remotes::RemoteCache;
 
 /// Core logic to check and reconcile mounted remotes for the active backend
 async fn check_and_reconcile_mounts(

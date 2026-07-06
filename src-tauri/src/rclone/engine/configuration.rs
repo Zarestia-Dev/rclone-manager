@@ -13,6 +13,8 @@ use crate::{
 use crate::core::check_binaries::{MIN_RCLONE_VERSION, build_rclone_command};
 #[cfg(not(feature = "librclone"))]
 use crate::rclone::backend::BackendManager;
+#[cfg(feature = "librclone")]
+use crate::utils::types::state::RcloneState;
 
 use super::error::{EngineError, EngineResult};
 
@@ -78,7 +80,6 @@ impl RcApiEngine {
 
         #[cfg(feature = "librclone")]
         {
-            use crate::utils::types::state::RcloneState;
             let state = app.state::<RcloneState>();
             match state.transport.rpc("config/listremotes", None).await {
                 Ok(_) => {

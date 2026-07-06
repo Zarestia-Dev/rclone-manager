@@ -59,11 +59,6 @@ impl Command {
         self
     }
 
-    // pub fn current_dir<P: AsRef<std::path::Path>>(mut self, dir: P) -> Self {
-    //     self.inner.current_dir(dir);
-    //     self
-    // }
-
     pub fn spawn(mut self) -> std::io::Result<tokio::process::Child> {
         self.inner.spawn()
     }

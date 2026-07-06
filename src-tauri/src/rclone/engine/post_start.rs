@@ -1,11 +1,14 @@
-use crate::rclone::backend::BackendManager;
-use crate::utils::types::state::RcloneState;
-use crate::{
-    core::initialization::apply_settings::apply_core_settings,
-    utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-};
 use log::{debug, error};
 use tauri::{AppHandle, Emitter, Manager};
+
+use crate::{
+    core::initialization::apply_settings::apply_core_settings,
+    rclone::backend::BackendManager,
+    utils::types::{
+        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+        state::RcloneState,
+    },
+};
 
 pub async fn run_post_start_setup(app: &AppHandle) {
     let manager = app.state::<crate::core::settings::AppSettingsManager>();

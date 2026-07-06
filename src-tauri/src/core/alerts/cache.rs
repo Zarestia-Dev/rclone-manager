@@ -1,12 +1,13 @@
+use std::collections::VecDeque;
+
+use log::{debug, error};
+use tauri::{AppHandle, Emitter};
+use tokio::sync::RwLock;
+
 use crate::core::alerts::types::{
     AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRecord, AlertRule, AlertStats,
 };
 use crate::core::settings::AppSettingsManager;
-use log::{debug, error};
-use std::collections::VecDeque;
-use tauri::{AppHandle, Emitter};
-use tokio::sync::RwLock;
-
 use crate::utils::types::events::ALERT_FIRED;
 
 pub fn get_all_rules(manager: &AppSettingsManager) -> Vec<AlertRule> {
@@ -186,6 +187,7 @@ impl AlertRuleCache {
         }
     }
 }
+
 pub struct AlertHistoryCache {
     records: RwLock<VecDeque<AlertRecord>>,
     max_entries: usize,

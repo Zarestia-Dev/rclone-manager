@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use futures::StreamExt;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
@@ -120,7 +121,6 @@ impl RcloneTransport for RcHttpBackend {
             .await
         {
             Ok(response) if response.status().is_success() => {
-                use futures::StreamExt;
                 let stream = response
                     .bytes_stream()
                     .map(|result| result.map_err(std::io::Error::other));

@@ -1,7 +1,10 @@
-use serde_json::{Map, Value};
 use std::collections::HashMap;
+
+use futures::future::join_all;
+use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager};
 
+use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::{
     jobs::JobType,
     remotes::{DEST_KEYS, OperationType, ProfileParams, SOURCE_KEYS},
@@ -9,12 +12,6 @@ use crate::utils::types::{
 
 use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
-use crate::utils::rclone::endpoints::{core, operations};
-use futures::future::join_all;
-
-// ============================================================================
-// SHARED TYPES
-// ============================================================================
 
 /// Unified parameter structure for all transfer operations
 #[derive(Debug, Clone)]
@@ -193,10 +190,6 @@ impl GenericTransferParams {
         );
     }
 }
-
-// ============================================================================
-// PROFILE COMMANDS
-// ============================================================================
 
 fn has_archive_extension(path: &str) -> bool {
     let lower = path.to_lowercase();

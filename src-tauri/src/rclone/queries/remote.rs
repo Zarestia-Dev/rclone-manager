@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
 use log::debug;
 use serde_json::Value;
-use std::collections::HashMap;
+use tauri::{AppHandle, Manager};
 
 use crate::utils::rclone::endpoints::config;
 use crate::utils::types::state::RcloneState;
-use tauri::{AppHandle, Manager};
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
     let json = app
@@ -40,7 +41,7 @@ pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(remotes)
 }
 
-/// ✅ Fetch all remote types
+/// Fetch all remote types
 #[tauri::command]
 pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
     let json = app
@@ -56,7 +57,7 @@ pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Valu
     Ok(providers)
 }
 
-/// ✅ Fetch only OAuth-supported remotes
+/// Fetch only OAuth-supported remotes
 #[tauri::command]
 pub async fn get_oauth_supported_remotes(
     app: AppHandle,

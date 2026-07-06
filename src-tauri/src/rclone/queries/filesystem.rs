@@ -1,10 +1,19 @@
+#[cfg(target_os = "linux")]
+use std::collections::HashMap;
+#[cfg(target_os = "linux")]
+use std::process::Command;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sysinfo::Disks;
+use tauri::{AppHandle, Manager};
 
+use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::{
-    rclone::endpoints::operations,
+    json_helpers::normalize_windows_path,
+    rclone::endpoints::{core, job as job_endpoints, operations},
     rclone::util::build_full_path,
     types::{
         jobs::{JobStatus, JobType},
@@ -14,17 +23,12 @@ use crate::utils::{
     },
 };
 
-use crate::rclone::backend::BackendManager;
-use tauri::{AppHandle, Manager};
-
 async fn run_fs_command_as_job(
     app: AppHandle,
     endpoint: &str,
     mut payload: serde_json::Value,
     metadata: JobMetadata,
 ) -> Result<serde_json::Value, String> {
-    use crate::utils::rclone::endpoints::job as job_endpoints;
-
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
 
@@ -120,7 +124,6 @@ pub async fn get_fs_info(
 
     let data = {
         let mut data = data;
-        use crate::utils::json_helpers::normalize_windows_path;
         if let Some(root) = data.get_mut("Root")
             && let Some(root_str) = root.as_str()
         {
@@ -172,9 +175,6 @@ pub async fn get_remote_paths(
 
 #[tauri::command]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
-    use crate::utils::rclone::endpoints::core;
-    use sysinfo::Disks;
-
     let response = app
         .state::<RcloneState>()
         .transport
@@ -194,8 +194,6 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
 
     #[cfg(target_os = "linux")]
     let labels = {
-        use std::collections::HashMap;
-        use std::process::Command;
         let mut map = HashMap::new();
         if let Ok(output) = Command::new("lsblk").args(["-no", "KNAME,LABEL"]).output() {
             let stdout = String::from_utf8_lossy(&output.stdout);

@@ -189,7 +189,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   protected onItemPointerDown(event: PointerEvent, item: FileBrowserItem): void {
-    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
+    if (event.button !== 0 || !this.isMultiSelectEnabled() || this.isMobile()) return;
 
     const target = event.target as HTMLElement;
     if (target.closest('button') || target.closest('a')) return;
@@ -273,7 +273,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
     if (event.button === 0) {
       this.switchPane.emit(this.paneIndex());
     }
-    if (event.button !== 0 || !this.isMultiSelectEnabled()) return;
+    if (event.button !== 0 || !this.isMultiSelectEnabled() || this.isMobile()) return;
 
     const target = event.target as HTMLElement;
     // CHANGED: use _activeContainer getter instead of inline ternary.

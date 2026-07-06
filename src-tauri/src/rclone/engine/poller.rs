@@ -1,21 +1,21 @@
-use log::{debug, error, warn};
-use serde_json::json;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+
+use log::{debug, error, warn};
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time;
-
-const BURST_TICK_COUNT: u32 = 5;
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::engine::lifecycle::{get_engine_status, start_engine_if_not_running};
 use crate::rclone::queries::parse_serves_response;
 use crate::utils::rclone::endpoints::{core, job, mount, serve};
 use crate::utils::types::events::SYSTEM_STATUS;
-use crate::utils::types::monitoring::SystemStatus;
-use crate::utils::types::monitoring::SystemStatusPayload;
+use crate::utils::types::monitoring::{SystemStatus, SystemStatusPayload};
 use crate::utils::types::remotes::MountedRemote;
 use crate::utils::types::state::RcloneState;
+
+const BURST_TICK_COUNT: u32 = 5;
 
 #[tauri::command]
 pub async fn get_system_status_snapshot(

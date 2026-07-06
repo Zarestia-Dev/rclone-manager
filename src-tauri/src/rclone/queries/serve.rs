@@ -1,5 +1,6 @@
 use log::debug;
 use serde_json::Value;
+use tauri::Manager;
 
 use crate::utils::{
     rclone::endpoints::serve,
@@ -33,8 +34,6 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
-    use tauri::Manager;
-
     let json = app
         .state::<RcloneState>()
         .transport
@@ -56,8 +55,6 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
-    use tauri::Manager;
-
     let json = app
         .state::<RcloneState>()
         .transport

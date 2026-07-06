@@ -4,6 +4,7 @@ pub mod automation;
 pub mod bootstrap;
 
 use crate::core::lifecycle::startup::handle_startup;
+use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
@@ -11,6 +12,9 @@ use crate::utils::types::state::RcloneState;
 use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
+
+#[cfg(feature = "tray")]
+use crate::core::tray::core::update_tray_menu;
 
 /// Handles async startup tasks using a phased approach
 pub async fn initialization(app_handle: tauri::AppHandle) {
@@ -92,7 +96,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to reload backends: {e}"))?;
 
-    use crate::core::security::SafeEnvironmentManager;
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
         let _ = env_manager.init_with_stored_credentials(manager.inner());
     }
@@ -117,7 +120,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
 
     #[cfg(feature = "tray")]
     {
-        use crate::core::tray::core::update_tray_menu;
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
@@ -221,14 +223,12 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
         .get_all()
         .map_err(|e| format!("Failed to load settings during Phase 0: {e}"))?;
 
-    use crate::core::security::SafeEnvironmentManager;
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
         debug!("Initializing environment manager credentials...");
         if let Err(e) = env_manager.init_with_stored_credentials(rcman_manager.inner()) {
             error!("Failed to initialize environment manager: {e}");
         }
     }
-
     crate::utils::i18n::init(app_paths.resource_dir);
     crate::utils::i18n::set_language(&settings.general.language);
 

@@ -1,7 +1,8 @@
-use log::{debug, error, info};
-use serde_json::json;
 #[cfg(not(feature = "librclone"))]
 use std::time::{Duration, Instant};
+
+use log::{debug, error, info};
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 #[cfg(not(feature = "librclone"))]
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -10,6 +11,12 @@ use tokio::net::TcpStream;
 #[cfg(not(feature = "librclone"))]
 use tokio::time::sleep;
 
+#[cfg(not(feature = "librclone"))]
+use crate::utils::rclone::process_common::{build_rclone_process_command, graceful_shutdown};
+#[cfg(not(feature = "librclone"))]
+use crate::utils::types::events::RCLONE_OAUTH_URL;
+#[cfg(not(feature = "librclone"))]
+use crate::utils::types::rclone::ProcessKind;
 use crate::{
     rclone::backend::BackendManager,
     utils::{
@@ -21,13 +28,6 @@ use crate::{
         },
     },
 };
-
-#[cfg(not(feature = "librclone"))]
-use crate::utils::rclone::process_common::{build_rclone_process_command, graceful_shutdown};
-#[cfg(not(feature = "librclone"))]
-use crate::utils::types::events::RCLONE_OAUTH_URL;
-#[cfg(not(feature = "librclone"))]
-use crate::utils::types::rclone::ProcessKind;
 
 #[derive(Debug)]
 pub enum RcloneError {
@@ -396,10 +396,6 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
         .map(|_| ())
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }
-
-// ============================================================================
-// STATS GROUP MANAGEMENT
-// ============================================================================
 
 /// Get all active stats groups.
 /// Returns a list of group names like ["sync/gdrive", "mount/onedrive"].

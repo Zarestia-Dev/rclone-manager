@@ -2,6 +2,8 @@ use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(feature = "librclone")]
+use crate::utils::rclone::endpoints::core;
 use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
@@ -9,6 +11,8 @@ use crate::utils::{
         state::{EngineState, RcApiEngine, RcloneState},
     },
 };
+
+use super::error::EngineError;
 
 pub fn mark_startup_complete(app: &AppHandle) {
     let state = app.state::<RcloneState>();
@@ -134,28 +138,10 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         return;
     }
 
-    // Branch on transport kind. The HTTP daemon path spawns/kills a child
-    // process; the librclone path just verifies the in-process library is
-    // responsive (it can't die, so there's no spawn or kill).
-    let transport_kind = app.state::<RcloneState>().transport.kind();
-    match transport_kind {
-        crate::rclone::backend::TransportKind::HttpDaemon => {
-            #[cfg(not(feature = "librclone"))]
-            start_daemon(engine, app).await;
-            #[cfg(feature = "librclone")]
-            log::error!(
-                "HttpDaemon transport is not available when building with librclone feature"
-            );
-        }
-        crate::rclone::backend::TransportKind::Librclone => {
-            #[cfg(feature = "librclone")]
-            start_librclone(engine, app).await;
-            #[cfg(not(feature = "librclone"))]
-            log::error!(
-                "Librclone transport is not available when building without librclone feature"
-            );
-        }
-    }
+    #[cfg(feature = "librclone")]
+    start_librclone(engine, app).await;
+    #[cfg(not(feature = "librclone"))]
+    start_daemon(engine, app).await;
 }
 
 /// Desktop path: spawn the rcd daemon, wait for HTTP readiness, run post-start.
@@ -205,9 +191,6 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
 /// There's no process to spawn and no port to clean up.
 #[cfg(feature = "librclone")]
 async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
-    use crate::utils::rclone::endpoints::core;
-    use tauri::Manager;
-
     // Verify librclone is responsive with a single core/version call.
     // This should never fail (librclone is always alive after RcloneInitialize),
     // but if it does, something is seriously wrong.
@@ -300,9 +283,6 @@ pub fn restart_for_config_change(
 }
 
 async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::EngineResult<()> {
-    use super::error::EngineError;
-    use crate::utils::types::state::EngineState;
-
     let engine_state = app.state::<EngineState>();
     let mut engine = engine_state.lock().await;
 

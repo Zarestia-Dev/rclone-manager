@@ -14,9 +14,6 @@ import { JobInfo, CompletedTransfer } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
-import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { NotificationService } from 'src/app/services/ui/notification.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-operations-panel',
@@ -45,124 +42,19 @@ export class OperationsPanelComponent {
   private readonly uiStateService = inject(UiStateService);
   private readonly translate = inject(TranslateService);
   protected readonly settings = inject(NautilusSettingsService);
-  private readonly remoteOps = inject(RemoteFileOperationsService);
-  private readonly notifications = inject(NotificationService);
-  private readonly pathService = inject(PathService);
 
   // Reactive state
   jobs = this.jobManagementService.nautilusJobs;
   isExpanded = signal(true);
-  isLoading = signal(false);
-  selectedJobId = signal<number | null>(null);
   contextMenuJob = signal<JobInfo | null>(null);
 
   // Computed State
-  selectedJob = computed(() => {
-    const id = this.selectedJobId();
-    const jobs = this.jobs();
-    if (id !== null) {
-      const found = jobs.find(j => j.jobid === id);
-      if (found) return found;
-    }
-    return jobs.length > 0 ? jobs[0] : null;
-  });
-
   activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
   completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
   hasJobs = computed(() => this.jobs().length > 0);
-  isDockedAtBottom = computed(() => this.settings.operationsPanelPosition() === 'bottom');
 
   constructor() {
     this.jobManagementService.refreshJobs();
-  }
-
-  selectJob(job: JobInfo): void {
-    this.selectedJobId.set(job.jobid);
-  }
-
-  setDockPosition(pos: 'sidebar' | 'bottom'): void {
-    this.settings.saveOperationsPanelPosition(pos);
-  }
-
-  onResizeMouseDown(event: MouseEvent): void {
-    event.preventDefault();
-    const startY = event.clientY;
-    const startHeight = this.settings.operationsPanelHeight();
-
-    const onMouseMove = (moveEvent: MouseEvent): void => {
-      const deltaY = startY - moveEvent.clientY;
-      const newHeight = Math.max(100, Math.min(600, startHeight + deltaY));
-      this.settings.saveOperationsPanelHeight(newHeight);
-    };
-
-    const onMouseUp = (): void => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }
-
-  async retryTransfer(file: CompletedTransfer, job: JobInfo): Promise<void> {
-    let srcFs: string;
-    let srcPath: string;
-
-    if (file.srcFs) {
-      srcFs = file.srcFs;
-      srcPath = file.name;
-    } else {
-      const sourceStr = Array.isArray(job.source)
-        ? job.source.find(s => s.endsWith(file.name)) || job.source[0] || ''
-        : job.source || '';
-
-      const split = this.pathService.splitFsPath(sourceStr);
-      srcFs = this.pathService.normalizeRemoteForRclone(split.remote);
-      srcPath = split.path;
-    }
-
-    let dstFsRemote = '';
-    let dstFsPath = '';
-
-    if (job.destination) {
-      const split = this.pathService.splitFsPath(job.destination);
-      dstFsRemote = this.pathService.normalizeRemoteForRclone(split.remote);
-      dstFsPath = split.path;
-    } else if (file.dstFs) {
-      dstFsRemote = file.dstFs;
-    }
-
-    const dstPath = this.pathService.joinPath(dstFsPath, this.pathService.getParentPath(file.name));
-
-    try {
-      await this.remoteOps.transferItems(
-        [
-          {
-            remote: srcFs,
-            path: srcPath,
-            name: this.pathService.extractName(srcPath),
-            isDir: false,
-          },
-        ],
-        dstFsRemote,
-        dstPath,
-        'copy',
-        'filemanager',
-        undefined,
-        job.jobid
-      );
-
-      this.notifications.showSuccess(
-        this.translate.instant('shared.transferActivity.messages.resolveStarted', {
-          name: this.pathService.extractName(srcPath),
-        })
-      );
-    } catch (e) {
-      console.error('Failed to retry failed transfer:', e);
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.messages.resolveFailed', { error: e })
-      );
-    }
   }
 
   toggleExpanded(): void {

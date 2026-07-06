@@ -1,11 +1,21 @@
-use crate::core::settings::AppSettingsManager;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_json::json;
 use tauri::{AppHandle, Manager};
 
+use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendError;
+use crate::utils::json_helpers::{
+    get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
+};
 use crate::utils::rclone::endpoints::operations;
 use crate::utils::types::remotes::{ProfileConfig, helper_config_keys};
+use crate::utils::types::state::RcloneState;
+
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::backend::types::Backend;
 
 /// Resolves profile settings for a given remote and profile name.
 ///
@@ -38,19 +48,6 @@ pub async fn resolve_profile_settings(
 
     Ok((config.clone(), settings_val))
 }
-
-// ============================================================================
-// SHARED TRAITS & HELPERS
-// ============================================================================
-
-#[cfg(not(feature = "librclone"))]
-use crate::rclone::backend::types::Backend;
-use crate::utils::json_helpers::{
-    get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
-};
-use crate::utils::types::state::RcloneState;
-use serde_json::json;
-use std::collections::HashMap;
 
 /// Determines if the given fs path is a directory using operations/stat.
 pub async fn is_directory(
@@ -185,8 +182,6 @@ pub fn fs_value_with_runtime_overrides(
         _ => json!(fs),
     }
 }
-
-// Removed ParsedFs enum
 
 /// Parses an rclone fs string into (base, root).
 /// Example: "remote:path" -> ("remote:", "path"), ":<s3:/bucket>" -> (":s3:", "/bucket")

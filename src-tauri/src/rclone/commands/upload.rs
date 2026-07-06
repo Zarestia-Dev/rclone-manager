@@ -1,14 +1,15 @@
 //! Custom upload commands for streaming and batch processing to rclone remotes.
 
-use futures::StreamExt;
-use log::debug;
 use std::sync::{Arc, Mutex};
 
+use base64::Engine;
+use futures::StreamExt;
+use log::debug;
 use serde::Deserialize;
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::{BackendManager, TransportKind};
 use crate::rclone::commands::job::JobMetadata;
 use crate::utils::app::notification::notify;
 use crate::utils::rclone::endpoints::operations;
@@ -169,7 +170,6 @@ async fn discover_upload_entries(
     .map_err(|e| e.to_string())?
 }
 
-// TODO: Phase 3 — migrate multipart upload to transport (needs streaming trait method)
 pub async fn execute_upload_batch(
     app: AppHandle,
     params: UploadBatchParams,
@@ -480,9 +480,6 @@ pub async fn upload_local_drop_paths(
 }
 
 #[tauri::command]
-// TODO: Phase 3 — migrate multipart upload to transport (needs streaming trait method).
-// For now, upload_file branches on transport.kind(): desktop uses reqwest::multipart,
-// mobile (librclone) uses operations/copyfile from a temp file.
 pub async fn upload_file(
     app: AppHandle,
     remote: String,
@@ -490,8 +487,6 @@ pub async fn upload_file(
     name: String,
     content: Vec<u8>,
 ) -> Result<String, String> {
-    use crate::rclone::backend::TransportKind;
-
     let state = app.state::<crate::utils::types::state::RcloneState>();
     let transport = state.transport.clone();
     let remote_dir = if path.is_empty() {
@@ -539,7 +534,6 @@ pub async fn upload_file(
         // Write the bytes to a temp file, then use operations/copyfile to copy
         // from the local temp file to the destination remote.
         TransportKind::Librclone => {
-            use base64::Engine;
             // For small files (< 16 MB), base64-encode into the JSON body of
             // operations/uploadfile directly. This avoids the temp-file dance.
             // For larger files, fall back to temp file + operations/copyfile.

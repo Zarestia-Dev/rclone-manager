@@ -1,12 +1,13 @@
+use std::collections::HashMap;
+
 use log::info;
 use serde_json::Value;
-use std::collections::HashMap;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 
 use crate::utils::types::{
     events::JOB_CACHE_CHANGED,
-    jobs::{JobCache, JobInfo, JobStatus, JobType},
+    jobs::{JobCache, JobInfo, JobStatus, JobType, ResolveState},
 };
 
 impl JobCache {
@@ -331,7 +332,6 @@ impl JobCache {
         }
     }
 
-    // ---- Private helpers ----
     fn link_resolving_jobs_internal(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64) {
         let child_jobs: Vec<JobInfo> = jobs
             .values()
@@ -430,8 +430,6 @@ impl JobCache {
                     );
 
                     if let Some(child_job) = matching_child_job {
-                        use crate::utils::types::jobs::ResolveState;
-
                         let mut percentage = 0;
                         let mut is_preparing = true;
                         let mut bytes = 0;

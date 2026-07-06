@@ -33,7 +33,7 @@
   </div>
 
   <div class="remote-status-indicators" aria-hidden="true">
-    @for (op of visibleStatusIndicators(); track op) {
+    @for (op of visibleStatusIndicators(); track $index) {
       @let meta = getStatusIndicatorMeta(op);
       <div
         [class]="
@@ -155,7 +155,7 @@
         </div>
       </div>
     } @else {
-      @for (operation of detailedOperations(); track operation) {
+      @for (operation of detailedOperations(); track $index) {
         @let profiles = getConfiguredProfiles(operation);
         @if (profiles.length > 0) {
           <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
@@ -170,7 +170,7 @@
               <span class="profile-count">{{ profiles.length }}</span>
             </div>
             <div class="profile-pills">
-              @for (profile of profiles; track profile) {
+              @for (profile of profiles; track $index) {
                 @let isBusy = isProfileActionInProgress(operation, profile);
                 <div class="profile-item" [class.can-open]="canOpenProfilePath(operation, profile)">
                   <button
@@ -196,7 +196,7 @@
 
                   @let openPaths = getProfileOpenPaths(operation, profile);
                   @if (openPaths.length > 0) {
-                    @for (path of openPaths; track path) {
+                    @for (path of openPaths; track $index) {
                       <button
                         type="button"
                         class="profile-open-btn"

@@ -5,9 +5,10 @@
 //! - **In-Place**: Updates rclone directly when write permissions allow
 //! - **Download-to-Local**: Downloads to app data directory when in-place isn't possible
 
+use std::path::{Path, PathBuf};
+
 use log::{debug, info, warn};
 use serde_json::json;
-use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::read_rclone_binary;
@@ -63,9 +64,7 @@ impl RcloneVersionInfo {
     }
 }
 
-// ============================================================================
 // Types
-// ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Deserialize)]
 pub enum UpdateChannel {
@@ -96,13 +95,11 @@ impl From<Option<String>> for UpdateChannel {
     }
 }
 
-// ============================================================================
 // Public API Commands
-// ============================================================================
 
 #[tauri::command]
 pub async fn check_rclone_update(
-    app_handle: tauri::AppHandle,
+    app_handle: AppHandle,
     channel: Option<String>,
 ) -> Result<UpdateInfo> {
     let result_meta = perform_check_rclone_update(app_handle.clone(), channel).await?;
@@ -138,7 +135,7 @@ pub async fn check_rclone_update(
 }
 
 pub async fn perform_check_rclone_update(
-    app_handle: tauri::AppHandle,
+    app_handle: AppHandle,
     channel: Option<String>,
 ) -> Result<UpdateInfo> {
     let current_version = get_cached_rclone_version(&app_handle)
@@ -194,7 +191,7 @@ pub async fn perform_check_rclone_update(
 }
 
 #[tauri::command]
-pub async fn get_rclone_update_info(app_handle: tauri::AppHandle) -> Result<Option<UpdateInfo>> {
+pub async fn get_rclone_update_info(app_handle: AppHandle) -> Result<Option<UpdateInfo>> {
     let pending_new = find_pending_new_binary(&app_handle);
     let has_pending_new = pending_new.is_some();
     let updater_state = app_handle.state::<RcloneUpdaterState>();
@@ -265,10 +262,7 @@ fn find_pending_new_binary(app_handle: &AppHandle) -> Option<(PathBuf, PathBuf)>
 }
 
 #[tauri::command]
-pub async fn update_rclone(
-    app_handle: tauri::AppHandle,
-    channel: Option<String>,
-) -> Result<UpdateResult> {
+pub async fn update_rclone(app_handle: AppHandle, channel: Option<String>) -> Result<UpdateResult> {
     debug!("Starting rclone download/update process");
 
     let channel_enum: UpdateChannel = channel.clone().into();
@@ -431,7 +425,7 @@ pub async fn update_rclone(
 
 /// Cancels an in-progress rclone update download.
 #[tauri::command]
-pub async fn cancel_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
+pub async fn cancel_rclone_update(app_handle: AppHandle) -> Result<()> {
     let updater_state = app_handle.state::<RcloneUpdaterState>();
     let mut data = updater_state.data.lock();
 
@@ -453,7 +447,7 @@ pub async fn cancel_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
 
 /// Apply a previously downloaded rclone update and restart the engine.
 #[tauri::command]
-pub async fn apply_rclone_update(app_handle: tauri::AppHandle) -> Result<()> {
+pub async fn apply_rclone_update(app_handle: AppHandle) -> Result<()> {
     debug!("Applying previously downloaded rclone update");
 
     {
@@ -623,7 +617,7 @@ async fn get_cached_rclone_version(app_handle: &AppHandle) -> Option<String> {
     None
 }
 
-/// Global function to check for and apply any staged rclone updates.
+/// Check for and apply any staged rclone updates.
 ///
 /// This checks both the in-memory state and the filesystem for `.new` binaries.
 /// Should be called during shutdown, restart, and startup.
@@ -649,9 +643,7 @@ fn resolve_update_target_path(current_path: &Path, app_handle: &AppHandle) -> Re
     Ok(local_path)
 }
 
-// ============================================================================
 // Helpers
-// ============================================================================
 
 fn clean_version(version: &str) -> &str {
     version.trim_start_matches('v')
@@ -711,7 +703,7 @@ fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf> {
 }
 
 pub async fn update_rclone_binary_in_settings(
-    app_handle: &tauri::AppHandle,
+    app_handle: &AppHandle,
     new_path: &Path,
 ) -> std::result::Result<(), Error> {
     save_setting(
@@ -724,9 +716,7 @@ pub async fn update_rclone_binary_in_settings(
     .map_err(Error::Backend)
 }
 
-// ============================================================================
 // Core Update Logic
-// ============================================================================
 
 async fn check_rclone_selfupdate(
     app_handle: &AppHandle,

@@ -1,23 +1,20 @@
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use log::info;
+use serde::Deserialize;
+use serde_json::Value;
+use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::RwLock;
+
 use crate::{
     core::automation::engine::get_next_run,
     utils::types::{
         automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+        events::AUTOMATIONS_CACHE_CHANGED,
         remotes::{OperationType, ProfileParams},
     },
 };
-use log::info;
-use serde::Deserialize;
-use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager};
-use tokio::sync::RwLock;
-
-use crate::utils::types::events::AUTOMATIONS_CACHE_CHANGED;
-
-// ============================================================================
-// CONFIGURATION STRUCTS
-// ============================================================================
 
 #[derive(Default, Debug, PartialEq, Clone)]
 struct ProfileConfig {
@@ -78,10 +75,6 @@ fn normalize_paths(val: Option<&Value>) -> Vec<String> {
     }
 }
 
-// ============================================================================
-// CACHE UPDATE RESULT
-// ============================================================================
-
 /// Returned by `load_from_remote_configs` so callers can act on exactly what
 /// changed. The cache itself does not touch the scheduler — all scheduling and
 /// unscheduling decisions belong to the caller.
@@ -100,9 +93,6 @@ impl CacheUpdateResult {
         !self.added.is_empty() || !self.updated.is_empty() || !self.removed.is_empty()
     }
 }
-
-// SCHEDULED TASK CACHE
-// ============================================================================
 
 #[derive(Clone)]
 pub struct AutomationsCache {
@@ -383,10 +373,6 @@ impl AutomationsCache {
         })
     }
 
-    // ============================================================================
-    // STANDARD OPERATIONS
-    // ============================================================================
-
     pub async fn add_automation(
         &self,
         automation: Automation,
@@ -612,10 +598,6 @@ impl Default for AutomationsCache {
     }
 }
 
-// ============================================================================
-// TAURI COMMANDS
-// ============================================================================
-
 /// Read-only query commands that only touch the cache live here.
 /// Commands that coordinate both cache and scheduler live in `commands.rs`.
 
@@ -640,18 +622,12 @@ pub async fn get_automation_stats(app: AppHandle) -> Result<AutomationStats, Str
     Ok(cache.get_stats().await)
 }
 
-// ============================================================================
-// TESTS
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
 
-    // -----------------------------------------------------------------------
     // RemoteConfig deserialization
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_profile_config_deserialization() {
@@ -717,10 +693,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
-    // -----------------------------------------------------------------------
     // Automation ID generation
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_generate_automation_id() {
@@ -740,9 +713,7 @@ mod tests {
         assert_ne!(sync_id, copy_id);
     }
 
-    // -----------------------------------------------------------------------
     // create_automation_struct
-    // -----------------------------------------------------------------------
 
     fn make_cache() -> AutomationsCache {
         AutomationsCache::new()
@@ -1029,9 +1000,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // automation_config_changed
-    // -----------------------------------------------------------------------
 
     fn base_automation() -> Automation {
         Automation {
@@ -1093,9 +1062,7 @@ mod tests {
         assert!(!cache.automation_config_changed(&a, &b));
     }
 
-    // -----------------------------------------------------------------------
     // Cache CRUD
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_add_and_get_automation() {
@@ -1217,9 +1184,7 @@ mod tests {
         assert!(cache.get_all_automations().await.is_empty());
     }
 
-    // -----------------------------------------------------------------------
     // clear_backend_automations
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_clear_backend_automations_returns_evicted() {
@@ -1251,9 +1216,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // toggle_automation_status
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_toggle_enabled_to_disabled() {
@@ -1309,9 +1272,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // Stats
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_get_stats_empty() {
@@ -1348,9 +1309,7 @@ mod tests {
         assert_eq!(stats.failed_runs, 1);
     }
 
-    // -----------------------------------------------------------------------
     // CacheUpdateResult
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_cache_update_result_has_changes() {
@@ -1369,9 +1328,7 @@ mod tests {
         assert!(with_removal.has_changes());
     }
 
-    // -----------------------------------------------------------------------
     // get_automations_for_backend / prefix filtering
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_get_automations_for_backend_filters_correctly() {

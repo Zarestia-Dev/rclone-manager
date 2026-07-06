@@ -1,11 +1,25 @@
-// Backend types for rclone manager
-//
-// Simplified flat structure - no nested types.
+use std::path::PathBuf;
 
-use crate::utils::rclone::endpoints::core;
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+
+use crate::rclone::backend::runtime::RuntimeInfo;
+use crate::utils::rclone::endpoints::{config, core};
+
+/// Wrap a future in a per-call timeout, mapping an elapsed deadline to a
+/// fixed `"Connection timed out"` error and converting any inner error to
+/// `String`.
+async fn with_timeout<F, T, E>(timeout: std::time::Duration, fut: F) -> Result<T, String>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    match tokio::time::timeout(timeout, fut).await {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(_) => Err("Connection timed out".to_string()),
+    }
+}
 
 fn default_oauth_port() -> u16 {
     51901
@@ -249,31 +263,18 @@ impl Backend {
         transport: &dyn crate::rclone::backend::RcloneTransport,
         timeout: std::time::Duration,
     ) -> crate::rclone::backend::runtime::RuntimeInfo {
-        use crate::rclone::backend::runtime::RuntimeInfo;
-
         let use_http = !self.is_local || !cfg!(feature = "librclone");
         let client = reqwest::Client::new();
 
         let version_fut = async {
             let res = if use_http {
-                match tokio::time::timeout(timeout, self.post_json(&client, core::VERSION, None))
-                    .await
-                {
-                    Ok(Ok(json)) => Ok(json),
-                    Ok(Err(e)) => Err(e),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
+                with_timeout(timeout, self.post_json(&client, core::VERSION, None)).await
             } else {
-                match tokio::time::timeout(
+                with_timeout(
                     timeout,
                     transport.rpc_with_timeout(core::VERSION, None, timeout),
                 )
                 .await
-                {
-                    Ok(Ok(json)) => Ok(json),
-                    Ok(Err(e)) => Err(e.to_string()),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
             };
 
             match res {
@@ -287,18 +288,9 @@ impl Backend {
 
         let pid_fut = async {
             let res = if use_http {
-                match tokio::time::timeout(timeout, self.post_json(&client, core::PID, None)).await
-                {
-                    Ok(Ok(json)) => Ok(json),
-                    Ok(Err(e)) => Err(e),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
+                with_timeout(timeout, self.post_json(&client, core::PID, None)).await
             } else {
-                match tokio::time::timeout(timeout, transport.rpc(core::PID, None)).await {
-                    Ok(Ok(json)) => Ok(json),
-                    Ok(Err(e)) => Err(e.to_string()),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
+                with_timeout(timeout, transport.rpc(core::PID, None)).await
             };
 
             match res {
@@ -312,17 +304,9 @@ impl Backend {
 
         let config_path_fut = async {
             let res = if use_http {
-                match tokio::time::timeout(timeout, self.fetch_config_path_http(&client)).await {
-                    Ok(Ok(path)) => Ok(path),
-                    Ok(Err(e)) => Err(e),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
+                with_timeout(timeout, self.fetch_config_path_http(&client)).await
             } else {
-                match tokio::time::timeout(timeout, self.fetch_config_path(transport)).await {
-                    Ok(Ok(path)) => Ok(path),
-                    Ok(Err(e)) => Err(e),
-                    Err(_) => Err("Connection timed out".to_string()),
-                }
+                with_timeout(timeout, self.fetch_config_path(transport)).await
             };
 
             res.ok()
@@ -477,7 +461,6 @@ impl Backend {
         &self,
         transport: &dyn crate::rclone::backend::RcloneTransport,
     ) -> Result<PathBuf, String> {
-        use crate::utils::rclone::endpoints::config;
         let paths = transport
             .rpc(config::PATHS, Some(&serde_json::json!({})))
             .await
@@ -493,7 +476,6 @@ impl Backend {
 
     /// Internal helper to fetch the config path directly over HTTP.
     async fn fetch_config_path_http(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
-        use crate::utils::rclone::endpoints::config;
         let paths = self
             .post_json(client, config::PATHS, Some(&serde_json::json!({})))
             .await?;
@@ -579,6 +561,8 @@ pub struct BackendInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os: Option<String>,
@@ -605,6 +589,7 @@ impl BackendInfo {
             oauth_port: backend.oauth_port,
             oauth_host: backend.oauth_host.clone(),
             username: backend.username.clone(),
+            password: backend.password.clone(),
             version: None,
             os: None,
             status: None,

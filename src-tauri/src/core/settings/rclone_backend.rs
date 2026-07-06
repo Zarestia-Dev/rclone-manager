@@ -5,9 +5,7 @@ use log::{debug, info};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 
-// -----------------------------------------------------------------------------
-// LOAD BACKEND OPTIONS
-// -----------------------------------------------------------------------------
+use crate::rclone::engine::lifecycle::restart_for_config_change;
 
 /// Load all `RClone` backend options from rcman sub-settings (single file)
 #[tauri::command]
@@ -30,10 +28,6 @@ pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Va
     let all = sub.get_all_values().unwrap_or_default();
     json!(all)
 }
-
-// -----------------------------------------------------------------------------
-// SAVE BACKEND OPTIONS
-// -----------------------------------------------------------------------------
 
 /// Save all `RClone` backend options
 #[tauri::command]
@@ -58,10 +52,6 @@ pub async fn save_rclone_backend_options(
     info!("RClone backend options saved successfully");
     Ok(())
 }
-
-// -----------------------------------------------------------------------------
-// SAVE SINGLE OPTION
-// -----------------------------------------------------------------------------
 
 /// Save a single `RClone` backend option (block.option format)
 #[tauri::command]
@@ -95,10 +85,6 @@ pub async fn save_rclone_backend_option(
     Ok(())
 }
 
-// -----------------------------------------------------------------------------
-// RESET BACKEND OPTIONS
-// -----------------------------------------------------------------------------
-
 /// Reset `RClone` backend options to defaults (delete all) and restart engine
 #[tauri::command]
 pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> {
@@ -116,16 +102,11 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 
     info!("RClone backend options file cleared");
 
-    use crate::rclone::engine::lifecycle::restart_for_config_change;
     restart_for_config_change(&app, "backend_options_reset", "custom", "defaults");
 
     info!("RClone engine restart initiated");
     Ok(())
 }
-
-// -----------------------------------------------------------------------------
-// REMOVE SINGLE OPTION
-// -----------------------------------------------------------------------------
 
 /// Remove a single `RClone` backend option
 #[tauri::command]
@@ -164,10 +145,6 @@ pub async fn remove_rclone_backend_option(
     info!("RClone option {block}.{option} removed (reset to default)");
     Ok(())
 }
-
-// -----------------------------------------------------------------------------
-// GET BACKEND STORE PATH
-// -----------------------------------------------------------------------------
 
 /// Get `RClone` backend store path for backup/export
 #[tauri::command]

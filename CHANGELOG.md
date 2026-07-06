@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80
+- **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80 (Check the wiki: https://hakanismail.info/zarestia/rclone-manager/docs/integrations)
   - **Windows**: Creates a cascading "RClone Manager" right-click submenu ("Upload to [Remote]") and Send To folder shortcuts.
   - **Linux**: Installs GNOME Nautilus Python extensions, Nautilus fallback shell scripts, KDE Dolphin service menus, and Nemo actions.
   - **macOS**: Registers Finder Quick Actions (automator workflow services).
@@ -26,8 +26,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
   - Migrated the translation system from `TranslateModule` to a standalone, signal-driven `TranslatePipe`.
 - **Tauri Backend**: Updated Rust cargo crate constraints (`tower-http`, `notify`), while pinning `sysinfo` and `keyring` for compatibility.
-- **Operations Panel**: Added a second detailed variants of transferred-files view. One is simple list of transferring files and the other one is progress bar of transferring files.
-
 
 ### Fixed
 - **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.

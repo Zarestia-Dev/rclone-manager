@@ -1,6 +1,8 @@
 use log::{error, info};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::core::settings::AppSettingsManager;
+use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::SystemStatusPayload;
 use crate::utils::types::rclone::ProcessKind;
@@ -17,7 +19,6 @@ use super::error::{EngineError, EngineResult};
 
 impl RcApiEngine {
     pub async fn spawn_process(&mut self, app: &AppHandle) -> EngineResult<tokio::process::Child> {
-        use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 
@@ -58,8 +59,6 @@ impl RcApiEngine {
             return Ok(());
         };
 
-        use crate::core::settings::AppSettingsManager;
-        use crate::rclone::backend::BackendManager;
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 

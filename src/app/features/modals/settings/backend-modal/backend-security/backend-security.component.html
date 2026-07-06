@@ -51,11 +51,19 @@
             <input
               matInput
               [formControl]="keychainPassword"
-              type="password"
+              [type]="showKeychainPassword() ? 'text' : 'password'"
               (keyup.enter)="
                 $event.preventDefault(); $event.stopPropagation(); submitKeychainStore()
               "
             />
+            <button
+              mat-icon-button
+              matSuffix
+              (click)="toggleKeychainPasswordVisibility()"
+              type="button"
+            >
+              <mat-icon [svgIcon]="showKeychainPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+            </button>
             @if (keychainPassword.hasError('required')) {
               <mat-error>{{ 'common.required' | translate }}</mat-error>
             }

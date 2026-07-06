@@ -1,14 +1,3 @@
-// =============================================================================
-// RCLONE MANAGER - MAIN LIBRARY ENTRY POINT
-// =============================================================================
-
-use std::sync::{Arc, atomic::AtomicBool};
-use tauri::Manager;
-
-use clap::Parser;
-#[cfg(not(feature = "web-server"))]
-use tauri::WindowEvent;
-
 mod core;
 mod rclone;
 pub mod utils;
@@ -16,6 +5,23 @@ pub mod utils;
 #[cfg(feature = "web-server")]
 mod server;
 
+use std::sync::{Arc, atomic::AtomicBool};
+
+use clap::Parser;
+use tauri::Manager;
+#[cfg(not(feature = "web-server"))]
+use tauri::WindowEvent;
+
+#[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
+use crate::core::tray::actions::handle_browse_remote;
+#[cfg(all(desktop, feature = "tray"))]
+use crate::core::tray::{
+    actions::{
+        handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
+        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
+    },
+    tray_action::TrayAction,
+};
 use crate::rclone::state::automations::AutomationsCache;
 use crate::{
     core::{
@@ -27,17 +33,6 @@ use crate::{
         logs::LogCache,
         state::{RcApiEngine, RcloneState},
     },
-};
-
-#[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
-use crate::core::tray::actions::handle_browse_remote;
-#[cfg(all(desktop, feature = "tray"))]
-use crate::core::tray::{
-    actions::{
-        handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
-        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
-    },
-    tray_action::TrayAction,
 };
 
 fn build_send_to_params(

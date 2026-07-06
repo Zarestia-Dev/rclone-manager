@@ -1,12 +1,12 @@
-use crate::utils::types::jobs::JobType;
-use crate::utils::types::logs::LogLevel;
-use crate::utils::types::origin::Origin;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
+use crate::utils::i18n::{t, t_with_params};
+use crate::utils::types::jobs::JobType;
+use crate::utils::types::logs::LogLevel;
+use crate::utils::types::origin::Origin;
+
 // Hierarchical Event Data Structures
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "stage", content = "data", rename_all = "snake_case")]
@@ -153,9 +153,7 @@ pub enum EngineStage {
     RestartFailed { error: String },
 }
 
-// ---------------------------------------------------------------------------
 // Main Notification Event Enum
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "domain", content = "event", rename_all = "snake_case")]
@@ -176,9 +174,7 @@ pub enum SystemStage {
     AllJobsStopped,
 }
 
-// ---------------------------------------------------------------------------
 // Rendering Logic
-// ---------------------------------------------------------------------------
 
 pub struct RenderedContent {
     pub title: String,
@@ -189,8 +185,6 @@ pub struct RenderedContent {
 impl NotificationEvent {
     #[must_use]
     pub fn render(&self) -> RenderedContent {
-        use crate::utils::i18n::{t, t_with_params};
-
         match self {
             // --- JOB DOMAIN ---
             Self::Job(stage) => match stage {
@@ -385,99 +379,10 @@ impl NotificationEvent {
             },
 
             // --- UPDATE DOMAIN (APP) ---
-            Self::AppUpdate(stage) => match stage {
-                UpdateStage::Available { version } => RenderedContent {
-                    title: t("notification.title.updateFound"),
-                    body: t_with_params("notification.body.updateFound", &[("version", version)]),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Started { version } => RenderedContent {
-                    title: t("notification.title.updateStarted"),
-                    body: t_with_params("notification.body.updateStarted", &[("version", version)]),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Downloaded { version } => RenderedContent {
-                    title: t("notification.title.updateDownloaded"),
-                    body: t_with_params(
-                        "notification.body.updateDownloaded",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Complete { version } => RenderedContent {
-                    title: t("notification.title.updateComplete"),
-                    body: t_with_params(
-                        "notification.body.updateComplete",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Failed { error } => RenderedContent {
-                    title: t("notification.title.updateFailed"),
-                    body: t_with_params("notification.body.updateFailed", &[("error", error)]),
-                    level: LogLevel::Error,
-                },
-                UpdateStage::Installed { version } => RenderedContent {
-                    title: t("notification.title.updateInstalled"),
-                    body: t_with_params(
-                        "notification.body.updateInstalled",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-            },
+            Self::AppUpdate(stage) => render_update(stage, "update"),
 
             // --- UPDATE DOMAIN (RCLONE) ---
-            Self::RcloneUpdate(stage) => match stage {
-                UpdateStage::Available { version } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateFound"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateFound",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Started { version } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateStarted"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateStarted",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Downloaded { version } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateDownloaded"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateDownloaded",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Complete { version } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateComplete"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateComplete",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-                UpdateStage::Failed { error } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateFailed"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateFailed",
-                        &[("error", error)],
-                    ),
-                    level: LogLevel::Error,
-                },
-                UpdateStage::Installed { version } => RenderedContent {
-                    title: t("notification.title.rcloneUpdateInstalled"),
-                    body: t_with_params(
-                        "notification.body.rcloneUpdateInstalled",
-                        &[("version", version)],
-                    ),
-                    level: LogLevel::Info,
-                },
-            },
+            Self::RcloneUpdate(stage) => render_update(stage, "rcloneUpdate"),
 
             // --- SERVE DOMAIN ---
             Self::Serve(stage) => match stage {
@@ -652,9 +557,7 @@ impl NotificationEvent {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     let RenderedContent { title, body, level } = event.render();
@@ -665,6 +568,59 @@ pub fn notify(app: &tauri::AppHandle, event: NotificationEvent) {
     tauri::async_runtime::spawn(async move {
         crate::core::alerts::engine::process(&app_handle, &event, title, body);
     });
+}
+
+fn render_update(stage: &UpdateStage, key_prefix: &str) -> RenderedContent {
+    match stage {
+        UpdateStage::Available { version } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Found")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Found"),
+                &[("version", version)],
+            ),
+            level: LogLevel::Info,
+        },
+        UpdateStage::Started { version } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Started")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Started"),
+                &[("version", version)],
+            ),
+            level: LogLevel::Info,
+        },
+        UpdateStage::Downloaded { version } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Downloaded")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Downloaded"),
+                &[("version", version)],
+            ),
+            level: LogLevel::Info,
+        },
+        UpdateStage::Complete { version } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Complete")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Complete"),
+                &[("version", version)],
+            ),
+            level: LogLevel::Info,
+        },
+        UpdateStage::Failed { error } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Failed")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Failed"),
+                &[("error", error)],
+            ),
+            level: LogLevel::Error,
+        },
+        UpdateStage::Installed { version } => RenderedContent {
+            title: t(&format!("notification.title.{key_prefix}Installed")),
+            body: t_with_params(
+                &format!("notification.body.{key_prefix}Installed"),
+                &[("version", version)],
+            ),
+            level: LogLevel::Info,
+        },
+    }
 }
 
 fn emit_log(level: LogLevel, title: &str, body: &str) {

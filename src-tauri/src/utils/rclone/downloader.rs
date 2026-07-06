@@ -1,5 +1,4 @@
 use log::debug;
-use reqwest;
 
 pub async fn download_rclone_zip(
     os_name: &str,
