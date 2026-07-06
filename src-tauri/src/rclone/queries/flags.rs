@@ -1,10 +1,11 @@
 use serde_json::{Map, Value, json};
+use std::sync::Arc;
 
 use tauri::{AppHandle, Manager};
 use tokio::try_join;
 
 use crate::{
-    rclone::backend::BackendManager,
+    rclone::backend::{BackendManager, RcloneTransport},
     utils::{rclone::endpoints::options, types::state::RcloneState},
 };
 
@@ -94,13 +95,11 @@ fn flag_has_any_group(flag: &Value, set: &[&str]) -> bool {
 // ---------------------------------------------------------------------------
 
 async fn fetch_options(
-    client: &reqwest::Client,
-    backend_manager: &BackendManager,
+    transport: &Arc<dyn RcloneTransport>,
     endpoint: &str,
 ) -> Result<Value, String> {
-    let backend = backend_manager.get_active().await;
-    backend
-        .post_json(client, endpoint, Some(&json!({})))
+    transport
+        .rpc(endpoint, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to fetch options ({endpoint}): {e}"))
 }
@@ -222,7 +221,7 @@ fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
 
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
     let active_name = backend_manager.get_active().await.name.clone();
 
     if let Some(payload) = backend_manager.options_cache.get(&active_name).await {
@@ -230,8 +229,8 @@ pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String
     }
 
     let (mut options_info, current_options) = try_join!(
-        fetch_options(&state.client, &backend_manager, options::INFO),
-        fetch_options(&state.client, &backend_manager, options::GET),
+        fetch_options(&transport, options::INFO),
+        fetch_options(&transport, options::GET),
     )?;
 
     merge_options(&mut options_info, &current_options);
@@ -253,13 +252,8 @@ pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, St
 
 #[tauri::command]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    fetch_options(
-        &app.state::<RcloneState>().client,
-        &backend_manager,
-        options::BLOCKS,
-    )
-    .await
+    let transport = app.state::<RcloneState>().transport.clone();
+    fetch_options(&transport, options::BLOCKS).await
 }
 
 fn get_flags_by_category_internal(
@@ -443,21 +437,15 @@ pub async fn set_rclone_option(
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
     let nested_value = option_name
         .split('.')
         .rev()
         .fold(value, |acc, part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            options::SET,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set option '{option_name}' in block '{block_name}': {e}"))
 }
@@ -466,14 +454,9 @@ pub async fn set_rclone_option(
 /// Expected payload shape: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
 #[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            options::SET,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set bulk options: {e}"))
 }

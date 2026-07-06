@@ -93,6 +93,15 @@ impl BackendManager {
         self.state.read().await.active().is_local
     }
 
+    /// Try to check if the active backend is a local backend synchronously without blocking.
+    /// Returns None if the lock cannot be acquired immediately.
+    pub fn try_is_active_local(&self) -> Option<bool> {
+        self.state
+            .try_read()
+            .ok()
+            .map(|state| state.active().is_local)
+    }
+
     /// Get a specific backend by name
     pub async fn get(&self, name: &str) -> Option<Backend> {
         self.state

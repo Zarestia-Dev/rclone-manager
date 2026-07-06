@@ -13,7 +13,7 @@ use crate::{
             job::stop_job,
             mount::unmount_remote,
             serve::stop_serve,
-            system::{clear_fscache, ensure_oauth_process, get_fscache_entries},
+            system::{clear_fscache, get_fscache_entries},
         },
         state::automations::AutomationsCache,
     },
@@ -28,30 +28,58 @@ use crate::{
     },
 };
 
-async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
-    let state = app.state::<RcloneState>();
-    let backend = app.state::<BackendManager>().get_active().await;
-    let url = crate::rclone::commands::common::get_config_url(&backend, endpoint);
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::commands::system::ensure_oauth_process;
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let status = response.status();
-    let text = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(crate::localized_error!(
-            "backendErrors.http.error",
-            "status" => status,
-            "body"   => text
-        ));
+async fn ensure_oauth_or_poll(
+    app: &AppHandle,
+) -> Result<(), crate::rclone::commands::system::RcloneError> {
+    #[cfg(not(feature = "librclone"))]
+    {
+        ensure_oauth_process(app).await
     }
+    #[cfg(feature = "librclone")]
+    {
+        crate::rclone::commands::mobile_oauth::spawn_oauth_poller(app.clone());
+        Ok(())
+    }
+}
 
-    Ok(serde_json::from_str(&text).unwrap_or_else(|_| json!({ "raw": text })))
+async fn call_config(app: &AppHandle, endpoint: &str, body: Value) -> Result<Value, String> {
+    #[cfg(not(feature = "librclone"))]
+    {
+        let state = app.state::<RcloneState>();
+        let backend = app.state::<BackendManager>().get_active().await;
+        let url = crate::rclone::commands::common::get_config_url(&backend, endpoint);
+
+        let response = backend
+            .inject_auth(state.client.post(&url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(crate::localized_error!(
+                "backendErrors.http.error",
+                "status" => status,
+                "body"   => text
+            ));
+        }
+
+        Ok(serde_json::from_str(&text).unwrap_or_else(|_| json!({ "raw": text })))
+    }
+    #[cfg(feature = "librclone")]
+    {
+        let transport = app.state::<RcloneState>().transport.clone();
+        transport
+            .rpc(endpoint, Some(&body))
+            .await
+            .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
+    }
 }
 
 fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
@@ -83,7 +111,7 @@ pub async fn create_remote_interactive(
         Some(json!({ "type": rclone_type })),
     );
 
-    ensure_oauth_process(&app)
+    ensure_oauth_or_poll(&app)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -127,7 +155,7 @@ pub async fn continue_create_remote_interactive(
         Some(json!({ "state": state_token })),
     );
 
-    ensure_oauth_process(&app)
+    ensure_oauth_or_poll(&app)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -198,7 +226,7 @@ pub async fn create_remote(
         })),
     );
 
-    ensure_oauth_process(&app)
+    ensure_oauth_or_poll(&app)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -264,7 +292,7 @@ pub async fn update_remote(
         })),
     );
 
-    ensure_oauth_process(&app)
+    ensure_oauth_or_poll(&app)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -304,7 +332,7 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
     let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");
 
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend = app.state::<BackendManager>().get_active().await;
 
     match cache
@@ -385,12 +413,8 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         }
     }
 
-    backend
-        .post_json(
-            &state.client,
-            config::DELETE,
-            Some(&json!({ "name": name })),
-        )
+    transport
+        .rpc(config::DELETE, Some(&json!({ "name": name })))
         .await
         .map_err(|e| {
             let msg = format!("Failed to delete remote: {e}");

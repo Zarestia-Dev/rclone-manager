@@ -58,7 +58,6 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
     info!("Switching to backend: {name}");
 
     let backend_manager = app.state::<BackendManager>();
-    let state = app.state::<RcloneState>();
     let settings_manager = app.state::<AppSettingsManager>();
 
     let backend = backend_manager
@@ -66,7 +65,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .await
         .ok_or_else(|| format!("Backend '{name}' not found"))?;
 
-    test_remote_connection(&backend, &backend_manager, &state.client).await?;
+    test_remote_connection(&app, &backend, &backend_manager).await?;
 
     backend_manager
         .switch_to(settings_manager.inner(), &name)
@@ -77,7 +76,7 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         start_engine_if_not_running(&app).await;
     }
 
-    configure_remote_backend(&app, &backend, &state.client).await;
+    configure_remote_backend(&app, &backend).await;
 
     refresh_and_verify_cache(&app, &backend_manager, &settings_manager, &name).await?;
 
@@ -318,10 +317,11 @@ pub async fn test_backend_connection(
     debug!("Testing connection: {name}");
 
     let backend_manager = app.state::<BackendManager>();
+    let transport = app.state::<RcloneState>().transport.clone();
     match crate::rclone::backend::connectivity::check_connectivity_with_timeout(
         &backend_manager,
         &name,
-        &app.state::<RcloneState>().client,
+        &*transport,
         std::time::Duration::from_secs(5),
     )
     .await
@@ -394,26 +394,23 @@ fn delete_backend_from_settings(manager: &AppSettingsManager, name: &str) -> Res
 }
 
 async fn test_remote_connection(
+    app: &AppHandle,
     backend: &Backend,
     backend_manager: &BackendManager,
-    client: &reqwest::Client,
 ) -> Result<(), String> {
     if backend.is_local {
         return Ok(());
     }
 
     debug!("Testing remote backend connection...");
-    match backend
-        .make_request(
-            client,
-            reqwest::Method::POST,
-            core::VERSION,
-            None,
-            Some(std::time::Duration::from_secs(5)),
-        )
-        .await
+    let client = app.state::<RcloneState>().client.clone();
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        backend.post_json(&client, core::VERSION, None),
+    )
+    .await
     {
-        Ok(_) => {
+        Ok(Ok(_)) => {
             info!("Remote backend '{}' is reachable", backend.name);
             backend_manager
                 .set_runtime_status(
@@ -423,19 +420,30 @@ async fn test_remote_connection(
                 .await;
             Ok(())
         }
-        Err(e) => {
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
             backend_manager
                 .set_runtime_status(
                     &backend.name,
-                    crate::rclone::backend::runtime::RuntimeStatus::Error(e.clone()),
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(err_str.clone()),
                 )
                 .await;
-            Err(format!("Cannot connect to '{}': {e}", backend.name))
+            Err(format!("Cannot connect to '{}': {err_str}", backend.name))
+        }
+        Err(_) => {
+            let err_str = "Connection timed out".to_string();
+            backend_manager
+                .set_runtime_status(
+                    &backend.name,
+                    crate::rclone::backend::runtime::RuntimeStatus::Error(err_str.clone()),
+                )
+                .await;
+            Err(format!("Cannot connect to '{}': {err_str}", backend.name))
         }
     }
 }
 
-async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &reqwest::Client) {
+async fn configure_remote_backend(app: &AppHandle, backend: &Backend) {
     if backend.is_local {
         return;
     }
@@ -447,10 +455,8 @@ async fn configure_remote_backend(app: &AppHandle, backend: &Backend, client: &r
             config_path.display()
         );
         let params = serde_json::json!({ "path": config_path });
-        if let Err(e) = backend
-            .post_json(client, config::SETPATH, Some(&params))
-            .await
-        {
+        let transport = app.state::<RcloneState>().transport.clone();
+        if let Err(e) = transport.rpc(config::SETPATH, Some(&params)).await {
             warn!("Failed to set config path: {e}");
         } else {
             info!("Config path set successfully");

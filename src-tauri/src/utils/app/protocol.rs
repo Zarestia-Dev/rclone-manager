@@ -79,64 +79,39 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             debug!("🔍 Parsed remote: '{remote}', path: '{path}'");
 
             tauri::async_runtime::spawn(async move {
-                use crate::rclone::backend::BackendManager;
-                let backend_manager = app_handle.state::<BackendManager>();
-                let backend: crate::rclone::backend::types::Backend =
-                    backend_manager.get_active().await;
-
                 let rclone_state = app_handle.state::<crate::utils::types::state::RcloneState>();
-                let client = &rclone_state.client;
+                let transport = rclone_state.transport.clone();
 
-                // forward Range header to rclone so we only fetch the requested bytes
-                match backend
-                    .fetch_file_stream_with_range(client, &remote, &path, range_header.as_deref())
-                    .await
-                {
-                    Ok(response) if response.status().is_success() => {
-                        let status = response.status();
-                        let is_range_response = status == reqwest::StatusCode::PARTIAL_CONTENT;
-                        let content_type = response
-                            .headers()
-                            .get(reqwest::header::CONTENT_TYPE)
-                            .and_then(|v| v.to_str().ok())
-                            .unwrap_or("application/octet-stream")
-                            .to_string();
-                        let content_range = response
-                            .headers()
-                            .get(reqwest::header::CONTENT_RANGE)
-                            .and_then(|v| v.to_str().ok())
-                            .map(std::string::ToString::to_string);
-                        let content_length = response
-                            .headers()
-                            .get(reqwest::header::CONTENT_LENGTH)
-                            .and_then(|v| v.to_str().ok())
-                            .map(std::string::ToString::to_string);
-                        let accept_ranges = response
-                            .headers()
-                            .get(reqwest::header::ACCEPT_RANGES)
-                            .and_then(|v| v.to_str().ok())
-                            .unwrap_or("bytes")
-                            .to_string();
+                let (offset, count) = range_header
+                    .as_deref()
+                    .map_or((None, None), parse_range_header);
+                let range_tuple =
+                    offset.map(|o| (o as u64, count.map(|c| c as u64 - 1 + o as u64)));
 
-                        match response.bytes().await {
-                            Ok(bytes) => {
+                let mime_type = mime_guess::from_path(&path)
+                    .first_or_octet_stream()
+                    .to_string();
+
+                match transport.read_file(&remote, &path, range_tuple).await {
+                    Ok(mut reader) => {
+                        use tokio::io::AsyncReadExt;
+                        let mut bytes = Vec::new();
+                        match reader.read_to_end(&mut bytes).await {
+                            Ok(_) => {
                                 let mut builder = tauri::http::Response::builder()
-                                    .status(if is_range_response { 206 } else { 200 })
-                                    .header(tauri::http::header::CONTENT_TYPE, content_type)
+                                    .status(if offset.is_some() { 206 } else { 200 })
+                                    .header(tauri::http::header::CONTENT_TYPE, mime_type)
                                     .header("Access-Control-Allow-Origin", "*")
-                                    .header("Accept-Ranges", accept_ranges);
+                                    .header("Accept-Ranges", "bytes");
 
-                                if let Some(cr) = content_range {
-                                    builder = builder.header("Content-Range", cr);
-                                }
-                                if let Some(cl) = content_length {
-                                    builder = builder.header("Content-Length", cl);
+                                if let Some(rh) = range_header.as_deref() {
+                                    builder = builder.header("Content-Range", rh);
                                 }
 
-                                responder.respond(builder.body(bytes.to_vec()).unwrap());
+                                responder.respond(builder.body(bytes).unwrap());
                             }
                             Err(e) => {
-                                error!("❌ Stream read error for {remote}: {e}");
+                                error!("Stream read error for {remote}:{path}: {e}");
                                 responder.respond(
                                     tauri::http::Response::builder()
                                         .status(500)
@@ -147,66 +122,32 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             }
                         }
                     }
-                    _ => {
-                        // Fallback to cat via core/command
-                        debug!(
-                            "⚠️ Standard stream failed, attempting cat fallback for {remote}:{path}"
-                        );
-                        let (offset, count) = range_header
-                            .as_ref()
-                            .map_or((None, None), |rh| parse_range_header(rh));
+                    Err(e) => {
+                        error!("read_file failed for {remote}:{path}: {e}");
 
-                        let os = backend_manager.get_runtime_os(&backend.name).await;
-
-                        // Guess mime type for cat fallback
-                        let mime_type = mime_guess::from_path(&path)
-                            .first_or_octet_stream()
-                            .to_string();
-
-                        match backend
-                            .fetch_file_via_cat(client, &remote, &path, offset, count, os)
-                            .await
+                        let status = if e.to_string().contains("not found")
+                            || e.to_string().contains("directory not found")
                         {
-                            Ok(bytes) => {
-                                let mut builder = tauri::http::Response::builder()
-                                    .status(if offset.is_some() { 206 } else { 200 })
-                                    .header(tauri::http::header::CONTENT_TYPE, mime_type)
-                                    .header("Access-Control-Allow-Origin", "*");
+                            tauri::http::StatusCode::NOT_FOUND
+                        } else if e.to_string().contains("being used by another process")
+                            || e.to_string().contains("locked")
+                        {
+                            tauri::http::StatusCode::LOCKED
+                        } else if e.to_string().contains("Access is denied")
+                            || e.to_string().contains("permission denied")
+                        {
+                            tauri::http::StatusCode::FORBIDDEN
+                        } else {
+                            tauri::http::StatusCode::INTERNAL_SERVER_ERROR
+                        };
 
-                                if let Some(rh) = range_header {
-                                    builder = builder.header("Content-Range", rh);
-                                }
-
-                                responder.respond(builder.body(bytes).unwrap());
-                            }
-                            Err(e) => {
-                                error!("❌ Cat fallback also failed for {remote}:{path} - {e}");
-
-                                let status = if e.contains("not found")
-                                    || e.contains("directory not found")
-                                {
-                                    tauri::http::StatusCode::NOT_FOUND
-                                } else if e.contains("being used by another process")
-                                    || e.contains("locked")
-                                {
-                                    tauri::http::StatusCode::LOCKED
-                                } else if e.contains("Access is denied")
-                                    || e.contains("permission denied")
-                                {
-                                    tauri::http::StatusCode::FORBIDDEN
-                                } else {
-                                    tauri::http::StatusCode::INTERNAL_SERVER_ERROR
-                                };
-
-                                responder.respond(
-                                    tauri::http::Response::builder()
-                                        .status(status)
-                                        .header("Access-Control-Allow-Origin", "*")
-                                        .body(e.into_bytes())
-                                        .unwrap(),
-                                );
-                            }
-                        }
+                        responder.respond(
+                            tauri::http::Response::builder()
+                                .status(status)
+                                .header("Access-Control-Allow-Origin", "*")
+                                .body(format!("{e}").into_bytes())
+                                .unwrap(),
+                        );
                     }
                 }
             });
@@ -300,7 +241,6 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
         // Use async runtime to support cat fallback
         tauri::async_runtime::spawn(async move {
             use std::io::{Read, Seek, SeekFrom};
-            use crate::rclone::backend::BackendManager;
             use crate::utils::types::state::RcloneState;
 
             // Try to open the file directly
@@ -394,41 +334,54 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                     }
                 }
                 Err(e) => {
-                    // Fallback to rclone cat
-                    debug!("⚠️ Standard open failed for local asset {final_path_clone}, attempting cat fallback: {e}");
+                    debug!("Standard open failed for local asset {final_path_clone}, attempting transport fallback: {e}");
 
-                    let backend_manager = app_handle.state::<BackendManager>();
-                    let backend = backend_manager.get_active().await;
                     let rclone_state = app_handle.state::<RcloneState>();
+                    let transport = rclone_state.transport.clone();
 
-                    // Parse range for cat if available
                     let (offset, count) = request.headers().get("Range")
                         .and_then(|v| v.to_str().ok())
                         .map_or((None, None), parse_range_header);
 
-                    let os = backend_manager.get_runtime_os(&backend.name).await;
+                    let range_tuple = offset.map(|o| {
+                        (o as u64, count.map(|c| c as u64 - 1 + o as u64))
+                    });
 
-                    match backend.fetch_file_via_cat(&rclone_state.client, "", &final_path_clone, offset, count, os).await {
-                        Ok(bytes) => {
-                            let mut builder = tauri::http::Response::builder()
-                                .status(if offset.is_some() { 206 } else { 200 })
-                                .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
-                                .header("Access-Control-Allow-Origin", "*");
+                    match transport.read_file("", &final_path_clone, range_tuple).await {
+                        Ok(mut reader) => {
+                            use tokio::io::AsyncReadExt;
+                            let mut bytes = Vec::new();
+                            match reader.read_to_end(&mut bytes).await {
+                                Ok(_) => {
+                                    let mut builder = tauri::http::Response::builder()
+                                        .status(if offset.is_some() { 206 } else { 200 })
+                                        .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
+                                        .header("Access-Control-Allow-Origin", "*");
 
-                            if let Some(rh) = request.headers().get("Range").and_then(|v| v.to_str().ok()) {
-                                builder = builder.header("Content-Range", rh);
+                                    if let Some(rh) = request.headers().get("Range").and_then(|v| v.to_str().ok()) {
+                                        builder = builder.header("Content-Range", rh);
+                                    }
+
+                                    responder.respond(builder.body(bytes).unwrap());
+                                }
+                                Err(read_err) => {
+                                    error!("Transport read failed for {final_path_clone}: {read_err}");
+                                    responder.respond(tauri::http::Response::builder()
+                                        .status(500)
+                                        .header("Access-Control-Allow-Origin", "*")
+                                        .body(format!("Read error: {read_err}").into_bytes())
+                                        .unwrap());
+                                }
                             }
-
-                            responder.respond(builder.body(bytes).unwrap());
                         }
                         Err(cat_err) => {
-                            error!("❌ Local cat fallback failed for {final_path_clone}: {cat_err}");
+                            error!("Local transport fallback failed for {final_path_clone}: {cat_err}");
 
-                            let status = if cat_err.contains("not found") || cat_err.contains("directory not found") {
+                            let status = if cat_err.to_string().contains("not found") || cat_err.to_string().contains("directory not found") {
                                 tauri::http::StatusCode::NOT_FOUND
-                            } else if cat_err.contains("being used by another process") {
+                            } else if cat_err.to_string().contains("being used by another process") {
                                 tauri::http::StatusCode::LOCKED
-                            } else if cat_err.contains("Access is denied") || cat_err.contains("permission denied") {
+                            } else if cat_err.to_string().contains("Access is denied") || cat_err.to_string().contains("permission denied") {
                                 tauri::http::StatusCode::FORBIDDEN
                             } else {
                                 tauri::http::StatusCode::INTERNAL_SERVER_ERROR
@@ -437,7 +390,7 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
                             responder.respond(tauri::http::Response::builder()
                                 .status(status)
                                 .header("Access-Control-Allow-Origin", "*")
-                                .body(cat_err.into_bytes())
+                                .body(cat_err.to_string().into_bytes())
                                 .unwrap());
                         }
                     }
@@ -540,26 +493,18 @@ pub fn register_protocols<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
 
                 let app_handle = app.app_handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    use crate::rclone::backend::BackendManager;
-                    let backend_manager = app_handle.state::<BackendManager>();
-                    let backend = backend_manager.get_active().await;
                     let rclone_state =
                         app_handle.state::<crate::utils::types::state::RcloneState>();
+                    let transport = rclone_state.transport.clone();
 
-                    // Fetch first 10MB (consistent with headless handler)
-                    match backend
-                        .fetch_file_stream_with_range(
-                            &rclone_state.client,
-                            &remote,
-                            &path,
-                            Some("bytes=0-10485760"),
-                        )
+                    match transport
+                        .read_file(&remote, &path, Some((0, Some(10_485_760))))
                         .await
                     {
-                        Ok(response) => {
-                            if response.status().is_success()
-                                && let Ok(bytes) = response.bytes().await
-                            {
+                        Ok(mut reader) => {
+                            use tokio::io::AsyncReadExt;
+                            let mut bytes = Vec::new();
+                            if reader.read_to_end(&mut bytes).await.is_ok() && !bytes.is_empty() {
                                 let extension =
                                     Path::new(&path).extension().and_then(|ext| ext.to_str());
                                 if let Some(pic) =

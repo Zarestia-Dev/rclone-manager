@@ -32,32 +32,23 @@ pub async fn audio_cover_handler(
             remote.push(':');
         }
 
-        use crate::rclone::backend::BackendManager;
-        let backend_manager = state.app_handle.state::<BackendManager>();
-        let backend = backend_manager.get_active().await;
-
+        use crate::rclone::backend::RcloneTransport;
         let rclone_state = state
             .app_handle
             .state::<crate::utils::types::state::RcloneState>();
-        let client = &rclone_state.client;
+        let transport = rclone_state.transport.clone();
 
-        // Fetch first 10MB (fast and covers almost all embedded covers)
-        let response = backend
-            .fetch_file_stream_with_range(client, &remote, &query.path, Some("bytes=0-10485760"))
+        let mut reader = transport
+            .read_file(&remote, &query.path, Some((0, Some(10_485_760))))
             .await
-            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
+            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
 
-        if !response.status().is_success() {
-            return Err(AppError::NotFound(format!(
-                "Remote file not found: {}",
-                response.status()
-            )));
-        }
-
-        let bytes = response
-            .bytes()
+        use tokio::io::AsyncReadExt;
+        let mut bytes = Vec::new();
+        reader
+            .read_to_end(&mut bytes)
             .await
-            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
+            .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?;
 
         if let Some(pic) = audio::extract_picture_from_bytes(&bytes, extension) {
             Ok(axum::response::Response::builder()

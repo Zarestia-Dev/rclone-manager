@@ -4,29 +4,14 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::{config, core};
-use crate::utils::types::rclone::RcloneCoreVersion;
 use crate::utils::types::state::RcloneState;
-
-/// Fetch version information from Rclone
-pub async fn fetch_version_info(
-    backend: &crate::rclone::backend::types::Backend,
-    client: &reqwest::Client,
-) -> Result<RcloneCoreVersion, String> {
-    let json = backend
-        .post_json(client, core::VERSION, None)
-        .await
-        .map_err(|e| format!("Failed to get Rclone version: {e}"))?;
-
-    serde_json::from_value(json).map_err(|e| format!("Failed to parse version info: {e}"))
-}
 
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
-    let state = app.state::<RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let paths = backend
-        .post_json(&state.client, config::PATHS, Some(&json!({})))
+    let paths = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(config::PATHS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
 
@@ -86,16 +71,16 @@ pub async fn get_local_disk_usage(
     app: AppHandle,
     dir: Option<String>,
 ) -> Result<LocalDiskUsageResponse, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let mut payload = json!({});
     if let Some(ref d) = dir {
         payload["dir"] = json!(d);
     }
 
     // Use direct request instead of submit_job_and_wait to avoid creating tracked jobs for polling
-    let response_json = backend
-        .post_json(&app.state::<RcloneState>().client, core::DU, Some(&payload))
+    let response_json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(core::DU, Some(&payload))
         .await
         .map_err(|e| format!("Failed to get local disk usage: {e}"))?;
 
@@ -139,15 +124,14 @@ pub async fn get_local_disk_usage(
 
 #[tauri::command]
 pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, String> {
-    let state = app.state::<RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let payload = json!({
         "clear": clear,
     });
 
-    let response_json = backend
-        .post_json(&state.client, core::OBSCURE, Some(&payload))
+    let response_json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(core::OBSCURE, Some(&payload))
         .await
         .map_err(|e| format!("Failed to obscure value: {e}"))?;
 

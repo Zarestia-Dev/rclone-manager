@@ -42,6 +42,7 @@ impl OptionsCache {
         });
     }
 
+    #[cfg(test)]
     pub async fn clear(&self) {
         *self.entry.write().await = None;
     }

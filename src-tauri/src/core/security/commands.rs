@@ -170,36 +170,60 @@ pub async fn set_config_password_env(app: AppHandle, password: String) -> Result
 
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
-    use crate::rclone::backend::BackendManager;
-    let backend_manager = app.state::<BackendManager>();
-    let config_path = backend_manager.get_local_config_path().await.map_err(
-        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-    )?;
-
-    let output = build_rclone_command(&app, None, config_path.as_deref(), None)
-        .args(["listremotes", "--ask-password=false"])
-        .output()
-        .await
-        .map_err(
+    #[cfg(feature = "librclone")]
+    {
+        use crate::utils::types::state::RcloneState;
+        let state = app.state::<RcloneState>();
+        match state.transport.rpc("config/isencrypted", None).await {
+            Ok(res) => {
+                let is_encrypted = res
+                    .get("encrypted")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                debug!("Configuration encryption status: {is_encrypted}");
+                Ok(is_encrypted)
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                error!("Failed to check encryption status via librclone: {err_str}");
+                Err(err_str)
+            }
+        }
+    }
+    #[cfg(not(feature = "librclone"))]
+    {
+        use crate::rclone::backend::BackendManager;
+        let backend_manager = app.state::<BackendManager>();
+        let config_path = backend_manager.get_local_config_path().await.map_err(
             |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
         )?;
 
-    let stderr = String::from_utf8_lossy(&output.stderr);
+        let output = build_rclone_command(&app, None, config_path.as_deref(), None)
+            .args(["listremotes", "--ask-password=false"])
+            .output()
+            .await
+            .map_err(
+                |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+            )?;
 
-    let is_encrypted = stderr
-        .contains("unable to decrypt configuration and not allowed to ask for password")
-        || (stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt"));
+        let stderr = String::from_utf8_lossy(&output.stderr);
 
-    debug!(
-        "Configuration is {}",
-        if is_encrypted {
-            "encrypted"
-        } else {
-            "not encrypted"
-        }
-    );
+        let is_encrypted = stderr
+            .contains("unable to decrypt configuration and not allowed to ask for password")
+            || (stderr.contains("Failed to load config file")
+                && stderr.contains("unable to decrypt"));
 
-    Ok(is_encrypted)
+        debug!(
+            "Configuration is {}",
+            if is_encrypted {
+                "encrypted"
+            } else {
+                "not encrypted"
+            }
+        );
+
+        Ok(is_encrypted)
+    }
 }
 
 async fn run_encryption_command(

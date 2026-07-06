@@ -2,7 +2,7 @@
 // RCLONE MANAGER - MAIN LIBRARY ENTRY POINT
 // =============================================================================
 
-use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, atomic::AtomicBool};
 use tauri::Manager;
 
 use clap::Parser;
@@ -322,8 +322,17 @@ fn setup_app(
     app.manage(rcman_manager);
 
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
+
+    let transport: Arc<dyn crate::rclone::backend::RcloneTransport> = {
+        log::info!("rclone transport: RoutingTransport (dynamic)");
+        Arc::new(rclone::backend::routing_transport::RoutingTransport::new(
+            app_handle.clone(),
+        ))
+    };
+
     app.manage(RcloneState {
         client: reqwest::Client::new(),
+        transport,
         is_shutting_down: AtomicBool::new(false),
         oauth_process: tokio::sync::Mutex::new(None),
         poller_running: AtomicBool::new(false),

@@ -183,9 +183,8 @@ pub async fn start_serve(
         return Err(crate::localized_error!("backendErrors.serve.remoteEmpty"));
     }
 
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
 
     let serve_type = &params.serve_type;
 
@@ -230,9 +229,9 @@ pub async fn start_serve(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    // Call serve/start directly
-    let response_json = backend
-        .post_json(&state.client, serve::START, Some(&payload))
+    // Call serve/start via the transport
+    let response_json = transport
+        .rpc(serve::START, Some(&payload))
         .await
         .map_err(|e| {
             let error = format!("Failed to start serve: {e}");
@@ -250,7 +249,7 @@ pub async fn start_serve(
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
                     protocol: serve_type.clone(),
-                    error: e.clone(),
+                    error: e.to_string(),
                 }),
             );
             error
@@ -327,8 +326,8 @@ pub async fn stop_serve(
         None,
     );
 
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let payload = json!({ "id": server_id });
 
     // Get serve details from cache before stopping
@@ -345,12 +344,8 @@ pub async fn stop_serve(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            serve::STOP,
-            Some(&payload),
-        )
+    let _ = transport
+        .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
             let error = format!("Failed to stop serve: {e}");
@@ -368,7 +363,7 @@ pub async fn stop_serve(
                     remote: remote_name.clone(),
                     profile: profile.clone(),
                     protocol: protocol.clone(),
-                    error: e.clone(),
+                    error: e.to_string(),
                 }),
             );
             error
@@ -406,8 +401,8 @@ pub async fn stop_serve(
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
 
     // If there are no active serves, skip the API call.
     let serves = backend_manager.remote_cache.get_serves().await;
@@ -422,10 +417,7 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
     }
 
-    if let Err(e) = backend
-        .post_json(&app.state::<RcloneState>().client, serve::STOPALL, None)
-        .await
-    {
+    if let Err(e) = transport.rpc(serve::STOPALL, None).await {
         warn!("Failed to stop all serves: {e}");
     }
 

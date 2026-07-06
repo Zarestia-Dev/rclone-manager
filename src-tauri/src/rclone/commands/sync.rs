@@ -10,7 +10,6 @@ use crate::utils::types::{
 use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::rclone::endpoints::{core, operations};
-use crate::utils::types::state::RcloneState;
 use futures::future::join_all;
 
 // ============================================================================
@@ -408,8 +407,6 @@ pub async fn start_profile_batch(
 
             // Note: async_job = true, because we are calling core/command directly, which supports _async: true
             let payload = backend.build_core_command_payload(cmd_name, args, true, os);
-            let rclone_state = app.state::<RcloneState>();
-            let client = &rclone_state.client;
 
             let metadata = JobMetadata {
                 remote_name: params.remote_name.clone(),
@@ -426,7 +423,7 @@ pub async fn start_profile_batch(
 
             let (jobid, _, _) = submit_job_with_options(
                 app.clone(),
-                backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+                core::COMMAND,
                 payload,
                 metadata,
                 SubmitJobOptions {

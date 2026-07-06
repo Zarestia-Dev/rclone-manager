@@ -1,9 +1,11 @@
 use crate::utils::github_client;
 use parking_lot::Mutex;
+#[cfg(feature = "updater")]
 use tauri_plugin_updater::Update;
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpdaterError {
+    #[cfg(feature = "updater")]
     #[error(transparent)]
     Tauri(#[from] tauri_plugin_updater::Error),
     #[error("GitHub API error: {0}")]
@@ -49,6 +51,7 @@ impl serde::Serialize for UpdaterError {
             Self::GitHub(e) => {
                 crate::localized_error!("backendErrors.updater.github", "error" => e)
             }
+            #[cfg(feature = "updater")]
             Self::Tauri(e) => {
                 crate::localized_error!("backendErrors.updater.updateFailed", "error" => e)
             }
@@ -95,10 +98,12 @@ pub enum UpdateState {
 }
 
 /// Tracks the in-flight app self-update download and its staged payload.
+#[cfg(feature = "updater")]
 pub struct AppUpdaterState {
     pub data: Mutex<AppUpdaterData>,
 }
 
+#[cfg(feature = "updater")]
 #[derive(Default)]
 pub struct AppUpdaterData {
     pub state: UpdateState,
@@ -111,6 +116,7 @@ pub struct AppUpdaterData {
     pub download_handle: Option<tauri::async_runtime::JoinHandle<()>>,
 }
 
+#[cfg(feature = "updater")]
 impl Default for AppUpdaterState {
     fn default() -> Self {
         Self {

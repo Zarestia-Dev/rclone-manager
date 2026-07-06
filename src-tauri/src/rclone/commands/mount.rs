@@ -121,7 +121,6 @@ impl MountParams {
 /// Mount a remote filesystem (not exposed as Tauri command - use `mount_remote_profile`)
 pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
     let cache = &backend_manager.remote_cache;
 
     let mounted_remotes = cache.get_mounted_remotes().await;
@@ -155,13 +154,6 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         Some(log_context),
     );
 
-    let state = app.state::<RcloneState>();
-    let url = backend.url_for(mount::MOUNT);
-    let client = state.client.clone();
-
-    // Build request like sync does
-    let request = backend.inject_auth(client.post(&url));
-
     // Create job metadata
     let metadata = JobMetadata {
         remote_name: params.remote_name.clone(),
@@ -179,7 +171,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     // Submit as a job and wait for completion for mount operations.
     let _ = submit_job_with_options(
         app.clone(),
-        request,
+        mount::MOUNT,
         payload,
         metadata,
         SubmitJobOptions {
@@ -217,9 +209,8 @@ pub async fn unmount_remote(
     mount_point: String,
     remote_name: String,
 ) -> Result<String, String> {
-    let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
 
     if mount_point.trim().is_empty() {
         let error_msg = crate::localized_error!("backendErrors.mount.pointEmpty");
@@ -261,11 +252,11 @@ pub async fn unmount_remote(
 
     let backend_name_for_err = backend_manager.get_active_name().await;
 
-    let _ = backend
-        .post_json(&state.client, mount::UNMOUNT, Some(&payload))
+    let _ = transport
+        .rpc(mount::UNMOUNT, Some(&payload))
         .await
         .map_err(|e| {
-            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
+            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => e);
             log_operation(
                 LogLevel::Error,
                 Some(remote_name.clone()),
@@ -279,7 +270,7 @@ pub async fn unmount_remote(
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: Some(profile.clone()),
-                    error: e.clone(),
+                    error: e.to_string(),
                 }),
             );
             error_msg
@@ -319,11 +310,10 @@ pub async fn unmount_all_remotes(
     app: AppHandle,
     context: OperationContext,
 ) -> Result<String, String> {
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
     info!("🗑️ Unmounting all remotes");
 
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
 
     // Check current mounted remotes first.
     let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
@@ -341,20 +331,17 @@ pub async fn unmount_all_remotes(
         ));
     }
 
-    let _ = backend
-        .post_json(&state.client, mount::UNMOUNTALL, None)
-        .await
-        .map_err(|e| {
-            let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => &e);
-            log_operation(
-                LogLevel::Error,
-                None,
-                Some("Unmount all remotes".to_string()),
-                format!("Failed to unmount all remotes: {error_msg}"),
-                None,
-            );
-            error_msg
-        })?;
+    let _ = transport.rpc(mount::UNMOUNTALL, None).await.map_err(|e| {
+        let error_msg = crate::localized_error!("backendErrors.request.failed", "error" => e);
+        log_operation(
+            LogLevel::Error,
+            None,
+            Some("Unmount all remotes".to_string()),
+            format!("Failed to unmount all remotes: {error_msg}"),
+            None,
+        );
+        error_msg
+    })?;
 
     if !context.is_shutdown()
         && let Err(e) = force_check_mounted_remotes(app.clone()).await
