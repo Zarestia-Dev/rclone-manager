@@ -2,16 +2,15 @@ use log::debug;
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::types::state::RcloneState;
 use tauri::{AppHandle, Manager};
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, config::DUMP, None)
+    let json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(config::DUMP, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
 
@@ -19,14 +18,10 @@ pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value,
 }
 
 pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            config::LISTREMOTES,
-            None,
-        )
+    let json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(config::LISTREMOTES, None)
         .await
         .map_err(|e| {
             log::error!("❌ Failed to fetch remotes: {e}");
@@ -48,10 +43,10 @@ pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
 /// ✅ Fetch all remote types
 #[tauri::command]
 pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, config::PROVIDERS, None)
+    let json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(config::PROVIDERS, None)
         .await
         .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 

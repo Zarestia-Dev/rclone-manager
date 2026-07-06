@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { provideTranslateService, TranslateLoader } from '@ngx-translate/core';
 import { MultiFileLoader } from './services/i18n/multi-file-loader';
 import { ApiClientService } from './services/infrastructure/platform/api-client.service';
@@ -7,7 +7,7 @@ import { ApiClientService } from './services/infrastructure/platform/api-client.
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
-    provideHttpClient(withFetch()),
+    provideHttpClient(),
     provideTranslateService({
       loader: {
         provide: TranslateLoader,

@@ -128,7 +128,7 @@ header {
     flex-direction: column;
     gap: var(--space-xxs);
     padding: var(--space-xs) var(--space-sm);
-    background: rgba(var(--window-fg-color-rgb), 0.03);
+    background: var(--bg-elevated-1);
     border-radius: var(--radius-sm);
 
     .hash-type {
@@ -197,7 +197,7 @@ header {
       height: 150px;
       resize: none;
       border-radius: var(--radius-sm);
-      background: rgba(var(--window-fg-color-rgb), 0.03);
+      background: var(--bg-elevated-1);
       color: var(--window-fg-color);
       padding: var(--space-sm);
       white-space: pre;
@@ -229,7 +229,7 @@ header {
       align-items: center;
       gap: var(--space-xs);
       padding: var(--space-sm);
-      background: rgba(var(--window-fg-color-rgb), 0.03);
+      background: var(--bg-elevated-1);
       border-radius: var(--radius-sm);
 
       .link-url {

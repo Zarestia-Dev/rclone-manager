@@ -16,6 +16,12 @@ pub fn get_build_type() -> Option<&'static str> {
 }
 
 #[tauri::command]
+#[must_use]
+pub fn is_librclone() -> bool {
+    cfg!(feature = "librclone")
+}
+
+#[tauri::command]
 pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;
     handle_shutdown(app.clone()).await;

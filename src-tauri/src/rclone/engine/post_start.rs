@@ -26,13 +26,13 @@ pub async fn run_post_start_setup(app: &AppHandle) {
 }
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
-    let client = app.state::<RcloneState>().client.clone();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
 
     if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
         &backend_manager,
         "Local",
-        &client,
+        &*transport,
         None,
     )
     .await

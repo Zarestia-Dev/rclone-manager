@@ -151,7 +151,7 @@
       width: var(--icon-size-md);
       height: var(--icon-size-md);
       border-radius: 50%;
-      background: rgba(var(--window-fg-color-rgb), 0.06);
+      background: var(--bg-elevated-2);
       transition: var(--transition-fast);
 
       mat-icon {
@@ -179,8 +179,8 @@
       }
 
       &:hover {
-        background: rgba(var(--window-fg-color-rgb), 0.1);
-        border-color: rgba(var(--window-fg-color-rgb), 0.2);
+        background: var(--bg-hover);
+        border-color: var(--border-color);
       }
 
       &.active {

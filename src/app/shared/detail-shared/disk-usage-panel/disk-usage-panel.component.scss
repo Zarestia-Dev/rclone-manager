@@ -85,7 +85,7 @@
   transition: background 0.3s ease;
 
   &.loading {
-    background: rgba(var(--window-fg-color-rgb), 0.04);
+    background: var(--bg-elevated-1);
   }
 }
 

@@ -64,6 +64,7 @@ async fn run_update_checks(app: &AppHandle) {
         }
     }
 
+    #[cfg(not(feature = "librclone"))]
     if config.runtime.rclone_auto_check_updates {
         let channel = config.runtime.rclone_update_channel.clone();
         info!("Checking for rclone updates (channel: {channel})...");

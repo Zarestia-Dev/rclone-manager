@@ -41,6 +41,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
+            (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
             (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>], [no_app]);
             (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>], [no_app]);
@@ -49,19 +50,21 @@ macro_rules! MASTER_COMMAND_LIST {
             // =================================================================
             // RCLONE OPERATIONS
             // =================================================================
-            (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
             (refresh_system, $crate::core::initialization::refresh_system, []);
-            #[cfg(feature = "updater")]
-            (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
-            #[cfg(feature = "updater")]
-            (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
-            #[cfg(feature = "updater")]
-            (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
-            #[cfg(feature = "updater")]
-            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
-            #[cfg(feature = "updater")]
-            (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
+            #[cfg(not(feature = "librclone"))]
             (kill_process_by_pid, $crate::utils::process::process_manager::kill_process_by_pid, [pid: u32], [sync, no_app]);
+            #[cfg(not(feature = "librclone"))]
+            (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
+            #[cfg(not(feature = "librclone"))]
+            (update_rclone, $crate::utils::rclone::updater::update_rclone, [channel: Option<String>]);
+            #[cfg(not(feature = "librclone"))]
+            (cancel_rclone_update, $crate::utils::rclone::updater::cancel_rclone_update, []);
+            #[cfg(not(feature = "librclone"))]
+            (apply_rclone_update, $crate::utils::rclone::updater::apply_rclone_update, []);
 
             // =================================================================
             // RCLONE QUERIES
@@ -125,8 +128,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String]);
+            #[cfg(feature = "librclone")]
+            (cancel_oauth, $crate::rclone::commands::mobile_oauth::cancel_oauth, []);
+            #[cfg(not(feature = "librclone"))]
+            (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
+            #[cfg(not(feature = "librclone"))]
             (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);
-            (quit_rclone_oauth, $crate::rclone::commands::system::quit_rclone_oauth, []);
             (get_remote_paths, $crate::rclone::queries::get_remote_paths, [remote: String, path: Option<String>, options: Option<$crate::utils::types::remotes::ListOptions>, origin: Option<$crate::utils::types::origin::Origin>, group: Option<String>]);
             (run_garbage_collector, $crate::rclone::commands::system::run_garbage_collector, []);
             (get_fscache_entries, $crate::rclone::commands::system::get_fscache_entries, []);
@@ -209,10 +216,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // MOUNT PLUGIN
             // =================================================================
             (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [sync, no_app, infallible]);
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
             (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-            (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, [], [no_app]);
 
             // =================================================================
             // CACHE

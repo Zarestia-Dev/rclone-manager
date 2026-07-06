@@ -55,7 +55,7 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--dim-color);
-  background: rgba(var(--window-fg-color-rgb), 0.06);
+  background: var(--bg-elevated-2);
   transition:
     background 0.2s ease,
     color 0.2s ease;

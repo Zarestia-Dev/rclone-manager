@@ -2,13 +2,12 @@ use log::debug;
 
 use serde::Deserialize;
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::JobMetadata;
 use crate::utils::rclone::endpoints::{operations, sync};
 use crate::utils::rclone::util::build_full_path;
-use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
+use crate::utils::types::{jobs::JobType, origin::Origin};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,12 +36,7 @@ pub async fn mkdir(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("mkdir: remote={remote} path={path}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::MKDIR);
 
     let payload = json!({
         "fs": &remote,
@@ -52,7 +46,7 @@ pub async fn mkdir(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::MKDIR,
         payload,
         JobMetadata {
             remote_name: remote.clone(),
@@ -83,13 +77,8 @@ pub async fn cleanup(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     let path_str = path.as_deref().unwrap_or("");
     debug!("cleanup: remote={remote} path={path_str}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::CLEANUP);
 
     let mut payload = serde_json::Map::new();
     payload.insert("fs".to_string(), json!(&remote));
@@ -100,7 +89,7 @@ pub async fn cleanup(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::CLEANUP,
         json!(payload),
         JobMetadata {
             remote_name: remote.clone(),
@@ -133,12 +122,7 @@ pub async fn copy_url(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("copy_url: remote={remote} path={path} url={url_to_copy}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::COPYURL);
 
     let payload = json!({
         "fs": &remote,
@@ -150,7 +134,7 @@ pub async fn copy_url(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::COPYURL,
         payload,
         JobMetadata {
             remote_name: remote.clone(),
@@ -181,12 +165,7 @@ pub async fn remove_empty_dirs(
     origin: Option<Origin>,
     group: Option<String>,
 ) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
     debug!("remove_empty_dirs: remote={remote} path={path}");
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(operations::RMDIRS);
 
     let payload = json!({
         "fs": &remote,
@@ -197,7 +176,7 @@ pub async fn remove_empty_dirs(
 
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
-        backend.inject_auth(state.client.post(&url)),
+        operations::RMDIRS,
         payload,
         JobMetadata {
             remote_name: remote.clone(),

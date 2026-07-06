@@ -92,7 +92,14 @@
                 <mat-select [formControl]="targetFieldCtrl">
                   @for (field of sensitiveFields(); track field.key) {
                     <mat-option [value]="field.key">
-                      {{ field.name | rcloneOptionTranslate: 'title' : field.name : provider() }}
+                      {{
+                        field.name
+                          | rcloneOptionTranslate
+                            : 'title'
+                            : field.name
+                            : provider()
+                            : translate.currentLang()
+                      }}
                       ({{ field.key }})
                     </mat-option>
                   }

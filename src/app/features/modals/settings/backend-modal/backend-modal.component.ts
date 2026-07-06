@@ -6,14 +6,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-  AbstractControl,
-  ValidationErrors,
-} from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,12 +25,15 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { FilePickerConfig } from 'src/app/shared/types/ui';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-backend-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -65,6 +61,19 @@ export class BackendModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
+
+  /** Cached validator factories — capture getters so the validator sees fresh state per CD cycle. */
+  private readonly duplicateNameValidator = this.validatorRegistry.createDuplicateNameValidator({
+    getExisting: () => this.backends(),
+    getEditingName: () => this.editingName() ?? undefined,
+    getMode: () =>
+      (this.formMode() === 'add' ? 'create' : this.formMode()) as 'create' | 'edit' | null,
+  });
+  private readonly duplicateHostValidator = this.validatorRegistry.createDuplicateHostValidator({
+    getExisting: () => this.backends(),
+    getEditingName: () => this.editingName() ?? undefined,
+  });
 
   readonly backends = this.backendService.backends;
   readonly activeBackend = this.backendService.activeBackend;
@@ -180,44 +189,6 @@ export class BackendModalComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.backendService.loadBackends();
-  }
-
-  private duplicateNameValidator = (control: AbstractControl): ValidationErrors | null => {
-    const name = control.value?.trim().toLowerCase();
-    if (!name) return null;
-    const mode = this.formMode();
-    const editingName = this.editingName();
-    if (mode === 'edit' && editingName?.toLowerCase() === name) return null;
-    const exists = this.backends().some(b => b.name.toLowerCase() === name);
-    return exists ? { duplicateName: true } : null;
-  };
-
-  private duplicateHostValidator = (group: AbstractControl): ValidationErrors | null => {
-    const hostCtrl = group.get('host');
-    const portCtrl = group.get('port');
-    if (!hostCtrl?.value || !portCtrl?.value) return null;
-
-    const editingName = this.editingName();
-    const exists = this.backends().some(
-      b =>
-        b.name !== editingName &&
-        b.host === hostCtrl.value &&
-        Number(b.port) === Number(portCtrl.value)
-    );
-
-    const hasDup = hostCtrl.hasError('duplicateHost');
-    if (exists && !hasDup) {
-      hostCtrl.setErrors({ ...hostCtrl.errors, duplicateHost: true });
-    } else if (!exists && hasDup) {
-      const { duplicateHost: _, ...errors } = hostCtrl.errors || {};
-      hostCtrl.setErrors(Object.keys(errors).length ? errors : null);
-    }
-
-    return exists ? { duplicateHost: true } : null;
-  };
-
-  close(): void {
-    this.dialogRef.close();
   }
 
   toggleAddForm(): void {
@@ -493,5 +464,9 @@ export class BackendModalComponent implements OnInit {
     } else {
       this.showPassword.update(v => !v);
     }
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }

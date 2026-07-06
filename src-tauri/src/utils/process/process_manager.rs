@@ -1,7 +1,10 @@
+#[cfg(not(feature = "librclone"))]
 use log::{info, warn};
 
 #[cfg(unix)]
-use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
+use nix::libc::{EPERM, kill};
+#[cfg(all(unix, not(feature = "librclone")))]
+use nix::libc::{ESRCH, SIGKILL};
 #[cfg(windows)]
 use windows_sys::Win32::{
     Foundation::{CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER},
@@ -12,6 +15,7 @@ use windows_sys::Win32::{
 
 /// Kill a process by PID using platform-specific methods
 #[tauri::command]
+#[cfg(not(feature = "librclone"))]
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     info!("Killing process {pid}");
 
@@ -84,6 +88,7 @@ pub fn is_process_alive(pid: u32) -> bool {
 }
 
 /// Find and kill processes using a specific port
+#[cfg(not(feature = "librclone"))]
 pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
     let pids = find_pids_on_port(port)?;
     if pids.is_empty() {
@@ -104,6 +109,7 @@ pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
 }
 
 /// Find PIDs of processes using a specific port
+#[cfg(not(feature = "librclone"))]
 fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     use netstat2::{
         AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState, get_sockets_info,
@@ -132,6 +138,7 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
 }
 
 /// Kill all rclone processes on managed ports
+#[cfg(not(feature = "librclone"))]
 pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), String> {
     let _ = kill_processes_on_port(api_port);
     let _ = kill_processes_on_port(oauth_port);

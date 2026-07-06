@@ -32,7 +32,7 @@ export class SseClientService {
     try {
       await this.apiClient.invoke('auth_session', {});
     } catch {
-      console.log('Auth session failed');
+      /* auth session is optional - continue to event source */
     }
     this.openSource(`${this.apiClient.getApiBase()}/events`);
   }

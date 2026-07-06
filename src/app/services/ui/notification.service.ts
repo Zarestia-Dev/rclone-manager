@@ -3,11 +3,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
-import {
-  InputModalComponent,
-  InputModalData,
-} from '../../shared/modals/input-modal/input-modal.component';
+import type { InputModalData } from '../../shared/modals/input-modal/input-modal.component';
 import { ConfirmDialogData } from '@app/types';
 
 /**
@@ -32,7 +28,6 @@ export class NotificationService {
   showSuccess(message: string, action?: string, duration = 3000): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
-      panelClass: ['success-snackbar'],
     });
   }
 
@@ -45,7 +40,6 @@ export class NotificationService {
   showError(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
       duration,
-      panelClass: ['error-snackbar'],
     });
   }
 
@@ -58,7 +52,6 @@ export class NotificationService {
   showInfo(message: string, action?: string, duration = 3000): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
-      panelClass: ['info-snackbar'],
     });
   }
 
@@ -71,7 +64,6 @@ export class NotificationService {
   showWarning(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
-      panelClass: ['warning-snackbar'],
     });
   }
 
@@ -90,15 +82,17 @@ export class NotificationService {
       ...options,
     };
 
-    const dialogRef = this.openConfirm(dialogData);
+    const dialogRef = await this.openConfirm(dialogData);
     const result = await firstValueFrom(dialogRef.afterClosed());
     return !!result;
   }
 
-  openConfirm(
+  async openConfirm(
     data: ConfirmDialogData,
     config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
-  ): MatDialogRef<ConfirmModalComponent, boolean> {
+  ): Promise<MatDialogRef<any, boolean>> {
+    const { ConfirmModalComponent } =
+      await import('../../shared/modals/confirm-modal/confirm-modal.component');
     return this.dialog.open(ConfirmModalComponent, {
       maxWidth: '480px',
       disableClose: true,
@@ -107,10 +101,12 @@ export class NotificationService {
     });
   }
 
-  openInput<T = any>(
+  async openInput<T = any>(
     data: InputModalData,
     config: Partial<MatDialogConfig<InputModalData>> = {}
-  ): MatDialogRef<InputModalComponent, T> {
+  ): Promise<MatDialogRef<any, T>> {
+    const { InputModalComponent } =
+      await import('../../shared/modals/input-modal/input-modal.component');
     return this.dialog.open(InputModalComponent, {
       minWidth: '362px',
       disableClose: true,

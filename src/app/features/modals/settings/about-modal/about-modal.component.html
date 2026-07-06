@@ -499,24 +499,26 @@
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.pid' | translate }}</span>
                     <span class="detail-value">{{ info.pid }}</span>
-                    <button
-                      mat-icon-button
-                      class="action-button"
-                      [matTooltip]="
-                        backendService.activeBackend() === 'Local'
-                          ? ('modals.about.killProcess' | translate)
-                          : ('modals.about.quitRclone' | translate)
-                      "
-                      matTooltipPosition="right"
-                      (click)="quitRcloneEngine()"
-                    >
-                      <mat-icon
-                        [svgIcon]="
-                          backendService.activeBackend() === 'Local' ? 'skull' : 'power-off'
+                    @if (!isLibrclone()) {
+                      <button
+                        mat-icon-button
+                        class="action-button"
+                        [matTooltip]="
+                          backendService.activeBackend() === 'Local'
+                            ? ('modals.about.killProcess' | translate)
+                            : ('modals.about.quitRclone' | translate)
                         "
-                        class="orange"
-                      ></mat-icon>
-                    </button>
+                        matTooltipPosition="right"
+                        (click)="quitRcloneEngine()"
+                      >
+                        <mat-icon
+                          [svgIcon]="
+                            backendService.activeBackend() === 'Local' ? 'skull' : 'power-off'
+                          "
+                          class="orange"
+                        ></mat-icon>
+                      </button>
+                    }
                   </div>
                 }
                 @if (memoryStats()) {
@@ -557,8 +559,7 @@
               </div>
             }
           </div>
-
-          @if (updaterEnabled()) {
+          @if (rcloneUpdateEnabled()) {
             @if (rcloneReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">

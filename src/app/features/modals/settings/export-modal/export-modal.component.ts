@@ -17,7 +17,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -29,6 +28,7 @@ import {
 } from 'src/app/services/settings/backup-restore.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { MatRadioButton } from '@angular/material/radio';
 
 // Static lookup — mapping specific IDs and category types to icons
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -69,10 +69,10 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatTooltipModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    MatRadioModule,
     MatSlideToggleModule,
     MatCheckboxModule,
     TranslatePipe,
+    MatRadioButton,
   ],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],

@@ -31,6 +31,7 @@ export class RemoteManagementService extends TauriBaseService {
 
   private readonly metadataCache = new Map<string, FsInfo>();
   private readonly _features = signal<Record<string, RemoteFeatures>>({});
+  private readonly _isLibrclone = signal<boolean>(false);
 
   async getFsInfo(
     remoteName: string,
@@ -388,8 +389,22 @@ export class RemoteManagementService extends TauriBaseService {
     await this.invokeCommand('delete_remote', { name });
   }
 
+  async isLibrclone(): Promise<boolean> {
+    if (this._isLibrclone() !== null) {
+      return this._isLibrclone();
+    }
+    try {
+      const result = await this.invokeCommand<boolean>('is_librclone');
+      this._isLibrclone.set(result);
+      return result;
+    } catch {
+      this._isLibrclone.set(false);
+      return false;
+    }
+  }
+
   async quitOAuth(): Promise<void> {
-    return this.invokeCommand('quit_rclone_oauth');
+    return this.invokeCommand('cancel_oauth');
   }
 
   async getLocalDrives(): Promise<LocalDrive[]> {

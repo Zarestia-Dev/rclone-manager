@@ -4,15 +4,12 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     rclone::backend::BackendManager,
-    rclone::{
-        commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
-        engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
-    },
-    utils::{
-        process::process_manager::kill_all_rclone_processes,
-        types::{events::APP_EVENT, state::RcloneState},
-    },
+    rclone::commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+    utils::types::{events::APP_EVENT, state::RcloneState},
 };
+
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT};
 
 use crate::core::automation::engine::AutomationScheduler;
 
@@ -78,6 +75,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     // Shut down the rclone engine with a hard timeout.
     let app_clone = app_handle.clone();
+    #[cfg(not(feature = "librclone"))]
     let engine_result = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
         let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
         engine_state.lock().await.shutdown(&app_clone).await;
@@ -85,13 +83,27 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     })
     .await;
 
-    match engine_result {
-        Ok(Ok(())) => info!("Engine shutdown completed."),
-        Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
-        Err(_) => {
-            error!("Engine shutdown timed out — force-killing rclone processes");
-            if let Err(e) = kill_all_rclone_processes(DEFAULT_API_PORT, DEFAULT_OAUTH_PORT) {
-                error!("Force kill failed: {e}");
+    #[cfg(feature = "librclone")]
+    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
+        let engine_state = app_clone.state::<crate::utils::types::state::EngineState>();
+        engine_state.lock().await.shutdown(&app_clone).await;
+        Ok::<(), String>(())
+    })
+    .await;
+
+    #[cfg(not(feature = "librclone"))]
+    {
+        match engine_result {
+            Ok(Ok(())) => info!("Engine shutdown completed."),
+            Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
+            Err(_) => {
+                error!("Engine shutdown timed out — force-killing rclone processes");
+                if let Err(e) = crate::utils::process::process_manager::kill_all_rclone_processes(
+                    DEFAULT_API_PORT,
+                    DEFAULT_OAUTH_PORT,
+                ) {
+                    error!("Force kill failed: {e}");
+                }
             }
         }
     }
@@ -104,7 +116,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
     }
 
-    #[cfg(feature = "updater")]
+    #[cfg(any(feature = "updater", not(feature = "librclone")))]
     apply_pending_updates(&app_handle).await;
 }
 
@@ -124,9 +136,10 @@ pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
 }
 
 /// Applies any staged updates (app or rclone) during shutdown.
-#[cfg(feature = "updater")]
+#[cfg(any(feature = "updater", not(feature = "librclone")))]
 async fn apply_pending_updates(app_handle: &AppHandle) {
     // App self-update (requires the 'updater' Tauri feature).
+    #[cfg(feature = "updater")]
     if let Some(state) = app_handle.try_state::<crate::utils::types::updater::AppUpdaterState>() {
         let staged: Option<(tauri_plugin_updater::Update, Vec<u8>)> = {
             let mut d = state.data.lock();
@@ -146,7 +159,8 @@ async fn apply_pending_updates(app_handle: &AppHandle) {
         }
     }
 
-    // Rclone update (binary swap — always available, not feature-gated).
+    // Rclone update (binary swap — only available on desktop).
+    #[cfg(not(feature = "librclone"))]
     if let Err(e) = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await {
         error!("Failed to apply rclone update during shutdown: {e}");
     }

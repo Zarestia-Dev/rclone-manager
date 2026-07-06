@@ -167,11 +167,12 @@ export class AboutModalComponent implements OnInit {
   // Platform / fscache
   // ---------------------------------------------------------------------------
 
-  // Sourced from the service — already resolved during service init.
   readonly buildType = computed(() => this.appUpdaterService.buildType());
   readonly updaterEnabled = computed(() => this.appUpdaterService.isUpdaterEnabled());
+  readonly rcloneUpdateEnabled = computed(() => this.rcloneUpdateService.isUpdaterEnabled());
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
+  readonly isLibrclone = signal(false);
 
   // ---------------------------------------------------------------------------
   // Debug
@@ -247,6 +248,11 @@ export class AboutModalComponent implements OnInit {
       this.debugInfo.set(await this.debugService.getDebugInfo());
     } catch (error) {
       console.error('Failed to load debug info:', error);
+    }
+    try {
+      this.isLibrclone.set(await this.systemInfoService.isLibrclone());
+    } catch (error) {
+      console.error('Failed to check librclone mode:', error);
     }
   }
 
@@ -442,6 +448,9 @@ export class AboutModalComponent implements OnInit {
   });
 
   async quitRcloneEngine(): Promise<void> {
+    if (this.isLibrclone()) {
+      return;
+    }
     try {
       if (this.backendService.activeBackend() === 'Local') {
         const pid = this.rcloneStatusService.rclonePID();

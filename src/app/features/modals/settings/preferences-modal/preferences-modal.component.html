@@ -276,7 +276,7 @@
                   [isSensitive]="false"
                   [allowNegative]="meta.min === undefined || meta.min < 0"
                   [ariaLabel]="meta.metadata?.display_name || ''"
-                  (blur)="onBlur(category, key)"
+                  (inputBlur)="onBlur(category, key)"
                 />
                 @if (isControlInvalid(category, key)) {
                   <mat-error class="preferences-stepper-error">{{
@@ -318,7 +318,7 @@
             @case ('string[]') {
               <div class="array-control-wrapper">
                 <div class="array-items">
-                  @for (item of getArrayControls(category, key); track $index) {
+                  @for (item of getArrayControls(category, key); track item) {
                     <div class="array-item">
                       <mat-form-field appearance="fill" class="input-field">
                         <input

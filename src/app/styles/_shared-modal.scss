@@ -20,10 +20,11 @@ header {
 
   &.scrolled {
     box-shadow: var(--shadow-gnome);
-  }
 
-  &.scrolled p {
-    opacity: 1 !important;
+    p,
+    .header-title-ghost {
+      opacity: 1;
+    }
   }
 
   .ghost-header-spacer {

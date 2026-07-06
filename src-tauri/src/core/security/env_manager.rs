@@ -41,15 +41,22 @@ impl SafeEnvironmentManager {
         }
     }
 
+    #[allow(clippy::disallowed_methods)]
     pub fn set_config_password(&self, password: String) {
         if let Ok(mut lock) = self.config_password.lock() {
-            *lock = Some(password);
+            *lock = Some(password.clone());
+        }
+        unsafe {
+            std::env::set_var("RCLONE_CONFIG_PASS", &password);
         }
     }
 
     pub fn clear_config_password(&self) {
         if let Ok(mut lock) = self.config_password.lock() {
             *lock = None;
+        }
+        unsafe {
+            std::env::remove_var("RCLONE_CONFIG_PASS");
         }
     }
 

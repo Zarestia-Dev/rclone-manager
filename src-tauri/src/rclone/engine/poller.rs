@@ -163,8 +163,7 @@ fn get_batch_result<'a>(
 
 async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let client = &app.state::<RcloneState>().client;
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let batch_payload = json!({
         "inputs": [
@@ -175,9 +174,10 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         ]
     });
 
-    let response = backend
-        .post_json(client, job::BATCH, Some(&batch_payload))
-        .await?;
+    let response = transport
+        .rpc(job::BATCH, Some(&batch_payload))
+        .await
+        .map_err(|e| e.to_string())?;
 
     if let Some(error) = response.get("error") {
         return Err(error.as_str().unwrap_or("Unknown batch error").to_string());

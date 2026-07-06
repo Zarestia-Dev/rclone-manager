@@ -9,6 +9,8 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
+type TransferTarget = 'src' | 'dst' | 'fallback';
+
 @Injectable()
 export class TransferOperationsService {
   private readonly translate = inject(TranslateService);
@@ -59,17 +61,7 @@ export class TransferOperationsService {
     item: { srcFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
-    if (item.status === 'missing_src') return false;
-    if (
-      (this.isMoveJob(jobType, item.group) || this.isDeleteJob(jobType, item.group)) &&
-      item.status !== 'failed'
-    )
-      return false;
-
-    const srcRemote = this.getRemoteName(item.srcFs || '');
-    if (!srcRemote) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(srcRemote)();
-    return feats.PublicLink || !!feats.loading;
+    return this.canDo('copyUrl', 'src', item, jobType);
   }
 
   canCopyUrlDst(
@@ -82,14 +74,7 @@ export class TransferOperationsService {
     },
     jobType: string
   ): boolean {
-    if (item.status === 'failed' || item.status === 'missing_dst') return false;
-    if (!(item.isCompleted || !!item.completedAt || !!item.status)) return false;
-    if (this.isDeleteJob(jobType, item.group)) return false;
-
-    const dstRemote = this.getRemoteName(item.dstFs || '');
-    if (!dstRemote) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(dstRemote)();
-    return feats.PublicLink || !!feats.loading;
+    return this.canDo('copyUrl', 'dst', item, jobType);
   }
 
   canCopyUrlFallback(
@@ -97,25 +82,14 @@ export class TransferOperationsService {
     jobType: string,
     remoteName: string
   ): boolean {
-    if (!remoteName || item.status === 'failed' || this.isDeleteJob(jobType, item.group))
-      return false;
-    const fallback = this.pathService.normalizeRemoteName(remoteName);
-    if (!fallback) return false;
-    const feats = this.remoteManagement.getFeaturesSignal(fallback)();
-    return feats.PublicLink || !!feats.loading;
+    return this.canDo('copyUrl', 'fallback', item, jobType, remoteName);
   }
 
   canDownloadSource(
     item: { srcFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
-    if (item.status === 'missing_src') return false;
-    if (
-      (this.isMoveJob(jobType, item.group) || this.isDeleteJob(jobType, item.group)) &&
-      item.status !== 'failed'
-    )
-      return false;
-    return !!this.getRemoteName(item.srcFs || '');
+    return this.canDo('download', 'src', item, jobType);
   }
 
   canDownloadDst(
@@ -128,10 +102,7 @@ export class TransferOperationsService {
     },
     jobType: string
   ): boolean {
-    if (item.status === 'failed' || item.status === 'missing_dst') return false;
-    if (!(item.isCompleted || !!item.completedAt || !!item.status)) return false;
-    if (this.isDeleteJob(jobType, item.group)) return false;
-    return !!this.getRemoteName(item.dstFs || '');
+    return this.canDo('download', 'dst', item, jobType);
   }
 
   canDownloadFallback(
@@ -139,91 +110,96 @@ export class TransferOperationsService {
     jobType: string,
     remoteName: string
   ): boolean {
-    if (!remoteName || item.status === 'failed' || this.isDeleteJob(jobType, item.group))
-      return false;
-    return !this.pathService.isLocalPath(this.pathService.normalizeRemoteForRclone(remoteName));
+    return this.canDo('download', 'fallback', item, jobType, remoteName);
   }
 
   canDeleteSource(
     item: { srcFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
-    return this.canDownloadSource(item, jobType);
+    return this.canDo('delete', 'src', item, jobType);
   }
+
   canDeleteDst(
     item: { dstFs?: string; group?: string; status?: string },
     jobType: string
   ): boolean {
-    return this.canDownloadDst(item, jobType);
+    return this.canDo('delete', 'dst', item, jobType);
   }
+
   canDeleteFallback(
     item: { group?: string; status?: string },
     jobType: string,
     remoteName: string
   ): boolean {
-    return this.canDownloadFallback(item, jobType, remoteName);
+    return this.canDo('delete', 'fallback', item, jobType, remoteName);
+  }
+
+  private canDo(
+    action: 'copyUrl' | 'download' | 'delete',
+    target: TransferTarget,
+    item: {
+      srcFs?: string;
+      dstFs?: string;
+      group?: string;
+      status?: string;
+      isCompleted?: boolean;
+      completedAt?: string;
+    },
+    jobType: string,
+    remoteName?: string
+  ): boolean {
+    // `delete` reuses `download`'s permission rules.
+    if (action === 'delete') return this.canDo('download', target, item, jobType, remoteName);
+
+    if (target === 'src') {
+      if (item.status === 'missing_src') return false;
+      if (
+        (this.isMoveJob(jobType, item.group) || this.isDeleteJob(jobType, item.group)) &&
+        item.status !== 'failed'
+      )
+        return false;
+      const srcRemote = this.getRemoteName(item.srcFs || '');
+      if (!srcRemote) return false;
+      if (action === 'copyUrl') {
+        const feats = this.remoteManagement.getFeaturesSignal(srcRemote)();
+        return feats.PublicLink || !!feats.loading;
+      }
+      return true; // download
+    }
+
+    if (target === 'dst') {
+      if (item.status === 'failed' || item.status === 'missing_dst') return false;
+      if (!(item.isCompleted || !!item.completedAt || !!item.status)) return false;
+      if (this.isDeleteJob(jobType, item.group)) return false;
+      const dstRemote = this.getRemoteName(item.dstFs || '');
+      if (!dstRemote) return false;
+      if (action === 'copyUrl') {
+        const feats = this.remoteManagement.getFeaturesSignal(dstRemote)();
+        return feats.PublicLink || !!feats.loading;
+      }
+      return true; // download
+    }
+
+    // fallback
+    if (!remoteName || item.status === 'failed' || this.isDeleteJob(jobType, item.group))
+      return false;
+    if (action === 'copyUrl') {
+      const fallback = this.pathService.normalizeRemoteName(remoteName);
+      if (!fallback) return false;
+      const feats = this.remoteManagement.getFeaturesSignal(fallback)();
+      return feats.PublicLink || !!feats.loading;
+    }
+    // download fallback: must not be a local path
+    return !this.pathService.isLocalPath(this.pathService.normalizeRemoteForRclone(remoteName));
   }
 
   async copyUrlSource(item: { srcFs?: string; name: string }, uniqueId: string): Promise<void> {
-    const key = `${uniqueId}-src`;
-    this.loadingUrlIds.update(s => new Set(s).add(key));
-    try {
-      const result = await this.remoteOps.getPublicLink(
-        item.srcFs || '',
-        item.name,
-        false,
-        undefined,
-        'dashboard'
-      );
-      if (!result?.url) throw new Error('No link generated');
-      await navigator.clipboard.writeText(result.url);
-      this.notifications.showSuccess(
-        this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-      );
-    } catch (e) {
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') +
-          ': ' +
-          (e instanceof Error ? e.message : String(e))
-      );
-    } finally {
-      this.loadingUrlIds.update(s => {
-        const n = new Set(s);
-        n.delete(key);
-        return n;
-      });
-    }
+    await this.runCopyUrl(item, 'src', uniqueId);
   }
 
   async copyUrlDst(item: { dstFs?: string; name: string }, uniqueId: string): Promise<void> {
-    const key = `${uniqueId}-dst`;
-    this.loadingUrlIds.update(s => new Set(s).add(key));
-    try {
-      const result = await this.remoteOps.getPublicLink(
-        item.dstFs || '',
-        item.name,
-        false,
-        undefined,
-        'dashboard'
-      );
-      if (!result?.url) throw new Error('No link generated');
-      await navigator.clipboard.writeText(result.url);
-      this.notifications.showSuccess(
-        this.translate.instant('shared.transferActivity.actions.successCopyUrl')
-      );
-    } catch (e) {
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failCopyUrl') +
-          ': ' +
-          (e instanceof Error ? e.message : String(e))
-      );
-    } finally {
-      this.loadingUrlIds.update(s => {
-        const n = new Set(s);
-        n.delete(key);
-        return n;
-      });
-    }
+    await this.runCopyUrl(item, 'dst', uniqueId);
   }
 
   async copyUrlFallback(
@@ -231,11 +207,83 @@ export class TransferOperationsService {
     uniqueId: string,
     remoteName: string
   ): Promise<void> {
-    const key = `${uniqueId}-fallback`;
+    await this.runCopyUrl(item, 'fallback', uniqueId, remoteName);
+  }
+
+  async downloadSource(item: { srcFs?: string; name: string }, uniqueId: string): Promise<void> {
+    await this.runDownload(item, 'src', uniqueId);
+  }
+
+  async downloadDst(item: { dstFs?: string; name: string }, uniqueId: string): Promise<void> {
+    await this.runDownload(item, 'dst', uniqueId);
+  }
+
+  async downloadFallback(
+    item: { name: string },
+    uniqueId: string,
+    remoteName: string
+  ): Promise<void> {
+    await this.runDownload(item, 'fallback', uniqueId, remoteName);
+  }
+
+  async deleteSource(
+    item: { srcFs?: string; name: string },
+    uniqueId: string,
+    onDeleted?: () => void
+  ): Promise<void> {
+    if (item.srcFs) await this.confirmAndDelete(item, item.srcFs, `${uniqueId}-src-del`, onDeleted);
+  }
+
+  async deleteDst(
+    item: { dstFs?: string; name: string },
+    uniqueId: string,
+    onDeleted?: () => void
+  ): Promise<void> {
+    if (item.dstFs) await this.confirmAndDelete(item, item.dstFs, `${uniqueId}-dst-del`, onDeleted);
+  }
+
+  async deleteFallback(
+    item: { name: string },
+    uniqueId: string,
+    remoteName: string,
+    onDeleted?: () => void
+  ): Promise<void> {
+    await this.confirmAndDelete(
+      item,
+      this.pathService.normalizeRemoteForRclone(remoteName),
+      `${uniqueId}-fallback-del`,
+      onDeleted
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared implementation
+  // ---------------------------------------------------------------------------
+
+  /** Resolves the rclone fs string for a given target. */
+  private resolveFs(
+    item: { srcFs?: string; dstFs?: string; name: string },
+    target: TransferTarget,
+    remoteName?: string
+  ): string {
+    if (target === 'src') return item.srcFs || '';
+    if (target === 'dst') return item.dstFs || '';
+    return this.pathService.normalizeRemoteForRclone(remoteName || '');
+  }
+
+  /** Shared copyUrl implementation — handles loading-id Set + error translation. */
+  private async runCopyUrl(
+    item: { srcFs?: string; dstFs?: string; name: string },
+    target: TransferTarget,
+    uniqueId: string,
+    remoteName?: string
+  ): Promise<void> {
+    const key = `${uniqueId}-${target}`;
     this.loadingUrlIds.update(s => new Set(s).add(key));
     try {
+      const fs = this.resolveFs(item, target, remoteName);
       const result = await this.remoteOps.getPublicLink(
-        this.pathService.normalizeRemoteForRclone(remoteName),
+        fs,
         item.name,
         false,
         undefined,
@@ -261,61 +309,18 @@ export class TransferOperationsService {
     }
   }
 
-  async downloadSource(item: { srcFs?: string; name: string }, uniqueId: string): Promise<void> {
-    const key = `${uniqueId}-src`;
-    this.downloadingIds.update(s => new Set(s).add(key));
-    try {
-      const fileRemote = item.srcFs || '';
-      await this.performDownload(fileRemote, item.name, this.pathService.extractName(item.name));
-    } catch (e) {
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload') +
-          ': ' +
-          (e instanceof Error ? e.message : String(e))
-      );
-    } finally {
-      this.downloadingIds.update(s => {
-        const n = new Set(s);
-        n.delete(key);
-        return n;
-      });
-    }
-  }
-
-  async downloadDst(item: { dstFs?: string; name: string }, uniqueId: string): Promise<void> {
-    const key = `${uniqueId}-dst`;
-    this.downloadingIds.update(s => new Set(s).add(key));
-    try {
-      const fileRemote = item.dstFs || '';
-      await this.performDownload(fileRemote, item.name, this.pathService.extractName(item.name));
-    } catch (e) {
-      this.notifications.showError(
-        this.translate.instant('shared.transferActivity.actions.failDownload') +
-          ': ' +
-          (e instanceof Error ? e.message : String(e))
-      );
-    } finally {
-      this.downloadingIds.update(s => {
-        const n = new Set(s);
-        n.delete(key);
-        return n;
-      });
-    }
-  }
-
-  async downloadFallback(
-    item: { name: string },
+  /** Shared download implementation — handles loading-id Set + error translation. */
+  private async runDownload(
+    item: { srcFs?: string; dstFs?: string; name: string },
+    target: TransferTarget,
     uniqueId: string,
-    remoteName: string
+    remoteName?: string
   ): Promise<void> {
-    const key = `${uniqueId}-fallback`;
+    const key = `${uniqueId}-${target}`;
     this.downloadingIds.update(s => new Set(s).add(key));
     try {
-      await this.performDownload(
-        this.pathService.normalizeRemoteForRclone(remoteName),
-        item.name,
-        this.pathService.extractName(item.name)
-      );
+      const fileRemote = this.resolveFs(item, target, remoteName);
+      await this.performDownload(fileRemote, item.name, this.pathService.extractName(item.name));
     } catch (e) {
       this.notifications.showError(
         this.translate.instant('shared.transferActivity.actions.failDownload') +
@@ -369,36 +374,6 @@ export class TransferOperationsService {
         );
       }
     }
-  }
-
-  async deleteSource(
-    item: { srcFs?: string; name: string },
-    uniqueId: string,
-    onDeleted?: () => void
-  ): Promise<void> {
-    if (item.srcFs) await this.confirmAndDelete(item, item.srcFs, `${uniqueId}-src-del`, onDeleted);
-  }
-
-  async deleteDst(
-    item: { dstFs?: string; name: string },
-    uniqueId: string,
-    onDeleted?: () => void
-  ): Promise<void> {
-    if (item.dstFs) await this.confirmAndDelete(item, item.dstFs, `${uniqueId}-dst-del`, onDeleted);
-  }
-
-  async deleteFallback(
-    item: { name: string },
-    uniqueId: string,
-    remoteName: string,
-    onDeleted?: () => void
-  ): Promise<void> {
-    await this.confirmAndDelete(
-      item,
-      this.pathService.normalizeRemoteForRclone(remoteName),
-      `${uniqueId}-fallback-del`,
-      onDeleted
-    );
   }
 
   private async confirmAndDelete(

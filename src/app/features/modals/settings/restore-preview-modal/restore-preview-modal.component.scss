@@ -20,7 +20,7 @@
     margin: 0;
     font-size: var(--font-size-md);
     font-weight: 600;
-    color: var(--primary-text-color);
+    color: var(--window-fg-color);
     flex: 1;
   }
 
@@ -99,7 +99,7 @@
 
   .value {
     font-size: var(--font-size-md);
-    color: var(--primary-text-color);
+    color: var(--window-fg-color);
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -176,7 +176,7 @@
   .item-title {
     font-size: var(--font-size-md);
     font-weight: 600;
-    color: var(--primary-text-color);
+    color: var(--window-fg-color);
     display: flex;
     align-items: center;
     gap: var(--space-xs);
@@ -328,13 +328,13 @@
     margin: 0 0 var(--space-xs) 0;
     font-size: var(--font-size-md);
     font-weight: 600;
-    color: var(--primary-text-color);
+    color: var(--window-fg-color);
   }
 
   .banner-description {
     margin: 0 0 var(--space-sm) 0;
     font-size: var(--font-size-sm);
     line-height: 1.5;
-    color: var(--secondary-text-color);
+    color: var(--dim-color);
   }
 }

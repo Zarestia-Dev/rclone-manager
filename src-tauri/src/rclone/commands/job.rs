@@ -7,7 +7,10 @@ use tokio::time::sleep;
 
 use crate::{
     core::automation::engine::get_next_run,
-    rclone::{backend::BackendManager, state::automations::AutomationsCache},
+    rclone::{
+        backend::{BackendError, BackendManager},
+        state::automations::AutomationsCache,
+    },
     utils::{
         app::notification::{AutomationStage, JobStage, NotificationEvent, notify},
         logging::log::log_operation,
@@ -150,13 +153,13 @@ pub struct SubmitJobOptions {
 
 pub async fn submit_job_with_options(
     app: AppHandle,
-    request: reqwest::RequestBuilder,
+    endpoint: &str,
     payload: Value,
     metadata: JobMetadata,
     options: SubmitJobOptions,
 ) -> Result<(u64, Value, Option<String>), String> {
     let (jobid, backend_name, response_json, execute_id) =
-        initialize_and_register_job(&app, request, payload, metadata.clone()).await?;
+        initialize_and_register_job(&app, endpoint, payload, metadata.clone()).await?;
 
     if options.wait_for_completion {
         monitor_job(backend_name, metadata, jobid, app.clone())
@@ -174,7 +177,7 @@ pub async fn submit_job_with_options(
 
 async fn initialize_and_register_job(
     app: &AppHandle,
-    request: reqwest::RequestBuilder,
+    endpoint: &str,
     payload: Value,
     metadata: JobMetadata,
 ) -> Result<(u64, String, Value, Option<String>), String> {
@@ -190,7 +193,7 @@ async fn initialize_and_register_job(
     }
 
     let (jobid, response_json, execute_id) =
-        send_job_request(app, request, payload, &metadata).await?;
+        send_job_request(app, endpoint, payload, &metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active().await.name;
@@ -215,7 +218,7 @@ async fn initialize_and_register_job(
 
 async fn send_job_request(
     app: &AppHandle,
-    client_builder: reqwest::RequestBuilder,
+    endpoint: &str,
     payload: Value,
     metadata: &JobMetadata,
 ) -> Result<(u64, Value, Option<String>), String> {
@@ -226,29 +229,11 @@ async fn send_job_request(
         obj.insert("_group".to_string(), json!(metadata.group_name()));
     }
 
-    let response = client_builder
-        .json(&payload)
-        .send()
+    let transport = app.state::<RcloneState>().transport.clone();
+    let response_json = transport
+        .rpc(endpoint, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let status = response.status();
-    let body_text = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body_text);
-        log_operation(
-            LogLevel::Error,
-            Some(metadata.remote_name.clone()),
-            Some(metadata.job_type.to_string()),
-            format!("Failed to start {}: {error}", metadata.job_type),
-            Some(json!({"response": body_text})),
-        );
-        return Err(error);
-    }
-
-    let response_json: Value = serde_json::from_str(&body_text)
-        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
 
     let (jobid, execute_id) = parse_job_response(&response_json)?;
 
@@ -350,13 +335,8 @@ pub async fn monitor_job(
     jobid: u64,
     app: AppHandle,
 ) -> Result<Value, RcloneError> {
-    let client = app.state::<RcloneState>().client.clone();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
-
-    let backend = backend_manager
-        .get(&backend_name)
-        .await
-        .ok_or_else(|| RcloneError::ConfigError(format!("Backend '{backend_name}' not found")))?;
 
     let job_cache = &backend_manager.job_cache;
 
@@ -395,8 +375,8 @@ pub async fn monitor_job(
             }
         }
 
-        let poll_result = backend
-            .post_json(&client, job::BATCH, Some(&json!({ "inputs": &inputs })))
+        let poll_result = transport
+            .rpc(job::BATCH, Some(&json!({ "inputs": &inputs })))
             .await;
 
         match poll_result {
@@ -851,44 +831,35 @@ async fn collect_final_stats(
     metadata: &JobMetadata,
     last_stats: Option<Value>,
 ) -> Value {
-    let backend = app.state::<BackendManager>().get_active().await;
-    let client = &app.state::<RcloneState>().client;
+    let transport = app.state::<RcloneState>().transport.clone();
     let group = metadata.group_name();
 
     let needs_stats_fetch = last_stats
         .as_ref()
         .is_none_or(|s| s.is_null() || s == &json!({}));
 
-    let stats_req = needs_stats_fetch.then(|| {
-        backend
-            .inject_auth(client.post(backend.url_for(core::STATS)))
-            .json(&json!({ "group": group }))
-    });
-    let transferred_req = backend
-        .inject_auth(client.post(backend.url_for(core::TRANSFERRED)))
-        .json(&json!({ "group": group }));
+    let stats_fut = async {
+        if needs_stats_fetch {
+            transport
+                .rpc(core::STATS, Some(&json!({ "group": group })))
+                .await
+                .ok()
+        } else {
+            None
+        }
+    };
+    let transferred_params = json!({ "group": group });
+    let transferred_fut = transport.rpc(core::TRANSFERRED, Some(&transferred_params));
 
-    let (stats_send_result, transferred_send_result) = tokio::join!(
-        async {
-            match stats_req {
-                Some(req) => req.send().await.ok(),
-                None => None,
-            }
-        },
-        transferred_req.send()
-    );
+    let (stats_result, transferred_result) = tokio::join!(stats_fut, transferred_fut);
 
     let mut final_stats = if needs_stats_fetch {
-        match stats_send_result {
-            Some(resp) => resp.json::<Value>().await.unwrap_or(json!({})),
-            None => json!({}),
-        }
+        stats_result.unwrap_or(json!({}))
     } else {
         last_stats.unwrap_or(json!({}))
     };
 
-    if let Ok(resp) = transferred_send_result
-        && let Ok(data) = resp.json::<Value>().await
+    if let Ok(data) = transferred_result
         && let Some(obj) = final_stats.as_object_mut()
     {
         obj.insert(
@@ -901,17 +872,12 @@ async fn collect_final_stats(
 }
 
 fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
-    let client = app.state::<RcloneState>().client.clone();
+    let transport = app.state::<RcloneState>().transport.clone();
     let group = metadata.group_name();
-    let app = app.clone();
 
     tauri::async_runtime::spawn(async move {
-        let backend = app.state::<BackendManager>().get_active().await;
-        let delete_url = backend.url_for(core::STATS_DELETE);
-        let _ = backend
-            .inject_auth(client.post(&delete_url))
-            .json(&json!({ "group": group }))
-            .send()
+        let _ = transport
+            .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
             .await;
     });
 }
@@ -919,36 +885,38 @@ fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
 #[tauri::command]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
     let job_cache = &backend_manager.job_cache;
-    let url = backend.url_for(job::STOP);
 
-    let response = backend
-        .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&json!({ "jobid": jobid }))
-        .send()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+    let stop_result = transport
+        .rpc_with_timeout(
+            job::STOP,
+            Some(&json!({ "jobid": jobid })),
+            Duration::from_secs(10),
+        )
+        .await;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if status.is_success() {
-        // accepted
-    } else if status.as_u16() == 500 && body.contains("\"job not found\"") {
-        log_operation(
-            LogLevel::Warn,
-            Some(remote_name.clone()),
-            Some("Stop job".to_string()),
-            format!("Job {jobid} not found in rclone, marking as stopped"),
-            None,
-        );
-        warn!("Job {jobid} not found in rclone, marking as stopped.");
-    } else {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("Failed to stop job {jobid}: {error}");
-        return Err(error);
+    match stop_result {
+        Ok(_) => {}
+        Err(BackendError::Rpc {
+            status: 500,
+            message,
+            ..
+        }) if message.contains("job not found") => {
+            log_operation(
+                LogLevel::Warn,
+                Some(remote_name.clone()),
+                Some("Stop job".to_string()),
+                format!("Job {jobid} not found in rclone, marking as stopped"),
+                None,
+            );
+            warn!("Job {jobid} not found in rclone, marking as stopped.");
+        }
+        Err(e) => {
+            let error = e.to_string();
+            error!("Failed to stop job {jobid}: {error}");
+            return Err(error);
+        }
     }
 
     job_cache
@@ -971,27 +939,27 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
 #[tauri::command]
 pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    let transport = app.state::<RcloneState>().transport.clone();
     let job_cache = &backend_manager.job_cache;
-    let url = backend.url_for(job::STOPGROUP);
 
     info!("Stopping all jobs in group: {group}");
 
-    let response = backend
-        .inject_auth(app.state::<RcloneState>().client.post(&url))
-        .json(&json!({ "group": group }))
-        .send()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
+    let stop_result = transport
+        .rpc_with_timeout(
+            job::STOPGROUP,
+            Some(&json!({ "group": group })),
+            Duration::from_secs(10),
+        )
+        .await;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() && !body.contains("no jobs in group") {
-        let error =
-            crate::localized_error!("backendErrors.http.error", "status" => status, "body" => body);
-        error!("Failed to stop jobs in group {group}: {error}");
-        return Err(error);
+    match stop_result {
+        Ok(_) => {}
+        Err(BackendError::Rpc { ref message, .. }) if message.contains("no jobs in group") => {}
+        Err(e) => {
+            let error = e.to_string();
+            error!("Failed to stop jobs in group {group}: {error}");
+            return Err(error);
+        }
     }
 
     let jobs = job_cache.get_jobs().await;
@@ -1018,10 +986,8 @@ pub async fn submit_batch_job(
     inputs: Vec<Value>,
     metadata: JobMetadata,
 ) -> Result<String, String> {
-    let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(crate::utils::rclone::endpoints::job::BATCH);
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let mut metadata = metadata;
     let base_group = metadata.group_name();
@@ -1054,19 +1020,14 @@ pub async fn submit_batch_job(
         "inputs": modified_inputs,
     });
 
-    let response = backend
-        .inject_auth(state.client.post(&url))
-        .json(&payload)
-        .send()
+    let response_json: Value = transport
+        .rpc(job::BATCH, Some(&payload))
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let response_json: Value = response
-        .json()
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.serve.parseFailed", "error" => e))?;
-
     let (jobid, execute_id) = parse_job_response(&response_json)?;
+
+    let backend_name = backend_manager.get_active_name().await;
 
     if !metadata.no_cache {
         add_job_to_cache(
@@ -1074,7 +1035,7 @@ pub async fn submit_batch_job(
             jobid,
             execute_id.clone(),
             &metadata,
-            &backend.name,
+            &backend_name,
             Some(&app),
         )
         .await;
@@ -1091,12 +1052,12 @@ pub async fn submit_batch_job(
             Some(redacted_payload),
         );
 
-        notify(&app, metadata.started_event(backend.name.clone()));
+        notify(&app, metadata.started_event(backend_name.clone()));
     }
 
-    let backend_name = backend.name.clone();
+    let backend_name_for_monitor = backend_name;
     tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(backend_name, metadata, jobid, app).await;
+        let _ = monitor_job(backend_name_for_monitor, metadata, jobid, app).await;
     });
 
     Ok(jobid.to_string())

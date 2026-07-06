@@ -11,6 +11,14 @@ import { TauriBaseService } from '../platform/tauri-base.service';
 })
 export class SystemInfoService extends TauriBaseService {
   readonly minRcloneVersion = signal<string>('1.70.0');
+
+  /**
+   * Check if running in librclone mode
+   */
+  async isLibrclone(): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_librclone');
+  }
+
   /**
    * Check if network is metered
    */

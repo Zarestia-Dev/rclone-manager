@@ -13,12 +13,12 @@
   background: rgba(var(--primary-color-rgb), 0.06);
   border: 1px solid rgba(var(--primary-color-rgb), 0.15);
   border-radius: var(--radius-md);
-  color: var(--text-color);
+  color: var(--window-fg-color);
   font-size: var(--font-size-xs);
   line-height: 1.4;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-gnome);
 
   mat-icon {
     width: 16px;

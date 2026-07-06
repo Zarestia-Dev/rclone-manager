@@ -241,18 +241,18 @@ pub struct RuntimeSettings {
         label = "settings.runtime.rclone_auto_check_updates.label",
         description = "settings.runtime.rclone_auto_check_updates.description"
     )]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_auto_check_updates: bool,
 
     #[setting(
         label = "settings.runtime.rclone_skipped_updates.label",
         description = "settings.runtime.rclone_skipped_updates.description"
     )]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_skipped_updates: Vec<String>,
 
     #[setting(label = "settings.runtime.rclone_update_channel.label", options(("stable", "settings.runtime.rclone_update_channel.options.stable"), ("beta", "settings.runtime.rclone_update_channel.options.beta")))]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_update_channel: String,
 
     #[setting(label = "settings.runtime.flatpak_warn.label")]
@@ -289,11 +289,11 @@ impl Default for RuntimeSettings {
             app_skipped_updates: vec![],
             #[cfg(feature = "updater")]
             app_update_channel: "stable".to_string(),
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_auto_check_updates: true,
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_skipped_updates: vec![],
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_update_channel: "stable".to_string(),
             #[cfg(feature = "flatpak")]
             flatpak_warn: true,

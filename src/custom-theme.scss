@@ -539,6 +539,7 @@ $dark-theme: (
   --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-circle: 50%;
 
   // Component-specific radius aliases
   --border-radius: var(--radius-xs);
@@ -593,8 +594,18 @@ $dark-theme: (
   // Global UI Variables
   --text-muted: var(--dim-color);
   --bg-elevated: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-elevated-1: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-elevated-2: color-mix(in srgb, var(--window-fg-color) 5%, transparent);
+  --bg-elevated-3: color-mix(in srgb, var(--window-fg-color) 8%, transparent);
+  --bg-elevated-4: color-mix(in srgb, var(--window-fg-color) 10%, transparent);
   --bg-hover: var(--hover-bg-color);
   --bg-selected: var(--selected-bg-color);
+
+  --ring-border: 0 0 0 1px var(--border-color);
+  --ring-accent: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
+  --ring-warn: 0 0 0 1px var(--warn-color);
+  --focus-ring-accent: 0 0 0 2px rgba(var(--accent-color-rgb), 0.4);
+  --focus-ring-warn: 0 0 0 2px rgba(var(--warn-color-rgb), 0.4);
 
   // Icon Size Scale (Grid-Perfect multiples of 24px)
   --icon-size-xxs: 8px; // 1/3x
@@ -615,6 +626,7 @@ $dark-theme: (
   --font-size-md: 0.875rem;
   --font-size-sm: 0.75rem;
   --font-size-xs: 0.625rem;
+  --font-size-xxs: 0.5rem;
 
   // Opacity Scale
   --panel-hover-opacity: 0.1;
@@ -855,6 +867,32 @@ body {
   @include mat.bottom-sheet-overrides(
     (
       container-background-color: var(--window-bg-color),
+      container-shape: var(--modal-radius) var(--modal-radius) 0 0,
+    )
+  );
+
+  @include mat.dialog-overrides(
+    (
+      container-shape: var(--modal-radius),
+    )
+  );
+
+  @include mat.autocomplete-overrides(
+    (
+      container-shape: var(--input-border-radius),
+    )
+  );
+
+  @include mat.snack-bar-overrides(
+    (
+      container-shape: var(--radius-xs),
+    )
+  );
+
+  @include mat.list-overrides(
+    (
+      active-indicator-shape: var(--radius-sm),
+      active-indicator-color: var(--selected-bg-color),
     )
   );
 }
@@ -918,9 +956,11 @@ button {
   align-items: center;
   justify-content: center;
 
-  span {
+  .mat-button-wrapper,
+  > span:not(.mat-mdc-button-persistent-ripple):not(.mat-ripple-element) {
     display: flex;
-    flex-direction: row !important;
+    flex-direction: row;
+    align-items: center;
     gap: var(--space-xs);
   }
 
@@ -970,18 +1010,9 @@ button {
   contain: paint;
 }
 
-.mat-bottom-sheet-container {
-  box-shadow: none !important;
-  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
-}
-
 // Form fields
 .mat-mdc-form-field {
   width: 100%;
-}
-
-.mat-mdc-dialog-container .mdc-dialog__surface {
-  border-radius: var(--modal-radius) !important;
 }
 
 .contextual-action-wrapper {
@@ -1007,10 +1038,15 @@ button {
 // ============================================================================
 // RESPONSIVE MODAL → BOTTOM SHEET BEHAVIOR (Libadwaita Style)
 // ============================================================================
-// On narrow viewports (≤450px), modals transform into bottom sheets that slide
+// On narrow viewports (≤450px), large modals that opt in via the
+// `mobile-sheet-dialog` panelClass transform into bottom sheets that slide
 // up from the bottom of the screen, matching GNOME's adaptive dialog behavior.
+//
+// The panelClass is applied by ModalService.openModal() only to configs that
+// have an explicit `height` (i.e. the large feature modals). Small confirm/
+// input modals remain centered dialogs on narrow viewports.
 @media (max-width: 450px) {
-  .cdk-overlay-pane.mat-mdc-dialog-panel {
+  .cdk-overlay-pane.mobile-sheet-dialog {
     position: absolute !important;
     bottom: 0 !important;
     left: 0 !important;
@@ -1021,15 +1057,15 @@ button {
     margin: 0 !important;
   }
 
-  mat-dialog-container.mat-mdc-dialog-container,
-  .mat-mdc-dialog-container.mdc-dialog {
+  .mobile-sheet-dialog mat-dialog-container.mat-mdc-dialog-container,
+  .mobile-sheet-dialog .mat-mdc-dialog-container.mdc-dialog {
     animation: slideUpSheet 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 
     &.closing {
       animation: slideDownSheet 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
     }
   }
-  .mat-mdc-dialog-container .mdc-dialog__surface {
+  .mobile-sheet-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
     border-radius: var(--modal-radius) var(--modal-radius) 0 0 !important;
   }
 }
@@ -1037,39 +1073,6 @@ button {
 // ============================================================================
 // SECTION 6: COMPONENT STYLES
 // ============================================================================
-
-mat-tab-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-
-  ::ng-deep {
-    .mat-mdc-tab-body-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .mat-mdc-tab-body {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .mat-mdc-tab-body-content {
-      height: 100%;
-      overflow-y: auto;
-    }
-  }
-}
-
-.mat-mdc-autocomplete-panel {
-  border-radius: var(--input-border-radius) !important;
-}
-
 mat-accordion {
   display: flex;
   flex-direction: column;

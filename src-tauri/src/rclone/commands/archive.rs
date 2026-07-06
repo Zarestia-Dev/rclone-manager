@@ -25,8 +25,6 @@ pub async fn archive_create(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
 
     let mut args = vec!["create".to_string(), source.clone(), destination.clone()];
 
@@ -71,7 +69,7 @@ pub async fn archive_create(
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        core::COMMAND,
         payload,
         metadata,
         SubmitJobOptions {
@@ -93,8 +91,6 @@ pub async fn archive_extract(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
 
     let args = vec!["extract".to_string(), source.clone(), destination.clone()];
 
@@ -121,7 +117,7 @@ pub async fn archive_extract(
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        core::COMMAND,
         payload,
         metadata,
         SubmitJobOptions {
@@ -146,8 +142,7 @@ pub async fn archive_list(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let mut args = vec!["list".to_string(), source.clone()];
 
@@ -181,8 +176,8 @@ pub async fn archive_list(
         })),
     );
 
-    let response = backend
-        .post_json(client, core::COMMAND, Some(&payload))
+    let response = transport
+        .rpc(core::COMMAND, Some(&payload))
         .await
         .map_err(|e| {
             let err_msg = format!("Failed to list archive: {e}");

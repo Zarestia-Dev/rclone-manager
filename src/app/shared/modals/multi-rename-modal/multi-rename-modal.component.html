@@ -18,14 +18,20 @@
 
   <main>
     <!-- Mode Selection (Segment Control) -->
-    <div class="segment-control">
-      <button type="button" [class.active]="mode() === 'template'" (click)="setMode('template')">
+    <mat-button-toggle-group
+      [value]="mode()"
+      (change)="setMode($event.value)"
+      name="multi-rename-mode"
+      class="segment-control"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="template">
         {{ 'nautilus.modals.multiRename.templateMode' | translate }}
-      </button>
-      <button type="button" [class.active]="mode() === 'replace'" (click)="setMode('replace')">
+      </mat-button-toggle>
+      <mat-button-toggle value="replace">
         {{ 'nautilus.modals.multiRename.replaceMode' | translate }}
-      </button>
-    </div>
+      </mat-button-toggle>
+    </mat-button-toggle-group>
 
     <form [formGroup]="form">
       <!-- Template Mode Inputs -->
@@ -101,11 +107,9 @@
             <input matInput formControlName="replaceWith" placeholder="replacement text" />
           </mat-form-field>
         </div>
-        <div class="checkbox-row">
-          <mat-checkbox formControlName="caseSensitive">
-            {{ 'nautilus.modals.multiRename.caseSensitive' | translate }}
-          </mat-checkbox>
-        </div>
+        <mat-checkbox formControlName="caseSensitive">
+          {{ 'nautilus.modals.multiRename.caseSensitive' | translate }}
+        </mat-checkbox>
       }
     </form>
 
@@ -116,7 +120,7 @@
         <span class="col-arrow"></span>
         <span class="col-new">{{ 'nautilus.modals.multiRename.newName' | translate }}</span>
       </div>
-      <div class="preview-list">
+      <cdk-virtual-scroll-viewport itemSize="34" class="preview-list">
         @for (p of previewItems(); track p.item.entry.Path) {
           <div class="preview-row" [class.has-error]="p.hasError">
             <span class="col-orig" [title]="p.originalName">{{ p.originalName }}</span>
@@ -135,7 +139,7 @@
             </span>
           </div>
         }
-      </div>
+      </cdk-virtual-scroll-viewport>
     </div>
   </main>
 

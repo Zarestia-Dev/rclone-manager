@@ -15,13 +15,9 @@ fn group_payload(group: Option<String>) -> Value {
 
 #[tauri::command]
 pub async fn get_stats(app: AppHandle, group: Option<String>) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            core::STATS,
-            Some(&group_payload(group)),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(core::STATS, Some(&group_payload(group)))
         .await
         .map_err(|e| format!("Failed to get core stats: {e}"))
 }
@@ -31,14 +27,10 @@ pub async fn get_completed_transfers(
     app: AppHandle,
     group: Option<String>,
 ) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-
-    let mut value = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            core::TRANSFERRED,
-            Some(&group_payload(group.clone())),
-        )
+    let mut value = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(core::TRANSFERRED, Some(&group_payload(group.clone())))
         .await
         .map_err(|e| {
             error!("❌ Failed to get completed transfers: {e}");

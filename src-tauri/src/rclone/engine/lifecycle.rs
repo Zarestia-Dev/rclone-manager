@@ -2,7 +2,6 @@ use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::rclone::backend::BackendManager;
 use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
@@ -17,6 +16,7 @@ pub fn mark_startup_complete(app: &AppHandle) {
     debug!("Initial startup complete, health monitoring enabled");
 }
 
+#[cfg(not(feature = "librclone"))]
 const API_READY_TIMEOUT_SECS: u64 = 10;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -35,34 +35,45 @@ impl RcApiEngine {
         }
     }
 
-    pub async fn shutdown(&mut self, app: &AppHandle) {
+    pub async fn shutdown(&mut self, _app: &AppHandle) {
         info!("Shutting down Rclone engine");
         self.should_exit = true;
 
-        if let Err(e) = self.kill_process(app).await {
-            error!("Failed to stop engine cleanly: {e}");
+        // Desktop: kill the rcd child process via core/quit + force-kill.
+        #[cfg(not(feature = "librclone"))]
+        {
+            if let Err(e) = self.kill_process(_app).await {
+                error!("Failed to stop engine cleanly: {e}");
+            }
+            self.process = None;
         }
 
-        self.process = None;
+        // Mobile: finalize librclone (releases Go runtime resources).
+        // Safe to call even if not initialized; RcloneFinalize is idempotent.
+        #[cfg(feature = "librclone")]
+        {
+            crate::rclone::backend::rclone_ffi::finalize();
+        }
+
         self.running = false;
     }
 }
 
-#[cfg(feature = "updater")]
+#[cfg(not(feature = "librclone"))]
 pub async fn set_engine_updating(app: &AppHandle, updating: bool) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.set_updating(updating);
 }
 
-#[cfg(feature = "updater")]
+#[cfg(not(feature = "librclone"))]
 pub async fn shutdown_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     engine.shutdown(app).await;
 }
 
-#[cfg(feature = "updater")]
+#[cfg(not(feature = "librclone"))]
 pub async fn resume_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
@@ -123,9 +134,34 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         return;
     }
 
-    let client = app.state::<RcloneState>().client.clone();
-    let backend_manager = app.state::<BackendManager>();
-    if engine.is_api_healthy(&client, &backend_manager).await {
+    // Branch on transport kind. The HTTP daemon path spawns/kills a child
+    // process; the librclone path just verifies the in-process library is
+    // responsive (it can't die, so there's no spawn or kill).
+    let transport_kind = app.state::<RcloneState>().transport.kind();
+    match transport_kind {
+        crate::rclone::backend::TransportKind::HttpDaemon => {
+            #[cfg(not(feature = "librclone"))]
+            start_daemon(engine, app).await;
+            #[cfg(feature = "librclone")]
+            log::error!(
+                "HttpDaemon transport is not available when building with librclone feature"
+            );
+        }
+        crate::rclone::backend::TransportKind::Librclone => {
+            #[cfg(feature = "librclone")]
+            start_librclone(engine, app).await;
+            #[cfg(not(feature = "librclone"))]
+            log::error!(
+                "Librclone transport is not available when building without librclone feature"
+            );
+        }
+    }
+}
+
+/// Desktop path: spawn the rcd daemon, wait for HTTP readiness, run post-start.
+#[cfg(not(feature = "librclone"))]
+async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
+    if engine.is_api_healthy(app).await {
         debug!("API is already healthy, skipping restart");
         return;
     }
@@ -145,10 +181,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         Ok(child) => {
             engine.process = Some(child);
 
-            if engine
-                .wait_until_ready(&client, &backend_manager, API_READY_TIMEOUT_SECS)
-                .await
-            {
+            if engine.wait_until_ready(app, API_READY_TIMEOUT_SECS).await {
                 engine.running = true;
                 info!("Rclone API started on port {}", engine.current_api_port);
 
@@ -164,6 +197,34 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         }
         Err(e) => {
             handle_start_failure(engine, app, e.to_string()).await;
+        }
+    }
+}
+
+/// Mobile path: librclone is in-process, so "start" = verify responsive + run post-start.
+/// There's no process to spawn and no port to clean up.
+#[cfg(feature = "librclone")]
+async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
+    use crate::utils::rclone::endpoints::core;
+    use tauri::Manager;
+
+    // Verify librclone is responsive with a single core/version call.
+    // This should never fail (librclone is always alive after RcloneInitialize),
+    // but if it does, something is seriously wrong.
+    let transport = app.state::<RcloneState>().transport.clone();
+    match transport.rpc(core::VERSION, None).await {
+        Ok(_) => {
+            engine.running = true;
+            info!("librclone transport ready (in-process)");
+
+            // Run the same post-start setup as the daemon path — refreshes
+            // caches, updates tray, emits Ready status.
+            super::post_start::run_post_start_setup(app).await;
+        }
+        Err(e) => {
+            error!("librclone transport not responsive: {e}");
+            engine.set_path_error(true);
+            handle_start_failure(engine, app, format!("librclone init failed: {e}")).await;
         }
     }
 }
@@ -245,8 +306,23 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
     let engine_state = app.state::<EngineState>();
     let mut engine = engine_state.lock().await;
 
-    if let Err(e) = engine.kill_process(app).await {
-        error!("Failed to stop engine cleanly during restart: {e}");
+    // Desktop: kill the daemon process before restart.
+    // Mobile: librclone is in-process — "restart" = finalize + re-initialize
+    // (cheap), or just re-verify if finalize+init isn't needed.
+    #[cfg(not(feature = "librclone"))]
+    {
+        if let Err(e) = engine.kill_process(app).await {
+            error!("Failed to stop engine cleanly during restart: {e}");
+        }
+    }
+    #[cfg(feature = "librclone")]
+    {
+        // librclone restart: finalize the Go runtime + re-initialize.
+        // This clears all rclone state (remotes, VFS caches, in-flight jobs)
+        // and starts fresh. Cheaper than a process restart but not free.
+        log::info!("Restarting librclone (finalize + initialize) for {change_type} change");
+        crate::rclone::backend::rclone_ffi::finalize();
+        crate::rclone::backend::rclone_ffi::initialize();
     }
 
     if !engine.validate_config(app).await {

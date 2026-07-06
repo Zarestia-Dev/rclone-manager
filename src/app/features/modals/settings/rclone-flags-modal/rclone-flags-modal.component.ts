@@ -1,6 +1,5 @@
 import {
   Component,
-  HostListener,
   OnInit,
   inject,
   signal,
@@ -10,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -159,6 +159,7 @@ const MAIN_CATEGORY_CONFIG: Record<
 @Component({
   selector: 'app-rclone-flags-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     TitleCasePipe,
     MatIconModule,
@@ -191,7 +192,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private readonly fb = inject(FormBuilder);
-  private readonly translate = inject(TranslateService);
+  readonly translate = inject(TranslateService);
 
   readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
 
@@ -661,7 +662,6 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

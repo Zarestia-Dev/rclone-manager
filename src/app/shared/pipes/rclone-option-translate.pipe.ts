@@ -4,7 +4,7 @@ import { TranslateService } from '@ngx-translate/core';
 @Pipe({
   name: 'rcloneOptionTranslate',
   standalone: true,
-  pure: false,
+  pure: true,
 })
 export class RcloneOptionTranslatePipe implements PipeTransform {
   private translate = inject(TranslateService);
@@ -13,7 +13,8 @@ export class RcloneOptionTranslatePipe implements PipeTransform {
     optionName: string,
     type: 'title' | 'help',
     fallback: string,
-    provider?: string | null
+    provider?: string | null,
+    _langRefresh?: string | null
   ): string {
     if (!optionName) return fallback;
 

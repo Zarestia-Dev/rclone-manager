@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
 - **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality.
   - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
+- New background for dmg installer.
+**Librclone Support**: Added support for librclone. This one is a testing feature for future mobile release. This is not ready for use yet. When librclone enabled, Rclone updates, proccess management became disabled. Remote rclone instances still supported.
 
 ### Changed
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
@@ -30,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.
 - Fix the overloaded time for DirCacheTime: '1000h' to default rclone value.
+- Fix the Rclone Flags modals not saves the numbers. Example: Transfers...
 
 ## [v0.2.8] - 2026-06-17
 

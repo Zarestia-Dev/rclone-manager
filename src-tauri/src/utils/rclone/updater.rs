@@ -734,16 +734,16 @@ async fn check_rclone_selfupdate(
 ) -> Result<(bool, String)> {
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let client = &app_handle.state::<RcloneState>().client;
+    let transport = app_handle.state::<RcloneState>().transport.clone();
 
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload =
         backend.build_core_command_payload("selfupdate", vec!["--check".to_string()], false, os);
 
-    let response = backend
-        .post_json(client, core::COMMAND, Some(&payload))
+    let response = transport
+        .rpc(core::COMMAND, Some(&payload))
         .await
-        .map_err(Error::RcloneVersionCheck)?;
+        .map_err(|e| Error::RcloneVersionCheck(e.to_string()))?;
 
     let output = response
         .get("result")
@@ -831,7 +831,7 @@ async fn perform_rclone_selfupdate(
 ) -> Result<UpdateResult> {
     let backend_manager = app_handle.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let client = &app_handle.state::<RcloneState>().client;
+    let transport = app_handle.state::<RcloneState>().transport.clone();
 
     let mut args = vec![];
     if let Some(output) = output_path {
@@ -853,8 +853,8 @@ async fn perform_rclone_selfupdate(
         () = cancel_token.cancelled() => {
             return Err(Error::RcloneSelfUpdate("Download cancelled by user".to_string()));
         }
-        res = backend.post_json(client, core::COMMAND, Some(&payload)) => {
-            res.map_err(|e| Error::RcloneSelfUpdate(e.clone()))?
+        res = transport.rpc(core::COMMAND, Some(&payload)) => {
+            res.map_err(|e| Error::RcloneSelfUpdate(e.to_string()))?
         }
     };
 

@@ -463,6 +463,33 @@ pub mod config {
     ///
     /// See the [config update](/commands/rclone_config_update/) command for more information on the above.
     pub const UPDATE: &str = "config/update";
+
+    /// Get the current OAuth server status.
+    ///
+    /// Returns the status of the in-process OAuth auth server:
+    ///
+    /// ```json
+    /// {
+    ///     "running": true,
+    ///     "authUrl": "https://accounts.google.com/o/oauth2/auth?..."
+    /// }
+    /// ```
+    ///
+    /// - `running` - bool, whether the OAuth server is currently listening
+    /// - `authUrl` - string, the URL the user should visit to authorize (only present when running)
+    ///
+    /// This is a newer endpoint (landing in rclone v1.75, currently unreleased)
+    /// that enables in-process OAuth without spawning a separate `rclone authorize`
+    /// subprocess. Used by the librclone transport for OAuth flows on mobile.
+    pub const OAUTHSTATUS: &str = "config/oauthstatus";
+
+    /// Stop the currently running OAuth auth server.
+    ///
+    /// No parameters. Returns `{}`.
+    ///
+    /// Cancels an in-progress OAuth flow. Used by the mobile OAuth UI to let
+    /// the user cancel a stuck auth flow. Counterpart to `config/oauthstatus`.
+    pub const OAUTHSTOP: &str = "config/oauthstop";
 }
 
 /// Job management endpoints
@@ -716,6 +743,20 @@ pub mod operations {
     /// - dstFs - a remote name string e.g. "drive2:" for the destination, "/" for local filesystem
     /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
     pub const COPYFILE: &str = "operations/copyfile";
+
+    /// Concatenate any files and send them in response.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "file.txt"
+    /// - offset - (optional) byte offset to start reading from
+    /// - count - (optional) maximum number of bytes to read
+    ///
+    /// Returns `{ "content": "<base64-encoded bytes>" }`.
+    /// Used by the librclone transport's `read_file` for streaming file content
+    /// to the webview (no HTTP file server available in-process).
+    pub const CAT: &str = "operations/cat";
 
     /// Copy the URL to the object.
     ///

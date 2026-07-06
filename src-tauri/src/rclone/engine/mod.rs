@@ -5,4 +5,6 @@ pub mod lifecycle;
 pub mod monitoring;
 pub mod poller;
 pub mod post_start;
+
+#[cfg(not(feature = "librclone"))]
 pub mod process;

@@ -258,8 +258,8 @@ export class JsonEditorComponent {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
-  private readonly translateService = inject(TranslateService);
   private readonly sharedLookupTable = inject(JSON_EDITOR_LOOKUP_TABLE, { optional: true });
+  readonly translateService = inject(TranslateService);
 
   readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
 

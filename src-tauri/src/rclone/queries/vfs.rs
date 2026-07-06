@@ -2,7 +2,6 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager, command};
 
-use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::vfs;
 use crate::utils::types::state::RcloneState;
 
@@ -10,9 +9,10 @@ use crate::utils::json_helpers::normalize_windows_path;
 
 #[command]
 pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, vfs::LIST, None)
+    let json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(vfs::LIST, None)
         .await
         .map_err(|e| format!("Failed to fetch VFS list: {e}"))?;
     debug!("✅ VFS List: {json}");
@@ -25,7 +25,6 @@ pub async fn vfs_forget(
     fs: Option<String>,
     file: Option<String>,
 ) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -33,12 +32,9 @@ pub async fn vfs_forget(
     if let Some(f) = file {
         payload["file"] = Value::String(f);
     }
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::FORGET,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(vfs::FORGET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to forget paths: {e}"))
 }
@@ -50,7 +46,6 @@ pub async fn vfs_refresh(
     dir: Option<String>,
     recursive: bool,
 ) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({ "recursive": recursive });
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -58,30 +53,24 @@ pub async fn vfs_refresh(
     if let Some(d) = dir {
         payload["dir"] = Value::String(d);
     }
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::REFRESH,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(vfs::REFRESH, Some(&payload))
         .await
         .map_err(|e| format!("Failed to refresh cache: {e}"))
 }
 
 #[command]
 pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
 
-    let mut json = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::STATS,
-            Some(&payload),
-        )
+    let mut json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(vfs::STATS, Some(&payload))
         .await
         .map_err(|e| format!("Failed to fetch VFS stats: {e}"))?;
 
@@ -104,7 +93,6 @@ pub async fn vfs_poll_interval(
     interval: Option<String>,
     timeout: Option<String>,
 ) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
@@ -115,29 +103,23 @@ pub async fn vfs_poll_interval(
     if let Some(t) = timeout {
         payload["timeout"] = Value::String(t);
     }
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::POLL_INTERVAL,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(vfs::POLL_INTERVAL, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set/get poll interval: {e}"))
 }
 
 #[command]
 pub async fn vfs_queue(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({});
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
-    let json = backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::QUEUE,
-            Some(&payload),
-        )
+    let json = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(vfs::QUEUE, Some(&payload))
         .await
         .map_err(|e| format!("Failed to fetch VFS queue: {e}"))?;
     debug!("✅ VFS Queue: {json}");
@@ -152,17 +134,13 @@ pub async fn vfs_queue_set_expiry(
     expiry: f64,
     relative: bool,
 ) -> Result<Value, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
     let mut payload = json!({ "id": id, "expiry": expiry, "relative": relative });
     if let Some(f) = fs {
         payload["fs"] = Value::String(f);
     }
-    backend
-        .post_json(
-            &app.state::<RcloneState>().client,
-            vfs::QUEUE_SET_EXPIRY,
-            Some(&payload),
-        )
+    app.state::<RcloneState>()
+        .transport
+        .rpc(vfs::QUEUE_SET_EXPIRY, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set queue expiry: {e}"))
 }

@@ -25,10 +25,8 @@ async fn run_fs_command_as_job(
 ) -> Result<serde_json::Value, String> {
     use crate::utils::rclone::endpoints::job as job_endpoints;
 
-    let state = app.state::<RcloneState>();
     let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let url = backend.url_for(endpoint);
+    let transport = app.state::<RcloneState>().transport.clone();
 
     if let Some(obj) = payload.as_object_mut() {
         obj.insert("_async".to_string(), json!(true));
@@ -36,7 +34,7 @@ async fn run_fs_command_as_job(
 
     let (jobid, _, _) = submit_job_with_options(
         app.clone(),
-        backend.inject_auth(state.client.clone().post(&url)),
+        endpoint,
         payload,
         metadata,
         SubmitJobOptions {
@@ -51,24 +49,10 @@ async fn run_fs_command_as_job(
         return Err("Operation cancelled".to_string());
     }
 
-    let status_url = backend.url_for(job_endpoints::STATUS);
-    let response = backend
-        .inject_auth(state.client.clone().post(&status_url))
-        .json(&json!({ "jobid": jobid }))
-        .send()
+    let value = transport
+        .rpc(job_endpoints::STATUS, Some(&json!({ "jobid": jobid })))
         .await
         .map_err(|e| format!("Failed to fetch async job status: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-    if !status.is_success() {
-        return Err(format!(
-            "Failed to read async job output ({status}): {body}"
-        ));
-    }
-
-    let value: serde_json::Value =
-        serde_json::from_str(&body).map_err(|e| format!("Invalid job status payload: {e}"))?;
 
     Ok(value.get("output").cloned().unwrap_or_else(|| json!({})))
 }
@@ -188,15 +172,13 @@ pub async fn get_remote_paths(
 
 #[tauri::command]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
-    let state = app.state::<RcloneState>();
     use crate::utils::rclone::endpoints::core;
     use sysinfo::Disks;
 
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
-    let response = backend
-        .post_json(&state.client, core::DISKS, None)
+    let response = app
+        .state::<RcloneState>()
+        .transport
+        .rpc(core::DISKS, None)
         .await
         .map_err(|e| format!("❌ Failed to call {}: {e}", core::DISKS))?;
 

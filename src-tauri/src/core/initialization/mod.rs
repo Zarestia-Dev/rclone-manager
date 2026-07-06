@@ -174,7 +174,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let backend_manager = app_handle.state::<BackendManager>();
 
     let active_name = backend_manager.get_active_name().await;
-    let client = app_handle.state::<RcloneState>().client.clone();
+    let transport = app_handle.state::<RcloneState>().transport.clone();
 
     if active_name == "Local" {
         info!(
@@ -188,7 +188,7 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
             .await;
     } else if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
         &backend_manager,
-        &client,
+        &*transport,
         BACKEND_CONNECTIVITY_TIMEOUT,
     )
     .await
@@ -199,8 +199,9 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let app_handle_clone = app_handle.clone();
     tokio::spawn(async move {
         let backend_manager = app_handle_clone.state::<BackendManager>();
-        let client = app_handle_clone.state::<RcloneState>().client.clone();
-        crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &client).await;
+        let transport = app_handle_clone.state::<RcloneState>().transport.clone();
+        crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &*transport)
+            .await;
     });
 }
 

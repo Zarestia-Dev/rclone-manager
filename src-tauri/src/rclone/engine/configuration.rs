@@ -2,16 +2,17 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{
-        check_binaries::{MIN_RCLONE_VERSION, build_rclone_command},
-        security::SafeEnvironmentManager,
-    },
-    rclone::backend::BackendManager,
+    core::security::SafeEnvironmentManager,
     utils::types::{
         events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
         state::RcApiEngine,
     },
 };
+
+#[cfg(not(feature = "librclone"))]
+use crate::core::check_binaries::{MIN_RCLONE_VERSION, build_rclone_command};
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::backend::BackendManager;
 
 use super::error::{EngineError, EngineResult};
 
@@ -19,24 +20,30 @@ impl RcApiEngine {
     pub async fn validate_config_before_start(&self, app: &AppHandle) -> EngineResult<()> {
         info!("Validating rclone configuration before engine start");
 
-        let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
-        if !rclone_binary.exists() || !rclone_binary.is_file() {
-            return Err(EngineError::RcloneNotFound);
-        }
-
-        match crate::core::check_binaries::get_rclone_version(&rclone_binary).await {
-            Some(version) => {
-                if !crate::core::check_binaries::is_version_at_least(&version, MIN_RCLONE_VERSION) {
-                    return Err(EngineError::VersionTooOld {
-                        version,
-                        required: MIN_RCLONE_VERSION.to_string(),
-                    });
-                }
+        #[cfg(not(feature = "librclone"))]
+        {
+            let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
+            if !rclone_binary.exists() || !rclone_binary.is_file() {
+                return Err(EngineError::RcloneNotFound);
             }
-            None => {
-                return Err(EngineError::ConfigValidationFailed(crate::t!(
-                    "backendErrors.rclone.executionFailed"
-                )));
+
+            match crate::core::check_binaries::get_rclone_version(&rclone_binary).await {
+                Some(version) => {
+                    if !crate::core::check_binaries::is_version_at_least(
+                        &version,
+                        MIN_RCLONE_VERSION,
+                    ) {
+                        return Err(EngineError::VersionTooOld {
+                            version,
+                            required: MIN_RCLONE_VERSION.to_string(),
+                        });
+                    }
+                }
+                None => {
+                    return Err(EngineError::ConfigValidationFailed(crate::t!(
+                        "backendErrors.rclone.executionFailed"
+                    )));
+                }
             }
         }
 
@@ -69,49 +76,82 @@ impl RcApiEngine {
             return Err(EngineError::PasswordRequired);
         }
 
-        let backend_manager = app.state::<BackendManager>();
-        let config_path_string = backend_manager.get_local_config_path().await.map_err(|e| {
-            EngineError::ConfigValidationFailed(format!("Local backend error: {e}"))
-        })?;
-
-        let output = build_rclone_command(app, None, config_path_string.as_deref(), None)
-            .args(["listremotes", "--ask-password=false"])
-            .envs(&env_vars)
-            .output()
-            .await
-            .map_err(|e| {
-                EngineError::ConfigValidationFailed(format!(
-                    "Failed to execute rclone command: {e}"
-                ))
-            })?;
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-
-        if output.status.success() {
-            info!("Rclone configuration and password validation successful");
-            return Ok(());
-        }
-
-        if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
-            || stderr.contains("Couldn't decrypt configuration")
-            || stderr.contains("most likely wrong password")
-            || stderr.contains("unable to decrypt configuration")
+        #[cfg(feature = "librclone")]
         {
-            error!("Wrong password for encrypted rclone configuration");
-            return Err(EngineError::WrongPassword);
+            use crate::utils::types::state::RcloneState;
+            let state = app.state::<RcloneState>();
+            match state.transport.rpc("config/listremotes", None).await {
+                Ok(_) => {
+                    info!("Rclone configuration and password validation successful (librclone)");
+                    Ok(())
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+                    if err_str.contains("unable to decrypt")
+                        || err_str.contains("Couldn't decrypt")
+                        || err_str.contains("most likely wrong password")
+                    {
+                        error!("Wrong password for encrypted rclone configuration");
+                        return Err(EngineError::WrongPassword);
+                    }
+                    if err_str.contains("Failed to load config file") {
+                        error!("Failed to load rclone config file: {err_str}");
+                        return Err(EngineError::ConfigValidationFailed(err_str));
+                    }
+                    warn!("Unexpected rclone error, attempting to continue: {err_str}");
+                    Ok(())
+                }
+            }
         }
 
-        if stderr.contains("Failed to load config file") {
-            let msg = format!("Failed to load rclone config file: {}", stderr.trim());
-            error!("{msg}");
-            return Err(EngineError::ConfigValidationFailed(msg));
-        }
+        #[cfg(not(feature = "librclone"))]
+        {
+            let backend_manager = app.state::<BackendManager>();
+            let config_path_string =
+                backend_manager.get_local_config_path().await.map_err(|e| {
+                    EngineError::ConfigValidationFailed(format!("Local backend error: {e}"))
+                })?;
 
-        warn!(
-            "Unexpected rclone error, attempting to continue: {}",
-            stderr.trim()
-        );
-        Ok(())
+            let output = build_rclone_command(app, None, config_path_string.as_deref(), None)
+                .args(["listremotes", "--ask-password=false"])
+                .envs(&env_vars)
+                .output()
+                .await
+                .map_err(|e| {
+                    EngineError::ConfigValidationFailed(format!(
+                        "Failed to execute rclone command: {e}"
+                    ))
+                })?;
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            if output.status.success() {
+                info!("Rclone configuration and password validation successful");
+                return Ok(());
+            }
+
+            if stderr
+                .contains("unable to decrypt configuration and not allowed to ask for password")
+                || stderr.contains("Couldn't decrypt configuration")
+                || stderr.contains("most likely wrong password")
+                || stderr.contains("unable to decrypt configuration")
+            {
+                error!("Wrong password for encrypted rclone configuration");
+                return Err(EngineError::WrongPassword);
+            }
+
+            if stderr.contains("Failed to load config file") {
+                let msg = format!("Failed to load rclone config file: {}", stderr.trim());
+                error!("{msg}");
+                return Err(EngineError::ConfigValidationFailed(msg));
+            }
+
+            warn!(
+                "Unexpected rclone error, attempting to continue: {}",
+                stderr.trim()
+            );
+            Ok(())
+        }
     }
 
     pub async fn validate_config(&mut self, app: &AppHandle) -> bool {

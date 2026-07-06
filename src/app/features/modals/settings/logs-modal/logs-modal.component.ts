@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  HostListener,
   Injector,
   OnInit,
   afterNextRender,
@@ -28,10 +27,12 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
 import { AnsiToHtmlPipe } from '@app/pipes';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-logs-modal',
   standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     MatProgressSpinnerModule,
     MatIconModule,
@@ -72,19 +73,50 @@ export class LogsModalComponent implements OnInit {
   readonly expandedLogs = signal<Set<string>>(new Set());
 
   // --- Computed Logic ---
+  private readonly searchableLogs = computed(() => {
+    const logs = this.logs();
+    return logs.map(log => ({
+      log,
+      haystack: `${log.message.toLowerCase()} ${
+        log.context ? JSON.stringify(log.context).toLowerCase() : ''
+      }`,
+    }));
+  });
+
   readonly filteredLogs = computed(() => {
-    const allLogs = this.logs();
     const level = this.selectedLevel();
     const search = this.searchText().toLowerCase();
+    const items = this.searchableLogs();
 
-    return allLogs.filter(log => {
-      const matchesLevel = level ? log.level === level : true;
-      const matchesSearch = search
-        ? log.message.toLowerCase().includes(search) ||
-          (log.context && JSON.stringify(log.context).toLowerCase().includes(search))
-        : true;
-      return matchesLevel && matchesSearch;
-    });
+    return items
+      .filter(({ log, haystack }) => {
+        const matchesLevel = level ? log.level === level : true;
+        const matchesSearch = search ? haystack.includes(search) : true;
+        return matchesLevel && matchesSearch;
+      })
+      .map(({ log }) => log);
+  });
+
+  readonly logVm = computed(() => {
+    const map = new Map<
+      string,
+      {
+        copyText: string;
+        contextStr: string | null;
+        output: string | null;
+        translatedMessage: string;
+      }
+    >();
+    for (const log of this.logs()) {
+      const id = this.getLogId(log);
+      map.set(id, {
+        copyText: this.getFormattedLog(log),
+        contextStr: log.context ? this.formatContext(log.context) : null,
+        output: this.getCommandOutput(log),
+        translatedMessage: this.translateLogMessage(log.message),
+      });
+    }
+    return map;
   });
 
   readonly terminalLogArea = viewChild<ElementRef<HTMLDivElement>>('terminalLogArea');
@@ -208,7 +240,6 @@ export class LogsModalComponent implements OnInit {
     this.terminalLogArea()?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

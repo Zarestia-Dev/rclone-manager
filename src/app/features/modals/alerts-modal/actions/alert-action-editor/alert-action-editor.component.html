@@ -126,7 +126,7 @@
             </button>
           </div>
           <div formArrayName="headers" class="headers-list">
-            @for (header of headers.controls; track $index) {
+            @for (header of headers.controls; track header) {
               <div [formGroupName]="$index" class="header-row">
                 <mat-form-field appearance="fill" class="header-key">
                   <input matInput formControlName="key" placeholder="Authorization" />

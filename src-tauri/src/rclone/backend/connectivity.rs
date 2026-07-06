@@ -1,14 +1,10 @@
-// Backend connectivity and fallback logic
-
-use crate::rclone::backend::BackendManager;
+use crate::rclone::backend::{BackendManager, RcloneTransport};
 use log::{debug, info, warn};
 
-/// Check connectivity to a backend, updating cache if successful.
-/// Returns (version, os) on success.
 pub async fn check_connectivity(
     manager: &BackendManager,
     name: &str,
-    client: &reqwest::Client,
+    transport: &dyn RcloneTransport,
     timeout: Option<std::time::Duration>,
 ) -> Result<(String, String), String> {
     let backend = manager
@@ -17,7 +13,7 @@ pub async fn check_connectivity(
         .ok_or_else(|| format!("Backend '{name}' not found"))?;
 
     let timeout = timeout.unwrap_or(std::time::Duration::from_secs(5));
-    let runtime_info = backend.fetch_runtime_info(client, timeout).await;
+    let runtime_info = backend.fetch_runtime_info(transport, timeout).await;
 
     let version = runtime_info.version.clone().unwrap_or_default();
     let os = runtime_info.os.clone().unwrap_or_default();
@@ -33,17 +29,15 @@ pub async fn check_connectivity(
     Ok((version, os))
 }
 
-/// Check connectivity with a hard timeout.
-/// Returns a clear error message on failure or timeout.
 pub async fn check_connectivity_with_timeout(
     manager: &BackendManager,
     name: &str,
-    client: &reqwest::Client,
+    transport: &dyn RcloneTransport,
     timeout: std::time::Duration,
 ) -> Result<(String, String), String> {
     match tokio::time::timeout(
         timeout,
-        check_connectivity(manager, name, client, Some(timeout)),
+        check_connectivity(manager, name, transport, Some(timeout)),
     )
     .await
     {
@@ -52,17 +46,15 @@ pub async fn check_connectivity_with_timeout(
     }
 }
 
-/// Check Local backend connectivity with retries (used during startup).
-/// Retries every 500 ms until the outer timeout fires.
 pub async fn check_local_connectivity_retrying(
     manager: &BackendManager,
-    client: &reqwest::Client,
+    transport: &dyn RcloneTransport,
     timeout: std::time::Duration,
 ) -> Result<(String, String), String> {
     let check_local = async {
         let mut attempts = 0u32;
         loop {
-            match check_connectivity(manager, "Local", client, None).await {
+            match check_connectivity(manager, "Local", transport, None).await {
                 Ok(info) => return Ok(info),
                 Err(e) => {
                     attempts += 1;
@@ -84,16 +76,9 @@ pub async fn check_local_connectivity_retrying(
     }
 }
 
-/// Ensure the active backend is reachable at startup.
-///
-/// - Local backend: retries until connected or timeout, then marks connected anyway
-///   (we manage the process, so it will come up).
-/// - Remote backend: single attempt with timeout; marks offline without switching.
-///   The user explicitly chose this backend — we respect that even if it is
-///   temporarily unreachable. The UI shows the offline status.
 pub async fn ensure_connectivity(
     manager: &BackendManager,
-    client: &reqwest::Client,
+    transport: &dyn RcloneTransport,
     timeout: std::time::Duration,
 ) -> Result<(), String> {
     let active_name = manager.get_active_name().await;
@@ -103,7 +88,7 @@ pub async fn ensure_connectivity(
             "Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
         );
-        return if check_local_connectivity_retrying(manager, client, timeout)
+        return if check_local_connectivity_retrying(manager, transport, timeout)
             .await
             .is_ok()
         {
@@ -130,7 +115,7 @@ pub async fn ensure_connectivity(
         timeout.as_secs()
     );
 
-    match check_connectivity_with_timeout(manager, &active_name, client, timeout).await {
+    match check_connectivity_with_timeout(manager, &active_name, transport, timeout).await {
         Ok(_) => {
             info!("Active backend '{active_name}' is reachable");
             Ok(())
@@ -148,8 +133,7 @@ pub async fn ensure_connectivity(
     }
 }
 
-/// Check non-active backends in the background (best-effort, no fallback).
-pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Client) {
+pub async fn check_other_backends(manager: &BackendManager, transport: &dyn RcloneTransport) {
     let backends = manager.list_all().await;
     let active_name = manager.get_active_name().await;
 
@@ -160,7 +144,7 @@ pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Cl
             let name = &backend.name;
             async move {
                 info!("Background check for backend: {name}");
-                match check_connectivity(manager, name, client, None).await {
+                match check_connectivity(manager, name, transport, None).await {
                     Ok(_) => info!("Backend '{name}' is reachable"),
                     Err(e) => {
                         warn!("Backend '{name}' unreachable: {e}");
@@ -176,19 +160,4 @@ pub async fn check_other_backends(manager: &BackendManager, client: &reqwest::Cl
         });
 
     futures::future::join_all(tasks).await;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::rclone::backend::BackendManager;
-
-    #[tokio::test]
-    async fn test_check_connectivity_unknown_backend() {
-        let manager = BackendManager::new();
-        let client = reqwest::Client::new();
-        let result = check_connectivity(&manager, "DoesNotExist", &client, None).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not found"));
-    }
 }

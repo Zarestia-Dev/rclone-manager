@@ -36,7 +36,7 @@ import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/
     CopyToClipboardDirective,
   ],
   templateUrl: './nautilus-context-menu.component.html',
-  styleUrls: ['./nautilus-context-menu.component.scss'],
+  styleUrls: ['../../../styles/_slide-menu.scss'],
 })
 export class NautilusContextMenuComponent {
   // Services

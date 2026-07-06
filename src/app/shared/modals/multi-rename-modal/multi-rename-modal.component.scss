@@ -7,30 +7,10 @@
   max-width: 90vw;
 
   .segment-control {
-    display: flex;
-    background: var(--button-bg-color-hover, rgba(0, 0, 0, 0.05));
-    border-radius: 8px;
-    padding: 4px;
-    margin-bottom: var(--space-md);
+    border-radius: var(--radius-sm);
 
-    button {
+    ::ng-deep .mat-button-toggle {
       flex: 1;
-      border: none;
-      background: transparent;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: var(--font-size-sm);
-      font-weight: 500;
-      color: var(--window-fg-color-dim, #777);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      outline: none;
-
-      &.active {
-        background: var(--window-bg-color, #fff);
-        color: var(--window-fg-color, #000);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
     }
   }
 
@@ -68,41 +48,37 @@
     gap: var(--space-sm);
   }
 
-  .checkbox-row {
-    margin-bottom: var(--space-sm);
-  }
-
   .preview-container {
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
-    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
     display: flex;
     flex-direction: column;
     height: 250px;
-    background: var(--window-bg-color-dim, #fafafa);
+    background: var(--bg-elevated-2);
     overflow: hidden;
-    margin-top: var(--space-xs);
   }
 
   .preview-header {
     display: flex;
-    padding: 8px 16px;
-    background: var(--header-bg-color, rgba(0, 0, 0, 0.03));
+    padding: var(--space-xs) var(--space-md);
+    background: var(--bg-elevated-1);
     font-weight: 600;
     font-size: var(--font-size-xs);
-    color: var(--window-fg-color-dim, #666);
-    border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+    color: var(--dim-color);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .preview-list {
     flex: 1;
-    overflow-y: auto;
+    min-height: 0;
+    contain: strict;
   }
 
   .preview-row {
     display: flex;
     align-items: center;
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--border-color-dim, rgba(0, 0, 0, 0.03));
+    padding: var(--space-xs) var(--space-md);
+    border-bottom: 1px solid var(--bg-elevated-1);
     font-size: var(--font-size-sm);
 
     &:last-child {
@@ -110,10 +86,10 @@
     }
 
     &.has-error {
-      background: rgba(255, 59, 48, 0.06);
+      background: rgba(var(--warn-color-rgb), 0.06);
 
       .col-new {
-        color: var(--error-color, #ff3b30);
+        color: var(--warn-color);
         font-weight: 500;
       }
     }
@@ -131,7 +107,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: var(--window-fg-color-dim, #888);
+    color: var(--dim-color);
 
     mat-icon {
       transform: scale(0.8);
@@ -150,20 +126,9 @@
     justify-content: space-between;
 
     .error-icon {
-      color: var(--error-color, #ff3b30);
+      color: var(--warn-color);
       transform: scale(0.8);
-      margin-left: 4px;
+      margin-left: var(--space-xxs);
     }
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }

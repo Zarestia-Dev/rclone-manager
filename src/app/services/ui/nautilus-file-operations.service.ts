@@ -204,7 +204,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.notifications.openInput({
+    const ref = await this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.rename.title'),
       label: this.translate.instant('nautilus.modals.rename.label'),
       icon: 'pen',
@@ -445,7 +445,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.notifications.openInput({
+    const ref = await this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',
@@ -469,7 +469,7 @@ export class NautilusFileOperationsService {
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = this.notifications.openInput({
+    const ref = await this.notifications.openInput({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
       icon: 'download',
       createLabel: this.translate.instant('nautilus.modals.copyUrl.confirm'),

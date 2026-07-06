@@ -169,6 +169,7 @@ async fn discover_upload_entries(
     .map_err(|e| e.to_string())?
 }
 
+// TODO: Phase 3 — migrate multipart upload to transport (needs streaming trait method)
 pub async fn execute_upload_batch(
     app: AppHandle,
     params: UploadBatchParams,
@@ -479,6 +480,9 @@ pub async fn upload_local_drop_paths(
 }
 
 #[tauri::command]
+// TODO: Phase 3 — migrate multipart upload to transport (needs streaming trait method).
+// For now, upload_file branches on transport.kind(): desktop uses reqwest::multipart,
+// mobile (librclone) uses operations/copyfile from a temp file.
 pub async fn upload_file(
     app: AppHandle,
     remote: String,
@@ -486,11 +490,10 @@ pub async fn upload_file(
     name: String,
     content: Vec<u8>,
 ) -> Result<String, String> {
-    let state = app.state::<crate::utils::types::state::RcloneState>();
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
+    use crate::rclone::backend::TransportKind;
 
-    let client = &state.client;
+    let state = app.state::<crate::utils::types::state::RcloneState>();
+    let transport = state.transport.clone();
     let remote_dir = if path.is_empty() {
         String::new()
     } else if path.ends_with('/') {
@@ -499,30 +502,90 @@ pub async fn upload_file(
         format!("{path}/")
     };
 
-    let part = reqwest::multipart::Part::bytes(content)
-        .file_name(name.clone())
-        .mime_str("application/octet-stream")
-        .map_err(|e: reqwest::Error| e.to_string())?;
+    match transport.kind() {
+        // Desktop: use reqwest::multipart to stream the file bytes directly.
+        TransportKind::HttpDaemon => {
+            let backend_manager = app.state::<BackendManager>();
+            let backend = backend_manager.get_active().await;
+            let client = &state.client;
 
-    let resp = backend
-        .inject_auth(
-            client
-                .post(backend.url_for(operations::UPLOADFILE))
-                .query(&[("fs", &remote), ("remote", &remote_dir)]),
-        )
-        .multipart(reqwest::multipart::Form::new().part("file", part))
-        .send()
-        .await;
+            let part = reqwest::multipart::Part::bytes(content)
+                .file_name(name.clone())
+                .mime_str("application/octet-stream")
+                .map_err(|e: reqwest::Error| e.to_string())?;
 
-    match resp {
-        Ok(r) if r.status().is_success() => Ok("File uploaded successfully".to_string()),
-        Ok(r) => {
-            let status = r.status();
-            let err_text = r.text().await.unwrap_or_default();
-            let err_msg = parse_rclone_error(&err_text);
-            Err(format!("Upload failed: {status} - {err_msg}"))
+            let resp = backend
+                .inject_auth(
+                    client
+                        .post(backend.url_for(operations::UPLOADFILE))
+                        .query(&[("fs", &remote), ("remote", &remote_dir)]),
+                )
+                .multipart(reqwest::multipart::Form::new().part("file", part))
+                .send()
+                .await;
+
+            match resp {
+                Ok(r) if r.status().is_success() => Ok("File uploaded successfully".to_string()),
+                Ok(r) => {
+                    let status = r.status();
+                    let err_text = r.text().await.unwrap_or_default();
+                    let err_msg = parse_rclone_error(&err_text);
+                    Err(format!("Upload failed: {status} - {err_msg}"))
+                }
+                Err(e) => Err(format!("Network error: {e}")),
+            }
         }
-        Err(e) => Err(format!("Network error: {e}")),
+        // Mobile (librclone): the rc protocol doesn't accept multipart bodies.
+        // Write the bytes to a temp file, then use operations/copyfile to copy
+        // from the local temp file to the destination remote.
+        TransportKind::Librclone => {
+            use base64::Engine;
+            // For small files (< 16 MB), base64-encode into the JSON body of
+            // operations/uploadfile directly. This avoids the temp-file dance.
+            // For larger files, fall back to temp file + operations/copyfile.
+            const BASE64_THRESHOLD: usize = 16 * 1024 * 1024;
+
+            let dst_remote = if remote_dir.is_empty() {
+                name.clone()
+            } else {
+                format!("{remote_dir}{name}")
+            };
+
+            if content.len() < BASE64_THRESHOLD {
+                let b64 = base64::engine::general_purpose::STANDARD.encode(&content);
+                let payload = json!({
+                    "fs": &remote,
+                    "remote": &dst_remote,
+                    "file": b64,
+                });
+                transport
+                    .rpc(operations::UPLOADFILE, Some(&payload))
+                    .await
+                    .map_err(|e| format!("Upload failed: {e}"))?;
+                Ok("File uploaded successfully".to_string())
+            } else {
+                // Temp-file path: copyfile from ":file:<tmp>" to "<remote>:<dst>".
+                let tmp = tempfile::NamedTempFile::new()
+                    .map_err(|e| format!("Failed to create temp file: {e}"))?;
+                tokio::fs::write(tmp.path(), &content)
+                    .await
+                    .map_err(|e| format!("Failed to write temp file: {e}"))?;
+                let src_fs = format!(":file:{}", tmp.path().display());
+                let dst_fs = format!("{remote}:");
+                let payload = json!({
+                    "srcFs": src_fs,
+                    "srcRemote": tmp.path().file_name().and_then(|n| n.to_str()).unwrap_or("tmp"),
+                    "dstFs": dst_fs,
+                    "dstRemote": &dst_remote,
+                });
+                transport
+                    .rpc(operations::COPYFILE, Some(&payload))
+                    .await
+                    .map_err(|e| format!("Upload (copyfile) failed: {e}"))?;
+                // Temp file is auto-cleaned when `tmp` drops.
+                Ok("File uploaded successfully".to_string())
+            }
+        }
     }
 }
 

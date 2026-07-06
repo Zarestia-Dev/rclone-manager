@@ -32,8 +32,8 @@ app-alert-banner {
   position: relative;
   background: repeating-linear-gradient(
     -45deg,
-    rgba(var(--window-fg-color-rgb), 0.04),
-    rgba(var(--window-fg-color-rgb), 0.04) 10px,
+    var(--bg-elevated-1),
+    var(--bg-elevated-1) 10px,
     rgba(var(--orange-rgb), 0.1) 10px,
     rgba(var(--orange-rgb), 0.1) 20px
   ) !important;

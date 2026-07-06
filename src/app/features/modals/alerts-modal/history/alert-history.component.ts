@@ -299,9 +299,9 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       padding: 3px 10px;
       font-size: var(--font-size-sm);
       color: var(--dim-color);
-      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
+      background: var(--bg-elevated-1);
       border-radius: var(--radius-md);
-      box-shadow: 0 0 0 1px var(--border-color);
+      box-shadow: var(--ring-border);
       transition:
         color 0.2s,
         background 0.2s,
@@ -320,7 +320,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       &.has-unread {
         color: var(--warn-color);
         background: rgba(var(--warn-color-rgb), 0.1);
-        box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.4);
+        box-shadow: var(--ring-warn);
       }
     }
 

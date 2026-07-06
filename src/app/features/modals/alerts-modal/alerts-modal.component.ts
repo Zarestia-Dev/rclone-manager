@@ -119,7 +119,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       font-size: 11px;
       font-weight: 700;
       line-height: 1;
-      background: rgba(var(--window-fg-color-rgb), 0.1);
+      background: var(--bg-elevated-4);
       color: var(--dim-color);
     }
   `,
