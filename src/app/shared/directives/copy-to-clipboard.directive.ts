@@ -12,15 +12,15 @@ import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 
 /**
- * Directive to add "Copy to Clipboard" behavior to any element.
- * Self-contained: handles copying and user feedback.
+ * Copy-to-clipboard behavior for any element.
  *
- * Usage:
- * <button [appCopyToClipboard]="textToCopy">Copy</button>
+ * Usage: `<button [appCopyToClipboard]="textToCopy">Copy</button>`
+ *
+ * Self-contained: handles copying and user feedback (snackbar).
+ * Skips copying when the user has manually selected text inside the host element.
  */
 @Directive({
   selector: '[appCopyToClipboard]',
-  standalone: true,
 })
 export class CopyToClipboardDirective {
   private readonly clipboard = inject(Clipboard);
@@ -28,13 +28,13 @@ export class CopyToClipboardDirective {
   private readonly notificationService = inject(NotificationService);
   private readonly elementRef = inject(ElementRef);
 
-  /** The text to be copied to the clipboard */
+  /** The text to be copied to the clipboard. */
   copyText = input.required<string | null | undefined>({ alias: 'appCopyToClipboard' });
 
-  /** Optional: whether to show the snackbar notification (default: true) */
+  /** Whether to show the snackbar notification (default: true). */
   showNotification = input<boolean>(true);
 
-  /** Emits when copying was performed, emitting true on success, false on failure */
+  /** Emits true on success, false on failure. */
   readonly copied = output<boolean>();
 
   @HostBinding('style.cursor')

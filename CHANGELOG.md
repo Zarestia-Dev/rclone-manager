@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
 - New background for dmg installer.
 **Librclone Support**: Added support for librclone. This one is a testing feature for future mobile release. This is not ready for use yet. When librclone enabled, Rclone updates, proccess management became disabled. Remote rclone instances still supported.
+- **Deeplink support**: Added support for deeplinks. When a deeplink is opened, the application will open and handle deeplinks.
 
 ### Changed
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.

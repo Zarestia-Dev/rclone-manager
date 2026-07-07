@@ -32,7 +32,6 @@ export interface KeyboardCallbacks {
 
 @Directive({
   selector: '[appNautilusKeyboard]',
-  standalone: true,
 })
 export class NautilusKeyboardDirective {
   private readonly dialog = inject(MatDialog);

@@ -23,7 +23,6 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
 
 @Component({
   selector: 'app-sidebar',
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatCardModule,

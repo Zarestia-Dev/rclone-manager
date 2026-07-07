@@ -3,7 +3,6 @@ import { TranslateService } from '@ngx-translate/core';
 
 @Pipe({
   name: 'rcloneOptionTranslate',
-  standalone: true,
   pure: true,
 })
 export class RcloneOptionTranslatePipe implements PipeTransform {

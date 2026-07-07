@@ -14,7 +14,9 @@ use crate::utils::types::origin::Origin;
 
 /// Alert severity levels, ordered from lowest to highest.
 /// Used to filter which events trigger a rule.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum AlertSeverity {
     #[default]
@@ -43,8 +45,8 @@ impl AlertSeverity {
     }
 
     /// Numeric severity code (delegates to the enum discriminant).
-    pub fn as_code(&self) -> u8 {
-        self.clone() as u8
+    pub fn as_code(self) -> u8 {
+        self as u8
     }
 }
 

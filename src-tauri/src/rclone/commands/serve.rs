@@ -1,11 +1,12 @@
+use std::collections::HashMap;
+
 use log::{debug, info, warn};
 use serde_json::{Value, json};
-use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 use crate::{
     core::paths::AppPaths,
-    rclone::{backend::BackendManager, state::watcher::force_check_serves},
+    rclone::{backend::BackendManager, state::watcher::refresh_serves_quietly},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
         logging::log::log_operation,
@@ -285,9 +286,7 @@ pub async fn start_serve(
     );
 
     // Refresh first so the entry exists in cache, then attach the profile to it.
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
+    refresh_serves_quietly(&app).await;
     backend_manager
         .remote_cache
         .store_serve_profile(&serve_id, params.profile.clone())
@@ -377,9 +376,7 @@ pub async fn stop_serve(
         None,
     );
 
-    if let Err(e) = force_check_serves(app.clone()).await {
-        warn!("Failed to refresh serves: {e}");
-    }
+    refresh_serves_quietly(&app).await;
     info!("✅ Serve {server_id} stopped successfully");
 
     let backend_name = backend_manager.get_active_name().await;
@@ -408,10 +405,8 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
     let serves = backend_manager.remote_cache.get_serves().await;
     if serves.is_empty() || context.is_shutdown() {
         debug!("No active serves to stop — skipping STOPALL");
-        if !context.is_shutdown()
-            && let Err(e) = force_check_serves(app.clone()).await
-        {
-            warn!("Failed to refresh serves: {e}");
+        if !context.is_shutdown() {
+            refresh_serves_quietly(&app).await;
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
@@ -421,10 +416,8 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
         warn!("Failed to stop all serves: {e}");
     }
 
-    if !context.is_shutdown()
-        && let Err(e) = force_check_serves(app.clone()).await
-    {
-        warn!("Failed to refresh serves: {e}");
+    if !context.is_shutdown() {
+        refresh_serves_quietly(&app).await;
     }
 
     info!("✅ All serves stopped successfully");

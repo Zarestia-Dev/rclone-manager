@@ -25,11 +25,10 @@ import {
   InstallationTabOption,
   LocationType,
   BinaryStatus,
-} from '../../types';
+} from '@app/types';
 
 @Component({
   selector: 'app-installation-options',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,

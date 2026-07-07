@@ -47,7 +47,6 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 @Component({
   selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatSidenavModule,
     MatDividerModule,

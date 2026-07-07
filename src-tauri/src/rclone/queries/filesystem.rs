@@ -192,6 +192,23 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
     // Refresh disk information
     let sys_disks = Disks::new_with_refreshed_list();
 
+    // Pre-build a lookup table keyed by normalized mount point so we don't
+    // do an O(N×M) linear scan with `format!` allocations per disk path.
+    // The original code called `sys_disks.iter().find(...)` with three
+    // `format!` allocations per comparison, which is O(N×M) string allocs.
+    let sys_disk_by_mount: HashMap<String, usize> = {
+        let mut map = HashMap::with_capacity(sys_disks.len());
+        for (idx, d) in sys_disks.iter().enumerate() {
+            let mp = d.mount_point().to_string_lossy().into_owned();
+            map.insert(mp.clone(), idx);
+            // Also index with a trailing slash variant for fuzzy matching.
+            if !mp.ends_with('/') {
+                map.insert(format!("{mp}/"), idx);
+            }
+        }
+        map
+    };
+
     #[cfg(target_os = "linux")]
     let labels = {
         let mut map = HashMap::new();
@@ -227,13 +244,18 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                 p
             };
 
-            // Find a matching disk in sysinfo by mount point
-            let sys_disk = sys_disks.iter().find(|d| {
-                let mp = d.mount_point().to_string_lossy();
-                mp == normalized_path
-                    || mp == format!("{normalized_path}/")
-                    || format!("{mp}/") == format!("{normalized_path}/")
-            });
+            // O(1) lookup with fuzzy trailing-slash matching.
+            let sys_disk_idx = sys_disk_by_mount
+                .get(&normalized_path)
+                .or_else(|| {
+                    if !normalized_path.ends_with('/') {
+                        sys_disk_by_mount.get(&format!("{normalized_path}/"))
+                    } else {
+                        None
+                    }
+                })
+                .copied();
+            let sys_disk = sys_disk_idx.map(|i| &sys_disks[i]);
 
             let folder_name = normalized_path
                 .split(['/', '\\'])

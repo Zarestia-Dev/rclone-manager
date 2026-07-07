@@ -3,15 +3,14 @@ use std::path::PathBuf;
 use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::core::settings::AppSettingsManager;
-use crate::rclone::engine::lifecycle::start_engine_if_not_running;
 use crate::{
-    core::automation::engine::AutomationScheduler,
+    core::{automation::engine::AutomationScheduler, settings::AppSettingsManager},
     rclone::{
         backend::{
             BackendManager,
             types::{Backend, BackendInfo},
         },
+        engine::lifecycle::start_engine_if_not_running,
         state::automations::AutomationsCache,
     },
     utils::{

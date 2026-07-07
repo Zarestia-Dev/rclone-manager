@@ -16,7 +16,6 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
 @Component({
   selector: 'app-alert-actions',
-  standalone: true,
   imports: [
     MatTableModule,
     MatButtonModule,
@@ -297,6 +296,7 @@ export class AlertActionsComponent {
     this.dialog
       .open(AlertActionEditorComponent, {
         width: '600px',
+        maxHeight: '80vh',
         disableClose: false,
         data: { actionId: undefined },
       })
@@ -310,6 +310,7 @@ export class AlertActionsComponent {
     this.dialog
       .open(AlertActionEditorComponent, {
         width: '600px',
+        maxHeight: '80vh',
         disableClose: false,
         data: { actionId: action.id },
       })

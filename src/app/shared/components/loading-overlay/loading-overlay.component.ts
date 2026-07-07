@@ -5,7 +5,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-loading-overlay',
-  standalone: true,
   imports: [MatIconModule, TranslatePipe],
   templateUrl: './loading-overlay.component.html',
   styleUrls: ['./loading-overlay.component.scss'],

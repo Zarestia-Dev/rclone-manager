@@ -48,7 +48,6 @@ import {
 
 @Component({
   selector: 'app-preferences-modal',
-  standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,

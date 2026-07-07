@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ if .OK }}Success!{{ else }}Failure!{{ end }} - RClone Manager</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgICA8cGF0aAogICAgICAgIGQ9Ik0yNTYgNTAwQzM4OC41NDggNTAwIDQ5NiAzOTQuMzM5IDQ5NiAyNjRDNDk2IDEzMy42NjEgMzg4LjU0OCAyOCAyNTYgMjhDMTIzLjQ1MiAyOCAxNiAxMzMuNjYxIDE2IDI2NEMxNiAzOTQuMzM5IDEyMy40NTIgNTAwIDI1NiA1MDBaIgogICAgICAgIGZpbGw9InVybCgjcGFpbnQwX2xpbmVhcl8zNzFfMTIzMikiIC8+CiAgICA8cGF0aAogICAgICAgIGQ9Ik0yNTYgNDg0QzM4OC41NDggNDg0IDQ5NiAzNzguMzM5IDQ5NiAyNDhDNDk2IDExNy42NjEgMzg4LjU0OCAxMiAyNTYgMTJDMTIzLjQ1MiAxMiAxNiAxMTcuNjYxIDE2IDI0OEMxNiAzNzguMzM5IDEyMy40NTIgNDg0IDI1NiA0ODRaIgogICAgICAgIGZpbGw9InVybCgjcGFpbnQxX2xpbmVhcl8zNzFfMTIzMikiIC8+CiAgICA8cGF0aAogICAgICAgIGQ9Ik0zODQuMDgyIDI1Mi42MUMzNzUuMjI5IDIzNy4yNzcgMzYyLjM0OCAyMjUuNzE5IDM0Ny41NDQgMjE4LjUwNEMzNDUuNjUgMjI4LjYxNyAzNDIuMDY2IDIzOC41ODUgMzM2LjYzNiAyNDcuOTkyTDMyOC4wNjkgMjYyLjg2QzMzMy43NzUgMjY2LjAzIDMzOC43NDMgMjcwLjY5NyAzNDIuMjQ3IDI3Ni43NjVDMzUyLjU0IDI5NC41OSAzNDYuNDI4IDMxNy4zOTIgMzI4LjU5OCAzMjcuNjg2QzMxMC43NzIgMzM3Ljk3OSAyODcuOTcxIDMzMS48NzEgMjc3LjY3NyAzMTQuMDQxTDI2MC4zODkgMjg0LjE0NUgyMzIuNDkxTDIxOC41NDIgMzA4LjMwM0wyMzUuODQyIDMzOC4xOTZDMjU5LjQ3OCAzNzkuMTMyIDMxMS48MiAzOTMuMTU4IDM1Mi43NTcgMzY5LjUyMUMzOTMuNjg5IDM0NS44ODkgNDA3LjcxNSAyOTMuNTQ3IDM4NC4wODIgMjUyLjYxWiIKICAgICAgICBmaWxsPSIjNzBDQUYyIiAvPgogICAgPHBhdGgKICAgICAgICBkPSJNMjk4LjM2MiAxMjcuMDY1QzI1Ny40MjUgMTAzLjQzMiAyMDUuMDgzIDExNy40NTggMTgxLjQ1MSAxNTguMzlDMTcyLjU5NCAxNzMuNzI0IDE2OS4wMyAxOTAuNjU5IDE3MC4xODIgMjA3LjA4OEMxNzkuODg2IDIwMy42NzMgMTkwLjMxMSAyMDEuNzkxIDIwMS4xNzUgMjAxLjc5MUwyMTguMzMgMjAxLjc3NUMyMTguMjIyIDE5NS4yNSAyMTkuNzgzIDE4OC42MTIgMjIzLjI4MiAxODIuNTQ5QzIzMy41OCAxNjQuNzE5IDI1Ni4zNzggMTU4LjYwNyAyNzQuMjA3IDE2OC45MDRDMjkyLjAzNyAxNzkuMTk4IDI5OC4xNDUgMjAxLjk5NSAyODcuODUyIDIxOS44MjVMMjcwLjYwOCAyNDkuNzQ2TDI4NC41NTMgMjczLjkwOEwzMTIuNDUxIDI3My45MDRMMzI5LjY4NyAyNDMuOTc1QzM1My4zMjQgMjAzLjA0MyAzMzkuMjk4IDE1MC42OTcgMjk4LjM2MiAxMjcuMDY1WiIKICAgICAgICBmaWxsPSIjQjRFM0Y5IiAvPgogICAgPHBhdGgKICAgICAgICBkPSJNMjI4Ljg5NyAzNDIuMjExTDIyMC4zMDEgMzI3LjM1OUMyMTguNzAzIDMzOC43MTggMjA4LjE3OCAzMzIuNjg1IDIwMS4xNzUgMzMyLjY4NUMxODAuNTg0IDMzMi42ODUgMTYzLjg5NCAzMTUuOTk1IDE2My44OTQgMjk1LjQwNEMxNjMuODk0Mjc0LjgxNyAxODAuNTg0IDI1OC4xMjcgMjAxLjE3NSAyNTguMTI3TDIzNS43MDcgMjU4LjEwM0wyNDkuNjYgMjMzLjk0NUwyMzUuNzA3IDIwOS43ODdMMjAxLjE3MSAyMDkuODE5QzE1My45OTQgMjA5LjE5IDExNS45ODUgMjQ4LjEzOSAxMTUuNTg1Ljk1NDA0QzExNS41ODUgMzQyLjY3MyAxNTMuOTAyIDM4MC45OTMgMjAxLjE3MSAzODAuOTkzQzIxOC44NzIgMzgwLjk5MyAyMzUuMzE0IDM3NS42MTYgMjQ4Ljk2MiAzNjYuNDE0QzI0MS4xNTMgMzU5LjcxNiAyMzQzMjYgMzUxLjYxNCAyMjguODk3IDM0Mi4yMTFaIgogICAgICAgIGZpbGw9IiMzRjc5QUQiIC8+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9InBhaW50MF9saW5lYXJfMzcxXzEyMzIiIHgxPSIxNiIgeTE9IjI2NCIgeDI9IjQ5NiIgeTI9IjI2NCIgZ3JhZGludFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiMzRjc5QUQiIC8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMC40MTMwOTciIHN0b3AtY29sb3I9IiNFQkY1RkYiIC8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMC44MDgyNDciIHN0b3AtY29sb3I9IiM3MENBRjIiIC8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0U0RUZGOCIgLz4KICAgICAgICAvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJwYWludDFfbGluZWFyXzM3MV8xMjMyIiB4MT0iMjU1Ljc1OSIgeTE9IjExLjk5OTMiIHgyPSIyNTUuNzk5IiB5Mj0iNDgwLjIyNiIKICAgICAgICAgICAgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0id2hpdGUiIC8+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0RCREJEQiIgLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgo8L3N2Zz4="
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      :root {
+        /* Libadwaita Light Theme */
+        color-scheme: light;
+        --bg-color: #fafafb;
+        --card-bg: #ffffff;
+        --header-bg: #ffffff;
+        --text-color: rgba(0, 0, 6, 0.85);
+        --text-muted: rgba(0, 0, 6, 0.55);
+
+        --accent-color: #3584e4; /* gnome-blue-3 */
+        --accent-hover: #1b6ac6;
+        --accent-active: #15539e;
+        --accent-bg: rgba(53, 132, 228, 0.1);
+
+        --border-color: rgba(0, 0, 0, 0.12);
+        --hover-bg: rgba(0, 0, 6, 0.07);
+
+        --success-color: #2ec27e; /* gnome-green-4 */
+        --success-bg: rgba(46, 194, 126, 0.12);
+
+        --error-color: #ed333b; /* gnome-red-2 */
+        --error-bg: rgba(237, 51, 59, 0.12);
+
+        --code-bg: rgba(0, 0, 6, 0.04);
+        --code-border: rgba(0, 0, 0, 0.06);
+
+        --radius-lg: 12px;
+        --radius-md: 8px;
+        --radius-sm: 6px;
+
+        --transition-speed: 0.15s;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 30px rgba(0, 0, 0, 0.04);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          /* Libadwaita Dark Theme */
+          color-scheme: dark;
+          --bg-color: #1e1e1e;
+          --card-bg: #2e2e32;
+          --header-bg: #2e2e32;
+          --text-color: #ffffff;
+          --text-muted: rgba(255, 255, 255, 0.55);
+
+          --accent-color: #3584e4;
+          --accent-hover: #62a0ea; /* gnome-blue-2 */
+          --accent-active: #1b6ac6;
+          --accent-bg: rgba(53, 132, 228, 0.15);
+
+          --border-color: rgba(255, 255, 255, 0.08);
+          --hover-bg: rgba(255, 255, 255, 0.07);
+
+          --success-color: #2ec27e;
+          --success-bg: rgba(46, 194, 126, 0.15);
+
+          --error-color: #ed333b;
+          --error-bg: rgba(237, 51, 59, 0.15);
+
+          --code-bg: rgba(255, 255, 255, 0.04);
+          --code-border: rgba(255, 255, 255, 0.06);
+
+          --shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      /* Libadwaita window card */
+      .app-window {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: windowShow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      /* Libadwaita Header Bar */
+      .header-bar {
+        height: 48px;
+        background-color: var(--header-bg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 16px;
+        position: relative;
+      }
+
+      .header-title {
+        font-size: 13.5px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        opacity: 0.9;
+      }
+
+      .app-logo {
+        flex-shrink: 0;
+      }
+
+      /* Content Area */
+      .window-content {
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      /* Circle status badges matching GNOME pattern */
+      .status-badge {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+        animation: badgePulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
+        opacity: 0;
+        transform: scale(0.6);
+      }
+
+      .badge-success {
+        background-color: var(--success-bg);
+        color: var(--success-color);
+      }
+
+      .badge-error {
+        background-color: var(--error-bg);
+        color: var(--error-color);
+      }
+
+      h1 {
+        font-size: 19px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: -0.02em;
+      }
+
+      .description {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin-bottom: 28px;
+      }
+
+      /* Buttons styled matching Libadwaita theme */
+      .action-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .btn {
+        font-family: inherit;
+        font-size: 13.5px;
+        font-weight: 600;
+        min-height: 40px;
+        width: 100%;
+        border-radius: var(--radius-md);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition:
+          background-color var(--transition-speed),
+          border-color var(--transition-speed),
+          transform 0.08s ease;
+        outline: none;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        background-color: var(--accent-color);
+        color: #ffffff;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--accent-hover);
+      }
+
+      .btn-primary:active {
+        background-color: var(--accent-active);
+      }
+
+      .btn-secondary {
+        background-color: transparent;
+        border-color: var(--border-color);
+        color: var(--text-color);
+      }
+
+      .btn-secondary:hover {
+        background-color: var(--hover-bg);
+      }
+
+      .btn-secondary:active {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+
+      /* Error Details Monospace Block */
+      .error-card {
+        width: 100%;
+        background-color: var(--code-bg);
+        border: 1px solid var(--code-border);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        text-align: left;
+        margin-bottom: 24px;
+        font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 12.5px;
+        max-height: 160px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .error-label {
+        color: var(--error-color);
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .error-text {
+        color: var(--text-color);
+        opacity: 0.9;
+      }
+
+      .help-link {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 8px;
+        color: var(--accent-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .help-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Animations */
+      @keyframes windowShow {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes badgePulse {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      /* Mobile view optimizations */
+      @media (max-width: 480px) {
+        body {
+          padding: 0;
+          align-items: flex-start;
+        }
+        .app-window {
+          max-width: 100%;
+          min-height: 100vh;
+          border: none;
+          border-radius: 0;
+        }
+        .window-content {
+          flex: 1;
+          justify-content: center;
+          padding: 40px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-window">
+      <div class="header-bar">
+        <!-- RClone Manager Inline SVG Logo -->
+        <svg
+          class="app-logo"
+          width="22"
+          height="22"
+          viewBox="0 0 512 512"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M256 500C388.548 500 496 394.339 496 264C496 133.661 388.548 28 256 28C123.452 28 16 133.661 16 264C16 394.339 123.452 500 256 500Z"
+            fill="url(#paint0_linear_371_1232)"
+          />
+          <path
+            d="M256 484C388.548 484 496 378.339 496 248C496 117.661 388.548 12 256 12C123.452 12 16 117.661 16 248C16 378.339 123.452 484 256 484Z"
+            fill="url(#paint1_linear_371_1232)"
+          />
+          <path
+            d="M384.082 252.61C375.229 237.277 362.348 225.719 347.544 218.504C345.65 228.617 342.066 238.585 336.636 247.992L328.069 262.86C333.775 266.03 338.743 270.697 342.247 276.765C352.54 294.59 346.428 317.392 328.598 327.686C310.772 337.979 287.971 331.871 277.677 314.041L260.389 284.145H232.491L218.542 308.303L235.842 338.196C259.478 379.132 311.82 393.158 352.757 369.521C393.689 345.889 407.715 293.547 384.082 252.61Z"
+            fill="#70CAF2"
+          />
+          <path
+            d="M298.362 127.065C257.425 103.432 205.083 117.458 181.451 158.39C172.594 173.724 169.03 190.659 170.182 207.088C179.886 203.673 190.311 201.791 201.175 201.791L218.33 201.775C218.222 195.25 219.783 188.612 223.282 182.549C233.58 164.719 256.378 158.607 274.207 168.904C292.037 179.198 298.145 201.995 287.852 219.825L270.608 249.746L284.553 273.908L312.451 273.904L329.687 243.975C353.324 203.043 339.298 150.697 298.362 127.065Z"
+            fill="#B4E3F9"
+          />
+          <path
+            d="M228.897 342.211L220.301 327.359C214.703 330.718 208.178 332.685 201.175 332.685C180.584 332.685 163.894 315.995 163.894 295.404C163.894 274.817 180.584 258.127 201.175 258.127L235.707 258.103L249.66 233.945L235.707 209.787L201.171 209.819C153.902 209.819 115.585 248.139 115.585 295.404C115.585 342.673 153.902 380.993 201.171 380.993C218.872 380.993 235.314 375.616 248.962 366.414C241.153 359.716 234.326 351.614 228.897 342.211Z"
+            fill="#3F79AD"
+          />
+          <defs>
+            <linearGradient
+              id="paint0_linear_371_1232"
+              x1="16"
+              y1="264"
+              x2="496"
+              y2="264"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stop-color="#3F79AD" />
+              <stop offset="0.413097" stop-color="#EBF5FF" />
+              <stop offset="0.808247" stop-color="#70CAF2" />
+              <stop offset="1" stop-color="#E4EFF8" />
+            </linearGradient>
+            <linearGradient
+              id="paint1_linear_371_1232"
+              x1="255.759"
+              y1="11.9993"
+              x2="255.759"
+              y2="480.226"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stop-color="white" />
+              <stop offset="1" stop-color="#DBDBDB" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="header-title">RClone Manager</div>
+      </div>
+
+      <div class="window-content">
+        {{ if .OK }}
+        <!-- Success State -->
+        <div class="status-badge badge-success">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="34"
+            height="34"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+
+        <h1>Authorization Successful</h1>
+        <p class="description">
+          RClone Manager has been successfully authorized. Click the button below to return to the
+          application.
+        </p>
+
+        <div class="action-group">
+          <a id="deepLinkBtn" href="rclone-manager://oauth?status=success" class="btn btn-primary">
+            Open RClone Manager
+          </a>
+          <button onclick="closeTab()" class="btn btn-secondary">Close Tab</button>
+        </div>
+        {{ else }}
+        <!-- Failure State -->
+        <div class="status-badge badge-error">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="30"
+            height="30"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+
+        <h1>Authorization Failed</h1>
+        <p class="description">An error occurred during authentication. See details below.</p>
+
+        <div class="error-card">
+          <div class="error-label">Error: {{ .Name }}</div>
+          {{ if .Description }}
+          <div class="error-text">{{ .Description }}</div>
+          {{ end }} {{ if .Code }}
+          <div class="error-text" style="margin-top: 6px; opacity: 0.7; font-size: 11.5px">
+            Code: {{ .Code }}
+          </div>
+          {{ end }}
+          {{ if .HelpURL }}
+          <a href="{{ .HelpURL }}" target="_blank" class="help-link">View documentation</a>
+          {{ end }}
+        </div>
+
+        <div class="action-group">
+          <a
+            id="deepLinkBtn"
+            href="rclone-manager://oauth?status=error&error={{ .Name }}"
+            class="btn btn-primary"
+          >
+            Open RClone Manager
+          </a>
+          <button onclick="closeTab()" class="btn btn-secondary">Close Tab</button>
+        </div>
+        {{ end }}
+      </div>
+    </div>
+
+    <script>
+      function closeTab() {
+        window.close();
+
+        // Fallback for browsers blocking script-based closing
+        setTimeout(() => {
+          const desc = document.querySelector('.description');
+          if (desc) {
+            desc.innerHTML =
+              '<span style="color: var(--accent-color); font-weight: 600; display: block; margin-top: 12px;">Please close this browser tab manually.</span>';
+          }
+        }, 150);
+      }
+    </script>
+  </body>
+</html>

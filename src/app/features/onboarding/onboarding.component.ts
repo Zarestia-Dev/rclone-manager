@@ -34,7 +34,6 @@ import {
 
 @Component({
   selector: 'app-onboarding',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,

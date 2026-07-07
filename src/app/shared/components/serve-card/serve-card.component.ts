@@ -11,7 +11,6 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 
 @Component({
   selector: 'app-serve-card',
-  standalone: true,
   imports: [
     UpperCasePipe,
     MatCardModule,

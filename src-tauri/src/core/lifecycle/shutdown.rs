@@ -2,10 +2,14 @@ use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::core::automation::engine::AutomationScheduler;
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves};
-use crate::utils::types::{events::APP_EVENT, state::RcloneState};
+use crate::{
+    core::automation::engine::AutomationScheduler,
+    rclone::{
+        backend::BackendManager,
+        commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+    },
+    utils::types::{events::APP_EVENT, state::RcloneState},
+};
 
 #[cfg(not(feature = "librclone"))]
 use crate::rclone::engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT};

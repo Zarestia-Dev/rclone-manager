@@ -9,12 +9,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
-import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
-import { RcloneOptionTranslatePipe } from '../../pipes/rclone-option-translate.pipe';
+import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
+import { RcloneOptionTranslatePipe } from '@app/pipes';
 
 @Component({
   selector: 'app-obscure-tool',
-  standalone: true,
   imports: [
     FormsModule,
     ReactiveFormsModule,

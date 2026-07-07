@@ -20,14 +20,13 @@ import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.s
 import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { CopyToClipboardDirective } from 'src/app/shared/directives/copy-to-clipboard.directive';
+import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { SlideMenuController } from '../slide-menu';
 import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-context-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     TranslatePipe,
     MatIconModule,

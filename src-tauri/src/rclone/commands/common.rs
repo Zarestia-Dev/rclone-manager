@@ -1,18 +1,21 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use serde_json::json;
+use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::core::settings::AppSettingsManager;
-use crate::rclone::backend::BackendError;
-use crate::utils::json_helpers::{
-    get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
+use crate::{
+    core::settings::AppSettingsManager,
+    rclone::backend::BackendError,
+    utils::{
+        json_helpers::{get_string, interpolate_value, json_to_hashmap, resolve_profile_options},
+        rclone::endpoints::operations,
+        types::{
+            remotes::{ProfileConfig, helper_config_keys},
+            state::RcloneState,
+        },
+    },
 };
-use crate::utils::rclone::endpoints::operations;
-use crate::utils::types::remotes::{ProfileConfig, helper_config_keys};
-use crate::utils::types::state::RcloneState;
 
 #[cfg(not(feature = "librclone"))]
 use crate::rclone::backend::types::Backend;

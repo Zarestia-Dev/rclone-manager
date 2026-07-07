@@ -20,7 +20,6 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
-  standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
     MatTableModule,

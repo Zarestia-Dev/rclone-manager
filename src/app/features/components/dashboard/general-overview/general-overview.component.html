@@ -330,9 +330,9 @@
                               ></mat-progress-bar>
                               <div class="progress-details" role="row">
                                 <span role="gridcell">
-                                  {{ stats.bytes | formatBytes }}
+                                  {{ stats.bytes | formatRateValue }}
                                   {{ 'generalOverview.jobs.of' | translate }}
-                                  {{ stats.totalBytes | formatBytes }}
+                                  {{ stats.totalBytes | formatRateValue }}
                                 </span>
                                 <span role="gridcell">
                                   {{ 'generalOverview.jobs.eta' | translate }}
@@ -350,7 +350,7 @@
                                 }}</span>
                                 <span class="value" [class.error]="item.error" role="gridcell">
                                   @if (item.formatAsBytes) {
-                                    {{ $any(item.value) | formatBytes }}
+                                    {{ $any(item.value) | formatRateValue }}
                                   } @else {
                                     {{ item.value }}
                                   }
@@ -400,7 +400,7 @@
 
                                     @if (job.stats; as jStats) {
                                       <div class="running-job-meta">
-                                        <span>{{ jStats.bytes | formatBytes }}</span>
+                                        <span>{{ jStats.bytes | formatRateValue }}</span>
                                         <span class="dot-separator">•</span>
                                         <span>{{
                                           jStats.speed > 0
@@ -421,7 +421,7 @@
                                       ></mat-progress-bar>
                                     } @else {
                                       <div class="running-job-meta">
-                                        <span>{{ 0 | formatBytes }}</span>
+                                        <span>{{ 0 | formatRateValue }}</span>
                                         <span class="dot-separator">•</span>
                                         <span>{{
                                           'generalOverview.jobs.starting' | translate

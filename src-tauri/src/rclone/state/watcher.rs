@@ -83,3 +83,23 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
     check_and_reconcile_serves(app_handle.clone(), backend, cache).await?;
     Ok(())
 }
+
+/// Fire-and-forget refresh of the mounted-remotes cache.
+///
+/// Equivalent to `force_check_mounted_remotes` but swallows the error into a
+/// `warn!` log line — useful after mount/unmount operations where a refresh
+/// failure is not actionable by the caller.
+pub async fn refresh_mounts_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+        warn!("Failed to refresh mounted remotes: {e}");
+    }
+}
+
+/// Fire-and-forget refresh of the serves cache.
+///
+/// See [`refresh_mounts_quietly`] for rationale.
+pub async fn refresh_serves_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
+}

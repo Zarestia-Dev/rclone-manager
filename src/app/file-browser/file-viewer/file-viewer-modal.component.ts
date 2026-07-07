@@ -49,7 +49,6 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
 @Component({
   selector: 'app-file-viewer-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatButtonModule,
     MatProgressSpinnerModule,

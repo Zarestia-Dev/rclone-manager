@@ -35,7 +35,7 @@
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
   </a>
-  <a href="https://hakanismail.info/zarestia/donate">
+  <a href="https://hakanismail.info/zarestia/support">
     <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
@@ -129,7 +129,7 @@ Instala RClone Manager usando tu gestor de paquetes preferido, o descarga los bi
 
 - **Licencia:** Distribuido bajo la licencia [GNU GPLv3](LICENSE) – libre para usar, modificar y distribuir.
 - **Soporte:** Si te gusta este proyecto, ¡considera dejar una ⭐ en GitHub!
-- **Donar:** Si RClone Manager te ahorra tiempo, considera [apoyar el desarrollo](https://hakanismail.info/zarestia/donate) ❤️
+- **Donar:** Si RClone Manager te ahorra tiempo, considera [apoyar el desarrollo](https://hakanismail.info/zarestia/support) ❤️
 
 <p align="center">
   Creado con ❤️ por el equipo de desarrollo de Zarestia<br>

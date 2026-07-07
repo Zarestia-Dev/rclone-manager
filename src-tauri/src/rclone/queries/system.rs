@@ -1,10 +1,15 @@
-use serde_json::json;
 use std::path::PathBuf;
+
+use serde_json::json;
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::utils::rclone::endpoints::{config, core};
-use crate::utils::types::state::RcloneState;
+use crate::{
+    rclone::backend::BackendManager,
+    utils::{
+        rclone::endpoints::{config, core},
+        types::state::RcloneState,
+    },
+};
 
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {

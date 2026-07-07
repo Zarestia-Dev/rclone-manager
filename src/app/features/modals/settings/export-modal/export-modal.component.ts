@@ -59,7 +59,6 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
 @Component({
   selector: 'app-export-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatIconModule,
     MatFormFieldModule,

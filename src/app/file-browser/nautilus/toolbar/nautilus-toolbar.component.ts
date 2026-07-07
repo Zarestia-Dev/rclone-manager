@@ -27,7 +27,6 @@ import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.
 @Component({
   selector: 'app-nautilus-toolbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatToolbarModule,
     MatIconModule,

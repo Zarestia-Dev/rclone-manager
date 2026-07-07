@@ -274,22 +274,24 @@ pub async fn execute_upload_batch(
                 let file = match tokio::fs::File::open(&file_path).await {
                     Ok(f) => f,
                     Err(e) => {
+                        // Build JSON outside the lock to minimize contention.
+                        let err_msg = format!("Failed to open {filename}: {e}");
+                        let completed_entry = json!({
+                            "name": filename,
+                            "size": 0,
+                            "bytes": 0,
+                            "checked": false,
+                            "error": err_msg,
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
+                        });
                         let stats = {
                             let mut state = progress.lock().unwrap();
-                            let err_msg = format!("Failed to open {filename}: {e}");
-                            state.errors.push(err_msg.clone());
-                            state.completed.push(json!({
-                                "name": filename,
-                                "size": 0,
-                                "bytes": 0,
-                                "checked": false,
-                                "error": err_msg,
-                                "started_at": started_at,
-                                "completed_at": chrono::Utc::now(),
-                                "srcFs": src_fs,
-                                "dstFs": dst_fs,
-                                "group": group_name,
-                            }));
+                            state.errors.push(err_msg);
+                            state.completed.push(completed_entry);
                             state.build_stats(total_bytes, total_files)
                         };
                         let _ = job_cache.update_job_stats(jobid, stats).await;
@@ -300,16 +302,18 @@ pub async fn execute_upload_batch(
                 let size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
 
                 {
+                    // Build JSON outside the lock to minimize contention.
+                    let transferring_entry = json!({
+                        "name": filename.clone(),
+                        "size": size,
+                        "bytes": 0,
+                        "srcFs": src_fs.clone(),
+                        "dstFs": dst_fs.clone(),
+                        "group": group_name.clone(),
+                    });
                     let stats = {
                         let mut state = progress.lock().unwrap();
-                        state.transferring.push(json!({
-                            "name": filename.clone(),
-                            "size": size,
-                            "bytes": 0,
-                            "srcFs": src_fs.clone(),
-                            "dstFs": dst_fs.clone(),
-                            "group": group_name.clone(),
-                        }));
+                        state.transferring.push(transferring_entry);
                         state.build_stats(total_bytes, total_files)
                     };
                     let _ = job_cache.update_job_stats(jobid, stats).await;
@@ -328,23 +332,25 @@ pub async fn execute_upload_batch(
                 let part = match part_res {
                     Ok(p) => p,
                     Err(e) => {
+                        // Build JSON outside the lock to minimize contention.
+                        let err_msg = format!("Multipart error for {filename}: {e}");
+                        let completed_entry = json!({
+                            "name": filename,
+                            "size": size,
+                            "bytes": 0,
+                            "checked": false,
+                            "error": err_msg,
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
+                        });
                         let stats = {
                             let mut state = progress.lock().unwrap();
                             state.remove_transferring(&filename);
-                            let err_msg = format!("Multipart error for {filename}: {e}");
-                            state.errors.push(err_msg.clone());
-                            state.completed.push(json!({
-                                "name": filename,
-                                "size": size,
-                                "bytes": 0,
-                                "checked": false,
-                                "error": err_msg,
-                                "started_at": started_at,
-                                "completed_at": chrono::Utc::now(),
-                                "srcFs": src_fs,
-                                "dstFs": dst_fs,
-                                "group": group_name,
-                            }));
+                            state.errors.push(err_msg);
+                            state.completed.push(completed_entry);
                             state.build_stats(total_bytes, total_files)
                         };
                         let _ = job_cache.update_job_stats(jobid, stats).await;
@@ -376,39 +382,44 @@ pub async fn execute_upload_batch(
                 };
 
                 {
+                    // Build JSON outside the lock to minimize contention.
+                    let completed_entry = match &result {
+                        Ok(uploaded_size) => json!({
+                            "name": filename,
+                            "size": uploaded_size,
+                            "bytes": uploaded_size,
+                            "checked": false,
+                            "error": "",
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
+                        }),
+                        Err(err_msg) => json!({
+                            "name": filename,
+                            "size": size,
+                            "bytes": 0,
+                            "checked": false,
+                            "error": err_msg,
+                            "started_at": started_at,
+                            "completed_at": chrono::Utc::now(),
+                            "srcFs": src_fs,
+                            "dstFs": dst_fs,
+                            "group": group_name,
+                        }),
+                    };
                     let stats = {
                         let mut state = progress.lock().unwrap();
                         state.remove_transferring(&filename);
                         match result {
                             Ok(uploaded_size) => {
                                 state.uploaded_bytes += uploaded_size;
-                                state.completed.push(json!({
-                                    "name": filename,
-                                    "size": uploaded_size,
-                                    "bytes": uploaded_size,
-                                    "checked": false,
-                                    "error": "",
-                                    "started_at": started_at,
-                                    "completed_at": chrono::Utc::now(),
-                                    "srcFs": src_fs,
-                                    "dstFs": dst_fs,
-                                    "group": group_name,
-                                }));
+                                state.completed.push(completed_entry);
                             }
                             Err(err_msg) => {
-                                state.errors.push(err_msg.clone());
-                                state.completed.push(json!({
-                                    "name": filename,
-                                    "size": size,
-                                    "bytes": 0,
-                                    "checked": false,
-                                    "error": err_msg,
-                                    "started_at": started_at,
-                                    "completed_at": chrono::Utc::now(),
-                                    "srcFs": src_fs,
-                                    "dstFs": dst_fs,
-                                    "group": group_name,
-                                }));
+                                state.errors.push(err_msg);
+                                state.completed.push(completed_entry);
                             }
                         }
                         state.build_stats(total_bytes, total_files)

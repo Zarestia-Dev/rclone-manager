@@ -3,11 +3,10 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { JobInfoConfig } from '../../types';
+import { JobInfoConfig } from '@app/types';
 
 @Component({
   selector: 'app-job-info-panel',
-  standalone: true,
   imports: [DatePipe, TitleCasePipe, MatCardModule, MatIconModule, TranslatePipe],
   styleUrls: ['./job-info-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

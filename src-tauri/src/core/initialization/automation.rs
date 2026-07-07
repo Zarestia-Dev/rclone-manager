@@ -1,9 +1,15 @@
-use crate::core::automation::engine::AutomationScheduler;
-use crate::core::settings::AppSettingsManager;
-use crate::rclone::backend::BackendManager;
-use crate::rclone::state::automations::AutomationsCache;
 use log::info;
 use tauri::{AppHandle, Manager};
+
+use crate::{
+    core::{
+        automation::{engine::AutomationScheduler, watcher::WatcherManager},
+        settings::AppSettingsManager,
+    },
+    rclone::{backend::BackendManager, state::automations::AutomationsCache},
+};
+
+use crate::core::settings::remote::manager::get_all_remote_settings_sync;
 
 /// Initialize the cron scheduler with tasks loaded from remote configs.
 pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String> {
@@ -14,10 +20,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     let backend_manager = app_handle.state::<BackendManager>();
     let remote_names = backend_manager.remote_cache.get_remotes().await;
 
-    let all_settings = crate::core::settings::remote::manager::get_all_remote_settings_sync(
-        manager.inner(),
-        &remote_names,
-    );
+    let all_settings = get_all_remote_settings_sync(manager.inner(), &remote_names);
 
     info!("📋 Loading automations from remote configs...");
 
@@ -43,7 +46,7 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         .reload_automations(app_handle.clone())
         .await?;
 
-    let watcher_manager = app_handle.state::<crate::core::automation::watcher::WatcherManager>();
+    let watcher_manager = app_handle.state::<WatcherManager>();
     if let Err(e) = watcher_manager.sync_watchers(app_handle.clone()).await {
         log::error!("Failed to initialize watchers: {e}");
     }

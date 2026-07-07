@@ -22,7 +22,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-number-input',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

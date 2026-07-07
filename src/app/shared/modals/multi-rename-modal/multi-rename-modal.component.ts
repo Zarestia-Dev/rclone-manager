@@ -34,7 +34,6 @@ export interface MultiRenameData {
 @Component({
   selector: 'app-multi-rename-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

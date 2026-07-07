@@ -3,8 +3,13 @@ use std::path::PathBuf;
 use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::rclone::backend::runtime::RuntimeInfo;
-use crate::utils::rclone::endpoints::{config, core};
+use crate::{
+    rclone::{
+        backend::runtime::RuntimeInfo,
+        engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
+    },
+    utils::rclone::endpoints::{config, core},
+};
 
 /// Wrap a future in a per-call timeout, mapping an elapsed deadline to a
 /// fixed `"Connection timed out"` error and converting any inner error to
@@ -22,7 +27,7 @@ where
 }
 
 fn default_oauth_port() -> u16 {
-    51901
+    DEFAULT_OAUTH_PORT
 }
 
 fn default_oauth_host() -> String {
@@ -111,10 +116,10 @@ impl Backend {
             is_local: true,
             is_auth_generated: false,
             host: "127.0.0.1".to_string(),
-            port: 51900,
+            port: DEFAULT_API_PORT,
             username: None,
             password: None,
-            oauth_port: 51901,
+            oauth_port: DEFAULT_OAUTH_PORT,
             oauth_host: "127.0.0.1".to_string(),
             config_password: None,
             config_path: None,

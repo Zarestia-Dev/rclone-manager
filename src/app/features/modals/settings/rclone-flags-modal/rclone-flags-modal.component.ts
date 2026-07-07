@@ -158,7 +158,6 @@ const MAIN_CATEGORY_CONFIG: Record<
 
 @Component({
   selector: 'app-rclone-flags-modal',
-  standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
     TitleCasePipe,

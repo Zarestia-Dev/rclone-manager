@@ -10,11 +10,10 @@ import { ActiveTransfersTableComponent } from './active-transfers-table.componen
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { CheckResultsTableComponent } from './check-results-table.component';
 import { SearchContainerComponent } from '../../components/search-container/search-container.component';
-import { TransferActivityPanelConfig } from '../../types';
+import { TransferActivityPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-transfer-activity-panel',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,

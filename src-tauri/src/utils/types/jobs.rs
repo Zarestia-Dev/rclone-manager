@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 
-// ─── Core Manager Types ───────────────────────────────────────────────────
+// Core Manager Types
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -356,7 +356,7 @@ pub fn compute_completed_transfers(
     }
 }
 
-// ─── Rclone RC Response Types ──────────────────────────────────────────────
+// Rclone RC Response Types
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -456,7 +456,7 @@ pub struct JobListResponse {
     pub execute_id: Option<String>,
 }
 
-// ─── State Management ──────────────────────────────────────────────────────
+// State Management
 
 #[derive(Debug)]
 pub struct JobCache {

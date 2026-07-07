@@ -19,7 +19,6 @@ import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/a
 
 @Component({
   selector: 'app-banner',
-  standalone: true,
   templateUrl: './banner.component.html',
   imports: [MatToolbarModule, MatIconModule, MatTooltipModule, TranslatePipe],
   styleUrls: ['./banner.component.scss'],

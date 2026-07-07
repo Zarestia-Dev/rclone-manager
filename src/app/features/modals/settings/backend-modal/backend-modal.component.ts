@@ -14,7 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import type { addBackendArgs, BackendInfo } from 'src/app/shared/types/backend.types';
+import type { addBackendArgs, BackendInfo, FilePickerConfig } from '@app/types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -26,13 +26,11 @@ import { FileSystemService } from 'src/app/services/operations/file-system.servi
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
-import { FilePickerConfig } from 'src/app/shared/types/ui';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-backend-modal',
-  standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,

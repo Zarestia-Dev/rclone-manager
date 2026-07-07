@@ -6,14 +6,18 @@ use log::{debug, error, warn};
 use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc;
 
-use crate::core::alerts::{
-    cache::{self, AlertHistoryCache},
-    dispatch::{self, DispatchContext},
-    template::TemplateContext,
-    types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
+use crate::{
+    core::{
+        alerts::{
+            cache::{self, AlertHistoryCache},
+            dispatch::{self, DispatchContext},
+            template::TemplateContext,
+            types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
+        },
+        settings::AppSettingsManager,
+    },
+    utils::app::notification::NotificationEvent,
 };
-use crate::core::settings::AppSettingsManager;
-use crate::utils::app::notification::NotificationEvent;
 
 struct AlertRequest {
     app: AppHandle,
@@ -249,7 +253,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             &rule,
             AlertDetails {
                 event_kind: kind.clone(),
-                severity: severity.clone(),
+                severity,
                 title: title.clone(),
                 body: body.clone(),
                 remote: remote.clone(),

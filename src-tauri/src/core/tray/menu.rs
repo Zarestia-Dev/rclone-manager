@@ -113,7 +113,7 @@ impl MenuPlan {
     }
 }
 
-// ── Plan builders (pure data, off main thread) ────────────────────────────────
+// Plan builders (pure data, off main thread)
 
 struct ProfileSubmenuConfig {
     label_key: &'static str,
@@ -363,7 +363,7 @@ fn build_profile_submenu(
     }
 }
 
-// ── Tauri object construction (main thread only) ──────────────────────────────
+// Tauri object construction (main thread only)
 
 pub fn create_tray_menu_from_plan<R: Runtime>(
     app: &AppHandle<R>,

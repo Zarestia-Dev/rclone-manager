@@ -5,7 +5,12 @@ const { defineConfig } = require('eslint/config');
 
 module.exports = defineConfig([
   {
-    ignores: ['src-tauri/resources/serve-template.html', '**/target/**', 'dist/**'],
+    ignores: [
+      'src-tauri/resources/serve-template.html',
+      'src-tauri/resources/oauth-template.html',
+      '**/target/**',
+      'dist/**',
+    ],
   },
   {
     files: ['**/*.ts'],

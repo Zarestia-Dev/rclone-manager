@@ -13,7 +13,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-nautilus-bottom-bar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
   templateUrl: './nautilus-bottom-bar.component.html',

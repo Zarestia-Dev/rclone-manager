@@ -14,7 +14,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
 
 @Component({
   selector: 'app-alert-history',
-  standalone: true,
   imports: [
     DatePipe,
     NgClass,

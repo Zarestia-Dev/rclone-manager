@@ -4,11 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
-import { StatsPanelConfig } from '../../types';
+import { StatsPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-stats-panel',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatIconModule, MatProgressBarModule, MatTooltipModule, TranslatePipe],
   styleUrls: ['./stats-panel.component.scss'],

@@ -8,10 +8,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { JobInfo, PathDisplayConfig, TransferActivityPanelConfig, NON_JOB_OPS } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
-import {
-  TransferActivityPanelComponent,
-  PathDisplayComponent,
-} from '../../../shared/detail-shared';
+import { TransferActivityPanelComponent } from '../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
+import { PathDisplayComponent } from '../../../shared/detail-shared/path-display/path-display.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -21,7 +19,6 @@ import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-cli
 
 @Component({
   selector: 'app-job-detail-modal',
-  standalone: true,
   imports: [
     MatIconModule,
     MatButtonModule,

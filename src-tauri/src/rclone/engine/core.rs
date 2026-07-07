@@ -2,7 +2,6 @@ use crate::utils::types::state::RcApiEngine;
 use std::fmt;
 
 pub const DEFAULT_API_PORT: u16 = 51900;
-#[cfg(not(feature = "librclone"))]
 pub const DEFAULT_OAUTH_PORT: u16 = 51901;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

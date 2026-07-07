@@ -12,9 +12,7 @@ use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
 
-// ============================================================================
 // CRON SCHEDULER
-// ============================================================================
 
 pub struct AutomationScheduler {
     pub scheduler: Arc<RwLock<Option<JobScheduler>>>,
@@ -462,9 +460,7 @@ fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>
     get_next_run(expr).ok()
 }
 
-// ============================================================================
 // TESTS
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

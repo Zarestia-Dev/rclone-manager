@@ -2,10 +2,12 @@ use log::error;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::utils::json_helpers::normalize_windows_path;
-use crate::utils::rclone::endpoints::core;
-use crate::utils::types::state::RcloneState;
+use crate::{
+    rclone::backend::BackendManager,
+    utils::{
+        json_helpers::normalize_windows_path, rclone::endpoints::core, types::state::RcloneState,
+    },
+};
 
 fn group_payload(group: Option<String>) -> Value {
     match group {

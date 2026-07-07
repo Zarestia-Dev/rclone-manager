@@ -62,7 +62,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-quick-add-remote',
-  standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,

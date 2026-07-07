@@ -10,10 +10,11 @@ use crate::{
     },
     utils::{
         types::origin::Origin,
-        types::remotes::{OperationType, ProfileParams},
+        types::remotes::{OperationType, ProfileConfig, ProfileParams, RemoteSettings},
     },
 };
 use log::{error, info, warn};
+use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 /// Auto-start all profiles that have autoStart: true
@@ -27,154 +28,91 @@ pub async fn handle_startup(app: AppHandle) {
     let backend_manager = app.state::<BackendManager>();
 
     let remote_names = backend_manager.remote_cache.get_remotes().await;
-    let settings_map =
-        crate::utils::types::remotes::RemoteSettings::load_all(manager.inner(), &remote_names);
+    let settings_map = RemoteSettings::load_all(manager.inner(), &remote_names);
 
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     for (remote_name, settings) in &settings_map {
-        if let Some(map) = &settings.mount_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_mount(&app, &remote, &profile).await;
-                    }));
-                }
-            }
-        }
+        // Mount and serve have dedicated entry points.
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.mount_configs,
+            Op::Mount,
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.serve_configs,
+            Op::Serve,
+        );
 
-        if let Some(map) = &settings.serve_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_serve(&app, &remote, &profile).await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.sync_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "sync").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.copy_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "copy").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.move_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "move").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.bisync_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "bisync").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.check_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "check").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.delete_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "delete").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.copyurl_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "copyurl").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.archivecreate_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "archivecreate").await;
-                    }));
-                }
-            }
-        }
-
-        if let Some(map) = &settings.cryptcheck_configs {
-            for (pname, cfg) in map {
-                if cfg.app.auto_start {
-                    let app = app.clone();
-                    let remote = remote_name.clone();
-                    let profile = pname.clone();
-                    tasks.push(tokio::spawn(async move {
-                        auto_start_sync(&app, &remote, &profile, "cryptcheck").await;
-                    }));
-                }
-            }
-        }
+        // All transfer-style operations share `auto_start_sync`.
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.sync_configs,
+            Op::Sync("sync"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.copy_configs,
+            Op::Sync("copy"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.move_configs,
+            Op::Sync("move"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.bisync_configs,
+            Op::Sync("bisync"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.check_configs,
+            Op::Sync("check"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.delete_configs,
+            Op::Sync("delete"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.copyurl_configs,
+            Op::Sync("copyurl"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.archivecreate_configs,
+            Op::Sync("archivecreate"),
+        );
+        push_auto_start_tasks(
+            &mut tasks,
+            &app,
+            remote_name,
+            &settings.cryptcheck_configs,
+            Op::Sync("cryptcheck"),
+        );
     }
 
     let task_count = tasks.len();
@@ -185,6 +123,45 @@ pub async fn handle_startup(app: AppHandle) {
     }
 
     info!("Auto-start profiles check complete");
+}
+
+/// Which auto-start entry point to use for a profile.
+#[derive(Clone, Copy)]
+enum Op {
+    Mount,
+    Serve,
+    /// Transfers go through `start_profile_batch` with the given op-type string.
+    Sync(&'static str),
+}
+
+/// Iterate a profile-config map, spawning a task for every profile with
+/// `app.auto_start == true`. Centralizes the 11 nearly-identical blocks that
+/// previously lived inline in `handle_startup`.
+fn push_auto_start_tasks(
+    tasks: &mut Vec<tokio::task::JoinHandle<()>>,
+    app: &AppHandle,
+    remote_name: &str,
+    configs: &Option<HashMap<String, ProfileConfig>>,
+    op: Op,
+) {
+    let Some(map) = configs else {
+        return;
+    };
+    for (pname, cfg) in map {
+        if !cfg.app.auto_start {
+            continue;
+        }
+        let app = app.clone();
+        let remote = remote_name.to_string();
+        let profile = pname.clone();
+        tasks.push(tokio::spawn(async move {
+            match op {
+                Op::Mount => auto_start_mount(&app, &remote, &profile).await,
+                Op::Serve => auto_start_serve(&app, &remote, &profile).await,
+                Op::Sync(op_type) => auto_start_sync(&app, &remote, &profile, op_type).await,
+            }
+        }));
+    }
 }
 
 async fn auto_start_mount(app: &AppHandle, remote_name: &str, profile_name: &str) {

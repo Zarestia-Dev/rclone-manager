@@ -4,10 +4,12 @@ use futures::future::join_all;
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager};
 
-use crate::utils::rclone::endpoints::{core, operations};
-use crate::utils::types::{
-    jobs::JobType,
-    remotes::{DEST_KEYS, OperationType, ProfileParams, SOURCE_KEYS},
+use crate::utils::{
+    rclone::endpoints::{core, operations},
+    types::{
+        jobs::JobType,
+        remotes::{DEST_KEYS, OperationType, ProfileParams, SOURCE_KEYS},
+    },
 };
 
 use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};

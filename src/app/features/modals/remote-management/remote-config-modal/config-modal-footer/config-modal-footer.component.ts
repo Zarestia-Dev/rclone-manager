@@ -8,7 +8,6 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 
 @Component({
   selector: 'app-config-modal-footer',
-  standalone: true,
   imports: [MatButtonModule, MatIconModule, MatProgressSpinner, MatProgressBar, TranslatePipe],
   templateUrl: './config-modal-footer.component.html',
   styleUrl: './config-modal-footer.component.scss',

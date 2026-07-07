@@ -18,7 +18,6 @@ import { TransferOperationsService } from './transfer-operations.service';
 
 @Component({
   selector: 'app-active-transfers-table',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TransferOperationsService],
   imports: [

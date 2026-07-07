@@ -63,13 +63,11 @@ import {
   MODE_DEFAULTS,
   BACKEND_PROFILE_SUPPORTED_OPS,
 } from '@app/types';
-import {
-  JobInfoPanelComponent,
-  OperationControlComponent,
-  SettingsPanelComponent,
-  StatsPanelComponent,
-  TransferActivityPanelComponent,
-} from '../../../../shared/detail-shared';
+import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
+import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
+import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import { StatsPanelComponent } from '../../../../shared/detail-shared/stats-panel/stats-panel.component';
+import { TransferActivityPanelComponent } from '../../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
@@ -84,7 +82,6 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
 @Component({
   selector: 'app-app-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatIconModule,

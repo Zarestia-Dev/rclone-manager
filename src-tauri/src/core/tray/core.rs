@@ -1,9 +1,8 @@
 use log::{error, info};
 use tauri::{AppHandle, Manager, Runtime};
 
-use super::TrayMenuState;
-use super::TraySnapshot;
 use super::menu::{MenuPlan, create_tray_menu_from_plan};
+use super::{TrayMenuState, TraySnapshot};
 use crate::core::settings::AppSettingsManager;
 
 pub async fn update_tray_menu<R: Runtime>(app: AppHandle<R>) -> tauri::Result<()> {

@@ -8,7 +8,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-tabs',
-  standalone: true,
   imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
   templateUrl: './tabs-buttons.component.html',
   styleUrl: './tabs-buttons.component.scss',

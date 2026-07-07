@@ -19,7 +19,6 @@ import { MatDialogRef } from '@angular/material/dialog';
  */
 @Directive({
   selector: '[appEscapeClose]',
-  standalone: true,
 })
 export class EscapeCloseDirective {
   private readonly dialogRef = inject(MatDialogRef<unknown>, { optional: true });

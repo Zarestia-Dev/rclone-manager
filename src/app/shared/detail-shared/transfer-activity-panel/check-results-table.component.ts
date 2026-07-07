@@ -45,7 +45,6 @@ export interface EnrichedCheckResult extends CompletedTransfer {
 
 @Component({
   selector: 'app-check-results-table',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TransferOperationsService],
   imports: [

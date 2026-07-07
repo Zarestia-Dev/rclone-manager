@@ -3,14 +3,16 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
-use crate::core::settings::AppSettingsManager;
-use crate::rclone::backend::BackendManager;
-use crate::rclone::queries::{
-    get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves,
-};
-use crate::utils::types::{
-    events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
-    remotes::{MountedRemote, RemoteCache, ServeInstance},
+use crate::{
+    core::settings::AppSettingsManager,
+    rclone::{
+        backend::BackendManager,
+        queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
+    },
+    utils::types::{
+        events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
+    },
 };
 
 /// Persistent context for `RemoteCache` — saved/restored on backend switches so that

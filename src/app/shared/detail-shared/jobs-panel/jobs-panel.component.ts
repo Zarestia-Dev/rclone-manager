@@ -14,14 +14,13 @@ import {
   StopJobEvent,
   JOB_STATUS_BADGE_MAP,
   JOB_ICON_MAP,
-} from '../../types';
+} from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
 
 @Component({
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatCardModule,

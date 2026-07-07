@@ -16,7 +16,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-search-container',
-  standalone: true,
   imports: [FormsModule, MatFormFieldModule, MatInputModule, MatIconModule, TranslatePipe],
   template: `
     <div class="search-container" [class.visible]="visible()">

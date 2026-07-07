@@ -18,7 +18,6 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 
 @Component({
   selector: 'app-alert-rule-editor',
-  standalone: true,
   templateUrl: './alert-rule-editor.component.html',
   styleUrls: ['./alert-rule-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
   hostDirectives: [EscapeCloseDirective],

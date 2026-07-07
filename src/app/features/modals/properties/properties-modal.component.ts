@@ -31,7 +31,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-properties-modal',
-  standalone: true,
   imports: [
     UpperCasePipe,
     DecimalPipe,

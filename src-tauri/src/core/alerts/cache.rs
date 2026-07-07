@@ -323,7 +323,7 @@ impl AlertHistoryCache {
         let mut by_rule = std::collections::HashMap::new();
 
         for r in records.iter() {
-            *by_severity.entry(r.severity.clone()).or_insert(0) += 1;
+            *by_severity.entry(r.severity).or_insert(0) += 1;
             *by_rule.entry(r.rule_name.clone()).or_insert(0) += 1;
         }
 

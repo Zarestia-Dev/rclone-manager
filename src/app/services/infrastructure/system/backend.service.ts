@@ -4,16 +4,9 @@ import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { EventListenersService } from './event-listeners.service';
 
-import {
-  BackendInfo,
-  TestConnectionResult,
-  addBackendArgs,
-  RuntimeStatus,
-} from 'src/app/shared/types/backend.types';
+import { BackendInfo, TestConnectionResult, addBackendArgs, RuntimeStatus } from '@app/types';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class BackendService extends TauriBaseService {
   readonly activeBackend = signal<string>('Local');
   private readonly appSettingsService = inject(AppSettingsService);

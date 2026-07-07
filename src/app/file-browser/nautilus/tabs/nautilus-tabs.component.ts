@@ -21,7 +21,6 @@ import { NautilusTabItem } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-tabs',
-  standalone: true,
   imports: [
     MatIconModule,
     MatTooltipModule,

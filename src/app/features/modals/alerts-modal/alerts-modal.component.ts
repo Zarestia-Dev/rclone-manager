@@ -12,7 +12,6 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
 
 @Component({
   selector: 'app-alerts-modal',
-  standalone: true,
   imports: [
     MatTabsModule,
     MatButtonModule,

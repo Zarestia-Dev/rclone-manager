@@ -7,7 +7,6 @@ import { Pipe, PipeTransform } from '@angular/core';
  */
 @Pipe({
   name: 'formatRelativeDate',
-  standalone: true,
   pure: true,
 })
 export class FormatRelativeDatePipe implements PipeTransform {

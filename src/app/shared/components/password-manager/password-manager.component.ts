@@ -9,7 +9,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-password-manager',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatFormFieldModule,
     MatInputModule,

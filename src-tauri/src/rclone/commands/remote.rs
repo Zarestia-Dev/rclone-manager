@@ -115,15 +115,28 @@ pub async fn create_remote_interactive(
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut body = json!({
+    let mut params_map = parameters.unwrap_or_default();
+    if !params_map.contains_key("config_template_file")
+        && !params_map.contains_key("config_template")
+    {
+        let paths_res = crate::core::paths::AppPaths::from_app_handle(&app);
+        if let Ok(paths) = paths_res {
+            let oauth_tmpl = paths.oauth_template_path();
+            if oauth_tmpl.exists() {
+                params_map.insert(
+                    "config_template_file".to_string(),
+                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
+                );
+            }
+        }
+    }
+
+    let body = json!({
         "name": name,
         "type": rclone_type,
         "opt":  build_opt(opt, json!({ "nonInteractive": true })),
+        "parameters": params_map,
     });
-
-    if let Some(params) = parameters {
-        body["parameters"] = json!(params);
-    }
 
     let value = call_config(&app, config::CREATE, body).await?;
 
@@ -159,7 +172,23 @@ pub async fn continue_create_remote_interactive(
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut body = json!({
+    let mut params_map = parameters.unwrap_or_default();
+    if !params_map.contains_key("config_template_file")
+        && !params_map.contains_key("config_template")
+    {
+        let paths_res = crate::core::paths::AppPaths::from_app_handle(&app);
+        if let Ok(paths) = paths_res {
+            let oauth_tmpl = paths.oauth_template_path();
+            if oauth_tmpl.exists() {
+                params_map.insert(
+                    "config_template_file".to_string(),
+                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
+                );
+            }
+        }
+    }
+
+    let body = json!({
         "name": name,
         "opt": build_opt(opt, json!({
             "continue":       true,
@@ -167,11 +196,8 @@ pub async fn continue_create_remote_interactive(
             "result":         result,
             "nonInteractive": true,
         })),
+        "parameters": params_map,
     });
-
-    if let Some(params) = parameters {
-        body["parameters"] = json!(params);
-    }
 
     let value = call_config(&app, config::UPDATE, body).await?;
 
@@ -200,14 +226,34 @@ pub async fn create_remote(
     parameters: HashMap<String, Value>,
     opt: Option<Value>,
 ) -> Result<(), String> {
-    let Some(remote_type) = parameters.get("type").and_then(|v| v.as_str()) else {
+    let Some(remote_type) = parameters
+        .get("type")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+    else {
         return Err("Missing remote type".into());
     };
+
+    let mut params_map = parameters;
+    if !params_map.contains_key("config_template_file")
+        && !params_map.contains_key("config_template")
+    {
+        let paths_res = crate::core::paths::AppPaths::from_app_handle(&app);
+        if let Ok(paths) = paths_res {
+            let oauth_tmpl = paths.oauth_template_path();
+            if oauth_tmpl.exists() {
+                params_map.insert(
+                    "config_template_file".to_string(),
+                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
+                );
+            }
+        }
+    }
 
     let mut body = json!({
         "name":       name,
         "type":       remote_type,
-        "parameters": parameters,
+        "parameters": params_map,
     });
 
     if let Some(ref extra) = opt {

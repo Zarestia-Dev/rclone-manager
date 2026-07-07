@@ -269,9 +269,7 @@ impl Default for WatcherManager {
     }
 }
 
-// ============================================================================
 // HELPERS
-// ============================================================================
 
 fn local_paths(automation: &Automation) -> Vec<String> {
     let mut paths: Vec<String> = automation
@@ -355,9 +353,7 @@ async fn is_automation_running_or_in_cooldown(
         .is_some_and(|t| Utc::now().signed_duration_since(t) < chrono::Duration::seconds(5))
 }
 
-// ============================================================================
 // FILTER / PATTERN MATCHING
-// ============================================================================
 
 fn glob_match(pattern: &str, path: &str, ignore_case: bool) -> bool {
     let normalize = |s: &str| {
@@ -705,9 +701,7 @@ fn is_path_filtered(
     false
 }
 
-// ============================================================================
 // TESTS
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

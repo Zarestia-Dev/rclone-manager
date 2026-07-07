@@ -47,7 +47,6 @@ const INDEXED_VFS_RE = /:\[\d+\]$/;
 
 @Component({
   selector: 'app-vfs-control-panel',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,

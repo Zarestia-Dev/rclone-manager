@@ -7,60 +7,33 @@ import type { InputModalData } from '../../shared/modals/input-modal/input-modal
 import { ConfirmDialogData } from '@app/types';
 
 /**
- * Service for handling user notifications and confirmations
- * Centralizes snackbar, modal, and toast notifications
- * Automatically translates default button texts
+ * Centralizes snackbar, modal, and toast notifications.
+ * Button texts default to their translated `common.*` counterparts.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
   private dialog = inject(MatDialog);
 
-  /**
-   * Show success message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
   showSuccess(message: string, action?: string, duration = 3000): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
     });
   }
 
-  /**
-   * Show error message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'Close')
-   * @param duration Display duration in milliseconds
-   */
   showError(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
       duration,
     });
   }
 
-  /**
-   * Show info message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
   showInfo(message: string, action?: string, duration = 3000): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,
     });
   }
 
-  /**
-   * Show warning message
-   * @param message Already translated message text
-   * @param action Button text (defaults to translated 'OK')
-   * @param duration Display duration in milliseconds
-   */
   showWarning(message: string, action?: string, duration?: number): void {
     this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
       duration,

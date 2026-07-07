@@ -15,7 +15,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restore-preview-modal',
-  standalone: true,
   imports: [
     MatFormFieldModule,
     MatInputModule,

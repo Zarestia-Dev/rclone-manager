@@ -8,7 +8,6 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
 
 @Component({
   selector: 'app-window-controls',
-  standalone: true,
   imports: [MatButtonModule, MatIconModule, TranslatePipe],
   templateUrl: './window-controls.component.html',
   styleUrls: ['./window-controls.component.scss'],

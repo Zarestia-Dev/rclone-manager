@@ -53,7 +53,6 @@ export interface InputModalData {
 @Component({
   selector: 'app-input-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,

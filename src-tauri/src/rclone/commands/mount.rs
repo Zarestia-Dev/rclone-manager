@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
 use log::{debug, info, warn};
 use serde_json::{Value, json};
-use std::collections::HashMap;
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    rclone::{backend::BackendManager, state::watcher::force_check_mounted_remotes},
+    rclone::{backend::BackendManager, state::watcher::refresh_mounts_quietly},
     utils::{
         app::notification::{MountStage, NotificationEvent, notify},
         logging::log::log_operation,
@@ -181,9 +182,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     .await?;
 
     // Refresh first so the entry exists in cache, then attach the profile to it.
-    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
-        warn!("Failed to refresh mounted remotes: {e}");
-    }
+    refresh_mounts_quietly(&app).await;
     cache
         .store_mount_profile(&params.mount_point, params.profile.clone())
         .await;
@@ -294,9 +293,7 @@ pub async fn unmount_remote(
         }),
     );
 
-    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
-        warn!("Failed to refresh mounted remotes: {e}");
-    }
+    refresh_mounts_quietly(&app).await;
 
     Ok(crate::localized_success!(
         "backendSuccess.mount.unmounted",
@@ -320,10 +317,8 @@ pub async fn unmount_all_remotes(
     if mounted.is_empty() || context.is_shutdown() {
         debug!("No mounted remotes to unmount — skipping API call");
         // Refresh cache for UI consistency (unless during shutdown)
-        if !context.is_shutdown()
-            && let Err(e) = force_check_mounted_remotes(app.clone()).await
-        {
-            warn!("Failed to refresh mounted remotes: {e}");
+        if !context.is_shutdown() {
+            refresh_mounts_quietly(&app).await;
         }
         // Silent no-op during shutdown
         return Ok(crate::localized_success!(
@@ -343,10 +338,8 @@ pub async fn unmount_all_remotes(
         error_msg
     })?;
 
-    if !context.is_shutdown()
-        && let Err(e) = force_check_mounted_remotes(app.clone()).await
-    {
-        warn!("Failed to refresh mounted remotes: {e}");
+    if !context.is_shutdown() {
+        refresh_mounts_quietly(&app).await;
     }
 
     info!("✅ All remotes unmounted successfully");

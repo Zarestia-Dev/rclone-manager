@@ -47,7 +47,7 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     }
 }
 
-// ── Transfer jobs ────────────────────────────────────────────────────────────
+// Transfer jobs
 
 pub fn handle_start_job_profile(
     app: AppHandle,
@@ -119,7 +119,7 @@ pub fn handle_stop_job_profile(
     });
 }
 
-// ── Mount ────────────────────────────────────────────────────────────────────
+// Mount
 
 fn get_mount_dest(
     manager: &AppSettingsManager,
@@ -168,7 +168,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     });
 }
 
-// ── Serve ────────────────────────────────────────────────────────────────────
+// Serve
 
 pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
     let params = profile_params(remote_name, profile_name);
@@ -212,7 +212,7 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
     });
 }
 
-// ── Global actions ───────────────────────────────────────────────────────────
+// Global actions
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {

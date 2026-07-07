@@ -27,7 +27,6 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 
 @Component({
   selector: 'app-backend-security',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

@@ -92,7 +92,7 @@ impl JobCache {
             }
         }
 
-        let mut removed_jobs = Vec::new();
+        let mut removed_jobs = Vec::with_capacity(ids_to_delete.len());
         for id in &ids_to_delete {
             if let Some(job) = jobs.remove(id) {
                 if let Some(parent_id) = job.parent_job_id
@@ -333,10 +333,31 @@ impl JobCache {
     }
 
     fn link_resolving_jobs_internal(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64) {
-        let child_jobs: Vec<JobInfo> = jobs
+        // Pre-compute normalized sources for each candidate child job once,
+        // instead of redoing `src.replace('\\', "/")` for every completed item.
+        // The previous loop was O(N * M * K) String allocations; this drops the
+        // per-item work to a HashMap/array lookup.
+        struct CandidateJob {
+            jobid: u64,
+            job_type: JobType,
+            status: JobStatus,
+            error: Option<String>,
+            stats: Option<Value>,
+            // Pre-normalized sources (backslashes → forward slashes).
+            norm_sources: Vec<String>,
+        }
+
+        let child_jobs: Vec<CandidateJob> = jobs
             .values()
             .filter(|j| j.parent_job_id == Some(parent_job_id))
-            .cloned()
+            .map(|j| CandidateJob {
+                jobid: j.jobid,
+                job_type: j.job_type.clone(),
+                status: j.status.clone(),
+                error: j.error.clone(),
+                stats: j.stats.clone(),
+                norm_sources: j.source.iter().map(|s| s.replace('\\', "/")).collect(),
+            })
             .collect();
 
         if let Some(parent_job) = jobs.get_mut(&parent_job_id) {
@@ -353,18 +374,28 @@ impl JobCache {
             for item in completed {
                 let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("");
                 let normalized_item_name = name.replace('\\', "/");
-                let mut matching_child_job: Option<&JobInfo> = None;
+                // Pre-compute the suffixes we'll match against once per item.
+                let suffix_slash = format!("/{normalized_item_name}");
+                let suffix_colon = format!(":{normalized_item_name}");
+                let item_src_fs = item
+                    .get("srcFs")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .replace('\\', "/");
+                let item_dst_fs = item
+                    .get("dstFs")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .replace('\\', "/");
+                let mut matching_child_job: Option<&CandidateJob> = None;
 
                 for job in &child_jobs {
                     if job.job_type == JobType::Check || job.job_type == JobType::CryptCheck {
                         continue;
                     }
 
-                    let sources = &job.source;
-                    let has_direct_match = sources.iter().any(|src| {
-                        let norm_src = src.replace('\\', "/");
-                        norm_src.ends_with(&format!("/{}", normalized_item_name))
-                            || norm_src.ends_with(&format!(":{}", normalized_item_name))
+                    let has_direct_match = job.norm_sources.iter().any(|norm_src| {
+                        norm_src.ends_with(&suffix_slash) || norm_src.ends_with(&suffix_colon)
                     });
 
                     if has_direct_match {
@@ -376,8 +407,7 @@ impl JobCache {
                         continue;
                     }
 
-                    let is_folder_match = sources.iter().any(|src| {
-                        let norm_src = src.replace('\\', "/");
+                    let is_folder_match = job.norm_sources.iter().any(|norm_src| {
                         let colon_idx = norm_src.find(':');
                         let remote = if let Some(idx) = colon_idx {
                             &norm_src[..=idx]
@@ -387,19 +417,9 @@ impl JobCache {
                         let folder_path = if let Some(idx) = colon_idx {
                             &norm_src[idx + 1..]
                         } else {
-                            &norm_src
+                            norm_src.as_str()
                         };
 
-                        let item_src_fs = item
-                            .get("srcFs")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .replace('\\', "/");
-                        let item_dst_fs = item
-                            .get("dstFs")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .replace('\\', "/");
                         let remote_matches =
                             item_src_fs.starts_with(remote) || item_dst_fs.starts_with(remote);
 
@@ -412,7 +432,7 @@ impl JobCache {
 
                         let clean_folder = folder_path.trim_end_matches('/');
                         normalized_item_name == clean_folder
-                            || normalized_item_name.starts_with(&format!("{}/", clean_folder))
+                            || normalized_item_name.starts_with(&format!("{clean_folder}/"))
                     });
 
                     if is_folder_match
@@ -471,8 +491,7 @@ impl JobCache {
                                             .unwrap_or("")
                                             .replace('\\', "/");
                                         t_name == normalized_item_name
-                                            || t_name
-                                                .ends_with(&format!("/{}", normalized_item_name))
+                                            || t_name.ends_with(&suffix_slash)
                                     })
                                     .unwrap_or(&transferring[0]);
 

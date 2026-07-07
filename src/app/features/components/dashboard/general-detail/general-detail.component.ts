@@ -30,12 +30,10 @@ import {
   MODE_DEFAULTS,
   OPERATION_META,
 } from '@app/types';
-import {
-  DiskUsagePanelComponent,
-  JobsPanelComponent,
-  SettingsPanelComponent,
-  AutomationCardComponent,
-} from '../../../../shared/detail-shared';
+import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
+import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
+import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -47,7 +45,6 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
 @Component({
   selector: 'app-general-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatCardModule,

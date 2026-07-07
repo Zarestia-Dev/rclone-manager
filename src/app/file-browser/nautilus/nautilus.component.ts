@@ -56,7 +56,6 @@ import { NautilusContextMenuComponent } from './context-menu/nautilus-context-me
 @Component({
   selector: 'app-nautilus',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     NautilusSidebarComponent,
     NautilusToolbarComponent,

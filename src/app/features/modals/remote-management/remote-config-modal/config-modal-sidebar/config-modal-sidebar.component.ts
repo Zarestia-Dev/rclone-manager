@@ -10,7 +10,6 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 
 @Component({
   selector: 'app-config-modal-sidebar',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatDividerModule,

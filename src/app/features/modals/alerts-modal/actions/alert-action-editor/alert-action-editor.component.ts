@@ -16,7 +16,6 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption }
 
 @Component({
   selector: 'app-alert-action-editor',
-  standalone: true,
   templateUrl: './alert-action-editor.component.html',
   styleUrls: ['./alert-action-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
   hostDirectives: [EscapeCloseDirective],

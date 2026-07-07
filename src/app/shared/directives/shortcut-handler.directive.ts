@@ -14,7 +14,6 @@ import { ModalService } from 'src/app/services/ui/modal.service';
 
 @Directive({
   selector: '[appShortcutHandler]',
-  standalone: true,
 })
 export class ShortcutHandlerDirective {
   private readonly translate = inject(TranslateService);

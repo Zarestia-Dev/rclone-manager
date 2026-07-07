@@ -48,7 +48,6 @@ type PresetKey =
 
 @Component({
   selector: 'app-cron-input',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,

@@ -10,8 +10,8 @@ import {
   CONFIG_MODAL_SIZE,
   ABOUT_MODAL_SIZE,
   BackupAnalysis,
+  JobInfo,
 } from '@app/types';
-import { JobInfo } from '../../shared/types/jobs';
 import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 

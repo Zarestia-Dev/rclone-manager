@@ -12,7 +12,6 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 
 @Component({
   selector: 'app-profile-header',
-  standalone: true,
   imports: [
     FormsModule,
     MatButtonModule,

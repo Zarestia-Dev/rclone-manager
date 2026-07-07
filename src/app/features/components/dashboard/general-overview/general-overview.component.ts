@@ -36,13 +36,7 @@ import {
   OpenInFilesEvent,
 } from '@app/types';
 
-import {
-  FormatTimePipe,
-  FormatEtaPipe,
-  FormatFileSizePipe,
-  FormatRateValuePipe,
-  FormatBytes,
-} from '@app/pipes';
+import { FormatTimePipe, FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
@@ -56,11 +50,10 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
-import { AutomationCardComponent } from '../../../../shared/detail-shared';
+import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 
 @Component({
   selector: 'app-general-overview',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
@@ -80,7 +73,6 @@ import { AutomationCardComponent } from '../../../../shared/detail-shared';
     RemotesPanelComponent,
     ServeCardComponent,
     FormatRateValuePipe,
-    FormatBytes,
     OverviewHeaderComponent,
     TranslatePipe,
     CopyToClipboardDirective,

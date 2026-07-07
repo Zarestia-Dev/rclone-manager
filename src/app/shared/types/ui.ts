@@ -4,10 +4,7 @@ import { PrimaryActionType } from './operations';
 import { Remote } from './remotes';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Entry, RcConfigOption } from './remote-config';
-
-// =============================================================================
-// NAVIGATION / UI TYPES
-// =============================================================================
+import { VfsStats, VfsQueueItem } from 'src/app/services/operations/vfs.service';
 
 export type AppTab = 'mount' | 'operations' | 'serve' | 'general';
 export const APP_TABS: readonly AppTab[] = ['mount', 'operations', 'serve', 'general'] as const;
@@ -396,9 +393,6 @@ export interface ChipDef {
   isActive: boolean;
   field: RcConfigOption;
 }
-
-// Keep Vfs UI logic separated from angular context if necessary
-import { VfsStats, VfsQueueItem } from 'src/app/services/operations/vfs.service';
 
 export interface VfsInstance {
   name: string;

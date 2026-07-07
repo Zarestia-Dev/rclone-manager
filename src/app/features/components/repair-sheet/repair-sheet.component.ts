@@ -30,7 +30,6 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
 
 @Component({
   selector: 'app-repair-sheet',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,

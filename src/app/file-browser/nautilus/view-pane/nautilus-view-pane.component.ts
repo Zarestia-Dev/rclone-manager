@@ -27,7 +27,6 @@ import { Entry, FileBrowserItem } from '@app/types';
 @Component({
   selector: 'app-nautilus-view-pane',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     NgTemplateOutlet,
     MatIconModule,

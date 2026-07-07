@@ -24,11 +24,11 @@ import {
   MODE_DEFAULTS,
   OpenInFilesEvent,
   OpenableFolder,
+  ACTION_ANIMATION_CLASS,
 } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { ACTION_ANIMATION_CLASS } from '@app/types';
 
 @Component({
   selector: 'app-remote-card',

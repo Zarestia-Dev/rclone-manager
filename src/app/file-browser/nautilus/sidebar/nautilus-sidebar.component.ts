@@ -17,7 +17,6 @@ import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.s
 
 @Component({
   selector: 'app-nautilus-sidebar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,

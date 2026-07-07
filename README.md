@@ -35,7 +35,7 @@
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
   </a>
-  <a href="https://hakanismail.info/zarestia/donate">
+  <a href="https://hakanismail.info/zarestia/support">
     <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
@@ -129,7 +129,7 @@ We welcome contributions of all forms!
 
 - **License:** Licensed under the [GNU GPLv3](LICENSE) – free to use, modify, and distribute.
 - **Support:** If you like this project, please consider leaving a ⭐ on GitHub!
-- **Donate:** If RClone Manager saves you time, consider [supporting development](https://hakanismail.info/zarestia/donate) ❤️
+- **Donate:** If RClone Manager saves you time, consider [supporting development](https://hakanismail.info/zarestia/support) ❤️
 
 <p align="center">
   Made with ❤️ by the Zarestia Dev Team<br>

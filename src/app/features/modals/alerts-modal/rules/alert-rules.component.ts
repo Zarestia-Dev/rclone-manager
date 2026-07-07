@@ -17,7 +17,6 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
 
 @Component({
   selector: 'app-alert-rules',
-  standalone: true,
   imports: [
     NgClass,
     DatePipe,
@@ -443,7 +442,8 @@ export class AlertRulesComponent {
     this.dialog
       .open(AlertRuleEditorComponent, {
         width: '600px',
-        disableClose: true,
+        maxHeight: '80vh',
+        disableClose: false,
         data: { ruleId: undefined },
       })
       .afterClosed()
@@ -456,7 +456,8 @@ export class AlertRulesComponent {
     this.dialog
       .open(AlertRuleEditorComponent, {
         width: '600px',
-        disableClose: true,
+        maxHeight: '80vh',
+        disableClose: false,
         data: { ruleId: rule.id },
       })
       .afterClosed()

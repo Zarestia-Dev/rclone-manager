@@ -11,9 +11,7 @@ use serde_json::Value;
 // When adding a new language, add its BCP-47 code here and create the translation file
 const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN", "fr-FR", "uk-UA"];
 
-// =============================================================================
 // Struct Definitions with Derive Macro
-// =============================================================================
 
 /// General settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
@@ -321,9 +319,7 @@ pub struct NautilusSettings {
     pub bookmarks: Vec<Value>,
 }
 
-// =============================================================================
 // Main AppSettings - Uses nested struct flattening
-// =============================================================================
 
 /// The complete settings model
 #[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]

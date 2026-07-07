@@ -1,5 +1,4 @@
 export * from './ansi-to-html.pipe';
-export * from './format-bytes.pipe';
 export * from './format-eta.pipe';
 export * from './format-file-size.pipe';
 export * from './format-rate-value.pipe';

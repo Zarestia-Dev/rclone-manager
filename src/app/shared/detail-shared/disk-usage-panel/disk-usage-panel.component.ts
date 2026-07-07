@@ -10,7 +10,6 @@ import { FormatFileSizePipe } from '@app/pipes';
 @Component({
   selector: 'app-disk-usage-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     NgClass,
     NgStyle,

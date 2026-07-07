@@ -42,7 +42,6 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
 
 @Component({
   selector: 'app-completed-transfers-table',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [TransferOperationsService],
   imports: [

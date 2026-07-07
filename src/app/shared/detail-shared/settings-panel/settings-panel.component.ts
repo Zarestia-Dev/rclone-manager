@@ -13,7 +13,6 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslatePipe],
   styleUrls: ['./settings-panel.component.scss'],
   template: `

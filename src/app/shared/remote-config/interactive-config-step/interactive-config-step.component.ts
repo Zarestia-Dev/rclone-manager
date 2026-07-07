@@ -20,7 +20,6 @@ import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remo
 
 @Component({
   selector: 'app-interactive-config-step',
-  standalone: true,
   imports: [
     FormsModule,
     MatFormFieldModule,

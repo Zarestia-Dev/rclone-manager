@@ -30,7 +30,6 @@ import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
 
 @Component({
   selector: 'app-remote-about-modal',
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatDividerModule,

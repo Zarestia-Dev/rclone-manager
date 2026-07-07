@@ -18,7 +18,6 @@ import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.s
 @Component({
   selector: 'app-operations-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     MatIconModule,
     MatButtonModule,

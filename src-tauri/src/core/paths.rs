@@ -10,9 +10,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tauri::AppHandle;
 
-// ============================================================================
 // Portable Mode Helpers
-// ============================================================================
 
 /// Get the directory containing the executable (for portable mode)
 #[cfg(feature = "portable")]
@@ -24,9 +22,7 @@ fn get_executable_directory() -> Result<PathBuf, String> {
         .ok_or_else(|| "Failed to get executable directory".to_string())
 }
 
-// ============================================================================
 // AppPaths Struct
-// ============================================================================
 
 /// Centralized application paths
 #[derive(Debug, Clone, Serialize)]
@@ -183,5 +179,10 @@ impl AppPaths {
     /// Get the path to the bundled serve template
     pub fn serve_template_path(&self) -> PathBuf {
         self.resource_dir.join("serve-template.html")
+    }
+
+    /// Get the path to the bundled OAuth template
+    pub fn oauth_template_path(&self) -> PathBuf {
+        self.resource_dir.join("oauth-template.html")
     }
 }

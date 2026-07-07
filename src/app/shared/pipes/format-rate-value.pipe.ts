@@ -2,7 +2,6 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
   name: 'formatRateValue',
-  standalone: true,
   pure: true,
 })
 export class FormatRateValuePipe implements PipeTransform {

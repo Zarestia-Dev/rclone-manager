@@ -10,9 +10,7 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 use tauri::{AppHandle, Manager};
 use zip::ZipArchive;
 
-// =============================================================================
 // BACKUP COMMAND
-// =============================================================================
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
@@ -148,9 +146,7 @@ pub(super) async fn register_rclone_config_provider(
     Ok(())
 }
 
-// =============================================================================
 // BACKUP ANALYSIS
-// =============================================================================
 
 #[tauri::command]
 pub async fn analyze_backup_file(
