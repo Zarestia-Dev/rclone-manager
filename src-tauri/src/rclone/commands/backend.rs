@@ -8,7 +8,7 @@ use crate::{
     rclone::{
         backend::{
             BackendManager,
-            types::{Backend, BackendInfo},
+            types::{Backend, BackendInfo, LOCAL_BACKEND_NAME},
         },
         engine::lifecycle::start_engine_if_not_running,
         state::automations::AutomationsCache,
@@ -114,7 +114,7 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     if params.name.is_empty() {
         return Err(crate::localized_error!("backendErrors.backend.nameEmpty"));
     }
-    if params.name == "Local" {
+    if Backend::is_local_name(&params.name) {
         return Err(crate::localized_error!(
             "backendErrors.backend.cannotAddLocal"
         ));
@@ -251,7 +251,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    let needs_engine_restart = params.name == "Local"
+    let needs_engine_restart = Backend::is_local_name(&params.name)
         && (existing.host != backend.host
             || existing.port != backend.port
             || existing.config_path != backend.config_path
@@ -265,12 +265,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 
     if needs_engine_restart {
         info!("Restarting Local engine — connection settings changed");
-        crate::rclone::engine::lifecycle::restart_for_config_change(
-            &app,
-            "backend_settings",
-            "updated",
-            "updated",
-        );
+        crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
     }
 
     info!("Backend '{}' updated", params.name);
@@ -500,7 +495,7 @@ async fn refresh_and_verify_cache(
         }
         Err(_) => {
             warn!("Cache refresh timed out for backend '{name}'");
-            if name != "Local" {
+            if !Backend::is_local_name(name) {
                 backend_manager
                     .set_runtime_status(
                         name,
@@ -524,9 +519,12 @@ async fn revert_to_local(
     settings_manager: &AppSettingsManager,
     current_name: &str,
 ) {
-    if current_name != "Local" {
+    if !Backend::is_local_name(current_name) {
         info!("Reverting to previous backend due to failure");
-        if let Err(e) = backend_manager.switch_to(settings_manager, "Local").await {
+        if let Err(e) = backend_manager
+            .switch_to(settings_manager, LOCAL_BACKEND_NAME)
+            .await
+        {
             warn!("Failed to revert to Local backend: {e}");
         }
     }
@@ -549,8 +547,11 @@ mod tests {
         }"#;
 
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.oauth_port, Some(53682));
-        assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
+        #[cfg(not(feature = "librclone"))]
+        {
+            assert_eq!(params.oauth_port, Some(53682));
+            assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
+        }
         assert_eq!(params.config_password.as_deref(), Some("secret"));
         assert_eq!(
             params.config_path.as_ref(),
@@ -570,8 +571,11 @@ mod tests {
         }"#;
 
         let params: AddBackendParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.oauth_port, Some(53682));
-        assert_eq!(params.oauth_host.as_deref(), Some("192.168.1.100"));
+        #[cfg(not(feature = "librclone"))]
+        {
+            assert_eq!(params.oauth_port, Some(53682));
+            assert_eq!(params.oauth_host.as_deref(), Some("192.168.1.100"));
+        }
         assert!(!params.is_local);
     }
 
@@ -579,8 +583,11 @@ mod tests {
     fn test_missing_optional_fields_use_none() {
         let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.oauth_port, None);
-        assert_eq!(params.oauth_host, None);
+        #[cfg(not(feature = "librclone"))]
+        {
+            assert_eq!(params.oauth_port, None);
+            assert_eq!(params.oauth_host, None);
+        }
         assert_eq!(params.username, None);
         assert_eq!(params.password, None);
     }

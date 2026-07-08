@@ -8,7 +8,7 @@ use crate::utils::{
     app::notification::{EngineStage, NotificationEvent, notify},
     types::{
         events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-        state::{EngineState, RcApiEngine, RcloneState},
+        state::{EnginePhase, EngineState, RcApiEngine, RcloneState},
     },
 };
 
@@ -23,13 +23,6 @@ pub fn mark_startup_complete(app: &AppHandle) {
 #[cfg(not(feature = "librclone"))]
 const API_READY_TIMEOUT_SECS: u64 = 10;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct EngineStatusInfo {
-    pub running: bool,
-    pub should_exit: bool,
-    pub updating: bool,
-}
-
 impl RcApiEngine {
     pub async fn init(&mut self, app: &AppHandle) {
         if self.validate_config(app).await {
@@ -41,7 +34,7 @@ impl RcApiEngine {
 
     pub async fn shutdown(&mut self, _app: &AppHandle) {
         info!("Shutting down Rclone engine");
-        self.should_exit = true;
+        self.mark_stopping();
 
         // Desktop: kill the rcd child process via core/quit + force-kill.
         #[cfg(not(feature = "librclone"))]
@@ -59,7 +52,7 @@ impl RcApiEngine {
             crate::rclone::backend::rclone_ffi::finalize();
         }
 
-        self.running = false;
+        self.mark_stopped();
     }
 }
 
@@ -81,27 +74,49 @@ pub async fn shutdown_engine(app: &AppHandle) {
 pub async fn resume_engine(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
-    engine.should_exit = false;
-    engine.set_updating(false);
+    engine.clear_errors();
+    if matches!(engine.phase, EnginePhase::Updating) {
+        engine.mark_stopped();
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EngineStatusInfo {
+    pub running: bool,
+    pub should_exit: bool,
+    pub updating: bool,
+}
+
+impl From<&EnginePhase> for EngineStatusInfo {
+    fn from(phase: &EnginePhase) -> Self {
+        Self {
+            running: phase.is_operational(),
+            should_exit: phase.is_shutting_down(),
+            #[cfg(not(feature = "librclone"))]
+            updating: matches!(phase, EnginePhase::Updating),
+            #[cfg(feature = "librclone")]
+            updating: false,
+        }
+    }
+}
+
+impl EngineStatusInfo {
+    #[must_use]
+    pub fn is_inactive(self) -> bool {
+        !self.running || self.updating || self.should_exit
+    }
 }
 
 pub async fn get_engine_status(app: &AppHandle) -> EngineStatusInfo {
     let state = app.state::<EngineState>();
     let engine = state.lock().await;
-    EngineStatusInfo {
-        running: engine.running,
-        #[cfg(not(feature = "librclone"))]
-        updating: engine.updating,
-        #[cfg(feature = "librclone")]
-        updating: false,
-        should_exit: engine.should_exit,
-    }
+    EngineStatusInfo::from(&engine.phase)
 }
 
 pub async fn start_engine_if_not_running(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
-    if !engine.running {
+    if !engine.is_running() {
         start(&mut engine, app).await;
     }
 }
@@ -109,39 +124,13 @@ pub async fn start_engine_if_not_running(app: &AppHandle) {
 pub async fn mark_engine_dead(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
-    engine.running = false;
+    engine.mark_stopped();
 }
 
 pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
-    if let Some(reason) = engine.start_blocked_reason() {
-        debug!("Engine cannot start: {reason}");
-        match reason {
-            super::core::PauseReason::Password => {
-                app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PasswordError)
-                    .ok();
-            }
-
-            #[cfg(not(feature = "librclone"))]
-            super::core::PauseReason::Path => {
-                app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError)
-                    .ok();
-            }
-            #[cfg(not(feature = "librclone"))]
-            super::core::PauseReason::Version => {
-                let required = crate::core::check_binaries::MIN_RCLONE_VERSION.to_string();
-                let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
-                let version = crate::core::check_binaries::get_rclone_version(&rclone_binary)
-                    .await
-                    .unwrap_or_else(|| "unknown".to_string());
-                app.emit(
-                    RCLONE_ENGINE_STATUS_CHANGED,
-                    EngineStatus::VersionError { version, required },
-                )
-                .ok();
-            }
-            #[cfg(not(feature = "librclone"))]
-            super::core::PauseReason::Updating => {}
-        }
+    if let Some(blocking_phase) = engine.start_block_reason() {
+        debug!("Engine cannot start: {blocking_phase}");
+        emit_block_status(app, blocking_phase);
         return;
     }
 
@@ -149,6 +138,30 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     start_librclone(engine, app).await;
     #[cfg(not(feature = "librclone"))]
     start_daemon(engine, app).await;
+}
+
+fn emit_block_status(app: &AppHandle, phase: &EnginePhase) {
+    match phase {
+        EnginePhase::FailedPassword => {
+            notify(
+                app,
+                NotificationEvent::Engine(EngineStage::PasswordRequired),
+            );
+        }
+        #[cfg(not(feature = "librclone"))]
+        EnginePhase::FailedPath => {
+            notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
+        }
+        #[cfg(not(feature = "librclone"))]
+        EnginePhase::FailedVersion { .. } => {}
+        #[cfg(not(feature = "librclone"))]
+        EnginePhase::Updating => {}
+        EnginePhase::FailedOther { .. } => {}
+        _ => {}
+    }
+
+    let status: EngineStatus = phase.into();
+    app.emit(RCLONE_ENGINE_STATUS_CHANGED, status).ok();
 }
 
 /// Desktop path: spawn the rcd daemon, wait for HTTP readiness, run post-start.
@@ -175,13 +188,13 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
             engine.process = Some(child);
 
             if engine.wait_until_ready(app, API_READY_TIMEOUT_SECS).await {
-                engine.running = true;
+                engine.mark_running();
                 info!("Rclone API started on port {}", engine.current_api_port);
 
                 super::post_start::run_post_start_setup(app).await;
             } else {
                 error!("Failed to start Rclone API within timeout");
-                engine.running = false;
+                engine.mark_stopped();
                 engine.process = None;
                 let _ = engine.kill_process(app).await;
                 handle_start_failure(engine, app, "Timeout waiting for API readiness".to_string())
@@ -199,7 +212,7 @@ async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
     let transport = app.state::<RcloneState>().transport.clone();
     match transport.rpc(core::VERSION, None).await {
         Ok(_) => {
-            engine.running = true;
+            engine.mark_running();
             info!("librclone transport ready (in-process)");
             super::post_start::run_post_start_setup(app).await;
         }
@@ -213,48 +226,15 @@ async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
 async fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     error!("Failed to spawn Rclone process: {e}");
 
-    #[cfg(not(feature = "librclone"))]
-    let status = if engine.path_error {
-        notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
-        EngineStatus::PathError
-    } else if engine.version_error {
-        let required = crate::core::check_binaries::MIN_RCLONE_VERSION.to_string();
-        let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
-        let version = crate::core::check_binaries::get_rclone_version(&rclone_binary)
-            .await
-            .unwrap_or_else(|| "unknown".to_string());
-        EngineStatus::VersionError { version, required }
-    } else if engine.password_error {
-        notify(
-            app,
-            NotificationEvent::Engine(EngineStage::PasswordRequired),
-        );
-        EngineStatus::PasswordError
-    } else {
-        EngineStatus::Error { message: e }
-    };
+    if !engine.phase.is_failed() {
+        engine.mark_other_failed(e);
+    }
 
-    #[cfg(feature = "librclone")]
-    let status = if engine.password_error {
-        notify(
-            app,
-            NotificationEvent::Engine(EngineStage::PasswordRequired),
-        );
-        EngineStatus::PasswordError
-    } else {
-        EngineStatus::Error { message: e }
-    };
-
-    app.emit(RCLONE_ENGINE_STATUS_CHANGED, &status).ok();
+    emit_block_status(app, &engine.phase);
 }
 
-pub fn restart_for_config_change(
-    app: &AppHandle,
-    change_type: &str,
-    old_value: &str,
-    new_value: &str,
-) {
-    info!("Restarting engine due to {change_type} change: {old_value} → {new_value}");
+pub fn restart_for_config_change(app: &AppHandle, change_type: &str) {
+    info!("Restarting engine due to {change_type} change");
 
     let app = app.clone();
     let change_type = change_type.to_string();
@@ -298,7 +278,8 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
 
     // Desktop: kill the daemon process before restart.
     // Mobile: librclone is in-process — "restart" = finalize + re-initialize
-    // (cheap), or just re-verify if finalize+init isn't needed.
+    // (cheap), which clears all rclone state (remotes, VFS caches, in-flight
+    // jobs) and starts fresh.
     #[cfg(not(feature = "librclone"))]
     {
         if let Err(e) = engine.kill_process(app).await {
@@ -307,9 +288,6 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
     }
     #[cfg(feature = "librclone")]
     {
-        // librclone restart: finalize the Go runtime + re-initialize.
-        // This clears all rclone state (remotes, VFS caches, in-flight jobs)
-        // and starts fresh. Cheaper than a process restart but not free.
         log::info!("Restarting librclone (finalize + initialize) for {change_type} change");
         crate::rclone::backend::rclone_ffi::finalize();
         crate::rclone::backend::rclone_ffi::initialize();
@@ -323,7 +301,7 @@ async fn restart_engine(app: &AppHandle, change_type: &str) -> super::error::Eng
 
     start(&mut engine, app).await;
 
-    if engine.running {
+    if engine.is_running() {
         Ok(())
     } else {
         Err(EngineError::RestartFailed(

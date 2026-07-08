@@ -59,6 +59,7 @@ import {
   mapFormToConfigProfile,
 } from '../../../../services/remote/utils/remote-config.utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { getAppCfg, getRcloneCfg } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -598,8 +599,8 @@ export class QuickAddRemoteComponent {
   ): Promise<void> {
     const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
     if (mountConfig) {
-      const appCfg = mountConfig.app || mountConfig;
-      const rcloneCfg = mountConfig.rclone || mountConfig;
+      const appCfg = getAppCfg(mountConfig) ?? mountConfig;
+      const rcloneCfg = getRcloneCfg(mountConfig) ?? mountConfig;
       if (appCfg.autoStart && rcloneCfg.mountPoint) {
         void this.mountManagementService.mountRemoteProfile(
           remoteName,
@@ -651,8 +652,8 @@ export class QuickAddRemoteComponent {
     for (const { key, start } of jobOps) {
       const cfg = finalConfig[key]?.[DEFAULT_PROFILE_NAME] as any;
       if (cfg) {
-        const appCfg = cfg.app || cfg;
-        const rcloneCfg = cfg.rclone || cfg;
+        const appCfg = getAppCfg(cfg) ?? cfg;
+        const rcloneCfg = getRcloneCfg(cfg) ?? cfg;
         if (appCfg.autoStart) {
           const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
           const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;

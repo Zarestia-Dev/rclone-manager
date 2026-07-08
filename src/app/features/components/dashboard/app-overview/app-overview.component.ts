@@ -47,6 +47,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     '[class]': 'mode()',
     'attr.animate.enter': 'fade-in-out-enter',
     'attr.animate.leave': 'fade-in-out-leave',
+    '(document:click)': 'closeBlossom()',
   },
 })
 export class AppOverviewComponent {
@@ -75,6 +76,16 @@ export class AppOverviewComponent {
     return saved || 'detailed';
   });
   readonly isEditingLayout = signal(false);
+  readonly isBlossomOpen = signal(false);
+
+  toggleBlossom(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isBlossomOpen.update(v => !v);
+  }
+
+  closeBlossom(): void {
+    this.isBlossomOpen.set(false);
+  }
 
   // --- Derived state ---
   private readonly modeConfig = computed(() => MODE_CONFIG[this.mode()] ?? MODE_CONFIG.mount);
@@ -106,6 +117,7 @@ export class AppOverviewComponent {
 
   toggleEditLayout(): void {
     this.isEditingLayout.update(v => !v);
+    this.closeBlossom();
   }
 
   onLayoutChanged(newNames: string[]): void {
@@ -120,6 +132,7 @@ export class AppOverviewComponent {
     const nextMode = this.cardDisplayMode() === 'compact' ? 'detailed' : 'compact';
     this.cardDisplayMode.set(nextMode);
     void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', nextMode);
+    this.closeBlossom();
   }
 
   // --- Private helpers ---

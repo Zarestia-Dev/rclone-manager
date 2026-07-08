@@ -1,11 +1,7 @@
 use log::debug;
 use serde_json::Value;
-use tauri::Manager;
 
-use crate::utils::{
-    rclone::endpoints::serve,
-    types::{remotes::ServeInstance, state::RcloneState},
-};
+use crate::utils::{rclone::endpoints::serve, types::remotes::ServeInstance};
 
 /// Parse serves list from API JSON response
 pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
@@ -34,9 +30,7 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
-    let json = app
-        .state::<RcloneState>()
-        .transport
+    let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::TYPES, None)
         .await
         .map_err(|e| format!("Failed to fetch serve types: {e}"))?;
@@ -55,9 +49,7 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
-    let json = app
-        .state::<RcloneState>()
-        .transport
+    let json = crate::rclone::commands::common::transport(&app)
         .rpc(serve::LIST, None)
         .await
         .map_err(|e| format!("Failed to list serves: {e}"))?;

@@ -18,6 +18,7 @@ use crate::rclone::engine::lifecycle::{resume_engine, set_engine_updating, shutd
 use crate::utils::app::notification::{NotificationEvent, UpdateStage, notify};
 use crate::utils::github_client;
 use crate::utils::rclone::endpoints::core;
+use crate::utils::rclone::util::RCLONE_EXECUTABLE;
 use crate::utils::types::events::{APP_EVENT, EngineStatus, RCLONE_ENGINE_STATUS_CHANGED};
 use crate::utils::types::state::RcloneState;
 use crate::utils::types::updater::{
@@ -476,12 +477,7 @@ pub async fn apply_rclone_update(app_handle: AppHandle) -> Result<()> {
         }),
     );
 
-    crate::rclone::engine::lifecycle::restart_for_config_change(
-        &app_handle,
-        "rclone_update",
-        "unknown",
-        &pending_version,
-    );
+    crate::rclone::engine::lifecycle::restart_for_config_change(&app_handle, "rclone_update");
 
     Ok(())
 }
@@ -673,11 +669,7 @@ fn get_local_rclone_binary(app_handle: &AppHandle) -> Result<PathBuf> {
         .map(PathBuf::from)
         .unwrap_or_default();
 
-    let bin_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
+    let bin_name = RCLONE_EXECUTABLE;
 
     if !matches!(configured.to_string_lossy().as_ref(), "" | "system") {
         let dir = if configured.is_dir() {

@@ -4,7 +4,7 @@ import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { EventListenersService } from './event-listeners.service';
 
-import { BackendInfo, TestConnectionResult, addBackendArgs, RuntimeStatus } from '@app/types';
+import { BackendInfo, TestConnectionResult, AddBackendArgs, RuntimeStatus } from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class BackendService extends TauriBaseService {
@@ -85,7 +85,7 @@ export class BackendService extends TauriBaseService {
   }
 
   async addBackend(
-    config: addBackendArgs,
+    config: AddBackendArgs,
     copyBackendFrom?: string,
     copyRemotesFrom?: string
   ): Promise<void> {
@@ -108,7 +108,7 @@ export class BackendService extends TauriBaseService {
     this.backendData.reload();
   }
 
-  async updateBackend(config: addBackendArgs): Promise<void> {
+  async updateBackend(config: AddBackendArgs): Promise<void> {
     await this.invokeCommand('update_backend', {
       params: {
         name: config.name,
@@ -210,7 +210,7 @@ export class BackendService extends TauriBaseService {
     );
   }
 
-  mapFormToConfig(formValue: any, isLocal: boolean): addBackendArgs {
+  mapFormToConfig(formValue: any, isLocal: boolean): AddBackendArgs {
     return {
       name: formValue.name,
       host: formValue.host,
@@ -225,7 +225,7 @@ export class BackendService extends TauriBaseService {
     };
   }
 
-  mapFormToUpdateConfig(formValue: any, editingName: string, isLocal: boolean): addBackendArgs {
+  mapFormToUpdateConfig(formValue: any, editingName: string, isLocal: boolean): AddBackendArgs {
     return {
       name: editingName,
       host: formValue.host,

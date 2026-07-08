@@ -2,13 +2,10 @@ use log::debug;
 
 use crate::utils::rclone::endpoints::mount;
 use crate::utils::types::remotes::MountedRemote;
-use crate::utils::types::state::RcloneState;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
-    let json = app
-        .state::<RcloneState>()
-        .transport
+    let json = crate::rclone::commands::common::transport(&app)
         .rpc(mount::LISTMOUNTS, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;
@@ -32,9 +29,7 @@ pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, S
 
 #[tauri::command]
 pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
-    let json = app
-        .state::<RcloneState>()
-        .transport
+    let json = crate::rclone::commands::common::transport(&app)
         .rpc(mount::TYPES, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch mount types: {e}"))?;

@@ -57,7 +57,7 @@
               "
             />
             <button
-              mat-icon-button
+              matIconButton
               matSuffix
               (click)="toggleKeychainPasswordVisibility()"
               type="button"
@@ -69,11 +69,11 @@
             }
           </mat-form-field>
           <div class="form-actions">
-            <button mat-button type="button" (click)="cancelKeychainStore()">
+            <button matButton="text" type="button" (click)="cancelKeychainStore()">
               {{ 'common.cancel' | translate }}
             </button>
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               (click)="submitKeychainStore()"
               [disabled]="encryptionLoading() || keychainPassword.invalid"
@@ -106,12 +106,7 @@
             [type]="showCurrentPassword() ? 'text' : 'password'"
             formControlName="currentPassword"
           />
-          <button
-            mat-icon-button
-            matSuffix
-            (click)="toggleCurrentPasswordVisibility()"
-            type="button"
-          >
+          <button matIconButton matSuffix (click)="toggleCurrentPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (changePasswordForm.get('currentPassword')?.hasError('required')) {
@@ -126,7 +121,7 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="newPassword"
           />
-          <button mat-icon-button matSuffix (click)="toggleNewPasswordVisibility()" type="button">
+          <button matIconButton matSuffix (click)="toggleNewPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (changePasswordForm.get('newPassword')?.hasError('required')) {
@@ -154,7 +149,7 @@
 
         <div class="form-actions">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             (click)="submitChangePassword()"
             [disabled]="encryptionLoading() || changePasswordForm.invalid"
@@ -192,12 +187,7 @@
             [type]="showCurrentPassword() ? 'text' : 'password'"
             [formControl]="decryptPassword"
           />
-          <button
-            mat-icon-button
-            matSuffix
-            (click)="toggleCurrentPasswordVisibility()"
-            type="button"
-          >
+          <button matIconButton matSuffix (click)="toggleCurrentPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showCurrentPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (decryptPassword.hasError('required')) {
@@ -207,7 +197,7 @@
 
         <div class="form-actions">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="warn"
             (click)="submitDecrypt()"
@@ -241,7 +231,7 @@
             [type]="showNewPassword() ? 'text' : 'password'"
             formControlName="newPassword"
           />
-          <button mat-icon-button matSuffix (click)="toggleNewPasswordVisibility()" type="button">
+          <button matIconButton matSuffix (click)="toggleNewPasswordVisibility()" type="button">
             <mat-icon [svgIcon]="showNewPassword() ? 'eye-slash' : 'eye'"></mat-icon>
           </button>
           @if (encryptForm.get('newPassword')?.hasError('required')) {
@@ -269,7 +259,7 @@
 
         <div class="form-actions">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             (click)="submitEncrypt()"
             [disabled]="encryptionLoading() || encryptForm.invalid"

@@ -50,9 +50,7 @@ pub async fn archive_create(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
     let metadata = JobMetadata {
         remote_name: destination.clone(),
@@ -98,9 +96,7 @@ pub async fn archive_extract(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
     let metadata = JobMetadata {
         remote_name: source.clone(),

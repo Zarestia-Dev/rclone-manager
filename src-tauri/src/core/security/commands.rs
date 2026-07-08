@@ -7,6 +7,7 @@ use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::system::unlock_rclone_config;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 
 fn update_local_config_password(
@@ -18,7 +19,11 @@ fn update_local_config_password(
         .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
     connections
-        .set_field("Local", "config_password", &password.unwrap_or_default())
+        .set_field(
+            LOCAL_BACKEND_NAME,
+            "config_password",
+            &password.unwrap_or_default(),
+        )
         .map_err(|e| format!("Failed to update Local config password: {e}"))
 }
 
@@ -39,10 +44,10 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
     }
 
     let backend_manager = app.state::<BackendManager>();
-    if let Some(mut backend) = backend_manager.get("Local").await {
+    if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = Some(password.clone());
         let _ = backend_manager
-            .update(manager.inner(), "Local", backend)
+            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
             .await;
         debug!("Updated in-memory Local backend config password");
     }
@@ -59,7 +64,7 @@ pub async fn get_config_password(app: AppHandle) -> Result<String, String> {
         .sub_settings("connections")
         .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
-    if let Ok(local) = connections.get_value("Local")
+    if let Ok(local) = connections.get_value(LOCAL_BACKEND_NAME)
         && let Some(password) = local.get("config_password").and_then(|v| v.as_str())
         && !password.is_empty()
     {
@@ -79,7 +84,7 @@ pub async fn has_stored_password(app: AppHandle) -> Result<bool, String> {
         .sub_settings("connections")
         .map_err(|e| format!("Failed to access connections settings: {e}"))?;
 
-    if let Ok(local) = connections.get_value("Local") {
+    if let Ok(local) = connections.get_value(LOCAL_BACKEND_NAME) {
         let has_password = local
             .get("config_password")
             .and_then(|v| v.as_str())
@@ -101,10 +106,10 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to clear config password: {e}"))?;
 
     let backend_manager = app.state::<BackendManager>();
-    if let Some(mut backend) = backend_manager.get("Local").await {
+    if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
         backend.config_password = None;
         let _ = backend_manager
-            .update(manager.inner(), "Local", backend)
+            .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
             .await;
     }
 
@@ -283,12 +288,17 @@ async fn run_encryption_command(
     )?;
 
     let password_command = if cfg!(windows) {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let base64_pass = STANDARD.encode(password);
         format!(
-            "powershell -Command \"Write-Host {} -NoNewline\"",
-            password.replace('\'', "''")
+            "powershell -NoProfile -Command \"[Console]::Out.Write([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{base64_pass}')))\""
         )
     } else {
-        format!("echo \"{password}\"")
+        let mut octal_pass = String::new();
+        for byte in password.as_bytes() {
+            octal_pass.push_str(&format!("\\{:03o}", byte));
+        }
+        format!("sh -c \"printf '{octal_pass}'\"")
     };
 
     let output = build_rclone_command(app, None, config_path.as_deref(), None)
@@ -357,10 +367,10 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             warn!("Failed to store password after encryption: {e}");
         } else {
             let backend_manager = app.state::<BackendManager>();
-            if let Some(mut backend) = backend_manager.get("Local").await {
+            if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
                 let _ = backend_manager
-                    .update(manager.inner(), "Local", backend)
+                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
                     .await;
             }
         }
@@ -385,10 +395,10 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
             warn!("Failed to store password after encryption: {e}");
         } else {
             let backend_manager = app.state::<BackendManager>();
-            if let Some(mut backend) = backend_manager.get("Local").await {
+            if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
                 backend.config_password = Some(password.clone());
                 let _ = backend_manager
-                    .update(manager.inner(), "Local", backend)
+                    .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
                     .await;
             }
         }
@@ -425,10 +435,10 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         }
 
         let backend_manager = app.state::<BackendManager>();
-        if let Some(mut backend) = backend_manager.get("Local").await {
+        if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
             let _ = backend_manager
-                .update(manager.inner(), "Local", backend)
+                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
                 .await;
         }
 
@@ -451,10 +461,10 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
         }
 
         let backend_manager = app.state::<BackendManager>();
-        if let Some(mut backend) = backend_manager.get("Local").await {
+        if let Some(mut backend) = backend_manager.get(LOCAL_BACKEND_NAME).await {
             backend.config_password = None;
             let _ = backend_manager
-                .update(manager.inner(), "Local", backend)
+                .update(manager.inner(), LOCAL_BACKEND_NAME, backend)
                 .await;
         }
 

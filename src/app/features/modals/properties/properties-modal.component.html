@@ -1,6 +1,6 @@
 <header data-tauri-drag-region>
   <button
-    mat-icon-button
+    matIconButton
     (click)="toggleStar()"
     [attr.aria-label]="
       (isStarred() ? 'fileBrowser.properties.unstar' : 'fileBrowser.properties.star') | translate
@@ -13,7 +13,7 @@
   </button>
   <p>{{ 'fileBrowser.properties.title' | translate }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'fileBrowser.properties.close' | translate"
   >
@@ -189,7 +189,7 @@
                 >{{ bulkHashResult() }}
                 </textarea
               >
-              <button mat-stroked-button (click)="bulkHashResult.set(null)">
+              <button matButton="outlined" (click)="bulkHashResult.set(null)">
                 {{ 'fileBrowser.properties.calculateAnother' | translate }}
               </button>
             </div>
@@ -252,7 +252,7 @@
             >
               <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
             </div>
-            <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
+            <button matButton="outlined" class="remove-link-btn" (click)="removePublicLink()">
               {{ 'fileBrowser.properties.removeLink' | translate }}
             </button>
           </div>
@@ -270,7 +270,7 @@
                 }
               </mat-select>
             </mat-form-field>
-            <button mat-flat-button class="get-link-btn primary" (click)="getPublicLink()">
+            <button matButton="filled" class="get-link-btn primary" (click)="getPublicLink()">
               <mat-icon svgIcon="open-link"></mat-icon>
               {{ 'fileBrowser.properties.getLink' | translate }}
             </button>

@@ -58,10 +58,7 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            app.state::<EngineState>()
-                .lock()
-                .await
-                .set_password_error(false);
+            app.state::<EngineState>().lock().await.clear_errors();
         });
     });
 }
@@ -265,24 +262,13 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
 
 fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
     debug!("Rclone binary changed to: {path}");
-    crate::rclone::engine::lifecycle::restart_for_config_change(
-        app,
-        "rclone_binary",
-        "previous",
-        path,
-    );
+    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_binary");
     info!("Rclone binary updated to: {path}");
 }
 
 fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
     debug!("Rclone additional flags changed to: {flags:?}");
-    let flags_str = serde_json::to_string(flags).unwrap_or_default();
-    crate::rclone::engine::lifecycle::restart_for_config_change(
-        app,
-        "rclone_additional_flags",
-        "previous",
-        &flags_str,
-    );
+    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_additional_flags");
     info!("Engine restarting due to additional flags change");
 }
 

@@ -33,21 +33,20 @@
   </div>
 
   <div class="remote-status-indicators" aria-hidden="true">
-    @for (op of visibleStatusIndicators(); track $index) {
-      @let meta = getStatusIndicatorMeta(op);
+    @for (vm of statusIndicatorViewModels(); track $index) {
       <div
         [class]="
           'app-pill ' +
-          meta.pillClass +
-          (meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[op] : '')
+          vm.meta.pillClass +
+          (vm.meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[vm.op] : '')
         "
-        [matTooltip]="getProfileTooltip(op)"
+        [matTooltip]="vm.tooltip"
         matTooltipShowDelay="500"
       >
         <mat-icon
-          [svgIcon]="meta.icon"
-          [class]="meta.animateContainer ? '' : ACTION_ANIMATION_CLASS[op]"
-          [attr.aria-label]="meta.ariaKey | translate"
+          [svgIcon]="vm.meta.icon"
+          [class]="vm.meta.animateContainer ? '' : ACTION_ANIMATION_CLASS[vm.op]"
+          [attr.aria-label]="vm.meta.ariaKey | translate"
         ></mat-icon>
       </div>
     }
@@ -58,7 +57,7 @@
   <div class="quick-actions">
     @for (button of actionButtons(); track button.id) {
       <button
-        mat-mini-fab
+        matMiniFab
         [matTooltip]="button.tooltip"
         matTooltipShowDelay="500"
         [disabled]="button.isDisabled"
@@ -75,7 +74,7 @@
 
     @if (openableFolders().length === 1) {
       <button
-        mat-mini-fab
+        matMiniFab
         [class]="openableFolders()[0].cssClass"
         [matTooltip]="openableFolders()[0].tooltip"
         matTooltipShowDelay="500"
@@ -99,7 +98,7 @@
             let i = $index
           ) {
             <button
-              mat-mini-fab
+              matMiniFab
               class="folder-blossom-item"
               [class]="folder.cssClass"
               [style.transition-delay]="i * 35 + 'ms'"
@@ -120,7 +119,7 @@
         </div>
 
         <button
-          mat-mini-fab
+          matMiniFab
           [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
           [style]="folderBlossomStyle()"
           [matTooltip]="'overviews.remoteCard.browse' | translate"
@@ -155,61 +154,57 @@
         </div>
       </div>
     } @else {
-      @for (operation of detailedOperations(); track $index) {
-        @let profiles = getConfiguredProfiles(operation);
-        @if (profiles.length > 0) {
-          <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
+      @for (opVm of detailedOperationViewModels(); track $index) {
+        @if (opVm.profiles.length > 0) {
+          <div class="profile-group" [ngClass]="opVm.cssClass">
             <div class="profile-group-header">
               <span class="operation-label">
-                <mat-icon
-                  class="operation-icon"
-                  [svgIcon]="getOperationLabelIcon(operation)"
-                ></mat-icon>
-                {{ operation | titlecase }}
+                <mat-icon class="operation-icon" [svgIcon]="opVm.labelIcon"></mat-icon>
+                {{ opVm.operation | titlecase }}
               </span>
-              <span class="profile-count">{{ profiles.length }}</span>
+              <span class="profile-count">{{ opVm.profiles.length }}</span>
             </div>
             <div class="profile-pills">
-              @for (profile of profiles; track $index) {
-                @let isBusy = isProfileActionInProgress(operation, profile);
-                <div class="profile-item" [class.can-open]="canOpenProfilePath(operation, profile)">
+              @for (profileVm of opVm.profiles; track $index) {
+                <div class="profile-item" [class.can-open]="profileVm.canOpen">
                   <button
                     class="app-pill interactive"
-                    [ngClass]="'p-' + getOperationCssClass(operation)"
-                    [class.p-warn]="isProfileActive(operation, profile)"
-                    [class.p-dim]="isBusy"
-                    [disabled]="isBusy"
-                    [matTooltip]="getProfileChipTooltip(operation, profile)"
+                    [ngClass]="'p-' + opVm.cssClass"
+                    [class.p-warn]="profileVm.isActive"
+                    [class.p-dim]="profileVm.isBusy"
+                    [disabled]="profileVm.isBusy"
+                    [matTooltip]="profileVm.chipTooltip"
                     matTooltipShowDelay="500"
-                    (click)="onProfileChipClick(operation, profile, $event)"
+                    (click)="onProfileChipClick(opVm.operation, profileVm.name, $event)"
                   >
-                    @if (isBusy) {
+                    @if (profileVm.isBusy) {
                       <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
-                    } @else if (isProfileActive(operation, profile)) {
+                    } @else if (profileVm.isActive) {
                       <mat-icon
                         class="profile-icon"
-                        [svgIcon]="operation === 'mount' ? 'eject' : 'stop'"
+                        [svgIcon]="opVm.operation === 'mount' ? 'eject' : 'stop'"
                       ></mat-icon>
                     }
-                    <span class="profile-name-text">{{ profile }}</span>
+                    <span class="profile-name-text">{{ profileVm.name }}</span>
                   </button>
 
-                  @let openPaths = getProfileOpenPaths(operation, profile);
-                  @if (openPaths.length > 0) {
-                    @for (path of openPaths; track $index) {
+                  @if (profileVm.openPaths.length > 0) {
+                    @for (pathVm of profileVm.openPaths; track $index) {
                       <button
                         type="button"
                         class="profile-open-btn"
                         [disabled]="isFolderOpening()"
-                        [matTooltip]="getProfileOpenTooltip(profile, path)"
+                        [matTooltip]="pathVm.tooltip"
                         matTooltipShowDelay="500"
-                        (click)="onProfileOpenInFiles(operation, profile, path, $event)"
+                        (click)="
+                          onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
+                        "
                       >
                         @if (isFolderOpening()) {
                           <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
                         } @else {
                           <mat-icon
-                            [svgIcon]="pathService.isLocalPath(path) ? 'folder' : 'folder-open'"
+                            [svgIcon]="pathVm.isLocal ? 'folder' : 'folder-open'"
                           ></mat-icon>
                         }
                       </button>

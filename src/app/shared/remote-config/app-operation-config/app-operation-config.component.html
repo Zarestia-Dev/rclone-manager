@@ -46,7 +46,7 @@
           <mat-panel-description>
             @if (cronExpression()) {
               <code class="cron-tag">{{ cronExpression() }}</code>
-              <button mat-icon-button (click)="clearSchedule($event)" type="button">
+              <button matIconButton (click)="clearSchedule($event)" type="button">
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
             } @else {
@@ -169,7 +169,7 @@
           }}
         </span>
         @if (canAddSource()) {
-          <button mat-button class="add-path-btn" (click)="addPath('source')" type="button">
+          <button matButton="text" class="add-path-btn" (click)="addPath('source')" type="button">
             <mat-icon svgIcon="plus"></mat-icon>
             {{ 'wizards.appOperation.addSource' | translate }}
           </button>
@@ -206,7 +206,7 @@
               </div>
               @if (sourceItems().length > 1) {
                 <div class="action-suffix">
-                  <button mat-icon-button (click)="removePath('source', item.index)" type="button">
+                  <button matIconButton (click)="removePath('source', item.index)" type="button">
                     <mat-icon svgIcon="trash" class="warn"></mat-icon>
                   </button>
                 </div>
@@ -337,7 +337,7 @@
 
     <div class="action-suffix">
       <button
-        mat-icon-button
+        matIconButton
         [disabled]="isDest ? isDestPickerDisabled() : isSourcePickerDisabled()"
         (click)="selectPath(item); $event.stopPropagation()"
         type="button"
@@ -359,7 +359,7 @@
       </button>
       @if (!isDest && canAddSource() && sourceItems().length > 1) {
         <button
-          mat-icon-button
+          matIconButton
           class="remove-btn"
           (click)="removePath('source', item.index)"
           type="button"

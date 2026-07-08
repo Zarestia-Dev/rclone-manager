@@ -106,7 +106,7 @@
                   }
                   @case ('bandwidth') {
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('bandwidth')"
+                      [expanded]="panelOpenStates()['bandwidth']"
                       (opened)="setPanelOpenState('bandwidth', true)"
                       (closed)="setPanelOpenState('bandwidth', false)"
                       class="bandwidth-panel"
@@ -195,7 +195,7 @@
                   }
                   @case ('system') {
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('system')"
+                      [expanded]="panelOpenStates()['system']"
                       (opened)="setPanelOpenState('system', true)"
                       (closed)="setPanelOpenState('system', false)"
                       class="system-info-panel"
@@ -270,7 +270,7 @@
                   }
                   @case ('jobs') {
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('jobs')"
+                      [expanded]="panelOpenStates()['jobs']"
                       (opened)="setPanelOpenState('jobs', true)"
                       (closed)="setPanelOpenState('jobs', false)"
                       class="job-info-panel"
@@ -381,24 +381,22 @@
                               </div>
 
                               <div class="running-jobs-list">
-                                @for (job of runningJobs(); track job.jobid) {
+                                @for (vm of runningJobViewModels(); track vm.job.jobid) {
                                   <div class="running-job-row">
                                     <div class="running-job-main">
                                       <mat-icon
-                                        [svgIcon]="getJobTypeIcon(job)"
+                                        [svgIcon]="vm.typeIcon"
                                         class="running-job-icon"
                                       ></mat-icon>
                                       <div class="running-job-text">
-                                        <span class="running-job-title">{{
-                                          getJobLabel(job)
-                                        }}</span>
+                                        <span class="running-job-title">{{ vm.label }}</span>
                                         <span class="running-job-path">{{
-                                          job.destination || job.source
+                                          vm.job.destination || vm.job.source
                                         }}</span>
                                       </div>
                                     </div>
 
-                                    @if (job.stats; as jStats) {
+                                    @if (vm.job.stats; as jStats) {
                                       <div class="running-job-meta">
                                         <span>{{ jStats.bytes | formatRateValue }}</span>
                                         <span class="dot-separator">•</span>
@@ -453,7 +451,7 @@
                   }
                   @case ('automations') {
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('automations')"
+                      [expanded]="panelOpenStates()['automations']"
                       (opened)="setPanelOpenState('automations', true)"
                       (closed)="setPanelOpenState('automations', false)"
                       class="automations-panel"
@@ -506,7 +504,7 @@
                   @case ('serves') {
                     @let serves = allRunningServes();
                     <mat-expansion-panel
-                      [expanded]="getPanelOpenState('serves')"
+                      [expanded]="panelOpenStates()['serves']"
                       (opened)="setPanelOpenState('serves', true)"
                       (closed)="setPanelOpenState('serves', false)"
                       class="serves-panel"

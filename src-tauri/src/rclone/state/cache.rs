@@ -113,7 +113,7 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Mount cache changed");
-        let _ = app_handle.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        let _ = app_handle.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         true
     }
 
@@ -133,7 +133,7 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Serve cache changed");
-        let _ = app_handle.emit(SERVE_STATE_CHANGED, "cache_updated");
+        let _ = app_handle.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         true
     }
 
@@ -171,7 +171,7 @@ impl RemoteCache {
                 *mounted = Self::merge_mount_profiles(remotes, &existing);
                 debug!("🔄 Updated mounted remotes cache");
                 drop(mounted);
-                let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+                let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
                 Ok(())
             }
             Err(e) => {
@@ -194,7 +194,7 @@ impl RemoteCache {
                     cache_serves.len()
                 );
                 drop(cache_serves);
-                let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+                let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
                 Ok(())
             }
             Err(e) => {
@@ -443,7 +443,7 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)
@@ -464,7 +464,7 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+        let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)

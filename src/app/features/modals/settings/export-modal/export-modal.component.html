@@ -3,7 +3,7 @@
     <mat-icon svgIcon="export"></mat-icon>
   </button>
   <p>{{ 'modals.export.title' | translate }}</p>
-  <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
+  <button matIconButton (click)="close()" [aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -93,7 +93,7 @@
             [disabled]="isExporting()"
           />
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="selectFolder()"
             [disabled]="isExporting()"
@@ -145,7 +145,7 @@
               [placeholder]="'modals.export.passwordPlaceholder' | translate"
               autocomplete="new-password"
             />
-            <button mat-icon-button matSuffix (click)="togglePasswordVisibility()" type="button">
+            <button matIconButton matSuffix (click)="togglePasswordVisibility()" type="button">
               <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
             </button>
           </mat-form-field>
@@ -171,11 +171,11 @@
   </main>
 
   <footer>
-    <button mat-button (click)="close()" [disabled]="isExporting()">
+    <button matButton="text" (click)="close()" [disabled]="isExporting()">
       {{ 'common.cancel' | translate }}
     </button>
     <button
-      mat-flat-button
+      matButton="filled"
       class="primary"
       (click)="onExport()"
       [disabled]="!canExport() || isExporting()"

@@ -36,7 +36,7 @@ export interface TestConnectionResult {
   config_path?: string;
 }
 
-export interface addBackendArgs {
+export interface AddBackendArgs {
   name: string;
   host: string;
   port: number;

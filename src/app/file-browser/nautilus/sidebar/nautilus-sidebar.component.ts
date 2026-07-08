@@ -15,6 +15,11 @@ import { OperationsPanelComponent } from '../../operations-panel/operations-pane
 import { SlideMenuController } from '../slide-menu';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 
+interface BookmarkViewModel {
+  bm: FileBrowserItem;
+  key: string;
+}
+
 @Component({
   selector: 'app-nautilus-sidebar',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,6 +94,41 @@ export class NautilusSidebarComponent {
     return active !== null && this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
   });
 
+  readonly bookmarkViewModels = computed<BookmarkViewModel[]>(() =>
+    this.bookmarks().map(bm => ({ bm, key: this._bookmarkKey(bm) }))
+  );
+
+  readonly selectedBookmarkKeys = computed<Set<string>>(() => {
+    const active = this._activeKey();
+    if (active === null) return new Set<string>();
+    const keys = this.bookmarkViewModels().map(vm => vm.key);
+    return new Set<string>(keys.filter(key => key === active));
+  });
+
+  readonly cleanupSupportedRemotes = computed<Set<string>>(() => {
+    const result = new Set<string>();
+    for (const remote of [...this.localDrives(), ...this.cloudRemotes()]) {
+      if (this.remoteFacadeService.featuresSignal(remote.name)().CleanUp) {
+        result.add(remote.name);
+      }
+    }
+    return result;
+  });
+
+  readonly driveTooltips = computed<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    for (const drive of [...this.localDrives(), ...this.cloudRemotes()]) {
+      const pathInfo = drive.name ? `${drive.name}\n` : '';
+      if (drive.totalSpace === undefined || drive.totalSpace === 0) {
+        map.set(drive.name, pathInfo);
+        continue;
+      }
+      const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
+      map.set(drive.name, `${pathInfo}${fs}`);
+    }
+    return map;
+  });
+
   // Handlers
   onToggleSearch(): void {
     this.toggleSearch.emit();
@@ -124,25 +164,9 @@ export class NautilusSidebarComponent {
     this._closeSidenavOnMobile();
   }
 
-  isBookmarkSelected(bm: FileBrowserItem): boolean {
-    const active = this._activeKey();
-    return active !== null && this._bookmarkKey(bm) === active;
-  }
-
-  supportsCleanup(remote: ExplorerRoot | null): boolean {
-    return remote ? this.remoteFacadeService.featuresSignal(remote.name)().CleanUp : false;
-  }
-
   private _bookmarkKey(bm: FileBrowserItem): string {
     const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '', bm.meta.isLocal);
     return `${remote}::${bm.entry.Path}`;
-  }
-
-  getDriveTooltip(drive: ExplorerRoot): string {
-    const pathInfo = drive.name ? `${drive.name}\n` : '';
-    if (drive.totalSpace === undefined || drive.totalSpace === 0) return pathInfo;
-    const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
-    return `${pathInfo}${fs}`;
   }
 
   private _closeSidenavOnMobile(): void {

@@ -6,7 +6,7 @@ use tokio::try_join;
 
 use crate::{
     rclone::backend::{BackendManager, RcloneTransport},
-    utils::{rclone::endpoints::options, types::state::RcloneState},
+    utils::rclone::endpoints::options,
 };
 
 // ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ fn simplify_field_names(flags: Vec<Value>) -> Vec<Value> {
 
 pub async fn get_all_options_with_values(app: AppHandle) -> Result<Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::commands::common::transport(&app);
     let active_name = backend_manager.get_active().await.name.clone();
 
     if let Some(payload) = backend_manager.options_cache.get(&active_name).await {
@@ -252,7 +252,7 @@ pub async fn get_grouped_options_with_values(app: AppHandle) -> Result<Value, St
 
 #[tauri::command]
 pub async fn get_option_blocks(app: AppHandle) -> Result<Value, String> {
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::commands::common::transport(&app);
     fetch_options(&transport, options::BLOCKS).await
 }
 
@@ -443,8 +443,7 @@ pub async fn set_rclone_option(
         .fold(value, |acc, part| json!({ part: acc }));
     let payload = json!({ block_name.clone(): nested_value });
 
-    app.state::<RcloneState>()
-        .transport
+    crate::rclone::commands::common::transport(&app)
         .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set option '{option_name}' in block '{block_name}': {e}"))
@@ -454,8 +453,7 @@ pub async fn set_rclone_option(
 /// Expected payload shape: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
 #[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
-    app.state::<RcloneState>()
-        .transport
+    crate::rclone::commands::common::transport(&app)
         .rpc(options::SET, Some(&payload))
         .await
         .map_err(|e| format!("Failed to set bulk options: {e}"))

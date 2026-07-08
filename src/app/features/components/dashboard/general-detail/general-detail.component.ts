@@ -224,6 +224,7 @@ export class GeneralDetailComponent {
           remoteName: remote.name,
           primaryActions: remote.primaryActions ?? [],
         },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))

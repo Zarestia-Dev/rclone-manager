@@ -9,10 +9,16 @@ use tokio::sync::RwLock;
 
 use crate::{
     core::automation::engine::get_next_run,
-    utils::types::{
-        automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
-        events::AUTOMATIONS_CACHE_CHANGED,
-        remotes::{OperationType, ProfileParams},
+    utils::{
+        constants::{
+            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
+            AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED,
+        },
+        types::{
+            automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+            events::AUTOMATIONS_CACHE_CHANGED,
+            remotes::{OperationType, ProfileParams},
+        },
     },
 };
 
@@ -144,7 +150,7 @@ impl AutomationsCache {
         if result.has_changes()
             && let Some(app) = app
         {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "bulk_update");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
         }
 
         Ok(result)
@@ -388,7 +394,7 @@ impl AutomationsCache {
         automations.insert(automation_id.clone(), automation.clone());
         drop(automations);
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_added");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
         }
         Ok(automation)
     }
@@ -426,7 +432,7 @@ impl AutomationsCache {
         drop(automations);
 
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_updated");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         }
         Ok(updated_automation)
     }
@@ -444,7 +450,7 @@ impl AutomationsCache {
             .ok_or_else(|| format!("Automation {automation_id} not found"))?;
         drop(automations);
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_removed");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
         }
         Ok(automation)
     }
@@ -452,7 +458,7 @@ impl AutomationsCache {
     pub async fn clear_all_automations(&self, app: Option<&AppHandle>) -> Result<(), String> {
         self.automations.write().await.clear();
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "all_cleared");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_ALL_CLEARED);
         }
         Ok(())
     }
@@ -498,7 +504,7 @@ impl AutomationsCache {
         if !removed.is_empty()
             && let Some(app) = app
         {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "remote_automations_removed");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_REMOTE_REMOVED);
         }
         Ok(removed)
     }

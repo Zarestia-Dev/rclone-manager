@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tokio::process::Child;
@@ -55,19 +56,104 @@ impl RcloneState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(tag = "phase", content = "detail", rename_all = "camelCase")]
+pub enum EnginePhase {
+    /// Just constructed or explicitly stopped; no engine process running.
+    #[default]
+    Stopped,
+    /// `start()` has been called and the engine is spawning / waiting for
+    /// the API to become ready.
+    Starting,
+    /// Engine is up and the API responds to `core/ping`.
+    Running,
+    /// Engine is up but a binary update is in progress; polls should pause.
+    /// Only used on desktop (`not(feature = "librclone")`).
+    #[cfg(not(feature = "librclone"))]
+    Updating,
+    /// `shutdown()` has been called; waiting for the child process to exit.
+    Stopping,
+    /// Cannot start: rclone binary not found / wrong path.
+    #[cfg(not(feature = "librclone"))]
+    FailedPath,
+    /// Cannot start: rclone binary version is below the required minimum.
+    #[cfg(not(feature = "librclone"))]
+    FailedVersion { version: String, required: String },
+    /// Cannot start: config password missing or wrong.
+    FailedPassword,
+    /// Cannot start: any other unrecoverable error.
+    FailedOther { message: String },
+}
+
+impl EnginePhase {
+    #[must_use]
+    pub fn is_operational(&self) -> bool {
+        match self {
+            Self::Running => true,
+            #[cfg(not(feature = "librclone"))]
+            Self::Updating => true,
+            _ => false,
+        }
+    }
+
+    #[must_use]
+    pub fn start_block_reason(&self) -> Option<&Self> {
+        if self.is_failed() { Some(self) } else { None }
+    }
+
+    /// True if the engine is shutting down or already stopped.
+    #[must_use]
+    pub fn is_shutting_down(&self) -> bool {
+        matches!(self, Self::Stopping | Self::Stopped)
+    }
+
+    #[must_use]
+    pub fn is_failed(&self) -> bool {
+        match self {
+            #[cfg(not(feature = "librclone"))]
+            Self::FailedPath | Self::FailedVersion { .. } | Self::Updating => true,
+            Self::FailedPassword | Self::FailedOther { .. } => true,
+            _ => false,
+        }
+    }
+}
+
+impl std::fmt::Display for EnginePhase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stopped => write!(f, "Stopped"),
+            Self::Starting => write!(f, "Starting"),
+            Self::Running => write!(f, "Running"),
+            #[cfg(not(feature = "librclone"))]
+            Self::Updating => write!(f, "Updating"),
+            Self::Stopping => write!(f, "Stopping"),
+            #[cfg(not(feature = "librclone"))]
+            Self::FailedPath => write!(f, "Path Error"),
+            #[cfg(not(feature = "librclone"))]
+            Self::FailedVersion { version, required } => {
+                write!(f, "Version Error ({version} < {required})")
+            }
+            Self::FailedPassword => write!(f, "Password Error"),
+            Self::FailedOther { message } => write!(f, "Error: {message}"),
+        }
+    }
+}
+
 pub struct RcApiEngine {
+    pub phase: EnginePhase,
     pub process: Option<Child>,
-    pub should_exit: bool,
-    pub running: bool,
-    pub password_error: bool,
-    #[cfg(not(feature = "librclone"))]
-    pub updating: bool,
-    #[cfg(not(feature = "librclone"))]
-    pub path_error: bool,
-    #[cfg(not(feature = "librclone"))]
-    pub version_error: bool,
     #[cfg(not(feature = "librclone"))]
     pub current_api_port: u16,
+}
+
+#[cfg(feature = "librclone")]
+impl Default for RcApiEngine {
+    fn default() -> Self {
+        Self {
+            phase: EnginePhase::default(),
+            process: None,
+        }
+    }
 }
 
 /// Thread-safe, async-friendly managed state for the engine

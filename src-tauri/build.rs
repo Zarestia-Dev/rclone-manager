@@ -623,15 +623,14 @@ Returns:
 
 #[cfg(feature = "librclone")]
 fn locate_ndk() -> Option<String> {
-    if let Ok(ndk) = std::env::var("ANDROID_NDK_HOME") {
-        if !ndk.is_empty() {
-            return Some(ndk);
-        }
+    if let Some(ndk) = std::env::var("ANDROID_NDK_HOME")
+        .ok()
+        .filter(|n| !n.is_empty())
+    {
+        return Some(ndk);
     }
-    if let Ok(ndk) = std::env::var("NDK_HOME") {
-        if !ndk.is_empty() {
-            return Some(ndk);
-        }
+    if let Some(ndk) = std::env::var("NDK_HOME").ok().filter(|n| !n.is_empty()) {
+        return Some(ndk);
     }
     let sdk_dir = if let Ok(sdk) = std::env::var("ANDROID_HOME") {
         std::path::PathBuf::from(sdk)
@@ -641,13 +640,11 @@ fn locate_ndk() -> Option<String> {
     };
 
     let ndk_dir = sdk_dir.join("ndk");
-    if ndk_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(ndk_dir) {
-            let mut versions: Vec<_> = entries.flatten().filter(|e| e.path().is_dir()).collect();
-            versions.sort_by_key(|e| e.file_name());
-            if let Some(latest) = versions.last() {
-                return Some(latest.path().to_string_lossy().into_owned());
-            }
+    if let Ok(entries) = std::fs::read_dir(ndk_dir) {
+        let mut versions: Vec<_> = entries.flatten().filter(|e| e.path().is_dir()).collect();
+        versions.sort_by_key(|e| e.file_name());
+        if let Some(latest) = versions.last() {
+            return Some(latest.path().to_string_lossy().into_owned());
         }
     }
     None

@@ -22,7 +22,7 @@ pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
 ) -> Result<SystemStatusPayload, String> {
     let status = get_engine_status(&app_handle).await;
-    if !status.running || status.updating || status.should_exit {
+    if status.is_inactive() {
         return Ok(SystemStatusPayload::inactive());
     }
 
@@ -75,7 +75,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
             }
 
             let status = get_engine_status(&app_handle).await;
-            let should_skip = !status.running || status.updating || status.should_exit;
+            let should_skip = status.is_inactive();
 
             if should_skip {
                 burst_ticks = BURST_TICK_COUNT;

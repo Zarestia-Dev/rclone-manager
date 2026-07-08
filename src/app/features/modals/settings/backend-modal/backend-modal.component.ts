@@ -14,7 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import type { addBackendArgs, BackendInfo, FilePickerConfig } from '@app/types';
+import type { AddBackendArgs, BackendInfo, FilePickerConfig } from '@app/types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -308,7 +308,7 @@ export class BackendModalComponent implements OnInit {
           this.translate.instant('modals.backend.notifications.updated')
         );
       } else {
-        const backendData: addBackendArgs = this.backendService.mapFormToConfig(formValue, false);
+        const backendData: AddBackendArgs = this.backendService.mapFormToConfig(formValue, false);
         await this.backendService.addBackend(
           backendData,
           this.copyBackendFrom() !== 'none' ? this.copyBackendFrom() : undefined,

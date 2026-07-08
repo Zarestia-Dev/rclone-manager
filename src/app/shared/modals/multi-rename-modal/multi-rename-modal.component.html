@@ -6,7 +6,7 @@
     {{ 'nautilus.modals.multiRename.title' | translate: { count: data.items.length } }}
   </p>
   <button
-    mat-icon-button
+    matIconButton
     type="button"
     (click)="dismiss()"
     [attr.aria-label]="'common.close' | translate"
@@ -46,7 +46,7 @@
           />
         </mat-form-field>
         <button
-          mat-stroked-button
+          matButton="outlined"
           [cdkMenuTriggerFor]="placeholderMenu"
           type="button"
           class="add-placeholder-btn"
@@ -165,11 +165,11 @@
 </main>
 
 <footer>
-  <button mat-flat-button class="accent" type="button" (click)="dismiss()">
+  <button matButton="filled" class="accent" type="button" (click)="dismiss()">
     {{ 'common.cancel' | translate }}
   </button>
   <button
-    mat-flat-button
+    matButton="filled"
     class="primary"
     type="button"
     [disabled]="hasErrors() || !hasChanges() || isSaving()"

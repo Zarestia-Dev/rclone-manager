@@ -12,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
 import { TransferOperationsService } from './transfer-operations.service';
 
@@ -27,6 +27,7 @@ import { TransferOperationsService } from './transfer-operations.service';
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
+    FormatFsNamePipe,
     FormatTimePipe,
   ],
   template: `
@@ -80,7 +81,7 @@ import { TransferOperationsService } from './transfer-operations.service';
               <div class="card-paths-v2">
                 <div class="path-group src">
                   <code class="path-pill src" [title]="transfer.srcFs">{{
-                    formatFsName(transfer.srcFs) || '?'
+                    (transfer.srcFs | formatFsName) || '?'
                   }}</code>
                   @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
                   @let canDownloadSrc = ops.canDownloadSource(transfer, jobType());
@@ -135,7 +136,7 @@ import { TransferOperationsService } from './transfer-operations.service';
 
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="transfer.dstFs">{{
-                    formatFsName(transfer.dstFs) || '?'
+                    (transfer.dstFs | formatFsName) || '?'
                   }}</code>
                   @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
                   @let canDownloadDst = ops.canDownloadDst(transfer, jobType());
@@ -189,7 +190,7 @@ import { TransferOperationsService } from './transfer-operations.service';
               <div class="card-paths-v2">
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="remoteName()">{{
-                    formatFsName(remoteName())
+                    remoteName() | formatFsName
                   }}</code>
                   @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
                   @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
@@ -294,14 +295,6 @@ export class ActiveTransfersTableComponent {
   readonly searchTerm = input('');
 
   protected readonly ops = inject(TransferOperationsService);
-
-  protected formatFsName(fs?: string): string {
-    if (!fs) return '';
-    if (/^[a-zA-Z]:$/.test(fs)) {
-      return fs;
-    }
-    return fs.endsWith(':') ? fs.slice(0, -1) : fs;
-  }
 
   private readonly remotesList = computed(
     () => {

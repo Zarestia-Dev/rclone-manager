@@ -79,7 +79,7 @@ import { TranslatePipe } from '@ngx-translate/core';
         <mat-panel-description>
           <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
             <button
-              mat-icon-button
+              matIconButton
               class="quick-action"
               [class]="buttonClass()"
               (click)="handleQuickAction($event)"
@@ -161,7 +161,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
         <div class="panel-actions">
           <button
-            mat-flat-button
+            matButton="filled"
             [class]="buttonClass()"
             (click)="
               config().isActive

@@ -43,6 +43,7 @@ import {
   FLAG_TYPES,
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
+  AppConfig,
   MountConfig,
   CopyConfig,
   SyncConfig,
@@ -65,6 +66,11 @@ import {
   PROFILE_ICONS,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import {
+  getAppCfg,
+  getRcloneCfg,
+  type RcloneSubConfig,
+} from 'src/app/shared/utils/profile-config.util';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
@@ -459,8 +465,8 @@ export class RemoteConfigModalComponent {
     const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
     if (mountConfigs) {
       for (const [profileName, config] of Object.entries(mountConfigs)) {
-        const appCfg = (config as any).app || config;
-        const rcloneCfg = (config as any).rclone || config;
+        const appCfg = (getAppCfg(config) ?? config) as AppConfig;
+        const rcloneCfg = (getRcloneCfg(config) ?? config) as RcloneSubConfig;
         if (appCfg.autoStart && rcloneCfg.mountPoint) {
           void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
         }
@@ -471,8 +477,8 @@ export class RemoteConfigModalComponent {
       const configs = finalConfig[REMOTE_CONFIG_KEYS[jobType]] as JobMap | undefined;
       if (!configs) continue;
       for (const [profileName, config] of Object.entries(configs)) {
-        const appCfg = (config as any).app || config;
-        const rcloneCfg = (config as any).rclone || config;
+        const appCfg = getAppCfg(config) ?? config;
+        const rcloneCfg = getRcloneCfg(config) ?? config;
         const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
         const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
         if (appCfg.autoStart && hasSource && hasDest) {
@@ -497,7 +503,7 @@ export class RemoteConfigModalComponent {
     const serveConfigs = finalConfig[REMOTE_CONFIG_KEYS.serve];
     if (serveConfigs) {
       for (const [profileName, config] of Object.entries(serveConfigs)) {
-        const appCfg = (config as any).app || config;
+        const appCfg = (getAppCfg(config) ?? config) as AppConfig;
         if (appCfg.autoStart) {
           void this.serveManagementService.startServeProfile(remoteName, profileName);
         }

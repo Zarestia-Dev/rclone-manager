@@ -43,7 +43,7 @@ import { FormatFileSizePipe } from '@app/pipes';
 
           @if (!cfg.notSupported) {
             <button
-              mat-icon-button
+              matIconButton
               (click)="retry.emit()"
               [disabled]="cfg.loading"
               [attr.aria-label]="'detailShared.diskUsage.retry' | translate"

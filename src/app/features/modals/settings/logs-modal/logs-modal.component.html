@@ -38,7 +38,7 @@
         [placeholder]="'modals.logs.searchPlaceholder' | translate"
       />
       @if (searchText()) {
-        <button mat-icon-button matSuffix (click)="searchText.set('')">
+        <button matIconButton matSuffix (click)="searchText.set('')">
           <mat-icon svgIcon="close"></mat-icon>
         </button>
       }
@@ -47,7 +47,7 @@
 
   <div class="action-controls">
     <button
-      mat-icon-button
+      matIconButton
       (click)="clearLogs()"
       [matTooltip]="'modals.logs.clearAll' | translate"
       class="warn-btn"
@@ -55,7 +55,7 @@
       <mat-icon svgIcon="trash"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="loadLogs()"
       [matTooltip]="'common.refresh' | translate"
       [disabled]="loading()"
@@ -63,14 +63,14 @@
       <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="scrollToTop()"
       [matTooltip]="'modals.logs.scrollTop' | translate"
     >
       <mat-icon svgIcon="circle-chevron-up"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="scrollToBottom()"
       [matTooltip]="'modals.logs.scrollBottom' | translate"
     >

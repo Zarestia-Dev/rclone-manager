@@ -11,7 +11,6 @@ use crate::{
 
 #[cfg(not(feature = "librclone"))]
 use crate::core::check_binaries::{MIN_RCLONE_VERSION, build_rclone_command};
-#[cfg(not(feature = "librclone"))]
 use crate::rclone::backend::BackendManager;
 #[cfg(feature = "librclone")]
 use crate::utils::types::state::RcloneState;
@@ -21,6 +20,15 @@ use super::error::{EngineError, EngineResult};
 impl RcApiEngine {
     pub async fn validate_config_before_start(&self, app: &AppHandle) -> EngineResult<()> {
         info!("Validating rclone configuration before engine start");
+
+        let backend_manager = app.try_state::<BackendManager>().ok_or_else(|| {
+            EngineError::ConfigValidationFailed("BackendManager not in state".to_string())
+        })?;
+
+        if !backend_manager.is_active_local().await {
+            info!("Active backend is remote, skipping configuration validation");
+            return Ok(());
+        }
 
         #[cfg(not(feature = "librclone"))]
         {
@@ -174,46 +182,33 @@ impl RcApiEngine {
             }
             Err(e) => {
                 error!("Rclone configuration validation failed: {e}");
-
-                let status = match &e {
-                    #[cfg(not(feature = "librclone"))]
-                    EngineError::RcloneNotFound => {
-                        self.set_password_error(false);
-                        self.set_path_error(true);
-                        self.set_version_error(false);
-                        EngineStatus::PathError
-                    }
-                    #[cfg(not(feature = "librclone"))]
-                    EngineError::VersionTooOld { version, required } => {
-                        self.set_password_error(false);
-                        self.set_path_error(false);
-                        self.set_version_error(true);
-                        EngineStatus::VersionError {
-                            version: version.clone(),
-                            required: required.clone(),
-                        }
-                    }
-                    EngineError::WrongPassword | EngineError::PasswordRequired => {
-                        self.set_password_error(true);
-                        #[cfg(not(feature = "librclone"))]
-                        self.set_path_error(false);
-                        #[cfg(not(feature = "librclone"))]
-                        self.set_version_error(false);
-                        EngineStatus::PasswordError
-                    }
-                    other => {
-                        self.clear_errors();
-                        EngineStatus::Error {
-                            message: other.to_string(),
-                        }
-                    }
-                };
-
-                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, &status) {
+                self.apply_config_error(&e);
+                let status: EngineStatus = (&self.phase).into();
+                if let Err(emit_err) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, status) {
                     error!("Failed to emit validation error event: {emit_err}");
                 }
-
                 false
+            }
+        }
+    }
+}
+
+impl RcApiEngine {
+    fn apply_config_error(&mut self, e: &EngineError) {
+        match e {
+            #[cfg(not(feature = "librclone"))]
+            EngineError::RcloneNotFound | EngineError::InvalidPath => {
+                self.mark_path_failed();
+            }
+            #[cfg(not(feature = "librclone"))]
+            EngineError::VersionTooOld { version, required } => {
+                self.mark_version_failed(version.clone(), required.clone());
+            }
+            EngineError::WrongPassword | EngineError::PasswordRequired => {
+                self.mark_password_failed();
+            }
+            other => {
+                self.mark_other_failed(other.to_string());
             }
         }
     }

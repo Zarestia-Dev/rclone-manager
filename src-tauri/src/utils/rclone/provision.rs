@@ -10,7 +10,7 @@ use crate::{
 use super::{
     downloader::download_rclone_zip,
     extractor::extract_rclone_zip,
-    util::{get_arch, safe_copy_rclone, verify_rclone_sha256},
+    util::{RCLONE_EXECUTABLE, get_arch, safe_copy_rclone, verify_rclone_sha256},
 };
 
 #[tauri::command]
@@ -63,11 +63,7 @@ pub async fn provision_rclone(
 
     extract_rclone_zip(&zip_bytes, &temp_dir)?;
 
-    let binary_name = if os == "windows" {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
+    let binary_name = RCLONE_EXECUTABLE;
     let extracted_path = temp_dir
         .join("rclone")
         .join(format!("rclone-{version}-{os_name}-{arch}"))

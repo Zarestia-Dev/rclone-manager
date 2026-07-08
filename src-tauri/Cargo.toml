@@ -119,3 +119,6 @@ librclone = []
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
+
+[patch.crates-io]
+rcman = { path = "../../rcman" }

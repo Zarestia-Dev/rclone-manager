@@ -1,4 +1,5 @@
 use crate::core::settings::AppSettingsManager;
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -17,7 +18,7 @@ impl SafeEnvironmentManager {
 
     pub fn init_with_stored_credentials(&self, manager: &AppSettingsManager) -> Result<(), String> {
         match manager.sub_settings("connections") {
-            Ok(connections) => match connections.get_value("Local") {
+            Ok(connections) => match connections.get_value(LOCAL_BACKEND_NAME) {
                 Ok(local) => {
                     if let Some(password) = local.get("config_password").and_then(|v| v.as_str())
                         && !password.is_empty()

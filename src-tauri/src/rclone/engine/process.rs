@@ -29,7 +29,7 @@ impl RcApiEngine {
             Err(e) => {
                 error!("Failed to create engine command: {e}");
                 if let EngineError::PasswordRequired = e {
-                    self.set_password_error(true);
+                    self.mark_password_failed();
                 }
                 return Err(e);
             }
@@ -38,16 +38,22 @@ impl RcApiEngine {
         match engine_cmd.spawn() {
             Ok(child) => {
                 info!("Rclone process spawned");
-                self.set_path_error(false);
+                #[cfg(not(feature = "librclone"))]
+                if matches!(
+                    self.phase,
+                    crate::utils::types::state::EnginePhase::FailedPath
+                ) {
+                    self.clear_errors();
+                }
                 Ok(child)
             }
             Err(e) => {
                 error!("Failed to spawn rclone process: {e}");
                 if e.kind() == std::io::ErrorKind::NotFound {
-                    self.set_path_error(true);
+                    self.mark_path_failed();
                     return Err(EngineError::InvalidPath);
                 }
-                self.set_path_error(false);
+                self.mark_other_failed(e.to_string());
                 Err(EngineError::SpawnFailed(e.to_string()))
             }
         }
@@ -55,7 +61,7 @@ impl RcApiEngine {
 
     pub async fn kill_process(&mut self, app: &AppHandle) -> EngineResult<()> {
         let Some(mut child) = self.process.take() else {
-            self.running = false;
+            self.mark_stopped();
             return Ok(());
         };
 
@@ -64,7 +70,7 @@ impl RcApiEngine {
 
         let mut kill_error: Option<EngineError> = None;
 
-        if self.running && child.id().is_some() {
+        if self.is_running() && child.id().is_some() {
             let state = app.state::<RcloneState>();
             let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
@@ -81,7 +87,7 @@ impl RcApiEngine {
             let _ = child.wait().await;
         }
 
-        self.running = false;
+        self.mark_stopped();
 
         if backend.is_auth_generated {
             let mut updated_backend = backend.clone();

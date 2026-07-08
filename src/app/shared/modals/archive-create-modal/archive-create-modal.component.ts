@@ -38,7 +38,7 @@ export interface ArchiveCreateData {
       <p class="header-title">
         {{ 'nautilus.modals.archiveCreate.title' | translate }}
       </p>
-      <button mat-icon-button (click)="dismiss()" [attr.aria-label]="'common.close' | translate">
+      <button matIconButton (click)="dismiss()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
@@ -58,7 +58,7 @@ export interface ArchiveCreateData {
     </main>
 
     <footer>
-      <button mat-flat-button [disabled]="form.invalid" (click)="onConfirm()">
+      <button matButton="filled" [disabled]="form.invalid" (click)="onConfirm()">
         {{ 'nautilus.modals.archiveCreate.compress' | translate }}
       </button>
     </footer>

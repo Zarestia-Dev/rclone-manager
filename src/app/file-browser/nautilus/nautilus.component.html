@@ -168,7 +168,7 @@
     @if (isPickerMode() && !isMobile()) {
       <div class="picker-actions desktop-picker">
         <button
-          mat-flat-button
+          matButton="filled"
           class="accent"
           (click)="confirmSelection()"
           [disabled]="isConfirmDisabled()"

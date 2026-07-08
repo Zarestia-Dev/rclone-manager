@@ -4,9 +4,12 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     core::initialization::apply_settings::apply_core_settings,
     rclone::backend::BackendManager,
-    utils::types::{
-        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-        state::RcloneState,
+    utils::{
+        constants::LOCAL_BACKEND_NAME,
+        types::{
+            events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+            state::RcloneState,
+        },
     },
 };
 
@@ -34,7 +37,7 @@ async fn refresh_caches_and_tray(app: &AppHandle) {
 
     if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
         &backend_manager,
-        "Local",
+        LOCAL_BACKEND_NAME,
         &*transport,
         None,
     )

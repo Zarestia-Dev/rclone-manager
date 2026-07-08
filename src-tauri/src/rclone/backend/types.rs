@@ -106,8 +106,26 @@ impl Default for Backend {
     }
 }
 
+pub use crate::utils::constants::LOCAL_BACKEND_NAME;
+
 pub fn default_backend_name() -> String {
-    "Local".to_string()
+    LOCAL_BACKEND_NAME.to_string()
+}
+
+impl Backend {
+    #[must_use]
+    pub fn is_local_name(name: &str) -> bool {
+        name == LOCAL_BACKEND_NAME
+    }
+
+    #[must_use]
+    pub fn profile_name_for(name: &str) -> &str {
+        if Self::is_local_name(name) {
+            crate::utils::constants::LOCAL_BACKEND_PROFILE
+        } else {
+            name
+        }
+    }
 }
 
 impl Backend {
@@ -525,17 +543,18 @@ impl Backend {
                 .is_some_and(|os| os.to_lowercase().contains("windows"));
 
             if is_windows {
-                let escaped_pass = pass
-                    .replace('^', "^^")
-                    .replace('&', "^&")
-                    .replace('|', "^|")
-                    .replace('<', "^<")
-                    .replace('>', "^>");
-                args.push(format!("--password-command=cmd /C echo {escaped_pass}"));
-            } else {
-                let escaped_pass = pass.replace('\'', "'\\''");
+                use base64::{Engine as _, engine::general_purpose::STANDARD};
+                let base64_pass = STANDARD.encode(pass);
                 args.push(format!(
-                    "--password-command=sh -c \"printf '%s' '{escaped_pass}'\""
+                    "--password-command=powershell -NoProfile -Command \"[Console]::Out.Write([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{base64_pass}')))\""
+                ));
+            } else {
+                let mut octal_pass = String::new();
+                for byte in pass.as_bytes() {
+                    octal_pass.push_str(&format!("\\{:03o}", byte));
+                }
+                args.push(format!(
+                    "--password-command=sh -c \"printf '{octal_pass}'\""
                 ));
             }
         }
@@ -640,7 +659,9 @@ mod tests {
         assert!(backend.is_local);
         assert_eq!(backend.host, "127.0.0.1");
         assert_eq!(backend.port, 51900);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_port, 51901);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_host, "127.0.0.1");
     }
 
@@ -652,6 +673,7 @@ mod tests {
         assert!(!backend.is_local);
         assert_eq!(backend.host, "192.168.1.100");
         assert_eq!(backend.port, 51900);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_port, 51901);
     }
 
@@ -730,7 +752,9 @@ mod tests {
         assert!(!json.contains("\"name\""));
         assert!(json.contains("\"is_local\":true"));
         assert!(json.contains("\"host\":\"127.0.0.1\""));
+        #[cfg(not(feature = "librclone"))]
         assert!(json.contains("\"oauth_port\":51901"));
+        #[cfg(not(feature = "librclone"))]
         assert!(json.contains("\"oauth_host\":\"127.0.0.1\""));
     }
 
@@ -746,7 +770,9 @@ mod tests {
         assert_eq!(backend.name, "");
         assert!(!backend.is_local);
         assert_eq!(backend.host, "10.0.0.1");
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_port, 51901);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_host, "127.0.0.1");
     }
 

@@ -18,7 +18,7 @@
 
     <div class="profile-actions">
       <button
-        mat-icon-button
+        matIconButton
         (click)="state.startAddProfile(flagType())"
         [attr.title]="'modals.remoteConfig.profile.add' | translate"
       >
@@ -30,7 +30,7 @@
         [matTooltipDisabled]="!renameDisabledReason()"
       >
         <button
-          mat-icon-button
+          matIconButton
           (click)="state.startEditProfile(flagType())"
           [attr.title]="'modals.remoteConfig.profile.rename' | translate"
           [disabled]="renameDisabled()"
@@ -44,7 +44,7 @@
         [matTooltipDisabled]="!deleteDisabledReason()"
       >
         <button
-          mat-icon-button
+          matIconButton
           class="warn"
           (click)="state.deleteProfile(flagType(), selProfile)"
           [attr.title]="'modals.remoteConfig.profile.delete' | translate"
@@ -75,14 +75,14 @@
 
     <div class="profile-actions">
       <button
-        mat-icon-button
+        matIconButton
         (click)="state.saveProfile(flagType())"
         [attr.title]="'modals.remoteConfig.profile.save' | translate"
       >
         <mat-icon svgIcon="circle-check" class="primary"></mat-icon>
       </button>
       <button
-        mat-icon-button
+        matIconButton
         (click)="state.cancelProfileEdit(flagType())"
         [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
       >

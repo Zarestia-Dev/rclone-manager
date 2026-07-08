@@ -1,16 +1,10 @@
+import type { PrimaryActionType } from './operations';
+
 /**
- * Type of automation
+ * Type of automation. Derived from `PrimaryActionType` by excluding the
+ * non-automatable operations (`mount` and `serve`).
  */
-export type AutomationType =
-  | 'copy'
-  | 'sync'
-  | 'move'
-  | 'bisync'
-  | 'check'
-  | 'delete'
-  | 'copyurl'
-  | 'archivecreate'
-  | 'cryptcheck';
+export type AutomationType = Exclude<PrimaryActionType, 'mount' | 'serve'>;
 
 /**
  * Status of an automation

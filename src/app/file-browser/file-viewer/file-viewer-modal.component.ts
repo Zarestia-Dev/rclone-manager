@@ -11,6 +11,8 @@ import {
   ElementRef,
   DestroyRef,
   ChangeDetectionStrategy,
+  Injector,
+  afterNextRender,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -82,6 +84,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -165,12 +168,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.showMarkdownPreview.set(false);
 
     // Re-initialize as editable
-    setTimeout(
-      () =>
+    afterNextRender(
+      () => {
         void this.initEditor(false, this.editContent()).catch(e =>
           console.error('initEditor failed', e)
-        ),
-      0
+        );
+      },
+      { injector: this.injector }
     );
   }
 
@@ -182,12 +186,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set('');
 
     // Re-initialize as read-only with original content
-    setTimeout(
-      () =>
+    afterNextRender(
+      () => {
         void this.initEditor(true, this.textContent()).catch(e =>
           console.error('initEditor failed', e)
-        ),
-      0
+        );
+      },
+      { injector: this.injector }
     );
   }
 
@@ -431,12 +436,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
     // If switching back to raw view, re-initialize CodeMirror
     if (!this.showMarkdownPreview()) {
-      setTimeout(
-        () =>
+      afterNextRender(
+        () => {
           void this.initEditor(true, this.textContent()).catch(e =>
             console.error('initEditor failed', e)
-          ),
-        0
+          );
+        },
+        { injector: this.injector }
       );
     } else if (this.editorView) {
       // Destroy editor when showing preview to save resources and avoid state desync
@@ -562,12 +568,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
                 if (this.fileName().toLowerCase().endsWith('.lnk')) {
                   const info = this.extractLnkInfo(res.body);
                   this.textContent.set(info);
-                  setTimeout(
-                    () =>
+                  afterNextRender(
+                    () => {
                       void this.initEditor(true, info).catch(e =>
                         console.error('initEditor failed', e)
-                      ),
-                    0
+                      );
+                    },
+                    { injector: this.injector }
                   );
                 } else {
                   this.currentFileType.set('binary');
@@ -576,12 +583,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
                 const repaired = this.repairText(res.body);
                 this.textContent.set(repaired);
                 // Initialize CodeMirror in read-only mode
-                setTimeout(
-                  () =>
+                afterNextRender(
+                  () => {
                     void this.initEditor(true, repaired ?? '').catch(e =>
                       console.error('initEditor failed', e)
-                    ),
-                  0
+                    );
+                  },
+                  { injector: this.injector }
                 );
               }
             }

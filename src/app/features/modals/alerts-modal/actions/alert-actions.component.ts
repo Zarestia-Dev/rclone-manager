@@ -31,14 +31,14 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
       <!-- Toolbar -->
       <div class="toolbar">
         <button
-          mat-icon-button
+          matIconButton
           (click)="searchVisible.set(!searchVisible())"
           [matTooltip]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button mat-flat-button (click)="createAction()">
+        <button matButton="filled" (click)="createAction()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createAction' | translate }}
         </button>
@@ -118,7 +118,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                 <div class="row-actions">
                   <!-- Test -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="testAction(action)"
                     [matTooltip]="'alerts.testAction' | translate"
                     [disabled]="alerts.testingActionIds().has(action.id)"
@@ -135,7 +135,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
                   <!-- Edit -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="editAction(action)"
                     [matTooltip]="'common.edit' | translate"
                   >
@@ -144,7 +144,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
                   <!-- Delete -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="deleteAction(action)"
                     [matTooltip]="'common.delete' | translate"
                   >
@@ -299,6 +299,7 @@ export class AlertActionsComponent {
         maxHeight: '80vh',
         disableClose: false,
         data: { actionId: undefined },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async action => {
@@ -313,6 +314,7 @@ export class AlertActionsComponent {
         maxHeight: '80vh',
         disableClose: false,
         data: { actionId: action.id },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async updated => {

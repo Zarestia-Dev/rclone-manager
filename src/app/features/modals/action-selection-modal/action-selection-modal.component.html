@@ -4,7 +4,7 @@
   </button>
   <p data-tauri-drag-region>{{ 'modals.actionSelection.title' | translate }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="onCancel()"
     [attr.aria-label]="'modals.actionSelection.cancel' | translate"
   >
@@ -44,7 +44,7 @@
         </div>
 
         <button
-          mat-icon-button
+          matIconButton
           class="star-button"
           [class.starred]="item.isStarred"
           (click)="toggleStar(item.key)"
@@ -64,10 +64,10 @@
 </main>
 
 <footer>
-  <button mat-button (click)="onCancel()">
+  <button matButton="text" (click)="onCancel()">
     {{ 'modals.actionSelection.cancel' | translate }}
   </button>
-  <button mat-flat-button (click)="onSave()" [disabled]="!hasChanges()">
+  <button matButton="filled" (click)="onSave()" [disabled]="!hasChanges()">
     {{ 'modals.actionSelection.save' | translate }}
   </button>
 </footer>

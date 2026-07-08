@@ -4,7 +4,7 @@
   </button>
   <p>{{ displayName }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'fileBrowser.remoteAbout.close' | translate"
   >
@@ -79,7 +79,7 @@
                 </span>
               </div>
               <button
-                mat-icon-button
+                matIconButton
                 (click)="fetchDiskUsage(true)"
                 [disabled]="usage.loading"
                 [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"

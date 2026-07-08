@@ -42,7 +42,7 @@ export class RcloneValueMapperService {
     }
 
     const m = Math.floor(remaining / 60000000000);
-    if (m > 0 || (result && remaining >= 1000000000)) {
+    if (m > 0 || result) {
       result += `${m}m`;
       remaining %= 60000000000;
     }

@@ -71,6 +71,7 @@ export class NotificationService {
       disableClose: true,
       data,
       ...config,
+      panelClass: 'mobile-sheet-dialog',
     });
   }
 
@@ -85,6 +86,7 @@ export class NotificationService {
       disableClose: true,
       data,
       ...config,
+      panelClass: 'mobile-sheet-dialog',
     });
   }
 }

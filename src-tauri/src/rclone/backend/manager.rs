@@ -11,7 +11,7 @@ use crate::utils::types::{jobs::JobCache, remotes::RemoteCache};
 use super::{
     runtime::RuntimeInfo,
     state::BackendState,
-    types::{Backend, BackendInfo},
+    types::{Backend, BackendInfo, LOCAL_BACKEND_NAME},
 };
 
 /// Inner state that must always be read/written together to avoid index drift.
@@ -26,7 +26,7 @@ struct BackendsState {
 impl BackendsState {
     fn new() -> Self {
         Self {
-            backends: vec![Backend::new_local("Local")],
+            backends: vec![Backend::new_local(LOCAL_BACKEND_NAME)],
             active_index: 0,
         }
     }
@@ -145,10 +145,10 @@ impl BackendManager {
             .await
             .backends
             .iter()
-            .find(|b| b.name == "Local")
+            .find(|b| b.name == LOCAL_BACKEND_NAME)
             .map(|b| b.config_path.clone())
             .ok_or_else(
-                || crate::localized_error!("backendErrors.backend.notFound", "name" => "Local"),
+                || crate::localized_error!("backendErrors.backend.notFound", "name" => LOCAL_BACKEND_NAME),
             )
     }
 
@@ -183,7 +183,7 @@ impl BackendManager {
             {
                 match source {
                     Some(src) => {
-                        let src_profile = if src == "Local" { "default" } else { src };
+                        let src_profile = Backend::profile_name_for(src);
                         pm.duplicate(src_profile, &backend.name)
                             .map(|()| {
                                 info!("Copied {} from '{}' to '{}'", sub_name, src, backend.name);
@@ -230,7 +230,7 @@ impl BackendManager {
 
     /// Remove a backend by name and delete its associated profiles
     pub async fn remove(&self, manager: &AppSettingsManager, name: &str) -> Result<(), String> {
-        if name == "Local" {
+        if Backend::is_local_name(name) {
             return Err(crate::localized_error!(
                 "backendErrors.backend.cannotRemoveLocal"
             ));
@@ -304,7 +304,7 @@ impl BackendManager {
             super::state::restore_backend_state(self, name).await;
         }
 
-        let profile_name = if name == "Local" { "default" } else { name };
+        let profile_name = Backend::profile_name_for(name);
         info!("Switching profiles to: {profile_name}");
 
         self.switch_sub_settings_profile(manager, "remotes", profile_name)?;
@@ -437,8 +437,8 @@ impl BackendManager {
             {
                 backend.name = key.clone();
 
-                if backend.name == "Local" {
-                    let _ = self.update(manager, "Local", backend).await;
+                if Backend::is_local_name(&backend.name) {
+                    let _ = self.update(manager, LOCAL_BACKEND_NAME, backend).await;
                 } else {
                     let _ = self.add(manager, backend, None, None).await;
                 }
@@ -447,15 +447,15 @@ impl BackendManager {
 
         let target_backend = active_name.unwrap_or_else(|| {
             log::info!("No active backend saved, defaulting to Local");
-            "Local".to_string()
+            LOCAL_BACKEND_NAME.to_string()
         });
 
         if let Err(e) = self.switch_to(manager, &target_backend).await {
             log::warn!(
                 "Failed to restore active backend '{target_backend}': {e}. Reverting to Local."
             );
-            if target_backend != "Local"
-                && let Err(revert_e) = self.switch_to(manager, "Local").await
+            if !Backend::is_local_name(&target_backend)
+                && let Err(revert_e) = self.switch_to(manager, LOCAL_BACKEND_NAME).await
             {
                 log::error!("Critical: Failed to revert to Local backend: {revert_e}");
             }
@@ -501,7 +501,7 @@ mod tests {
         let manager = BackendManager::new();
         let backends = manager.list_all().await;
         assert_eq!(backends.len(), 1);
-        assert_eq!(backends[0].name, "Local");
+        assert_eq!(backends[0].name, LOCAL_BACKEND_NAME);
         assert!(backends[0].is_active);
     }
 
@@ -510,7 +510,7 @@ mod tests {
         use crate::rclone::backend::runtime::RuntimeStatus;
         let manager = BackendManager::new();
         manager
-            .set_runtime_status("Local", RuntimeStatus::Connected)
+            .set_runtime_status(LOCAL_BACKEND_NAME, RuntimeStatus::Connected)
             .await;
 
         let backends = manager.list_all().await;
@@ -518,7 +518,7 @@ mod tests {
 
         manager
             .set_runtime_status(
-                "Local",
+                LOCAL_BACKEND_NAME,
                 RuntimeStatus::Error("connection failed".to_string()),
             )
             .await;
@@ -533,7 +533,7 @@ mod tests {
     async fn test_get_active_name_consistent() {
         // Both reads come from the same lock, so they can never disagree.
         let manager = BackendManager::new();
-        assert_eq!(manager.get_active_name().await, "Local");
-        assert_eq!(manager.get_active().await.name, "Local");
+        assert_eq!(manager.get_active_name().await, LOCAL_BACKEND_NAME);
+        assert_eq!(manager.get_active().await.name, LOCAL_BACKEND_NAME);
     }
 }

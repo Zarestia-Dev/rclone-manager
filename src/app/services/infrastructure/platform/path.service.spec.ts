@@ -22,6 +22,11 @@ describe('PathService', () => {
     it('should replace backslashes', () => {
       expect(service.normalizePath('a\\b\\c')).toBe('a/b/c');
     });
+
+    it('should strip leading slash from Windows drive paths', () => {
+      expect(service.normalizePath('/C:/Users/hakan')).toBe('C:/Users/hakan');
+      expect(service.normalizePath('/d:/some/path')).toBe('d:/some/path');
+    });
   });
 
   describe('normalizeRemoteName', () => {
@@ -199,6 +204,25 @@ describe('PathService', () => {
       expect(service.isLocalPath('Google Drive')).toBeFalse();
       expect(service.isLocalPath('remote')).toBeFalse();
       expect(service.isLocalPath('s3')).toBeFalse();
+    });
+  });
+
+  describe('parseFsString', () => {
+    beforeEach(() => {
+      service.setRemoteNames(['remote', 'my-remote']);
+    });
+
+    it('should parse Windows local paths correctly', () => {
+      const result1 = service.parseFsString('C:\\', 'currentRemote', 'my-remote');
+      expect(result1).toEqual({ type: 'local', path: 'C:\\', remote: '' });
+
+      const result2 = service.parseFsString('d:\\some\\path', 'currentRemote', 'my-remote');
+      expect(result2).toEqual({ type: 'local', path: 'd:\\some\\path', remote: '' });
+    });
+
+    it('should parse standard remote paths correctly', () => {
+      const result = service.parseFsString('remote:bucket/path', 'currentRemote', 'my-remote');
+      expect(result).toEqual({ type: 'otherRemote:remote', path: 'bucket/path', remote: 'remote' });
     });
   });
 });

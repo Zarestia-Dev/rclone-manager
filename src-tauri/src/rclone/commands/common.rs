@@ -20,6 +20,26 @@ use crate::{
 #[cfg(not(feature = "librclone"))]
 use crate::rclone::backend::types::Backend;
 
+#[must_use]
+pub fn transport(app: &AppHandle) -> std::sync::Arc<dyn crate::rclone::backend::RcloneTransport> {
+    app.state::<RcloneState>().transport.clone()
+}
+
+pub fn ensure_group(payload: &mut Value, group: &str) {
+    if let Some(obj) = payload.as_object_mut() {
+        obj.entry("_group".to_string())
+            .or_insert_with(|| json!(group));
+    }
+}
+
+#[must_use]
+pub fn filter_empty_options(opts: &HashMap<String, Value>) -> HashMap<String, Value> {
+    opts.iter()
+        .filter(|(_, v)| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
 /// Resolves profile settings for a given remote and profile name.
 ///
 /// Returns a tuple containing:

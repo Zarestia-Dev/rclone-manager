@@ -178,13 +178,13 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let active_name = backend_manager.get_active_name().await;
     let transport = app_handle.state::<RcloneState>().transport.clone();
 
-    if active_name == "Local" {
+    if crate::rclone::backend::types::Backend::is_local_name(&active_name) {
         info!(
             "Skipping redundant Local backend connectivity check (already verified during engine startup)"
         );
         backend_manager
             .set_runtime_status(
-                "Local",
+                crate::utils::constants::LOCAL_BACKEND_NAME,
                 crate::rclone::backend::runtime::RuntimeStatus::Connected,
             )
             .await;

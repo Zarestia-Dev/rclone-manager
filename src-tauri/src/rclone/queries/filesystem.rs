@@ -18,7 +18,6 @@ use crate::utils::{
         jobs::{JobStatus, JobType},
         rclone::{DiskUsage, DiskUsageSeverity},
         remotes::ListOptions,
-        state::RcloneState,
     },
 };
 
@@ -29,7 +28,7 @@ async fn run_fs_command_as_job(
     metadata: JobMetadata,
 ) -> Result<serde_json::Value, String> {
     let backend_manager = app.state::<BackendManager>();
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::commands::common::transport(&app);
 
     if let Some(obj) = payload.as_object_mut() {
         obj.insert("_async".to_string(), json!(true));
@@ -106,18 +105,7 @@ pub async fn get_fs_info(
         app,
         operations::FSINFO,
         json!(params),
-        JobMetadata {
-            remote_name: remote,
-            job_type: JobType::Info,
-            source: vec![source],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        JobMetadata::for_query(remote, source, JobType::Info, origin, group),
     )
     .await?;
 
@@ -156,27 +144,20 @@ pub async fn get_remote_paths(
         app,
         operations::LIST,
         json!(params),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::List,
-            source: vec![build_full_path(&remote, path.as_deref().unwrap_or(""))],
-            destination: String::new(),
-            profile: None,
+        JobMetadata::for_query(
+            remote.clone(),
+            build_full_path(&remote, path.as_deref().unwrap_or("")),
+            JobType::List,
             origin,
             group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        ),
     )
     .await
 }
 
 #[tauri::command]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
-    let response = app
-        .state::<RcloneState>()
-        .transport
+    let response = crate::rclone::commands::common::transport(&app)
         .rpc(core::DISKS, None)
         .await
         .map_err(|e| format!("❌ Failed to call {}: {e}", core::DISKS))?;
@@ -413,18 +394,7 @@ pub async fn get_about_remote(
         app,
         operations::ABOUT,
         json!(params),
-        JobMetadata {
-            remote_name: remote,
-            job_type: JobType::About,
-            source: vec![source],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        JobMetadata::for_query(remote, source, JobType::About, origin, group),
     )
     .await
 }
@@ -447,18 +417,7 @@ pub async fn get_size(
         app,
         operations::SIZE,
         json!(params),
-        JobMetadata {
-            remote_name: remote,
-            job_type: JobType::Size,
-            source: vec![fs_with_path],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        JobMetadata::for_query(remote, fs_with_path, JobType::Size, origin, group),
     )
     .await
 }
@@ -479,18 +438,13 @@ pub async fn get_stat(
         app,
         operations::STAT,
         json!(params),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Stat,
-            source: vec![build_full_path(&remote, &path)],
-            destination: String::new(),
-            profile: None,
+        JobMetadata::for_query(
+            remote.clone(),
+            build_full_path(&remote, &path),
+            JobType::Stat,
             origin,
             group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        ),
     )
     .await
 }
@@ -515,18 +469,7 @@ pub async fn get_hashsum(
         app,
         operations::HASHSUM,
         json!(params),
-        JobMetadata {
-            remote_name: remote,
-            job_type: JobType::Hash,
-            source: vec![fs_with_path],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        JobMetadata::for_query(remote, fs_with_path, JobType::Hash, origin, group),
     )
     .await
 }
@@ -549,18 +492,13 @@ pub async fn get_hashsum_file(
         app,
         operations::HASHSUMFILE,
         json!(params),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Hash,
-            source: vec![build_full_path(&remote, &path)],
-            destination: String::new(),
-            profile: None,
+        JobMetadata::for_query(
+            remote.clone(),
+            build_full_path(&remote, &path),
+            JobType::Hash,
             origin,
             group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        ),
     )
     .await
 }
@@ -591,18 +529,13 @@ pub async fn get_public_link(
         app,
         operations::PUBLICLINK,
         json!(params),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Info,
-            source: vec![build_full_path(&remote, &path)],
-            destination: String::new(),
-            profile: None,
+        JobMetadata::for_query(
+            remote.clone(),
+            build_full_path(&remote, &path),
+            JobType::Info,
             origin,
             group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        ),
     )
     .await
 }

@@ -57,7 +57,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         <div class="spacer"></div>
 
         <button
-          mat-icon-button
+          matIconButton
           [class.search-open]="searchVisible()"
           (click)="searchVisible.set(!searchVisible())"
           [matTooltip]="'shared.search.toggle' | translate"
@@ -66,7 +66,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         </button>
 
         <button
-          mat-icon-button
+          matIconButton
           (click)="acknowledgeAll()"
           [disabled]="alerts.unacknowledged() === 0"
           [matTooltip]="'alerts.acknowledgeAll' | translate"
@@ -75,7 +75,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         </button>
 
         <button
-          mat-icon-button
+          matIconButton
           (click)="clearHistory()"
           [disabled]="alerts.history().length === 0"
           [matTooltip]="'alerts.clearHistory' | translate"
@@ -114,7 +114,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
-          <button mat-button (click)="clearFilters()">
+          <button matButton="text" (click)="clearFilters()">
             {{ 'common.clearAll' | translate }}
           </button>
         </div>
@@ -230,7 +230,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                   }
 
                   <button
-                    mat-icon-button
+                    matIconButton
                     [class.btn-acked]="alert.acknowledged"
                     [disabled]="alert.acknowledged"
                     (click)="acknowledge(alert.id)"

@@ -17,12 +17,8 @@
 
 // ── Header / toolbar ───────────────────────────────────────────────────────
 
-.nautilus-header {
-  flex-shrink: 0;
-}
-
 mat-toolbar {
-  --mat-toolbar-container-color: var(--sidebar-bg-color);
+  background: transparent;
   padding-inline: 6px;
   height: var(--titlebar-height);
   display: flex;

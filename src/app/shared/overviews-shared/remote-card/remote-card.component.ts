@@ -30,6 +30,34 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 
+interface StatusIndicatorViewModel {
+  op: PrimaryActionType;
+  meta: { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean };
+  tooltip: string;
+}
+
+interface ProfilePathViewModel {
+  path: string;
+  isLocal: boolean;
+  tooltip: string;
+}
+
+interface ProfileChipViewModel {
+  name: string;
+  isBusy: boolean;
+  canOpen: boolean;
+  isActive: boolean;
+  chipTooltip: string;
+  openPaths: ProfilePathViewModel[];
+}
+
+interface DetailedOperationViewModel {
+  operation: PrimaryActionType;
+  cssClass: string;
+  labelIcon: string;
+  profiles: ProfileChipViewModel[];
+}
+
 @Component({
   selector: 'app-remote-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -207,6 +235,34 @@ export class RemoteCardComponent {
       background: `linear-gradient(135deg, ${colors.join(', ')})`,
     };
   });
+
+  readonly statusIndicatorViewModels = computed<StatusIndicatorViewModel[]>(() =>
+    this.visibleStatusIndicators().map(op => ({
+      op,
+      meta: this.getStatusIndicatorMeta(op),
+      tooltip: this.getProfileTooltip(op),
+    }))
+  );
+
+  readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
+    this.detailedOperations().map(operation => ({
+      operation,
+      cssClass: this.getOperationCssClass(operation),
+      labelIcon: this.getOperationLabelIcon(operation),
+      profiles: this.getConfiguredProfiles(operation).map<ProfileChipViewModel>(profile => ({
+        name: profile,
+        isBusy: this.isProfileActionInProgress(operation, profile),
+        canOpen: this.canOpenProfilePath(operation, profile),
+        isActive: this.isProfileActive(operation, profile),
+        chipTooltip: this.getProfileChipTooltip(operation, profile),
+        openPaths: this.getProfileOpenPaths(operation, profile).map<ProfilePathViewModel>(path => ({
+          path,
+          isLocal: this.pathService.isLocalPath(path),
+          tooltip: this.getProfileOpenTooltip(profile, path),
+        })),
+      })),
+    }))
+  );
 
   // ── Button builders ────────────────────────────────────────────────────────
 

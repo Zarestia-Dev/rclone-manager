@@ -15,6 +15,24 @@ import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pip
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 
+/**
+ * Pre-computes every per-job derived value the template needs so the change-detection
+ * cycle can read flat fields instead of invoking helper methods (which would re-run
+ * string lookups + `translate.instant()` calls on every CD pass).
+ */
+interface JobViewModel {
+  job: JobInfo;
+  typeIcon: string;
+  typeLabel: string;
+  actualFileName: string;
+  formattedSource: string;
+  progress: number;
+  isDelete: boolean;
+  transferredFiles: CompletedTransfer[];
+  transferredLabel: string;
+  formattedError: string | null;
+}
+
 @Component({
   selector: 'app-operations-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,8 +70,34 @@ export class OperationsPanelComponent {
   completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
   hasJobs = computed(() => this.jobs().length > 0);
 
+  /** Pre-computed view models for the main job list (one entry per `jobs()` item). */
+  readonly jobViewModels = computed<JobViewModel[]>(() =>
+    this.jobs().map(j => this.toJobViewModel(j))
+  );
+
+  /** Pre-computed view model for the currently-open context menu (or `null`). */
+  readonly contextMenuJobVM = computed<JobViewModel | null>(() => {
+    const job = this.contextMenuJob();
+    return job ? this.toJobViewModel(job) : null;
+  });
+
   constructor() {
     this.jobManagementService.refreshJobs();
+  }
+
+  private toJobViewModel(job: JobInfo): JobViewModel {
+    return {
+      job,
+      typeIcon: this.getJobTypeIcon(job),
+      typeLabel: this.getJobTypeLabel(job),
+      actualFileName: this.getActualFileName(job),
+      formattedSource: this.getFormattedSource(job.source),
+      progress: this.getProgress(job),
+      isDelete: this.isDeleteOperation(job),
+      transferredFiles: this.getTransferredFiles(job),
+      transferredLabel: this.getTransferredLabel(job),
+      formattedError: this.getFormattedJobError(job.error),
+    };
   }
 
   toggleExpanded(): void {

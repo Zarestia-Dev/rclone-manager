@@ -270,7 +270,7 @@ export class AppDetailComponent {
     const profileMap = this.remoteSettings()[configKey as keyof RemoteSettings] as
       | Record<string, unknown>
       | undefined;
-    const names = profileMap ? Object.keys(profileMap) : [];
+    const names = profileMap ? Object.keys(profileMap).sort() : [];
     return names.length > 0
       ? names.map(name => ({ name, label: name }))
       : [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
@@ -729,6 +729,7 @@ export class AppDetailComponent {
           primaryActions: remote.syncActions ?? [],
           allowedKeys: SYNC_TYPES,
         },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async (result: PrimaryActionType[] | undefined) => {
@@ -869,7 +870,7 @@ export class AppDetailComponent {
     group: 'operation' | 'shared'
   ): RemoteSettingsSection[] {
     const profiles = this.getProfileConfigMap(type);
-    const names = profiles ? Object.keys(profiles) : [];
+    const names = profiles ? Object.keys(profiles).sort() : [];
     return names.length > 0
       ? names.map(name => ({
           key: `${type}:${name}`,

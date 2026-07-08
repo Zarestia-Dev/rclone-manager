@@ -67,9 +67,9 @@ pub async fn audio_cover_handler(
 }
 
 fn picture_response(pic: PictureData) -> Result<axum::response::Response, AppError> {
-    Ok(axum::response::Response::builder()
+    axum::response::Response::builder()
         .header(header::CONTENT_TYPE, pic.mime_type)
         .header(header::CACHE_CONTROL, "max-age=3600")
         .body(axum::body::Body::from(pic.data))
-        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))?)
+        .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e.to_string())))
 }

@@ -99,6 +99,8 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   readonly isValueChanged = signal(false);
 
+  private readonly controlValueVersion = signal(0);
+
   readonly isSensitiveField = computed(() => {
     if (!this.restrictMode()) return false;
     const opt = this.mergedOption();
@@ -171,18 +173,97 @@ export class SettingControlComponent implements ControlValueAccessor {
   ].sort();
 
   // Computed
-  readonly mergedOption = computed(() => {
-    const opt = this.option();
-    if (!opt) return null;
-    const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
-    const caller = this.optionOverrides()[opt.Name] ?? {};
-    return { ...opt, ...builtIn, ...caller } as RcConfigOption;
-  });
+  readonly mergedOption = computed(
+    () => {
+      const opt = this.option();
+      if (!opt) return null;
+      const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
+      const caller = this.optionOverrides()[opt.Name] ?? {};
+      return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+    },
+    {
+      equal: (a, b) => a?.Name === b?.Name && a?.Type === b?.Type && a?.Value === b?.Value,
+    }
+  );
 
   readonly uiDefaultValue = computed(() => {
     const opt = this.mergedOption();
     return opt ? this.calculateDefaultValue(opt) : '';
   });
+
+  readonly controlError = computed<string | null>(() => {
+    const ctrl = this.control();
+    this.controlValueVersion(); // track value changes (validator re-runs)
+    const errors = ctrl?.errors as Record<string, { message?: string }> | undefined;
+    if (!errors) return null;
+    const keys = [
+      'required',
+      'integer',
+      'float',
+      'duration',
+      'sizeSuffix',
+      'bwTimetable',
+      'fileMode',
+      'time',
+      'enum',
+    ];
+    for (const key of keys) {
+      const message = errors[key]?.message;
+      if (message) return message;
+    }
+    return this.translate.instant('shared.settingControl.errors.invalidValue');
+  });
+
+  readonly selectedLabel = computed<string>(() => {
+    const ctrl = this.control();
+    const opt = this.mergedOption();
+    this.controlValueVersion(); // track value changes
+    if (!ctrl || !opt) return '';
+
+    const rawValue = ctrl.value;
+    let value: unknown;
+    if (Array.isArray(rawValue)) {
+      if (rawValue.length === 0) return '';
+      value = rawValue[0];
+    } else {
+      value = rawValue;
+    }
+
+    if (value === null || value === undefined || value === '') return '';
+
+    const examples = this.resolveExamplesList(opt);
+    for (const e of examples) {
+      const eObj =
+        typeof e === 'object' && e !== null ? (e as { Value?: unknown; Help?: string }) : null;
+      const eValue = eObj?.Value ?? e;
+      if (eValue === value) {
+        if (eObj) {
+          return eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
+        }
+        return String(e);
+      }
+    }
+    return String(value);
+  });
+
+  private resolveExamplesList(opt: RcConfigOption): ({ Value?: string; Help?: string } | string)[] {
+    if (opt.Examples?.length) return opt.Examples;
+    if (opt.Type === 'Encoding') return this.encodingFlags;
+    if (opt.Type === 'DumpFlags') {
+      return [
+        'headers',
+        'bodies',
+        'requests',
+        'responses',
+        'auth',
+        'filters',
+        'goroutines',
+        'openfiles',
+        'mapper',
+      ];
+    }
+    return [];
+  }
 
   // ControlValueAccessor
   private onChange: (value: unknown) => void = () => {
@@ -350,6 +431,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         this.updateSplitFromControl(internalValue);
       }
     }
+    this.controlValueVersion.update(v => v + 1);
     this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
   }
 
@@ -509,6 +591,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
+        this.controlValueVersion.update(v => v + 1);
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
@@ -635,33 +718,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
 
     return validators;
-  }
-
-  getControlError(): string | null {
-    const errors = this.control()?.errors as Record<string, { message?: string }>;
-    if (!errors) return null;
-    const keys = [
-      'required',
-      'integer',
-      'float',
-      'duration',
-      'sizeSuffix',
-      'bwTimetable',
-      'fileMode',
-      'time',
-      'enum',
-    ];
-    for (const key of keys) {
-      const message = errors[key]?.message;
-      if (message) return message;
-    }
-    return this.translate.instant('shared.settingControl.errors.invalidValue');
-  }
-
-  getSelectedLabel(value: unknown, examples?: any[]): string {
-    if (value === null || value === undefined || value === '') return '';
-    const example = examples?.find(e => (e.Value ?? e) === value);
-    return example?.Help || example?.Value || String(value);
   }
 
   async obscureFieldValue(event: MouseEvent): Promise<void> {

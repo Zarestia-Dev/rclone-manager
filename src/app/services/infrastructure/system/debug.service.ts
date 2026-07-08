@@ -2,7 +2,10 @@ import { Injectable, inject, DestroyRef, DOCUMENT, isDevMode } from '@angular/co
 import { Clipboard } from '@angular/cdk/clipboard';
 import { FileSystemService } from '../../operations/file-system.service';
 import { TauriBaseService } from '../platform/tauri-base.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import {
+  isHeadlessMode,
+  isMobile,
+} from 'src/app/services/infrastructure/platform/api-client.service';
 
 export interface DebugInfo {
   logsDir: string;
@@ -38,6 +41,7 @@ export class DebugService extends TauriBaseService {
 
   constructor() {
     super();
+    if (isMobile()) return;
     this.setupContextMenu();
   }
 

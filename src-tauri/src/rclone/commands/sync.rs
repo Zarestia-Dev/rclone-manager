@@ -107,8 +107,10 @@ impl GenericTransferParams {
         }
 
         // Merge resolved backend_options into _config
-        let mut final_backend = self.backend_options.clone().unwrap_or_default();
-        final_backend.retain(|_, v| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()));
+        let mut final_backend = match &self.backend_options {
+            Some(opts) => crate::rclone::commands::common::filter_empty_options(opts),
+            None => std::collections::HashMap::new(),
+        };
 
         if let Some(existing_config) = body.get("_config").and_then(|v| v.as_object()) {
             for (k, v) in existing_config {

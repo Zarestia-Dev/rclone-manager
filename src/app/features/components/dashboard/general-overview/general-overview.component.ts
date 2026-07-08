@@ -52,6 +52,12 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
 
+interface RunningJobViewModel {
+  job: JobInfo;
+  typeIcon: string;
+  label: string;
+}
+
 @Component({
   selector: 'app-general-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -134,6 +140,13 @@ export class GeneralOverviewComponent {
     this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id)
   );
   readonly activeJobsCount = computed(() => this.runningJobs().length);
+  readonly runningJobViewModels = computed<RunningJobViewModel[]>(() =>
+    this.runningJobs().map(job => ({
+      job,
+      typeIcon: this.getJobTypeIcon(job),
+      label: this.getJobLabel(job),
+    }))
+  );
   readonly allRunningServes = computed(() =>
     this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
   );
@@ -236,10 +249,6 @@ export class GeneralOverviewComponent {
     const updated = { ...this.panelOpenStates(), [id]: isOpen };
     this.panelOpenStates.set(updated);
     this.localStorage.set('dashboard.panelOpenStates', updated);
-  }
-
-  protected getPanelOpenState(id: string): boolean {
-    return this.panelOpenStates()[id] ?? false;
   }
 
   private persistLayout(): void {

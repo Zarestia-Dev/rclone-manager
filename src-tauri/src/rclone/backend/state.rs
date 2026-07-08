@@ -62,13 +62,13 @@ pub async fn restore_backend_state(manager: &BackendManager, name: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rclone::backend::BackendManager;
+    use crate::rclone::backend::{BackendManager, types::LOCAL_BACKEND_NAME};
 
     #[tokio::test]
     async fn test_save_and_restore_empty_state() {
         let manager = BackendManager::new();
         // Saving then restoring with no data should not panic
-        save_backend_state(&manager, "Local").await;
-        restore_backend_state(&manager, "Local").await;
+        save_backend_state(&manager, LOCAL_BACKEND_NAME).await;
+        restore_backend_state(&manager, LOCAL_BACKEND_NAME).await;
     }
 }

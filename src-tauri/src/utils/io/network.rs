@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::{debug, error, info};
+use log::{error, info};
 use tauri::{AppHandle, Emitter, command};
 
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
@@ -174,7 +174,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        debug!("'Metered' property changed!");
+        log::debug!("'Metered' property changed!");
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };

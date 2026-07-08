@@ -6,7 +6,7 @@
         {{ 'wizards.obscure.title' | translate }}
       </h3>
       <button
-        mat-icon-button
+        matIconButton
         (click)="closeTool.emit()"
         [attr.aria-label]="'common.close' | translate"
       >
@@ -29,7 +29,7 @@
             (keyup.enter)="clearText().trim() && performObscure()"
           />
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="togglePasswordVisibility()"
             [attr.aria-label]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
@@ -49,7 +49,7 @@
 
         <div class="actions">
           <button
-            mat-stroked-button
+            matButton="outlined"
             (click)="clearInputs()"
             [disabled]="!clearText() || isProcessing()"
           >
@@ -57,7 +57,7 @@
             {{ 'common.clear' | translate }}
           </button>
           <button
-            mat-raised-button
+            matButton="elevated"
             class="accent"
             (click)="performObscure()"
             [disabled]="!clearText().trim() || isProcessing()"
@@ -75,7 +75,7 @@
           <div class="result-box">
             <code class="obscured-val">{{ obscuredText() }}</code>
             <button
-              mat-icon-button
+              matIconButton
               [appCopyToClipboard]="obscuredText()"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
               [matTooltip]="'modals.oauth.copyLink' | translate"
@@ -106,7 +106,7 @@
                 </mat-select>
               </mat-form-field>
               <button
-                mat-raised-button
+                matButton="elevated"
                 class="accent full-width"
                 [disabled]="!targetFieldCtrl.value"
                 (click)="applyToField()"

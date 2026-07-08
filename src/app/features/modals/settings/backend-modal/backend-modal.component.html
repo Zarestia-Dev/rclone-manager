@@ -3,7 +3,7 @@
     <mat-icon svgIcon="server"></mat-icon>
   </button>
   <p>{{ 'modals.backend.title' | translate }}</p>
-  <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+  <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -67,7 +67,7 @@
 
         <div class="backend-actions">
           <button
-            mat-icon-button
+            matIconButton
             (click)="$event.stopPropagation(); startEdit(backend)"
             [matTooltip]="'modals.backend.editBackend' | translate"
             [attr.aria-label]="'modals.backend.editBackend' | translate"
@@ -76,7 +76,7 @@
           </button>
 
           <button
-            mat-icon-button
+            matIconButton
             (click)="$event.stopPropagation(); testBackend(backend.name)"
             [disabled]="testingBackend() !== null"
             [matTooltip]="'modals.backend.testConnection' | translate"
@@ -91,7 +91,7 @@
 
           @if (backend.name !== 'Local') {
             <button
-              mat-icon-button
+              matIconButton
               class="warn"
               (click)="$event.stopPropagation(); removeBackend(backend.name)"
               [disabled]="backend.isActive"
@@ -287,7 +287,7 @@
                         [placeholder]="'modals.backend.fields.password.placeholder' | translate"
                       />
                       <button
-                        mat-icon-button
+                        matIconButton
                         matSuffix
                         (click)="toggleFieldPassword('password')"
                         type="button"
@@ -368,7 +368,7 @@
                   [placeholder]="'modals.backend.fields.configPath.placeholder' | translate"
                 />
                 <button
-                  mat-icon-button
+                  matIconButton
                   matSuffix
                   (click)="selectConfigFile()"
                   type="button"
@@ -412,7 +412,7 @@
                     formControlName="config_password"
                   />
                   <button
-                    mat-icon-button
+                    matIconButton
                     matSuffix
                     (click)="toggleFieldPassword('configPassword')"
                     type="button"
@@ -452,7 +452,7 @@
 
               <div class="actions">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   class="warn"
                   (click)="removeConfigPassword()"
                   [disabled]="!hasConfigPassword() || isSaving()"
@@ -474,14 +474,14 @@
 
 <footer>
   @if (formMode() === null) {
-    <button mat-flat-button class="primary" (click)="toggleAddForm()">
+    <button matButton="filled" class="primary" (click)="toggleAddForm()">
       <mat-icon svgIcon="plus"></mat-icon>
       {{ 'modals.backend.addBackend' | translate }}
     </button>
   } @else {
-    <button mat-stroked-button (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
+    <button matButton="outlined" (click)="cancelEdit()">{{ 'common.cancel' | translate }}</button>
     <button
-      mat-flat-button
+      matButton="filled"
       class="primary"
       [disabled]="backendForm.invalid || isSaving()"
       (click)="saveBackend()"

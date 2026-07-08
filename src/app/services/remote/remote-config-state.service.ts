@@ -44,6 +44,7 @@ import { RcloneValueMapperService } from './rclone-value-mapper.service';
 import { staticFlagDefinitions } from './flag-definitions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RemotePresetsService } from './remote-presets';
+import { getRcloneCfg } from 'src/app/shared/utils/profile-config.util';
 
 export interface StepConfig {
   readonly label: string;
@@ -1496,7 +1497,7 @@ export class RemoteConfigStateService {
 
     if (type === 'serve') {
       this.selectedServeType.set(
-        (config as any)['rclone']?.['type'] || (config as any)['type'] || 'http'
+        String(getRcloneCfg(config)?.['type'] || config['type'] || 'http')
       );
       await this.loadServeFields();
     }

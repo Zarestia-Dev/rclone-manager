@@ -156,6 +156,38 @@ const MAIN_CATEGORY_CONFIG: Record<
   },
 };
 
+interface OptionViewModel {
+  option: RcConfigOption;
+  uniqueKey: string;
+}
+
+interface CategoryViewModel {
+  category: string;
+  icon: string;
+  description: string;
+  matchCount: number;
+}
+
+interface ServiceViewModel {
+  name: string;
+  expanded: boolean;
+  icon: string;
+  description: string;
+  categories: CategoryViewModel[];
+}
+
+interface MainCategoryViewModel {
+  name: string;
+  titleKey: string;
+  description: string;
+  services: ServiceViewModel[];
+}
+
+interface SearchResultViewModel {
+  result: RCloneFlagsSearchResult;
+  serviceIcon: string;
+}
+
 @Component({
   selector: 'app-rclone-flags-modal',
   hostDirectives: [EscapeCloseDirective],
@@ -357,6 +389,58 @@ export class RcloneFlagsModalComponent implements OnInit {
     return this.groupedOptions()[page]?.[category] ?? [];
   });
 
+  readonly mainCategoryViewModels = computed<MainCategoryViewModel[]>(() => {
+    const order = ['General Settings', 'File System & Storage', 'Network & Servers'];
+    const grouped = this.servicesByMainCategory();
+    return order
+      .map((name): MainCategoryViewModel => {
+        const cfg = MAIN_CATEGORY_CONFIG[name];
+        const services = (grouped[name] ?? []).map((svc): ServiceViewModel => {
+          const serviceCfg = SERVICE_CONFIG[svc.name];
+          const categories = svc.categories.map((catName): CategoryViewModel => {
+            const catCfg = CATEGORY_CONFIG[catName];
+            return {
+              category: catName,
+              icon: catCfg?.icon ?? 'gear',
+              description: catCfg?.description ?? '',
+              matchCount: this.getMatchCountForCategory(svc.name, catName),
+            };
+          });
+          return {
+            name: svc.name,
+            expanded: svc.expanded,
+            icon: serviceCfg?.icon ?? 'gear',
+            description: serviceCfg?.description ?? '',
+            categories,
+          };
+        });
+        return {
+          name,
+          titleKey: cfg?.titleKey ?? name,
+          description: cfg?.description ?? '',
+          services,
+        };
+      })
+      .filter(mc => mc.services.length > 0);
+  });
+
+  readonly globalSearchResultViewModels = computed<SearchResultViewModel[]>(() =>
+    this.globalSearchResults().map(r => ({
+      result: r,
+      serviceIcon: this.getServiceIcon(r.service),
+    }))
+  );
+
+  readonly virtualScrollOptionViewModels = computed<OptionViewModel[]>(() =>
+    this.virtualScrollData().map(opt => {
+      const uniqueKey = this.getUniqueControlKey(opt);
+      return {
+        option: opt,
+        uniqueKey,
+      };
+    })
+  );
+
   // ── Constructor ────────────────────────────────────────────────────────────
 
   constructor() {
@@ -536,7 +620,8 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   // ── Persistence ────────────────────────────────────────────────────────────
 
-  async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
+  async saveRCloneOption(optionName: string): Promise<void> {
+    const isAtDefault = this.isOptionAtDefault(optionName);
     const control = this.rcloneOptionsForm.get(optionName);
     if (!control || control.invalid || this.savingOptions().has(optionName) || control.pristine) {
       return;

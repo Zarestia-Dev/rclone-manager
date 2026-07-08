@@ -45,6 +45,20 @@ const DELAY_EXPIRY = 999_999_999;
 const DELAY_SLIDER_DEFAULT = 60;
 const INDEXED_VFS_RE = /:\[\d+\]$/;
 
+interface VfsConfigOption {
+  key: string;
+  value: string;
+  rawValue: unknown;
+  isDuration: boolean;
+  isSize: boolean;
+  isPermission: boolean;
+  group: string;
+}
+
+interface QueueRow extends VfsQueueItem {
+  status: string;
+}
+
 @Component({
   selector: 'app-vfs-control-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -90,6 +104,7 @@ export class VfsControlPanelComponent {
   readonly vfsNotFound = signal(false);
   readonly pollIntervalInput = signal('');
   readonly delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
+  readonly delaySliderLabel = computed(() => this.formatSliderLabel(this.delaySliderValue()));
   readonly showDelaySlider = signal<number | null>(null);
   readonly showAdvancedConfig = signal(false);
   readonly configSearchTerm = signal('');
@@ -106,12 +121,12 @@ export class VfsControlPanelComponent {
   });
   readonly hasUsableVfs = computed(() => !!this.selectedVfs() && !this.isIndexedVfs());
 
-  readonly vfsConfigGroups = computed(() => {
+  readonly vfsConfigGroups = computed<{ name: string; items: VfsConfigOption[] }[]>(() => {
     const opts = this.selectedVfs()?.stats?.opt;
     if (!opts) return [];
 
     const searchTerm = this.configSearchTerm().toLowerCase();
-    const grouped = new Map<string, { key: string; value: string; rawValue: unknown }[]>();
+    const grouped = new Map<string, VfsConfigOption[]>();
     const groupOrder = ['Booleans', 'Durations', 'Sizes', 'Permissions', 'Numbers', 'Strings'];
 
     for (const [key, rawValue] of Object.entries(opts)) {
@@ -122,8 +137,20 @@ export class VfsControlPanelComponent {
       ) {
         continue;
       }
-      const group = this.getOptionGroup(key, rawValue);
-      const item = { key, value: this.formatOptionValue(key, rawValue), rawValue };
+      const isDuration = this.isDurationKey(key);
+      const isSize = this.isSizeKey(key);
+      const isPermission = this.isPermissionKey(key);
+      const group = this.getOptionGroup(key, rawValue, isDuration, isSize, isPermission);
+      const value = this.formatOptionValue(key, rawValue, isDuration, isSize, isPermission);
+      const item: VfsConfigOption = {
+        key,
+        value,
+        rawValue,
+        isDuration,
+        isSize,
+        isPermission,
+        group,
+      };
       const list = grouped.get(group) ?? [];
       list.push(item);
       grouped.set(group, list);
@@ -132,6 +159,12 @@ export class VfsControlPanelComponent {
     return groupOrder
       .filter(name => (grouped.get(name)?.length ?? 0) > 0)
       .map(name => ({ name, items: grouped.get(name) ?? [] }));
+  });
+
+  readonly queueRows = computed<QueueRow[]>(() => {
+    const vfs = this.selectedVfs();
+    if (!vfs) return [];
+    return vfs.queue.map(item => ({ ...item, status: this.getQueueItemStatus(item) }));
   });
 
   readonly displayedColumns: string[] = ['name', 'size', 'status'];
@@ -439,16 +472,22 @@ export class VfsControlPanelComponent {
 
   // ============ Config Formatting ============
 
-  formatOptionValue(key: string, value: unknown): string {
+  formatOptionValue(
+    key: string,
+    value: unknown,
+    isDuration = this.isDurationKey(key),
+    isSize = this.isSizeKey(key),
+    isPermission = this.isPermissionKey(key)
+  ): string {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') {
       return value
         ? this.translate.instant('shared.vfsControl.advancedConfig.booleanEnabled')
         : this.translate.instant('shared.vfsControl.advancedConfig.booleanDisabled');
     }
-    if (this.isDurationKey(key)) return this.mapper.machineToHuman(value, 'Duration');
-    if (this.isSizeKey(key)) return this.mapper.machineToHuman(value, 'SizeSuffix');
-    if (this.isPermissionKey(key)) return this.mapper.machineToHuman(value, 'FileMode');
+    if (isDuration) return this.mapper.machineToHuman(value, 'Duration');
+    if (isSize) return this.mapper.machineToHuman(value, 'SizeSuffix');
+    if (isPermission) return this.mapper.machineToHuman(value, 'FileMode');
     return String(value);
   }
 
@@ -464,12 +503,18 @@ export class VfsControlPanelComponent {
     return /(Perms|UID|GID|Umask)$/i.test(key);
   }
 
-  private getOptionGroup(key: string, value: unknown): string {
+  private getOptionGroup(
+    key: string,
+    value: unknown,
+    isDuration = this.isDurationKey(key),
+    isSize = this.isSizeKey(key),
+    isPermission = this.isPermissionKey(key)
+  ): string {
     if (typeof value === 'boolean') return 'Booleans';
     if (typeof value === 'number') {
-      if (this.isDurationKey(key)) return 'Durations';
-      if (this.isSizeKey(key)) return 'Sizes';
-      if (this.isPermissionKey(key)) return 'Permissions';
+      if (isDuration) return 'Durations';
+      if (isSize) return 'Sizes';
+      if (isPermission) return 'Permissions';
       return 'Numbers';
     }
     return 'Strings';

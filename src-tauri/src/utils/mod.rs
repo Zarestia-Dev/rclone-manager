@@ -1,4 +1,5 @@
 pub mod app;
+pub mod constants;
 pub mod github_client;
 pub mod i18n;
 pub mod io;

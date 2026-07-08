@@ -1,26 +1,16 @@
-import {
-  Component,
-  input,
-  inject,
-  ChangeDetectionStrategy,
-  computed,
-  signal,
-  effect,
-  linkedSignal,
-  untracked,
-} from '@angular/core';
+import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
 import { CompletedTransfer } from '@app/types';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TransferOperationsService } from './transfer-operations.service';
+import { BaseTransfersTableComponent } from './base-transfers-table.component';
 
 export interface EnrichedCompletedTransfer extends CompletedTransfer {
   uniqueId: string;
@@ -50,13 +40,14 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
+    FormatFsNamePipe,
     MatProgressBarModule,
     FormatTimePipe,
   ],
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
-      @if (processedTransfers().length > 0) {
-        @for (transfer of slicedTransfers(); track transfer.uniqueId) {
+      @if (processedItems().length > 0) {
+        @for (transfer of slicedItems(); track transfer.uniqueId) {
           <div class="card-row-item completed-item" [class]="transfer.status">
             <div class="card-header">
               <div class="card-info-left">
@@ -102,7 +93,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group src">
                   <code class="path-pill src" [title]="transfer.srcFs">{{
-                    formatFsName(transfer.srcFs) || '?'
+                    (transfer.srcFs | formatFsName) || '?'
                   }}</code>
                   @if (transfer.status !== 'checked') {
                     @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
@@ -180,7 +171,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
 
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="transfer.dstFs">{{
-                    formatFsName(transfer.dstFs) || '?'
+                    (transfer.dstFs | formatFsName) || '?'
                   }}</code>
                   @if (transfer.status !== 'checked') {
                     @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
@@ -256,7 +247,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="remoteName()">{{
-                    formatFsName(remoteName())
+                    remoteName() | formatFsName
                   }}</code>
                   @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
                   @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
@@ -398,7 +389,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
             }
           </div>
         }
-        @if (processedTransfers().length > displayLimit()) {
+        @if (processedItems().length > displayLimit()) {
           <div class="infinite-scroll-loader">
             <mat-icon svgIcon="refresh" class="animate-spin"></mat-icon>
             <span>{{ 'common.loading' | translate }}</span>
@@ -432,58 +423,15 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
     </div>
   `,
 })
-export class CompletedTransfersTableComponent {
-  readonly transfers = input.required<CompletedTransfer[]>();
+export class CompletedTransfersTableComponent extends BaseTransfersTableComponent<EnrichedCompletedTransfer> {
   readonly jobType = input<string>('sync');
   readonly remoteName = input<string>('');
-  readonly searchTerm = input('');
 
-  private readonly translate = inject(TranslateService);
-  protected readonly ops = inject(TransferOperationsService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
 
-  protected formatFsName(fs?: string): string {
-    if (!fs) return '';
-    if (/^[a-zA-Z]:$/.test(fs)) {
-      return fs;
-    }
-    return fs.endsWith(':') ? fs.slice(0, -1) : fs;
-  }
-
-  readonly hiddenIds = signal<Set<string>>(new Set());
-  readonly resolvingIds = signal<Set<string>>(new Set());
-
-  readonly displayLimit = linkedSignal({
-    source: () => [this.transfers(), this.searchTerm()] as const,
-    computation: () => 50,
-  });
-
-  private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
-
-  private readonly remotesList = computed(
-    () => {
-      const remotes = new Set<string>();
-      for (const t of this.transfers()) {
-        if (t.srcFs) remotes.add(t.srcFs);
-        if (t.dstFs) remotes.add(t.dstFs);
-      }
-      return Array.from(remotes).sort();
-    },
-    {
-      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
-    }
-  );
-
-  private readonly _preloadEffect = effect(() => {
-    const remotes = this.remotesList();
-    if (remotes.length > 0) {
-      untracked(() => this.ops.preloadFeatures(this.transfers()));
-    }
-  });
-
-  protected readonly processedTransfers = computed<EnrichedCompletedTransfer[]>(() => {
+  protected override readonly processedItems = computed<EnrichedCompletedTransfer[]>(() => {
     this.lang();
     const hidden = this.hiddenIds();
     const search = this.searchTerm().toLowerCase().trim();
@@ -578,23 +526,6 @@ export class CompletedTransfersTableComponent {
     });
   });
 
-  protected readonly slicedTransfers = computed(() => {
-    return this.processedTransfers().slice(0, this.displayLimit());
-  });
-
-  private getRelativeTime(timestamp: string): string {
-    const diff = Date.now() - Date.parse(timestamp);
-    const minutes = Math.floor(diff / 60000);
-    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
-    const hours = Math.floor(minutes / 60);
-    if (hours <= 0)
-      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
-    const days = Math.floor(hours / 24);
-    if (days <= 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
-    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
-  }
-
   private getDuration(startedAt: string, completedAt: string): string {
     const diff = Date.parse(completedAt) - Date.parse(startedAt);
     if (diff < 1000)
@@ -614,10 +545,6 @@ export class CompletedTransfersTableComponent {
       hours,
       minutes: minutes % 60,
     });
-  }
-
-  isResolving(item: EnrichedCompletedTransfer): boolean {
-    return this.resolvingIds().has(item.uniqueId) || item.resolveState?.status === 'Running';
   }
 
   async onResolve(item: EnrichedCompletedTransfer): Promise<void> {
@@ -675,18 +602,5 @@ export class CompletedTransfersTableComponent {
     await this.ops.deleteFallback(item, uniqueId, this.remoteName(), () => {
       this.hiddenIds.update(s => new Set(s).add(uniqueId));
     });
-  }
-
-  onScroll(event: Event): void {
-    const target = event.target as HTMLElement;
-    if (!target) return;
-
-    if (target.scrollHeight - (target.scrollTop + target.clientHeight) < 150) {
-      const currentLimit = this.displayLimit();
-      const totalCount = this.processedTransfers().length;
-      if (currentLimit < totalCount) {
-        this.displayLimit.set(Math.min(currentLimit + 50, totalCount));
-      }
-    }
   }
 }

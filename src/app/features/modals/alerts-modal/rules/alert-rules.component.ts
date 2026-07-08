@@ -34,14 +34,14 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
       <!-- Toolbar -->
       <div class="toolbar">
         <button
-          mat-icon-button
+          matIconButton
           (click)="searchVisible.set(!searchVisible())"
           [matTooltip]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button mat-flat-button (click)="createRule()">
+        <button matButton="filled" (click)="createRule()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createRule' | translate }}
         </button>
@@ -193,14 +193,14 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
               <td mat-cell *matCellDef="let rule">
                 <div class="row-actions">
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="editRule(rule)"
                     [matTooltip]="'common.edit' | translate"
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="deleteRule(rule)"
                     [matTooltip]="'common.delete' | translate"
                   >
@@ -445,6 +445,7 @@ export class AlertRulesComponent {
         maxHeight: '80vh',
         disableClose: false,
         data: { ruleId: undefined },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async rule => {
@@ -459,6 +460,7 @@ export class AlertRulesComponent {
         maxHeight: '80vh',
         disableClose: false,
         data: { ruleId: rule.id },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async updated => {

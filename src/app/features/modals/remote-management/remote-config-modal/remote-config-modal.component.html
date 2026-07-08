@@ -2,7 +2,7 @@
 
 <header data-tauri-drag-region>
   <button
-    mat-icon-button
+    matIconButton
     (click)="toggleSearchVisibility()"
     [matTooltip]="'shared.search.toggle' | translate"
     [attr.aria-label]="'shared.search.toggle' | translate"
@@ -24,7 +24,7 @@
     }
   </p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'common.close' | translate"
     [attr.title]="'common.close' | translate"
@@ -111,7 +111,7 @@
             </a>
 
             <button
-              mat-icon-button
+              matIconButton
               [appCopyToClipboard]="oauthUrlValue"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
               [matTooltip]="'modals.oauth.copyLink' | translate"

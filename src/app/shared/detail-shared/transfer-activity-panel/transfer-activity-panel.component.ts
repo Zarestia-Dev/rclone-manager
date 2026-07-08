@@ -48,7 +48,7 @@ import { TransferActivityPanelConfig } from '@app/types';
 
           @if (config().completedTransfers.length > 0 || config().activeTransfers.length > 0) {
             <button
-              mat-icon-button
+              matIconButton
               [class.search-open]="searchVisible()"
               (click)="toggleSearch()"
               [matTooltip]="'shared.search.toggle' | translate"
@@ -59,7 +59,7 @@ import { TransferActivityPanelConfig } from '@app/types';
 
           @if (config().showHistory) {
             <button
-              mat-icon-button
+              matIconButton
               (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
               [matTooltip]="
                 (isJobRunning()

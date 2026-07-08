@@ -154,7 +154,7 @@
                   </div>
                 }
               } @else {
-                <table mat-table [dataSource]="vfs.queue" multiTemplateDataRows>
+                <table mat-table [dataSource]="queueRows()" multiTemplateDataRows>
                   <ng-container matColumnDef="name">
                     <th mat-header-cell *matHeaderCellDef>
                       {{ 'shared.vfsControl.queue.name' | translate }}
@@ -181,7 +181,7 @@
                       <div class="status-cell">
                         <div class="status-left">
                           <span class="status-text" [class.uploading]="item.uploading">
-                            {{ getQueueItemStatus(item) }}
+                            {{ item.status }}
                           </span>
                           @if (item.tries > 0) {
                             <span class="tries-badge"
@@ -193,7 +193,7 @@
                         <div class="status-right">
                           @if (!item.uploading && item.expiry > 5) {
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="prioritizeUpload(item); $event.stopPropagation()"
                               [matTooltip]="
                                 'shared.vfsControl.queue.tooltips.uploadNext' | translate
@@ -204,7 +204,7 @@
                           }
                           @if (!item.uploading) {
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="delayUpload(item); $event.stopPropagation()"
                               [matTooltip]="
                                 'shared.vfsControl.queue.tooltips.delayLong' | translate
@@ -213,7 +213,7 @@
                               <mat-icon svgIcon="stop" class="warn"></mat-icon>
                             </button>
                             <button
-                              mat-icon-button
+                              matIconButton
                               (click)="toggleDelaySlider(item); $event.stopPropagation()"
                               [matTooltip]="
                                 showDelaySlider() === item.id
@@ -252,14 +252,18 @@
                             />
                           </mat-slider>
                           <div class="slider-value">
-                            {{ formatSliderLabel(delaySliderValue()) }}
+                            {{ delaySliderLabel() }}
                           </div>
                         </div>
                         <div class="slider-actions">
-                          <button mat-button (click)="showDelaySlider.set(null)">
+                          <button matButton="text" (click)="showDelaySlider.set(null)">
                             {{ 'shared.vfsControl.queue.slider.cancel' | translate }}
                           </button>
-                          <button mat-raised-button class="primary" (click)="setCustomDelay(item)">
+                          <button
+                            matButton="elevated"
+                            class="primary"
+                            (click)="setCustomDelay(item)"
+                          >
                             {{ 'shared.vfsControl.queue.slider.apply' | translate }}
                           </button>
                         </div>
@@ -300,7 +304,7 @@
                     <code
                       >{{ diskCache.path }}
                       <button
-                        mat-icon-button
+                        matIconButton
                         (click)="openFolder(diskCache.path)"
                         [matTooltip]="'shared.vfsControl.cacheInfo.openFolder' | translate"
                         class="folder-button"
@@ -318,7 +322,7 @@
                     <code
                       >{{ diskCache.pathMeta }}
                       <button
-                        mat-icon-button
+                        matIconButton
                         (click)="openFolder(diskCache.pathMeta)"
                         [matTooltip]="'shared.vfsControl.cacheInfo.openMetaFolder' | translate"
                         class="folder-button"
@@ -376,7 +380,7 @@
                       <mat-icon matPrefix svgIcon="search"></mat-icon>
                       @if (configSearchTerm()) {
                         <button
-                          mat-icon-button
+                          matIconButton
                           matSuffix
                           (click)="configSearchTerm.set('')"
                           [matTooltip]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
@@ -446,7 +450,7 @@
             [disabled]="!hasUsableVfs() || loading()"
           />
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="updatePollInterval()"
             [matTooltip]="'shared.vfsControl.actions.updateInterval' | translate"
@@ -457,7 +461,7 @@
         </mat-form-field>
       }
       <button
-        mat-icon-button
+        matIconButton
         (click)="refreshDirectory()"
         [matTooltip]="'shared.vfsControl.actions.refreshMetadata' | translate"
         [disabled]="!hasUsableVfs() || loading()"
@@ -466,7 +470,7 @@
       </button>
 
       <button
-        mat-icon-button
+        matIconButton
         class="warn"
         (click)="clearMetadataCache()"
         [matTooltip]="'shared.vfsControl.actions.clearCache' | translate"
@@ -476,7 +480,7 @@
       </button>
 
       <button
-        mat-icon-button
+        matIconButton
         (click)="loadAll()"
         [matTooltip]="'shared.vfsControl.actions.refreshAll' | translate"
         [disabled]="loading()"

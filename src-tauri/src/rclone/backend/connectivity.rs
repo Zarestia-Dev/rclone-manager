@@ -1,4 +1,5 @@
 use crate::rclone::backend::{BackendManager, RcloneTransport};
+use crate::utils::constants::LOCAL_BACKEND_NAME;
 use log::{debug, info, warn};
 
 pub async fn check_connectivity(
@@ -54,7 +55,7 @@ pub async fn check_local_connectivity_retrying(
     let check_local = async {
         let mut attempts = 0u32;
         loop {
-            match check_connectivity(manager, "Local", transport, None).await {
+            match check_connectivity(manager, LOCAL_BACKEND_NAME, transport, None).await {
                 Ok(info) => return Ok(info),
                 Err(e) => {
                     attempts += 1;
@@ -83,7 +84,7 @@ pub async fn ensure_connectivity(
 ) -> Result<(), String> {
     let active_name = manager.get_active_name().await;
 
-    if active_name == "Local" {
+    if active_name == LOCAL_BACKEND_NAME {
         info!(
             "Checking Local backend for version/OS info (timeout: {}s)",
             timeout.as_secs()
@@ -101,7 +102,7 @@ pub async fn ensure_connectivity(
             );
             manager
                 .set_runtime_status(
-                    "Local",
+                    LOCAL_BACKEND_NAME,
                     crate::rclone::backend::runtime::RuntimeStatus::Connected,
                 )
                 .await;
@@ -139,7 +140,7 @@ pub async fn check_other_backends(manager: &BackendManager, transport: &dyn Rclo
 
     let tasks = backends
         .iter()
-        .filter(|b| b.name != active_name && b.name != "Local")
+        .filter(|b| b.name != active_name && b.name != LOCAL_BACKEND_NAME)
         .map(|backend| {
             let name = &backend.name;
             async move {

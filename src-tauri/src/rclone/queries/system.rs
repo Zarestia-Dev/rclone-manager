@@ -5,17 +5,12 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     rclone::backend::BackendManager,
-    utils::{
-        rclone::endpoints::{config, core},
-        types::state::RcloneState,
-    },
+    utils::rclone::endpoints::{config, core},
 };
 
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
-    let paths = app
-        .state::<RcloneState>()
-        .transport
+    let paths = crate::rclone::commands::common::transport(&app)
         .rpc(config::PATHS, Some(&json!({})))
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
@@ -82,9 +77,7 @@ pub async fn get_local_disk_usage(
     }
 
     // Use direct request instead of submit_job_and_wait to avoid creating tracked jobs for polling
-    let response_json = app
-        .state::<RcloneState>()
-        .transport
+    let response_json = crate::rclone::commands::common::transport(&app)
         .rpc(core::DU, Some(&payload))
         .await
         .map_err(|e| format!("Failed to get local disk usage: {e}"))?;
@@ -133,9 +126,7 @@ pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, Stri
         "clear": clear,
     });
 
-    let response_json = app
-        .state::<RcloneState>()
-        .transport
+    let response_json = crate::rclone::commands::common::transport(&app)
         .rpc(core::OBSCURE, Some(&payload))
         .await
         .map_err(|e| format!("Failed to obscure value: {e}"))?;

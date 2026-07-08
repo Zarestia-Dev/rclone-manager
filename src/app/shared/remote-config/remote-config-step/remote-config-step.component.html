@@ -15,7 +15,7 @@
         @if (remoteType && !isTypeLocked()) {
           <button
             type="button"
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="stopAndClearType($event)"
             [matTooltip]="'common.clear' | translate"
@@ -182,7 +182,7 @@
               ) | translate;
             <button
               type="button"
-              mat-icon-button
+              matIconButton
               class="advanced-toggle-btn"
               [class.active]="showAdvOpts"
               (click)="toggleAdvancedOptions()"
@@ -202,7 +202,7 @@
               ) | translate;
             <button
               type="button"
-              mat-icon-button
+              matIconButton
               class="cmd-options-btn"
               [class.active]="showCmdOpts"
               (click)="toggleCommandOptions()"
@@ -219,7 +219,7 @@
               | translate;
           <button
             type="button"
-            mat-icon-button
+            matIconButton
             class="json-toggle-btn"
             [class.active]="showJson"
             (click)="toggleJsonMode()"
@@ -328,7 +328,7 @@
                             (keydown)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
                           />
                           <button
-                            mat-icon-button
+                            matIconButton
                             [disabled]="!arrayInput.value"
                             (click)="handleArrayChipKeydown(opt.key, $event, arrayInput)"
                           >
@@ -339,7 +339,7 @@
                     }
                   }
                   <button
-                    mat-icon-button
+                    matIconButton
                     class="remove-option-btn"
                     (click)="removeOption(opt.key)"
                     [matTooltip]="'wizards.remoteConfig.removeOption' | translate"
@@ -377,7 +377,7 @@
 
           <button
             type="button"
-            mat-stroked-button
+            matButton="outlined"
             class="add-custom-btn"
             (click)="addCustomOption()"
             [disabled]="!newOptionKey().trim()"

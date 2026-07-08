@@ -29,7 +29,7 @@
       </div>
       @if (isValueChanged()) {
         <button
-          mat-icon-button
+          matIconButton
           class="reset-btn"
           (click)="resetToDefault()"
           [matTooltip]="'shared.settingControl.resetToDefault' | translate"
@@ -63,7 +63,7 @@
             <button
               matSuffix
               type="button"
-              mat-icon-button
+              matIconButton
               [disabled]="!control()?.value || isObscuring()"
               (click)="obscureFieldValue($event)"
               [matTooltip]="'shared.settingControl.obscureValue' | translate"
@@ -76,7 +76,7 @@
             </button>
           }
           @if (control()?.invalid && control()?.touched) {
-            <mat-error>{{ getControlError() }}</mat-error>
+            <mat-error>{{ controlError() }}</mat-error>
           }
         </mat-form-field>
       </div>
@@ -113,7 +113,7 @@
             panelClass="settings-select-panel"
           >
             <mat-select-trigger>
-              {{ getSelectedLabel(control()?.value, opt.Examples) }}
+              {{ selectedLabel() }}
             </mat-select-trigger>
             @for (example of opt.Examples; track example.Value) {
               <mat-option [value]="example.Value" class="multi-line-option">
@@ -127,7 +127,7 @@
             }
           </mat-select>
           @if (control()?.invalid && control()?.touched) {
-            <mat-error>{{ getControlError() }}</mat-error>
+            <mat-error>{{ controlError() }}</mat-error>
           }
         </mat-form-field>
       </div>
@@ -148,7 +148,7 @@
           >
             <mat-select-trigger>
               @if (control()?.value?.length) {
-                {{ getSelectedLabel(control()?.value[0], optionsList) }}
+                {{ selectedLabel() }}
                 @if (control()?.value.length > 1) {
                   <span class="additional-selection">
                     (+{{ control()?.value.length - 1 }}
@@ -169,7 +169,7 @@
             }
           </mat-select>
           @if (control()?.invalid && control()?.touched) {
-            <mat-error>{{ getControlError() }}</mat-error>
+            <mat-error>{{ controlError() }}</mat-error>
           }
         </mat-form-field>
       </div>
@@ -198,7 +198,7 @@
                 (blur)="commitValue()"
               />
               <button
-                mat-icon-button
+                matIconButton
                 matSuffix
                 (click)="removeArrayItem($index)"
                 [attr.aria-label]="
@@ -210,7 +210,7 @@
             </mat-form-field>
           </div>
         }
-        <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
+        <button matButton="outlined" class="add-array-item-btn" (click)="addArrayItem()">
           <mat-icon svgIcon="plus" />
           {{ 'shared.settingControl.addItem' | translate }}
         </button>

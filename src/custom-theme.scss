@@ -867,7 +867,6 @@ body {
   @include mat.bottom-sheet-overrides(
     (
       container-background-color: var(--window-bg-color),
-      container-shape: var(--modal-radius) var(--modal-radius) 0 0,
     )
   );
 
@@ -1065,8 +1064,10 @@ button {
       animation: slideDownSheet 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
     }
   }
-  .mobile-sheet-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
-    border-radius: var(--modal-radius) var(--modal-radius) 0 0 !important;
+
+  .cdk-overlay-backdrop.closing {
+    opacity: 0 !important;
+    transition: opacity 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
   }
 }
 
@@ -1083,12 +1084,7 @@ mat-accordion {
   background: var(--view-bg-color) !important;
   border-radius: var(--radius-md) !important;
 
-  .mat-expansion-panel-body {
-    padding: var(--space-md);
-  }
-
   mat-panel-title {
-    flex: 0 0 auto;
     gap: var(--space-sm);
 
     mat-icon:first-child {
@@ -1098,7 +1094,7 @@ mat-accordion {
   }
 
   mat-panel-description {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
   }
 
   .mat-expansion-panel-header {
@@ -1109,7 +1105,7 @@ mat-accordion {
     justify-content: flex-end;
     align-items: center;
     display: flex;
-    gap: 12px;
+    gap: var(--space-xs);
     font-size: clamp(12px, 2vw, 14px);
     font-weight: 500;
   }
@@ -1754,6 +1750,7 @@ mat-accordion {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 
     &.src {
       color: var(--primary-color);
@@ -1777,12 +1774,12 @@ mat-accordion {
   font-size: var(--font-size-xs);
   color: var(--dim-color);
   margin-left: 26px;
-  flex-wrap: wrap;
 
   .path-group {
     display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
     background: rgba(var(--window-fg-color-rgb), 0.03);
     border-radius: 6px;
     padding: var(--space-xxs) var(--space-xs);
@@ -1798,10 +1795,10 @@ mat-accordion {
       font-family: var(--font-mono);
       font-size: var(--font-size-xs);
       font-weight: 500;
-      max-width: 180px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 0;
 
       &.src {
         color: var(--primary-color);
@@ -1818,6 +1815,7 @@ mat-accordion {
       margin-left: 4px;
       padding-left: 6px;
       border-left: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+      flex-shrink: 0;
     }
 
     .small-action-btn {
@@ -1980,6 +1978,18 @@ mat-accordion {
         align-items: center;
         text-align: center;
       }
+    }
+  }
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  * {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
     }
   }
 }

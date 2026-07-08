@@ -65,7 +65,6 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     SYSTEM_STATUS,
 ];
 
-/// Strongly typed payload for consolidated engine status events
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(tag = "status", content = "payload", rename_all = "camelCase")]
 pub enum EngineStatus {
@@ -76,6 +75,31 @@ pub enum EngineStatus {
     VersionError { version: String, required: String },
     Updating,
     Restarted { reason: String },
+}
+
+impl From<&crate::utils::types::state::EnginePhase> for EngineStatus {
+    fn from(phase: &crate::utils::types::state::EnginePhase) -> Self {
+        use crate::utils::types::state::EnginePhase;
+        match phase {
+            EnginePhase::Running => Self::Ready,
+            #[cfg(not(feature = "librclone"))]
+            EnginePhase::Updating => Self::Updating,
+            #[cfg(not(feature = "librclone"))]
+            EnginePhase::FailedPath => Self::PathError,
+            #[cfg(not(feature = "librclone"))]
+            EnginePhase::FailedVersion { version, required } => Self::VersionError {
+                version: version.clone(),
+                required: required.clone(),
+            },
+            EnginePhase::FailedPassword => Self::PasswordError,
+            EnginePhase::FailedOther { message } => Self::Error {
+                message: message.clone(),
+            },
+            EnginePhase::Stopped | EnginePhase::Starting | EnginePhase::Stopping => Self::Error {
+                message: format!("engine phase: {phase}"),
+            },
+        }
+    }
 }
 
 /// Strongly typed payload for settings change events

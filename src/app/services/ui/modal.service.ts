@@ -3,7 +3,6 @@ import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dial
 import { TranslateService } from '@ngx-translate/core';
 import { Subject, Observable, from, switchMap } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
-import { UiStateService } from './state/ui-state.service';
 
 import {
   RemoteFeatures,
@@ -19,6 +18,30 @@ import {
   isMobile,
 } from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+
+const originalClose = MatDialogRef.prototype.close;
+MatDialogRef.prototype.close = function (this: MatDialogRef<any>, dialogResult?: any): void {
+  const container = this.id ? document.getElementById(this.id) : null;
+  const overlayElement = container?.closest('.cdk-overlay-pane');
+
+  if (overlayElement?.classList.contains('mobile-sheet-dialog') && window.innerWidth <= 450) {
+    if (container) {
+      if (container.classList.contains('closing')) {
+        return;
+      }
+      container.classList.add('closing');
+    }
+    const backdrop = overlayElement.parentElement?.querySelector('.cdk-overlay-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('closing');
+    }
+    setTimeout(() => {
+      originalClose.call(this, dialogResult);
+    }, 200);
+  } else {
+    originalClose.call(this, dialogResult);
+  }
+};
 
 export interface RemoteConfigModalOptions {
   remoteName?: string;
@@ -114,7 +137,6 @@ export class ModalService {
   private readonly apiClient = inject(ApiClientService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
-  private readonly uiState = inject(UiStateService);
 
   readonly isDialogStandalone = signal<boolean>(
     new URLSearchParams(window.location.search).get('standalone') === 'dialog'

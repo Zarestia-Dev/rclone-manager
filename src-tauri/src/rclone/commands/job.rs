@@ -49,6 +49,56 @@ pub struct JobMetadata {
 }
 
 impl JobMetadata {
+    #[must_use]
+    pub fn for_query(
+        remote_name: impl Into<String>,
+        source: impl Into<String>,
+        job_type: JobType,
+        origin: Option<Origin>,
+        group: Option<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source: vec![source.into()],
+            destination: String::new(),
+            profile: None,
+            origin,
+            group,
+            no_cache: true,
+            dry_run: false,
+            parent_job_id: None,
+        }
+    }
+
+    /// Build a `JobMetadata` for a mutating operation (e.g. `mkdir`,
+    /// `cleanup`, `copyurl`, `delete`).
+    ///
+    /// Like [`JobMetadata::for_query`] but with `no_cache: false` so the
+    /// result is cached.
+    #[must_use]
+    pub fn for_mutation(
+        remote_name: impl Into<String>,
+        source: Vec<String>,
+        destination: impl Into<String>,
+        job_type: JobType,
+        origin: Option<Origin>,
+        group: Option<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source,
+            destination: destination.into(),
+            profile: None,
+            origin,
+            group,
+            no_cache: false,
+            dry_run: false,
+            parent_job_id: None,
+        }
+    }
+
     pub fn group_name(&self) -> String {
         let remote = self
             .remote_name
@@ -223,13 +273,9 @@ async fn send_job_request(
     metadata: &JobMetadata,
 ) -> Result<(u64, Value, Option<String>), String> {
     let mut payload = payload;
-    if let Some(obj) = payload.as_object_mut()
-        && !obj.contains_key("_group")
-    {
-        obj.insert("_group".to_string(), json!(metadata.group_name()));
-    }
+    crate::rclone::commands::common::ensure_group(&mut payload, &metadata.group_name());
 
-    let transport = app.state::<RcloneState>().transport.clone();
+    let transport = crate::rclone::commands::common::transport(app);
     let response_json = transport
         .rpc(endpoint, Some(&payload))
         .await
@@ -1006,11 +1052,7 @@ pub async fn submit_batch_job(
     let modified_inputs: Vec<Value> = inputs
         .into_iter()
         .map(|mut inp| {
-            if let Some(obj) = inp.as_object_mut()
-                && !obj.contains_key("_group")
-            {
-                obj.insert("_group".to_string(), json!(batch_group));
-            }
+            crate::rclone::commands::common::ensure_group(&mut inp, &batch_group);
             inp
         })
         .collect();

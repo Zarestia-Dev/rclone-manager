@@ -1,6 +1,11 @@
 use std::ffi::OsStr;
 use std::process::Stdio;
 
+#[cfg(windows)]
+pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(not(windows))]
+pub const CREATE_NO_WINDOW: u32 = 0;
+
 /// A wrapper around `tokio::process::Command` that mimics `tauri_plugin_shell`'s API
 /// but allows us to safely set platform-specific flags (like `CREATE_NO_WINDOW`)
 /// without declaring them everywhere.
@@ -19,7 +24,7 @@ impl Command {
 
         #[cfg(windows)]
         {
-            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            use std::os::windows::process::CommandExt;
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 

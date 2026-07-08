@@ -98,9 +98,10 @@
     }
   }
 
-  // ── HOVER STATE ────────────────────────────────────────────────────────────
+  // ── HOVER & OPEN STATE ─────────────────────────────────────────────────────
 
-  &:hover {
+  &:hover,
+  &.open {
     .blossom-panel {
       opacity: 1;
       transform: translateY(0) scale(1);

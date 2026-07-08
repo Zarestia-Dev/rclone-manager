@@ -46,7 +46,7 @@
     }
 
     <button
-      mat-icon-button
+      matIconButton
       class="configure-toggle-btn"
       (click)="onConfigureActions()"
       [matTooltip]="'modals.actionSelection.configureTooltip' | translate"
@@ -119,7 +119,7 @@
         @if (remoteAutomations().length > 1) {
           <div class="carousel-navigation">
             <button
-              mat-icon-button
+              matIconButton
               (click)="previousAutomationCard()"
               [disabled]="currentAutomationCardIndex() === 0"
               [matTooltip]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
@@ -128,7 +128,7 @@
               <mat-icon svgIcon="left-arrow"></mat-icon>
             </button>
             <button
-              mat-icon-button
+              matIconButton
               (click)="nextAutomationCard()"
               [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
               [matTooltip]="'dashboard.generalDetail.nextAutomationTooltip' | translate"

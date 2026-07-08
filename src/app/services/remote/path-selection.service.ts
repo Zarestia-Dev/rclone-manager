@@ -2,6 +2,9 @@ import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { BackendService } from '../infrastructure/system/backend.service';
+import { UiStateService } from '../ui/state/ui-state.service';
+import { RemoteManagementService } from '../remote/remote-management.service';
 import { Entry } from '@app/types';
 
 export interface PathSelectionState {
@@ -16,6 +19,9 @@ export interface PathSelectionState {
 export class PathSelectionService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
+  private readonly backendService = inject(BackendService);
+  private readonly uiStateService = inject(UiStateService);
+  private readonly remoteManagement = inject(RemoteManagementService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
   private readonly abortControllers = new Map<string, AbortController>();
@@ -91,6 +97,14 @@ export class PathSelectionService {
     }
   }
 
+  private isWindowsTarget(): boolean {
+    const active = this.backendService
+      .backends()
+      .find(b => b.name === this.backendService.activeBackend());
+    const targetOs = active && !active.isLocal ? active.os : this.uiStateService.platform;
+    return !!targetOs?.toLowerCase().includes('windows');
+  }
+
   private async fetchEntries(
     fieldId: string,
     remoteName: string,
@@ -106,14 +120,50 @@ export class PathSelectionService {
     const controller = new AbortController();
     this.abortControllers.set(fieldId, controller);
 
+    const isLocal = remoteName === '';
+
+    if (isLocal && this.isWindowsTarget() && !path) {
+      stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
+      try {
+        const drives = await this.remoteManagement.getLocalDrives();
+        if (controller.signal.aborted) return;
+
+        const options: Entry[] = drives.map(drive => ({
+          Name: drive.name,
+          Path: drive.name,
+          IsDir: true,
+          Size: -1,
+          ID: drive.id || drive.name,
+          MimeType: 'inode/directory',
+          ModTime: '',
+        }));
+
+        stateSignal.update(s => ({ ...s, options, isLoading: false }));
+        return;
+      } catch {
+        if (controller.signal.aborted) return;
+        stateSignal.update(s => ({ ...s, options: [], isLoading: false }));
+        return;
+      }
+    }
+
     stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
 
     try {
-      const normalizedRemote =
-        remoteName === '' ? '/' : this.pathService.normalizeRemoteForRclone(remoteName);
+      let normalizedRemote = '/';
+      let subPath = path;
+
+      if (isLocal) {
+        const split = this.pathService.splitLocalPath(path);
+        normalizedRemote = split.remote || '/';
+        subPath = split.remainder;
+      } else {
+        normalizedRemote = this.pathService.normalizeRemoteForRclone(remoteName);
+      }
+
       const response = await this.remoteOps.getRemotePaths(
         normalizedRemote,
-        path,
+        subPath,
         {},
         'filemanager'
       );

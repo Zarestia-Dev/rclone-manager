@@ -20,7 +20,7 @@ pub async fn load_rclone_backend_options(app: AppHandle) -> Result<serde_json::V
 
 /// Sync version for use in initialization
 pub fn load_backend_options_sync(manager: &AppSettingsManager) -> serde_json::Value {
-    let sub = match manager.sub_settings("backend") {
+    let sub = match manager.sub_settings(crate::utils::constants::SUB_BACKEND) {
         Ok(s) => s,
         Err(_) => return json!({}),
     };
@@ -39,7 +39,7 @@ pub async fn save_rclone_backend_options(
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
-        .sub_settings("backend")
+        .sub_settings(crate::utils::constants::SUB_BACKEND)
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     if let Some(obj) = options.as_object() {
@@ -65,7 +65,7 @@ pub async fn save_rclone_backend_option(
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
-        .sub_settings("backend")
+        .sub_settings(crate::utils::constants::SUB_BACKEND)
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let mut block_value = sub.get_value(&block).unwrap_or_else(|_| json!({}));
@@ -92,7 +92,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
-        .sub_settings("backend")
+        .sub_settings(crate::utils::constants::SUB_BACKEND)
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let blocks = sub.list().unwrap_or_default();
@@ -102,7 +102,7 @@ pub async fn reset_rclone_backend_options(app: AppHandle) -> Result<(), String> 
 
     info!("RClone backend options file cleared");
 
-    restart_for_config_change(&app, "backend_options_reset", "custom", "defaults");
+    restart_for_config_change(&app, "backend_options_reset");
 
     info!("RClone engine restart initiated");
     Ok(())
@@ -119,7 +119,7 @@ pub async fn remove_rclone_backend_option(
     let manager = app.state::<AppSettingsManager>();
 
     let sub = manager
-        .sub_settings("backend")
+        .sub_settings(crate::utils::constants::SUB_BACKEND)
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let mut block_value = match sub.get_value(&block) {
@@ -152,7 +152,7 @@ pub async fn get_rclone_backend_store_path(app: AppHandle) -> Result<String, Str
     let manager = app.state::<AppSettingsManager>();
     let sub = manager
         .inner()
-        .sub_settings("backend")
+        .sub_settings(crate::utils::constants::SUB_BACKEND)
         .map_err(|e| format!("Failed to get backend sub-settings: {e}"))?;
 
     let path = sub

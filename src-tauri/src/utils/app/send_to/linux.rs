@@ -25,7 +25,7 @@ fn write_executable(path: &Path, content: &str) -> std::io::Result<()> {
     {
         use std::os::unix::fs::PermissionsExt;
         let mut perms = std::fs::metadata(path)?.permissions();
-        perms.set_mode(0o755);
+        perms.set_mode(crate::utils::constants::EXEC_MODE);
         std::fs::set_permissions(path, perms)?;
     }
     Ok(())

@@ -1,27 +1,17 @@
-import {
-  Component,
-  input,
-  inject,
-  ChangeDetectionStrategy,
-  computed,
-  signal,
-  effect,
-  linkedSignal,
-  untracked,
-} from '@angular/core';
+import { Component, input, inject, ChangeDetectionStrategy, computed, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CompletedTransfer, TransferActivityPanelConfig } from '@app/types';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TransferOperationsService } from './transfer-operations.service';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { BaseTransfersTableComponent } from './base-transfers-table.component';
 
 export interface EnrichedCheckResult extends CompletedTransfer {
   uniqueId: string;
@@ -55,6 +45,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
     TranslatePipe,
     CopyToClipboardDirective,
     FormatFileSizePipe,
+    FormatFsNamePipe,
     FormatTimePipe,
   ],
   template: `
@@ -98,7 +89,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group src">
                   <code class="path-pill src" [title]="item.srcFs">{{
-                    formatFsName(item.srcFs) || '?'
+                    (item.srcFs | formatFsName) || '?'
                   }}</code>
                   @let canCopySrc = ops.canCopyUrlSource(item, config().jobType || 'check');
                   @let canDownloadSrc = ops.canDownloadSource(item, config().jobType || 'check');
@@ -166,7 +157,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
 
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="item.dstFs">{{
-                    formatFsName(item.dstFs) || '?'
+                    (item.dstFs | formatFsName) || '?'
                   }}</code>
                   @let canCopyDst = ops.canCopyUrlDst(item, config().jobType || 'check');
                   @let canDownloadDst = ops.canDownloadDst(item, config().jobType || 'check');
@@ -232,7 +223,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="config().remoteName">{{
-                    formatFsName(config().remoteName)
+                    config().remoteName | formatFsName
                   }}</code>
                   @let canCopyFb =
                     ops.canCopyUrlFallback(item, config().jobType || 'check', config().remoteName);
@@ -375,64 +366,18 @@ export interface EnrichedCheckResult extends CompletedTransfer {
     </div>
   `,
 })
-export class CheckResultsTableComponent {
-  readonly transfers = input.required<CompletedTransfer[]>();
+export class CheckResultsTableComponent extends BaseTransfersTableComponent<EnrichedCheckResult> {
   readonly config = input.required<TransferActivityPanelConfig>();
-  readonly searchTerm = input('');
 
-  private readonly translate = inject(TranslateService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
-  protected readonly ops = inject(TransferOperationsService);
-
-  protected formatFsName(fs?: string): string {
-    if (!fs) return '';
-    if (/^[a-zA-Z]:$/.test(fs)) {
-      return fs;
-    }
-    return fs.endsWith(':') ? fs.slice(0, -1) : fs;
-  }
 
   readonly localStatusOverrides = signal<Map<string, { status: string; error?: string }>>(
     new Map()
   );
-  readonly hiddenIds = signal<Set<string>>(new Set());
-  readonly resolvingIds = signal<Set<string>>(new Set());
 
-  readonly displayLimit = linkedSignal({
-    source: () => [this.transfers(), this.searchTerm()] as const,
-    computation: () => 50,
-  });
-
-  private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
-
-  private readonly remotesList = computed(
-    () => {
-      const remotes = new Set<string>();
-      for (const t of this.transfers()) {
-        if (t.srcFs) remotes.add(t.srcFs);
-        if (t.dstFs) remotes.add(t.dstFs);
-      }
-      return Array.from(remotes).sort();
-    },
-    {
-      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
-    }
-  );
-
-  private readonly _preloadEffect = effect(() => {
-    const remotes = this.remotesList();
-    if (remotes.length > 0) {
-      untracked(() => this.ops.preloadFeatures(this.transfers()));
-    }
-  });
-
-  isResolving(item: EnrichedCheckResult): boolean {
-    return this.resolvingIds().has(item.uniqueId) || item.resolveState?.status === 'Running';
-  }
-
-  protected readonly processedItems = computed<EnrichedCheckResult[]>(() => {
+  protected override readonly processedItems = computed<EnrichedCheckResult[]>(() => {
     this.lang();
     const search = this.searchTerm().toLowerCase().trim();
     const hidden = this.hiddenIds();
@@ -558,23 +503,6 @@ export class CheckResultsTableComponent {
     });
   });
 
-  protected readonly slicedItems = computed(() => {
-    return this.processedItems().slice(0, this.displayLimit());
-  });
-
-  private getRelativeTime(timestamp: string): string {
-    const diff = Date.now() - Date.parse(timestamp);
-    const minutes = Math.floor(diff / 60000);
-    if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
-    const hours = Math.floor(minutes / 60);
-    if (hours <= 0)
-      return this.translate.instant('shared.transferActivity.time.minutesAgo', { count: minutes });
-    const days = Math.floor(hours / 24);
-    if (days <= 0)
-      return this.translate.instant('shared.transferActivity.time.hoursAgo', { count: hours });
-    return this.translate.instant('shared.transferActivity.time.daysAgo', { count: days });
-  }
-
   async onResolve(item: EnrichedCheckResult): Promise<void> {
     this.resolvingIds.update(s => new Set(s).add(item.uniqueId));
     try {
@@ -671,18 +599,5 @@ export class CheckResultsTableComponent {
     await this.ops.deleteFallback(item, item.uniqueId, this.config().remoteName, () => {
       this.hiddenIds.update(s => new Set(s).add(item.uniqueId));
     });
-  }
-
-  onScroll(event: Event): void {
-    const target = event.target as HTMLElement;
-    if (!target) return;
-
-    if (target.scrollHeight - (target.scrollTop + target.clientHeight) < 150) {
-      const currentLimit = this.displayLimit();
-      const totalCount = this.processedItems().length;
-      if (currentLimit < totalCount) {
-        this.displayLimit.set(Math.min(currentLimit + 50, totalCount));
-      }
-    }
   }
 }

@@ -40,7 +40,7 @@ pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(),
         let mut perms = fs::metadata(&target)
             .map_err(|e| format!("Failed to read metadata: {e}"))?
             .permissions();
-        perms.set_mode(0o755);
+        perms.set_mode(crate::utils::constants::EXEC_MODE);
         fs::set_permissions(&target, perms)
             .map_err(|e| format!("Failed to set permissions: {e}"))?;
 

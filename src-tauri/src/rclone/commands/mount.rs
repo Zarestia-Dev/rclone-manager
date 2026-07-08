@@ -101,9 +101,7 @@ impl MountParams {
             );
         }
         if let Some(backend_opts) = &self.backend_options {
-            let mut final_backend = backend_opts.clone();
-            final_backend
-                .retain(|_, v| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()));
+            let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
             if !final_backend.is_empty() {
                 body.insert(
                     "_config".to_string(),

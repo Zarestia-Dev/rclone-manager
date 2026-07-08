@@ -22,6 +22,7 @@ export interface SettingEntry {
   key: string;
   display: string;
   tooltip: string;
+  isSensitive?: boolean;
 }
 
 export interface GroupedSettings {

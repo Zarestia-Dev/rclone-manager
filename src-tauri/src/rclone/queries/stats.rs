@@ -4,9 +4,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     rclone::backend::BackendManager,
-    utils::{
-        json_helpers::normalize_windows_path, rclone::endpoints::core, types::state::RcloneState,
-    },
+    utils::{json_helpers::normalize_windows_path, rclone::endpoints::core},
 };
 
 fn group_payload(group: Option<String>) -> Value {
@@ -18,8 +16,7 @@ fn group_payload(group: Option<String>) -> Value {
 
 #[tauri::command]
 pub async fn get_stats(app: AppHandle, group: Option<String>) -> Result<Value, String> {
-    app.state::<RcloneState>()
-        .transport
+    crate::rclone::commands::common::transport(&app)
         .rpc(core::STATS, Some(&group_payload(group)))
         .await
         .map_err(|e| format!("Failed to get core stats: {e}"))
@@ -30,9 +27,7 @@ pub async fn get_completed_transfers(
     app: AppHandle,
     group: Option<String>,
 ) -> Result<Value, String> {
-    let mut value = app
-        .state::<RcloneState>()
-        .transport
+    let mut value = crate::rclone::commands::common::transport(&app)
         .rpc(core::TRANSFERRED, Some(&group_payload(group.clone())))
         .await
         .map_err(|e| {
