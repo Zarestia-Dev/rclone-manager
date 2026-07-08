@@ -88,7 +88,7 @@ impl TraySnapshot {
             .iter()
             .map(|srv| {
                 let fs = srv.params["fs"].as_str().unwrap_or("");
-                let remote = crate::utils::rclone::util::extract_remote_name_from_fs(fs);
+                let remote = crate::utils::json_helpers::extract_remote_name_from_fs(fs);
                 (remote, srv.profile.clone())
             })
             .collect();
@@ -110,7 +110,7 @@ impl TraySnapshot {
                     .clone()
                     .unwrap_or_else(|| vec!["mount".into(), "sync".into(), "bisync".into()]);
 
-                let target_remote = crate::utils::rclone::util::normalize_remote_name(&name);
+                let target_remote = crate::utils::json_helpers::normalize_remote_name(&name);
 
                 let build_job_profiles = |configs: &Option<
                     std::collections::HashMap<String, crate::utils::types::remotes::ProfileConfig>,

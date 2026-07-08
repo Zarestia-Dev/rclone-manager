@@ -3,6 +3,7 @@ import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dial
 import { TranslateService } from '@ngx-translate/core';
 import { Subject, Observable, from, switchMap } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
+import { UiStateService } from './state/ui-state.service';
 
 import {
   RemoteFeatures,
@@ -12,7 +13,11 @@ import {
   BackupAnalysis,
   JobInfo,
 } from '@app/types';
-import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import {
+  ApiClientService,
+  isHeadlessMode,
+  isMobile,
+} from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
 export interface RemoteConfigModalOptions {
@@ -109,6 +114,7 @@ export class ModalService {
   private readonly apiClient = inject(ApiClientService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly injector = inject(Injector);
+  private readonly uiState = inject(UiStateService);
 
   readonly isDialogStandalone = signal<boolean>(
     new URLSearchParams(window.location.search).get('standalone') === 'dialog'
@@ -215,7 +221,7 @@ export class ModalService {
 
   private get standaloneEnabled(): boolean {
     return (
-      !isHeadlessMode() &&
+      (!isHeadlessMode() || !isMobile()) &&
       this.appSettings.options()?.['general.standalone_dialogs']?.value === true
     );
   }

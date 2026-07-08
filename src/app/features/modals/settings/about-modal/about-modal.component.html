@@ -193,7 +193,7 @@
                   <span class="detail-value"></span>
                   <button
                     mat-icon-button
-                    class="action-button"
+                    class="about-button"
                     (click)="navigateTo('debugging')"
                     [matTooltip]="'modals.about.debugTools' | translate"
                     matTooltipPosition="right"
@@ -340,7 +340,7 @@
                       }
                     </button>
                     @if (appDownloadInProgress()) {
-                      <button mat-stroked-button class="warn" (click)="cancelAppUpdate()">
+                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
                         {{ 'common.cancel' | translate }}
                       </button>
                     } @else {
@@ -502,7 +502,7 @@
                     @if (!isLibrclone()) {
                       <button
                         mat-icon-button
-                        class="action-button"
+                        class="about-button"
                         [matTooltip]="
                           backendService.activeBackend() === 'Local'
                             ? ('modals.about.killProcess' | translate)
@@ -527,7 +527,7 @@
                     <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
                     <button
                       mat-icon-button
-                      class="action-button"
+                      class="about-button"
                       (click)="showMemoryOverlay()"
                       matTooltipPosition="right"
                       [matTooltip]="'modals.about.viewMemoryStats' | translate"
@@ -543,7 +543,7 @@
                   </span>
                   <button
                     mat-icon-button
-                    class="action-button"
+                    class="about-button"
                     (click)="clearFsCache()"
                     [disabled]="clearingFsCache()"
                     matTooltipPosition="right"
@@ -633,7 +633,7 @@
                     }
                   </button>
                   @if (rcloneUpdateInProgress()) {
-                    <button mat-button class="warn" (click)="cancelRcloneUpdate()">
+                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {

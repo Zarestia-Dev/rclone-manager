@@ -1,10 +1,16 @@
 :host {
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
   display: flex;
   flex-direction: column;
   background: rgba(var(--window-bg-color-rgb), 0.85);
   overflow: hidden;
+
+  // Safe area insets for edge-to-edge mode (Android/iOS status & nav bars)
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 
   .file-viewer-header {
     display: flex;

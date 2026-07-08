@@ -251,7 +251,7 @@
       border-bottom: none;
     }
 
-    &:has(.action-button) {
+    &:has(.about-button) {
       grid-template-columns: 1fr auto auto;
     }
 
@@ -754,7 +754,6 @@
     var(--zarestia-bg-start) 0%,
     var(--zarestia-bg-end) 100%
   ) !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--zarestia-green-rgb), 0.3) !important;
   color: var(--zarestia-white) !important;
   transition: all 0.3s ease;
 

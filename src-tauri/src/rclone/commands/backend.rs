@@ -96,7 +96,9 @@ pub struct AddBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: Option<u16>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
     pub copy_remotes_from: Option<String>,
@@ -128,9 +130,11 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     backend.port = params.port;
     backend.config_path = params.config_path;
 
+    #[cfg(not(feature = "librclone"))]
     if let Some(port) = params.oauth_port {
         backend.oauth_port = port;
     }
+    #[cfg(not(feature = "librclone"))]
     if let Some(host) = params.oauth_host.filter(|h| !h.is_empty()) {
         backend.oauth_host = host;
     }
@@ -177,7 +181,9 @@ pub struct UpdateBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: Option<u16>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: Option<String>,
 }
 
@@ -201,7 +207,9 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         port: params.port,
         username: None,
         password: None,
+        #[cfg(not(feature = "librclone"))]
         oauth_port: params.oauth_port.unwrap_or(existing.oauth_port),
+        #[cfg(not(feature = "librclone"))]
         oauth_host: params
             .oauth_host
             .filter(|h| !h.is_empty())

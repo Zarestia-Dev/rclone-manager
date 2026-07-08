@@ -80,27 +80,35 @@ impl RcApiEngine {
 
         #[cfg(feature = "librclone")]
         {
+            let password = env_vars
+                .get("RCLONE_CONFIG_PASS")
+                .cloned()
+                .unwrap_or_default();
+
             let state = app.state::<RcloneState>();
-            match state.transport.rpc("config/listremotes", None).await {
+            let payload = serde_json::json!({ "password": password });
+
+            match state
+                .transport
+                .rpc("config/validatepassword", Some(&payload))
+                .await
+            {
                 Ok(_) => {
                     info!("Rclone configuration and password validation successful (librclone)");
                     Ok(())
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    if err_str.contains("unable to decrypt")
-                        || err_str.contains("Couldn't decrypt")
-                        || err_str.contains("most likely wrong password")
-                    {
+                    if err_str.contains("wrong password") || err_str.contains("decryption failed") {
                         error!("Wrong password for encrypted rclone configuration");
                         return Err(EngineError::WrongPassword);
                     }
-                    if err_str.contains("Failed to load config file") {
-                        error!("Failed to load rclone config file: {err_str}");
-                        return Err(EngineError::ConfigValidationFailed(err_str));
+                    if err_str.contains("not encrypted") {
+                        info!("Config reported as not encrypted during validation — continuing");
+                        return Ok(());
                     }
-                    warn!("Unexpected rclone error, attempting to continue: {err_str}");
-                    Ok(())
+                    error!("Config validation failed: {err_str}");
+                    Err(EngineError::ConfigValidationFailed(err_str))
                 }
             }
         }
@@ -168,12 +176,14 @@ impl RcApiEngine {
                 error!("Rclone configuration validation failed: {e}");
 
                 let status = match &e {
+                    #[cfg(not(feature = "librclone"))]
                     EngineError::RcloneNotFound => {
                         self.set_password_error(false);
                         self.set_path_error(true);
                         self.set_version_error(false);
                         EngineStatus::PathError
                     }
+                    #[cfg(not(feature = "librclone"))]
                     EngineError::VersionTooOld { version, required } => {
                         self.set_password_error(false);
                         self.set_path_error(false);
@@ -185,7 +195,9 @@ impl RcApiEngine {
                     }
                     EngineError::WrongPassword | EngineError::PasswordRequired => {
                         self.set_password_error(true);
+                        #[cfg(not(feature = "librclone"))]
                         self.set_path_error(false);
+                        #[cfg(not(feature = "librclone"))]
                         self.set_version_error(false);
                         EngineStatus::PasswordError
                     }

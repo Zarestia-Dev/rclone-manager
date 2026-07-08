@@ -138,6 +138,7 @@ impl BackendManager {
     }
 
     /// Helper to get the config path of the Local backend
+    #[cfg(not(feature = "librclone"))]
     pub async fn get_local_config_path(&self) -> Result<Option<PathBuf>, String> {
         self.state
             .read()

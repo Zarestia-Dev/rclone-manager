@@ -8,8 +8,6 @@ pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
 ) -> Result<Option<String>, String> {
-    debug!("Opening folder picker dialog");
-
     let folder = match app
         .dialog()
         .file()

@@ -1,10 +1,23 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { invoke } from '@tauri-apps/api/core';
+import { platform } from '@tauri-apps/plugin-os';
 import { firstValueFrom } from 'rxjs';
 
 export const isHeadlessMode = (): boolean =>
   !(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+
+export const isMobile = (): boolean => {
+  if (isHeadlessMode()) {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  try {
+    const p = platform();
+    return p === 'android' || p === 'ios';
+  } catch {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+};
 
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {

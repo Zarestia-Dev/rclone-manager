@@ -4,7 +4,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { WindowService } from 'src/app/services/ui/window.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-window-controls',
@@ -20,7 +19,7 @@ export class WindowControlsComponent {
   private readonly isMaximized = this.windowService.isMaximized;
 
   readonly windowButtons = computed(() => {
-    return this.uiStateService.platform !== 'macos' && !isHeadlessMode();
+    return this.uiStateService.platform === 'windows' || this.uiStateService.platform === 'linux';
   });
 
   readonly controls = computed(() => [

@@ -14,13 +14,13 @@ macro_rules! MASTER_COMMAND_LIST {
         $action! {
             // FILE OPERATIONS (Utils)
             // File Picker / System Interaction (Desktop Only)
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
 
             // UI & THEME
@@ -190,6 +190,7 @@ macro_rules! MASTER_COMMAND_LIST {
             (rename_serve_profile_in_cache, $crate::rclone::state::cache::rename_serve_profile_in_cache, [remote_name: String, old_name: String, new_name: String]);
 
             // BINARIES
+            #[cfg(not(feature = "librclone"))]
             (check_rclone_available, $crate::core::check_binaries::check_rclone_available, [path: String]);
 
             // LOGS
@@ -286,7 +287,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // DESKTOP ONLY
             #[cfg(not(feature = "web-server"))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
         }
     }

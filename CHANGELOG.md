@@ -20,8 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality.
   - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
 - New background for dmg installer.
-**Librclone Support**: Added support for librclone. This one is a testing feature for future mobile release. This is not ready for use yet. When librclone enabled, Rclone updates, proccess management became disabled. Remote rclone instances still supported.
-- **Deeplink support**: Added support for deeplinks. When a deeplink is opened, the application will open and handle deeplinks.
+- **Librclone Support**: Added support for `librclone` (Beta testing feature for Android/iOS mobile targets). When `librclone` is enabled, application/rclone updates and local process management are disabled, while remote rclone instances and local servers remain supported.
+  - **Android Build & Cross-Compilation**: Added NDK target toolchain cross-compiler mappings for all architectures (`aarch64`, `armv7`, `x86_64`, `386`) and created a GitHub Actions build workflow.
+  - **DNS-over-HTTPS (DoH) Resolver**: Overrode the default Go network resolver on Android to proxy DNS queries through HTTPS (port 443) to Cloudflare/Google, bypassing Android's port 53 raw socket restriction. (Refer to platform docs: `https://hakanismail.info/zarestia/rclone-manager/docs/platform/configuration-android.md`)
+- **Deeplink support**: Added support for mobile custom URI scheme handler (`rclone-manager://oauth`) to automatically redirect and resume the application from web browsers during the OAuth process.
 
 ### Changed
 - **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.

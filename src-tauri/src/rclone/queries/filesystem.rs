@@ -1,4 +1,3 @@
-#[cfg(target_os = "linux")]
 use std::collections::HashMap;
 #[cfg(target_os = "linux")]
 use std::process::Command;
@@ -11,10 +10,10 @@ use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::BackendManager;
 use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
+use crate::utils::json_helpers::build_full_path;
 use crate::utils::{
     json_helpers::normalize_windows_path,
     rclone::endpoints::{core, job as job_endpoints, operations},
-    rclone::util::build_full_path,
     types::{
         jobs::{JobStatus, JobType},
         rclone::{DiskUsage, DiskUsageSeverity},

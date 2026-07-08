@@ -241,7 +241,8 @@ pub fn run() {
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init());
 
     #[cfg(feature = "desktop")]
     {
@@ -249,8 +250,7 @@ pub fn run() {
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_clipboard_manager::init())
-            .plugin(tauri_plugin_window_state::Builder::default().build())
-            .plugin(tauri_plugin_deep_link::init());
+            .plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
     builder = builder.setup(move |app| setup_app(app, cli_args.clone()));
@@ -286,7 +286,20 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            utils::process::process_manager::cleanup_webkit_zombies();
+                            use sysinfo::{ProcessesToUpdate, System};
+
+                            let mut system = System::new();
+                            system.refresh_processes(ProcessesToUpdate::All, true);
+                            let my_pid = std::process::id();
+
+                            for process in system.processes().values() {
+                                let name = process.name().to_string_lossy();
+                                if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
+                                    && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
+                                {
+                                    let _ = process.kill();
+                                }
+                            }
                         });
                     }
                 }
@@ -330,6 +343,7 @@ fn setup_app(
         client: reqwest::Client::new(),
         transport,
         is_shutting_down: AtomicBool::new(false),
+        #[cfg(not(feature = "librclone"))]
         oauth_process: tokio::sync::Mutex::new(None),
         poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
@@ -410,6 +424,15 @@ fn setup_app(
     if !cli_args.general.tray && cli_args.general.send_to_remote.is_none() {
         log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
+    }
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        log::debug!("Creating main window on mobile");
+        let _window =
+            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
+                .build()
+                .expect("Failed to build mobile main window");
     }
 
     if cli_args.general.send_to_remote.is_some() {

@@ -1,5 +1,3 @@
-#![cfg(desktop)]
-
 #[cfg(feature = "tray")]
 pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();

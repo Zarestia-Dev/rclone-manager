@@ -1,13 +1,13 @@
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(not(feature = "librclone"))]
+use crate::core::check_binaries::build_rclone_command;
+use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
+use crate::rclone::commands::system::unlock_rclone_config;
 use crate::utils::types::events::RCLONE_PASSWORD_STORED;
-use crate::{
-    core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
-    rclone::commands::system::unlock_rclone_config,
-};
 
 fn update_local_config_password(
     manager: &AppSettingsManager,
@@ -121,38 +121,85 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
         ));
     }
 
-    let backend_manager = app.state::<BackendManager>();
-    let config_path = backend_manager.get_local_config_path().await.map_err(
-        |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-    )?;
+    #[cfg(feature = "librclone")]
+    {
+        use crate::utils::types::state::RcloneState;
+        let state = app.state::<RcloneState>();
+        let payload = serde_json::json!({ "password": password });
 
-    let output = build_rclone_command(&app, None, config_path.as_deref(), None)
-        .args(["listremotes", "--ask-password=false"])
-        .env("RCLONE_CONFIG_PASS", &password)
-        .output()
-        .await
-        .map_err(
+        match state
+            .transport
+            .rpc("config/validatepassword", Some(&payload))
+            .await
+        {
+            Ok(_) => {
+                let env_manager = app.state::<SafeEnvironmentManager>();
+                env_manager.set_config_password(password.clone());
+
+                if let Err(e) = app.emit(crate::utils::types::events::RCLONE_CONFIG_UNLOCKED, ()) {
+                    error!("Failed to emit config unlocked event: {e}");
+                }
+
+                info!("Password validation successful (librclone)");
+                Ok(())
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                error!("Password validation failed (librclone): {err_str}");
+
+                if err_str.contains("wrong password")
+                    || err_str.contains("decryption failed")
+                    || err_str.contains("not encrypted")
+                {
+                    Err(crate::localized_error!(
+                        "backendErrors.security.incorrectPassword"
+                    ))
+                } else {
+                    Err(crate::localized_error!(
+                        "backendErrors.security.rcloneError",
+                        "error" => err_str
+                    ))
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature = "librclone"))]
+    {
+        let backend_manager = app.state::<BackendManager>();
+        let config_path = backend_manager.get_local_config_path().await.map_err(
             |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
         )?;
 
-    if output.status.success() {
-        info!("Password validation successful");
-        return Ok(());
+        let output = build_rclone_command(&app, None, config_path.as_deref(), None)
+            .args(["listremotes", "--ask-password=false"])
+            .env("RCLONE_CONFIG_PASS", &password)
+            .output()
+            .await
+            .map_err(
+                |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
+            )?;
+
+        if output.status.success() {
+            info!("Password validation successful");
+            return Ok(());
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        error!("Password validation failed: {stderr}");
+
+        let error_msg = if stderr
+            .contains("Couldn't decrypt configuration, most likely wrong password")
+            || stderr.contains("unable to decrypt configuration")
+            || stderr.contains("wrong password")
+        {
+            crate::localized_error!("backendErrors.security.incorrectPassword")
+        } else {
+            crate::localized_error!("backendErrors.security.rcloneError", "error" => stderr.trim())
+        };
+
+        Err(error_msg)
     }
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    error!("Password validation failed: {stderr}");
-
-    let error_msg = if stderr.contains("Couldn't decrypt configuration, most likely wrong password")
-        || stderr.contains("unable to decrypt configuration")
-        || stderr.contains("wrong password")
-    {
-        crate::localized_error!("backendErrors.security.incorrectPassword")
-    } else {
-        crate::localized_error!("backendErrors.security.rcloneError", "error" => stderr.trim())
-    };
-
-    Err(error_msg)
 }
 
 #[tauri::command]
@@ -224,6 +271,7 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     }
 }
 
+#[cfg(not(feature = "librclone"))]
 async fn run_encryption_command(
     app: &AppHandle,
     action: &str,
@@ -288,56 +336,132 @@ async fn run_encryption_command(
 
 #[tauri::command]
 pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), String> {
-    info!("Encrypting rclone configuration");
+    #[cfg(feature = "librclone")]
+    {
+        use crate::utils::types::state::RcloneState;
+        info!("Encrypting rclone configuration via FFI");
+        let state = app.state::<RcloneState>();
+        let payload = serde_json::json!({ "password": password });
+        state
+            .transport
+            .rpc("config/encrypt", Some(&payload))
+            .await
+            .map_err(
+                |e| crate::localized_error!("backendErrors.security.encryptFailed", "error" => e),
+            )?;
 
-    run_encryption_command(&app, "set", &password).await?;
+        let manager = app.state::<AppSettingsManager>();
+        let env_manager = app.state::<SafeEnvironmentManager>();
 
-    let manager = app.state::<AppSettingsManager>();
-    let env_manager = app.state::<SafeEnvironmentManager>();
-
-    if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
-        warn!("Failed to store password after encryption: {e}");
-    } else {
-        let backend_manager = app.state::<BackendManager>();
-        if let Some(mut backend) = backend_manager.get("Local").await {
-            backend.config_password = Some(password.clone());
-            let _ = backend_manager
-                .update(manager.inner(), "Local", backend)
-                .await;
+        if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
+            warn!("Failed to store password after encryption: {e}");
+        } else {
+            let backend_manager = app.state::<BackendManager>();
+            if let Some(mut backend) = backend_manager.get("Local").await {
+                backend.config_password = Some(password.clone());
+                let _ = backend_manager
+                    .update(manager.inner(), "Local", backend)
+                    .await;
+            }
         }
+
+        env_manager.set_config_password(password.clone());
+        unlock_rclone_config(app.clone(), password).await?;
+
+        info!("Configuration encrypted successfully");
+        Ok(())
     }
 
-    env_manager.set_config_password(password.clone());
-    unlock_rclone_config(app.clone(), password).await?;
+    #[cfg(not(feature = "librclone"))]
+    {
+        info!("Encrypting rclone configuration");
 
-    info!("Configuration encrypted successfully");
-    Ok(())
+        run_encryption_command(&app, "set", &password).await?;
+
+        let manager = app.state::<AppSettingsManager>();
+        let env_manager = app.state::<SafeEnvironmentManager>();
+
+        if let Err(e) = update_local_config_password(manager.inner(), Some(&password)) {
+            warn!("Failed to store password after encryption: {e}");
+        } else {
+            let backend_manager = app.state::<BackendManager>();
+            if let Some(mut backend) = backend_manager.get("Local").await {
+                backend.config_password = Some(password.clone());
+                let _ = backend_manager
+                    .update(manager.inner(), "Local", backend)
+                    .await;
+            }
+        }
+
+        env_manager.set_config_password(password.clone());
+        unlock_rclone_config(app.clone(), password).await?;
+
+        info!("Configuration encrypted successfully");
+        Ok(())
+    }
 }
 
 #[tauri::command]
 pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), String> {
-    info!("Unencrypting rclone configuration");
+    #[cfg(feature = "librclone")]
+    {
+        use crate::utils::types::state::RcloneState;
+        info!("Unencrypting rclone configuration via FFI");
+        let state = app.state::<RcloneState>();
+        let payload = serde_json::json!({ "password": password });
+        state
+            .transport
+            .rpc("config/decrypt", Some(&payload))
+            .await
+            .map_err(
+                |e| crate::localized_error!("backendErrors.security.decryptFailed", "error" => e),
+            )?;
 
-    run_encryption_command(&app, "remove", &password).await?;
+        let manager = app.state::<AppSettingsManager>();
+        let env_manager = app.state::<SafeEnvironmentManager>();
 
-    let manager = app.state::<AppSettingsManager>();
-    let env_manager = app.state::<SafeEnvironmentManager>();
+        if let Err(e) = update_local_config_password(manager.inner(), None) {
+            warn!("Failed to remove stored config password: {e}");
+        }
 
-    if let Err(e) = update_local_config_password(manager.inner(), None) {
-        warn!("Failed to remove stored config password: {e}");
+        let backend_manager = app.state::<BackendManager>();
+        if let Some(mut backend) = backend_manager.get("Local").await {
+            backend.config_password = None;
+            let _ = backend_manager
+                .update(manager.inner(), "Local", backend)
+                .await;
+        }
+
+        env_manager.clear_config_password();
+        info!("Configuration unencrypted successfully");
+        Ok(())
     }
 
-    let backend_manager = app.state::<BackendManager>();
-    if let Some(mut backend) = backend_manager.get("Local").await {
-        backend.config_password = None;
-        let _ = backend_manager
-            .update(manager.inner(), "Local", backend)
-            .await;
-    }
+    #[cfg(not(feature = "librclone"))]
+    {
+        info!("Unencrypting rclone configuration");
 
-    env_manager.clear_config_password();
-    info!("Configuration unencrypted successfully");
-    Ok(())
+        run_encryption_command(&app, "remove", &password).await?;
+
+        let manager = app.state::<AppSettingsManager>();
+        let env_manager = app.state::<SafeEnvironmentManager>();
+
+        if let Err(e) = update_local_config_password(manager.inner(), None) {
+            warn!("Failed to remove stored config password: {e}");
+        }
+
+        let backend_manager = app.state::<BackendManager>();
+        if let Some(mut backend) = backend_manager.get("Local").await {
+            backend.config_password = None;
+            let _ = backend_manager
+                .update(manager.inner(), "Local", backend)
+                .await;
+        }
+
+        env_manager.clear_config_password();
+        info!("Configuration unencrypted successfully");
+        Ok(())
+    }
 }
 
 #[tauri::command]

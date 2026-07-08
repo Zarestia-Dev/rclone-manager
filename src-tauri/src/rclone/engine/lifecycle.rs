@@ -26,8 +26,8 @@ const API_READY_TIMEOUT_SECS: u64 = 10;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct EngineStatusInfo {
     pub running: bool,
-    pub updating: bool,
     pub should_exit: bool,
+    pub updating: bool,
 }
 
 impl RcApiEngine {
@@ -90,7 +90,10 @@ pub async fn get_engine_status(app: &AppHandle) -> EngineStatusInfo {
     let engine = state.lock().await;
     EngineStatusInfo {
         running: engine.running,
+        #[cfg(not(feature = "librclone"))]
         updating: engine.updating,
+        #[cfg(feature = "librclone")]
+        updating: false,
         should_exit: engine.should_exit,
     }
 }
@@ -117,10 +120,13 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PasswordError)
                     .ok();
             }
+
+            #[cfg(not(feature = "librclone"))]
             super::core::PauseReason::Path => {
                 app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError)
                     .ok();
             }
+            #[cfg(not(feature = "librclone"))]
             super::core::PauseReason::Version => {
                 let required = crate::core::check_binaries::MIN_RCLONE_VERSION.to_string();
                 let rclone_binary = crate::core::check_binaries::read_rclone_binary(app);
@@ -133,6 +139,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 )
                 .ok();
             }
+            #[cfg(not(feature = "librclone"))]
             super::core::PauseReason::Updating => {}
         }
         return;
@@ -187,26 +194,17 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 }
 
-/// Mobile path: librclone is in-process, so "start" = verify responsive + run post-start.
-/// There's no process to spawn and no port to clean up.
 #[cfg(feature = "librclone")]
 async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
-    // Verify librclone is responsive with a single core/version call.
-    // This should never fail (librclone is always alive after RcloneInitialize),
-    // but if it does, something is seriously wrong.
     let transport = app.state::<RcloneState>().transport.clone();
     match transport.rpc(core::VERSION, None).await {
         Ok(_) => {
             engine.running = true;
             info!("librclone transport ready (in-process)");
-
-            // Run the same post-start setup as the daemon path — refreshes
-            // caches, updates tray, emits Ready status.
             super::post_start::run_post_start_setup(app).await;
         }
         Err(e) => {
             error!("librclone transport not responsive: {e}");
-            engine.set_path_error(true);
             handle_start_failure(engine, app, format!("librclone init failed: {e}")).await;
         }
     }
@@ -215,6 +213,7 @@ async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
 async fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     error!("Failed to spawn Rclone process: {e}");
 
+    #[cfg(not(feature = "librclone"))]
     let status = if engine.path_error {
         notify(app, NotificationEvent::Engine(EngineStage::BinaryNotFound));
         EngineStatus::PathError
@@ -226,6 +225,17 @@ async fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: Stri
             .unwrap_or_else(|| "unknown".to_string());
         EngineStatus::VersionError { version, required }
     } else if engine.password_error {
+        notify(
+            app,
+            NotificationEvent::Engine(EngineStage::PasswordRequired),
+        );
+        EngineStatus::PasswordError
+    } else {
+        EngineStatus::Error { message: e }
+    };
+
+    #[cfg(feature = "librclone")]
+    let status = if engine.password_error {
         notify(
             app,
             NotificationEvent::Engine(EngineStage::PasswordRequired),

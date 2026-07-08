@@ -69,6 +69,9 @@ export class SystemInfoService extends TauriBaseService {
    * Check if rclone is available on given path (default is empty string for system path)
    */
   async isRcloneAvailable(path = ''): Promise<boolean> {
+    if (await this.isLibrclone()) {
+      return true;
+    }
     return this.invokeCommand<boolean>('check_rclone_available', { path });
   }
 

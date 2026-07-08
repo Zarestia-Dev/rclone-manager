@@ -67,43 +67,6 @@ export class AppComponent implements OnInit {
       console.error('Error during app initialization:', error);
       this.initializing.set(false);
     });
-    this.listenToDeepLinks();
-  }
-
-  private listenToDeepLinks(): void {
-    if (!isHeadlessMode()) {
-      import('@tauri-apps/plugin-deep-link')
-        .then(({ onOpenUrl }) => {
-          onOpenUrl(urls => {
-            console.log('Received deep link URLs:', urls);
-            for (const url of urls) {
-              this.handleDeepLink(url);
-            }
-          }).catch(err => {
-            console.error('Failed to listen to deep links:', err);
-          });
-        })
-        .catch(err => {
-          console.error('Failed to load tauri deep-link plugin:', err);
-        });
-    }
-  }
-
-  private handleDeepLink(urlStr: string): void {
-    try {
-      // Handles cases where double slashes might be formatted differently by browser vs OS
-      const normalizedUrl = urlStr.replace('rclone-manager://oauth', 'http://localhost/oauth');
-      const url = new URL(normalizedUrl);
-      const status = url.searchParams.get('status');
-      if (status === 'success') {
-        console.log('OAuth authorization successful via deep link');
-      } else if (status === 'error') {
-        const errorMsg = url.searchParams.get('error') || 'Unknown error';
-        console.error('OAuth authorization failed via deep link:', errorMsg);
-      }
-    } catch (e) {
-      console.warn('Failed to parse deep link URL:', urlStr, e);
-    }
   }
 
   private async initializeApp(): Promise<void> {

@@ -29,6 +29,7 @@ pub struct RcloneState {
     /// Flag indicating the app is shutting down
     pub is_shutting_down: AtomicBool,
     /// OAuth process state for interactive remote creation
+    #[cfg(not(feature = "librclone"))]
     pub oauth_process: tokio::sync::Mutex<Option<Child>>,
     /// Flag indicating if the system poller is running
     pub poller_running: AtomicBool,
@@ -58,10 +59,14 @@ pub struct RcApiEngine {
     pub process: Option<Child>,
     pub should_exit: bool,
     pub running: bool,
-    pub updating: bool,
-    pub path_error: bool,
     pub password_error: bool,
+    #[cfg(not(feature = "librclone"))]
+    pub updating: bool,
+    #[cfg(not(feature = "librclone"))]
+    pub path_error: bool,
+    #[cfg(not(feature = "librclone"))]
     pub version_error: bool,
+    #[cfg(not(feature = "librclone"))]
     pub current_api_port: u16,
 }
 

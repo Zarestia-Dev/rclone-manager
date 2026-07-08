@@ -114,7 +114,7 @@ pub fn log_operation(
     context: Option<Value>,
 ) {
     let clean_remote =
-        remote_name.map(|name| crate::utils::rclone::util::extract_remote_name_from_fs(&name));
+        remote_name.map(|name| crate::utils::json_helpers::extract_remote_name_from_fs(&name));
     let entry = LogEntry {
         timestamp: Utc::now(),
         remote_name: clean_remote,

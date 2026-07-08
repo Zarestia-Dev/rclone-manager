@@ -5,8 +5,8 @@ use serde_json::json;
 use tauri::AppHandle;
 
 use crate::rclone::commands::job::JobMetadata;
+use crate::utils::json_helpers::build_full_path;
 use crate::utils::rclone::endpoints::{operations, sync};
-use crate::utils::rclone::util::build_full_path;
 use crate::utils::types::{jobs::JobType, origin::Origin};
 
 #[derive(Debug, Clone, Deserialize)]

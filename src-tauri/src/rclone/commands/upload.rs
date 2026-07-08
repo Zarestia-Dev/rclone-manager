@@ -12,8 +12,8 @@ use tauri::{AppHandle, Manager};
 use crate::rclone::backend::{BackendManager, TransportKind};
 use crate::rclone::commands::job::JobMetadata;
 use crate::utils::app::notification::notify;
+use crate::utils::json_helpers::build_full_path;
 use crate::utils::rclone::endpoints::operations;
-use crate::utils::rclone::util::build_full_path;
 use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
 
 #[derive(Debug, Clone, Deserialize)]

@@ -72,7 +72,12 @@ async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
     })?;
     let mut engine = engine_state.lock().await;
 
-    if !engine.running && !engine.path_error && !engine.password_error {
+    #[cfg(not(feature = "librclone"))]
+    let is_blocked = engine.path_error || engine.password_error || engine.version_error;
+    #[cfg(feature = "librclone")]
+    let is_blocked = engine.password_error;
+
+    if !engine.running && !is_blocked {
         engine.init(app_handle).await;
     }
 

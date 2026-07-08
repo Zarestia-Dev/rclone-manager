@@ -15,9 +15,10 @@
       "csp": null,
       "capabilities": [
         {
-          "identifier": "default",
-          "description": "Capability for the main window",
+          "identifier": "default-desktop",
+          "description": "Capability for the main window on desktop",
           "windows": ["main", "nautilus", "nautilus-*", "dialog-*"],
+          "platforms": ["linux", "macOS", "windows"],
           "permissions": [
             "core:event:allow-listen",
             "core:event:allow-unlisten",
@@ -32,7 +33,28 @@
             "shell:allow-open",
             "clipboard-manager:allow-read-text",
             "clipboard-manager:allow-write-text",
-            "os:default"
+            "os:default",
+            "opener:default"
+          ]
+        },
+        {
+          "identifier": "default-mobile",
+          "description": "Capability for the main window on mobile",
+          "windows": ["main", "nautilus", "nautilus-*", "dialog-*"],
+          "platforms": ["android", "iOS"],
+          "permissions": [
+            "core:event:allow-listen",
+            "core:event:allow-unlisten",
+            "core:window:default",
+            "core:window:allow-set-title",
+            "core:window:allow-start-dragging",
+            "core:window:allow-close",
+            "core:window:allow-minimize",
+            "core:window:allow-toggle-maximize",
+            "core:window:allow-internal-toggle-maximize",
+            "notification:default",
+            "os:default",
+            "opener:default"
           ]
         }
       ]
@@ -116,7 +138,13 @@
     "deep-link": {
       "desktop": {
         "schemes": ["rclone-manager"]
-      }
+      },
+      "mobile": [
+        {
+          "scheme": ["rclone-manager"],
+          "appLink": false
+        }
+      ]
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEzQkE2OTczRUM3RDkzNkYKUldSdmszM3NjMm02bzBTOXhXU0JBZS9TMGdtN1RoanUrZUpiVndsMHJhM0pHRXpiWWpQNkRiYlQK"

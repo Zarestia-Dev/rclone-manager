@@ -162,7 +162,7 @@ pub async fn archive_list(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload = backend.build_core_command_payload("archive", args, false, os);
 
-    let remote_name = Some(crate::utils::rclone::util::extract_remote_name_from_fs(
+    let remote_name = Some(crate::utils::json_helpers::extract_remote_name_from_fs(
         &source,
     ));
 

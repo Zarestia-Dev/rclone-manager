@@ -4,10 +4,7 @@ use rcman::DeriveSettingsSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rclone::{
-        backend::runtime::RuntimeInfo,
-        engine::core::{DEFAULT_API_PORT, DEFAULT_OAUTH_PORT},
-    },
+    rclone::{backend::runtime::RuntimeInfo, engine::core::DEFAULT_API_PORT},
     utils::rclone::endpoints::{config, core},
 };
 
@@ -26,10 +23,13 @@ where
     }
 }
 
+#[cfg(not(feature = "librclone"))]
 fn default_oauth_port() -> u16 {
+    use crate::rclone::engine::core::DEFAULT_OAUTH_PORT;
     DEFAULT_OAUTH_PORT
 }
 
+#[cfg(not(feature = "librclone"))]
 fn default_oauth_host() -> String {
     "127.0.0.1".to_string()
 }
@@ -78,6 +78,7 @@ pub struct Backend {
     /// port for local backends, and we keep a consistent default for remote
     /// ones so the field is never absent.
     #[serde(default = "default_oauth_port")]
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: u16,
 
     /// Host the OAuth helper process listens on / that we connect to.
@@ -86,6 +87,7 @@ pub struct Backend {
     /// like `0.0.0.0`), because we make outgoing HTTP requests to it.
     /// In Docker environments set this to the container's accessible address.
     #[serde(default = "default_oauth_host")]
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: String,
 
     /// Config password for encrypted remote configs - stored in keychain
@@ -119,7 +121,9 @@ impl Backend {
             port: DEFAULT_API_PORT,
             username: None,
             password: None,
-            oauth_port: DEFAULT_OAUTH_PORT,
+            #[cfg(not(feature = "librclone"))]
+            oauth_port: default_oauth_port(),
+            #[cfg(not(feature = "librclone"))]
             oauth_host: "127.0.0.1".to_string(),
             config_password: None,
             config_path: None,
@@ -136,7 +140,9 @@ impl Backend {
             port,
             username: None,
             password: None,
+            #[cfg(not(feature = "librclone"))]
             oauth_port: default_oauth_port(),
+            #[cfg(not(feature = "librclone"))]
             oauth_host: default_oauth_host(),
             config_password: None,
             config_path: None,
@@ -407,7 +413,7 @@ impl Backend {
             } else {
                 format!("{remote}:")
             };
-            crate::utils::rclone::util::build_full_path(&r_name, path)
+            crate::utils::json_helpers::build_full_path(&r_name, path)
         };
 
         let mut args = vec![full_path];
@@ -561,7 +567,9 @@ pub struct BackendInfo {
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config_path: Option<PathBuf>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: u16,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
@@ -591,7 +599,9 @@ impl BackendInfo {
             has_auth: backend.has_valid_auth(),
             has_config_password: backend.config_password.is_some(),
             config_path: backend.config_path.clone(),
+            #[cfg(not(feature = "librclone"))]
             oauth_port: backend.oauth_port,
+            #[cfg(not(feature = "librclone"))]
             oauth_host: backend.oauth_host.clone(),
             username: backend.username.clone(),
             password: backend.password.clone(),
