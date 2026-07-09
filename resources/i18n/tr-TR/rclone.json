@@ -1278,5 +1278,61 @@
   "download": {
     "title": "İndir ve Kontrol Et",
     "help": "Sağlama toplamlarını karşılaştırmak için her iki tarafı indirip kontrol et."
+  },
+  "resync_mode": {
+    "title": "Yeniden Eşitleme Modu",
+    "help": "Yeniden eşitleme sırasında tercih edilecek sürüm: path1, path2, daha yeni, daha eski, daha büyük, daha küçük (varsayılan: --resync varsa path1, aksi takdirde yeniden eşitleme yok için none)"
+  },
+  "compare": {
+    "title": "Karşılaştır",
+    "help": "Bisync'e özgü karşılaştırma seçeneklerinin virgülle ayrılmış listesi örn. 'size,modtime,checksum' (varsayılan: 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Karma İndir",
+    "help": "Karma değeri başka türlü elde edilemiyorsa indirerek hesapla (uyarı: yavaş olabilir ve çok fazla veri tüketebilir!)"
+  },
+  "max_lock": {
+    "title": "Maksimum Kilit Süresi",
+    "help": "Bu süreden daha eski kilit dosyalarını süresi dolmuş olarak kabul et (varsayılan: 0 (asla dolmaz)) (minimum: 2m)"
+  },
+  "no_slow_hash": {
+    "title": "Yavaş Karmaları Yoksay",
+    "help": "Yalnızca listeleme karmalarının yavaş olduğu arka uçlarda listeleme karmalarını yoksay"
+  },
+  "slow_hash_sync_only": {
+    "title": "Yalnızca Eşitlemede Yavaş Karşılaştır",
+    "help": "Listelemeler ve farklar için yavaş karmaları yoksay, ancak bunları eşitleme çağrıları sırasında yine de dikkate al."
+  },
+  "recover": {
+    "title": "Kurtar",
+    "help": "--resync gerektirmeden kesintilerden sonra otomatik olarak kurtar."
+  },
+  "workdir": {
+    "title": "Çalışma Dizini",
+    "help": "Özel çalışma dizini kullan - test etmek için yararlıdır."
+  },
+  "check_access": {
+    "title": "Erişimi Kontrol Et",
+    "help": "RCLONE_TEST dosyaları her iki dosya sisteminde de bulunamazsa eşitlemeyi iptal et."
+  },
+  "check_filename": {
+    "title": "Dosya Adını Kontrol Et",
+    "help": "--check-access için dosya adı."
+  },
+  "check_sync": {
+    "title": "Eşitlemeyi Kontrol Et",
+    "help": "Son listelemelerin karşılaştırılmasını kontrol eder."
+  },
+  "conflict_loser": {
+    "title": "Çakışma Kaybedeni",
+    "help": "Bir çakışma durumunda kaybeden dosya için (kazanan olduğunda) veya her iki dosya için (kazanan olmadığında) gerçekleştirilecek işlem: num, pathname, delete (varsayılan: num)"
+  },
+  "conflict_resolve": {
+    "title": "Çakışma Çözümü",
+    "help": "Çakışmaları tercih edilen sürüme göre otomatik olarak çöz: none, path1, path2, daha yeni, daha eski, daha büyük, daha küçük (varsayılan: none)"
+  },
+  "conflict_suffix": {
+    "title": "Çakışma Sonsözü",
+    "help": "Kaybeden bir dosyayı yeniden adlandırırken kullanılacak son ek. Path1/Path2 için farklı son ekler atamak amacıyla tek bir dize veya virgülle ayrılmış iki dize olabilir (varsayılan: 'conflict')"
   }
 }

@@ -1278,5 +1278,61 @@
   "download": {
     "title": "Descargar y comprobar",
     "help": "Descargar archivos para verificar la integridad / comparar hashes."
+  },
+  "resync_mode": {
+    "title": "Modo de Resincronización",
+    "help": "Durante la resincronización, prefiere la versión que sea: path1, path2, más nueva, más antigua, más grande, más pequeña (por defecto: path1 si --resync, de lo contrario none para no resincronizar)"
+  },
+  "compare": {
+    "title": "Comparar",
+    "help": "Lista separada por comas de opciones de comparación específicas de bisync, ej. 'size,modtime,checksum' (por defecto: 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Descargar Hash",
+    "help": "Calcula el hash descargándolo cuando no esté disponible de otro modo. (¡advertencia: puede ser lento y usar muchos datos!)"
+  },
+  "max_lock": {
+    "title": "Bloqueo Máximo",
+    "help": "Considera los archivos de bloqueo más antiguos que esto como expirados (por defecto: 0 (nunca expira)) (mínimo: 2m)"
+  },
+  "no_slow_hash": {
+    "title": "Ignorar Hash Lento",
+    "help": "Ignora los hashes de listado solo en backends donde sean lentos"
+  },
+  "slow_hash_sync_only": {
+    "title": "Sincronizar Hash Lento Solo en Copia",
+    "help": "Ignora los hashes lentos para listados y deltas, pero los considera durante las llamadas de sincronización."
+  },
+  "recover": {
+    "title": "Recuperar",
+    "help": "Recupera automáticamente de interrupciones sin necesidad de --resync."
+  },
+  "workdir": {
+    "title": "Directorio de Trabajo",
+    "help": "Usa un directorio de trabajo personalizado - útil para pruebas."
+  },
+  "check_access": {
+    "title": "Comprobar Acceso",
+    "help": "Aborta si no se encuentran los archivos RCLONE_TEST en ambos sistemas de archivos."
+  },
+  "check_filename": {
+    "title": "Comprobar Nombre de Archivo",
+    "help": "Nombre de archivo para --check-access."
+  },
+  "check_sync": {
+    "title": "Comprobar Sincronización",
+    "help": "Controla la comparación de los listados finales."
+  },
+  "conflict_loser": {
+    "title": "Perdedor de Conflicto",
+    "help": "Acción a tomar con el perdedor de un conflicto de sincronización (cuando hay un ganador) o con ambos archivos (cuando no hay ganador): num, pathname, delete (por defecto: num)"
+  },
+  "conflict_resolve": {
+    "title": "Resolver Conflicto",
+    "help": "Resuelve automáticamente los conflictos prefiriendo la versión que sea: none, path1, path2, más nueva, más antigua, más grande, más pequeña (por defecto: none)"
+  },
+  "conflict_suffix": {
+    "title": "Sufijo de Conflicto",
+    "help": "Sufijo a usar al renombrar un archivo perdedor de conflicto. Puede ser una cadena o dos cadenas separadas por comas para asignar diferentes sufijos a Path1/Path2. (por defecto: 'conflict')"
   }
 }

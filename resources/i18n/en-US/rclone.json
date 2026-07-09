@@ -1278,5 +1278,61 @@
   "download": {
     "title": "Download and Check",
     "help": "Download files to check integrity / compare hashes."
+  },
+  "resync_mode": {
+    "title": "Resync Mode",
+    "help": "During resync, prefer the version that is: path1, path2, newer, older, larger, smaller (default: path1 if --resync, otherwise none for no resync.)"
+  },
+  "compare": {
+    "title": "Compare",
+    "help": "Comma-separated list of bisync-specific compare options ex. 'size,modtime,checksum' (default: 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Download Hash",
+    "help": "Compute hash by downloading when otherwise unavailable. (warning: may be slow and use lots of data!)"
+  },
+  "max_lock": {
+    "title": "Max Lock",
+    "help": "Consider lock files older than this to be expired (default: 0 (never expire)) (minimum: 2m)"
+  },
+  "no_slow_hash": {
+    "title": "No Slow Hash",
+    "help": "Ignore listing checksums only on backends where they are slow"
+  },
+  "slow_hash_sync_only": {
+    "title": "Slow Hash Sync Only",
+    "help": "Ignore slow checksums for listings and deltas, but still consider them during sync calls."
+  },
+  "recover": {
+    "title": "Recover",
+    "help": "Automatically recover from interruptions without requiring --resync."
+  },
+  "workdir": {
+    "title": "Workdir",
+    "help": "Use custom working dir - useful for testing."
+  },
+  "check_access": {
+    "title": "Check Access",
+    "help": "Abort if RCLONE_TEST files are not found on both filesystems."
+  },
+  "check_filename": {
+    "title": "Check Filename",
+    "help": "File name for --check-access."
+  },
+  "check_sync": {
+    "title": "Check Sync",
+    "help": "Controls comparison of final listings."
+  },
+  "conflict_loser": {
+    "title": "Conflict Loser",
+    "help": "Action to take on the loser of a sync conflict (when there is a winner) or on both files (when there is no winner): , num, pathname, delete (default: num)"
+  },
+  "conflict_resolve": {
+    "title": "Conflict Resolve",
+    "help": "Automatically resolve conflicts by preferring the version that is: none, path1, path2, newer, older, larger, smaller (default: none)"
+  },
+  "conflict_suffix": {
+    "title": "Conflict Suffix",
+    "help": "Suffix to use when renaming a --conflict-loser. Can be either one string or two comma-separated strings to assign different suffixes to Path1/Path2. (default: 'conflict')"
   }
 }

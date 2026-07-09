@@ -20,6 +20,7 @@
     "audit:i18n": "node scripts/audit-i18n-keys.cjs",
     "sync:flags": "node scripts/update-flags.cjs",
     "sync:providers": "node scripts/update-providers.cjs",
+    "sync:endpoints": "node scripts/update-endpoints.cjs",
     "prepare": "husky"
   },
   "private": true,
