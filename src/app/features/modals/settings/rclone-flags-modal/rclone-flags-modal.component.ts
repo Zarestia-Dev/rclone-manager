@@ -42,6 +42,7 @@ import { SettingControlComponent } from 'src/app/shared/components/setting-contr
 import {
   JsonEditorComponent,
   JSON_EDITOR_LOOKUP_TABLE,
+  type JsonEditorLookupTable,
 } from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -212,7 +213,7 @@ interface SearchResultViewModel {
   providers: [
     {
       provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (modal: RcloneFlagsModalComponent): any => modal.lookupTable,
+      useFactory: (modal: RcloneFlagsModalComponent): JsonEditorLookupTable => modal.lookupTable,
       deps: [RcloneFlagsModalComponent],
     },
   ],

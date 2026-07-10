@@ -5,13 +5,6 @@
         <mat-icon svgIcon="lock"></mat-icon>
         {{ 'wizards.obscure.title' | translate }}
       </h3>
-      <button
-        matIconButton
-        (click)="closeTool.emit()"
-        [attr.aria-label]="'common.close' | translate"
-      >
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-      </button>
     </header>
 
     <div class="obscure-tool-body">

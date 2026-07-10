@@ -39,16 +39,11 @@ export class ProfileHeaderComponent {
   readonly selectedName = computed(() => this.state.selectedProfileName()[this.flagType()]);
   readonly profileList = computed(() => this.state.profileLists()[this.flagType()]);
 
-  readonly renameDisabled = computed(() =>
-    this.state.isRenameProfileDisabled(this.flagType(), this.selectedName())
+  private readonly actionState = computed(() =>
+    this.state.getProfileActionState(this.flagType(), this.selectedName())
   );
-  readonly deleteDisabled = computed(() =>
-    this.state.isDeleteProfileDisabled(this.flagType(), this.selectedName())
-  );
-  readonly renameDisabledReason = computed(() =>
-    this.state.getRenameProfileDisabledReason(this.flagType(), this.selectedName())
-  );
-  readonly deleteDisabledReason = computed(() =>
-    this.state.getDeleteProfileDisabledReason(this.flagType(), this.selectedName())
-  );
+  readonly renameDisabled = computed(() => this.actionState().rename.disabled);
+  readonly deleteDisabled = computed(() => this.actionState().delete.disabled);
+  readonly renameDisabledReason = computed(() => this.actionState().rename.reason);
+  readonly deleteDisabledReason = computed(() => this.actionState().delete.reason);
 }

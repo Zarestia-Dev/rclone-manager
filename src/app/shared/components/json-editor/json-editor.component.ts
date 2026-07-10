@@ -61,9 +61,12 @@ import {
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<
-  Signal<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>>
->('JSON_EDITOR_LOOKUP_TABLE');
+export type JsonEditorLookupTable = Signal<
+  Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
+>;
+export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<JsonEditorLookupTable>(
+  'JSON_EDITOR_LOOKUP_TABLE'
+);
 
 function toCamelCase(str: string): string {
   return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());
@@ -1114,7 +1117,7 @@ export class JsonEditorComponent {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
         const type = this.flagType();
         const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
-        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? null;
+        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? latestRaw[controlKey] ?? null;
       } else {
         patch[controlKey] = latestRaw[controlKey];
       }

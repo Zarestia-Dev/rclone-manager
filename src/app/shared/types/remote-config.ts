@@ -489,6 +489,12 @@ export interface JobProfile {
 
 export type JobMap = Record<string, JobProfile>;
 
+export interface PendingRemoteData {
+  name: string;
+  type: string;
+  [key: string]: unknown;
+}
+
 export type WizardStep = 'setup' | 'operations' | 'interactive';
 export type OperationType =
   | 'mount'

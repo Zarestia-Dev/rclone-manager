@@ -225,7 +225,9 @@
       "categories": {
         "app": "Uygulama Ayarları",
         "rclone": "Rclone Seçenekleri"
-      }
+      },
+      "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
+      "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -761,7 +763,9 @@
         "successCopyUrl": "İndirme bağlantısı panoya kopyalandı",
         "failCopyUrl": "İndirme URL'si oluşturulamadı",
         "successDownload": "Dosya başarıyla indirildi",
-        "failDownload": "Dosya indirilemedi"
+        "failDownload": "Dosya indirilemedi",
+        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı",
+        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}"
       },
       "empty": {
         "noActive": "Aktif transfer yok",

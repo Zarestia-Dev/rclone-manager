@@ -142,6 +142,22 @@ export class SettingControlComponent implements ControlValueAccessor {
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
   private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
 
+  private readonly MULTISELECT_TYPES = [...this.COMMA_ARRAY_TYPES, 'SpaceSepList', 'stringArray'];
+
+  static readonly DUMP_FLAGS_FALLBACK = [
+    'headers',
+    'bodies',
+    'requests',
+    'responses',
+    'auth',
+    'filters',
+    'goroutines',
+    'openfiles',
+    'mapper',
+  ] as const;
+
+  readonly DUMP_FLAGS_FALLBACK = SettingControlComponent.DUMP_FLAGS_FALLBACK;
+
   readonly encodingFlags = [
     'Slash',
     'BackSlash',
@@ -250,17 +266,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Examples?.length) return opt.Examples;
     if (opt.Type === 'Encoding') return this.encodingFlags;
     if (opt.Type === 'DumpFlags') {
-      return [
-        'headers',
-        'bodies',
-        'requests',
-        'responses',
-        'auth',
-        'filters',
-        'goroutines',
-        'openfiles',
-        'mapper',
-      ];
+      return [...SettingControlComponent.DUMP_FLAGS_FALLBACK];
     }
     return [];
   }
@@ -338,12 +344,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       return current === defaultVal;
     }
 
-    if (
-      optType &&
-      (this.COMMA_ARRAY_TYPES.includes(optType) ||
-        optType === 'SpaceSepList' ||
-        optType === 'stringArray')
-    ) {
+    if (optType && this.MULTISELECT_TYPES.includes(optType)) {
       const toArray = (v: unknown): string[] => {
         if (Array.isArray(v)) return v.map(String);
         if (typeof v === 'string') {
@@ -585,6 +586,42 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   readonly hasBitsComboExamples = computed(() => this.isBitsWithCombos(this.mergedOption()));
 
+  /**
+   * True for all integer and float types that should use the stepper input
+   * (app-number-input) instead of falling through to a plain text input.
+   *
+   * The @switch in the template only had explicit @case entries for int,
+   * int64, uint32, and float64 — int32, uint, uint64, float, and float32
+   * fell through to @default (standardInput = text field with validation),
+   * which worked but gave a worse UX than the dedicated stepper. This
+   * computed lets the template route all numeric types to stepperInput.
+   */
+  private static readonly NUMERIC_TYPES = new Set([
+    'int',
+    'int32',
+    'int64',
+    'uint',
+    'uint32',
+    'uint64',
+    'float',
+    'float32',
+    'float64',
+  ]);
+
+  readonly isNumericType = computed(() => {
+    const t = this.mergedOption()?.Type;
+    return !!t && SettingControlComponent.NUMERIC_TYPES.has(t);
+  });
+
+  /**
+   * The HTML <input step> value for the stepper input: 1 for integer types,
+   * 'any' for floats. Read by the template's stepperInput context.
+   */
+  readonly numericInputStep = computed<number | 'any'>(() => {
+    const t = this.mergedOption()?.Type ?? '';
+    return t.startsWith('float') ? 'any' : 1;
+  });
+
   private subscribeToChanges(): void {
     const ctrl = this.control();
     if (!ctrl) return;
@@ -705,14 +742,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
 
-    const isMultiSelect = [
-      'DumpFlags',
-      'Encoding',
-      'Bits',
-      'stringArray',
-      'CommaSepList',
-      'SpaceSepList',
-    ].includes(opt.Type);
+    const isMultiSelect = this.MULTISELECT_TYPES.includes(opt.Type);
     if (opt.Examples && !isMultiSelect) {
       validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }

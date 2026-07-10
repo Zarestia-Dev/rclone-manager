@@ -220,8 +220,7 @@ import { TranslatePipe } from '@ngx-translate/core';
       }
 
       .disk-usage-info {
-        margin-top: var(--space-md);
-        padding: var(--space-sm);
+        margin: var(--space-md) var(--space-sm) 0 var(--space-sm);
         background: var(--surface-variant);
         border-radius: var(--radius-sm);
         display: flex;

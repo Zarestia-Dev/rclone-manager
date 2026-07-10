@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.2.8"
+version = "0.2.9"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -63,7 +63,7 @@ tauri-plugin-dialog = { version = "2", optional = true }
 tauri-plugin-clipboard-manager = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2"
 futures = { version = "0.3" }
@@ -119,6 +119,3 @@ librclone = []
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
-
-[patch.crates-io]
-rcman = { path = "../../rcman" }

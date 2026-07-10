@@ -225,7 +225,9 @@
       "categories": {
         "app": "Application Settings",
         "rclone": "Rclone Options"
-      }
+      },
+      "remoteSaved": "Remote saved successfully",
+      "remoteSaveFailed": "Failed to save remote: {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -761,7 +763,9 @@
         "successCopyUrl": "Download URL copied to clipboard",
         "failCopyUrl": "Failed to generate download URL",
         "successDownload": "File downloaded successfully",
-        "failDownload": "Failed to download file"
+        "failDownload": "Failed to download file",
+        "resolveStarted": "File mismatch resolution started",
+        "resolveFailed": "Failed to resolve file mismatch: {{error}}"
       },
       "empty": {
         "noActive": "No active transfers",

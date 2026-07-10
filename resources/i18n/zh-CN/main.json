@@ -225,7 +225,9 @@
       "categories": {
         "app": "应用设置",
         "rclone": "Rclone 选项"
-      }
+      },
+      "remoteSaved": "远程存储已成功保存",
+      "remoteSaveFailed": "保存远程存储失败：{{error}}"
     }
   },
   "rcloneUpdate": {
@@ -761,7 +763,9 @@
         "successCopyUrl": "下载 URL 已复制到剪贴板",
         "failCopyUrl": "生成下载 URL 失败",
         "successDownload": "文件下载成功",
-        "failDownload": "下载文件失败"
+        "failDownload": "下载文件失败",
+        "resolveStarted": "文件不匹配处理已开始",
+        "resolveFailed": "解决文件不匹配失败：{{error}}"
       },
       "empty": {
         "noActive": "无正在进行的传输",

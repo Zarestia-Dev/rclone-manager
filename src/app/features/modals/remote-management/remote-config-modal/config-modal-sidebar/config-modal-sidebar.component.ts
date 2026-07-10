@@ -44,11 +44,6 @@ export class ConfigModalSidebarComponent {
   // ── Template helpers ──────────────────────────────────────────────────────
 
   isStepDisabled(step: number): boolean {
-    if (this.state.isStepNavigationLocked()) return true;
-    if (step > this.state.currentStep()) {
-      if (this.state.isActiveStepInvalid()) return true;
-      if (!this.state.editTarget() && this.state.remoteFormStatus?.() === 'INVALID') return true;
-    }
-    return false;
+    return !this.state.isStepClickable(step);
   }
 }

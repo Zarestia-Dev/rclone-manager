@@ -4618,7 +4618,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rclone-manager"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -4685,7 +4685,9 @@ dependencies = [
 
 [[package]]
 name = "rcman"
-version = "0.1.9"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4442416c3bd8aa5e4fa1ab3b94ad6835888cdd3d57dd6b8824deae6120bbd017"
 dependencies = [
  "aes-gcm",
  "apple-native-keyring-store",
@@ -4712,7 +4714,9 @@ dependencies = [
 
 [[package]]
 name = "rcman-derive"
-version = "0.1.9"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "648dd2b33c0be5426138dbde5bb0105f061d05446114a57a7ffedd058b5b1615"
 dependencies = [
  "proc-macro2",
  "quote",

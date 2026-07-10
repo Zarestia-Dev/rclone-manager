@@ -90,7 +90,6 @@
 }
 
 // ─── Operation mode selector ─────────────────────────────────────────────────
-
 .toggle-container {
   display: flex;
   align-items: center;
@@ -98,8 +97,8 @@
   gap: var(--space-sm);
   margin: 0 var(--space-sm) var(--space-sm);
   align-self: center;
-  max-width: min(1000px, 100%);
-  min-width: 60vw;
+  width: 80%;
+  min-width: 0;
 
   .operation-toggle-group {
     flex: 1;
@@ -128,6 +127,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-xxs);
     height: 36px;
     padding: 0 var(--space-sm);
     border-radius: calc(var(--radius-md) - var(--pad));
@@ -245,10 +245,9 @@
       gap: 4px;
 
       .more-chevron {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         transition: transform 0.2s ease;
-        flex-shrink: 0;
       }
 
       &[aria-expanded="true"] .more-chevron {
@@ -419,6 +418,46 @@
 
 // ─── Responsive ───────────────────────────────────────────────────────────────
 
+@media (max-width: 640px) {
+  .toggle-container {
+    flex-direction: column;
+    gap: var(--space-xs);
+
+    .operation-toggle-group {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-xs);
+      padding: var(--space-xs);
+    }
+
+    .configure-toggle-btn {
+      width: 100%;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--sidebar-bg-color);
+    }
+  }
+
+  .operation-toggle-group .operation-toggle {
+    height: 44px;
+    padding: 0 var(--space-sm);
+    gap: var(--space-xs);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-md);
+
+    &:nth-child(odd):last-child {
+      grid-column: span 2;
+    }
+
+    &.is-running::after {
+      width: 6px;
+      height: 6px;
+      bottom: 4px;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .detail-header {
     flex-direction: column;
@@ -431,10 +470,6 @@
         max-width: calc(100vw - 120px);
       }
     }
-  }
-
-  .toggle-container {
-    width: 90vw;
   }
 
   .operation-monitor,

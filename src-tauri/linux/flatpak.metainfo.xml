@@ -64,39 +64,63 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/desktop-ui.png</image>
       <caption>Dashboard with connected cloud remotes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/general-home.png</image>
       <caption>Overview of connected cloud services</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/general-remote.png</image>
       <caption>Add and configure cloud storage providers</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/serve-control.png</image>
       <caption>Serve storage over HTTP or WebDAV</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/job-watcher.png</image>
       <caption>Monitor active and scheduled operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/mount-control.png</image>
       <caption>Mount cloud storage as a local drive</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/nautilus.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/nautilus.png</image>
       <caption>Browse and manage remote files</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.8/assets/file-viewer.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/file-viewer.png</image>
       <caption>Preview images, PDFs, and text files</caption>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.9" date="2026-07-10">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Context Menu Integration: Native context menu support across Windows, Linux, and macOS to upload files/folders directly from system file managers.</li>
+          <li>Operations Support: Added check, delete, copyurl, archivecreate, and cryptcheck operations with action selection modal and check results table.</li>
+          <li>Manual Obscure Support: Built-in Obscure Tool utility in remote config wizard to encrypt sensitive fields.</li>
+          <li>Librclone Support: Support for librclone (Beta feature for Android/iOS), including Android build/cross-compilation and DoH resolver.</li>
+          <li>Deeplink support: Mobile custom URI scheme handler (rclone-manager://oauth) for OAuth redirection (Needs Rclone 1.75 Beta and later.)</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Upgraded frontend dependencies to Angular v22, TypeScript v6.0, and ngx-translate v18.</li>
+          <li>Updated Rust backend crate constraints.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Strict ESLint compliance: Resolved all strict lint errors and removed unsafe assertions.</li>
+          <li>Fixed overloaded time for DirCacheTime to default rclone value.</li>
+          <li>Fixed issue where Rclone Flags modals did not save numbers.</li>
+          <li>Fixed path inputs handling in remote config wizard on Windows.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.8" date="2026-06-15">
       <description>
         <p>Added</p>

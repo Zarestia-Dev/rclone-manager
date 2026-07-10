@@ -225,7 +225,9 @@
       "categories": {
         "app": "Paramètres de l'application",
         "rclone": "Options Rclone"
-      }
+      },
+      "remoteSaved": "Remote enregistré avec succès",
+      "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -761,7 +763,9 @@
         "successCopyUrl": "URL de téléchargement copiée dans le presse-papiers",
         "failCopyUrl": "Échec de la génération de l'URL de téléchargement",
         "successDownload": "Fichier téléchargé avec succès",
-        "failDownload": "Échec du téléchargement du fichier"
+        "failDownload": "Échec du téléchargement du fichier",
+        "resolveStarted": "La résolution du conflit de fichiers a commencé",
+        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
       },
       "empty": {
         "noActive": "Aucun transfert actif",

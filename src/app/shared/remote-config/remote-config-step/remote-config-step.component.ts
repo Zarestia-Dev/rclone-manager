@@ -34,11 +34,11 @@ import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
-
-const _obscureOption = PREDEFINED_OPTIONS.find(o => o.key === 'obscure');
-export const INITIAL_COMMAND_OPTIONS: CommandOption[] = _obscureOption
-  ? [{ ..._obscureOption }]
-  : [];
+import {
+  INITIAL_COMMAND_OPTIONS,
+  syncNonInteractiveOption,
+} from 'src/app/services/remote/utils/command-options.util';
+import { findUniqueName } from 'src/app/services/remote/utils/unique-name.util';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -275,6 +275,18 @@ export class RemoteConfigStepComponent {
     });
 
     effect(() => {
+      const opts = { emitEvent: false } as const;
+      const nameControl = this.form().get('name');
+      if (!nameControl) return;
+
+      if (this.isTypeLocked()) {
+        nameControl.disable(opts);
+      } else {
+        nameControl.enable(opts);
+      }
+    });
+
+    effect(() => {
       const types = this.remoteTypesWithIcons();
       if (types.length > 0 && untracked(this.suggestedRemotes).length === 0) {
         this.suggestedRemotes.set(this.shuffleSample(types));
@@ -287,13 +299,9 @@ export class RemoteConfigStepComponent {
       );
 
       untracked(() => {
-        const opts = this.commandOptions();
-        const hasNonInteractive = opts.some(o => o.key === 'nonInteractive');
-        if (isInteractive && !hasNonInteractive) {
-          this.commandOptions.update(list => [...list, { key: 'nonInteractive', value: true }]);
-        } else if (!isInteractive && hasNonInteractive) {
-          this.commandOptions.update(list => list.filter(o => o.key !== 'nonInteractive'));
-        }
+        const current = this.commandOptions();
+        const next = syncNonInteractiveOption(current, isInteractive);
+        if (next !== current) this.commandOptions.set(next);
       });
     });
 
@@ -422,10 +430,7 @@ export class RemoteConfigStepComponent {
     if (!nameControl || (nameControl.value && nameControl.dirty)) return;
 
     const base = remoteType.replace(/\s+/g, '');
-    const existing = new Set(this.existingRemotes());
-    let name = base;
-    let n = 1;
-    while (existing.has(name)) name = `${base}-${n++}`;
+    const name = findUniqueName(base, this.existingRemotes());
 
     nameControl.setValue(name, { emitEvent: true });
     nameControl.updateValueAndValidity({ emitEvent: false });

@@ -39,7 +39,6 @@ export class ObscureToolComponent {
   readonly visible = input(false);
   readonly sensitiveFields = input<{ name: string; key: string; help: string }[]>([]);
   readonly provider = input<string | null>(null);
-  readonly closeTool = output<void>();
   readonly applyObscured = output<{ key: string; value: string }>();
 
   // State Signals

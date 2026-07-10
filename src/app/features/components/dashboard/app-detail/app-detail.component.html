@@ -43,7 +43,7 @@
           [class.is-running]="isAnyMoreRunning()"
           [class]="isMoreSelected() ? selectedSyncOperation() : ''"
           [cdkMenuTriggerFor]="moreMenu"
-          [matTooltip]="'modals.actionSelection.moreButtonTooltip' | translate"
+          [matTooltip]="moreButtonTooltip()"
           matTooltipPosition="below"
           matTooltipShowDelay="600"
         >
@@ -80,7 +80,7 @@
         class="configure-toggle-btn"
         (click)="onConfigureActions()"
         [matTooltip]="'modals.actionSelection.configureTooltip' | translate"
-        matTooltipPosition="after"
+        matTooltipPosition="below"
         matTooltipShowDelay="600"
       >
         <mat-icon svgIcon="settings"></mat-icon>

@@ -13,7 +13,6 @@ import {
   FsInfo,
   RemoteFeatures,
   Origin,
-  CompletedTransfer,
 } from '@app/types';
 
 interface RawProvider {
@@ -31,7 +30,7 @@ export class RemoteManagementService extends TauriBaseService {
 
   private readonly metadataCache = new Map<string, FsInfo>();
   private readonly _features = signal<Record<string, RemoteFeatures>>({});
-  private readonly _isLibrclone = signal<boolean>(false);
+  private readonly _isLibrclone = signal<boolean | null>(null);
 
   async getFsInfo(
     remoteName: string,
@@ -145,143 +144,6 @@ export class RemoteManagementService extends TauriBaseService {
     }
   }
 
-  resolvePublicLinkTarget(
-    item: CompletedTransfer,
-    jobType?: string,
-    activeRemote?: string
-  ): { remote: string; path: string } | null {
-    // If the transfer failed, we cannot generate a public link
-    if (item.status === 'failed') {
-      return null;
-    }
-
-    const getRemoteName = (fs: string): string => {
-      if (!fs || this.pathService.isLocalPath(fs)) return '';
-      const parts = fs.split(':');
-      if (parts.length > 1) {
-        const name = parts[0];
-        if (name === 'http' || name === 'https' || name === 'ftp') return '';
-        return name;
-      }
-      return '';
-    };
-
-    const dstRemote = getRemoteName(item.dstFs || '');
-    const srcRemote = getRemoteName(item.srcFs || '');
-
-    const isDeleteOrCleanup = (): boolean => {
-      const type = jobType?.toLowerCase() || '';
-      if (type === 'delete' || type === 'cleanup' || type === 'rmdirs') {
-        return true;
-      }
-      if (item.group) {
-        const groupType = item.group.split('/')[0]?.toLowerCase();
-        if (
-          groupType === 'move' ||
-          groupType === 'delete' ||
-          groupType === 'cleanup' ||
-          groupType === 'rmdirs'
-        ) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    const isMove = (): boolean => {
-      const type = jobType?.toLowerCase() || '';
-      if (type === 'move') return true;
-      if (item.group) {
-        const groupType = item.group.split('/')[0]?.toLowerCase();
-        if (groupType === 'move') return true;
-      }
-      return false;
-    };
-
-    // If it's a delete/cleanup job, the file is deleted. No public link possible.
-    if (isDeleteOrCleanup()) {
-      return null;
-    }
-
-    // Determine target based on transfer status and job type
-    if (item.status === 'missing_dst') {
-      // File only exists on source
-      if (srcRemote && this.publicLinkSupported(srcRemote)) {
-        return { remote: item.srcFs || '', path: item.name };
-      }
-    } else if (item.status === 'missing_src') {
-      // File only exists on destination
-      if (dstRemote && this.publicLinkSupported(dstRemote)) {
-        return { remote: item.dstFs || '', path: item.name };
-      }
-    } else {
-      // For completed, checked, partial, etc.
-
-      // If it's a move, the file was deleted from source and exists only at the destination.
-      // So we can only get public link from destination.
-      if (isMove()) {
-        if (dstRemote && this.publicLinkSupported(dstRemote)) {
-          return { remote: item.dstFs || '', path: item.name };
-        }
-        return null;
-      }
-
-      // For copy/sync/check, file is on both (or we check destination first, then source)
-      if (dstRemote && this.publicLinkSupported(dstRemote)) {
-        return { remote: item.dstFs || '', path: item.name };
-      }
-
-      if (srcRemote && this.publicLinkSupported(srcRemote)) {
-        return { remote: item.srcFs || '', path: item.name };
-      }
-
-      // Fallback: If both dstFs and srcFs are empty/falsy, check active remote
-      if (!item.dstFs && !item.srcFs && activeRemote) {
-        const fallbackRemote = this.pathService.normalizeRemoteName(activeRemote);
-        if (fallbackRemote && this.publicLinkSupported(fallbackRemote)) {
-          return {
-            remote: this.pathService.normalizeRemoteForRclone(activeRemote),
-            path: item.name,
-          };
-        }
-      }
-    }
-
-    return null;
-  }
-
-  resolveDownloadRemote(item: CompletedTransfer, activeRemote?: string): string {
-    const getRemoteName = (fs: string): string => {
-      if (!fs || this.pathService.isLocalPath(fs)) return '';
-      const parts = fs.split(':');
-      if (parts.length > 1) {
-        const name = parts[0];
-        if (name === 'http' || name === 'https' || name === 'ftp') return '';
-        return name;
-      }
-      return '';
-    };
-
-    const dstFs = item.dstFs || '';
-    const srcFs = item.srcFs || '';
-
-    if (getRemoteName(dstFs)) {
-      return dstFs;
-    }
-    if (getRemoteName(srcFs)) {
-      return srcFs;
-    }
-
-    if (!dstFs && !srcFs && activeRemote) {
-      const fallback = this.pathService.normalizeRemoteForRclone(activeRemote);
-      if (!this.pathService.isLocalPath(fallback)) {
-        return fallback;
-      }
-    }
-
-    return dstFs || srcFs || '';
-  }
-
   clearCache(remoteName?: string): void {
     if (remoteName) {
       const key = this.pathService.normalizeRemoteName(remoteName);
@@ -390,9 +252,8 @@ export class RemoteManagementService extends TauriBaseService {
   }
 
   async isLibrclone(): Promise<boolean> {
-    if (this._isLibrclone() !== null) {
-      return this._isLibrclone();
-    }
+    const cached = this._isLibrclone();
+    if (cached !== null) return cached;
     try {
       const result = await this.invokeCommand<boolean>('is_librclone');
       this._isLibrclone.set(result);

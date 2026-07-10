@@ -225,7 +225,9 @@
       "categories": {
         "app": "Ajustes de la aplicación",
         "rclone": "Opciones de Rclone"
-      }
+      },
+      "remoteSaved": "Remoto guardado correctamente",
+      "remoteSaveFailed": "Error al guardar el remoto: {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -761,7 +763,9 @@
         "successCopyUrl": "URL de descarga copiada al portapapeles",
         "failCopyUrl": "Error al generar la URL de descarga",
         "successDownload": "Archivo descargado correctamente",
-        "failDownload": "Error al descargar el archivo"
+        "failDownload": "Error al descargar el archivo",
+        "resolveStarted": "Se inició la resolución del conflicto de archivos",
+        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}"
       },
       "empty": {
         "noActive": "No hay transferencias activas",

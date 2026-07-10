@@ -97,7 +97,6 @@ export class FlagConfigStepComponent {
   });
 
   constructor() {
-    // Track serve type control value changes
     effect(onCleanup => {
       const group = this.configGroup();
       const typeCtrl = group?.get('options.type');
@@ -108,7 +107,6 @@ export class FlagConfigStepComponent {
       onCleanup(() => sub.unsubscribe());
     });
 
-    // Emit serve type changes
     effect(() => {
       const type = this.serveTypeValue();
       if (this.isServe()) {
@@ -116,7 +114,6 @@ export class FlagConfigStepComponent {
       }
     });
 
-    // Track allow-other control value changes to show warning banner
     effect(onCleanup => {
       const options = this.optionsGroup();
       if (!options) {
