@@ -13,7 +13,6 @@ use serde::Deserialize;
 pub const OWNER: &str = "Zarestia-Dev";
 pub const REPO: &str = "rclone-manager";
 
-// --- Shared reqwest Client For GitHub API ---
 static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     let mut headers = HeaderMap::new();
 
@@ -37,7 +36,6 @@ static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
         .expect("Failed to build shared reqwest client")
 });
 
-// --- Public Error Type ---
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("HTTP request error: {0}")]
@@ -49,8 +47,6 @@ pub enum Error {
     },
 }
 
-// --- Public Data Structures ---
-// They are now centralized here.
 #[derive(Debug, Deserialize, Clone)]
 pub struct Asset {
     pub name: String,
@@ -68,7 +64,6 @@ pub struct Release {
     pub html_url: String,
 }
 
-// --- Internal Helper ---
 async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response, Error> {
     if response.status().is_success() {
         Ok(response)
@@ -79,10 +74,7 @@ async fn parse_response(response: reqwest::Response) -> Result<reqwest::Response
     }
 }
 
-// --- Public API Functions ---
-
 /// Fetches all releases for a given repository.
-/// (Used by app/updater.rs)
 pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error> {
     let url = format!("https://api.github.com/repos/{owner}/{repo}/releases?per_page=100");
 
@@ -93,7 +85,6 @@ pub async fn get_releases(owner: &str, repo: &str) -> Result<Vec<Release>, Error
 }
 
 /// Fetches the single "latest" release for a repository.
-/// (Used by rclone/provision.rs)
 pub async fn get_latest_release(owner: &str, repo: &str) -> Result<Release, Error> {
     let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/latest");
 
@@ -104,7 +95,6 @@ pub async fn get_latest_release(owner: &str, repo: &str) -> Result<Release, Erro
 }
 
 /// Fetches a specific release by its tag name.
-/// (Used by rclone/updater.rs)
 pub async fn get_release_by_tag(owner: &str, repo: &str, tag: &str) -> Result<Release, Error> {
     let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}");
 
@@ -115,7 +105,6 @@ pub async fn get_release_by_tag(owner: &str, repo: &str, tag: &str) -> Result<Re
 }
 
 /// Fetches the raw text content of a file from a repo.
-/// (Used by rclone/updater.rs for changelog.md)
 pub async fn get_raw_file_content(
     owner: &str,
     repo: &str,

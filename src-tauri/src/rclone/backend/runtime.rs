@@ -4,9 +4,11 @@
 //! fetched from rclone's API endpoints, such as version, OS, architecture,
 //! and connection status.
 
-use crate::utils::types::rclone::RcloneCoreVersion;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::utils::types::rclone::RcloneCoreVersion;
 
 /// Connection status of an rclone backend
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -21,11 +23,8 @@ pub enum RuntimeStatus {
     Error(String),
 }
 
-/// Runtime information storage
-///
 /// Stores specific runtime properties detected from the rclone backend.
 /// This includes environment details and the current connectivity status.
-/// Runtime information gathered from API
 #[derive(Debug, Clone, Default)]
 pub struct RuntimeInfo {
     /// Rclone version (e.g. "v1.66.0")
@@ -79,10 +78,6 @@ impl RuntimeInfo {
         }
     }
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

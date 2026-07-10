@@ -14,7 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -25,11 +25,10 @@ import {
   InstallationTabOption,
   LocationType,
   BinaryStatus,
-} from '../../types';
+} from '@app/types';
 
 @Component({
   selector: 'app-installation-options',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -37,7 +36,7 @@ import {
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './installation-options.component.html',
   styleUrl: './installation-options.component.scss',
@@ -46,7 +45,7 @@ import {
 export class InstallationOptionsComponent implements OnInit {
   disabled = input(false);
   mode = input<'install' | 'config'>('install');
-  tabOptions = input<InstallationTabOption[]>([
+  tabOptions = input<readonly InstallationTabOption[]>([
     { key: 'default', label: 'shared.installationOptions.tabs.quickFix', icon: 'bolt' },
     { key: 'custom', label: 'shared.installationOptions.tabs.custom', icon: 'folder' },
     { key: 'existing', label: 'shared.installationOptions.tabs.existing', icon: 'file' },

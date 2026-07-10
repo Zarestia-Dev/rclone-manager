@@ -12,12 +12,8 @@
   gap: var(--space-md);
 }
 
-mat-form-field {
-  margin-top: var(--space-md);
-
-  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-    display: none;
-  }
+app-alert-banner {
+  margin-top: var(--space-sm);
 }
 
 // ============================================================================
@@ -35,7 +31,7 @@ mat-form-field {
     font-size: var(--font-size-xs);
     color: var(--dim-color);
     font-weight: 500;
-    animation: badgeIn var(--transition-qubic) both;
+    animation: badgeIn var(--transition-cubic) both;
   }
 }
 

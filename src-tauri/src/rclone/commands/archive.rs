@@ -25,8 +25,6 @@ pub async fn archive_create(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
 
     let mut args = vec!["create".to_string(), source.clone(), destination.clone()];
 
@@ -52,9 +50,7 @@ pub async fn archive_create(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
     let metadata = JobMetadata {
         remote_name: destination.clone(),
@@ -66,11 +62,12 @@ pub async fn archive_create(
         group: Some(group_id),
         no_cache: false,
         dry_run: false,
+        parent_job_id: None,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        core::COMMAND,
         payload,
         metadata,
         SubmitJobOptions {
@@ -92,8 +89,6 @@ pub async fn archive_extract(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
 
     let args = vec!["extract".to_string(), source.clone(), destination.clone()];
 
@@ -101,9 +96,7 @@ pub async fn archive_extract(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let mut payload = backend.build_core_command_payload("archive", args, true, os);
 
-    if let Some(obj) = payload.as_object_mut() {
-        obj.insert("_group".to_string(), json!(group_id));
-    }
+    crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
     let metadata = JobMetadata {
         remote_name: source.clone(),
@@ -115,11 +108,12 @@ pub async fn archive_extract(
         group: Some(group_id),
         no_cache: false,
         dry_run: false,
+        parent_job_id: None,
     };
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
-        backend.inject_auth(client.post(backend.url_for(core::COMMAND))),
+        core::COMMAND,
         payload,
         metadata,
         SubmitJobOptions {
@@ -144,8 +138,7 @@ pub async fn archive_list(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
-    let rclone_state = app.state::<RcloneState>();
-    let client = &rclone_state.client;
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let mut args = vec!["list".to_string(), source.clone()];
 
@@ -165,7 +158,7 @@ pub async fn archive_list(
     let os = backend_manager.get_runtime_os(&backend.name).await;
     let payload = backend.build_core_command_payload("archive", args, false, os);
 
-    let remote_name = Some(crate::utils::rclone::util::extract_remote_name_from_fs(
+    let remote_name = Some(crate::utils::json_helpers::extract_remote_name_from_fs(
         &source,
     ));
 
@@ -179,8 +172,8 @@ pub async fn archive_list(
         })),
     );
 
-    let response = backend
-        .post_json(client, core::COMMAND, Some(&payload))
+    let response = transport
+        .rpc(core::COMMAND, Some(&payload))
         .await
         .map_err(|e| {
             let err_msg = format!("Failed to list archive: {e}");

@@ -25,19 +25,18 @@ import { RepairService } from 'src/app/services/operations/repair.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
 import { BackendService } from '../../../services/infrastructure/system/backend.service';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { BackendTranslationService } from 'src/app/services/i18n/backend-translation.service';
 
 @Component({
   selector: 'app-repair-sheet',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',

@@ -1,17 +1,17 @@
 //! System handlers (SSE, etc.)
 
+use std::convert::Infallible;
+
 use axum::{
     extract::State,
     response::{Sse, sse::Event},
 };
 use futures::stream::Stream;
 use log::info;
-use std::convert::Infallible;
 use tokio::sync::broadcast;
 
 use crate::server::state::WebServerState;
 
-// SSE
 pub async fn sse_handler(
     State(state): State<WebServerState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {

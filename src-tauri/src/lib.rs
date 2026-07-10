@@ -1,21 +1,3 @@
-// =============================================================================
-// RCLONE MANAGER - MAIN LIBRARY ENTRY POINT
-// =============================================================================
-
-// =============================================================================
-// STANDARD LIBRARY & EXTERNAL CRATES
-// =============================================================================
-
-use std::sync::atomic::AtomicBool;
-use tauri::Manager;
-
-use clap::Parser;
-#[cfg(not(feature = "web-server"))]
-use tauri::WindowEvent;
-
-// =============================================================================
-// INTERNAL MODULES
-// =============================================================================
 mod core;
 mod rclone;
 pub mod utils;
@@ -23,24 +5,13 @@ pub mod utils;
 #[cfg(feature = "web-server")]
 mod server;
 
-// =============================================================================
-// SHARED IMPORTS (Both modes)
-// =============================================================================
-use crate::rclone::state::automations::AutomationsCache;
-use crate::{
-    core::{
-        alerts::AlertHistoryCache, automation::engine::AutomationScheduler,
-        initialization::initialization, paths::AppPaths,
-    },
-    utils::types::{
-        logs::LogCache,
-        state::{RcApiEngine, RcloneState},
-    },
-};
+use std::sync::{Arc, atomic::AtomicBool};
 
-// =============================================================================
-// CONDITIONAL IMPORTS: Desktop Tray
-// =============================================================================
+use clap::Parser;
+use tauri::Manager;
+#[cfg(not(feature = "web-server"))]
+use tauri::WindowEvent;
+
 #[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
 use crate::core::tray::actions::handle_browse_remote;
 #[cfg(all(desktop, feature = "tray"))]
@@ -51,20 +22,52 @@ use crate::core::tray::{
     },
     tray_action::TrayAction,
 };
+use crate::rclone::state::automations::AutomationsCache;
+use crate::{
+    core::{
+        alerts::AlertHistoryCache, automation::engine::AutomationScheduler,
+        initialization::initialization, paths::AppPaths,
+    },
+    rclone::commands::upload::{UploadBatchParams, execute_upload_batch},
+    utils::types::{
+        logs::LogCache,
+        state::{RcApiEngine, RcloneState},
+    },
+};
 
-// =============================================================================
-// MAIN ENTRY POINT
-// =============================================================================
+fn build_send_to_params(
+    remote: String,
+    path: Option<String>,
+    sources: Vec<std::path::PathBuf>,
+    cwd: Option<&std::path::Path>,
+) -> UploadBatchParams {
+    let local_paths = sources
+        .into_iter()
+        .map(|p| match cwd {
+            Some(base) if p.is_relative() => base.join(p),
+            _ => p,
+        })
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
+
+    UploadBatchParams {
+        remote,
+        path: path.unwrap_or_default(),
+        local_paths,
+        origin: Some(crate::utils::types::origin::Origin::FileManager),
+        group: Some("send_to".to_string()),
+        cleanup_dir: None,
+        existing_jobid: None,
+        no_cache: false,
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // -------------------------------------------------------------------------
-    // Parse CLI args
-    // -------------------------------------------------------------------------
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
         Ok(args) => {
             if let Err(e) = args.validate() {
-                eprintln!("❌ Invalid CLI arguments: {e}");
+                eprintln!("Invalid CLI arguments: {e}");
                 std::process::exit(1);
             }
             args
@@ -72,62 +75,72 @@ pub fn run() {
         Err(e) => e.exit(),
     };
 
-    // -------------------------------------------------------------------------
-    // Initialize Tauri Builder
-    // -------------------------------------------------------------------------
     let mut builder = tauri::Builder::default();
-
     builder = builder.manage(cli_args.clone());
 
-    // -------------------------------------------------------------------------
-    // Custom Protocols (Desktop)
-    // -------------------------------------------------------------------------
     #[cfg(not(feature = "web-server"))]
     {
         builder = crate::utils::app::protocol::register_protocols(builder);
     }
 
-    // -------------------------------------------------------------------------
-    // Single Instance Plugin (Desktop)
-    // -------------------------------------------------------------------------
     #[cfg(desktop)]
     {
-        // The only platform difference is the D-Bus service ID required on Linux.
-        // The callback itself is identical — deduplicate with a cfg inside the builder.
         let si_builder = tauri_plugin_single_instance::Builder::new();
 
         #[cfg(target_os = "linux")]
         let si_builder = si_builder.dbus_id(if cfg!(debug_assertions) {
-            "io.github.zarestia_dev.rclone-manager-dev"
+            crate::utils::app::platform::APP_ID_DEV
         } else {
-            "io.github.zarestia_dev.rclone-manager"
+            crate::utils::app::platform::APP_ID
         });
 
         builder = builder.plugin(
             si_builder
-                .callback(|_app: &tauri::AppHandle, _, _| {
+                .callback(|app: &tauri::AppHandle, argv, cwd| {
+                    if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&argv) && let Some(remote) = cli_args.general.send_to_remote {
+                            let path = cli_args.general.send_to_path;
+                            let sources = cli_args.general.send_to_sources;
+                            let app_handle_clone = app.clone();
+                            let cwd_path = std::path::PathBuf::from(cwd);
+                            tauri::async_runtime::spawn(async move {
+                                let params = build_send_to_params(remote, path, sources, Some(&cwd_path));
+
+                                log::info!(
+                                    "Executing SendTo transfer in running instance: {:?} -> {}:{}",
+                                    params.local_paths, params.remote, params.path
+                                );
+                                match execute_upload_batch(app_handle_clone, params).await {
+                                    Ok(jobid) => {
+                                        log::info!("SendTo transfer initiated successfully in running instance. Job ID: {jobid}");
+                                    }
+                                    Err(e) => {
+                                        log::error!("SendTo transfer failed in running instance: {e}");
+                                    }
+                                }
+                            });
+                            return;
+                    }
+
                     #[cfg(feature = "web-server")]
-                    log::info!("Another instance attempted to run.");
+                    log::info!("Another instance attempted to run with args: {argv:?}");
 
                     #[cfg(not(feature = "web-server"))]
                     {
-                        let app_clone = _app.clone();
+                        let app_clone = app.clone();
                         tauri::async_runtime::spawn(async move {
-                            // Give the second instance a moment to exit and release the IPC pipe
-                            // to prevent a WebView/Windows focus deadlock.
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
                             let app_for_main = app_clone.clone();
                             let _ = app_clone.run_on_main_thread(move || {
                                 if let Some(window) = app_for_main.get_webview_window("main") {
                                     log::info!(
-                                        "📢 Second instance detected, showing existing window"
+                                        "Second instance detected, showing existing window"
                                     );
                                     let _ = window.show();
                                     let _ = window.set_focus();
                                 } else {
                                     log::info!(
-                                        "📢 Second instance detected, but window was destroyed. \
+                                        "Second instance detected, but window was destroyed. \
                                          Recreating main window."
                                     );
                                     crate::utils::app::builder::create_app_window(
@@ -145,17 +158,11 @@ pub fn run() {
         );
     }
 
-    // -------------------------------------------------------------------------
-    // Updater Plugin (Desktop)
-    // -------------------------------------------------------------------------
     #[cfg(feature = "updater")]
     {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
 
-    // -------------------------------------------------------------------------
-    // Window Events (Desktop only, not web-server)
-    // -------------------------------------------------------------------------
     #[cfg(not(feature = "web-server"))]
     {
         builder = builder.on_window_event(|window, event| match event {
@@ -184,7 +191,7 @@ pub fn run() {
                 if window.label() == "main" {
                     if tray_enabled {
                         if destroy_on_close {
-                            log::debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                            log::debug!("Optimization Enabled: Destroying window to free RAM");
                         } else {
                             #[cfg(desktop)]
                             if let Err(e) = window.hide() {
@@ -208,8 +215,6 @@ pub fn run() {
                             .await;
                         });
                     }
-                } else {
-                    // Allow the OS to naturally destroy secondary windows like modals
                 }
             }
             WindowEvent::Destroyed => {
@@ -225,9 +230,6 @@ pub fn run() {
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Autostart Plugin (Desktop, non-Flatpak)
-    // -------------------------------------------------------------------------
     #[cfg(all(desktop, not(feature = "flatpak")))]
     {
         builder = builder.plugin(tauri_plugin_autostart::init(
@@ -236,13 +238,11 @@ pub fn run() {
         ));
     }
 
-    // -------------------------------------------------------------------------
-    // Core Plugins & Setup
-    // -------------------------------------------------------------------------
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init());
 
     #[cfg(feature = "desktop")]
     {
@@ -255,32 +255,23 @@ pub fn run() {
 
     builder = builder.setup(move |app| setup_app(app, cli_args.clone()));
 
-    // -------------------------------------------------------------------------
-    // Tray Menu Events (Desktop + Tray)
-    // -------------------------------------------------------------------------
     #[cfg(all(desktop, feature = "tray"))]
     {
         builder = builder.on_menu_event(|app, event| handle_tray_menu_event(app, &event));
     }
 
-    // -------------------------------------------------------------------------
-    // Invoke Handler (Desktop mode only)
-    // -------------------------------------------------------------------------
     #[cfg(not(feature = "web-server"))]
     {
         builder = builder.invoke_handler(crate::core::commands::dispatch_invoke);
     }
 
-    // -------------------------------------------------------------------------
-    // Build and Run
-    // -------------------------------------------------------------------------
     let app = builder
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
     #[cfg(feature = "web-server")]
     {
-        log::info!("🎯 Tauri event loop starting (Web Server Mode)");
+        log::info!("Tauri event loop starting (Web Server Mode)");
         app.run(|_app_handle, _event| {});
     }
 
@@ -295,7 +286,20 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            utils::process::process_manager::cleanup_webkit_zombies();
+                            use sysinfo::{ProcessesToUpdate, System};
+
+                            let mut system = System::new();
+                            system.refresh_processes(ProcessesToUpdate::All, true);
+                            let my_pid = std::process::id();
+
+                            for process in system.processes().values() {
+                                let name = process.name().to_string_lossy();
+                                if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
+                                    && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
+                                {
+                                    let _ = process.kill();
+                                }
+                            }
                         });
                     }
                 }
@@ -303,10 +307,6 @@ pub fn run() {
         });
     }
 }
-
-// =============================================================================
-// SETUP FUNCTION
-// =============================================================================
 
 fn setup_app(
     app: &mut tauri::App,
@@ -325,18 +325,25 @@ fn setup_app(
     use crate::rclone::backend::BackendManager;
     let backend_manager = BackendManager::new();
 
-    // -------------------------------------------------------------------------
-    // Manage App State
-    // -------------------------------------------------------------------------
     app.manage(app_paths);
     app.manage(backend_manager);
     app.manage(env_manager);
     app.manage(rcman_manager);
 
     app.manage(tokio::sync::Mutex::new(RcApiEngine::default()));
+
+    let transport: Arc<dyn crate::rclone::backend::RcloneTransport> = {
+        log::info!("rclone transport: RoutingTransport (dynamic)");
+        Arc::new(rclone::backend::routing_transport::RoutingTransport::new(
+            app_handle.clone(),
+        ))
+    };
+
     app.manage(RcloneState {
         client: reqwest::Client::new(),
+        transport,
         is_shutting_down: AtomicBool::new(false),
+        #[cfg(not(feature = "librclone"))]
         oauth_process: tokio::sync::Mutex::new(None),
         poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
@@ -366,17 +373,11 @@ fn setup_app(
     );
     app.manage(alert_cache);
 
-    // -------------------------------------------------------------------------
-    // Async Initialization (Phased Flow)
-    // -------------------------------------------------------------------------
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         initialization(app_handle_clone).await;
     });
 
-    // -------------------------------------------------------------------------
-    // Web Server Startup (web-server mode only)
-    // -------------------------------------------------------------------------
     #[cfg(feature = "web-server")]
     {
         use crate::server::start_web_server;
@@ -385,7 +386,7 @@ fn setup_app(
         let args = cli_args.clone();
 
         log::info!(
-            "🚀 Initializing Web Server on {}:{}...",
+            "Initializing Web Server on {}:{}...",
             args.headless.host,
             args.headless.port
         );
@@ -407,25 +408,76 @@ fn setup_app(
                     || msg.contains("os error 48")
                 {
                     log::error!(
-                        "❌ Port {} is already in use — another instance may be running. \
+                        "Port {} is already in use — another instance may be running. \
                          Shutting down.",
                         args.headless.port
                     );
                 } else {
-                    log::error!("❌ Web server failed to start: {e:#}");
+                    log::error!("Web server failed to start: {e:#}");
                 }
                 web_handle.exit(1);
             }
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Window Creation (Desktop, non-web-server)
-    // -------------------------------------------------------------------------
     #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
-    if !cli_args.general.tray {
+    if !cli_args.general.tray && cli_args.general.send_to_remote.is_none() {
         log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
+    }
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        log::debug!("Creating main window on mobile");
+        let _window =
+            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
+                .build()
+                .expect("Failed to build mobile main window");
+    }
+
+    if cli_args.general.send_to_remote.is_some() {
+        let app_handle_clone = app.handle().clone();
+        tauri::async_runtime::spawn(async move {
+            let mut engine_ready = false;
+            for _ in 0..100 {
+                let status =
+                    crate::rclone::engine::lifecycle::get_engine_status(&app_handle_clone).await;
+                if status.running {
+                    engine_ready = true;
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+
+            if !engine_ready {
+                log::error!("SendTo failed: Rclone engine failed to start in time");
+                app_handle_clone.exit(1);
+                return;
+            }
+
+            if let Some(remote) = cli_args.general.send_to_remote {
+                let path = cli_args.general.send_to_path;
+                let sources = cli_args.general.send_to_sources;
+                let params = build_send_to_params(remote, path, sources, None);
+
+                log::info!(
+                    "Executing SendTo transfer: {:?} -> {}:{}",
+                    params.local_paths,
+                    params.remote,
+                    params.path
+                );
+
+                match execute_upload_batch(app_handle_clone.clone(), params).await {
+                    Ok(jobid) => {
+                        log::info!("SendTo transfer completed successfully. Job ID: {jobid}");
+                    }
+                    Err(e) => {
+                        log::error!("SendTo transfer failed: {e}");
+                    }
+                }
+            }
+            app_handle_clone.exit(0);
+        });
     }
 
     #[cfg(target_os = "macos")]
@@ -433,10 +485,6 @@ fn setup_app(
 
     Ok(())
 }
-
-// =============================================================================
-// TRAY MENU EVENT HANDLER
-// =============================================================================
 
 #[cfg(all(desktop, feature = "tray"))]
 fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
@@ -447,49 +495,38 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent
 
 #[cfg(all(desktop, feature = "tray"))]
 fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
-    use crate::rclone::commands::sync::TransferType;
-    use crate::utils::types::jobs::JobType;
+    use crate::utils::types::remotes::OperationType;
 
     #[cfg(feature = "web-server")]
     use tauri_plugin_opener::OpenerExt;
 
     match action {
-        TrayAction::MountProfile(remote, profile) => {
-            handle_mount_profile(app.clone(), &remote, &profile);
-        }
-        TrayAction::UnmountProfile(remote, profile) => {
-            handle_unmount_profile(app.clone(), &remote, &profile);
-        }
-        TrayAction::SyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Sync);
-        }
-        TrayAction::StopSyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Sync);
-        }
-        TrayAction::CopyProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Copy);
-        }
-        TrayAction::StopCopyProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Copy);
-        }
-        TrayAction::MoveProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Move);
-        }
-        TrayAction::StopMoveProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Move);
-        }
-        TrayAction::BisyncProfile(remote, profile) => {
-            handle_start_job_profile(app.clone(), &remote, &profile, TransferType::Bisync);
-        }
-        TrayAction::StopBisyncProfile(remote, profile) => {
-            handle_stop_job_profile(app.clone(), &remote, &profile, JobType::Bisync);
-        }
-        TrayAction::ServeProfile(remote, profile) => {
-            handle_serve_profile(app.clone(), &remote, &profile);
-        }
-        TrayAction::StopServeProfile(_remote, serve_id) => {
-            handle_stop_serve_profile(app.clone(), &serve_id);
-        }
+        TrayAction::StartProfile(op, remote, profile) => match op {
+            OperationType::Mount => {
+                handle_mount_profile(app.clone(), &remote, &profile);
+            }
+            OperationType::Serve => {
+                handle_serve_profile(app.clone(), &remote, &profile);
+            }
+            op if op.is_transfer() => {
+                handle_start_job_profile(app.clone(), &remote, &profile, op);
+            }
+            _ => {}
+        },
+        TrayAction::StopProfile(op, remote, profile) => match op {
+            OperationType::Mount => {
+                handle_unmount_profile(app.clone(), &remote, &profile);
+            }
+            OperationType::Serve => {
+                handle_stop_serve_profile(app.clone(), &profile);
+            }
+            op if op.is_transfer() => {
+                if let Some(job_type) = op.as_job_type() {
+                    handle_stop_job_profile(app.clone(), &remote, &profile, job_type);
+                }
+            }
+            _ => {}
+        },
         TrayAction::Browse(_remote) => {
             #[cfg(not(feature = "web-server"))]
             handle_browse_remote(app, &_remote);
@@ -568,9 +605,6 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
     }
 }
 
-/// Build the web UI URL for a given path, resolving 0.0.0.0 to loopback.
-///
-/// Used by tray actions to open the web interface in the system browser.
 #[cfg(all(feature = "web-server", feature = "tray"))]
 fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();

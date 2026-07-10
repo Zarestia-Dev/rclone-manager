@@ -7,7 +7,7 @@ import {
   computed,
   output,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -36,13 +36,7 @@ import {
   OpenInFilesEvent,
 } from '@app/types';
 
-import {
-  FormatTimePipe,
-  FormatEtaPipe,
-  FormatFileSizePipe,
-  FormatRateValuePipe,
-  FormatBytes,
-} from '@app/pipes';
+import { FormatTimePipe, FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
@@ -56,11 +50,16 @@ import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
-import { AutomationCardComponent } from '../../../../shared/detail-shared';
+import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
+
+interface RunningJobViewModel {
+  job: JobInfo;
+  typeIcon: string;
+  label: string;
+}
 
 @Component({
   selector: 'app-general-overview',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
@@ -80,9 +79,8 @@ import { AutomationCardComponent } from '../../../../shared/detail-shared';
     RemotesPanelComponent,
     ServeCardComponent,
     FormatRateValuePipe,
-    FormatBytes,
     OverviewHeaderComponent,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
     AutomationCardComponent,
   ],
@@ -139,9 +137,16 @@ export class GeneralOverviewComponent {
   // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
   readonly runningJobs = computed(() =>
-    this.remoteFacade.jobs().filter(j => j.status === 'Running')
+    this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id)
   );
   readonly activeJobsCount = computed(() => this.runningJobs().length);
+  readonly runningJobViewModels = computed<RunningJobViewModel[]>(() =>
+    this.runningJobs().map(job => ({
+      job,
+      typeIcon: this.getJobTypeIcon(job),
+      label: this.getJobLabel(job),
+    }))
+  );
   readonly allRunningServes = computed(() =>
     this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
   );
@@ -244,10 +249,6 @@ export class GeneralOverviewComponent {
     const updated = { ...this.panelOpenStates(), [id]: isOpen };
     this.panelOpenStates.set(updated);
     this.localStorage.set('dashboard.panelOpenStates', updated);
-  }
-
-  protected getPanelOpenState(id: string): boolean {
-    return this.panelOpenStates()[id] ?? false;
   }
 
   private persistLayout(): void {

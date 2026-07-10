@@ -11,7 +11,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_rclone_state(app_handle).await?;
 
     // Apply any pending rclone updates before starting the engine
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     let _ = crate::utils::rclone::updater::apply_rclone_update_if_staged(app_handle).await;
 
     // Initialize Alert Engine Worker
@@ -72,7 +72,8 @@ async fn init_engine(app_handle: &AppHandle) -> Result<(), String> {
     })?;
     let mut engine = engine_state.lock().await;
 
-    if !engine.running && !engine.path_error && !engine.password_error {
+    let is_blocked = engine.start_block_reason().is_some();
+    if !engine.is_running() && !is_blocked {
         engine.init(app_handle).await;
     }
 

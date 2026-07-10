@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+
+use log::{error, info};
 use tauri::{AppHandle, Emitter, command};
 
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
+use crate::utils::types::monitoring::NetworkStatusPayload;
 use crate::utils::types::rclone::CheckResult;
 
 #[command]
@@ -112,7 +115,6 @@ pub fn is_metered() -> bool {
     let connection = match Connection::system() {
         Ok(c) => c,
         Err(e) => {
-            use log::error;
             error!("Failed to connect to D-Bus: {e}");
             return false;
         }
@@ -126,7 +128,6 @@ pub fn is_metered() -> bool {
     ) {
         Ok(p) => p,
         Err(e) => {
-            use log::error;
             error!("NetworkManager D-Bus proxy error: {e}");
             return false;
         }
@@ -135,7 +136,6 @@ pub fn is_metered() -> bool {
     match proxy.get_property::<u32>("Metered") {
         Ok(status) => matches!(status, 1 | 3),
         Err(e) => {
-            use log::error;
             error!("Failed to read Metered property: {e}");
             false
         }
@@ -147,8 +147,6 @@ use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
-    use log::{debug, error, info};
-
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
@@ -176,8 +174,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        use crate::utils::types::monitoring::NetworkStatusPayload;
-        debug!("'Metered' property changed!");
+        log::debug!("'Metered' property changed!");
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
@@ -191,17 +188,14 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
 #[cfg(all(target_os = "linux", feature = "container"))]
 #[must_use]
 pub fn is_metered() -> bool {
-    use log::info;
     info!(
         "is_metered: container mode does not support metered network detection, returning false."
     );
     false
 }
 
-#[cfg(all(target_os = "linux", feature = "container"))]
+#[cfg(any(target_os = "macos", all(target_os = "linux", feature = "container")))]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
-    use crate::utils::types::monitoring::NetworkStatusPayload;
-    use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
         error!("Failed to emit network status change event: {e}");
@@ -210,22 +204,10 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
 
 #[cfg(target_os = "macos")]
 pub fn is_metered() -> bool {
-    use log::info;
     // macOS does not support metered network detection.
     // Always return false.
     info!("is_metered: macOS does not support metered network detection, returning false.");
     false
-}
-
-#[cfg(target_os = "macos")]
-pub async fn monitor_network_changes(app_handle: AppHandle) {
-    // Always emit is_metered: false, since macOS does not support metered detection.
-    use crate::utils::types::monitoring::NetworkStatusPayload;
-    use log::error;
-    let payload = NetworkStatusPayload { is_metered: false };
-    if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-        error!("Failed to emit network status change event: {e}");
-    }
 }
 
 #[cfg(windows)]
@@ -250,11 +232,9 @@ pub fn is_metered() -> bool {
 
 #[cfg(windows)]
 pub async fn monitor_network_changes(app_handle: AppHandle) {
-    use log::error;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
-        use crate::utils::types::monitoring::NetworkStatusPayload;
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };

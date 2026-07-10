@@ -77,9 +77,9 @@ fn detect_macos_theme() -> Theme {
 
 #[cfg(target_os = "windows")]
 fn detect_windows_theme() -> Theme {
+    use crate::utils::process::command::CREATE_NO_WINDOW;
     use std::os::windows::process::CommandExt;
     use std::process::Command;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     match Command::new("reg")
         .creation_flags(CREATE_NO_WINDOW)

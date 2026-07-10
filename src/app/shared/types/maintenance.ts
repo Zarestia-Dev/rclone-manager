@@ -17,14 +17,14 @@ export interface RepairData {
 
 export type RepairMode = 'standard' | 'install' | 'config';
 
-export const CONFIG_TAB_OPTIONS: InstallationTabOption[] = [
+export const CONFIG_TAB_OPTIONS: readonly InstallationTabOption[] = Object.freeze([
   { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
   { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
-];
+]);
 
-export const DEFAULT_INSTALLATION_DATA: InstallationOptionsData = {
+export const DEFAULT_INSTALLATION_DATA: Readonly<InstallationOptionsData> = Object.freeze({
   installLocation: 'default',
   customPath: '',
   existingBinaryPath: '',
   binaryTestResult: 'untested',
-};
+});

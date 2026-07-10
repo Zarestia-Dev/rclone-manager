@@ -239,7 +239,7 @@ export class CliFlagMapperService {
         const nameHyphen = nameRaw.replace(/_/g, '-');
         const keyCamel = (field.FieldName ?? '').toLowerCase();
 
-        const addEntry = (key: string) => {
+        const addEntry = (key: string): void => {
           if (!key) return;
           const val = { option: field, flagType };
           table[key] = val;

@@ -77,6 +77,13 @@
   --gnome-dark-3: #3d3846;
   --gnome-dark-4: #241f31;
   --gnome-dark-5: #000000;
+
+  // Zarestia Brand Colors
+  --zarestia-green: #39ff14;
+  --zarestia-green-rgb: 57, 255, 20;
+  --zarestia-white: #f5f5f0;
+  --zarestia-bg-start: rgba(20, 32, 20, 0.95);
+  --zarestia-bg-end: rgba(10, 16, 10, 0.95);
 }
 
 // ============================================================================
@@ -532,6 +539,7 @@ $dark-theme: (
   --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-circle: 50%;
 
   // Component-specific radius aliases
   --border-radius: var(--radius-xs);
@@ -586,8 +594,18 @@ $dark-theme: (
   // Global UI Variables
   --text-muted: var(--dim-color);
   --bg-elevated: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-elevated-1: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
+  --bg-elevated-2: color-mix(in srgb, var(--window-fg-color) 5%, transparent);
+  --bg-elevated-3: color-mix(in srgb, var(--window-fg-color) 8%, transparent);
+  --bg-elevated-4: color-mix(in srgb, var(--window-fg-color) 10%, transparent);
   --bg-hover: var(--hover-bg-color);
   --bg-selected: var(--selected-bg-color);
+
+  --ring-border: 0 0 0 1px var(--border-color);
+  --ring-accent: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
+  --ring-warn: 0 0 0 1px var(--warn-color);
+  --focus-ring-accent: 0 0 0 2px rgba(var(--accent-color-rgb), 0.4);
+  --focus-ring-warn: 0 0 0 2px rgba(var(--warn-color-rgb), 0.4);
 
   // Icon Size Scale (Grid-Perfect multiples of 24px)
   --icon-size-xxs: 8px; // 1/3x
@@ -608,6 +626,7 @@ $dark-theme: (
   --font-size-md: 0.875rem;
   --font-size-sm: 0.75rem;
   --font-size-xs: 0.625rem;
+  --font-size-xxs: 0.5rem;
 
   // Opacity Scale
   --panel-hover-opacity: 0.1;
@@ -792,6 +811,11 @@ body {
 
   .mat-mdc-form-field .mat-mdc-text-field-wrapper {
     border-radius: var(--input-border-radius);
+
+    button {
+      margin-right: var(--space-xs);
+    }
+
     .mdc-line-ripple {
       display: none !important;
     }
@@ -845,6 +869,31 @@ body {
       container-background-color: var(--window-bg-color),
     )
   );
+
+  @include mat.dialog-overrides(
+    (
+      container-shape: var(--modal-radius),
+    )
+  );
+
+  @include mat.autocomplete-overrides(
+    (
+      container-shape: var(--input-border-radius),
+    )
+  );
+
+  @include mat.snack-bar-overrides(
+    (
+      container-shape: var(--radius-xs),
+    )
+  );
+
+  @include mat.list-overrides(
+    (
+      active-indicator-shape: var(--radius-sm),
+      active-indicator-color: var(--selected-bg-color),
+    )
+  );
 }
 
 * {
@@ -859,6 +908,8 @@ code,
 input,
 textarea,
 [contenteditable="true"] {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
   user-select: text;
   cursor: text;
   -webkit-user-drag: auto;
@@ -904,9 +955,11 @@ button {
   align-items: center;
   justify-content: center;
 
-  span {
+  .mat-button-wrapper,
+  > span:not(.mat-mdc-button-persistent-ripple):not(.mat-ripple-element) {
     display: flex;
-    flex-direction: row !important;
+    flex-direction: row;
+    align-items: center;
     gap: var(--space-xs);
   }
 
@@ -956,18 +1009,9 @@ button {
   contain: paint;
 }
 
-.mat-bottom-sheet-container {
-  box-shadow: none !important;
-  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
-}
-
 // Form fields
 .mat-mdc-form-field {
   width: 100%;
-}
-
-.mat-mdc-dialog-container .mdc-dialog__surface {
-  border-radius: var(--modal-radius) !important;
 }
 
 .contextual-action-wrapper {
@@ -993,10 +1037,15 @@ button {
 // ============================================================================
 // RESPONSIVE MODAL → BOTTOM SHEET BEHAVIOR (Libadwaita Style)
 // ============================================================================
-// On narrow viewports (≤450px), modals transform into bottom sheets that slide
+// On narrow viewports (≤450px), large modals that opt in via the
+// `mobile-sheet-dialog` panelClass transform into bottom sheets that slide
 // up from the bottom of the screen, matching GNOME's adaptive dialog behavior.
+//
+// The panelClass is applied by ModalService.openModal() only to configs that
+// have an explicit `height` (i.e. the large feature modals). Small confirm/
+// input modals remain centered dialogs on narrow viewports.
 @media (max-width: 450px) {
-  .cdk-overlay-pane.mat-mdc-dialog-panel {
+  .cdk-overlay-pane.mobile-sheet-dialog {
     position: absolute !important;
     bottom: 0 !important;
     left: 0 !important;
@@ -1007,55 +1056,24 @@ button {
     margin: 0 !important;
   }
 
-  mat-dialog-container.mat-mdc-dialog-container,
-  .mat-mdc-dialog-container.mdc-dialog {
+  .mobile-sheet-dialog mat-dialog-container.mat-mdc-dialog-container,
+  .mobile-sheet-dialog .mat-mdc-dialog-container.mdc-dialog {
     animation: slideUpSheet 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 
     &.closing {
       animation: slideDownSheet 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
     }
   }
-  .mat-mdc-dialog-container .mdc-dialog__surface {
-    border-radius: var(--modal-radius) var(--modal-radius) 0 0 !important;
+
+  .cdk-overlay-backdrop.closing {
+    opacity: 0 !important;
+    transition: opacity 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
   }
 }
 
 // ============================================================================
 // SECTION 6: COMPONENT STYLES
 // ============================================================================
-
-mat-tab-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-
-  ::ng-deep {
-    .mat-mdc-tab-body-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .mat-mdc-tab-body {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .mat-mdc-tab-body-content {
-      height: 100%;
-      overflow-y: auto;
-    }
-  }
-}
-
-.mat-mdc-autocomplete-panel {
-  border-radius: var(--input-border-radius) !important;
-}
-
 mat-accordion {
   display: flex;
   flex-direction: column;
@@ -1066,12 +1084,7 @@ mat-accordion {
   background: var(--view-bg-color) !important;
   border-radius: var(--radius-md) !important;
 
-  .mat-expansion-panel-body {
-    padding: var(--space-md);
-  }
-
   mat-panel-title {
-    flex: 0 0 auto;
     gap: var(--space-sm);
 
     mat-icon:first-child {
@@ -1081,7 +1094,7 @@ mat-accordion {
   }
 
   mat-panel-description {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
   }
 
   .mat-expansion-panel-header {
@@ -1092,7 +1105,7 @@ mat-accordion {
     justify-content: flex-end;
     align-items: center;
     display: flex;
-    gap: 12px;
+    gap: var(--space-xs);
     font-size: clamp(12px, 2vw, 14px);
     font-weight: 500;
   }
@@ -1171,6 +1184,41 @@ mat-accordion {
 
     border-radius: var(--radius-xs);
     transition: background-color 0.1s ease;
+
+    .menu-item-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: auto;
+      background-color: var(--dim-color);
+      transition: background-color 0.2s ease;
+    }
+
+    &.is-running .menu-item-dot {
+      animation: pulse 2s infinite;
+    }
+
+    &.sync .menu-item-dot {
+      background-color: var(--primary-color);
+    }
+    &.copy .menu-item-dot {
+      background-color: var(--yellow);
+    }
+    &.move .menu-item-dot {
+      background-color: var(--orange);
+    }
+    &.bisync .menu-item-dot {
+      background-color: var(--purple);
+    }
+    &.check .menu-item-dot {
+      background-color: var(--accent-color);
+    }
+    &.delete .menu-item-dot {
+      background-color: var(--warn-color);
+    }
+    &.copyurl .menu-item-dot {
+      background-color: var(--accent-color);
+    }
 
     &.space-between {
       justify-content: space-between;
@@ -1547,6 +1595,24 @@ mat-accordion {
   contain: layout style paint; // Isolates row renders to protect frame updates in zoneless modes
 }
 
+.infinite-scroll-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-top: 1px solid var(--border-color);
+  background: var(--window-bg-color);
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .card-row-item {
   display: flex;
   flex-direction: column;
@@ -1582,6 +1648,45 @@ mat-accordion {
       font-size: var(--font-size-sm);
       font-style: italic;
     }
+  }
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  transition: var(--transition-fast);
+  background: color-mix(in srgb, var(--window-fg-color) 6%, transparent);
+  color: var(--dim-color);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--window-fg-color) 12%, transparent);
+    color: var(--window-fg-color);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: color-mix(in srgb, var(--window-fg-color) 3%, transparent) !important;
+    color: color-mix(in srgb, var(--window-fg-color) 30%, transparent) !important;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -1622,6 +1727,12 @@ mat-accordion {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+
+  .actions-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
 }
 
 .card-paths {
@@ -1639,6 +1750,7 @@ mat-accordion {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 
     &.src {
       color: var(--primary-color);
@@ -1652,6 +1764,100 @@ mat-accordion {
     width: 16px;
     height: 16px;
     color: var(--dim-color);
+  }
+}
+
+.card-paths-v2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--dim-color);
+  margin-left: 26px;
+
+  .path-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    background: rgba(var(--window-fg-color-rgb), 0.03);
+    border-radius: 6px;
+    padding: var(--space-xxs) var(--space-xs);
+    border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: rgba(var(--window-fg-color-rgb), 0.06);
+      border-color: rgba(var(--window-fg-color-rgb), 0.1);
+    }
+
+    .path-pill {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+
+      &.src {
+        color: var(--primary-color);
+      }
+      &.dst {
+        color: var(--accent-color);
+      }
+    }
+
+    .path-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: 4px;
+      padding-left: 6px;
+      border-left: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
+      flex-shrink: 0;
+    }
+
+    .small-action-btn {
+      all: unset;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      color: var(--dim-color);
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: rgba(var(--window-fg-color-rgb), 0.1);
+        color: var(--window-fg-color);
+      }
+
+      &.delete-btn:hover {
+        background: rgba(var(--warn-color-rgb), 0.15) !important;
+        color: var(--warn-color) !important;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .arrow-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--dim-color);
+    flex-shrink: 0;
   }
 }
 
@@ -1754,6 +1960,7 @@ mat-accordion {
     padding: var(--space-xs) var(--space-sm);
 
     .card-paths,
+    .card-paths-v2,
     .card-progress,
     .card-footer {
       margin-left: 0;
@@ -1771,6 +1978,18 @@ mat-accordion {
         align-items: center;
         text-align: center;
       }
+    }
+  }
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  * {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
     }
   }
 }

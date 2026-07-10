@@ -11,9 +11,7 @@ use serde_json::Value;
 // When adding a new language, add its BCP-47 code here and create the translation file
 const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN", "fr-FR", "uk-UA"];
 
-// =============================================================================
 // Struct Definitions with Derive Macro
-// =============================================================================
 
 /// General settings
 #[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
@@ -62,7 +60,7 @@ pub struct GeneralSettings {
         label = "settings.general.standalone_dialogs.label",
         description = "settings.general.standalone_dialogs.description"
     )]
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(all(desktop, not(feature = "web-server")))]
     pub standalone_dialogs: bool,
 }
 
@@ -83,7 +81,7 @@ impl Default for GeneralSettings {
             start_on_startup: false,
             notifications: true,
             restrict: true,
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
         }
     }
@@ -241,18 +239,18 @@ pub struct RuntimeSettings {
         label = "settings.runtime.rclone_auto_check_updates.label",
         description = "settings.runtime.rclone_auto_check_updates.description"
     )]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_auto_check_updates: bool,
 
     #[setting(
         label = "settings.runtime.rclone_skipped_updates.label",
         description = "settings.runtime.rclone_skipped_updates.description"
     )]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_skipped_updates: Vec<String>,
 
     #[setting(label = "settings.runtime.rclone_update_channel.label", options(("stable", "settings.runtime.rclone_update_channel.options.stable"), ("beta", "settings.runtime.rclone_update_channel.options.beta")))]
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_update_channel: String,
 
     #[setting(label = "settings.runtime.flatpak_warn.label")]
@@ -289,11 +287,11 @@ impl Default for RuntimeSettings {
             app_skipped_updates: vec![],
             #[cfg(feature = "updater")]
             app_update_channel: "stable".to_string(),
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_auto_check_updates: true,
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_skipped_updates: vec![],
-            #[cfg(feature = "updater")]
+            #[cfg(not(feature = "librclone"))]
             rclone_update_channel: "stable".to_string(),
             #[cfg(feature = "flatpak")]
             flatpak_warn: true,
@@ -321,9 +319,7 @@ pub struct NautilusSettings {
     pub bookmarks: Vec<Value>,
 }
 
-// =============================================================================
 // Main AppSettings - Uses nested struct flattening
-// =============================================================================
 
 /// The complete settings model
 #[derive(Debug, Serialize, Deserialize, Clone, Default, DeriveSettingsSchema)]

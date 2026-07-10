@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -36,9 +36,11 @@ import { Subscription, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineBreaksPipe, RcloneOptionTranslatePipe } from '@app/pipes';
 import { NumberInputComponent } from '../number-input/number-input.component';
+import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
+import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-setting-control',
@@ -57,7 +59,7 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
     MatTimepickerModule,
     LineBreaksPipe,
     RcloneOptionTranslatePipe,
-    TranslateModule,
+    TranslatePipe,
     NumberInputComponent,
   ],
   templateUrl: './setting-control.component.html',
@@ -71,9 +73,11 @@ import { ValidatorRegistryService } from 'src/app/services/ui/validation/validat
 export class SettingControlComponent implements ControlValueAccessor {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
-  private readonly translate = inject(TranslateService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly remoteService = inject(RemoteManagementService);
+  private readonly remoteState = inject(RemoteConfigStateService, { optional: true });
+  readonly translate = inject(TranslateService);
 
   // Inputs / Outputs
   readonly option = input<RcConfigOption | null>(null);
@@ -88,11 +92,14 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly control = signal<AbstractControl | null>(null);
   readonly dateControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
   readonly timeControl = signal<FormControl<Date | null>>(new FormControl<Date | null>(null));
+  readonly isObscuring = signal(false);
 
   // Signal-backed list of FormArray controls — zoneless CD picks up add/remove.
   readonly formArrayControls = signal<FormControl[]>([]);
 
   readonly isValueChanged = signal(false);
+
+  private readonly controlValueVersion = signal(0);
 
   readonly isSensitiveField = computed(() => {
     if (!this.restrictMode()) return false;
@@ -101,6 +108,21 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.IsPassword || opt.Sensitive) return true;
     const name = opt.Name.toLowerCase();
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
+  readonly showObscureButton = computed(() => {
+    if (!this.isSensitiveField()) return false;
+    if (this.remoteState) {
+      if (this.remoteState.activeStepType() === 'runtimeRemote') {
+        return true;
+      }
+      const opts = this.remoteState.commandOptions();
+      const obscureOpt = opts.find(o => o.key === 'obscure');
+      if (obscureOpt && obscureOpt.value === true) {
+        return false;
+      }
+    }
+    return true;
   });
 
   readonly displayDefault = computed(() => {
@@ -119,6 +141,22 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
   private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
+
+  private readonly MULTISELECT_TYPES = [...this.COMMA_ARRAY_TYPES, 'SpaceSepList', 'stringArray'];
+
+  static readonly DUMP_FLAGS_FALLBACK = [
+    'headers',
+    'bodies',
+    'requests',
+    'responses',
+    'auth',
+    'filters',
+    'goroutines',
+    'openfiles',
+    'mapper',
+  ] as const;
+
+  readonly DUMP_FLAGS_FALLBACK = SettingControlComponent.DUMP_FLAGS_FALLBACK;
 
   readonly encodingFlags = [
     'Slash',
@@ -151,18 +189,87 @@ export class SettingControlComponent implements ControlValueAccessor {
   ].sort();
 
   // Computed
-  readonly mergedOption = computed(() => {
-    const opt = this.option();
-    if (!opt) return null;
-    const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
-    const caller = this.optionOverrides()[opt.Name] ?? {};
-    return { ...opt, ...builtIn, ...caller } as RcConfigOption;
-  });
+  readonly mergedOption = computed(
+    () => {
+      const opt = this.option();
+      if (!opt) return null;
+      const builtIn = this.DEFAULT_OVERRIDES[opt.Name] ?? {};
+      const caller = this.optionOverrides()[opt.Name] ?? {};
+      return { ...opt, ...builtIn, ...caller } as RcConfigOption;
+    },
+    {
+      equal: (a, b) => a?.Name === b?.Name && a?.Type === b?.Type && a?.Value === b?.Value,
+    }
+  );
 
   readonly uiDefaultValue = computed(() => {
     const opt = this.mergedOption();
     return opt ? this.calculateDefaultValue(opt) : '';
   });
+
+  readonly controlError = computed<string | null>(() => {
+    const ctrl = this.control();
+    this.controlValueVersion(); // track value changes (validator re-runs)
+    const errors = ctrl?.errors as Record<string, { message?: string }> | undefined;
+    if (!errors) return null;
+    const keys = [
+      'required',
+      'integer',
+      'float',
+      'duration',
+      'sizeSuffix',
+      'bwTimetable',
+      'fileMode',
+      'time',
+      'enum',
+    ];
+    for (const key of keys) {
+      const message = errors[key]?.message;
+      if (message) return message;
+    }
+    return this.translate.instant('shared.settingControl.errors.invalidValue');
+  });
+
+  readonly selectedLabel = computed<string>(() => {
+    const ctrl = this.control();
+    const opt = this.mergedOption();
+    this.controlValueVersion(); // track value changes
+    if (!ctrl || !opt) return '';
+
+    const rawValue = ctrl.value;
+    let value: unknown;
+    if (Array.isArray(rawValue)) {
+      if (rawValue.length === 0) return '';
+      value = rawValue[0];
+    } else {
+      value = rawValue;
+    }
+
+    if (value === null || value === undefined || value === '') return '';
+
+    const examples = this.resolveExamplesList(opt);
+    for (const e of examples) {
+      const eObj =
+        typeof e === 'object' && e !== null ? (e as { Value?: unknown; Help?: string }) : null;
+      const eValue = eObj?.Value ?? e;
+      if (eValue === value) {
+        if (eObj) {
+          return eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
+        }
+        return String(e);
+      }
+    }
+    return String(value);
+  });
+
+  private resolveExamplesList(opt: RcConfigOption): ({ Value?: string; Help?: string } | string)[] {
+    if (opt.Examples?.length) return opt.Examples;
+    if (opt.Type === 'Encoding') return this.encodingFlags;
+    if (opt.Type === 'DumpFlags') {
+      return [...SettingControlComponent.DUMP_FLAGS_FALLBACK];
+    }
+    return [];
+  }
 
   // ControlValueAccessor
   private onChange: (value: unknown) => void = () => {
@@ -237,12 +344,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       return current === defaultVal;
     }
 
-    if (
-      optType &&
-      (this.COMMA_ARRAY_TYPES.includes(optType) ||
-        optType === 'SpaceSepList' ||
-        optType === 'stringArray')
-    ) {
+    if (optType && this.MULTISELECT_TYPES.includes(optType)) {
       const toArray = (v: unknown): string[] => {
         if (Array.isArray(v)) return v.map(String);
         if (typeof v === 'string') {
@@ -330,6 +432,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         this.updateSplitFromControl(internalValue);
       }
     }
+    this.controlValueVersion.update(v => v + 1);
     this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
   }
 
@@ -483,12 +586,49 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   readonly hasBitsComboExamples = computed(() => this.isBitsWithCombos(this.mergedOption()));
 
+  /**
+   * True for all integer and float types that should use the stepper input
+   * (app-number-input) instead of falling through to a plain text input.
+   *
+   * The @switch in the template only had explicit @case entries for int,
+   * int64, uint32, and float64 — int32, uint, uint64, float, and float32
+   * fell through to @default (standardInput = text field with validation),
+   * which worked but gave a worse UX than the dedicated stepper. This
+   * computed lets the template route all numeric types to stepperInput.
+   */
+  private static readonly NUMERIC_TYPES = new Set([
+    'int',
+    'int32',
+    'int64',
+    'uint',
+    'uint32',
+    'uint64',
+    'float',
+    'float32',
+    'float64',
+  ]);
+
+  readonly isNumericType = computed(() => {
+    const t = this.mergedOption()?.Type;
+    return !!t && SettingControlComponent.NUMERIC_TYPES.has(t);
+  });
+
+  /**
+   * The HTML <input step> value for the stepper input: 1 for integer types,
+   * 'any' for floats. Read by the template's stepperInput context.
+   */
+  readonly numericInputStep = computed<number | 'any'>(() => {
+    const t = this.mergedOption()?.Type ?? '';
+    return t.startsWith('float') ? 'any' : 1;
+  });
+
   private subscribeToChanges(): void {
     const ctrl = this.control();
     if (!ctrl) return;
 
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
+        this.controlValueVersion.update(v => v + 1);
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
@@ -602,14 +742,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
 
-    const isMultiSelect = [
-      'DumpFlags',
-      'Encoding',
-      'Bits',
-      'stringArray',
-      'CommaSepList',
-      'SpaceSepList',
-    ].includes(opt.Type);
+    const isMultiSelect = this.MULTISELECT_TYPES.includes(opt.Type);
     if (opt.Examples && !isMultiSelect) {
       validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }
@@ -617,29 +750,26 @@ export class SettingControlComponent implements ControlValueAccessor {
     return validators;
   }
 
-  getControlError(): string | null {
-    const errors = this.control()?.errors as Record<string, { message?: string }>;
-    if (!errors) return null;
-    const keys = [
-      'required',
-      'integer',
-      'float',
-      'duration',
-      'sizeSuffix',
-      'bwTimetable',
-      'fileMode',
-      'time',
-      'enum',
-    ];
-    for (const key of keys) {
-      if (errors[key]?.message) return errors[key].message!;
-    }
-    return this.translate.instant('shared.settingControl.errors.invalidValue');
-  }
+  async obscureFieldValue(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    event.preventDefault();
+    const ctrl = this.control();
+    if (!ctrl || !ctrl.value) return;
 
-  getSelectedLabel(value: unknown, examples?: any[]): string {
-    if (value === null || value === undefined || value === '') return '';
-    const example = examples?.find(e => (e.Value ?? e) === value);
-    return example?.Help || example?.Value || String(value);
+    const val = ctrl.value.toString().trim();
+    if (!val) return;
+
+    this.isObscuring.set(true);
+    try {
+      const res = await this.remoteService.obscureValue(val);
+      ctrl.setValue(res);
+      ctrl.markAsDirty();
+      ctrl.markAsTouched();
+      this.commitValue();
+    } catch (e) {
+      console.error('Failed to obscure password field:', e);
+    } finally {
+      this.isObscuring.set(false);
+    }
   }
 }

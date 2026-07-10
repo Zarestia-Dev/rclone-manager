@@ -5,7 +5,6 @@ import {
   signal,
   ChangeDetectionStrategy,
   DestroyRef,
-  HostListener,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -22,47 +21,38 @@ import { startWith } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthStateService } from 'src/app/services/security/auth-state.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
-import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { MountManagementService } from 'src/app/services/operations/mount-management.service';
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
+import { RemoteCreationOrchestrator } from 'src/app/services/remote/remote-creation-orchestrator.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import {
   RemoteType,
   RemoteConfigSections,
-  InteractiveFlowState,
   DEFAULT_PROFILE_NAME,
   REMOTE_CONFIG_KEYS,
   CommandOption,
   WizardStep,
   OperationType,
+  PendingRemoteData,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import {
-  RemoteConfigStepComponent,
-  INITIAL_COMMAND_OPTIONS,
-} from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
-import {
-  getDefaultAnswerFromQuestion,
-  createInitialInteractiveFlowState,
-  convertBoolAnswerToString,
-  updateInteractiveAnswer,
-  mapFormToConfigProfile,
-} from '../../../../services/remote/utils/remote-config.utils';
+import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
+import { INITIAL_COMMAND_OPTIONS } from 'src/app/services/remote/utils/command-options.util';
+import { mapFormToConfigProfile } from '../../../../services/remote/utils/remote-config.utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-quick-add-remote',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatProgressSpinnerModule,
@@ -72,10 +62,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     InteractiveConfigStepComponent,
     RemoteConfigStepComponent,
     OperationConfigComponent,
-    TranslateModule,
+    TranslatePipe,
     MatTooltipModule,
     CopyToClipboardDirective,
   ],
+  providers: [RemoteCreationOrchestrator],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,14 +77,12 @@ export class QuickAddRemoteComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  private readonly jobManagementService = inject(JobManagementService);
-  private readonly mountManagementService = inject(MountManagementService);
-  private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly presetsService = inject(RemotePresetsService);
+  private readonly orchestrator = inject(RemoteCreationOrchestrator);
 
   readonly operationTabs = [
     {
@@ -132,7 +121,8 @@ export class QuickAddRemoteComponent {
 
   // ── Wizard state ─────────────────────────────────────────────────────────
   readonly currentStep = signal<WizardStep>('setup');
-  readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
+  // Delegated to RemoteCreationOrchestrator — same public API, single source of truth.
+  readonly interactiveFlowState = this.orchestrator.interactiveFlowState;
   readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
   readonly remoteTypes = signal<RemoteType[]>([]);
   readonly existingRemotes = signal<string[]>([]);
@@ -161,15 +151,15 @@ export class QuickAddRemoteComponent {
   );
 
   readonly setupTypeValue = toSignal(
-    this.quickAddForm
-      .get('setup.type')!
-      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.type')!.value as string))
+    (this.quickAddForm.get('setup.type') ?? new FormControl('')).valueChanges.pipe(
+      startWith((this.quickAddForm.get('setup.type')?.value ?? '') as string)
+    )
   );
 
   readonly setupNameValue = toSignal(
-    this.quickAddForm
-      .get('setup.name')!
-      .valueChanges.pipe(startWith(this.quickAddForm.get('setup.name')!.value as string))
+    (this.quickAddForm.get('setup.name') ?? new FormControl('')).valueChanges.pipe(
+      startWith((this.quickAddForm.get('setup.name')?.value ?? '') as string)
+    )
   );
 
   // ── Auth state ───────────────────────────────────────────────────────────
@@ -177,9 +167,8 @@ export class QuickAddRemoteComponent {
   readonly isAuthInProgress = this.authStateService.isAuthInProgress;
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
   readonly oauthUrl = this.authStateService.oauthUrl;
-  readonly oauthHelperUrl = computed(() =>
-    this.isAuthInProgress() && !this.isAuthCancelled() ? this.oauthUrl() : null
-  );
+  // Delegated to orchestrator (was a duplicate computed — now consistent with the modal).
+  readonly oauthHelperUrl = this.orchestrator.oauthHelperUrl;
   readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
 
   // ── Computed ─────────────────────────────────────────────────────────────
@@ -192,18 +181,11 @@ export class QuickAddRemoteComponent {
       : 'modals.quickAdd.buttons.create'
   );
 
-  readonly isInteractiveContinueDisabled = computed(() => {
-    const state = this.interactiveFlowState();
-    if (this.isAuthCancelled() || state.isProcessing) return true;
-    if (!state.question?.Option?.Required) return false;
-    const { answer } = state;
-    return answer == null || (typeof answer === 'string' && answer.trim() === '');
-  });
-
-  private pendingConfig: {
-    remoteData: { name: string; type: string };
-    finalConfig: RemoteConfigSections;
-  } | null = null;
+  // Delegated to orchestrator — the previous quick-add-only version branched on
+  // `question?.Option?.Required`; using the orchestrator's version for
+  // consistency with the modal (password-type questions are always considered
+  // satisfiable so the user can submit an empty password).
+  readonly isInteractiveContinueDisabled = this.orchestrator.isInteractiveContinueDisabled;
 
   constructor() {
     this.setupFormListeners();
@@ -364,7 +346,7 @@ export class QuickAddRemoteComponent {
       const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (!selectedPath) return;
 
-      const getControlPath = () => {
+      const getControlPath = (): string | null => {
         if (opName === 'mount' && pathType === 'dest') return 'operations.mount.dest.path';
 
         const opGroup = this.quickAddForm.get(`operations.${opName}`);
@@ -431,20 +413,49 @@ export class QuickAddRemoteComponent {
       parameters,
       this.remoteManagementService.buildOpt(this.commandOptions())
     );
-    await this.appSettingsService.saveRemoteSettings(setup.name, finalConfig);
-    await this.triggerAutoStartOperations(setup.name, finalConfig);
+    // Persist settings + refresh remotes + trigger autostarts via the orchestrator's
+    // unified finalizeCreation (matches what the modal does on its non-interactive path).
+    const remoteData: PendingRemoteData = {
+      name: setup.name,
+      type: setup.type,
+      ...(preset.remote || {}),
+    };
+    this.orchestrator.setPendingConfig(remoteData, finalConfig);
+    await this.orchestrator.finalizeCreation();
   }
 
   private async handleInteractiveCreation(setup: any, operations: any): Promise<void> {
-    this.pendingConfig = {
-      remoteData: { name: setup.name, type: setup.type },
-      finalConfig: this.buildFinalConfig(setup.name, operations),
+    const finalConfig = this.buildFinalConfig(setup.name, operations);
+    const preset = this.presetsService.resolvePresets(setup.type || '');
+    const remoteData: PendingRemoteData = {
+      name: setup.name,
+      type: setup.type,
+      ...(preset.remote || {}),
     };
-    await this.startInteractiveRemoteConfig();
+    this.orchestrator.setPendingConfig(remoteData, finalConfig);
+    try {
+      const completed = await this.orchestrator.startInteractiveCreation(
+        remoteData,
+        finalConfig,
+        this.commandOptions()
+      );
+      if (completed) {
+        this.dialogRef.close(true);
+      } else {
+        this.currentStep.set('interactive');
+      }
+    } catch (error) {
+      // Match the previous quick-add behavior: on a fatal start error, try to
+      // finalize (saves settings, triggers autostarts) and close the dialog
+      // rather than leaving the user stuck on a dead interactive step.
+      console.error('Error starting interactive config:', error);
+      await this.orchestrator.finalizeCreation();
+      this.dialogRef.close(true);
+    }
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const buildProfile = (type: string, opData: any) => {
+    const buildProfile = (type: string, opData: any): any => {
       return mapFormToConfigProfile(type, opData, {
         remoteName,
         pathService: this.pathService,
@@ -506,171 +517,30 @@ export class QuickAddRemoteComponent {
 
   // ── Interactive OAuth flow ─────────────────────────────────────────────────
 
-  private async startInteractiveRemoteConfig(): Promise<void> {
-    if (!this.pendingConfig) return;
-    try {
-      const preset = this.presetsService.resolvePresets(this.pendingConfig.remoteData.type || '');
-      const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-        this.pendingConfig.remoteData.name,
-        this.pendingConfig.remoteData.type,
-        preset.remote || {},
-        this.remoteManagementService.buildOpt(this.commandOptions())
-      );
-      if (!startResp || startResp.State === '') {
-        await this.finalizeRemoteCreation();
-        return;
-      }
-      this.currentStep.set('interactive');
-      this.interactiveFlowState.set({
-        isActive: true,
-        question: startResp,
-        answer: getDefaultAnswerFromQuestion(startResp),
-        isProcessing: false,
-      });
-    } catch (error) {
-      console.error('Error starting interactive config:', error);
-      await this.finalizeRemoteCreation();
-    }
-  }
-
   async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
     this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
     try {
-      await this.submitRcAnswer();
+      await this.orchestrator.submitInteractiveAnswer(answer, this.commandOptions());
     } finally {
       if (this.interactiveFlowState().isActive) {
         this.interactiveFlowState.update(state => ({ ...state, isProcessing: false }));
       }
     }
-  }
-
-  private async submitRcAnswer(): Promise<void> {
-    const state = this.interactiveFlowState();
-    if (!state.isActive || !state.question || !this.pendingConfig) return;
-
-    let answer: unknown = state.answer;
-    if (state.question?.Option?.Type === 'bool') {
-      answer = convertBoolAnswerToString(answer);
-    }
-
-    try {
-      const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
-        this.pendingConfig.remoteData.name,
-        state.question.State,
-        answer,
-        {},
-        this.remoteManagementService.buildOpt(this.commandOptions())
-      );
-      if (!resp || resp.State === '') {
-        this.interactiveFlowState.update(s => ({ ...s, isActive: false, question: null }));
-        await this.finalizeRemoteCreation();
-      } else {
-        this.interactiveFlowState.update(s => ({
-          ...s,
-          question: resp,
-          answer: getDefaultAnswerFromQuestion(resp),
-        }));
-      }
-    } catch (error) {
-      console.error('Interactive config error:', error);
-      await this.finalizeRemoteCreation();
-    }
+    // submitInteractiveAnswer calls finalizeCreation internally when the backend
+    // signals completion — at that point the flow is no longer active and we
+    // should close the dialog.
+    if (!this.interactiveFlowState().isActive) this.dialogRef.close(true);
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.interactiveFlowState().isActive) {
-      this.interactiveFlowState.update(state => updateInteractiveAnswer(state, newAnswer));
-    }
-  }
-
-  private async finalizeRemoteCreation(): Promise<void> {
-    if (!this.pendingConfig) return;
-    const { remoteData, finalConfig } = this.pendingConfig;
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
-    await this.triggerAutoStartOperations(remoteData.name, finalConfig);
-    this.authStateService.resetAuthState();
-    this.dialogRef.close(true);
-  }
-
-  private async triggerAutoStartOperations(
-    remoteName: string,
-    finalConfig: RemoteConfigSections
-  ): Promise<void> {
-    const mountConfig = finalConfig[REMOTE_CONFIG_KEYS.mount]?.[DEFAULT_PROFILE_NAME] as any;
-    if (mountConfig) {
-      const appCfg = mountConfig.app || mountConfig;
-      const rcloneCfg = mountConfig.rclone || mountConfig;
-      if (appCfg.autoStart && rcloneCfg.mountPoint) {
-        void this.mountManagementService.mountRemoteProfile(
-          remoteName,
-          DEFAULT_PROFILE_NAME,
-          'dashboard'
-        );
-      }
-    }
-
-    const jobOps = [
-      {
-        key: REMOTE_CONFIG_KEYS.copy,
-        start: (): Promise<number> =>
-          this.jobManagementService.startProfileBatch('Copy', {
-            remoteName: remoteName,
-            profileName: DEFAULT_PROFILE_NAME,
-            source: 'dashboard',
-          }),
-      },
-      {
-        key: REMOTE_CONFIG_KEYS.sync,
-        start: (): Promise<number> =>
-          this.jobManagementService.startProfileBatch('Sync', {
-            remoteName: remoteName,
-            profileName: DEFAULT_PROFILE_NAME,
-            source: 'dashboard',
-          }),
-      },
-      {
-        key: REMOTE_CONFIG_KEYS.bisync,
-        start: (): Promise<number> =>
-          this.jobManagementService.startProfileBatch('Bisync', {
-            remoteName: remoteName,
-            profileName: DEFAULT_PROFILE_NAME,
-            source: 'dashboard',
-          }),
-      },
-      {
-        key: REMOTE_CONFIG_KEYS.move,
-        start: (): Promise<number> =>
-          this.jobManagementService.startProfileBatch('Move', {
-            remoteName: remoteName,
-            profileName: DEFAULT_PROFILE_NAME,
-            source: 'dashboard',
-          }),
-      },
-    ] as const;
-
-    for (const { key, start } of jobOps) {
-      const cfg = finalConfig[key]?.[DEFAULT_PROFILE_NAME] as any;
-      if (cfg) {
-        const appCfg = cfg.app || cfg;
-        const rcloneCfg = cfg.rclone || cfg;
-        if (appCfg.autoStart) {
-          const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
-          const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
-          if (hasSource && hasDest) {
-            void start();
-          }
-        }
-      }
-    }
+    this.orchestrator.updateInteractiveAnswer(newAnswer);
   }
 
   async cancelAuth(): Promise<void> {
-    await this.authStateService.cancelAuth();
+    await this.orchestrator.cancelAuth();
     this.currentStep.set('operations');
-    this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "paths": {
-      "*": ["./*"],
+      "src/*": ["./src/*"],
       "@app/types": ["./src/app/shared/types/index.ts"],
       "@app/pipes": ["./src/app/shared/pipes/index.ts"]
     },

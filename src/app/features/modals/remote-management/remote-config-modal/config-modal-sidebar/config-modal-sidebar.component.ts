@@ -4,20 +4,19 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { EditTarget } from '@app/types';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-config-modal-sidebar',
-  standalone: true,
   imports: [
     MatButtonModule,
     MatDividerModule,
     MatIconModule,
     MatListModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './config-modal-sidebar.component.html',
   styleUrl: './config-modal-sidebar.component.scss',
@@ -40,15 +39,11 @@ export class ConfigModalSidebarComponent {
   readonly sharedNavigated = output<EditTarget>();
   readonly returnFromShared = output<void>();
   readonly cliImportToggled = output<void>();
+  readonly obscureToolToggled = output<void>();
 
   // ── Template helpers ──────────────────────────────────────────────────────
 
   isStepDisabled(step: number): boolean {
-    if (this.state.isStepNavigationLocked()) return true;
-    if (step > this.state.currentStep()) {
-      if (this.state.isActiveStepInvalid()) return true;
-      if (!this.state.editTarget() && this.state.remoteFormStatus?.() === 'INVALID') return true;
-    }
-    return false;
+    return !this.state.isStepClickable(step);
   }
 }

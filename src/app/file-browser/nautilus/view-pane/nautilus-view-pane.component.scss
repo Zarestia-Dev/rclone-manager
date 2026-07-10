@@ -68,7 +68,7 @@
   .grid-item {
     outline: none;
     user-select: none;
-    touch-action: none;
+    touch-action: pan-y;
     -webkit-user-drag: none;
 
     .folder-card {
@@ -199,7 +199,7 @@ tr.folder-drag-over {
     transition: none;
     border-radius: var(--border-radius);
     user-select: none;
-    touch-action: none;
+    touch-action: pan-y;
     -webkit-user-drag: none;
 
     &:hover {

@@ -12,7 +12,6 @@ mat-sidenav-container {
 
 mat-sidenav {
   width: var(--sidebar-width);
-  border-radius: 0 !important;
 }
 
 mat-sidenav-content {
@@ -34,19 +33,17 @@ mat-sidenav-content {
 }
 
 .no-remotes {
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
   padding: 24px;
-  max-width: 500px;
-  margin: 0 auto;
+  padding-top: clamp(48px, 20vh, 120px);
   gap: 16px;
 
   h2,
   p {
+    max-width: 500px;
     margin: 0;
   }
 }
@@ -113,7 +110,7 @@ mat-sidenav-content {
 
 @media (max-width: 500px), (max-height: 500px) {
   .no-remotes {
-    justify-content: flex-start;
+    padding-top: clamp(32px, 12vh, 72px);
   }
 
   .icon-container {

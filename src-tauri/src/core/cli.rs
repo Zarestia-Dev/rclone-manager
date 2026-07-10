@@ -39,6 +39,17 @@ pub struct GeneralArgs {
     #[cfg(feature = "tray")]
     #[arg(long)]
     pub tray: bool,
+
+    /// Send files/folders to a remote destination (Windows SendTo integration)
+    #[arg(long)]
+    pub send_to_remote: Option<String>,
+
+    /// Destination path on the remote (Windows SendTo integration)
+    #[arg(long)]
+    pub send_to_path: Option<String>,
+
+    /// Source paths to send (Windows SendTo integration)
+    pub send_to_sources: Vec<PathBuf>,
 }
 
 /// Headless web server specific arguments
@@ -109,24 +120,28 @@ impl CliArgs {
             }
         }
 
+        // SendTo validation
+        if self.general.send_to_path.is_some() && self.general.send_to_remote.is_none() {
+            return Err("Cannot use --send-to-path without specifying a destination remote via --send-to-remote".into());
+        }
+
+        if self.general.send_to_remote.is_some() && self.general.send_to_sources.is_empty() {
+            return Err(
+                "At least one source file or folder must be provided when using --send-to-remote"
+                    .into(),
+            );
+        }
+
         Ok(())
     }
 
     /// Returns auth credentials if both user and pass are set
     #[cfg(feature = "web-server")]
     pub fn auth_credentials(&self) -> Option<(String, String)> {
-        match (&self.headless.user, &self.headless.headless_pass()) {
+        match (&self.headless.user, &self.headless.pass) {
             (Some(u), Some(p)) => Some((u.clone(), p.clone())),
             _ => None,
         }
-    }
-}
-
-#[cfg(feature = "web-server")]
-impl HeadlessArgs {
-    /// Helper to get optional password
-    pub fn headless_pass(&self) -> Option<String> {
-        self.pass.clone()
     }
 }
 
@@ -153,6 +168,28 @@ mod tests {
     fn test_tray_flag() {
         let args = CliArgs::parse_from(["rclone-manager", "--tray"]);
         assert!(args.general.tray);
+    }
+
+    #[test]
+    fn test_send_to_args() {
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "--send-to-path",
+            "/Photos",
+            "C:\\file1.txt",
+            "C:\\file2.txt",
+        ]);
+        assert_eq!(args.general.send_to_remote, Some("Dropbox:".to_string()));
+        assert_eq!(args.general.send_to_path, Some("/Photos".to_string()));
+        assert_eq!(
+            args.general.send_to_sources,
+            vec![
+                PathBuf::from("C:\\file1.txt"),
+                PathBuf::from("C:\\file2.txt")
+            ]
+        );
     }
 
     #[cfg(feature = "web-server")]
@@ -197,6 +234,37 @@ mod tests {
             "/path/to/cert",
             "--tls-key",
             "/path/to/key",
+        ]);
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_send_to() {
+        // Failing: path without remote
+        let args = CliArgs::parse_from(["rclone-manager", "--send-to-path", "/Photos"]);
+        assert!(args.validate().is_err());
+
+        // Failing: remote without sources
+        let args = CliArgs::parse_from(["rclone-manager", "--send-to-remote", "Dropbox:"]);
+        assert!(args.validate().is_err());
+
+        // Passing: remote with sources
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "/file.txt",
+        ]);
+        assert!(args.validate().is_ok());
+
+        // Passing: remote, path, and sources
+        let args = CliArgs::parse_from([
+            "rclone-manager",
+            "--send-to-remote",
+            "Dropbox:",
+            "--send-to-path",
+            "/Photos",
+            "/file.txt",
         ]);
         assert!(args.validate().is_ok());
     }

@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -14,7 +14,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
 
 @Component({
   selector: 'app-alert-history',
-  standalone: true,
   imports: [
     DatePipe,
     NgClass,
@@ -23,7 +22,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     MatTooltipModule,
     MatTableModule,
     MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `
@@ -58,7 +57,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         <div class="spacer"></div>
 
         <button
-          mat-icon-button
+          matIconButton
           [class.search-open]="searchVisible()"
           (click)="searchVisible.set(!searchVisible())"
           [matTooltip]="'shared.search.toggle' | translate"
@@ -67,7 +66,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         </button>
 
         <button
-          mat-icon-button
+          matIconButton
           (click)="acknowledgeAll()"
           [disabled]="alerts.unacknowledged() === 0"
           [matTooltip]="'alerts.acknowledgeAll' | translate"
@@ -76,7 +75,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         </button>
 
         <button
-          mat-icon-button
+          matIconButton
           (click)="clearHistory()"
           [disabled]="alerts.history().length === 0"
           [matTooltip]="'alerts.clearHistory' | translate"
@@ -115,7 +114,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
               <mat-icon svgIcon="circle-xmark"></mat-icon>
             </button>
           }
-          <button mat-button (click)="clearFilters()">
+          <button matButton="text" (click)="clearFilters()">
             {{ 'common.clearAll' | translate }}
           </button>
         </div>
@@ -231,7 +230,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                   }
 
                   <button
-                    mat-icon-button
+                    matIconButton
                     [class.btn-acked]="alert.acknowledged"
                     [disabled]="alert.acknowledged"
                     (click)="acknowledge(alert.id)"
@@ -299,9 +298,9 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       padding: 3px 10px;
       font-size: var(--font-size-sm);
       color: var(--dim-color);
-      background: color-mix(in srgb, var(--window-fg-color) 4%, transparent);
+      background: var(--bg-elevated-1);
       border-radius: var(--radius-md);
-      box-shadow: 0 0 0 1px var(--border-color);
+      box-shadow: var(--ring-border);
       transition:
         color 0.2s,
         background 0.2s,
@@ -320,7 +319,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
       &.has-unread {
         color: var(--warn-color);
         background: rgba(var(--warn-color-rgb), 0.1);
-        box-shadow: 0 0 0 1px rgba(var(--warn-color-rgb), 0.4);
+        box-shadow: var(--ring-warn);
       }
     }
 

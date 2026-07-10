@@ -3,22 +3,11 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  position: relative;
 
   .setting-info {
     flex: 1;
     min-width: 0;
-
-    h3 {
-      font-size: var(--font-size-xl);
-      font-weight: 600;
-      color: var(--window-fg-color);
-    }
-
-    .settings-description {
-      font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
-      margin: 0;
-    }
 
     strong {
       display: block;
@@ -35,13 +24,12 @@
 
     .help-text {
       font-size: var(--font-size-sm);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       line-height: 1.6;
       margin: 0 0 var(--space-xs);
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: normal;
-      font-feature-settings: "liga" 0;
 
       // Override the block strong style for inline use inside help text
       strong {
@@ -87,19 +75,12 @@
       }
     }
 
-    .default-value,
-    .type-info {
+    .default-value {
       display: block;
       font-size: var(--font-size-xs);
       margin-top: var(--space-xs);
       font-style: italic;
-    }
-
-    .default-value {
-      color: var(--secondary-text-color);
-    }
-    .type-info {
-      color: var(--warning-color);
+      color: var(--dim-color);
     }
   }
 
@@ -169,7 +150,7 @@
 
     .additional-selection {
       font-size: var(--font-size-xs);
-      color: var(--secondary-text-color);
+      color: var(--dim-color);
       margin-left: var(--space-xs);
       font-weight: 400;
     }
@@ -208,6 +189,7 @@
       .help-text {
         font-size: var(--font-size-xs);
         line-height: 1.5;
+        margin-inline: 40px; // We don't want to text overlap mobile reset button
 
         code {
           padding: 2px 4px;
@@ -231,5 +213,10 @@
     .setting-full-width {
       width: 100%;
     }
+  }
+  .reset-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 }

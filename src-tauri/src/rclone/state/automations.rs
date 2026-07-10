@@ -1,25 +1,26 @@
-use crate::{
-    core::automation::engine::get_next_run,
-    utils::types::{
-        automation::{
-            Automation, AutomationArgs, AutomationStats, AutomationStatus, AutomationType,
-        },
-        remotes::{OperationConfigKey, ProfileParams},
-    },
-};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
 use log::info;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
-use crate::utils::types::events::AUTOMATIONS_CACHE_CHANGED;
-
-// ============================================================================
-// CONFIGURATION STRUCTS
-// ============================================================================
+use crate::{
+    core::automation::engine::get_next_run,
+    utils::{
+        constants::{
+            AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
+            AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED,
+        },
+        types::{
+            automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+            events::AUTOMATIONS_CACHE_CHANGED,
+            remotes::{OperationType, ProfileParams},
+        },
+    },
+};
 
 #[derive(Default, Debug, PartialEq, Clone)]
 struct ProfileConfig {
@@ -80,10 +81,6 @@ fn normalize_paths(val: Option<&Value>) -> Vec<String> {
     }
 }
 
-// ============================================================================
-// CACHE UPDATE RESULT
-// ============================================================================
-
 /// Returned by `load_from_remote_configs` so callers can act on exactly what
 /// changed. The cache itself does not touch the scheduler — all scheduling and
 /// unscheduling decisions belong to the caller.
@@ -103,9 +100,6 @@ impl CacheUpdateResult {
     }
 }
 
-// SCHEDULED TASK CACHE
-// ============================================================================
-
 #[derive(Clone)]
 pub struct AutomationsCache {
     automations: Arc<RwLock<HashMap<String, Automation>>>,
@@ -121,7 +115,7 @@ impl AutomationsCache {
     pub fn generate_automation_id(
         backend_name: &str,
         remote_name: &str,
-        automation_type: &AutomationType,
+        automation_type: &OperationType,
         profile_name: &str,
     ) -> String {
         format!("{backend_name}:{remote_name}-{automation_type:?}-{profile_name}")
@@ -156,7 +150,7 @@ impl AutomationsCache {
         if result.has_changes()
             && let Some(app) = app
         {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "bulk_update");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
         }
 
         Ok(result)
@@ -227,10 +221,15 @@ impl AutomationsCache {
         };
 
         let operations = [
-            (OperationConfigKey::Sync, AutomationType::Sync),
-            (OperationConfigKey::Copy, AutomationType::Copy),
-            (OperationConfigKey::Move, AutomationType::Move),
-            (OperationConfigKey::Bisync, AutomationType::Bisync),
+            (OperationType::Sync, OperationType::Sync),
+            (OperationType::Copy, OperationType::Copy),
+            (OperationType::Move, OperationType::Move),
+            (OperationType::Bisync, OperationType::Bisync),
+            (OperationType::Check, OperationType::Check),
+            (OperationType::Delete, OperationType::Delete),
+            (OperationType::Copyurl, OperationType::Copyurl),
+            (OperationType::Archivecreate, OperationType::Archivecreate),
+            (OperationType::Cryptcheck, OperationType::Cryptcheck),
         ];
 
         for (config_key, automation_type) in operations {
@@ -289,7 +288,7 @@ impl AutomationsCache {
         backend_name: &str,
         remote_name: &str,
         profile_name: &str,
-        automation_type: &AutomationType,
+        automation_type: &OperationType,
         config: &ProfileConfig,
     ) -> Option<Automation> {
         let cron_enabled = config.cron_enabled.unwrap_or(false);
@@ -318,16 +317,24 @@ impl AutomationsCache {
 
         // Validate path counts based on automation type
         match automation_type {
-            AutomationType::Bisync => {
+            OperationType::Bisync => {
                 if src_paths.len() != 1 || dst_paths.len() != 1 {
                     return None;
                 }
             }
-            AutomationType::Sync | AutomationType::Copy | AutomationType::Move => {
+            OperationType::Sync
+            | OperationType::Copy
+            | OperationType::Move
+            | OperationType::Check
+            | OperationType::Delete
+            | OperationType::Copyurl
+            | OperationType::Archivecreate
+            | OperationType::Cryptcheck => {
                 if src_paths.is_empty() || dst_paths.len() != 1 {
                     return None;
                 }
             }
+            _ => return None,
         }
 
         let automation_id =
@@ -372,10 +379,6 @@ impl AutomationsCache {
         })
     }
 
-    // ============================================================================
-    // STANDARD OPERATIONS
-    // ============================================================================
-
     pub async fn add_automation(
         &self,
         automation: Automation,
@@ -391,7 +394,7 @@ impl AutomationsCache {
         automations.insert(automation_id.clone(), automation.clone());
         drop(automations);
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_added");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_ADDED);
         }
         Ok(automation)
     }
@@ -429,7 +432,7 @@ impl AutomationsCache {
         drop(automations);
 
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_updated");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_UPDATED);
         }
         Ok(updated_automation)
     }
@@ -447,7 +450,7 @@ impl AutomationsCache {
             .ok_or_else(|| format!("Automation {automation_id} not found"))?;
         drop(automations);
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "automation_removed");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATION_REMOVED);
         }
         Ok(automation)
     }
@@ -455,7 +458,7 @@ impl AutomationsCache {
     pub async fn clear_all_automations(&self, app: Option<&AppHandle>) -> Result<(), String> {
         self.automations.write().await.clear();
         if let Some(app) = app {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "all_cleared");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_ALL_CLEARED);
         }
         Ok(())
     }
@@ -501,7 +504,7 @@ impl AutomationsCache {
         if !removed.is_empty()
             && let Some(app) = app
         {
-            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, "remote_automations_removed");
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_REMOTE_REMOVED);
         }
         Ok(removed)
     }
@@ -601,10 +604,6 @@ impl Default for AutomationsCache {
     }
 }
 
-// ============================================================================
-// TAURI COMMANDS
-// ============================================================================
-
 /// Read-only query commands that only touch the cache live here.
 /// Commands that coordinate both cache and scheduler live in `commands.rs`.
 
@@ -629,18 +628,12 @@ pub async fn get_automation_stats(app: AppHandle) -> Result<AutomationStats, Str
     Ok(cache.get_stats().await)
 }
 
-// ============================================================================
-// TESTS
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
 
-    // -----------------------------------------------------------------------
     // RemoteConfig deserialization
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_profile_config_deserialization() {
@@ -706,17 +699,14 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
-    // -----------------------------------------------------------------------
     // Automation ID generation
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_generate_automation_id() {
         let id = AutomationsCache::generate_automation_id(
             "mybackend",
             "gdrive",
-            &AutomationType::Sync,
+            &OperationType::Sync,
             "daily",
         );
         assert_eq!(id, "mybackend:gdrive-Sync-daily");
@@ -724,16 +714,12 @@ mod tests {
 
     #[test]
     fn test_generate_automation_id_uniqueness_across_types() {
-        let sync_id =
-            AutomationsCache::generate_automation_id("b", "r", &AutomationType::Sync, "p");
-        let copy_id =
-            AutomationsCache::generate_automation_id("b", "r", &AutomationType::Copy, "p");
+        let sync_id = AutomationsCache::generate_automation_id("b", "r", &OperationType::Sync, "p");
+        let copy_id = AutomationsCache::generate_automation_id("b", "r", &OperationType::Copy, "p");
         assert_ne!(sync_id, copy_id);
     }
 
-    // -----------------------------------------------------------------------
     // create_automation_struct
-    // -----------------------------------------------------------------------
 
     fn make_cache() -> AutomationsCache {
         AutomationsCache::new()
@@ -753,7 +739,7 @@ mod tests {
     fn test_create_automation_struct_disabled_returns_none() {
         let cache = make_cache();
         let cfg = make_full_profile_config(false, "* * * * *");
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(result.is_none(), "disabled automation should return None");
     }
 
@@ -767,7 +753,7 @@ mod tests {
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(result.is_none(), "empty cron should return None");
     }
 
@@ -782,7 +768,7 @@ mod tests {
             dest: Some(json!("/dst")),
             ..Default::default()
         };
-        let result = cache.create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg);
+        let result = cache.create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg);
         assert!(
             result.is_some(),
             "empty cron with watcher enabled should return Some"
@@ -804,7 +790,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "missing source should return None"
         );
@@ -822,7 +808,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "empty source should return None"
         );
@@ -840,7 +826,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "missing dest should return None"
         );
@@ -858,7 +844,7 @@ mod tests {
         };
         assert!(
             cache
-                .create_automation_struct("b", "r", "p", &AutomationType::Sync, &cfg)
+                .create_automation_struct("b", "r", "p", &OperationType::Sync, &cfg)
                 .is_none(),
             "empty dest should return None"
         );
@@ -875,12 +861,12 @@ mod tests {
             ..Default::default()
         };
         let automation = cache
-            .create_automation_struct("backend", "remote", "daily", &AutomationType::Copy, &cfg)
+            .create_automation_struct("backend", "remote", "daily", &OperationType::Copy, &cfg)
             .expect("should produce an automation");
 
         assert_eq!(automation.status, AutomationStatus::Enabled);
         assert_eq!(automation.cron_expression.as_deref(), Some("*/5 * * * *"));
-        assert_eq!(automation.automation_type, AutomationType::Copy);
+        assert_eq!(automation.automation_type, OperationType::Copy);
         assert!(automation.scheduler_job_id.is_none());
         assert!(automation.current_job_id.is_none());
 
@@ -908,7 +894,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_valid
                 )
                 .is_some()
@@ -928,7 +914,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_multisrc
                 )
                 .is_none()
@@ -948,7 +934,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Bisync,
+                    &OperationType::Bisync,
                     &cfg_multidst
                 )
                 .is_none()
@@ -973,7 +959,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_one_to_one
                 )
                 .is_some()
@@ -993,7 +979,7 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_multi_to_one
                 )
                 .is_some()
@@ -1013,21 +999,19 @@ mod tests {
                     "backend",
                     "remote",
                     "daily",
-                    &AutomationType::Sync,
+                    &OperationType::Sync,
                     &cfg_one_to_multi
                 )
                 .is_none()
         );
     }
 
-    // -----------------------------------------------------------------------
     // automation_config_changed
-    // -----------------------------------------------------------------------
 
     fn base_automation() -> Automation {
         Automation {
             id: "b:r-sync-p".to_string(),
-            automation_type: AutomationType::Sync,
+            automation_type: OperationType::Sync,
             remote_name: "r".to_string(),
             profile_name: "p".to_string(),
             cron_expression: Some("* * * * *".to_string()),
@@ -1084,9 +1068,7 @@ mod tests {
         assert!(!cache.automation_config_changed(&a, &b));
     }
 
-    // -----------------------------------------------------------------------
     // Cache CRUD
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_add_and_get_automation() {
@@ -1208,9 +1190,7 @@ mod tests {
         assert!(cache.get_all_automations().await.is_empty());
     }
 
-    // -----------------------------------------------------------------------
     // clear_backend_automations
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_clear_backend_automations_returns_evicted() {
@@ -1242,9 +1222,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // toggle_automation_status
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_toggle_enabled_to_disabled() {
@@ -1300,9 +1278,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // Stats
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_get_stats_empty() {
@@ -1339,9 +1315,7 @@ mod tests {
         assert_eq!(stats.failed_runs, 1);
     }
 
-    // -----------------------------------------------------------------------
     // CacheUpdateResult
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_cache_update_result_has_changes() {
@@ -1360,9 +1334,7 @@ mod tests {
         assert!(with_removal.has_changes());
     }
 
-    // -----------------------------------------------------------------------
     // get_automations_for_backend / prefix filtering
-    // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_get_automations_for_backend_filters_correctly() {

@@ -1,15 +1,13 @@
 import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { WindowService } from 'src/app/services/ui/window.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-window-controls',
-  standalone: true,
-  imports: [MatButtonModule, MatIconModule, TranslateModule],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe],
   templateUrl: './window-controls.component.html',
   styleUrls: ['./window-controls.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,7 +19,7 @@ export class WindowControlsComponent {
   private readonly isMaximized = this.windowService.isMaximized;
 
   readonly windowButtons = computed(() => {
-    return this.uiStateService.platform !== 'macos' && !isHeadlessMode();
+    return this.uiStateService.platform === 'windows' || this.uiStateService.platform === 'linux';
   });
 
   readonly controls = computed(() => [

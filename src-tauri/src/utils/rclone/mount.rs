@@ -66,13 +66,9 @@ pub fn check_mount_plugin_installed() -> bool {
     {
         check_winfsp_installed()
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         true
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    {
-        false
     }
 }
 
@@ -165,15 +161,9 @@ pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String
     run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
-pub async fn install_mount_plugin() -> Result<String, String> {
-    Ok("Linux does not require a mount plugin".to_string())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-#[tauri::command]
-pub async fn install_mount_plugin() -> Result<String, String> {
+pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<String, String> {
     Err(crate::localized_error!(
         "backendErrors.rclone.unsupportedPlatform"
     ))

@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "检查远程文件",
+    "help": "将 checkFileFs:checkFileRemote 视为包含哈希值的 SUM 文件。"
+  },
+  "combined": {
+    "title": "合并报告",
+    "help": "生成变化的合并报告。"
+  },
+  "missing_on_src": {
+    "title": "源中缺失",
+    "help": "报告所有在源中缺失的文件。"
+  },
+  "missing_on_dst": {
+    "title": "目标中缺失",
+    "help": "报告所有在目标中缺失的文件。"
+  },
+  "match": {
+    "title": "匹配",
+    "help": "报告所有匹配的文件。"
+  },
+  "differ": {
+    "title": "差异",
+    "help": "报告所有不匹配的文件。"
+  },
+  "error": {
+    "title": "错误",
+    "help": "报告所有发生错误（哈希或读取）的文件。"
+  },
   "addr": {
     "title": "地址",
     "help": "服务器绑定的IP地址:端口 或 :端口"
@@ -1214,5 +1242,97 @@
   "serve_type_s3": {
     "title": "兼容 Amazon S3 的服务器",
     "help": "通过 Amazon S3 API 服务远程存储"
+  },
+  "check_file_hash": {
+    "title": "检查文件哈希",
+    "help": "将 checkFileFs:checkFileRemote 视为包含给定类型哈希值的 SUM 文件。"
+  },
+  "check_file_fs": {
+    "title": "检查文件系统",
+    "help": "将 checkFileFs:checkFileRemote 视为包含哈希值的 SUM 文件。"
+  },
+  "one_way": {
+    "title": "单向检查",
+    "help": "仅进行单向检查：查找源中存在但目标中不存在的文件。"
+  },
+  "auto_filename": {
+    "title": "自动文件名",
+    "help": "若目标为目录，则从 URL 或响应头中获取文件名。"
+  },
+  "rmdirs": {
+    "title": "移除空目录",
+    "help": "删除文件后移除空目录。"
+  },
+  "format": {
+    "title": "归档格式",
+    "help": "归档压缩格式（zip, tar, tgz, tbz, txz 等）"
+  },
+  "prefix": {
+    "title": "前缀路径",
+    "help": "在归档文件中添加前缀目录"
+  },
+  "full_path": {
+    "title": "完整路径",
+    "help": "在归档文件中使用文件的完整路径"
+  },
+  "download": {
+    "title": "下载并检查",
+    "help": "下载文件以验证完整性/对比哈希值。"
+  },
+  "resync_mode": {
+    "title": "重新同步模式",
+    "help": "在重新同步期间，首选以下版本：path1、path2、较新、较旧、较大、较小（默认：如果指定了 --resync 则为 path1，否则为 none 表示不重新同步）"
+  },
+  "compare": {
+    "title": "比较",
+    "help": "双向同步（bisync）特定比较选项的逗号分隔列表，例如 'size,modtime,checksum'（默认：'size,modtime'）"
+  },
+  "download_hash": {
+    "title": "下载哈希",
+    "help": "在无法获取哈希时通过下载来计算（警告：可能会很慢并消耗大量数据！）"
+  },
+  "max_lock": {
+    "title": "最大锁定时间",
+    "help": "将早于该时间的锁定文件视为已过期（默认：0（永不过期））（最小值：2m）"
+  },
+  "no_slow_hash": {
+    "title": "忽略慢哈希",
+    "help": "仅在列出哈希较慢的后端上忽略列出哈希"
+  },
+  "slow_hash_sync_only": {
+    "title": "仅在同步时应用慢哈希",
+    "help": "在列出和计算增量时忽略慢哈希，但在同步调用期间仍会考虑它们。"
+  },
+  "recover": {
+    "title": "恢复",
+    "help": "自动从中断中恢复，而不需要使用 --resync。"
+  },
+  "workdir": {
+    "title": "工作目录",
+    "help": "使用自定义工作目录 - 适用于测试。"
+  },
+  "check_access": {
+    "title": "检查访问权限",
+    "help": "如果在两个文件系统上均未找到 RCLONE_TEST 文件，则中止同步。"
+  },
+  "check_filename": {
+    "title": "检查文件名",
+    "help": "用于 --check-access 的文件名。"
+  },
+  "check_sync": {
+    "title": "检查同步状态",
+    "help": "控制最终列表的比较。"
+  },
+  "conflict_loser": {
+    "title": "冲突落败者",
+    "help": "对同步冲突中落败的版本（有胜者时）或两个文件（无胜者时）采取的动作：num、pathname、delete（默认：num）"
+  },
+  "conflict_resolve": {
+    "title": "冲突解决方式",
+    "help": "通过首选以下版本自动解决冲突：none、path1、path2、较新、较旧、较大、较小（默认：none）"
+  },
+  "conflict_suffix": {
+    "title": "冲突后缀",
+    "help": "重命名冲突落败者时使用的后缀。可以是一个字符串，也可以是用逗号分隔的两个字符串，分别用于 Path1/Path2（默认：'conflict'）"
   }
 }

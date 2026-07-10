@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.2.8"
+version = "0.2.9"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -22,11 +22,13 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-deep-link = "2"
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full", "process"] }
+async-trait = "0.1"
 tauri-plugin-os = "2"
 zip = "8"
 reqwest = { version = "0.13", default-features = false, features = ["json", "blocking", "rustls", "multipart", "stream", "query"] }
@@ -61,21 +63,21 @@ tauri-plugin-dialog = { version = "2", optional = true }
 tauri-plugin-clipboard-manager = { version = "2", optional = true }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.1", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
 
 urlencoding = "2"
 futures = { version = "0.3" }
 
 # Web server dependencies (optional)
 axum = { version = "0.8", features = ["multipart"], optional = true }
-tower-http = { version = "0.6", features = ["cors", "fs", "trace"], optional = true }
+tower-http = { version = "0.7", features = ["cors", "fs", "trace"], optional = true }
 async-stream = { version = "0.3", optional = true }
 axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
 anyhow = {version = "1", optional = true}
 tokio-util = { version = "0.7", features = ["io"] }
 mime_guess = "2"
 parking_lot = "0.12"
-notify = "8.2.0"
+notify = "8.2"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.31"
@@ -88,6 +90,7 @@ futures-lite = "2"
 windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
 shellexpand = "3"
+winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
@@ -109,6 +112,9 @@ default = ["desktop", "tray"]
 # Managed by package managers or not compatible with updater
 portable = ["desktop", "tray"]
 flatpak = ["desktop", "tray"]
+
+# In-process rclone via librclone FFI (mobile target).
+librclone = []
 
 
 [dev-dependencies]

@@ -1,10 +1,39 @@
+// ── Auto Start Panel ─────────────────────────────────────────────────────────
+.auto-start-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  background: var(--view-bg-color);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-xl);
+  box-shadow: var(--shadow-gnome);
+  margin-bottom: var(--space-md);
+
+  .description {
+    color: var(--dim-color);
+    font-size: var(--font-size-md);
+    font-weight: 500;
+  }
+
+  @media (max-width: 540px) {
+    padding: 0 var(--space-md);
+    min-height: 64px;
+    margin-bottom: var(--space-sm);
+  }
+}
+
+app-alert-banner {
+  margin-top: var(--space-sm);
+}
+
 // ── Automation accordion ──────────────────────────────────────────────────────
 .unavailable {
   position: relative;
   background: repeating-linear-gradient(
     -45deg,
-    rgba(var(--window-fg-color-rgb), 0.04),
-    rgba(var(--window-fg-color-rgb), 0.04) 10px,
+    var(--bg-elevated-1),
+    var(--bg-elevated-1) 10px,
     rgba(var(--orange-rgb), 0.1) 10px,
     rgba(var(--orange-rgb), 0.1) 20px
   ) !important;
@@ -126,6 +155,9 @@
       &.mount-remote {
         color: var(--primary-color);
       }
+      &.copyurl-source {
+        color: var(--primary-color);
+      }
 
       mat-icon {
         width: 18px;
@@ -222,20 +254,7 @@
   .action-suffix {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding-right: 0.75rem;
-
-    button {
-      width: 36px;
-      height: 36px;
-      padding: 6px;
-      border-radius: var(--button-border-radius);
-      transition: var(--transition-fast);
-
-      &:hover {
-        background: var(--hover-bg-color);
-      }
-    }
+    padding-right: var(--space-xxs);
   }
 }
 
@@ -250,24 +269,12 @@
   }
 }
 
-// ── Messages & Sections ──────────────────────────────────────────────────────
-.message {
-  display: flex;
-  align-items: center;
-  border-radius: var(--radius-xs);
-  font-size: var(--font-size-md);
-  margin-bottom: var(--space-xs);
-
-  &.warning {
-    color: var(--orange);
-  }
-}
-
 .watch-delay-section {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: var(--space-sm);
   gap: var(--space-md);
 
   .watch-delay-label {
@@ -280,5 +287,95 @@
     flex: 1 0 100%;
     font-size: var(--font-size-xs);
     color: var(--warn-color);
+  }
+}
+
+// ── Copyurl Row & Wrapper ──────────────────────────────────────────────────
+.copyurl-row {
+  .path-type-selector {
+    .copyurl-source {
+      padding: 0 1rem;
+    }
+  }
+}
+
+.copyurl-inputs-wrapper {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  min-width: 0;
+
+  .url-field {
+    flex: 2;
+    min-width: 150px;
+  }
+
+  .filename-field {
+    flex: 1;
+    min-width: 120px;
+    border-left: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 768px) {
+  // Standard path item row mobile styling
+  .path-item-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto;
+
+    > .path-type-selector {
+      grid-column: 1 / span 2;
+      grid-row: 1;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+      padding: var(--space-xs) var(--space-md);
+      display: flex;
+      align-items: center;
+    }
+
+    > mat-form-field.path-input-field {
+      grid-column: 1;
+      grid-row: 2;
+      height: 56px;
+      width: 100%;
+    }
+  }
+
+  // Overrides and styling specific to copyurl rows/wrappers
+  .copyurl-inputs-wrapper {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+
+    .url-field,
+    .filename-field {
+      flex: none;
+      height: 56px;
+    }
+
+    .filename-field {
+      border-left: none;
+      border-top: 1px solid var(--border-color);
+    }
+  }
+
+  .copyurl-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto;
+
+    > .path-type-selector {
+      grid-column: 1;
+      grid-row: 1;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+      padding: var(--space-xs) var(--space-md);
+    }
   }
 }

@@ -5,6 +5,7 @@ import {
   input,
   signal,
   OnDestroy,
+  output,
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -12,22 +13,22 @@ import {
   FormControl,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-number-input',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
     MatFormFieldModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './number-input.component.html',
   styleUrl: './number-input.component.scss',
@@ -50,6 +51,8 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
   readonly ariaLabel = input<string>('');
   readonly allowNegative = input<boolean>(true);
 
+  readonly inputBlur = output<void>();
+
   readonly innerControl = new FormControl<string | number | null>(null);
 
   // Hold Timer (stepper long-press)
@@ -68,7 +71,7 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
   readonly disabled = signal(false);
 
   constructor() {
-    this.innerControl.valueChanges.subscribe(val => {
+    this.innerControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(val => {
       if (val === null || val === undefined || val === '') {
         this.onChange(null);
         return;
@@ -130,6 +133,7 @@ export class NumberInputComponent implements ControlValueAccessor, OnDestroy {
       }
     }
     this.onTouched();
+    this.inputBlur.emit();
   }
 
   startHold(action: 'increment' | 'decrement'): void {

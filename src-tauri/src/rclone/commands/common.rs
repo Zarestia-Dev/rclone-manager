@@ -1,10 +1,44 @@
-use crate::core::settings::AppSettingsManager;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::utils::types::remotes::{ProfileConfig, helper_config_keys};
+use crate::{
+    core::settings::AppSettingsManager,
+    rclone::backend::BackendError,
+    utils::{
+        json_helpers::{get_string, interpolate_value, json_to_hashmap, resolve_profile_options},
+        rclone::endpoints::operations,
+        types::{
+            remotes::{ProfileConfig, helper_config_keys},
+            state::RcloneState,
+        },
+    },
+};
+
+#[cfg(not(feature = "librclone"))]
+use crate::rclone::backend::types::Backend;
+
+#[must_use]
+pub fn transport(app: &AppHandle) -> std::sync::Arc<dyn crate::rclone::backend::RcloneTransport> {
+    app.state::<RcloneState>().transport.clone()
+}
+
+pub fn ensure_group(payload: &mut Value, group: &str) {
+    if let Some(obj) = payload.as_object_mut() {
+        obj.entry("_group".to_string())
+            .or_insert_with(|| json!(group));
+    }
+}
+
+#[must_use]
+pub fn filter_empty_options(opts: &HashMap<String, Value>) -> HashMap<String, Value> {
+    opts.iter()
+        .filter(|(_, v)| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
 
 /// Resolves profile settings for a given remote and profile name.
 ///
@@ -38,26 +72,13 @@ pub async fn resolve_profile_settings(
     Ok((config.clone(), settings_val))
 }
 
-// ============================================================================
-// SHARED TRAITS & HELPERS
-// ============================================================================
-
-use crate::rclone::backend::types::Backend;
-use crate::utils::json_helpers::{
-    get_string, interpolate_value, json_to_hashmap, resolve_profile_options,
-};
-use crate::utils::types::state::RcloneState;
-use serde_json::json;
-use std::collections::HashMap;
-
 /// Determines if the given fs path is a directory using operations/stat.
 pub async fn is_directory(
     app: &AppHandle,
     fs_path: &str,
     runtime_remote_options: Option<&HashMap<String, Value>>,
 ) -> Result<bool, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    let state = app.state::<RcloneState>();
+    let transport = app.state::<RcloneState>().transport.clone();
 
     let (base, mut remote) = parse_fs(fs_path).unwrap_or((fs_path.to_string(), String::new()));
 
@@ -66,25 +87,16 @@ pub async fn is_directory(
         remote = remote.trim_start_matches('/').to_string();
     }
 
-    let resp = backend
-        .inject_auth(
-            state
-                .client
-                .post(backend.url_for(crate::utils::rclone::endpoints::operations::STAT)),
-        )
-        .json(&json!({
-            "fs": fs_value_with_runtime_overrides(&base, runtime_remote_options),
-            "remote": remote,
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
+    let payload = json!({
+        "fs": fs_value_with_runtime_overrides(&base, runtime_remote_options),
+        "remote": remote,
+    });
 
-    if !resp.status().is_success() {
-        return Ok(false);
-    }
-
-    let val: Value = resp.json().await.map_err(|e| format!("Parse error: {e}"))?;
+    let val = match transport.rpc(operations::STAT, Some(&payload)).await {
+        Ok(v) => v,
+        Err(BackendError::Rpc { .. }) => return Ok(false),
+        Err(e) => return Err(format!("Network error: {e}")),
+    };
 
     // rclone operations/stat returns { "item": { ... } } or { "item": null }
     let is_dir = val
@@ -100,6 +112,7 @@ pub async fn is_directory(
 ///
 /// Local backends route config calls through the OAuth process port so that
 /// the OAuth flow can intercept them. Remote backends use the main API port.
+#[cfg(not(feature = "librclone"))]
 pub fn get_config_url(backend: &Backend, operation: &str) -> String {
     if backend.is_local {
         backend.oauth_url_for(operation)
@@ -192,8 +205,6 @@ pub fn fs_value_with_runtime_overrides(
         _ => json!(fs),
     }
 }
-
-// Removed ParsedFs enum
 
 /// Parses an rclone fs string into (base, root).
 /// Example: "remote:path" -> ("remote:", "path"), ":<s3:/bucket>" -> (":s3:", "/bucket")

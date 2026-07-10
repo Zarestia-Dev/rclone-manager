@@ -11,11 +11,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { BackupRestoreService } from 'src/app/services/settings/backup-restore.service';
 import { BackupAnalysis } from '@app/types';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restore-preview-modal',
-  standalone: true,
   imports: [
     MatFormFieldModule,
     MatInputModule,
@@ -27,7 +26,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     FormsModule,
     DatePipe,
     UpperCasePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './restore-preview-modal.component.html',
   styleUrls: ['./restore-preview-modal.component.scss', '../../../../styles/_shared-modal.scss'],

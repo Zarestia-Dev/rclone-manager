@@ -1,29 +1,27 @@
 <div class="nautilus-layout">
-  <div class="nautilus-header">
-    <mat-toolbar data-tauri-drag-region>
-      <div class="header-start">
-        <button class="nav-button" (click)="onToggleSearch()" [class.active]="isSearchMode()">
-          <mat-icon svgIcon="search"></mat-icon>
+  <mat-toolbar data-tauri-drag-region>
+    <div class="header-start">
+      <button class="nav-button" (click)="onToggleSearch()" [class.active]="isSearchMode()">
+        <mat-icon svgIcon="search"></mat-icon>
+      </button>
+    </div>
+    <div class="header-center">
+      <span>{{ title() | translate }}</span>
+    </div>
+    <div class="header-end">
+      @if (!isPickerMode()) {
+        <button
+          class="nav-button"
+          [cdkMenuTriggerFor]="sidebarMainMenu"
+          [cdkMenuPosition]="[
+            { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+          ]"
+        >
+          <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
-      </div>
-      <div class="header-center">
-        <span>{{ title() | translate }}</span>
-      </div>
-      <div class="header-end">
-        @if (!isPickerMode()) {
-          <button
-            class="nav-button"
-            [cdkMenuTriggerFor]="sidebarMainMenu"
-            [cdkMenuPosition]="[
-              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-            ]"
-          >
-            <mat-icon svgIcon="menu-bar"></mat-icon>
-          </button>
-        }
-      </div>
-    </mat-toolbar>
-  </div>
+      }
+    </div>
+  </mat-toolbar>
 
   <div class="nautilus-scroll-content">
     <nav class="sidebar-nav">
@@ -56,23 +54,27 @@
         {{ 'nautilus.titles.bookmarks' | translate }}
       </div>
 
-      @for (bm of bookmarks(); track bm.meta.remote + ':' + bm.entry.Path) {
+      @for (item of bookmarkViewModels(); track item.bm.meta.remote + ':' + item.bm.entry.Path) {
         <button
           class="sidebar-item"
-          [attr.data-sidebar-bookmark-path]="bm.entry.Path"
-          [class.selected]="isBookmarkSelected(bm)"
-          [class.drag-over]="isDragging() && hoveredSidebarItem() === 'bookmark:' + bm.entry.Path"
-          (click)="onOpenBookmark(bm)"
+          [attr.data-sidebar-bookmark-path]="item.bm.entry.Path"
+          [class.selected]="selectedBookmarkKeys().has(item.key)"
+          [class.drag-over]="
+            isDragging() && hoveredSidebarItem() === 'bookmark:' + item.bm.entry.Path
+          "
+          (click)="onOpenBookmark(item.bm)"
           (dragover)="$event.preventDefault()"
-          (drop)="droppedToBookmark.emit({ event: $event, target: bm })"
+          (drop)="droppedToBookmark.emit({ event: $event, target: item.bm })"
           [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
           (cdkContextMenuOpened)="menuCtrl.reset()"
-          [cdkContextMenuTriggerData]="{ $implicit: bm }"
+          [cdkContextMenuTriggerData]="{ $implicit: item.bm }"
         >
           <mat-icon
-            [svgIcon]="bm.meta.remoteType ? iconService.getIconName(bm.meta.remoteType) : 'folder'"
+            [svgIcon]="
+              item.bm.meta.remoteType ? iconService.getIconName(item.bm.meta.remoteType) : 'folder'
+            "
           ></mat-icon>
-          <span>{{ bm.entry.Name }}</span>
+          <span>{{ item.bm.entry.Name }}</span>
         </button>
       } @empty {
         <p class="empty-hint">{{ 'nautilus.bookmarks.emptyHint' | translate }}</p>
@@ -126,7 +128,7 @@
       nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
     "
     [class.drag-over]="isDragging() && hoveredSidebarItem() === 'remote:' + remote.name"
-    [matTooltip]="getDriveTooltip(remote)"
+    [matTooltip]="driveTooltips().get(remote.name) ?? ''"
     matTooltipShowDelay="600"
     matTooltipPosition="right"
     (click)="onSelectRemote(remote)"
@@ -189,7 +191,7 @@
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
         <mat-divider></mat-divider>
-        @if (supportsCleanup(remote)) {
+        @if (cleanupSupportedRemotes().has(remote.name)) {
           <button class="menu-item danger" cdkMenuItem (click)="requestCleanup.emit(remote)">
             <span class="item-label">{{ 'nautilus.contextMenu.emptyTrash' | translate }}</span>
           </button>

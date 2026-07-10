@@ -6,13 +6,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { SharedProfileType } from '@app/types';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-profile-header',
-  standalone: true,
   imports: [
     FormsModule,
     MatButtonModule,
@@ -21,7 +20,7 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     MatInputModule,
     MatSelectModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './profile-header.component.html',
   styleUrl: './profile-header.component.scss',
@@ -40,16 +39,11 @@ export class ProfileHeaderComponent {
   readonly selectedName = computed(() => this.state.selectedProfileName()[this.flagType()]);
   readonly profileList = computed(() => this.state.profileLists()[this.flagType()]);
 
-  readonly renameDisabled = computed(() =>
-    this.state.isRenameProfileDisabled(this.flagType(), this.selectedName())
+  private readonly actionState = computed(() =>
+    this.state.getProfileActionState(this.flagType(), this.selectedName())
   );
-  readonly deleteDisabled = computed(() =>
-    this.state.isDeleteProfileDisabled(this.flagType(), this.selectedName())
-  );
-  readonly renameDisabledReason = computed(() =>
-    this.state.getRenameProfileDisabledReason(this.flagType(), this.selectedName())
-  );
-  readonly deleteDisabledReason = computed(() =>
-    this.state.getDeleteProfileDisabledReason(this.flagType(), this.selectedName())
-  );
+  readonly renameDisabled = computed(() => this.actionState().rename.disabled);
+  readonly deleteDisabled = computed(() => this.actionState().delete.disabled);
+  readonly renameDisabledReason = computed(() => this.actionState().rename.reason);
+  readonly deleteDisabledReason = computed(() => this.actionState().delete.reason);
 }

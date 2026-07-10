@@ -1,6 +1,7 @@
-use log::{info, warn};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+
+use log::{info, warn};
 use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
@@ -64,6 +65,7 @@ async fn run_update_checks(app: &AppHandle) {
         }
     }
 
+    #[cfg(not(feature = "librclone"))]
     if config.runtime.rclone_auto_check_updates {
         let channel = config.runtime.rclone_update_channel.clone();
         info!("Checking for rclone updates (channel: {channel})...");
@@ -76,7 +78,7 @@ async fn run_update_checks(app: &AppHandle) {
 }
 
 async fn check_app_update(app: &AppHandle, channel: &str) -> Result<(), String> {
-    crate::utils::app::updater::app_updates::fetch_update(app.clone(), channel.to_string())
+    crate::utils::app::updater::fetch_update(app.clone(), channel.to_string())
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())

@@ -1,6 +1,6 @@
 import { Component, input, output, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
@@ -14,14 +14,13 @@ import {
   StopJobEvent,
   JOB_STATUS_BADGE_MAP,
   JOB_ICON_MAP,
-} from '../../types';
+} from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { ModalService } from 'src/app/services/ui/modal.service';
 
 @Component({
   selector: 'app-jobs-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatCardModule,
@@ -31,7 +30,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
     MatTooltipModule,
     FormatFileSizePipe,
     FormatTimePipe,
-    TranslateModule,
+    TranslatePipe,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
@@ -46,7 +45,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content card-list-container">
+      <mat-card-content class="card-list-container">
         @for (job of enrichedJobs(); track job.jobid) {
           <div
             class="card-row-item"

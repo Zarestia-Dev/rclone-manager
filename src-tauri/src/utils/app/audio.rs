@@ -1,7 +1,9 @@
-use lofty::prelude::*;
-use lofty::probe::Probe;
 use std::io::Cursor;
 use std::path::Path;
+
+use lofty::file::TaggedFile;
+use lofty::prelude::*;
+use lofty::probe::Probe;
 
 /// Result of a picture extraction
 pub struct PictureData {
@@ -32,23 +34,7 @@ pub fn extract_picture_from_path(path: &str) -> Option<PictureData> {
         }
     };
 
-    let tag = tagged_file
-        .primary_tag()
-        .or_else(|| tagged_file.first_tag());
-
-    if let Some(tag) = tag
-        && let Some(pic) = tag.pictures().first()
-    {
-        return Some(PictureData {
-            data: pic.data().to_vec(),
-            mime_type: pic.mime_type().map_or_else(
-                || "image/jpeg".to_string(),
-                std::string::ToString::to_string,
-            ),
-        });
-    }
-
-    None
+    picture_from_tagged_file(&tagged_file)
 }
 
 /// Extracts the first picture from an in-memory byte slice
@@ -73,6 +59,10 @@ pub fn extract_picture_from_bytes(data: &[u8], extension: Option<&str>) -> Optio
         }
     };
 
+    picture_from_tagged_file(&tagged_file)
+}
+
+fn picture_from_tagged_file(tagged_file: &TaggedFile) -> Option<PictureData> {
     let tag = tagged_file
         .primary_tag()
         .or_else(|| tagged_file.first_tag());

@@ -1,10 +1,8 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { inject } from '@angular/core';
 
 @Pipe({
   name: 'linebreaks',
-  standalone: true,
   pure: true,
 })
 export class LineBreaksPipe implements PipeTransform {

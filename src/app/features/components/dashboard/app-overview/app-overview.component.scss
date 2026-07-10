@@ -98,9 +98,10 @@
     }
   }
 
-  // ── HOVER STATE ────────────────────────────────────────────────────────────
+  // ── HOVER & OPEN STATE ─────────────────────────────────────────────────────
 
-  &:hover {
+  &:hover,
+  &.open {
     .blossom-panel {
       opacity: 1;
       transform: translateY(0) scale(1);
@@ -109,7 +110,6 @@
 
     .blossom-trigger {
       transform: scale(1.05);
-      background: var(--mode-primary-color) !important;
 
       mat-icon {
         transform: rotate(90deg);

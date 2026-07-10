@@ -1,6 +1,6 @@
 import { inject, Injectable, signal, effect } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, Remote } from '@app/types';
+import { AppTab, Remote, APP_TABS } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { WindowService } from 'src/app/services/ui/window.service';
@@ -23,7 +23,7 @@ export class UiStateService {
   private readonly _currentTab = signal<AppTab>(
     ((): AppTab => {
       const stored = this.localStorage.get<string>('ui.currentTab', 'general');
-      const validTabs: AppTab[] = ['mount', 'operations', 'serve', 'general'];
+      const validTabs = APP_TABS;
       if (validTabs.includes(stored as AppTab)) {
         return stored as AppTab;
       }

@@ -73,15 +73,22 @@
     "copying": "复制中",
     "moving": "移动中",
     "bisyncActive": "双向同步进行中",
+    "checkActive": "检查进行中",
+    "cryptcheckActive": "加密检查进行中",
+    "deleteActive": "删除进行中",
+    "copyurlActive": "复制 URL 进行中",
+    "archivecreateActive": "归档进行中",
+    "archivecreating": "归档中",
     "syncSummary": "同步中（{{count}}）",
-    "syncWithProfile": "同步：{{profiles}}",
-    "copyWithProfile": "复制：{{profiles}}",
-    "moveWithProfile": "移动：{{profiles}}",
-    "bisyncWithProfile": "双向同步：{{profiles}}",
     "toggleSync": "切换同步快捷操作",
     "toggleCopy": "切换复制快捷操作",
     "toggleMove": "切换移动快捷操作",
     "toggleBisync": "切换双向同步快捷操作",
+    "toggleCheck": "切换检查为快捷操作",
+    "toggleCryptcheck": "切换加密检查为快捷操作",
+    "toggleDelete": "切换删除为快捷操作",
+    "toggleCopyurl": "切换复制 URL 为快捷操作",
+    "toggleArchivecreate": "切换归档为快捷操作",
     "successStart": "成功为 {{remote}} ({{profile}}) 启动了 {{type}}",
     "failedStart": "无法为 {{remote}} 启动 {{type}}：{{error}}"
   },
@@ -134,6 +141,10 @@
     "copy": "复制",
     "move": "移动",
     "bisync": "双向同步",
+    "check": "检查",
+    "delete": "删除",
+    "copyurl": "复制 URL",
+    "archivecreate": "归档",
     "serve": "服务",
     "start": "启动",
     "stop": "停止"
@@ -214,7 +225,9 @@
       "categories": {
         "app": "应用设置",
         "rclone": "Rclone 选项"
-      }
+      },
+      "remoteSaved": "远程存储已成功保存",
+      "remoteSaveFailed": "保存远程存储失败：{{error}}"
     }
   },
   "rcloneUpdate": {
@@ -710,10 +723,12 @@
     },
     "transferActivity": {
       "title": "传输活动",
+      "titleCheck": "校验活动",
       "resetStats": "重置统计",
       "tabs": {
         "active": "进行中（{{count}}）",
-        "recent": "最近完成（{{count}}）"
+        "recent": "最近完成（{{count}}）",
+        "recentCheck": "已校验（{{count}}）"
       },
       "table": {
         "size": "大小",
@@ -728,13 +743,37 @@
         "transferError": "传输错误",
         "transferCompleted": "传输完成",
         "preparing": "正在准备",
-        "finalizing": "正在完成..."
+        "finalizing": "正在完成...",
+        "missingDst": "目的地缺失",
+        "missingSrc": "源中缺失",
+        "differ": "文件内容存在差异",
+        "error": "错误"
+      },
+      "actions": {
+        "resolveToDst": "复制到目的地",
+        "resolveToSrc": "复制到源",
+        "resolveOverwrite": "解决文件冲突",
+        "resolveOverwriteTitle": "解决文件冲突",
+        "resolveOverwriteMessage": "文件“{{name}}”在源和目的地都存在但内容不同。您要用源文件覆盖目的地文件吗？",
+        "overwriteDst": "覆盖目的地",
+        "copyUrl": "复制 URL",
+        "download": "下载文件",
+        "successSync": "文件同步操作成功启动",
+        "failSync": "同步文件失败: {{error}}",
+        "successCopyUrl": "下载 URL 已复制到剪贴板",
+        "failCopyUrl": "生成下载 URL 失败",
+        "successDownload": "文件下载成功",
+        "failDownload": "下载文件失败",
+        "resolveStarted": "文件不匹配处理已开始",
+        "resolveFailed": "解决文件不匹配失败：{{error}}"
       },
       "empty": {
         "noActive": "无正在进行的传输",
         "activeHint": "操作开始后，传输项将显示在此处",
         "noRecent": "无最近完成的传输",
-        "recentHint": "任务完成后，已完成的传输将显示在此处"
+        "recentHint": "任务完成后，已完成的传输将显示在此处",
+        "noRecentCheck": "无被检查的文件",
+        "recentHintCheck": "任务完成后，被检查的文件将显示在这里"
       },
       "time": {
         "daysAgo": "{{count}} 天前",
@@ -769,6 +808,7 @@
     "settingControl": {
       "default": "默认值：{{value}}",
       "resetToDefault": "恢复默认",
+      "obscureValue": "使用 rclone 混淆密码",
       "enabled": "已启用",
       "disabled": "已禁用",
       "addItem": "添加项",
@@ -956,6 +996,17 @@
       "importDestPath": "导入目标路径",
       "importMountPoint": "导入挂载点"
     },
+    "obscure": {
+      "title": "混淆密码",
+      "description": "使用 rclone 的标准混淆算法混淆明文字符串，以便安全地保存到配置文件或参数中。",
+      "clearPlaceholder": "明文密码/字符串",
+      "clearPlaceholderText": "输入明文密码",
+      "action": "混淆",
+      "resultTitle": "混淆后的值",
+      "resultHelp": "点击复制按钮并将该值粘贴到需要的地方。",
+      "applyToField": "应用混淆后的值到字段",
+      "apply": "应用到字段"
+    },
     "remoteConfig": {
       "remoteName": "远程存储名称",
       "remoteNameRequired": "远程存储名称为必填项",
@@ -975,12 +1026,17 @@
       "jsonEditorInfo": {
         "sync": "同步/复制/移动配置文件：设置 'srcFs' 和 'dstFs' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
         "bisync": "双向同步 (Bisync) 配置文件：设置 'path1' 和 'path2' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
+        "check": "检查配置文件：设置 “srcFs” 和 “dstFs” 路径、配置文件级别的字段，并将所有检查参数放在 “_config” 内部。",
         "mount": "挂载 (Mount) 配置文件：设置 'fs' 和 'mountPoint' 路径、'mountType' 及配置文件级字段，并将所有挂载选项放置在 'mountOpt' 中。",
         "serve": "服务 (Serve) 配置文件：设置 'fs' 路径、'serveType' 及配置文件级字段，并将所有服务选项放置在 '_config' 中。",
         "vfs": "VFS 配置文件：以键值对形式设置自定义虚拟文件系统（VFS）缓存、缓冲和兼容性选项。",
         "filter": "过滤配置文件：以键值对形式设置通配符模式、包含/排除规则以及文件过滤选项。",
         "backend": "后端配置文件：以键值对形式配置高级协议选项和特定远程存储的连接设置。",
         "runtimeRemote": "运行时远程存储：以键值对形式设置动态连接覆盖及性能调整项。"
+      },
+      "runtimeRemoteWarning": {
+        "title": "运行时远程设置",
+        "description": "这些设置用于在运行时与该远程交互时动态覆盖连接属性或应用性能微调。它们不保存在持久的 rclone.conf 文件中。如果这些字段中有任何字段包含密码或 API 密钥等敏感值，则在保存之前必须使用 rclone 的 obscure 算法手动加密；rclone 不接受此类字段的明文值。"
       },
       "showAdvanced": "显示高级选项",
       "hideAdvanced": "隐藏高级选项",
@@ -1009,6 +1065,11 @@
       "loadingServeOptions": "加载 {{type}} 选项...",
       "serveDescription": "选择要提供服务的远程路径，可选择整个远程或特定文件夹",
       "operationDescription": "为此操作配置源路径、目标路径和自动启动选项",
+      "allowOtherWarning": {
+        "title": "需要配置 FUSE",
+        "description": "启用 '--allow-other' 需要在主机系统上配置 /etc/fuse.conf 以避免挂载失败。请确保 /etc/fuse.conf 中的 'user_allow_other' 已取消注释/启用。",
+        "learnMore": "在 Rclone 论坛中搜索支持"
+      },
       "hideCommandOptions": "隐藏命令行选项",
       "showCommandOptions": "显示命令行选项",
       "quickAdd": "快速添加",
@@ -1042,6 +1103,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
       "enableAutoStart": "开机自动{{type}}",
       "enableScheduled": "启用{{type}}计划任务",
       "enableWatch": "启用实时文件监控",
@@ -1062,8 +1124,13 @@
       "enterSourcePath": "输入源路径...",
       "otherRemotes": "其他远程存储",
       "enterDestPath": "输入目标路径...",
+      "enterDownloadUrl": "输入下载链接（例如：https://example.com/file.zip）",
+      "copyUrlCustomFilenamePlaceholder": "自动文件名（可选）",
+      "copyUrlFileSettingsWarning": "自定义文件名是在上面的每个 URL 行中单独设置的。任何文件名为空的行都将使用自动确定的文件名。",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "挂载目标必须是本地文件夹",
       "completionNote": "远程路径补全功能在创建远程存储后可用",
+      "coreCommandNote": "此操作通过 rclone 作为 CLI命令运行，而不是使用原生的传输 API。它们的行为与原生 API 操作不同。可能会出现某些 bug、性能问题，以及缺少进度更新（如预估时间、传输速率）等情况。",
       "loading": "加载中...",
       "upFolder": "上一级文件夹",
       "noItemsFound": "此目录中无项目",
@@ -1341,7 +1408,6 @@
       "close": "关闭",
       "directory": "文件夹",
       "file": "文件",
-      "copied": "已复制！",
       "copyToClipboard": "复制到剪贴板",
       "getLink": "获取链接",
       "removeLink": "移除链接",
@@ -1436,6 +1502,11 @@
       "syncSettings": "同步设置",
       "moveSettings": "移动设置",
       "bisyncSettings": "双向同步设置",
+      "checkSettings": "检查设置",
+      "cryptcheckSettings": "加密检查设置",
+      "deleteSettings": "删除设置",
+      "copyUrlSettings": "复制 URL 设置",
+      "archivecreateSettings": "归档设置",
       "sync": "同步",
       "syncDesc": "单向同步",
       "bisync": "双向同步",
@@ -1444,6 +1515,16 @@
       "moveDesc": "移动文件（删除源）",
       "copy": "复制",
       "copyDesc": "复制文件（保留源）",
+      "check": "检查",
+      "checkDesc": "检查源和目的地是否匹配",
+      "cryptcheck": "加密检查",
+      "cryptcheckDesc": "验证加密远程连接的完整性",
+      "delete": "删除",
+      "deleteDesc": "永久删除符合过滤条件的文件",
+      "copyurl": "复制 URL",
+      "copyUrlDesc": "为文件生成公开下载 URL",
+      "archivecreate": "归档",
+      "archivecreateDesc": "将文件夹/文件压缩到归档文件（Zip、Tar 等）中",
       "default": "默认",
       "serveBehave": "配置服务协议（HTTP、FTP 等），支持多配置文件。",
       "mountBehave": "配置挂载行为与虚拟文件系统调优。",
@@ -1495,8 +1576,6 @@
       "nextAutomationTooltip": "下一个自动化",
       "remoteConfiguration": "远程存储配置",
       "editConfiguration": "编辑配置",
-      "toggleQuickAction": "将 {{label}} 设为快捷操作",
-      "quickActionSelected": "{{label}} 已设为快捷操作 {{position}}",
       "remoteActionQuickSelection": "远程操作快捷选择"
     }
   },
@@ -1542,6 +1621,17 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "配置快捷操作",
+      "description": "选择要显示在远程仪表板的按钮操作 {{name}}。最多可为 {{max}} 个操作添加星标，并通过拖拽更改它们的顺序。",
+      "removeStar": "从快捷操作中移除",
+      "addStar": "添加到快捷操作",
+      "cancel": "取消",
+      "save": "保存更改",
+      "moreButton": "更多",
+      "moreButtonTooltip": "更多操作",
+      "configureTooltip": "配置快捷操作"
+    },
     "jobDetail": {
       "title": "任务详情 #{{id}}",
       "sections": {
@@ -1587,6 +1677,7 @@
       "aboutRclone": "关于 Rclone",
       "credits": "致谢",
       "legal": "法律信息",
+      "donate": "捐赠",
       "website": "官方网站",
       "wiki": "Wiki 页面",
       "reportIssues": "报告问题",
@@ -1986,6 +2077,11 @@
         "bisync": "双向同步",
         "move": "移动",
         "copy": "复制",
+        "check": "检查",
+        "delete": "删除",
+        "copyurl": "复制 URL",
+        "archivecreate": "归档",
+        "cryptcheck": "加密检查",
         "filter": "过滤",
         "vfs": "VFS",
         "backend": "后端",
@@ -2194,12 +2290,27 @@
       "archiveCreate": {
         "title": "创建归档",
         "filenameLabel": "归档文件名",
-        "formatLabel": "归档格式",
-        "prefixLabel": "前缀路径",
-        "prefixHint": "如果设置，将覆盖完整路径",
-        "fullPathLabel": "包含完整源路径",
-        "fullPathHint": "保留从根目录开始的目录结构",
+        "filenameDesc": "输入要创建的压缩归档文件的名称",
         "compress": "压缩"
+      },
+      "multiRename": {
+        "title": "重命名 {{count}} 个文件",
+        "templateMode": "使用模板重命名",
+        "replaceMode": "查找和替换文本",
+        "templateInput": "模板",
+        "addPlaceholder": "添加",
+        "findLabel": "查找文本",
+        "replaceLabel": "替换为",
+        "caseSensitive": "区分大小写",
+        "counterStart": "计数器起始值",
+        "counterStep": "步长",
+        "counterPadding": "位数 (填充)",
+        "rename": "重命名",
+        "original": "原名称",
+        "newName": "新名称",
+        "counter": "计数器",
+        "date": "日期",
+        "extension": "扩展名"
       }
     },
     "errors": {
@@ -2219,7 +2330,8 @@
       "minSelection": "请至少选择 {{min}} 项。",
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
       "archiveCreateFailed": "创建归档失败: {{error}}",
-      "externalDropFailed": "处理外部文件拖放失败。"
+      "externalDropFailed": "处理外部文件拖放失败。",
+      "sendToFailed": "更新文件管理器右键菜单失败：{{error}}"
     },
     "contextMenu": {
       "open": "打开",
@@ -2231,6 +2343,8 @@
       "refresh": "刷新",
       "properties": "属性",
       "reload": "重新加载",
+      "addToSendTo": "添加至文件管理器右键菜单",
+      "removeFromSendTo": "从文件管理器右键菜单移除",
       "copyLocation": "复制位置",
       "selectAll": "全选",
       "removeBookmark": "移除书签",
@@ -2258,7 +2372,10 @@
       "nextTab": "下一个标签页",
       "previousTab": "上一个标签页",
       "toggleSplit": "切换分屏视图",
-      "switchPane": "切换窗格"
+      "switchPane": "切换窗格",
+      "copyPublicLink": "复制公共链接",
+      "createFolderWithItems": "用所选项目新建文件夹...",
+      "renameMultiple": "批量重命名..."
     },
     "view": {
       "iconSize": "图标大小",
@@ -2278,7 +2395,10 @@
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
       "copyUrlStarted": "正在从 URL 下载...",
-      "archiveCreateStarted": "已开始创建归档操作"
+      "getPublicLinkStarted": "正在生成公共链接...",
+      "archiveCreateStarted": "已开始创建归档操作...",
+      "sendToAdded": "已将“{{remote}}{{path}}”添加至文件管理器右键菜单",
+      "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除"
     }
   },
   "home": {
@@ -2309,7 +2429,6 @@
     },
     "errors": {
       "generic": "发生意外错误。请检查日志获取更多详细信息。",
-      "updateActionsFailed": "更新快捷操作失败",
       "openFailed": "打开 {{name}} 失败",
       "resetSettingsFailed": "重置远程存储设置失败",
       "deleteRemoteFailed": "删除远程存储失败"
@@ -2600,8 +2719,6 @@
       "labels": {
         "unmounted": "未挂载",
         "mounted": "已挂载",
-        "syncing": "同步中",
-        "offSync": "未同步",
         "active": "活动",
         "inactive": "未活动"
       }
@@ -2618,6 +2735,16 @@
         "stopMove": "停止移动",
         "startBisync": "开始双向同步",
         "stopBisync": "停止双向同步",
+        "startCheck": "开始检查",
+        "stopCheck": "停止检查",
+        "startCryptcheck": "开始加密检查",
+        "stopCryptcheck": "停止加密检查",
+        "startDelete": "开始删除",
+        "stopDelete": "停止删除",
+        "startCopyurl": "开始复制 URL",
+        "stopCopyurl": "停止复制 URL",
+        "startArchivecreate": "开始归档",
+        "stopArchivecreate": "停止归档",
         "startServe": "启动服务",
         "stopServe": "停止服务"
       },
@@ -2649,6 +2776,11 @@
     "copyCount": "复制 [{{active}}/{{total}}]",
     "moveCount": "移动 [{{active}}/{{total}}]",
     "bisyncCount": "双向同步 [{{active}}/{{total}}]",
+    "checkCount": "检查 [{{active}}/{{total}}]",
+    "cryptcheckCount": "加密检查 [{{active}}/{{total}}]",
+    "deleteCount": "删除 [{{active}}/{{total}}]",
+    "copyurlCount": "复制 URL [{{active}}/{{total}}]",
+    "archivecreateCount": "归档 [{{active}}/{{total}}]",
     "serveCount": "服务 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 个作业",

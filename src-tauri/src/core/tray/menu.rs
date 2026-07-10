@@ -6,6 +6,7 @@ use tauri::{
 use super::tray_action::TrayAction;
 use super::{TrayProfileSummary, TrayRemoteSummary, TraySnapshot};
 use crate::t;
+use crate::utils::types::remotes::OperationType;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RegularItem {
@@ -112,14 +113,13 @@ impl MenuPlan {
     }
 }
 
-// ── Plan builders (pure data, off main thread) ────────────────────────────────
+// Plan builders (pure data, off main thread)
 
 struct ProfileSubmenuConfig {
     label_key: &'static str,
     start_label_key: &'static str,
     stop_label_key: &'static str,
-    start_action: fn(String, String) -> TrayAction,
-    stop_action: fn(String, String) -> TrayAction,
+    op: OperationType,
 }
 
 fn build_remote_submenu(
@@ -138,7 +138,12 @@ fn build_remote_submenu(
     let total_job_profiles = remote_summary.sync_profiles.len()
         + remote_summary.copy_profiles.len()
         + remote_summary.move_profiles.len()
-        + remote_summary.bisync_profiles.len();
+        + remote_summary.bisync_profiles.len()
+        + remote_summary.check_profiles.len()
+        + remote_summary.delete_profiles.len()
+        + remote_summary.copyurl_profiles.len()
+        + remote_summary.archivecreate_profiles.len()
+        + remote_summary.cryptcheck_profiles.len();
 
     let job_status_text = if total_job_profiles > 0 {
         t!(
@@ -166,8 +171,7 @@ fn build_remote_submenu(
                     label_key: "tray.mountCount",
                     start_label_key: "tray.mount",
                     stop_label_key: "tray.unmount",
-                    start_action: TrayAction::MountProfile,
-                    stop_action: TrayAction::UnmountProfile,
+                    op: OperationType::Mount,
                 },
             ),
             "sync" => (
@@ -176,8 +180,7 @@ fn build_remote_submenu(
                     label_key: "tray.syncCount",
                     start_label_key: "tray.start",
                     stop_label_key: "tray.stop",
-                    start_action: TrayAction::SyncProfile,
-                    stop_action: TrayAction::StopSyncProfile,
+                    op: OperationType::Sync,
                 },
             ),
             "copy" => (
@@ -186,8 +189,7 @@ fn build_remote_submenu(
                     label_key: "tray.copyCount",
                     start_label_key: "tray.start",
                     stop_label_key: "tray.stop",
-                    start_action: TrayAction::CopyProfile,
-                    stop_action: TrayAction::StopCopyProfile,
+                    op: OperationType::Copy,
                 },
             ),
             "move" => (
@@ -196,8 +198,7 @@ fn build_remote_submenu(
                     label_key: "tray.moveCount",
                     start_label_key: "tray.start",
                     stop_label_key: "tray.stop",
-                    start_action: TrayAction::MoveProfile,
-                    stop_action: TrayAction::StopMoveProfile,
+                    op: OperationType::Move,
                 },
             ),
             "bisync" => (
@@ -206,8 +207,52 @@ fn build_remote_submenu(
                     label_key: "tray.bisyncCount",
                     start_label_key: "tray.start",
                     stop_label_key: "tray.stop",
-                    start_action: TrayAction::BisyncProfile,
-                    stop_action: TrayAction::StopBisyncProfile,
+                    op: OperationType::Bisync,
+                },
+            ),
+            "check" => (
+                remote_summary.check_profiles.as_slice(),
+                ProfileSubmenuConfig {
+                    label_key: "tray.checkCount",
+                    start_label_key: "tray.start",
+                    stop_label_key: "tray.stop",
+                    op: OperationType::Check,
+                },
+            ),
+            "delete" => (
+                remote_summary.delete_profiles.as_slice(),
+                ProfileSubmenuConfig {
+                    label_key: "tray.deleteCount",
+                    start_label_key: "tray.start",
+                    stop_label_key: "tray.stop",
+                    op: OperationType::Delete,
+                },
+            ),
+            "copyurl" => (
+                remote_summary.copyurl_profiles.as_slice(),
+                ProfileSubmenuConfig {
+                    label_key: "tray.copyurlCount",
+                    start_label_key: "tray.start",
+                    stop_label_key: "tray.stop",
+                    op: OperationType::Copyurl,
+                },
+            ),
+            "archivecreate" => (
+                remote_summary.archivecreate_profiles.as_slice(),
+                ProfileSubmenuConfig {
+                    label_key: "tray.archivecreateCount",
+                    start_label_key: "tray.start",
+                    stop_label_key: "tray.stop",
+                    op: OperationType::Archivecreate,
+                },
+            ),
+            "cryptcheck" => (
+                remote_summary.cryptcheck_profiles.as_slice(),
+                ProfileSubmenuConfig {
+                    label_key: "tray.cryptcheckCount",
+                    start_label_key: "tray.start",
+                    stop_label_key: "tray.stop",
+                    op: OperationType::Cryptcheck,
                 },
             ),
             "serve" => (
@@ -216,8 +261,7 @@ fn build_remote_submenu(
                     label_key: "tray.serveCount",
                     start_label_key: "tray.start",
                     stop_label_key: "tray.stop",
-                    start_action: TrayAction::ServeProfile,
-                    stop_action: TrayAction::StopServeProfile,
+                    op: OperationType::Serve,
                 },
             ),
             _ => continue,
@@ -295,9 +339,9 @@ fn build_profile_submenu(
         .iter()
         .map(|p| {
             let action = if p.is_active {
-                (cfg.stop_action)(remote.to_string(), p.name.clone())
+                TrayAction::StopProfile(cfg.op, remote.to_string(), p.name.clone())
             } else {
-                (cfg.start_action)(remote.to_string(), p.name.clone())
+                TrayAction::StartProfile(cfg.op, remote.to_string(), p.name.clone())
             };
             let item_label = if p.is_active {
                 format!("● {} ▸ {}", p.name, t!(cfg.stop_label_key))
@@ -319,7 +363,7 @@ fn build_profile_submenu(
     }
 }
 
-// ── Tauri object construction (main thread only) ──────────────────────────────
+// Tauri object construction (main thread only)
 
 pub fn create_tray_menu_from_plan<R: Runtime>(
     app: &AppHandle<R>,

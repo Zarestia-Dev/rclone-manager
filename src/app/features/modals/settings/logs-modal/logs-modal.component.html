@@ -38,7 +38,7 @@
         [placeholder]="'modals.logs.searchPlaceholder' | translate"
       />
       @if (searchText()) {
-        <button mat-icon-button matSuffix (click)="searchText.set('')">
+        <button matIconButton matSuffix (click)="searchText.set('')">
           <mat-icon svgIcon="close"></mat-icon>
         </button>
       }
@@ -47,7 +47,7 @@
 
   <div class="action-controls">
     <button
-      mat-icon-button
+      matIconButton
       (click)="clearLogs()"
       [matTooltip]="'modals.logs.clearAll' | translate"
       class="warn-btn"
@@ -55,7 +55,7 @@
       <mat-icon svgIcon="trash"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="loadLogs()"
       [matTooltip]="'common.refresh' | translate"
       [disabled]="loading()"
@@ -63,14 +63,14 @@
       <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="scrollToTop()"
       [matTooltip]="'modals.logs.scrollTop' | translate"
     >
       <mat-icon svgIcon="circle-chevron-up"></mat-icon>
     </button>
     <button
-      mat-icon-button
+      matIconButton
       (click)="scrollToBottom()"
       [matTooltip]="'modals.logs.scrollBottom' | translate"
     >
@@ -103,6 +103,7 @@
     <div #terminalLogArea class="log-scroller">
       @for (log of filteredLogs(); track getLogId(log)) {
         @let expanded = isExpanded(log);
+        @let vm = logVm().get(getLogId(log));
         <div
           class="log-entry"
           [class]="log.level"
@@ -126,7 +127,7 @@
             <div class="actions-hover">
               <mat-icon
                 svgIcon="copy"
-                [appCopyToClipboard]="getFormattedLog(log)"
+                [appCopyToClipboard]="vm?.copyText ?? ''"
                 (click)="$event.stopPropagation()"
               ></mat-icon>
               @if (log.context) {
@@ -143,7 +144,7 @@
           @if (expanded && log.context) {
             <div class="log-body">
               <!-- 1. Command Output (The one with ANSI colors) -->
-              @if (getCommandOutput(log); as output) {
+              @if (vm?.output; as output) {
                 <div class="detail-block output">
                   <div class="block-label">{{ 'modals.logs.terminalOutput' | translate }}</div>
                   <div class="code-block terminal-theme" [innerHTML]="output | ansiToHtml"></div>
@@ -154,7 +155,7 @@
               <div class="detail-block json">
                 <div class="block-label">{{ 'modals.logs.logContext' | translate }}</div>
                 <div class="code-block json-theme">
-                  <pre>{{ formatContext(log.context) }}</pre>
+                  <pre>{{ vm?.contextStr }}</pre>
                 </div>
               </div>
             </div>

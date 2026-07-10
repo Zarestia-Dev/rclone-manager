@@ -9,7 +9,7 @@
   <p>
     {{ (data ? 'alerts.editAction' : 'alerts.createAction') | translate }}
   </p>
-  <button mat-icon-button (click)="cancel()" [attr.aria-label]="'common.close' | translate">
+  <button matIconButton (click)="cancel()" [attr.aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -71,10 +71,10 @@
       @if (form.controls.kind.value === 'webhook') {
         <div class="presets-row">
           <span class="mini-label">{{ 'alerts.action.presets' | translate }}</span>
-          <button mat-stroked-button type="button" (click)="applyPreset('discord')">
+          <button matButton="outlined" type="button" (click)="applyPreset('discord')">
             <mat-icon svgIcon="discord"></mat-icon> Discord
           </button>
-          <button mat-stroked-button type="button" (click)="applyPreset('slack')">
+          <button matButton="outlined" type="button" (click)="applyPreset('slack')">
             <mat-icon svgIcon="slack"></mat-icon> Slack
           </button>
         </div>
@@ -121,19 +121,19 @@
         <div class="sub-panel">
           <div class="sub-panel-header">
             <span class="mini-label">{{ 'alerts.action.headers' | translate }}</span>
-            <button mat-icon-button type="button" (click)="addHeader()" matTooltip="Add Header">
+            <button matIconButton type="button" (click)="addHeader()" matTooltip="Add Header">
               <mat-icon svgIcon="plus"></mat-icon>
             </button>
           </div>
           <div formArrayName="headers" class="headers-list">
-            @for (header of headers.controls; track $index) {
+            @for (header of headers.controls; track header) {
               <div [formGroupName]="$index" class="header-row">
                 <mat-form-field appearance="fill" class="header-key">
                   <input matInput formControlName="key" placeholder="Authorization" />
                 </mat-form-field>
                 <mat-form-field appearance="fill" class="header-val">
                   <input matInput formControlName="value" placeholder="Bearer …" />
-                  <button mat-icon-button matSuffix type="button" (click)="removeHeader($index)">
+                  <button matIconButton matSuffix type="button" (click)="removeHeader($index)">
                     <mat-icon svgIcon="trash"></mat-icon>
                   </button>
                 </mat-form-field>
@@ -177,7 +177,7 @@
             />
             <button
               matSuffix
-              mat-icon-button
+              matIconButton
               type="button"
               (click)="browseScript()"
               [matTooltip]="'common.browse' | translate"
@@ -454,10 +454,10 @@
 </main>
 
 <footer>
-  <button mat-button type="button" (click)="cancel()">
+  <button matButton="text" type="button" (click)="cancel()">
     {{ 'common.cancel' | translate }}
   </button>
-  <button mat-flat-button [disabled]="form.invalid" (click)="save()">
+  <button matButton="filled" [disabled]="form.invalid" (click)="save()">
     {{ 'common.save' | translate }}
   </button>
 </footer>

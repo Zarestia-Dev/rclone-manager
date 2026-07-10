@@ -1,29 +1,28 @@
 use log::debug;
 use std::time::Duration;
+use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::core;
-use crate::utils::types::state::RcApiEngine;
+use crate::utils::types::state::{RcApiEngine, RcloneState};
 
 const API_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+#[cfg(not(feature = "librclone"))]
 const API_READY_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 impl RcApiEngine {
     /// Check if both the process is running AND the API is responding.
-    pub async fn is_api_healthy(
-        &self,
-        client: &reqwest::Client,
-        backend_manager: &BackendManager,
-    ) -> bool {
+    #[cfg(not(feature = "librclone"))]
+    pub async fn is_api_healthy(&self, app: &AppHandle) -> bool {
         if !self.is_process_alive() {
             debug!("Process is not alive");
             return false;
         }
-        Self::check_api_health(client, backend_manager).await
+        Self::check_api_health(app).await
     }
 
     /// Check if the process is still alive using native PID checking.
     #[must_use]
+    #[cfg(not(feature = "librclone"))]
     pub fn is_process_alive(&self) -> bool {
         if let Some(child) = &self.process {
             if let Some(pid) = child.id() {
@@ -43,20 +42,11 @@ impl RcApiEngine {
     }
 
     /// Check if the active backend's API is responding.
-    pub async fn check_api_health(
-        client: &reqwest::Client,
-        backend_manager: &BackendManager,
-    ) -> bool {
-        let backend = backend_manager.get_active().await;
+    pub async fn check_api_health(app: &AppHandle) -> bool {
+        let transport = app.state::<RcloneState>().transport.clone();
 
-        match backend
-            .make_request(
-                client,
-                reqwest::Method::POST,
-                core::VERSION,
-                None,
-                Some(API_HEALTH_TIMEOUT),
-            )
+        match transport
+            .rpc_with_timeout(core::VERSION, None, API_HEALTH_TIMEOUT)
             .await
         {
             Ok(_) => {
@@ -70,18 +60,14 @@ impl RcApiEngine {
         }
     }
 
-    pub async fn wait_until_ready(
-        &self,
-        client: &reqwest::Client,
-        backend_manager: &BackendManager,
-        timeout_secs: u64,
-    ) -> bool {
+    #[cfg(not(feature = "librclone"))]
+    pub async fn wait_until_ready(&self, app: &AppHandle, timeout_secs: u64) -> bool {
         let timeout = Duration::from_secs(timeout_secs);
         debug!("Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         let check_future = async {
             loop {
-                if self.is_api_healthy(client, backend_manager).await {
+                if self.is_api_healthy(app).await {
                     return true;
                 }
                 tokio::time::sleep(API_READY_POLL_INTERVAL).await;
@@ -98,7 +84,7 @@ impl RcApiEngine {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "librclone")))]
 mod tests {
     use super::*;
 

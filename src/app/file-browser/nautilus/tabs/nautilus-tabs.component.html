@@ -14,38 +14,38 @@
       (dragover)="onNativeDragOver($event)"
       (drop)="onNativeDrop($event)"
     >
-      @for (t of tabs(); track t.id) {
+      @for (vm of tabViewModels(); track vm.tab.id) {
         <div
           class="tab"
           draggable="true"
           role="tab"
           tabindex="0"
-          [attr.aria-selected]="activeTabIndex() === $index"
-          [attr.data-tab-index]="$index"
-          [class.active]="activeTabIndex() === $index"
-          [class.is-dragging]="_draggedTabIndex() === $index"
-          [class.is-outside]="_isDraggedOutside() && _draggedTabIndex() === $index"
-          [class.file-drag-over]="isDragging() && hoveredTabIndex() === $index"
-          [style.transform]="getTabTransform($index)"
-          (click)="switchTab.emit($index)"
-          (keydown.enter)="switchTab.emit($index)"
-          (keydown.space)="$event.preventDefault(); switchTab.emit($index)"
-          (mousedown)="onTabMiddleClick($event, $index)"
-          (dragstart)="onNativeDragStart($event, t, $index)"
-          (dragend)="onNativeDragEnd($event, t, $index)"
-          (dragover)="onNativeDragOver($event, $index)"
+          [attr.aria-selected]="activeTabIndex() === vm.index"
+          [attr.data-tab-index]="vm.index"
+          [class.active]="activeTabIndex() === vm.index"
+          [class.is-dragging]="_draggedTabIndex() === vm.index"
+          [class.is-outside]="_isDraggedOutside() && _draggedTabIndex() === vm.index"
+          [class.file-drag-over]="isDragging() && hoveredTabIndex() === vm.index"
+          [style.transform]="vm.transform"
+          (click)="switchTab.emit(vm.index)"
+          (keydown.enter)="switchTab.emit(vm.index)"
+          (keydown.space)="$event.preventDefault(); switchTab.emit(vm.index)"
+          (mousedown)="onTabMiddleClick($event, vm.index)"
+          (dragstart)="onNativeDragStart($event, vm.tab, vm.index)"
+          (dragend)="onNativeDragEnd($event, vm.tab, vm.index)"
+          (dragover)="onNativeDragOver($event, vm.index)"
           (dragleave)="onNativeDragLeave($event)"
-          (drop)="onNativeDrop($event, $index)"
+          (drop)="onNativeDrop($event, vm.index)"
           [cdkContextMenuTriggerFor]="tabContextMenu"
-          [cdkContextMenuTriggerData]="{ $implicit: $index }"
-          [matTooltip]="getTabTooltip(t)"
+          [cdkContextMenuTriggerData]="{ $implicit: vm.index }"
+          [matTooltip]="vm.tooltip"
           [matTooltipShowDelay]="800"
         >
-          <span class="tab-title">{{ t.title }}</span>
+          <span class="tab-title">{{ vm.tab.title }}</span>
           <button
             class="close-tab"
             [attr.aria-label]="'common.close' | translate"
-            (click)="$event.stopPropagation(); closeTab.emit($index)"
+            (click)="$event.stopPropagation(); closeTab.emit(vm.index)"
           >
             <mat-icon svgIcon="close" />
           </button>

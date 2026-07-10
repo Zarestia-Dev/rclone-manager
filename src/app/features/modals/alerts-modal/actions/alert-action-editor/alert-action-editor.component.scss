@@ -22,8 +22,8 @@
 }
 
 .panel {
-  background: color-mix(in srgb, var(--window-fg-color) 3%, transparent);
-  box-shadow: 0 0 0 1px var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: var(--ring-border);
   border-radius: var(--card-border-radius);
   padding: var(--space-md);
 }
@@ -57,7 +57,7 @@
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-xs);
-  box-shadow: 0 0 0 1px var(--border-color);
+  box-shadow: var(--ring-border);
   background: var(--view-bg-color);
   color: var(--dim-color);
   font-size: var(--font-size-sm);
@@ -76,12 +76,12 @@
   &:hover:not(.is-active) {
     background: var(--hover-bg-color);
     color: var(--window-fg-color);
-    box-shadow: 0 0 0 1px rgba(var(--window-fg-color-rgb), 0.2);
+    box-shadow: var(--ring-border);
   }
 
   &.is-active {
     background: rgba(var(--accent-color-rgb), 0.12);
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
+    box-shadow: var(--ring-accent);
     color: var(--accent-color);
     font-weight: 600;
   }
@@ -204,8 +204,8 @@
   align-items: flex-start;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: rgba(var(--window-fg-color-rgb), 0.04);
-  box-shadow: 0 0 0 1px var(--border-color);
+  background: var(--bg-elevated-1);
+  box-shadow: var(--ring-border);
   border-radius: var(--radius-xs);
   color: var(--dim-color);
   font-size: var(--font-size-sm);
@@ -255,7 +255,7 @@
 }
 
 .tag {
-  background: rgba(var(--window-fg-color-rgb), 0.07);
+  background: var(--bg-hover);
   box-shadow: var(--box-shadow);
   padding: 1px 6px;
   border-radius: 4px;

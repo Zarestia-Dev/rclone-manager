@@ -1,20 +1,18 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use chrono::Utc;
 use log::LevelFilter;
 use once_cell::sync::OnceCell;
 use serde_json::Value;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc;
 
-use crate::utils::types::logs::LogCache;
-use crate::utils::types::logs::LogEntry;
-use crate::utils::types::logs::LogLevel;
-
-pub struct DynamicLogger;
+use crate::utils::types::logs::{LogCache, LogEntry, LogLevel};
 
 use super::file_writer::write_to_file;
 
-// This will hold the "sender" part of our logging channel.
+pub struct DynamicLogger;
+
 static LOG_SENDER: OnceCell<mpsc::Sender<LogEntry>> = OnceCell::new();
 
 static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
@@ -69,11 +67,8 @@ fn parse_log_level(level: &str) -> LevelFilter {
     }
 }
 
-// --- Modified function to accept AppHandle ---
 pub fn init_logging(log_level: &str, app_handle: AppHandle) -> Result<(), String> {
     // Initialize rotating file logger using cache directory
-    use tauri::Manager;
-
     let paths = crate::core::paths::AppPaths::from_app_handle(&app_handle)?;
     let log_dir = paths.get_app_log_dir();
 
@@ -111,7 +106,6 @@ pub fn update_log_level(log_level: &str) {
     log::set_max_level(level);
 }
 
-// It uses the mpsc channel (LOG_SENDER), not LOG_CACHE directly.
 pub fn log_operation(
     level: LogLevel,
     remote_name: Option<String>,
@@ -120,7 +114,7 @@ pub fn log_operation(
     context: Option<Value>,
 ) {
     let clean_remote =
-        remote_name.map(|name| crate::utils::rclone::util::extract_remote_name_from_fs(&name));
+        remote_name.map(|name| crate::utils::json_helpers::extract_remote_name_from_fs(&name));
     let entry = LogEntry {
         timestamp: Utc::now(),
         remote_name: clean_remote,

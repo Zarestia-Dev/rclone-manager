@@ -202,7 +202,10 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should handle Tristate values correctly', () => {
-      const field = { Type: 'Tristate', Default: { Valid: true, Value: true } } as RcConfigOption;
+      const field = {
+        Type: 'Tristate',
+        Default: { Valid: true, Value: true },
+      } as unknown as RcConfigOption;
       expect(service.isDefaultValue(true, field)).toBeTrue();
       expect(service.isDefaultValue(false, field)).toBeFalse();
       expect(
@@ -211,7 +214,11 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should handle arrays correctly', () => {
-      const field = { Type: 'CommaSepList', Default: [], DefaultStr: '' } as RcConfigOption;
+      const field = {
+        Type: 'CommaSepList',
+        Default: [],
+        DefaultStr: '',
+      } as unknown as RcConfigOption;
       expect(service.isDefaultValue([], field)).toBeTrue();
       expect(service.isDefaultValue(['a'], field)).toBeFalse();
 

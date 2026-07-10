@@ -6,7 +6,9 @@ import {
   computed,
   DestroyRef,
   linkedSignal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -17,7 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import {
   OperationTab,
@@ -25,6 +27,7 @@ import {
   Remote,
   RemoteSettings,
   SyncOperationType,
+  SYNC_TYPES,
 } from '@app/types';
 
 import { RemoteFacadeService } from '../services/facade/remote-facade.service';
@@ -43,7 +46,7 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 
 @Component({
   selector: 'app-home',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatSidenavModule,
     MatDividerModule,
@@ -60,7 +63,7 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -109,8 +112,7 @@ export class HomeComponent {
       'selectedSyncOperation',
       'sync'
     );
-    const valid: SyncOperationType[] = ['sync', 'copy', 'move', 'bisync'];
-    return valid.includes(val) ? val : 'sync';
+    return SYNC_TYPES.includes(val) ? val : 'sync';
   });
 
   readonly isLoading = this.remoteFacadeService.loading;
@@ -129,8 +131,8 @@ export class HomeComponent {
 
   private setupResponsiveLayout(): void {
     const mql = window.matchMedia('(min-width: 900px)');
-    const update = (matches: boolean) => this.sidebarMode.set(matches ? 'side' : 'over');
-    const handler = (e: MediaQueryListEvent) => update(e.matches);
+    const update = (matches: boolean): void => this.sidebarMode.set(matches ? 'side' : 'over');
+    const handler = (e: MediaQueryListEvent): void => update(e.matches);
 
     update(mql.matches);
     mql.addEventListener('change', handler);
@@ -152,23 +154,6 @@ export class HomeComponent {
       this.localStorage.setScoped(`remote.${remote.name}`, 'selectedSyncOperation', operation);
     }
   }
-
-  // --- Primary Actions ---
-
-  async togglePrimaryAction(type: PrimaryActionType): Promise<void> {
-    const remote = this.selectedRemote();
-    if (!remote) return;
-
-    const current = remote.primaryActions ?? [];
-    const next = current.includes(type) ? current.filter(a => a !== type) : [...current, type];
-
-    try {
-      await this.saveRemoteSettings(remote.name, { primaryActions: next });
-    } catch (error) {
-      this.handleError(this.translate.instant('home.errors.updateActionsFailed'), error);
-    }
-  }
-
   // --- Jobs ---
 
   async startJob(
@@ -265,7 +250,6 @@ export class HomeComponent {
   async resetRemoteSettings(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
-    // Same pattern as deleteRemote — confirmModal out of try/catch
     const confirmed = await this.notificationService.confirmModal(
       this.translate.instant('home.resetRemote.title'),
       this.translate.instant('home.resetRemote.message', { name: remoteName }),
@@ -291,6 +275,7 @@ export class HomeComponent {
     this.modalService
       .openQuickAddRemote()
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
@@ -313,6 +298,7 @@ export class HomeComponent {
         autoAddProfile,
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });
@@ -331,6 +317,7 @@ export class HomeComponent {
         remoteType: remote.type,
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
         if (saved) void this.remoteFacadeService.refreshAll();
       });

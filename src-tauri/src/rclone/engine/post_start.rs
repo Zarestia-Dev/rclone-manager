@@ -1,11 +1,17 @@
-use crate::rclone::backend::BackendManager;
-use crate::utils::types::state::RcloneState;
-use crate::{
-    core::initialization::apply_settings::apply_core_settings,
-    utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-};
 use log::{debug, error};
 use tauri::{AppHandle, Emitter, Manager};
+
+use crate::{
+    core::initialization::apply_settings::apply_core_settings,
+    rclone::backend::BackendManager,
+    utils::{
+        constants::LOCAL_BACKEND_NAME,
+        types::{
+            events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+            state::RcloneState,
+        },
+    },
+};
 
 pub async fn run_post_start_setup(app: &AppHandle) {
     let manager = app.state::<crate::core::settings::AppSettingsManager>();
@@ -26,13 +32,13 @@ pub async fn run_post_start_setup(app: &AppHandle) {
 }
 
 async fn refresh_caches_and_tray(app: &AppHandle) {
-    let client = app.state::<RcloneState>().client.clone();
+    let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
 
     if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
         &backend_manager,
-        "Local",
-        &client,
+        LOCAL_BACKEND_NAME,
+        &*transport,
         None,
     )
     .await

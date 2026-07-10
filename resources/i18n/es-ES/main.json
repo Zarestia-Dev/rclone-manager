@@ -73,15 +73,22 @@
     "copying": "Copiando",
     "moving": "Moviendo",
     "bisyncActive": "Bisincronización activa",
+    "checkActive": "Verificación activa",
+    "cryptcheckActive": "Verificación cifrada activa",
+    "deleteActive": "Eliminación activa",
+    "copyurlActive": "Copiar URL activa",
+    "archivecreateActive": "Archivo activo",
+    "archivecreating": "Archivando",
     "syncSummary": "Sincronizando ({{count}})",
-    "syncWithProfile": "Sincronización: {{profiles}}",
-    "copyWithProfile": "Copia: {{profiles}}",
-    "moveWithProfile": "Mover: {{profiles}}",
-    "bisyncWithProfile": "BiSync: {{profiles}}",
     "toggleSync": "Alternar sincronización como acción rápida",
     "toggleCopy": "Alternar copia como acción rápida",
     "toggleMove": "Alternar movimiento como acción rápida",
     "toggleBisync": "Alternar BiSync como acción rápida",
+    "toggleCheck": "Alternar Verificar como acción rápida",
+    "toggleCryptcheck": "Alternar Verificación cifrada como acción rápida",
+    "toggleDelete": "Alternar Eliminar como acción rápida",
+    "toggleCopyurl": "Alternar Copiar URL como acción rápida",
+    "toggleArchivecreate": "Alternar Archivo como acción rápida",
     "successStart": "Se inició correctamente {{type}} para {{remote}} ({{profile}})",
     "failedStart": "Error al iniciar {{type}} para {{remote}}: {{error}}"
   },
@@ -134,6 +141,10 @@
     "copy": "Copiar",
     "move": "Mover",
     "bisync": "Bisincronizar",
+    "check": "Verificar",
+    "delete": "Eliminar",
+    "copyurl": "Copiar URL",
+    "archivecreate": "Archivar",
     "serve": "Servir",
     "start": "Iniciar",
     "stop": "Detener"
@@ -214,7 +225,9 @@
       "categories": {
         "app": "Ajustes de la aplicación",
         "rclone": "Opciones de Rclone"
-      }
+      },
+      "remoteSaved": "Remoto guardado correctamente",
+      "remoteSaveFailed": "Error al guardar el remoto: {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -710,10 +723,12 @@
     },
     "transferActivity": {
       "title": "Actividad de transferencia",
+      "titleCheck": "Actividad de comprobación",
       "resetStats": "Restablecer estadísticas",
       "tabs": {
         "active": "Activo ({{count}})",
-        "recent": "Reciente ({{count}})"
+        "recent": "Reciente ({{count}})",
+        "recentCheck": "Comprobado ({{count}})"
       },
       "table": {
         "size": "Tamaño",
@@ -728,13 +743,37 @@
         "transferError": "Error de transferencia",
         "transferCompleted": "Transferencia completada",
         "preparing": "Preparando",
-        "finalizing": "Finalizando..."
+        "finalizing": "Finalizando...",
+        "missingDst": "Faltante en destino",
+        "missingSrc": "Faltante en origen",
+        "differ": "El contenido de los archivos difiere",
+        "error": "Error"
+      },
+      "actions": {
+        "resolveToDst": "Copiar al destino",
+        "resolveToSrc": "Copiar al origen",
+        "resolveOverwrite": "Resolver conflicto de archivos",
+        "resolveOverwriteTitle": "Resolver conflicto de archivos",
+        "resolveOverwriteMessage": "El archivo '{{name}}' existe tanto en el origen como en el destino, pero difiere. ¿Desea sobrescribir el archivo en el destino con el archivo de origen?",
+        "overwriteDst": "Sobrescribir destino",
+        "copyUrl": "Copiar URL",
+        "download": "Descargar archivo",
+        "successSync": "Operación de sincronización de archivo iniciada correctamente",
+        "failSync": "Error al sincronizar el archivo: {{error}}",
+        "successCopyUrl": "URL de descarga copiada al portapapeles",
+        "failCopyUrl": "Error al generar la URL de descarga",
+        "successDownload": "Archivo descargado correctamente",
+        "failDownload": "Error al descargar el archivo",
+        "resolveStarted": "Se inició la resolución del conflicto de archivos",
+        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}"
       },
       "empty": {
         "noActive": "No hay transferencias activas",
         "activeHint": "Las transferencias aparecerán aquí cuando comience una operación",
         "noRecent": "No hay transferencias completadas recientemente",
-        "recentHint": "Las transferencias completadas aparecerán aquí cuando finalicen los trabajos"
+        "recentHint": "Las transferencias completadas aparecerán aquí cuando finalicen los trabajos",
+        "noRecentCheck": "No hay archivos verificados",
+        "recentHintCheck": "Los archivos verificados aparecerán aquí cuando se complete la tarea"
       },
       "time": {
         "daysAgo": "hace {{count}} días",
@@ -769,6 +808,7 @@
     "settingControl": {
       "default": "Predeterminado: {{value}}",
       "resetToDefault": "Restablecer al valor predeterminado",
+      "obscureValue": "Ocultar contraseña usando rclone",
       "enabled": "Activado",
       "disabled": "Desactivado",
       "addItem": "Añadir elemento",
@@ -956,6 +996,17 @@
       "importDestPath": "Importar ruta de destino",
       "importMountPoint": "Importar punto de montaje"
     },
+    "obscure": {
+      "title": "Ocultar contraseña",
+      "description": "Oculta una cadena en claro utilizando el algoritmo de oscurecimiento estándar de rclone para que pueda guardarse de forma segura en los archivos o parámetros de configuración.",
+      "clearPlaceholder": "Contraseña / Cadena en claro",
+      "clearPlaceholderText": "Ingrese la contraseña en texto plano",
+      "action": "Ocultar",
+      "resultTitle": "Valor ocultado",
+      "resultHelp": "Haga clic en el botón de copiar y pegue este valor donde sea necesario.",
+      "applyToField": "Aplicar valor ocultado al campo",
+      "apply": "Aplicar al campo"
+    },
     "remoteConfig": {
       "remoteName": "Nombre remoto",
       "remoteNameRequired": "Se requiere el nombre remoto",
@@ -975,12 +1026,17 @@
       "jsonEditorInfo": {
         "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
         "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
+        "check": "Perfil de verificación: configure las rutas 'srcFs' y 'dstFs', los campos de nivel de perfil y coloque todas las banderas de verificación dentro de '_config'.",
         "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y coloque todas las opciones de montaje dentro de 'mountOpt'.",
         "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y coloque todas las opciones de servicio dentro de '_config'.",
         "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor.",
         "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor.",
         "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor.",
         "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor."
+      },
+      "runtimeRemoteWarning": {
+        "title": "Configuración del remoto en tiempo de ejecución",
+        "description": "Estas configuraciones se utilizan para invalidar dinámicamente las propiedades de conexión o aplicar ajustes de rendimiento al interactuar con este remoto en tiempo de ejecución. No se almacenan en el archivo persistente rclone.conf. Si alguno de estos campos contiene valores sensibles como contraseñas o claves de API, deben ser oscurecidos manualmente mediante el algoritmo obscure de rclone antes de guardar; rclone no aceptará valores en texto plano para dichos campos."
       },
       "showAdvanced": "Mostrar opciones avanzadas",
       "hideAdvanced": "Ocultar opciones avanzadas",
@@ -1009,6 +1065,11 @@
       "loadingServeOptions": "Cargando opciones de {{type}}...",
       "serveDescription": "Seleccione la ruta remota que desea servir. Puede servir todo el control remoto o una carpeta específica.",
       "operationDescription": "Configure las opciones de origen, destino e inicio automático para esta operación.",
+      "allowOtherWarning": {
+        "title": "Configuración de FUSE requerida",
+        "description": "Habilitar '--allow-other' requiere configurar /etc/fuse.conf en el sistema host para evitar fallos de montaje. Asegúrese de que 'user_allow_other' esté descomentado/habilitado en /etc/fuse.conf.",
+        "learnMore": "Buscar soporte en el foro de Rclone"
+      },
       "hideCommandOptions": "Ocultar opciones de comando",
       "showCommandOptions": "Mostrar opciones de comando",
       "quickAdd": "Añadir rápido",
@@ -1042,6 +1103,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "Se detectaron múltiples rutas de origen. La verificación unidireccional se ha habilitado automáticamente para garantizar que rclone verifique cada origen contra el destino.",
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
       "enableScheduled": "Habilitar {{type}} programado",
       "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
@@ -1062,8 +1124,13 @@
       "enterSourcePath": "Introducir ruta de origen...",
       "otherRemotes": "Otros controles remotos",
       "enterDestPath": "Introducir ruta de destino...",
+      "enterDownloadUrl": "Introducir URL de descarga (p. ej., https://example.com/archivo.zip)",
+      "copyUrlCustomFilenamePlaceholder": "Nombre de archivo automático (opcional)",
+      "copyUrlFileSettingsWarning": "Los nombres de archivo personalizados se establecen individualmente para cada fila de URL anterior. Cualquier fila con un nombre de archivo vacío usará los nombres determinados automáticamente.",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "El destino del montaje debe ser una carpeta local",
       "completionNote": "La finalización de la ruta remota está disponible después de la creación del control remoto.",
+      "coreCommandNote": "Esta operación se ejecuta como un comando CLI a través de rclone en lugar de utilizar la API de transferencia nativa. No funcionan como las operaciones de la API nativa. Pueden ocurrir algunos errores, problemas de rendimiento o falta de actualizaciones de progreso (como ETA o velocidad).",
       "loading": "Cargando...",
       "upFolder": "Carpeta superior",
       "noItemsFound": "No se encontraron elementos en este directorio.",
@@ -1341,7 +1408,6 @@
       "close": "Cerrar",
       "directory": "Directorio",
       "file": "Archivo",
-      "copied": "¡Copiado!",
       "copyToClipboard": "Copiar al portapapeles",
       "getLink": "Obtener enlace",
       "removeLink": "Eliminar enlace",
@@ -1436,6 +1502,11 @@
       "syncSettings": "Ajustes de sincronización",
       "moveSettings": "Ajustes de movimiento",
       "bisyncSettings": "Ajustes de BiSync",
+      "checkSettings": "Ajustes de verificación",
+      "cryptcheckSettings": "Ajustes de verificación cifrada",
+      "deleteSettings": "Ajustes de eliminación",
+      "copyUrlSettings": "Ajustes de Copiar URL",
+      "archivecreateSettings": "Ajustes de archivo",
       "sync": "Sincronizar",
       "syncDesc": "Sincronización unidireccional",
       "bisync": "BiSync",
@@ -1444,6 +1515,16 @@
       "moveDesc": "Mover archivos (eliminar fuente)",
       "copy": "Copiar",
       "copyDesc": "Copiar archivos (mantener fuente)",
+      "check": "Verificar",
+      "checkDesc": "Verificar que el origen y el destino coincidan",
+      "cryptcheck": "Verificación cifrada",
+      "cryptcheckDesc": "Verificar la integridad de remotos cifrados",
+      "delete": "Eliminar",
+      "deleteDesc": "Eliminar permanentemente archivos que coincidan con los filtros",
+      "copyurl": "Copiar URL",
+      "copyUrlDesc": "Generar URLs públicas de descarga para archivos",
+      "archivecreate": "Archivar",
+      "archivecreateDesc": "Comprimir carpetas/archivos en un archivo (Zip, Tar, etc.)",
       "default": "Predeterminado",
       "serveBehave": "Configure los protocolos de servicio (HTTP, FTP, etc.). Se admite el perfil múltiple.",
       "mountBehave": "Configure el comportamiento del montaje y el ajuste del sistema de archivos virtual.",
@@ -1495,8 +1576,6 @@
       "nextAutomationTooltip": "Siguiente automatización",
       "remoteConfiguration": "Configuración remota",
       "editConfiguration": "Editar configuración",
-      "toggleQuickAction": "Alternar {{label}} como acción rápida",
-      "quickActionSelected": "{{label}} seleccionado como acción rápida {{position}}",
       "remoteActionQuickSelection": "Selección rápida de acción remota"
     }
   },
@@ -1542,6 +1621,17 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "Configurar acciones rápidas",
+      "description": "Elija qué acciones mostrar como botones en el panel remoto para {{name}}. Marque con una estrella hasta {{max}} acciones y arrástrelas para cambiar su orden.",
+      "removeStar": "Quitar de acciones rápidas",
+      "addStar": "Añadir a acciones rápidas",
+      "cancel": "Cancelar",
+      "save": "Guardar cambios",
+      "moreButton": "Más",
+      "moreButtonTooltip": "Más operaciones",
+      "configureTooltip": "Configurar acciones rápidas"
+    },
     "jobDetail": {
       "title": "Detalles del trabajo #{{id}}",
       "sections": {
@@ -1587,6 +1677,7 @@
       "aboutRclone": "Acerca de Rclone",
       "credits": "Créditos",
       "legal": "Legal",
+      "donate": "Donar",
       "website": "Sitio web",
       "wiki": "Página Wiki",
       "reportIssues": "Informar de problemas",
@@ -1986,6 +2077,11 @@
         "bisync": "Bisincronizar",
         "move": "Mover",
         "copy": "Copiar",
+        "check": "Verificar",
+        "delete": "Eliminar",
+        "copyurl": "Copiar URL",
+        "archivecreate": "Archivar",
+        "cryptcheck": "Verificación cifrada",
         "filter": "Filtrar",
         "vfs": "VFS",
         "backend": "Backend",
@@ -2194,12 +2290,27 @@
       "archiveCreate": {
         "title": "Crear archivo",
         "filenameLabel": "Nombre del archivo",
-        "formatLabel": "Formato del archivo",
-        "prefixLabel": "Prefijo de ruta",
-        "prefixHint": "Anula las rutas completas si se establece",
-        "fullPathLabel": "Incluir rutas de origen completas",
-        "fullPathHint": "Mantiene la estructura de directorios desde la raíz",
+        "filenameDesc": "Introduzca el nombre del archivo comprimido que se va a crear",
         "compress": "Comprimir"
+      },
+      "multiRename": {
+        "title": "Renombrar {{count}} archivos",
+        "templateMode": "Renombrar usando una plantilla",
+        "replaceMode": "Buscar y reemplazar texto",
+        "templateInput": "Plantilla",
+        "addPlaceholder": "Añadir",
+        "findLabel": "Buscar texto",
+        "replaceLabel": "Reemplazar con",
+        "caseSensitive": "Sensible a mayúsculas",
+        "counterStart": "Iniciar contador",
+        "counterStep": "Paso",
+        "counterPadding": "Dígitos (relleno)",
+        "rename": "Renombrar",
+        "original": "Nombre original",
+        "newName": "Nuevo nombre",
+        "counter": "Contador",
+        "date": "Fecha",
+        "extension": "Extensión"
       }
     },
     "errors": {
@@ -2218,8 +2329,9 @@
       "openFileFailed": "No se puede abrir el archivo: falta contexto remoto",
       "minSelection": "Por favor seleccione al menos {{min}} elemento{{s}}.",
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
-      "archiveCreateFailed": "Error al crear el archivo: {{error}}",
-      "externalDropFailed": "Error al procesar la caída de archivos externos."
+      "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
+      "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
+      "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}"
     },
     "contextMenu": {
       "open": "Abrir",
@@ -2231,6 +2343,8 @@
       "refresh": "Actualizar",
       "properties": "Propiedades",
       "reload": "Recargar",
+      "addToSendTo": "Agregar al Menú del Administrador de Archivos",
+      "removeFromSendTo": "Quitar del Menú del Administrador de Archivos",
       "copyLocation": "Copiar ubicación",
       "selectAll": "Seleccionar todo",
       "removeBookmark": "Eliminar marcador",
@@ -2258,7 +2372,10 @@
       "nextTab": "Siguiente Pestaña",
       "previousTab": "Pestaña Anterior",
       "toggleSplit": "Alternar Vista Dividida",
-      "switchPane": "Cambiar de Panel"
+      "switchPane": "Cambiar de Panel",
+      "copyPublicLink": "Copiar enlace público",
+      "createFolderWithItems": "Nueva carpeta con selección...",
+      "renameMultiple": "Renombrar varios..."
     },
     "view": {
       "iconSize": "Tamaño del ícono",
@@ -2278,7 +2395,10 @@
       "undoComplete": "Deshacer exitoso",
       "redoComplete": "Rehacer exitoso",
       "copyUrlStarted": "Descargando desde URL...",
-      "archiveCreateStarted": "Operación de creación de archivo iniciada"
+      "getPublicLinkStarted": "Generando enlace público...",
+      "archiveCreateStarted": "Creación de archivo iniciada...",
+      "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
+      "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"
     }
   },
   "home": {
@@ -2309,7 +2429,6 @@
     },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
-      "updateActionsFailed": "Error al actualizar acciones rápidas",
       "openFailed": "Error al abrir {{name}}",
       "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
       "deleteRemoteFailed": "Error al eliminar el remoto"
@@ -2600,8 +2719,6 @@
       "labels": {
         "unmounted": "Desmontado",
         "mounted": "Montado",
-        "syncing": "Sincronizando",
-        "offSync": "No sincronizando",
         "active": "Activo",
         "inactive": "Inactivo"
       }
@@ -2618,6 +2735,16 @@
         "stopMove": "Detener movimiento",
         "startBisync": "Iniciar bi-sincronización",
         "stopBisync": "Detener bi-sincronización",
+        "startCheck": "Iniciar verificación",
+        "stopCheck": "Detener verificación",
+        "startCryptcheck": "Iniciar verificación cifrada",
+        "stopCryptcheck": "Detener verificación cifrada",
+        "startDelete": "Iniciar eliminación",
+        "stopDelete": "Detener eliminación",
+        "startCopyurl": "Iniciar copiar URL",
+        "stopCopyurl": "Detener copiar URL",
+        "startArchivecreate": "Iniciar archivo",
+        "stopArchivecreate": "Detener archivo",
         "startServe": "Iniciar servicio",
         "stopServe": "Detener servicio"
       },
@@ -2649,6 +2776,11 @@
     "copyCount": "Copia [{{active}}/{{total}}]",
     "moveCount": "Movimiento [{{active}}/{{total}}]",
     "bisyncCount": "BiSync [{{active}}/{{total}}]",
+    "checkCount": "Verificar [{{active}}/{{total}}]",
+    "cryptcheckCount": "Verificación cifrada [{{active}}/{{total}}]",
+    "deleteCount": "Eliminar [{{active}}/{{total}}]",
+    "copyurlCount": "Copiar URL [{{active}}/{{total}}]",
+    "archivecreateCount": "Archivar [{{active}}/{{total}}]",
     "serveCount": "Servicio [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Trabajo",

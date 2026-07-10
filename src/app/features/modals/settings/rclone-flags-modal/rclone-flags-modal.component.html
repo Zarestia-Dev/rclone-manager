@@ -1,13 +1,13 @@
 <header data-tauri-drag-region>
   <button
-    mat-icon-button
+    matIconButton
     (click)="toggleSearchVisibility()"
     [attr.aria-label]="'modals.rcloneFlags.search.toggle' | translate"
   >
     <mat-icon svgIcon="search"></mat-icon>
   </button>
   <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
-  <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+  <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -30,38 +30,48 @@
       @if (globalSearchResults().length > 0) {
         <cdk-virtual-scroll-viewport itemSize="25" class="virtual-scroll-viewport">
           <div class="virtual-scroll-content">
-            @for (result of globalSearchResults(); track trackBySearchResult($index, result)) {
+            @for (
+              vm of globalSearchResultViewModels();
+              track trackBySearchResult($index, vm.result)
+            ) {
               <div
                 class="config-item"
                 role="button"
-                (click)="navigateTo(result.service, result.category, result.option.Name)"
+                (click)="navigateTo(vm.result.service, vm.result.category, vm.result.option.Name)"
                 (keydown)="
                   handleKeyboardNavigation(
                     $event,
-                    result.service,
-                    result.category,
-                    result.option.Name
+                    vm.result.service,
+                    vm.result.category,
+                    vm.result.option.Name
                   )
                 "
                 [tabindex]="0"
                 [attr.aria-label]="
-                  'Navigate to ' + result.option.FieldName + ' in ' + result.service
+                  'Navigate to ' + vm.result.option.FieldName + ' in ' + vm.result.service
                 "
               >
                 <div class="config-item-content">
-                  <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                  <mat-icon [svgIcon]="vm.serviceIcon"></mat-icon>
                   <div class="config-item-text">
                     <span class="config-item-title">{{
-                      result.option.Name
+                      vm.result.option.Name
                         | rcloneOptionTranslate
                           : 'title'
-                          : result.option.FieldName || result.option.Name
+                          : vm.result.option.FieldName || vm.result.option.Name
+                          : undefined
+                          : translate.currentLang()
                     }}</span>
                     <small class="config-item-description">
-                      {{ result.service | titlecase }} > {{ result.category }}
+                      {{ vm.result.service | titlecase }} > {{ vm.result.category }}
                     </small>
                     <small class="config-item-description result-help">{{
-                      result.option.Name | rcloneOptionTranslate: 'help' : result.option.Help
+                      vm.result.option.Name
+                        | rcloneOptionTranslate
+                          : 'help'
+                          : vm.result.option.Help
+                          : undefined
+                          : translate.currentLang()
                     }}</small>
                   </div>
                 </div>
@@ -78,73 +88,68 @@
       }
     } @else {
       <mat-accordion>
-        @for (
-          mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
-          track mainCategory
-        ) {
-          @if (servicesByMainCategory()[mainCategory].length > 0) {
-            <mat-expansion-panel [expanded]="false" class="main-category-panel">
-              <mat-expansion-panel-header>
-                <mat-panel-title class="main-category-title-text">
-                  <div class="main-category-header">
-                    <span class="category-name">{{
-                      getMainCategoryTitle(mainCategory) | translate
-                    }}</span>
-                    <small class="category-desc">{{
-                      getMainCategoryDescription(mainCategory) | translate
-                    }}</small>
-                  </div>
-                </mat-panel-title>
-              </mat-expansion-panel-header>
+        @for (mainCat of mainCategoryViewModels(); track mainCat.name) {
+          <mat-expansion-panel [expanded]="false" class="main-category-panel">
+            <mat-expansion-panel-header>
+              <mat-panel-title class="main-category-title-text">
+                <div class="main-category-header">
+                  <span class="category-name">{{ mainCat.titleKey | translate }}</span>
+                  <small class="category-desc">{{ mainCat.description | translate }}</small>
+                </div>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
 
-              <div class="main-category-services">
-                @for (service of servicesByMainCategory()[mainCategory]; track service.name) {
-                  <mat-expansion-panel
-                    [expanded]="service.expanded"
-                    (opened)="setServiceExpanded(service.name, true)"
-                    (closed)="setServiceExpanded(service.name, false)"
-                    class="service-panel"
-                  >
-                    <mat-expansion-panel-header>
-                      <mat-panel-title>
-                        <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
-                        <div class="category-header-text">
-                          <span class="category-title">{{ service.name | titlecase }}</span>
-                          <small class="category-description">{{
-                            getServiceDescription(service.name) | translate
-                          }}</small>
-                        </div>
-                      </mat-panel-title>
-                    </mat-expansion-panel-header>
+            <div class="main-category-services">
+              @for (service of mainCat.services; track service.name) {
+                <mat-expansion-panel
+                  [expanded]="service.expanded"
+                  (opened)="setServiceExpanded(service.name, true)"
+                  (closed)="setServiceExpanded(service.name, false)"
+                  class="service-panel"
+                >
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      <mat-icon [svgIcon]="service.icon"></mat-icon>
+                      <div class="category-header-text">
+                        <span class="category-title">{{ service.name | titlecase }}</span>
+                        <small class="category-description">{{
+                          service.description | translate
+                        }}</small>
+                      </div>
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
 
-                    <div class="category-items">
-                      @for (categoryName of service.categories; track categoryName) {
-                        <div
-                          class="config-item"
-                          role="button"
-                          (click)="navigateTo(service.name, categoryName)"
-                          (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
-                          [tabindex]="0"
-                          [attr.aria-label]="'Navigate to ' + categoryName + ' in ' + service.name"
-                        >
-                          <div class="config-item-content">
-                            <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
-                            <div class="config-item-text">
-                              <span class="config-item-title">{{ categoryName }}</span>
-                              <small class="config-item-description">{{
-                                getCategoryDescription(categoryName) | translate
-                              }}</small>
-                            </div>
+                  <div class="category-items">
+                    @for (category of service.categories; track category.category) {
+                      <div
+                        class="config-item"
+                        role="button"
+                        (click)="navigateTo(service.name, category.category)"
+                        (keydown)="
+                          handleKeyboardNavigation($event, service.name, category.category)
+                        "
+                        [tabindex]="0"
+                        [attr.aria-label]="
+                          'Navigate to ' + category.category + ' in ' + service.name
+                        "
+                      >
+                        <div class="config-item-content">
+                          <mat-icon [svgIcon]="category.icon"></mat-icon>
+                          <div class="config-item-text">
+                            <span class="config-item-title">{{ category.category }}</span>
+                            <small class="config-item-description">{{
+                              category.description | translate
+                            }}</small>
                           </div>
-                          <mat-icon svgIcon="chevron-right"></mat-icon>
                         </div>
-                      }
-                    </div>
-                  </mat-expansion-panel>
-                }
-              </div>
-            </mat-expansion-panel>
-          }
+                        <mat-icon svgIcon="chevron-right"></mat-icon>
+                      </div>
+                    }
+                  </div>
+                </mat-expansion-panel>
+              }
+            </div>
+          </mat-expansion-panel>
         }
       </mat-accordion>
     }
@@ -153,7 +158,7 @@
   @if (!searchQuery()) {
     <footer>
       <button
-        mat-raised-button
+        matButton="elevated"
         class="warn"
         (click)="resetAllOptions()"
         [disabled]="isResetting()"
@@ -175,14 +180,14 @@
   <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
     <header data-tauri-drag-region>
       <button
-        mat-icon-button
+        matIconButton
         (click)="navigateTo('home')"
         [attr.aria-label]="'modals.remoteConfig.buttons.back' | translate"
       >
         <mat-icon svgIcon="chevron-left"></mat-icon>
       </button>
       <p>{{ pageTitle() | translate: pageTitleParams() }}</p>
-      <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+      <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
@@ -195,7 +200,7 @@
         </span>
         <button
           type="button"
-          mat-icon-button
+          matIconButton
           class="json-toggle-btn"
           [class.active]="showJsonMode()"
           (click)="toggleJsonMode()"
@@ -235,18 +240,13 @@
         } @else {
           <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
             <form [formGroup]="rcloneOptionsForm">
-              @for (option of virtualScrollData(); track trackByOption($index, option)) {
+              @for (vm of virtualScrollOptionViewModels(); track trackByOption($index, vm.option)) {
                 <app-setting-control
-                  [id]="'setting-' + option.Name"
-                  [option]="option"
-                  [formControlName]="getUniqueControlKey(option)"
-                  (valueCommit)="
-                    saveRCloneOption(
-                      getUniqueControlKey(option),
-                      isOptionAtDefault(getUniqueControlKey(option))
-                    )
-                  "
-                  (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                  [id]="'setting-' + vm.option.Name"
+                  [option]="vm.option"
+                  [formControlName]="vm.uniqueKey"
+                  (valueCommit)="saveRCloneOption(vm.uniqueKey)"
+                  (valueChanged)="onOptionValueChanged(vm.uniqueKey, $event)"
                 ></app-setting-control>
               }
             </form>

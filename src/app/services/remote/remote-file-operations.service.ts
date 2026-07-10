@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
+import { DiskUsageSeverity, Entry, FsInfo, JobActionType, Origin } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
@@ -9,10 +9,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
   private readonly http = inject(HttpClient);
 
   async getFsInfo(remote: string, source?: Origin, group?: string): Promise<FsInfo> {
-    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group }).catch(e => {
-      console.error(e);
-      throw e;
-    });
+    return this.invokeCommand<FsInfo>('get_fs_info', { remote, origin: source, group });
   }
 
   async getDiskUsage(
@@ -20,7 +17,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     path?: string,
     source?: Origin,
     group?: string
-  ): Promise<{ total: number; used: number; free: number }> {
+  ): Promise<{
+    total: number;
+    used: number;
+    free: number;
+    usagePercentage: number;
+    usagePercentageLabel: string;
+    usageSeverity: DiskUsageSeverity;
+  }> {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }
 
@@ -108,7 +112,8 @@ export class RemoteFileOperationsService extends TauriBaseService {
     dstPath: string,
     mode: 'copy' | 'move',
     source?: Origin,
-    group?: string
+    group?: string,
+    parentJobId?: number
   ): Promise<string> {
     return this.invokeCommand<string>('transfer', {
       items,
@@ -117,6 +122,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
       mode,
       origin: source,
       group,
+      parentJobId,
     });
   }
 
@@ -142,10 +148,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     group?: string
   ): Promise<string> {
     return this.invokeCommand<string>('rename', {
-      remote,
-      srcPath,
-      dstPath,
-      isDir,
+      items: [
+        {
+          remote,
+          srcPath,
+          dstPath,
+          isDir,
+        },
+      ],
       origin: source,
       group,
     });

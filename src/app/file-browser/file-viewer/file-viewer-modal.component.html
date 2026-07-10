@@ -12,7 +12,7 @@
   <div class="header-actions">
     @if (isMarkdownFile() && currentFileType() === 'text') {
       <button
-        mat-icon-button
+        matIconButton
         matTooltip="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
         class="header-button"
         (click)="toggleMarkdownPreview(); $event.stopPropagation()"
@@ -26,7 +26,7 @@
     @if (currentFileType() === 'text') {
       @if (isEditing()) {
         <button
-          mat-icon-button
+          matIconButton
           matTooltip="{{ 'fileBrowser.fileViewer.save' | translate }}"
           class="header-button save-button"
           (click)="saveChanges(); $event.stopPropagation()"
@@ -40,7 +40,7 @@
           }
         </button>
         <button
-          mat-icon-button
+          matIconButton
           matTooltip="{{ 'fileBrowser.fileViewer.cancel' | translate }}"
           class="header-button"
           (click)="cancelEditing(); $event.stopPropagation()"
@@ -51,7 +51,7 @@
         </button>
       } @else {
         <button
-          mat-icon-button
+          matIconButton
           matTooltip="{{ 'fileBrowser.fileViewer.edit' | translate }}"
           class="header-button"
           (click)="startEditing(); $event.stopPropagation()"
@@ -64,7 +64,7 @@
 
     @if (currentFileType() === 'archive') {
       <button
-        mat-icon-button
+        matIconButton
         matTooltip="{{ 'fileBrowser.fileViewer.extract' | translate }}"
         class="header-button"
         [disabled]="isExtracting()"
@@ -81,7 +81,7 @@
 
     @if (!this.data.isLocal || this.isHeadless()) {
       <button
-        mat-icon-button
+        matIconButton
         matTooltip="{{ 'fileBrowser.fileViewer.download' | translate: { name: fileName() } }}"
         class="header-button"
         [disabled]="isDownloading()"
@@ -96,7 +96,7 @@
       </button>
     }
     <button
-      mat-icon-button
+      matIconButton
       matTooltip="{{ 'fileBrowser.fileViewer.closeViewer' | translate }}"
       class="header-button close-button"
       (click)="closeViewer.emit(); $event.stopPropagation()"
@@ -305,7 +305,7 @@
 <div class="bottom-bar">
   @if (data.items.length > 1 && currentIndex() > 0) {
     <button
-      mat-icon-button
+      matIconButton
       class="nav-button prev"
       (click)="back(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.previousFile' | translate"
@@ -331,7 +331,7 @@
 
   @if (data.items.length > 1 && currentIndex() < data.items.length - 1) {
     <button
-      mat-icon-button
+      matIconButton
       class="nav-button next"
       (click)="next(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.nextFile' | translate"

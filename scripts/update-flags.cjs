@@ -3,7 +3,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 // Configuration
-const DEFAULT_RCLONE_URL = 'http://127.0.0.1:51900';
+const DEFAULT_RCLONE_URL = 'http://127.0.0.1:5572';
 const PROJECT_ROOT = path.dirname(__dirname);
 const I18N_DIR = path.join(PROJECT_ROOT, 'resources', 'i18n');
 
@@ -13,15 +13,15 @@ const I18N_DIR = path.join(PROJECT_ROOT, 'resources', 'i18n');
 function getFlags(url) {
   console.log(`Fetching flags from ${url}...`);
   try {
-    const result = spawnSync(
-      'rclone',
-      ['rc', 'options/info', '--rc-no-auth', '--url', url],
-      { encoding: 'utf8' }
-    );
+    const result = spawnSync('rclone', ['rc', 'options/info', '--rc-no-auth', '--url', url], {
+      encoding: 'utf8',
+    });
 
     if (result.status !== 0) {
       console.error(`Error calling rclone: ${result.stderr}`);
-      console.log("Ensure rclone is running with 'rclone rcd --rc-no-auth --rc-addr :51900' or similar.");
+      console.log(
+        "Ensure rclone is running with 'rclone rcd --rc-no-auth --rc-addr :5572' or similar."
+      );
       return null;
     }
 
@@ -61,7 +61,7 @@ function parseFlags(output) {
       const key = flagName.replace(/-/g, '_');
       flags[key] = {
         title: titleCase(flagName),
-        help: helpText
+        help: helpText,
       };
     }
   }
@@ -72,7 +72,10 @@ function parseFlags(output) {
  * Simple title case helper.
  */
 function titleCase(s) {
-  return s.split(/[-_]/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+  return s
+    .split(/[-_]/)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ');
 }
 
 /**
@@ -149,13 +152,49 @@ function updateFile(filePath, flagsData) {
 
   let finalContent;
   if (needsComma) {
-    finalContent = content.slice(0, i + 1) + ',' + content.slice(i + 1, lastBraceIdx) + fullInsertion + '\n' + content.slice(lastBraceIdx);
+    finalContent =
+      content.slice(0, i + 1) +
+      ',' +
+      content.slice(i + 1, lastBraceIdx) +
+      fullInsertion +
+      '\n' +
+      content.slice(lastBraceIdx);
   } else {
-    finalContent = content.slice(0, lastBraceIdx) + fullInsertion + '\n' + content.slice(lastBraceIdx);
+    finalContent =
+      content.slice(0, lastBraceIdx) + fullInsertion + '\n' + content.slice(lastBraceIdx);
   }
 
   fs.writeFileSync(filePath, finalContent, 'utf8');
   console.log(`  Updated ${filePath}`);
+}
+
+/**
+ * Extract static flag definitions from flag-definitions.ts.
+ */
+function getStaticFlags() {
+  const filePath = path.join(PROJECT_ROOT, 'src', 'app', 'services', 'remote', 'flag-definitions.ts');
+  if (!fs.existsSync(filePath)) {
+    console.warn(`Static flag definitions not found at ${filePath}`);
+    return {};
+  }
+  const content = fs.readFileSync(filePath, 'utf8');
+  const staticFlags = {};
+  const objectBlocks = content.match(/\{[^{}]*Name:[^{}]*\}/g) || [];
+
+  for (const block of objectBlocks) {
+    const nameMatch = block.match(/Name:\s*['"]([^'"]+)['"]/);
+    const helpMatch = block.match(/Help:\s*['"]([\s\S]*?)['"]\s*,/);
+    if (nameMatch && helpMatch) {
+      const flagName = nameMatch[1];
+      const helpText = helpMatch[1].trim().replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+      const key = flagName.replace(/-/g, '_');
+      staticFlags[key] = {
+        title: titleCase(flagName),
+        help: helpText,
+      };
+    }
+  }
+  return staticFlags;
 }
 
 /**
@@ -171,8 +210,19 @@ function main() {
     }
   }
 
-  const flags = getFlags(url);
-  if (!flags) process.exit(1);
+  let flags = getFlags(url);
+  if (!flags) {
+    console.warn('Could not fetch flags from running rclone. Using only static flag definitions.');
+    flags = {};
+  }
+
+  const staticFlags = getStaticFlags();
+  const mergedFlags = { ...flags, ...staticFlags };
+
+  if (Object.keys(mergedFlags).length === 0) {
+    console.error('No flags found to process.');
+    process.exit(1);
+  }
 
   if (!fs.existsSync(I18N_DIR)) {
     console.error(`i18n directory not found at ${I18N_DIR}`);
@@ -186,7 +236,7 @@ function main() {
       const targetFile = path.join(langDir, 'rclone.json');
       if (fs.existsSync(targetFile)) {
         console.log(`Processing language: ${entry}`);
-        updateFile(targetFile, flags);
+        updateFile(targetFile, mergedFlags);
       }
     }
   }

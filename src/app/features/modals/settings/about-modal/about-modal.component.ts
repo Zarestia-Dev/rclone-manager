@@ -21,7 +21,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked, Renderer } from 'marked';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NgClass, NgTemplateOutlet, DecimalPipe } from '@angular/common';
 
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
@@ -58,7 +58,7 @@ renderer.link = ({ href, title, text }): string => {
     MatTooltipModule,
     MatProgressBarModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './about-modal.component.html',
@@ -167,11 +167,12 @@ export class AboutModalComponent implements OnInit {
   // Platform / fscache
   // ---------------------------------------------------------------------------
 
-  // Sourced from the service — already resolved during service init.
   readonly buildType = computed(() => this.appUpdaterService.buildType());
   readonly updaterEnabled = computed(() => this.appUpdaterService.isUpdaterEnabled());
+  readonly rcloneUpdateEnabled = computed(() => this.rcloneUpdateService.isUpdaterEnabled());
   readonly fsCacheEntries = signal(0);
   readonly clearingFsCache = signal(false);
+  readonly isLibrclone = signal(false);
 
   // ---------------------------------------------------------------------------
   // Debug
@@ -214,6 +215,7 @@ export class AboutModalComponent implements OnInit {
   ];
 
   readonly bottomNavItems: { label: string; viewId: ViewId; icon: string }[] = [
+    { label: 'modals.about.donate', viewId: 'donate', icon: 'chevron-right' },
     { label: 'modals.about.credits', viewId: 'credits', icon: 'chevron-right' },
     { label: 'modals.about.legal', viewId: 'legal', icon: 'chevron-right' },
   ];
@@ -246,6 +248,11 @@ export class AboutModalComponent implements OnInit {
       this.debugInfo.set(await this.debugService.getDebugInfo());
     } catch (error) {
       console.error('Failed to load debug info:', error);
+    }
+    try {
+      this.isLibrclone.set(await this.systemInfoService.isLibrclone());
+    } catch (error) {
+      console.error('Failed to check librclone mode:', error);
     }
   }
 
@@ -441,6 +448,9 @@ export class AboutModalComponent implements OnInit {
   });
 
   async quitRcloneEngine(): Promise<void> {
+    if (this.isLibrclone()) {
+      return;
+    }
     try {
       if (this.backendService.activeBackend() === 'Local') {
         const pid = this.rcloneStatusService.rclonePID();
@@ -520,7 +530,7 @@ export class AboutModalComponent implements OnInit {
 
   formatReleaseDate(dateString: string): string {
     try {
-      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang(), {
+      return new Date(dateString).toLocaleDateString(this.translate.getCurrentLang() ?? 'en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

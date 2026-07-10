@@ -1,8 +1,7 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
 import {
@@ -16,14 +15,8 @@ import {
 
 @Component({
   selector: 'app-remotes-panel',
-  imports: [
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule,
-    TranslateModule,
-    DragDropModule,
-    RemoteCardComponent,
-  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, DragDropModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
   host: {
@@ -52,15 +45,13 @@ export class RemotesPanelComponent {
   layoutChanged = output<string[]>();
   toggleHidden = output<string>();
 
-  // Shows all remotes in edit mode, only visible ones otherwise
+  readonly hiddenSet = computed(() => new Set(this.hiddenRemoteNames()));
+
   readonly displayRemotes = computed(() =>
     this.isEditingLayout() ? this.allRemotes() : this.remotes()
   );
 
-  // Always shows the visible count, not the edit-mode count
   readonly count = computed(() => this.remotes().length);
-
-  readonly hiddenSet = computed(() => new Set(this.hiddenRemoteNames()));
 
   onDrop(event: CdkDragDrop<Remote[]>): void {
     if (!this.isEditingLayout()) return;

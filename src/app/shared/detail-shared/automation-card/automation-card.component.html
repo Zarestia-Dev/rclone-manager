@@ -35,7 +35,7 @@
           {{ 'automation.status.' + automation().status | translate }}
         </span>
         <button
-          mat-icon-button
+          matIconButton
           class="automation-toggle-btn"
           (click)="onToggle($event)"
           [matTooltip]="toggleState().tooltip | translate"
@@ -96,7 +96,7 @@
         </span>
       </div>
       <button
-        mat-icon-button
+        matIconButton
         (click)="onToggle($event)"
         [matTooltip]="toggleState().tooltip | translate"
         [disabled]="automation().status === 'stopping'"
@@ -191,7 +191,7 @@
                 <code class="path-value">{{ src.path }}</code>
               </div>
               <button
-                mat-icon-button
+                matIconButton
                 [matTooltip]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(src.path, $event)"
               >
@@ -212,7 +212,7 @@
                 <code class="path-value">{{ dest.path }}</code>
               </div>
               <button
-                mat-icon-button
+                matIconButton
                 [matTooltip]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(dest.path, $event)"
               >

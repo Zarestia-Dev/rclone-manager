@@ -26,11 +26,10 @@ import {
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { SystemInfoService } from 'src/app/services/infrastructure/system/system-info.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-operation-control',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,
@@ -42,7 +41,7 @@ import { TranslateModule } from '@ngx-translate/core';
     MatProgressBarModule,
     MatSlideToggleModule,
     PathDisplayComponent,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
   ],
   template: `
@@ -80,7 +79,7 @@ import { TranslateModule } from '@ngx-translate/core';
         <mat-panel-description>
           <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
             <button
-              mat-icon-button
+              matIconButton
               class="quick-action"
               [class]="buttonClass()"
               (click)="handleQuickAction($event)"
@@ -128,9 +127,9 @@ import { TranslateModule } from '@ngx-translate/core';
               </div>
               <mat-progress-bar
                 mode="determinate"
-                [value]="(usage.used / usage.total) * 100"
+                [value]="usage.usagePercentage"
                 class="usage-bar"
-                [color]="getUsageColor(usage.used / usage.total)"
+                [color]="usage.usageColor"
               ></mat-progress-bar>
             }
           </div>
@@ -162,7 +161,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
         <div class="panel-actions">
           <button
-            mat-flat-button
+            matButton="filled"
             [class]="buttonClass()"
             (click)="
               config().isActive
@@ -221,8 +220,7 @@ import { TranslateModule } from '@ngx-translate/core';
       }
 
       .disk-usage-info {
-        margin-top: var(--space-md);
-        padding: var(--space-sm);
+        margin: var(--space-md) var(--space-sm) 0 var(--space-sm);
         background: var(--surface-variant);
         border-radius: var(--radius-sm);
         display: flex;
@@ -235,14 +233,14 @@ import { TranslateModule } from '@ngx-translate/core';
           justify-content: center;
           gap: var(--space-sm);
           padding: var(--space-xs) 0;
-          color: var(--text-secondary);
+          color: var(--dim-color);
         }
 
         .usage-stats {
           display: flex;
           justify-content: space-between;
           font-size: var(--body-sm);
-          color: var(--text-secondary);
+          color: var(--dim-color);
         }
 
         .usage-bar {
@@ -333,12 +331,6 @@ export class OperationControlComponent {
     } else {
       this.startJob.emit(operationType);
     }
-  }
-
-  getUsageColor(ratio: number): string {
-    if (ratio > 0.9) return 'warn';
-    if (ratio > 0.7) return 'accent';
-    return 'primary';
   }
 
   readonly operationIcon = computed(

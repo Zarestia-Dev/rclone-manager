@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,56 +21,43 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
+import { ObscureToolComponent } from '../../../../shared/remote-config/obscure-tool/obscure-tool.component';
+import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { JSON_EDITOR_LOOKUP_TABLE } from '../../../../shared/components/json-editor/json-editor.component';
+import {
+  JSON_EDITOR_LOOKUP_TABLE,
+  type JsonEditorLookupTable,
+} from '../../../../shared/components/json-editor/json-editor.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
-import { JobManagementService } from '../../../../services/operations/job-management.service';
-import { MountManagementService } from '../../../../services/operations/mount-management.service';
 import { AppSettingsService } from '../../../../services/settings/app-settings.service';
-import { ServeManagementService } from '../../../../services/operations/serve-management.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
 import {
   RemoteConfigStateService,
   DialogData,
-  PendingRemoteData,
 } from '../../../../services/remote/remote-config-state.service';
+import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
 import {
-  FLAG_TYPES,
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
-  MountConfig,
-  CopyConfig,
-  SyncConfig,
-  BisyncConfig,
-  MoveConfig,
-  ServeConfig,
-  VfsConfig,
-  BackendConfig,
-  RuntimeRemoteConfig,
   SharedProfileType,
-  FilterConfig,
   LINKED_PROFILE_TYPES,
-  JobMap,
-  SYNC_TYPES,
+  PROFILE_ICONS,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileHeaderComponent } from './profile-header/profile-header.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
-import {
-  createInitialInteractiveFlowState,
-  convertBoolAnswerToString,
-  getDefaultAnswerFromQuestion,
-} from '../../../../services/remote/utils/remote-config.utils';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 
 @Component({
   selector: 'app-remote-config-modal',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatSelectModule,
@@ -81,6 +68,8 @@ import {
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     CliImportComponent,
+    ObscureToolComponent,
+    AlertBannerComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
@@ -89,10 +78,11 @@ import {
     ConfigModalFooterComponent,
   ],
   providers: [
+    RemoteCreationOrchestrator,
     RemoteConfigStateService,
     {
       provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (state: RemoteConfigStateService) => state.lookupTable,
+      useFactory: (state: RemoteConfigStateService): JsonEditorLookupTable => state.lookupTable,
       deps: [RemoteConfigStateService],
     },
   ],
@@ -109,34 +99,20 @@ export class RemoteConfigModalComponent {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  private readonly jobManagementService = inject(JobManagementService);
   readonly configStep = viewChild(RemoteConfigStepComponent);
-  private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData;
-  private readonly serveManagementService = inject(ServeManagementService);
   readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly orchestrator = inject(RemoteCreationOrchestrator);
 
   // ── Static config ─────────────────────────────────────────────────────────────
 
-  readonly FLAG_TYPES = FLAG_TYPES;
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
-  readonly PROFILE_ICONS: Readonly<Record<string, string>> = {
-    mount: 'hard-drive',
-    sync: 'refresh',
-    copy: 'copy',
-    move: 'move',
-    bisync: 'right-left',
-    serve: 'server',
-    vfs: 'vfs',
-    filter: 'filter',
-    backend: 'database',
-    runtimeRemote: 'gear',
-  };
+  readonly PROFILE_ICONS = PROFILE_ICONS;
 
   readonly remoteEditCategories = [
     { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },
@@ -160,11 +136,6 @@ export class RemoteConfigModalComponent {
     }
     return visible;
   });
-
-  private pendingConfig: {
-    remoteData: PendingRemoteData;
-    finalConfig: RemoteConfigSections;
-  } | null = null;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -192,18 +163,14 @@ export class RemoteConfigModalComponent {
   // ── Step navigation ───────────────────────────────────────────────────────────
 
   goToStep(step: number): void {
-    if (this.isStepDisabled(step)) return;
+    if (!this.state.isStepClickable(step)) return;
     this.saveCurrentStepProfile();
     this.state.currentStep.set(step);
     this.scrollToTop();
     if (step === 1 && !this.state.editTarget()) {
       this.state.showCliImport.set(false);
+      this.state.showObscureTool.set(false);
     }
-  }
-
-  isStepDisabled(step: number): boolean {
-    if (this.state.isStepNavigationLocked()) return true;
-    return !this.state.editTarget() && step > 1 && this.state.remoteFormStatus() === 'INVALID';
   }
 
   nextStep(): void {
@@ -223,9 +190,7 @@ export class RemoteConfigModalComponent {
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.state.interactiveFlowState().isActive) {
-      this.state.interactiveFlowState.update(s => ({ ...s, answer: newAnswer }));
-    }
+    this.orchestrator.updateInteractiveAnswer(newAnswer);
   }
 
   // ── Form submission ───────────────────────────────────────────────────────────
@@ -239,7 +204,7 @@ export class RemoteConfigModalComponent {
       if (result.success && !this.state.isAuthCancelled()) this.close();
     } catch (error) {
       console.error('Submission error:', error);
-      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
+      this.orchestrator.resetInteractiveFlow();
 
       let errorMessage = this.translate.instant(
         'modals.remoteConfig.errors.interactiveProcessingFailed'
@@ -273,13 +238,18 @@ export class RemoteConfigModalComponent {
         remoteData,
         this.remoteManagementService.buildOpt(this.state.commandOptions())
       );
-      this.pendingConfig = { remoteData, finalConfig };
-      await this.finalizeRemoteCreation();
+      this.orchestrator.setPendingConfig(remoteData, finalConfig);
+      await this.orchestrator.finalizeCreation();
       return { success: true };
     }
 
-    this.pendingConfig = { remoteData, finalConfig };
-    return await this.startInteractiveRemoteConfig(remoteData);
+    this.orchestrator.setPendingConfig(remoteData, finalConfig);
+    const completed = await this.orchestrator.startInteractiveCreation(
+      remoteData,
+      finalConfig,
+      this.state.commandOptions()
+    );
+    return { success: completed };
   }
 
   private async handleEditMode(): Promise<{ success: boolean }> {
@@ -289,8 +259,14 @@ export class RemoteConfigModalComponent {
     if (this.state.editTarget() === 'remote') {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
       if (this.requiresInteractiveFlow) {
-        this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
-        return await this.startInteractiveRemoteConfig(remoteData);
+        const finalConfig = this.buildFinalConfig(true);
+        this.orchestrator.setPendingConfig(remoteData, finalConfig);
+        const completed = await this.orchestrator.startInteractiveCreation(
+          remoteData,
+          finalConfig,
+          this.state.commandOptions()
+        );
+        return { success: completed };
       }
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
       return { success: true };
@@ -303,22 +279,16 @@ export class RemoteConfigModalComponent {
 
   // ── Config building ───────────────────────────────────────────────────────────
 
-  private buildFinalConfig(): RemoteConfigSections {
+  private buildFinalConfig(empty = false): RemoteConfigSections {
     this.saveCurrentStepProfile();
     const p = this.state.profiles();
-    return {
-      [REMOTE_CONFIG_KEYS.mount]: p['mount'] as Record<string, MountConfig>,
-      [REMOTE_CONFIG_KEYS.copy]: p['copy'] as Record<string, CopyConfig>,
-      [REMOTE_CONFIG_KEYS.sync]: p['sync'] as Record<string, SyncConfig>,
-      [REMOTE_CONFIG_KEYS.bisync]: p['bisync'] as Record<string, BisyncConfig>,
-      [REMOTE_CONFIG_KEYS.move]: p['move'] as Record<string, MoveConfig>,
-      [REMOTE_CONFIG_KEYS.serve]: p['serve'] as unknown as Record<string, ServeConfig>,
-      [REMOTE_CONFIG_KEYS.filter]: p['filter'] as Record<string, FilterConfig>,
-      [REMOTE_CONFIG_KEYS.vfs]: p['vfs'] as Record<string, VfsConfig>,
-      [REMOTE_CONFIG_KEYS.backend]: p['backend'] as Record<string, BackendConfig>,
-      [REMOTE_CONFIG_KEYS.runtimeRemote]: p['runtimeRemote'] as Record<string, RuntimeRemoteConfig>,
-      showOnTray: true,
-    };
+    const sections = Object.fromEntries(
+      Object.entries(REMOTE_CONFIG_KEYS).map(([type, key]) => [
+        key,
+        empty ? {} : p[type as keyof typeof p],
+      ])
+    ) as unknown as RemoteConfigSections;
+    return { ...sections, showOnTray: true };
   }
 
   private buildUpdateConfig(): Record<string, unknown> {
@@ -335,13 +305,6 @@ export class RemoteConfigModalComponent {
     }
 
     return updatedConfig;
-  }
-
-  private createEmptyFinalConfig(): RemoteConfigSections {
-    const empty = Object.fromEntries(
-      Object.values(REMOTE_CONFIG_KEYS).map(k => [k, {}])
-    ) as unknown as RemoteConfigSections;
-    return { ...empty, showOnTray: true };
   }
 
   saveCurrentStepProfile(): void {
@@ -362,140 +325,16 @@ export class RemoteConfigModalComponent {
       isProcessing: true,
       answer: String(answer),
     }));
-    void this.processInteractiveResponse(String(answer));
-  }
-
-  private async startInteractiveRemoteConfig(
-    remoteData: PendingRemoteData
-  ): Promise<{ success: boolean }> {
-    try {
-      const resp = await this.remoteManagementService.startRemoteConfigInteractive(
-        remoteData.name,
-        remoteData.type,
-        remoteData,
-        this.remoteManagementService.buildOpt(this.state.commandOptions())
-      );
-
-      if (!resp || resp.State === '') {
-        await this.finalizeRemoteCreation();
-        return { success: true };
-      }
-
-      this.state.interactiveFlowState.set({
-        isActive: true,
-        isProcessing: false,
-        question: resp,
-        answer: getDefaultAnswerFromQuestion(resp),
-      });
-
-      return { success: false };
-    } catch (error) {
-      this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-      throw error;
-    }
-  }
-
-  private async processInteractiveResponse(answer: string): Promise<void> {
-    try {
-      const state = this.state.interactiveFlowState();
-      if (!state.isActive || !state.question || !this.pendingConfig) return;
-
-      const { name, ...paramRest } = this.pendingConfig.remoteData;
-      const processedAnswer: unknown =
-        state.question?.Option?.Type === 'bool' ? convertBoolAnswerToString(answer) : answer;
-
-      const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
-        name,
-        state.question.State,
-        processedAnswer,
-        paramRest,
-        this.remoteManagementService.buildOpt(this.state.commandOptions())
-      );
-
-      if (!resp || resp.State === '') {
-        this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-        await this.finalizeRemoteCreation();
-      } else {
-        this.state.interactiveFlowState.update(s => ({
-          ...s,
-          question: resp,
-          answer: getDefaultAnswerFromQuestion(resp),
-          isProcessing: false,
-        }));
-      }
-    } catch (error) {
-      console.error('Error processing interactive response:', error);
-      this.state.interactiveFlowState.update(s => ({ ...s, isProcessing: false }));
-      this.notificationService.showError(
-        this.translate.instant('modals.remoteConfig.errors.interactiveProcessingFailed')
-      );
-    }
-  }
-
-  // ── Finalization ──────────────────────────────────────────────────────────────
-
-  private async finalizeRemoteCreation(): Promise<void> {
-    if (!this.pendingConfig) return;
-    const { remoteData, finalConfig } = this.pendingConfig;
-    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
-    await this.remoteManagementService.getRemotes();
-    this.authStateService.resetAuthState();
-    await this.triggerAutoStartJobs(remoteData.name, finalConfig);
-    this.close();
-  }
-
-  private async triggerAutoStartJobs(
-    remoteName: string,
-    finalConfig: RemoteConfigSections
-  ): Promise<void> {
-    const mountConfigs = finalConfig[REMOTE_CONFIG_KEYS.mount];
-    if (mountConfigs) {
-      for (const [profileName, config] of Object.entries(mountConfigs)) {
-        const appCfg = (config as any).app || config;
-        const rcloneCfg = (config as any).rclone || config;
-        if (appCfg.autoStart && rcloneCfg.mountPoint) {
-          void this.mountManagementService.mountRemoteProfile(remoteName, profileName);
-        }
-      }
-    }
-
-    for (const jobType of SYNC_TYPES) {
-      const configs = finalConfig[REMOTE_CONFIG_KEYS[jobType]] as JobMap | undefined;
-      if (!configs) continue;
-      for (const [profileName, config] of Object.entries(configs)) {
-        const appCfg = (config as any).app || config;
-        const rcloneCfg = (config as any).rclone || config;
-        const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
-        const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
-        if (appCfg.autoStart && hasSource && hasDest) {
-          const batchType = (jobType.charAt(0).toUpperCase() + jobType.slice(1)) as
-            | 'Copy'
-            | 'Sync'
-            | 'Bisync'
-            | 'Move';
-          void this.jobManagementService.startProfileBatch(batchType, {
-            remoteName,
-            profileName,
-          });
-        }
-      }
-    }
-
-    const serveConfigs = finalConfig[REMOTE_CONFIG_KEYS.serve];
-    if (serveConfigs) {
-      for (const [profileName, config] of Object.entries(serveConfigs)) {
-        const appCfg = (config as any).app || config;
-        if (appCfg.autoStart) {
-          void this.serveManagementService.startServeProfile(remoteName, profileName);
-        }
-      }
-    }
+    void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
+      // submitInteractiveAnswer calls finalizeCreation internally when the
+      // backend signals completion (no more questions) — at that point the
+      // flow is no longer active and we should close the modal.
+      if (!this.state.interactiveFlowState().isActive) this.close();
+    });
   }
 
   async cancelAuth(): Promise<void> {
-    await this.authStateService.cancelAuth();
-    this.state.interactiveFlowState.set(createInitialInteractiveFlowState());
+    await this.orchestrator.cancelAuth();
   }
 
   // ── Search & Listeners ─────────────────────────────────────────────────────────
@@ -523,7 +362,6 @@ export class RemoteConfigModalComponent {
     }
   }
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

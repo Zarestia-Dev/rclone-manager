@@ -1,3 +1,7 @@
+export type PrimitiveValue = string | number | boolean | null;
+export type ConfigValue = PrimitiveValue | PrimitiveValue[] | { [key: string]: ConfigValue };
+
+// ── Rclone System Info ──────────────────────────────────────────────────────
 export interface RcloneInfo {
   version: string;
   decomposed: number[];
@@ -74,18 +78,13 @@ export const SENSITIVE_KEYS = [
   'client_id',
   'api_key',
   'drive_id',
-];
+] as const;
 
-// === Engine & App Events ===
-// Note: Engine events now use dedicated event constants with no payload
-// The event name itself indicates the state (ready, error, etc.)
-
-// App events have payloads with status and message
 export interface AppEventPayload {
   status: string;
   message?: string;
   language?: string;
-  data?: any;
+  data?: unknown; // Replaced any
 }
 
 export type AppEventPayloadType = AppEventPayload;
@@ -98,7 +97,6 @@ export enum BackendUpdateStatus {
   Available = 'available',
 }
 
-// === Update Info ===
 export interface UpdateInfo {
   version: string;
   currentVersion: string;
@@ -137,8 +135,6 @@ export interface UpdateResult {
   manual?: boolean;
 }
 
-// === Security / Passwords ===
-
 export interface LoadingStates {
   isValidating: boolean;
   isEncrypting: boolean;
@@ -175,14 +171,14 @@ export interface RcloneFlagMetadata {
   placeholder?: string;
 }
 
-export interface SettingMetadata {
+export interface SettingMetadata<T = ConfigValue> {
   value_type?: 'bool' | 'int' | 'string' | 'select' | 'bandwidth' | 'file' | 'folder' | 'string[]';
-  default: any;
-  value?: any;
+  default: T;
+  value?: T;
   min?: number;
   max?: number;
   step?: number;
-  options?: any[];
+  options?: ConfigValue[];
   metadata?: RcloneFlagMetadata;
   reserved?: string[];
 }
@@ -199,17 +195,21 @@ export enum RepairSheetType {
   RCLONE_VERSION = 'rclone_version',
 }
 
+export type LocalDiskUsageColor = 'primary' | 'accent' | 'warn';
+
 export interface LocalDiskUsage {
   free: number;
   total: number;
   used: number;
   dir?: string;
+  usagePercentage: number;
+  usageColor: LocalDiskUsageColor;
 }
 
 export interface PendingChange {
   category: string;
   key: string;
-  value: unknown;
+  value: ConfigValue; // Replaced unknown
   metadata: SettingMetadata;
 }
 
@@ -229,7 +229,8 @@ export type ViewId =
   | 'whats-new-app'
   | 'whats-new-rclone'
   | 'memory'
-  | 'debugging';
+  | 'debugging'
+  | 'donate';
 
 export interface OverlayView {
   id: ViewId;

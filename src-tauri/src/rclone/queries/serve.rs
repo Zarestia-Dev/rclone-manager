@@ -1,10 +1,7 @@
 use log::debug;
 use serde_json::Value;
 
-use crate::utils::{
-    rclone::endpoints::serve,
-    types::{remotes::ServeInstance, state::RcloneState},
-};
+use crate::utils::{rclone::endpoints::serve, types::remotes::ServeInstance};
 
 /// Parse serves list from API JSON response
 pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
@@ -33,13 +30,8 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, String> {
-    use crate::rclone::backend::BackendManager;
-    use tauri::Manager;
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, serve::TYPES, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(serve::TYPES, None)
         .await
         .map_err(|e| format!("Failed to fetch serve types: {e}"))?;
 
@@ -57,15 +49,8 @@ pub async fn get_serve_types(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 pub async fn list_serves(app: tauri::AppHandle) -> Result<Vec<ServeInstance>, String> {
-    use crate::rclone::backend::BackendManager;
-    use tauri::Manager;
-
-    let backend_manager = app.state::<BackendManager>();
-    let backend = backend_manager.get_active().await;
-    let client = &app.state::<RcloneState>().client;
-
-    let json = backend
-        .post_json(client, serve::LIST, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(serve::LIST, None)
         .await
         .map_err(|e| format!("Failed to list serves: {e}"))?;
 

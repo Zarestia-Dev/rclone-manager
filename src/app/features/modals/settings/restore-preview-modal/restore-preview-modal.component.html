@@ -4,7 +4,7 @@
   </button>
   <p>{{ 'backup.restore.title' | translate }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'backup.restore.ariaClose' | translate"
   >
@@ -290,7 +290,7 @@
           />
           <mat-icon matPrefix svgIcon="key"></mat-icon>
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="togglePasswordVisibility()"
             [attr.aria-label]="
@@ -310,12 +310,12 @@
 
 <!-- Modal Actions -->
 <footer>
-  <button mat-stroked-button (click)="close()" [disabled]="isVerifying()" class="cancel-btn">
+  <button matButton="outlined" (click)="close()" [disabled]="isVerifying()" class="cancel-btn">
     {{ 'backup.restore.cancel' | translate }}
   </button>
 
   <button
-    mat-flat-button
+    matButton="filled"
     class="primary restore-btn"
     (click)="verifyAndRestore()"
     [disabled]="isVerifying() || (isEncrypted && !password())"

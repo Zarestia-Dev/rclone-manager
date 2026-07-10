@@ -1,9 +1,12 @@
 use std::path::PathBuf;
 
 use log::{debug, error, info};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
-use crate::utils::rclone::util::RCLONE_EXECUTABLE;
+use crate::utils::{
+    rclone::util::RCLONE_EXECUTABLE,
+    types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+};
 
 pub const MIN_RCLONE_VERSION: &str = "1.70.0";
 
@@ -94,8 +97,6 @@ pub async fn check_rclone_available(app: AppHandle, path: String) -> Result<bool
             )),
         }
     } else {
-        use crate::utils::types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED};
-        use tauri::Emitter;
         if let Err(e) = app.emit(RCLONE_ENGINE_STATUS_CHANGED, EngineStatus::PathError) {
             error!("Failed to emit path error event: {e}");
         }

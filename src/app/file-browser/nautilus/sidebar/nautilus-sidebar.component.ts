@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
@@ -13,14 +13,19 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { FileBrowserItem, ExplorerRoot } from '@app/types';
 import { OperationsPanelComponent } from '../../operations-panel/operations-panel.component';
 import { SlideMenuController } from '../slide-menu';
+import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
+
+interface BookmarkViewModel {
+  bm: FileBrowserItem;
+  key: string;
+}
 
 @Component({
   selector: 'app-nautilus-sidebar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
@@ -35,6 +40,7 @@ export class NautilusSidebarComponent {
   readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
   private readonly remoteFacadeService = inject(RemoteFacadeService);
+  protected readonly settings = inject(NautilusSettingsService);
 
   // Inputs
   readonly isMobile = input.required<boolean>();
@@ -78,13 +84,49 @@ export class NautilusSidebarComponent {
 
   // Computed
   private readonly _activeKey = computed<string | null>(() => {
-    if (this.starredMode() || !this.nautilusRemote()) return null;
-    return `${this.nautilusRemote()!.name}::${this.currentPath()}`;
+    const remote = this.nautilusRemote();
+    if (this.starredMode() || !remote) return null;
+    return `${remote.name}::${this.currentPath()}`;
   });
 
   readonly anyBookmarkSelected = computed(() => {
     const active = this._activeKey();
     return active !== null && this.bookmarks().some(bm => this._bookmarkKey(bm) === active);
+  });
+
+  readonly bookmarkViewModels = computed<BookmarkViewModel[]>(() =>
+    this.bookmarks().map(bm => ({ bm, key: this._bookmarkKey(bm) }))
+  );
+
+  readonly selectedBookmarkKeys = computed<Set<string>>(() => {
+    const active = this._activeKey();
+    if (active === null) return new Set<string>();
+    const keys = this.bookmarkViewModels().map(vm => vm.key);
+    return new Set<string>(keys.filter(key => key === active));
+  });
+
+  readonly cleanupSupportedRemotes = computed<Set<string>>(() => {
+    const result = new Set<string>();
+    for (const remote of [...this.localDrives(), ...this.cloudRemotes()]) {
+      if (this.remoteFacadeService.featuresSignal(remote.name)().CleanUp) {
+        result.add(remote.name);
+      }
+    }
+    return result;
+  });
+
+  readonly driveTooltips = computed<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    for (const drive of [...this.localDrives(), ...this.cloudRemotes()]) {
+      const pathInfo = drive.name ? `${drive.name}\n` : '';
+      if (drive.totalSpace === undefined || drive.totalSpace === 0) {
+        map.set(drive.name, pathInfo);
+        continue;
+      }
+      const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
+      map.set(drive.name, `${pathInfo}${fs}`);
+    }
+    return map;
   });
 
   // Handlers
@@ -122,25 +164,9 @@ export class NautilusSidebarComponent {
     this._closeSidenavOnMobile();
   }
 
-  isBookmarkSelected(bm: FileBrowserItem): boolean {
-    const active = this._activeKey();
-    return active !== null && this._bookmarkKey(bm) === active;
-  }
-
-  supportsCleanup(remote: ExplorerRoot | null): boolean {
-    return remote ? this.remoteFacadeService.featuresSignal(remote.name)().CleanUp : false;
-  }
-
   private _bookmarkKey(bm: FileBrowserItem): string {
     const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '', bm.meta.isLocal);
     return `${remote}::${bm.entry.Path}`;
-  }
-
-  getDriveTooltip(drive: ExplorerRoot): string {
-    const pathInfo = drive.name ? `${drive.name}\n` : '';
-    if (drive.totalSpace === undefined || drive.totalSpace === 0) return pathInfo;
-    const fs = drive.fileSystem ? ` [${drive.fileSystem}]` : '';
-    return `${pathInfo}${fs}`;
   }
 
   private _closeSidenavOnMobile(): void {

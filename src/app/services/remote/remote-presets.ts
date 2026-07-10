@@ -31,7 +31,6 @@ const BASE_PRESET: PresetValues = {
     ChunkSize: '16M',
     ChunkStreams: 8,
     ReadAhead: '128M',
-    DirCacheTime: '1000h',
     Refresh: true,
   },
   mount: {
@@ -54,13 +53,11 @@ const FAMILY_PRESETS: Record<StorageFamily, PresetValues> = {
     },
     vfs: {
       FastFingerprint: true,
-      DirCacheTime: '72h',
     },
   },
   webdav: {
     vfs: {
       WriteBack: '20s',
-      DirCacheTime: '72h',
     },
   },
   generic: {},
@@ -106,7 +103,10 @@ const OS_PRESETS: Record<'windows' | 'macos' | 'linux', PresetValues> = {
     mount: { NetworkMode: true },
   },
   macos: {
-    mount: { NoAppleXattr: true },
+    mount: {
+      NoAppleXattr: true,
+      NoAppleDouble: true,
+    },
   },
   linux: {},
 };

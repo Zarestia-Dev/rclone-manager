@@ -1,6 +1,14 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  computed,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -12,13 +20,17 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
 
 @Component({
   selector: 'app-settings-panel',
-  standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslateModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslatePipe],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     @let cfg = config();
 
-    <mat-expansion-panel>
+    <mat-expansion-panel
+      [expanded]="isExpanded()"
+      (opened)="isExpanded.set(true)"
+      (closed)="isExpanded.set(false)"
+    >
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon [svgIcon]="cfg.section.icon" style="color: var(--mat-sys-primary);"></mat-icon>
@@ -34,48 +46,66 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
               'detailShared.settings.notConfigured' | translate
             }}</span>
           }
+          <div class="quick-action-wrapper" [class.hidden]="isExpanded()">
+            <button
+              type="button"
+              matIconButton
+              style="color: var(--mat-sys-primary);"
+              [matTooltip]="editButtonLabel() | translate"
+              matTooltipShowDelay="500"
+              (click)="onEditSettings(); $event.stopPropagation()"
+            >
+              <mat-icon svgIcon="pen"></mat-icon>
+            </button>
+          </div>
         </mat-panel-description>
       </mat-expansion-panel-header>
 
-      <div class="panel-body">
-        @if (hasMeaningfulSettings()) {
-          <div class="groups-container">
-            @for (group of groupedSettings(); track group.category) {
-              <div class="settings-group-section" [class.with-category]="group.category">
-                @if (group.category) {
-                  <h4 class="group-section-title">{{ group.category | translate }}</h4>
+      @if (hasMeaningfulSettings()) {
+        <div class="groups-container">
+          @for (group of groupedSettings(); track group.category || 'default') {
+            <section class="settings-group-section" [class.with-category]="group.category">
+              @if (group.category) {
+                <h4 class="group-section-title">{{ group.category | translate }}</h4>
+              }
+              <div class="settings-flow">
+                @for (entry of group.entries; track entry.key) {
+                  <div
+                    class="setting-chip"
+                    [class.is-sensitive]="entry.isSensitive"
+                    [matTooltip]="entry.tooltip"
+                    matTooltipShowDelay="600"
+                  >
+                    <span class="chip-key">
+                      @if (entry.isSensitive) {
+                        <mat-icon
+                          svgIcon="lock"
+                          class="sensitive-indicator"
+                          [matTooltip]="'detailShared.settings.restricted' | translate"
+                          matTooltipShowDelay="500"
+                        ></mat-icon>
+                      }
+                      {{ entry.key }}
+                    </span>
+                    <strong>:</strong>
+                    <span class="chip-value">{{ entry.display }}</span>
+                  </div>
                 }
-                <div class="settings-grid">
-                  @for (entry of group.entries; track entry.key) {
-                    <div class="setting-item">
-                      <div class="setting-key">{{ entry.key }}</div>
-                      <div
-                        class="setting-value"
-                        [matTooltip]="entry.tooltip"
-                        [matTooltipShowDelay]="500"
-                      >
-                        {{ entry.display }}
-                      </div>
-                    </div>
-                  }
-                </div>
               </div>
-            }
-          </div>
-        } @else {
-          <div class="no-settings">
-            <mat-icon [svgIcon]="cfg.section.icon" class="no-settings-icon"></mat-icon>
-            <span>{{ 'detailShared.settings.noData' | translate }}</span>
-          </div>
-        }
-
-        <div class="panel-actions">
-          <button matButton="filled" (click)="onEditSettings()">
-            <mat-icon svgIcon="pen"></mat-icon>
-            <span>{{ editButtonLabel() | translate }}</span>
-          </button>
+            </section>
+          }
         </div>
-      </div>
+      } @else {
+        <div class="no-settings">
+          <mat-icon [svgIcon]="cfg.section.icon" class="no-settings-icon"></mat-icon>
+          <span>{{ 'detailShared.settings.noData' | translate }}</span>
+        </div>
+      }
+
+      <button matButton="filled" class="full-action-button" (click)="onEditSettings()">
+        <mat-icon svgIcon="pen"></mat-icon>
+        <span>{{ editButtonLabel() | translate }}</span>
+      </button>
     </mat-expansion-panel>
   `,
 })
@@ -85,6 +115,10 @@ export class SettingsPanelComponent {
 
   readonly config = input.required<SettingsPanelConfig>();
   readonly editSettings = output<{ section: string; settings: Record<string, unknown> }>();
+
+  readonly isExpanded = signal(false);
+
+  private readonly expandedKeys = signal<ReadonlySet<string>>(new Set());
 
   private readonly restrictMode = toSignal(
     this.appSettingsService
@@ -159,6 +193,20 @@ export class SettingsPanelComponent {
     });
   }
 
+  toggleEntryExpand(key: string): void {
+    const current = new Set(this.expandedKeys());
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    this.expandedKeys.set(current);
+  }
+
+  isEntryExpanded(key: string): boolean {
+    return this.expandedKeys().has(key);
+  }
+
   private flattenSettings(key: string, value: unknown, restrictedLabel: string): SettingEntry[] {
     if (value === null || value === undefined) return [];
 
@@ -185,6 +233,7 @@ export class SettingsPanelComponent {
       key,
       display: isSensitive ? restrictedLabel : valueText,
       tooltip: isSensitive ? `[${restrictedLabel}]` : valueText,
+      isSensitive,
     };
   }
 

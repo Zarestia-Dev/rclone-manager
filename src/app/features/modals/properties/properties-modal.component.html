@@ -1,6 +1,6 @@
 <header data-tauri-drag-region>
   <button
-    mat-icon-button
+    matIconButton
     (click)="toggleStar()"
     [attr.aria-label]="
       (isStarred() ? 'fileBrowser.properties.unstar' : 'fileBrowser.properties.star') | translate
@@ -13,7 +13,7 @@
   </button>
   <p>{{ 'fileBrowser.properties.title' | translate }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'fileBrowser.properties.close' | translate"
   >
@@ -34,9 +34,9 @@
         <mat-icon [svgIcon]="getIcon(currentItem)"></mat-icon>
       </div>
       <div class="item-details">
-        <h3 class="item-name" [title]="currentItem?.Name ?? displayLocation">
+        <code class="item-name" [title]="currentItem?.Name ?? displayLocation">
           {{ currentItem?.Name ?? displayLocation }}
-        </h3>
+        </code>
         <span class="item-type">
           {{
             currentItem?.MimeType ||
@@ -53,7 +53,7 @@
     <div class="properties-group">
       <div class="prop-row">
         <span class="label">{{ 'fileBrowser.properties.location' | translate }}</span>
-        <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
+        <code class="value path" [title]="displayLocation">{{ displayLocation }}</code>
       </div>
       @if (currentItem?.ModTime) {
         <div class="prop-row">
@@ -102,19 +102,17 @@
           <span>{{ 'fileBrowser.properties.checking' | translate }}</span>
         </div>
       } @else if (diskUsage()) {
-        <div class="usage-bars">
-          <div class="prop-row">
-            <span class="label">{{ 'fileBrowser.properties.used' | translate }}</span>
-            <span class="value">{{ diskUsage()?.used ?? 0 | formatFileSize }}</span>
-          </div>
-          <div class="prop-row">
-            <span class="label">{{ 'fileBrowser.properties.free' | translate }}</span>
-            <span class="value">{{ diskUsage()?.free ?? 0 | formatFileSize }}</span>
-          </div>
-          <div class="prop-row">
-            <span class="label">{{ 'fileBrowser.properties.totalCapacity' | translate }}</span>
-            <span class="value">{{ diskUsage()?.total ?? 0 | formatFileSize }}</span>
-          </div>
+        <div class="prop-row">
+          <span class="label">{{ 'fileBrowser.properties.used' | translate }}</span>
+          <span class="value">{{ diskUsage()?.used ?? 0 | formatFileSize }}</span>
+        </div>
+        <div class="prop-row">
+          <span class="label">{{ 'fileBrowser.properties.free' | translate }}</span>
+          <span class="value">{{ diskUsage()?.free ?? 0 | formatFileSize }}</span>
+        </div>
+        <div class="prop-row">
+          <span class="label">{{ 'fileBrowser.properties.totalCapacity' | translate }}</span>
+          <span class="value">{{ diskUsage()?.total ?? 0 | formatFileSize }}</span>
         </div>
       }
     </div>
@@ -136,102 +134,92 @@
       } @else if (supportedHashes().length > 0) {
         <!-- FILE MODE: Show calculated list -->
         @if (isFile()) {
-          <div class="hash-content">
-            <!-- Calculated hashes -->
-            @for (hash of hashEntries(); track hash.type) {
-              <div class="hash-item">
-                <div class="hash-header">
-                  <span class="hash-type">{{ hash.type | uppercase }}</span>
-                  <button
-                    mat-icon-button
-                    [appCopyToClipboard]="fileHashes()[hash.type]"
-                    [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
-                  >
-                    <mat-icon svgIcon="copy"></mat-icon>
-                  </button>
-                </div>
-                <span class="hash-value" [title]="hash.value">{{ hash.value }}</span>
-              </div>
-            }
+          <!-- Calculated hashes -->
+          @for (hash of hashEntries(); track hash.type) {
+            <div
+              class="hash-item"
+              [appCopyToClipboard]="hash.value"
+              [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+            >
+              <span class="hash-type">{{ hash.type }}</span>
+              <code class="hash-value" [title]="hash.value">{{ hash.value }}</code>
+            </div>
+          }
 
-            <!-- Uncalculated hash types as buttons -->
-            @if (uncalculatedHashes().length > 0) {
-              <div class="hash-options">
-                <span class="hash-options-label">{{
-                  'fileBrowser.properties.calculateMore' | translate
-                }}</span>
-                <div class="hash-chips">
-                  @for (hashType of uncalculatedHashes(); track hashType) {
-                    <button
-                      class="app-pill interactive p-primary"
-                      [class.loading]="isHashLoading(hashType)"
-                      (click)="!isHashLoading(hashType) && calculateHash(hashType)"
-                    >
-                      @if (isHashLoading(hashType)) {
-                        <mat-spinner diameter="14"></mat-spinner>
-                      }
-                      {{ hashType | uppercase }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <!-- DIRECTORY MODE: Bulk Actions -->
-          <div class="bulk-hash-container">
-            <!-- Result State -->
-            @if (bulkHashResult()) {
-              <div class="bulk-result-area">
-                <div class="bulk-header">
-                  <span class="bulk-label">
-                    {{ 'fileBrowser.properties.generatedChecksums' | translate }} ({{
-                      bulkHashType() | uppercase
-                    }})
-                  </span>
-                  <button
-                    mat-icon-button
-                    [appCopyToClipboard]="bulkHashResult()"
-                    [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
-                  >
-                    <mat-icon svgIcon="copy"></mat-icon>
-                  </button>
-                </div>
-                <!-- Use a read-only textarea for code-block feel -->
-                <textarea class="bulk-textarea" readonly>{{ bulkHashResult() }}</textarea>
-
-                <button mat-stroked-button (click)="bulkHashResult.set(null)">
-                  {{ 'fileBrowser.properties.calculateAnother' | translate }}
-                </button>
-              </div>
-            } @else {
-              <!-- Initial State: Selection -->
-              <p class="bulk-instruction">
-                {{ 'fileBrowser.properties.bulkHashInstruction' | translate }}
-              </p>
-
-              @if (bulkHashError()) {
-                <div class="hash-error">
-                  <span class="error-text">{{ bulkHashError() }}</span>
-                </div>
-              }
-
+          <!-- Uncalculated hash types as buttons -->
+          @if (uncalculatedHashes().length > 0) {
+            <div class="hash-options">
+              <span class="hash-options-label">{{
+                'fileBrowser.properties.calculateMore' | translate
+              }}</span>
               <div class="hash-chips">
-                @for (hashType of supportedHashes(); track hashType) {
+                @for (hashType of uncalculatedHashes(); track hashType) {
                   <button
                     class="app-pill interactive p-primary"
-                    [class.p-accent]="calculatingBulkHash() && bulkHashType() === hashType"
-                    (click)="!calculatingBulkHash() && calculateBulkHash(hashType)"
+                    [class.loading]="isHashLoading(hashType)"
+                    (click)="!isHashLoading(hashType) && calculateHash(hashType)"
                   >
-                    @if (calculatingBulkHash() && bulkHashType() === hashType) {
+                    @if (isHashLoading(hashType)) {
                       <mat-spinner diameter="14"></mat-spinner>
                     }
                     {{ hashType | uppercase }}
                   </button>
                 }
               </div>
+            </div>
+          }
+        } @else {
+          <!-- DIRECTORY MODE: Bulk Actions -->
+          <!-- Result State -->
+          @if (bulkHashResult()) {
+            <div class="bulk-result-area">
+              <div class="bulk-header">
+                <span class="bulk-label">
+                  {{ 'fileBrowser.properties.generatedChecksums' | translate }} ({{
+                    bulkHashType() | uppercase
+                  }})
+                </span>
+              </div>
+              <!-- Use a read-only textarea for code-block feel -->
+              <textarea
+                class="bulk-textarea"
+                readonly
+                [appCopyToClipboard]="bulkHashResult()"
+                [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+                >{{ bulkHashResult() }}
+                </textarea
+              >
+              <button matButton="outlined" (click)="bulkHashResult.set(null)">
+                {{ 'fileBrowser.properties.calculateAnother' | translate }}
+              </button>
+            </div>
+          } @else {
+            <!-- Initial State: Selection -->
+            <p class="bulk-instruction">
+              {{ 'fileBrowser.properties.bulkHashInstruction' | translate }}
+            </p>
+
+            @if (bulkHashError()) {
+              <div class="hash-error">
+                <span class="error-text">{{ bulkHashError() }}</span>
+              </div>
             }
-          </div>
+
+            <div class="hash-chips">
+              @for (hashType of supportedHashes(); track hashType) {
+                <button
+                  class="app-pill interactive p-primary"
+                  [class.p-accent]="calculatingBulkHash() && bulkHashType() === hashType"
+                  (click)="!calculatingBulkHash() && calculateBulkHash(hashType)"
+                >
+                  @if (calculatingBulkHash() && bulkHashType() === hashType) {
+                    <mat-spinner diameter="14"></mat-spinner>
+                  }
+                  {{ hashType | uppercase }}
+                </button>
+              }
+            </div>
+          }
         }
       } @else {
         <div class="no-hashes">
@@ -256,24 +244,15 @@
             }}</span>
           </div>
         } @else if (publicLinkUrl()) {
-          <!-- Link exists - show URL with copy and remove options -->
           <div class="link-display">
-            <div class="link-url-container">
+            <div
+              class="link-url-container"
+              [appCopyToClipboard]="publicLinkUrl()"
+              [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+            >
               <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
-              <button
-                mat-icon-button
-                [appCopyToClipboard]="publicLinkUrl()"
-                [matTooltip]="
-                  (copiedLink()
-                    ? 'fileBrowser.properties.copied'
-                    : 'fileBrowser.properties.copyToClipboard'
-                  ) | translate
-                "
-              >
-                <mat-icon [svgIcon]="copiedLink() ? 'circle-check' : 'copy'"></mat-icon>
-              </button>
             </div>
-            <button mat-stroked-button class="remove-link-btn" (click)="removePublicLink()">
+            <button matButton="outlined" class="remove-link-btn" (click)="removePublicLink()">
               {{ 'fileBrowser.properties.removeLink' | translate }}
             </button>
           </div>
@@ -291,7 +270,7 @@
                 }
               </mat-select>
             </mat-form-field>
-            <button mat-flat-button class="get-link-btn primary" (click)="getPublicLink()">
+            <button matButton="filled" class="get-link-btn primary" (click)="getPublicLink()">
               <mat-icon svgIcon="open-link"></mat-icon>
               {{ 'fileBrowser.properties.getLink' | translate }}
             </button>

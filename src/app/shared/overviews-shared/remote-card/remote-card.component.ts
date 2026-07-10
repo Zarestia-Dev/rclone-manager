@@ -1,6 +1,6 @@
 import { NgClass, TitleCasePipe } from '@angular/common';
-import { Component, computed, input, inject, output } from '@angular/core';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { Component, computed, input, inject, output, ChangeDetectionStrategy } from '@angular/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -24,15 +24,43 @@ import {
   MODE_DEFAULTS,
   OpenInFilesEvent,
   OpenableFolder,
+  ACTION_ANIMATION_CLASS,
 } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { ACTION_ANIMATION_CLASS } from '@app/types';
+
+interface StatusIndicatorViewModel {
+  op: PrimaryActionType;
+  meta: { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean };
+  tooltip: string;
+}
+
+interface ProfilePathViewModel {
+  path: string;
+  isLocal: boolean;
+  tooltip: string;
+}
+
+interface ProfileChipViewModel {
+  name: string;
+  isBusy: boolean;
+  canOpen: boolean;
+  isActive: boolean;
+  chipTooltip: string;
+  openPaths: ProfilePathViewModel[];
+}
+
+interface DetailedOperationViewModel {
+  operation: PrimaryActionType;
+  cssClass: string;
+  labelIcon: string;
+  profiles: ProfileChipViewModel[];
+}
 
 @Component({
   selector: 'app-remote-card',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
     TitleCasePipe,
@@ -40,7 +68,7 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './remote-card.component.html',
   styleUrl: './remote-card.component.scss',
@@ -55,7 +83,7 @@ import { ACTION_ANIMATION_CLASS } from '@app/types';
   },
 })
 export class RemoteCardComponent {
-  readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly translate = inject(TranslateService);
   readonly iconService = inject(IconService);
   readonly pathService = inject(PathService);
@@ -67,8 +95,9 @@ export class RemoteCardComponent {
   readonly primaryActionLabel = input('Start');
   readonly activeIcon = input('circle-check');
   readonly primaryActions = input<PrimaryActionType[]>([]);
+  readonly syncActions = input<PrimaryActionType[]>([]);
   readonly maxGeneralButtons = input(3);
-  readonly maxSyncButtons = input(4);
+  readonly maxSyncButtons = input(3);
   readonly maxMountButtons = input(1);
 
   // Layout-edit inputs — set by the parent panel
@@ -123,7 +152,7 @@ export class RemoteCardComponent {
       case 'general':
         return this.buildButtons(this.primaryActionsFor(this.maxGeneralButtons()));
       case 'mount':
-        return this.buildButtons(this.primaryActionsFor(this.maxMountButtons()));
+        return this.buildButtons(['mount']);
       case 'operations':
         return this.buildButtons(this.primaryActionsFor(this.maxSyncButtons(), false));
       case 'serve': {
@@ -207,6 +236,34 @@ export class RemoteCardComponent {
     };
   });
 
+  readonly statusIndicatorViewModels = computed<StatusIndicatorViewModel[]>(() =>
+    this.visibleStatusIndicators().map(op => ({
+      op,
+      meta: this.getStatusIndicatorMeta(op),
+      tooltip: this.getProfileTooltip(op),
+    }))
+  );
+
+  readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
+    this.detailedOperations().map(operation => ({
+      operation,
+      cssClass: this.getOperationCssClass(operation),
+      labelIcon: this.getOperationLabelIcon(operation),
+      profiles: this.getConfiguredProfiles(operation).map<ProfileChipViewModel>(profile => ({
+        name: profile,
+        isBusy: this.isProfileActionInProgress(operation, profile),
+        canOpen: this.canOpenProfilePath(operation, profile),
+        isActive: this.isProfileActive(operation, profile),
+        chipTooltip: this.getProfileChipTooltip(operation, profile),
+        openPaths: this.getProfileOpenPaths(operation, profile).map<ProfilePathViewModel>(path => ({
+          path,
+          isLocal: this.pathService.isLocalPath(path),
+          tooltip: this.getProfileOpenTooltip(profile, path),
+        })),
+      })),
+    }))
+  );
+
   // ── Button builders ────────────────────────────────────────────────────────
 
   private buildButtons(actions: PrimaryActionType[]): QuickActionButton[] {
@@ -240,10 +297,14 @@ export class RemoteCardComponent {
   }
 
   private primaryActionsFor(limit: number, includeMount = true): PrimaryActionType[] {
-    const source =
-      this.mode() === 'general' && this.primaryActions().length > 0
-        ? this.primaryActions()
-        : (MODE_DEFAULTS[this.mode()] ?? ['mount', 'bisync']);
+    const isOps = this.mode() === 'operations';
+    const actionsSource = isOps ? this.syncActions() : this.primaryActions();
+    const hasActions = actionsSource && actionsSource.length > 0;
+    let source = hasActions ? actionsSource : (MODE_DEFAULTS[this.mode()] as PrimaryActionType[]);
+
+    if (isOps) {
+      source = source.filter(a => (SYNC_TYPES as PrimaryActionType[]).includes(a));
+    }
 
     return [...new Set(source)].filter(a => includeMount || a !== 'mount').slice(0, limit);
   }
@@ -349,6 +410,41 @@ export class RemoteCardComponent {
 
   getOperationCssClass(op: PrimaryActionType): string {
     return OPERATION_META[op]?.cssClass ?? 'primary';
+  }
+
+  private static readonly STATUS_INDICATOR_META: Record<
+    PrimaryActionType,
+    { icon: string; pillClass: string; ariaKey: string; animateContainer?: boolean }
+  > = {
+    mount: { icon: 'mount', pillClass: 'p-accent', ariaKey: 'detailShared.status.mounted' },
+    sync: { icon: 'refresh', pillClass: 'p-primary', ariaKey: 'detailShared.status.syncing' },
+    copy: { icon: 'copy', pillClass: 'p-yellow', ariaKey: 'detailShared.status.copying' },
+    move: { icon: 'move', pillClass: 'p-orange', ariaKey: 'detailShared.status.moving' },
+    bisync: { icon: 'right-left', pillClass: 'p-purple', ariaKey: 'detailShared.status.bisyncing' },
+    serve: {
+      icon: 'satellite-dish',
+      pillClass: 'p-accent',
+      ariaKey: 'detailShared.status.serving',
+      animateContainer: true,
+    },
+    check: { icon: 'search', pillClass: 'p-accent', ariaKey: 'operations.checkActive' },
+    cryptcheck: { icon: 'shield', pillClass: 'p-accent', ariaKey: 'operations.cryptcheckActive' },
+    delete: { icon: 'trash', pillClass: 'p-warn', ariaKey: 'operations.deleteActive' },
+    copyurl: { icon: 'link', pillClass: 'p-accent', ariaKey: 'operations.copyurlActive' },
+    archivecreate: {
+      icon: 'compress',
+      pillClass: 'p-primary',
+      ariaKey: 'operations.archivecreateActive',
+    },
+  };
+
+  getStatusIndicatorMeta(op: PrimaryActionType): {
+    icon: string;
+    pillClass: string;
+    ariaKey: string;
+    animateContainer?: boolean;
+  } {
+    return RemoteCardComponent.STATUS_INDICATOR_META[op];
   }
 
   // ── Operation state helpers ────────────────────────────────────────────────

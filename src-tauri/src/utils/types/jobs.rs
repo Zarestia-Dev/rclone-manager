@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 
-// ─── Core Manager Types ───────────────────────────────────────────────────
+// Core Manager Types
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -14,6 +14,7 @@ pub enum JobType {
     Copy,
     Move,
     Bisync,
+    Check,
     Mount,
     List,
     Stat,
@@ -21,7 +22,6 @@ pub enum JobType {
     About,
     Size,
     Hash,
-    #[serde(rename = "copy_url")]
     CopyUrl,
     Mkdir,
     Cleanup,
@@ -32,6 +32,7 @@ pub enum JobType {
     ArchiveCreate,
     ArchiveExtract,
     ArchiveList,
+    CryptCheck,
     Unknown(String),
 }
 
@@ -77,7 +78,13 @@ impl JobType {
     pub fn is_tray_relevant(&self) -> bool {
         matches!(
             self,
-            JobType::Sync | JobType::Copy | JobType::Move | JobType::Bisync | JobType::Mount
+            JobType::Sync
+                | JobType::Copy
+                | JobType::Move
+                | JobType::Bisync
+                | JobType::Check
+                | JobType::Mount
+                | JobType::CryptCheck
         )
     }
 }
@@ -106,6 +113,47 @@ impl JobStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveState {
+    pub status: String,
+    pub percentage: u8,
+    pub is_preparing: bool,
+    pub bytes: i64,
+    pub size: i64,
+    pub speed: f64,
+    pub speed_class: String,
+    pub eta: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletedTransfer {
+    pub name: String,
+    pub size: i64,
+    pub bytes: i64,
+    pub checked: bool,
+    pub error: String,
+    pub jobid: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub src_fs: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dst_fs: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolve_job_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolve_state: Option<ResolveState>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
     pub jobid: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -130,6 +178,8 @@ pub struct JobInfo {
     /// Whether this job was started with the `--dry-run` flag (no actual changes).
     #[serde(default)]
     pub dry_run: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_job_id: Option<u64>,
 }
 
 impl JobInfo {
@@ -137,9 +187,176 @@ impl JobInfo {
     pub fn is_meta(&self) -> bool {
         self.job_type.is_meta()
     }
+
+    pub fn normalize_job_stats(&mut self) {
+        let completed = compute_completed_transfers(
+            self.jobid,
+            &self.job_type,
+            &self.group,
+            &self.source,
+            &self.destination,
+            self.end_time,
+            &self.stats,
+        );
+        if let (Some(val), Some(obj)) = (
+            completed.and_then(|c| serde_json::to_value(c).ok()),
+            self.stats.as_mut().and_then(|s| s.as_object_mut()),
+        ) {
+            obj.insert("completed".to_string(), val);
+        }
+    }
 }
 
-// ─── Rclone RC Response Types ──────────────────────────────────────────────
+pub fn compute_completed_transfers(
+    jobid: u64,
+    job_type: &JobType,
+    group: &str,
+    source: &[String],
+    destination: &str,
+    end_time: Option<DateTime<Utc>>,
+    stats: &Option<Value>,
+) -> Option<Vec<CompletedTransfer>> {
+    let stats = stats.as_ref()?;
+
+    if *job_type == JobType::Check || *job_type == JobType::CryptCheck {
+        let check_output = stats.get("checkOutput")?;
+        let results_array =
+            if let Some(arr) = check_output.get("results").and_then(|v| v.as_array()) {
+                arr.clone()
+            } else if check_output.is_array() {
+                check_output.as_array()?.clone()
+            } else {
+                vec![check_output.clone()]
+            };
+
+        let completed_at = end_time.unwrap_or_else(Utc::now);
+        let src_fs = source.first().cloned().unwrap_or_default();
+        let dst_fs = destination.to_string();
+
+        let status_map = vec![
+            ("missingOnDst", "missing_dst", "Missing on Destination"),
+            ("missingOnSrc", "missing_src", "Missing on Source remote"),
+            (
+                "differ",
+                "partial",
+                "File contents differ (Mismatched hash/size)",
+            ),
+        ];
+
+        let mut items = Vec::new();
+        for check_results in results_array {
+            for (key, status, error_msg) in &status_map {
+                if let Some(arr) = check_results.get(*key).and_then(|v| v.as_array()) {
+                    for val in arr {
+                        if let Some(name) = val.as_str() {
+                            items.push(CompletedTransfer {
+                                name: name.to_string(),
+                                size: 0,
+                                bytes: 0,
+                                checked: false,
+                                error: error_msg.to_string(),
+                                jobid,
+                                started_at: None,
+                                completed_at: Some(completed_at),
+                                src_fs: Some(src_fs.clone()),
+                                dst_fs: Some(dst_fs.clone()),
+                                group: Some(group.to_string()),
+                                status: status.to_string(),
+                                resolve_job_id: None,
+                                resolve_state: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        Some(items)
+    } else {
+        let completed_array = stats.get("completed")?.as_array()?;
+        let mut items = Vec::new();
+        for val in completed_array {
+            let name = val
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let size = val.get("size").and_then(|v| v.as_i64()).unwrap_or(0);
+            let bytes = val.get("bytes").and_then(|v| v.as_i64()).unwrap_or(0);
+            let checked = val
+                .get("checked")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let error = val
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let started_at = val
+                .get("started_at")
+                .or_else(|| val.get("startedAt"))
+                .and_then(|v| serde_json::from_value::<DateTime<Utc>>(v.clone()).ok());
+
+            let completed_at = val
+                .get("completed_at")
+                .or_else(|| val.get("completedAt"))
+                .and_then(|v| serde_json::from_value::<DateTime<Utc>>(v.clone()).ok());
+
+            let src_fs = val
+                .get("srcFs")
+                .or_else(|| val.get("src_fs"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let dst_fs = val
+                .get("dstFs")
+                .or_else(|| val.get("dst_fs"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let group_val = val
+                .get("group")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let mut status = "completed".to_string();
+            if !error.is_empty() {
+                status = "failed".to_string();
+            } else if checked {
+                status = "checked".to_string();
+            } else if bytes > 0 && bytes < size {
+                status = "partial".to_string();
+            }
+
+            items.push(CompletedTransfer {
+                name,
+                size,
+                bytes,
+                checked,
+                error,
+                jobid,
+                started_at,
+                completed_at,
+                src_fs,
+                dst_fs,
+                group: group_val,
+                status,
+                resolve_job_id: None,
+                resolve_state: None,
+            });
+        }
+
+        items.sort_by(|a, b| {
+            let time_a = a.completed_at.map(|t| t.timestamp_millis()).unwrap_or(0);
+            let time_b = b.completed_at.map(|t| t.timestamp_millis()).unwrap_or(0);
+            time_b.cmp(&time_a)
+        });
+
+        Some(items)
+    }
+}
+
+// Rclone RC Response Types
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -239,7 +456,7 @@ pub struct JobListResponse {
     pub execute_id: Option<String>,
 }
 
-// ─── State Management ──────────────────────────────────────────────────────
+// State Management
 
 #[derive(Debug)]
 pub struct JobCache {

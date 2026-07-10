@@ -9,13 +9,12 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-nautilus-bottom-bar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslateModule],
+  imports: [MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
   templateUrl: './nautilus-bottom-bar.component.html',
   styleUrl: './nautilus-bottom-bar.component.scss',
 })

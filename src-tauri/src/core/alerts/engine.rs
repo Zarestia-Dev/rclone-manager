@@ -1,19 +1,23 @@
+use std::sync::OnceLock;
+
 use chrono::{Duration, Utc};
 use futures::future::join_all;
 use log::{debug, error, warn};
 use tauri::{AppHandle, Manager};
-
-use crate::core::alerts::{
-    cache::{self, AlertHistoryCache},
-    dispatch::{self, DispatchContext},
-    template::TemplateContext,
-    types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
-};
-use crate::core::settings::AppSettingsManager;
-use crate::utils::app::notification::NotificationEvent;
-
-use std::sync::OnceLock;
 use tokio::sync::mpsc;
+
+use crate::{
+    core::{
+        alerts::{
+            cache::{self, AlertHistoryCache},
+            dispatch::{self, DispatchContext},
+            template::TemplateContext,
+            types::{ActionResult, AlertAction, AlertDetails, AlertRecord},
+        },
+        settings::AppSettingsManager,
+    },
+    utils::app::notification::NotificationEvent,
+};
 
 struct AlertRequest {
     app: AppHandle,
@@ -165,7 +169,6 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
         let source = event.alert_source();
         let destination = event.alert_destination();
 
-        // Prepare context
         let ctx = TemplateContext {
             title: title.clone(),
             body: body.clone(),
@@ -250,7 +253,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             &rule,
             AlertDetails {
                 event_kind: kind.clone(),
-                severity: severity.clone(),
+                severity,
                 title: title.clone(),
                 body: body.clone(),
                 remote: remote.clone(),

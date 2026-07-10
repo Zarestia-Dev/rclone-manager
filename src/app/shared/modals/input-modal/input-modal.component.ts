@@ -1,4 +1,11 @@
-import { Component, HostListener, inject, OnInit, DestroyRef } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  inject,
+  OnInit,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,11 +18,10 @@ import {
   FormControl,
   FormGroup,
   Validators,
-  AbstractControl,
-  ValidationErrors,
 } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 
 export interface InputFieldConfig {
   key: string;
@@ -46,7 +52,7 @@ export interface InputModalData {
 
 @Component({
   selector: 'app-input-modal',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
     MatIconModule,
@@ -54,7 +60,7 @@ export interface InputModalData {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './input-modal.component.html',
   styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -64,6 +70,7 @@ export class InputModalComponent implements OnInit {
   public readonly data = inject<InputModalData>(MAT_DIALOG_DATA);
   protected readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly destroyRef = inject(DestroyRef);
 
   public form = new FormGroup<any>({});
@@ -99,8 +106,10 @@ export class InputModalComponent implements OnInit {
     for (const field of this.fields) {
       const validators = [];
       if (field.required) validators.push(Validators.required);
-      if (field.uniqueness) validators.push(this.uniqueNameValidator(field.uniqueness).bind(this));
-      if (field.forbiddenChars) validators.push(this.forbiddenCharsValidator.bind(this));
+      if (field.uniqueness)
+        validators.push(this.validatorRegistry.createUniqueNameValidator(field.uniqueness));
+      if (field.forbiddenChars)
+        validators.push(this.validatorRegistry.createForbiddenCharsValidator());
 
       const control = new FormControl(field.initialValue || '', {
         nonNullable: true,
@@ -161,23 +170,6 @@ export class InputModalComponent implements OnInit {
 
   getControl(key: string): FormControl {
     return this.form.get(key) as FormControl;
-  }
-
-  uniqueNameValidator(config: {
-    existingNames: string[];
-    typeLabel?: string;
-  }): (control: AbstractControl) => ValidationErrors | null {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const existing = (config.existingNames || []).map(e => e.toString().trim().toLowerCase());
-      const val = (control.value || '').toString().trim().toLowerCase();
-      return existing.some(e => e === val) ? { alreadyExists: true } : null;
-    };
-  }
-
-  forbiddenCharsValidator(control: AbstractControl): ValidationErrors | null {
-    const val = (control.value || '').toString();
-    if (val.includes('/') || val.includes(':')) return { forbiddenChars: true };
-    return null;
   }
 
   onConfirm(): void {

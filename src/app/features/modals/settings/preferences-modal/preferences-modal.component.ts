@@ -7,6 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { map } from 'rxjs/operators';
 import {
   AbstractControl,
@@ -19,7 +20,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -42,11 +43,39 @@ import {
   SettingTab,
   PendingChange,
   PendingChangeDisplay,
+  ConfigValue,
 } from '@app/types';
+
+interface OptionViewModel {
+  value: unknown;
+  label: string;
+}
+
+interface ArrayItemViewModel {
+  control: FormControl;
+  isInvalid: boolean;
+  validationMessage: string;
+}
+
+interface SettingViewModel {
+  category: string;
+  key: string;
+  meta: SettingMetadata | undefined;
+  control: FormControl | FormArray | undefined;
+  isRowLayout: boolean;
+  label: string;
+  description: string;
+  categoryDisplayName: string;
+  isModified: boolean;
+  isInvalid: boolean;
+  validationMessage: string;
+  arrayItemViewModels: ArrayItemViewModel[];
+  options: OptionViewModel[];
+}
 
 @Component({
   selector: 'app-preferences-modal',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatSlideToggleModule,
@@ -58,7 +87,7 @@ import {
     MatButtonModule,
     MatProgressSpinnerModule,
     SearchContainerComponent,
-    TranslateModule,
+    TranslatePipe,
     NgTemplateOutlet,
     NumberInputComponent,
   ],
@@ -86,6 +115,15 @@ export class PreferencesModalComponent {
   readonly searchVisible = signal(false);
   readonly pendingRestartChanges = signal<Map<string, PendingChange>>(new Map());
   readonly enrichedOptions = signal<Record<string, SettingMetadata>>({});
+
+  /**
+   * Monotonic counter bumped on every form state change (value, status,
+   * touched, pristine) and on language change. Read by the view-model
+   * `computed()` signals so cached per-setting fields like `isInvalid`,
+   * `validationMessage`, and `isModified` stay fresh without per-CD
+   * template method calls.
+   */
+  private readonly formStateVersion = signal(0);
 
   // Tabs are static; if they become dynamic, derive from a service instead.
   readonly tabs: SettingTab[] = [
@@ -127,6 +165,22 @@ export class PreferencesModalComponent {
     return group ? Object.keys(group.value ?? {}) : [];
   });
 
+  readonly selectedTabViewModels = computed<SettingViewModel[]>(() => {
+    this.formStateVersion(); // track form-state changes for cached derived fields
+    const category = this.selectedTabKey();
+    return this.selectedTabKeys().map(key => this.toSettingViewModel(category, key));
+  });
+
+  readonly searchResultViewModels = computed<SettingViewModel[]>(() => {
+    this.formStateVersion();
+    const vms: SettingViewModel[] = [];
+    for (const result of this.searchResults()) {
+      const vm = this.toSettingViewModel(result.category, result.key);
+      if (vm.control) vms.push(vm);
+    }
+    return vms;
+  });
+
   readonly isGeneralTab = computed(() => this.selectedTabKey() === 'general');
   readonly hasSearchResults = computed(() => !!this.searchQuery());
   readonly hasPendingRestartChanges = computed(() => this.pendingRestartChanges().size > 0);
@@ -154,6 +208,14 @@ export class PreferencesModalComponent {
         if (hasData) this.buildForm(enriched);
         this.isLoading.set(!hasData);
       });
+
+    this.settingsForm.events.pipe(takeUntilDestroyed()).subscribe((): void => {
+      this.formStateVersion.update(v => v + 1);
+    });
+
+    this.translate.onLangChange.pipe(takeUntilDestroyed()).subscribe((): void => {
+      this.formStateVersion.update(v => v + 1);
+    });
 
     this.populateSearchSuggestions();
     this.onResize();
@@ -323,7 +385,7 @@ export class PreferencesModalComponent {
 
   // ── Settings CRUD ─────────────────────────────────────────────────────────
 
-  updateSetting(category: string, key: string, value: unknown): void {
+  updateSetting(category: string, key: string, value: ConfigValue): void {
     const control = this.getFormControl(category, key);
     if (!control?.valid) return;
 
@@ -513,7 +575,7 @@ export class PreferencesModalComponent {
     if (!ctrl?.errors) return '';
 
     const meta = this.getMetadata(category, key);
-    const t = (k: string, p?: object) =>
+    const t = (k: string, p?: object): string =>
       this.translate.instant(`modals.preferences.validation.${k}`, p);
 
     if (ctrl.hasError('required')) return t('required');
@@ -525,6 +587,55 @@ export class PreferencesModalComponent {
     if (ctrl.hasError('urlArray')) return t('urlArray');
     if (ctrl.hasError('reserved')) return t('reserved', { value: ctrl.errors['reserved'].value });
     return t('invalid');
+  }
+
+  private toSettingViewModel(category: string, key: string): SettingViewModel {
+    const meta = this.enrichedOptions()[`${category}.${key}`];
+    const control = this.settingsForm.get(category)?.get(key) as
+      | FormControl
+      | FormArray
+      | undefined;
+    const type = meta?.value_type;
+    const isRowLayout = type === 'bool' || type === 'int';
+
+    const arrayItemViewModels: ArrayItemViewModel[] = [];
+    if (control instanceof FormArray) {
+      control.controls.forEach((child, index) => {
+        const itemControl = child as FormControl;
+        arrayItemViewModels.push({
+          control: itemControl,
+          isInvalid: !!itemControl && itemControl.invalid && itemControl.touched,
+          validationMessage: this.getValidationMessage(category, key, index),
+        });
+      });
+    }
+
+    const options: OptionViewModel[] = [];
+    if (meta?.options?.length) {
+      for (const option of meta.options) {
+        const opt = option as { label?: unknown; value?: unknown };
+        options.push({
+          value: opt?.value ?? option,
+          label: this.getOptionLabel(option),
+        });
+      }
+    }
+
+    return {
+      category,
+      key,
+      meta,
+      control,
+      isRowLayout,
+      label: meta ? this.getSettingLabel(category, key, meta) : key,
+      description: meta ? this.getSettingDescription(category, key, meta) : '',
+      categoryDisplayName: this.getCategoryDisplayName(category),
+      isModified: this.isModified(category, key),
+      isInvalid: this.isControlInvalid(category, key),
+      validationMessage: this.getValidationMessage(category, key),
+      arrayItemViewModels,
+      options,
+    };
   }
 
   scrollToPendingChanges(): void {
@@ -549,10 +660,7 @@ export class PreferencesModalComponent {
     this.searchQuery.set(searchText.toLowerCase());
   }
 
-  @HostListener('document:keydown.escape')
-  close(): void {
-    this.dialogRef.close();
-  }
+  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
 
   @HostListener('document:keydown.control.f', ['$event'])
   handleCtrlF(event: Event): void {
@@ -594,5 +702,9 @@ export class PreferencesModalComponent {
     const control = this.getFormControl(category, key) as FormArray;
     control.removeAt(index);
     this.updateSetting(category, key, control.value);
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }

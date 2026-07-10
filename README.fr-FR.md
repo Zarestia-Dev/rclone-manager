@@ -16,7 +16,7 @@
 
 <p align="center">
   <b>Une interface graphique puissante et multiplateforme pour gérer les remotes Rclone avec style et simplicité.</b><br>
-  <i>Conçu avec Angular 21 + Tauri · Support Linux • Windows • macOS • ARM</i>
+  <i>Conçu avec Angular 22 + Tauri · Support Linux • Windows • macOS • ARM</i>
 </p>
 
 <p align="center">
@@ -34,6 +34,9 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
+  </a>
+  <a href="https://hakanismail.info/zarestia/support">
+    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -71,32 +74,32 @@ Installez RClone Manager à l'aide de votre gestionnaire de paquets préféré, 
 
 ### Linux
 
-| Source                    | Version | Commande d'installation / Téléchargement                                                                                      |
-| :------------------------ | :------ | :---------------------------------------------------------------------------------------------------------------------------- |
-| **AUR**                   | [![Version AUR](https://img.shields.io/aur/version/rclone-manager?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager) | `yay -S rclone-manager` |
-| **AUR (Git)**             | [![Version AUR](https://img.shields.io/version/rclone-manager-git?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-git) | `yay -S rclone-manager-git` |
-| **Flathub**               | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/apps/io.github.zarestia_dev.rclone-manager) | `flatpak install io.github.zarestia_dev.rclone-manager` |
+| Source                    | Version                                                                                                                                                                                   | Commande d'installation / Téléchargement                                                                                      |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**                   | [![Version AUR](https://img.shields.io/aur/version/rclone-manager?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager)                                     | `yay -S rclone-manager`                                                                                                       |
+| **AUR (Git)**             | [![Version AUR](https://img.shields.io/version/rclone-manager-git?style=flat&label=&color=2ec27e)](https://aur.archlinux.org/packages/rclone-manager-git)                                 | `yay -S rclone-manager-git`                                                                                                   |
+| **Flathub**               | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/apps/io.github.zarestia_dev.rclone-manager)       | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                       |
 | **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Dernières versions (.deb, .rpm, .AppImage, Portable tar.gz)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Linux](https://hakanismail.info/zarestia/rclone-manager/docs/installation-linux) (résolution des problèmes Flatpak, snapshots, etc.)
 
 ### macOS
 
-| Source                    | Version | Commande d'installation / Téléchargement                                           |
-| :------------------------ | :------ | :--------------------------------------------------------------------------------- |
-| **Homebrew**              | [![Version Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
-| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Installateur DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source                    | Version                                                                                                                                                                                                        | Commande d'installation / Téléchargement                                           |
+| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| **Homebrew**              | [![Version Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`             |
+| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                      | [Installateur DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (correctifs macFUSE & Gatekeeper)
 
 ### Windows
 
-| Source                    | Version | Commande d'installation / Téléchargement                                                      |
-| :------------------------ | :------ | :-------------------------------------------------------------------------------------------- |
-| **Winget**                | [![Version Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/RClone-Manager/rclone-manager) | `winget install RClone-Manager.rclone-manager` |
-| **Chocolatey**            | [![Version Chocolatey](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager) | `choco install rclone-manager` |
-| **Scoop**                 | [![Version Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras && scoop install rclone-manager` |
-| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Installateur / EXE Portable](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source                    | Version                                                                                                                                                                                                           | Commande d'installation / Téléchargement                                                      |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Winget**                | [![Version Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/RClone-Manager/rclone-manager) | `winget install RClone-Manager.rclone-manager`                                                |
+| **Chocolatey**            | [![Version Chocolatey](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=&color=2ec27e)](https://community.chocolatey.org/packages/rclone-manager)                                              | `choco install rclone-manager`                                                                |
+| **Scoop**                 | [![Version Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json)                   | `scoop bucket add extras && scoop install rclone-manager`                                     |
+| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                         | [Installateur / EXE Portable](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (conditions de montage WinFsp & SmartScreen)
 
@@ -126,6 +129,7 @@ Les contributions sous toutes leurs formes sont les bienvenues !
 
 - **Licence:** Publié sous licence [GNU GPLv3](LICENSE) – libre d'utilisation, de modification et de distribution.
 - **Soutien:** Si vous appréciez ce projet, merci de laisser une ⭐ sur GitHub !
+- **Don:** Si RClone Manager vous fait gagner du temps, pensez à [soutenir le développement](https://hakanismail.info/zarestia/support) ❤️
 
 <p align="center">
   Fait avec ❤️ par l'équipe de développement Zarestia<br>

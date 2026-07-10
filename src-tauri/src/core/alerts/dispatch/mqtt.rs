@@ -4,9 +4,10 @@ use crate::core::alerts::{
     types::MqttAction,
 };
 use log::debug;
-use rumqttc::Transport;
-use rumqttc::v5::mqttbytes::QoS;
-use rumqttc::v5::{AsyncClient, Event, EventLoop, MqttOptions, mqttbytes::v5::Packet};
+use rumqttc::{
+    Transport,
+    v5::{AsyncClient, Event, EventLoop, MqttOptions, mqttbytes::QoS, mqttbytes::v5::Packet},
+};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::Arc;

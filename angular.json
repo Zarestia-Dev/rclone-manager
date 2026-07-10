@@ -95,14 +95,16 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "port": 1420
+            "port": 1420,
+            "host": "0.0.0.0"
           },
           "configurations": {
             "production": {
               "buildTarget": "rclone-manager:build:production"
             },
             "development": {
-              "buildTarget": "rclone-manager:build:development"
+              "buildTarget": "rclone-manager:build:development",
+              "proxyConfig": "proxy.conf.json"
             },
             "headless": {
               "buildTarget": "rclone-manager:build:headless",

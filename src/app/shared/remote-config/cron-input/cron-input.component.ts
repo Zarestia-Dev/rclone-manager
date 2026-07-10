@@ -35,7 +35,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { CronValidationResponse } from '@app/types';
 import { toString as cronstrue } from 'cronstrue';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 
 type PresetKey =
@@ -48,7 +48,6 @@ type PresetKey =
 
 @Component({
   selector: 'app-cron-input',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -60,7 +59,7 @@ type PresetKey =
     MatButtonModule,
     MatNativeDateModule,
     MatTimepickerModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   templateUrl: './cron-input.component.html',
   styleUrls: ['./cron-input.component.scss'],
@@ -93,7 +92,7 @@ export class CronInputComponent {
     const cron = this.cronValue()?.trim();
     if (!cron) return '';
     try {
-      const locale = getCronstrueLocale(this.translate.getCurrentLang());
+      const locale = getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US');
       return cronstrue(cron, { locale });
     } catch {
       return cron;
@@ -301,11 +300,12 @@ export class CronInputComponent {
   private mapCronToSimpleForm(parts: string[]): void {
     if (parts.length < 5) return;
     const [min, hour, dom, mon, dow] = parts;
-    const isNum = (s: string) => /^\d+$/.test(s);
+    const isNum = (s: string): boolean => /^\d+$/.test(s);
 
     // Helper to set simple form without triggering events
-    const setSimple = (vals: Partial<typeof this.simpleForm.value>) =>
+    const setSimple = (vals: Partial<typeof this.simpleForm.value>): void => {
       this.simpleForm.patchValue(vals, { emitEvent: false });
+    };
 
     // 1. Interval (0 */n * * *)
     if (min === '0' && hour.startsWith('*/') && dom === '*' && mon === '*' && dow === '*') {
@@ -356,7 +356,7 @@ export class CronInputComponent {
   private getUserTimezoneOffset(): string {
     const offset = -new Date().getTimezoneOffset();
     const sign = offset >= 0 ? '+' : '-';
-    const pad = (n: number) => n.toString().padStart(2, '0');
+    const pad = (n: number): string => n.toString().padStart(2, '0');
     return `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
   }
 
@@ -409,7 +409,7 @@ export class CronInputComponent {
     const d = Math.floor(seconds / 86400);
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    const t = (key: string, count: number) => this.translate.instant(key, { count });
+    const t = (key: string, count: number): string => this.translate.instant(key, { count });
 
     const parts: string[] = [];
     if (d > 0) {

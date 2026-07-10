@@ -4,20 +4,22 @@ import {
   OnInit,
   OnDestroy,
   HostListener,
-  EventEmitter,
-  Output,
+  output,
   signal,
   computed,
-  ViewChild,
+  viewChild,
   ElementRef,
   DestroyRef,
+  ChangeDetectionStrategy,
+  Injector,
+  afterNextRender,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
@@ -30,17 +32,6 @@ import { EditorState } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { StreamLanguage, syntaxHighlighting } from '@codemirror/language';
-import { javascript as cmJavascript } from '@codemirror/lang-javascript';
-import { json as cmJson } from '@codemirror/lang-json';
-import { css as cmCss } from '@codemirror/lang-css';
-import { html as cmHtml } from '@codemirror/lang-html';
-import { python as cmPython } from '@codemirror/lang-python';
-import { markdown as cmMarkdown } from '@codemirror/lang-markdown';
-import { rust as cmRust } from '@codemirror/lang-rust';
-import { sql as cmSql } from '@codemirror/lang-sql';
-import { yaml as cmYaml } from '@codemirror/lang-yaml';
-import { go as legacyGo } from '@codemirror/legacy-modes/mode/go';
-import { shell as legacyShell } from '@codemirror/legacy-modes/mode/shell';
 
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -51,7 +42,7 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, ORIGINS, FilePickerResult, gnomeLightHighlighting } from '@app/types';
+import { Entry, FilePickerResult, gnomeLightHighlighting } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -59,13 +50,13 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
 
 @Component({
   selector: 'app-file-viewer-modal',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
     MatProgressSpinnerModule,
     MatIconModule,
     FormatFileSizePipe,
-    TranslateModule,
+    TranslatePipe,
     FormsModule,
     MatTooltip,
   ],
@@ -81,18 +72,19 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     remoteName: string;
   };
 
-  private sanitizer = inject(DomSanitizer);
-  private http = inject(HttpClient);
-  private fileViewerService = inject(FileViewerService);
-  public iconService = inject(IconService);
-  private translate = inject(TranslateService);
-  private remoteOps = inject(RemoteFileOperationsService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly http = inject(HttpClient);
+  private readonly fileViewerService = inject(FileViewerService);
+  public readonly iconService = inject(IconService);
+  private readonly translate = inject(TranslateService);
+  private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly nautilusService = inject(NautilusService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   public currentUrl = signal<string>('');
@@ -140,13 +132,13 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     return name.endsWith('.md') || name.endsWith('.markdown');
   });
 
-  @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
+  readonly editorContainer = viewChild<ElementRef<HTMLDivElement>>('editorContainer');
   private editorView: EditorView | null = null;
 
   // Cancel pending requests when component updates or destroys
   private cancelCurrentRequest$ = new Subject<void>();
 
-  @Output() closeViewer = new EventEmitter<void>();
+  readonly closeViewer = output<void>();
 
   ngOnInit(): void {
     this.currentIndex.set(this.data.currentIndex);
@@ -176,7 +168,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.showMarkdownPreview.set(false);
 
     // Re-initialize as editable
-    setTimeout(() => this.initEditor(false, this.editContent()), 0);
+    afterNextRender(
+      () => {
+        void this.initEditor(false, this.editContent()).catch(e =>
+          console.error('initEditor failed', e)
+        );
+      },
+      { injector: this.injector }
+    );
   }
 
   /**
@@ -187,21 +186,29 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.editContent.set('');
 
     // Re-initialize as read-only with original content
-    setTimeout(() => this.initEditor(true, this.textContent()), 0);
+    afterNextRender(
+      () => {
+        void this.initEditor(true, this.textContent()).catch(e =>
+          console.error('initEditor failed', e)
+        );
+      },
+      { injector: this.injector }
+    );
   }
 
-  private initEditor(readOnly = true, content = ''): void {
+  private async initEditor(readOnly = true, content = ''): Promise<void> {
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
     }
 
-    if (!this.editorContainer) return;
+    const editorContainer = this.editorContainer();
+    if (!editorContainer) return;
 
     // Detect current theme
     const isDark = document.documentElement.classList.contains('dark');
 
-    const extensions = [
+    const extensions: any[] = [
       basicSetup,
       ...(isDark ? [oneDark] : [syntaxHighlighting(gnomeLightHighlighting)]),
       keymap.of([]),
@@ -219,59 +226,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       );
     }
 
-    // Detect language based on extension
+    // Lazy-load the language extension matching the file extension.
+    // Only the actually needed language pack is dynamically imported,
+    // keeping the main bundle ~100 KB lighter.
     const ext = this.fileName().split('.').pop()?.toLowerCase() || '';
-    switch (ext) {
-      case 'js':
-        extensions.push(cmJavascript());
-        break;
-      case 'ts':
-        extensions.push(cmJavascript({ typescript: true }));
-        break;
-      case 'json':
-        extensions.push(cmJson());
-        break;
-      case 'css':
-      case 'scss':
-      case 'sass':
-        extensions.push(cmCss());
-        break;
-      case 'html':
-      case 'htm':
-        extensions.push(cmHtml());
-        break;
-      case 'xml':
-        extensions.push(cmHtml());
-        break;
-      case 'py':
-        extensions.push(cmPython());
-        break;
-      case 'rs':
-        extensions.push(cmRust());
-        break;
-      case 'yaml':
-      case 'yml':
-        extensions.push(cmYaml());
-        break;
-      case 'sql':
-        extensions.push(cmSql());
-        break;
-      case 'go':
-        extensions.push(StreamLanguage.define(legacyGo));
-        break;
-      case 'sh':
-      case 'bash':
-      case 'zsh':
-        extensions.push(StreamLanguage.define(legacyShell));
-        break;
-      case 'md':
-      case 'markdown':
-        extensions.push(cmMarkdown());
-        break;
-      default:
-        extensions.push(cmMarkdown());
-        break;
-    }
+    const langExt = await this.loadLanguageExtension(ext);
+    if (langExt) extensions.push(langExt);
 
     const state = EditorState.create({
       doc: content,
@@ -280,8 +240,70 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
     this.editorView = new EditorView({
       state,
-      parent: this.editorContainer.nativeElement,
+      parent: editorContainer.nativeElement,
     });
+  }
+
+  private async loadLanguageExtension(ext: string): Promise<any | null> {
+    switch (ext) {
+      case 'js': {
+        const { javascript } = await import('@codemirror/lang-javascript');
+        return javascript();
+      }
+      case 'ts': {
+        const { javascript } = await import('@codemirror/lang-javascript');
+        return javascript({ typescript: true });
+      }
+      case 'json': {
+        const { json } = await import('@codemirror/lang-json');
+        return json();
+      }
+      case 'css':
+      case 'scss':
+      case 'sass': {
+        const { css } = await import('@codemirror/lang-css');
+        return css();
+      }
+      case 'html':
+      case 'htm':
+      case 'xml': {
+        const { html } = await import('@codemirror/lang-html');
+        return html();
+      }
+      case 'py': {
+        const { python } = await import('@codemirror/lang-python');
+        return python();
+      }
+      case 'rs': {
+        const { rust } = await import('@codemirror/lang-rust');
+        return rust();
+      }
+      case 'yaml':
+      case 'yml': {
+        const { yaml } = await import('@codemirror/lang-yaml');
+        return yaml();
+      }
+      case 'sql': {
+        const { sql } = await import('@codemirror/lang-sql');
+        return sql();
+      }
+      case 'go': {
+        const { go } = await import('@codemirror/legacy-modes/mode/go');
+        return StreamLanguage.define(go);
+      }
+      case 'sh':
+      case 'bash':
+      case 'zsh': {
+        const { shell } = await import('@codemirror/legacy-modes/mode/shell');
+        return StreamLanguage.define(shell);
+      }
+      case 'md':
+      case 'markdown':
+      default: {
+        const { markdown } = await import('@codemirror/lang-markdown');
+        return markdown();
+      }
+    }
   }
 
   /**
@@ -414,7 +436,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
     // If switching back to raw view, re-initialize CodeMirror
     if (!this.showMarkdownPreview()) {
-      setTimeout(() => this.initEditor(true, this.textContent()), 0);
+      afterNextRender(
+        () => {
+          void this.initEditor(true, this.textContent()).catch(e =>
+            console.error('initEditor failed', e)
+          );
+        },
+        { injector: this.injector }
+      );
     } else if (this.editorView) {
       // Destroy editor when showing preview to save resources and avoid state desync
       this.editorView.destroy();
@@ -539,7 +568,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
                 if (this.fileName().toLowerCase().endsWith('.lnk')) {
                   const info = this.extractLnkInfo(res.body);
                   this.textContent.set(info);
-                  setTimeout(() => this.initEditor(true, info), 0);
+                  afterNextRender(
+                    () => {
+                      void this.initEditor(true, info).catch(e =>
+                        console.error('initEditor failed', e)
+                      );
+                    },
+                    { injector: this.injector }
+                  );
                 } else {
                   this.currentFileType.set('binary');
                 }
@@ -547,7 +583,14 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
                 const repaired = this.repairText(res.body);
                 this.textContent.set(repaired);
                 // Initialize CodeMirror in read-only mode
-                setTimeout(() => this.initEditor(true, repaired ?? ''), 0);
+                afterNextRender(
+                  () => {
+                    void this.initEditor(true, repaired ?? '').catch(e =>
+                      console.error('initEditor failed', e)
+                    );
+                  },
+                  { injector: this.injector }
+                );
               }
             }
             this.isLoading.set(false);
@@ -804,7 +847,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         selectedPath,
         '',
         'copy',
-        ORIGINS.FILEMANAGER
+        'filemanager'
       );
 
       this.notificationService.showInfo(

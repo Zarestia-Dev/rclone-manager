@@ -1,4 +1,32 @@
 {
+  "check_file_remote": {
+    "title": "Vérifier le Fichier Distant",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM avec des hachages."
+  },
+  "combined": {
+    "title": "Combiné",
+    "help": "Générer un rapport combiné des modifications."
+  },
+  "missing_on_src": {
+    "title": "Manquant sur la Source",
+    "help": "Signaler tous les fichiers manquants sur la source."
+  },
+  "missing_on_dst": {
+    "title": "Manquant sur la Destination",
+    "help": "Signaler tous les fichiers manquants sur la destination."
+  },
+  "match": {
+    "title": "Correspondant",
+    "help": "Signaler tous les fichiers correspondants."
+  },
+  "differ": {
+    "title": "Différent",
+    "help": "Signaler tous les fichiers non correspondants."
+  },
+  "error": {
+    "title": "Erreur",
+    "help": "Signaler tous les fichiers avec des erreurs (lecture ou hachage)."
+  },
   "addr": {
     "title": "Adresse",
     "help": "AdresseIP:Port ou :Port auquel lier le serveur"
@@ -1214,5 +1242,97 @@
   "serve_type_s3": {
     "title": "Serveur Amazon S3 compatible",
     "help": "Partager le dépôt distant via l'API Amazon S3"
+  },
+  "check_file_hash": {
+    "title": "Vérifier le hash du fichier",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM contenant des hashes du type spécifié."
+  },
+  "check_file_fs": {
+    "title": "Vérifier le système de fichiers",
+    "help": "Traiter checkFileFs:checkFileRemote comme un fichier SUM contenant des hashes."
+  },
+  "one_way": {
+    "title": "Vérification unidirectionnelle",
+    "help": "Effectuer uniquement une vérification unidirectionnelle - trouver les fichiers dans la source qui n'existent pas sur la destination."
+  },
+  "auto_filename": {
+    "title": "Nom de fichier automatique",
+    "help": "Obtenir le nom du fichier depuis l'URL ou les en-têtes si la destination est un répertoire."
+  },
+  "rmdirs": {
+    "title": "Supprimer les répertoires vides",
+    "help": "Supprimer les répertoires vides après avoir effacé des fichiers."
+  },
+  "format": {
+    "title": "Format d'archive",
+    "help": "Format de compression de l'archive (zip, tar, tgz, tbz, txz, etc.)"
+  },
+  "prefix": {
+    "title": "Préfixe de chemin",
+    "help": "Ajouter un répertoire de préfixe dans l'archive"
+  },
+  "full_path": {
+    "title": "Chemin complet",
+    "help": "Utiliser le chemin complet des fichiers dans l'archive"
+  },
+  "download": {
+    "title": "Télécharger et vérifier",
+    "help": "Télécharger les fichiers pour valider l'intégrité / comparer les hashes."
+  },
+  "resync_mode": {
+    "title": "Mode de Resynchronisation",
+    "help": "Pendant la resynchronisation, préférer la version qui est : path1, path2, plus récente, plus ancienne, plus grande, plus petite (par défaut : path1 si --resync, sinon none pour pas de resynchronisation)"
+  },
+  "compare": {
+    "title": "Comparer",
+    "help": "Liste séparée par des virgules des options de comparaison spécifiques à bisync, ex : 'size,modtime,checksum' (par défaut : 'size,modtime')"
+  },
+  "download_hash": {
+    "title": "Télécharger le Hash",
+    "help": "Calcule le hash en le téléchargeant s'il n'est pas disponible autrement. (attention : peut être lent et consommer beaucoup de données !)"
+  },
+  "max_lock": {
+    "title": "Verrouillage Maximum",
+    "help": "Considère les fichiers de verrouillage plus anciens que cela comme expirés (par défaut : 0 (n'expire jamais)) (minimum : 2m)"
+  },
+  "no_slow_hash": {
+    "title": "Ignorer les Hashs Lents",
+    "help": "Ignore les hashs de liste uniquement sur les backends où ils sont lents"
+  },
+  "slow_hash_sync_only": {
+    "title": "Hash Lents Uniquement en Synchro",
+    "help": "Ignore les hashs lents pour les listes et les deltas, mais les prend en compte lors des appels de synchronisation."
+  },
+  "recover": {
+    "title": "Récupérer",
+    "help": "Récupère automatiquement des interruptions sans nécessiter --resync."
+  },
+  "workdir": {
+    "title": "Dossier de Travail",
+    "help": "Utilise un dossier de travail personnalisé - utile pour les tests."
+  },
+  "check_access": {
+    "title": "Vérifier l'Accès",
+    "help": "Abandonne si les fichiers RCLONE_TEST ne sont pas trouvés sur les deux systèmes de fichiers."
+  },
+  "check_filename": {
+    "title": "Vérifier le Nom du Fichier",
+    "help": "Nom du fichier pour --check-access."
+  },
+  "check_sync": {
+    "title": "Vérifier la Synchronisation",
+    "help": "Contrôle la comparaison des listes finales."
+  },
+  "conflict_loser": {
+    "title": "Perdant du Conflit",
+    "help": "Action à entreprendre sur le perdant d'un conflit de synchronisation (quand il y a un gagnant) ou sur les deux fichiers (quand il n'y a pas de gagnant) : num, pathname, delete (par défaut : num)"
+  },
+  "conflict_resolve": {
+    "title": "Résoudre le Conflit",
+    "help": "Résout automatiquement les conflits en préférant la version qui est : none, path1, path2, plus récente, plus ancienne, plus grande, plus petite (par défaut : none)"
+  },
+  "conflict_suffix": {
+    "title": "Suffixe de Conflit",
+    "help": "Suffixe à utiliser lors du renommage d'un perdant du conflit. Peut être une chaîne unique ou deux chaînes séparées par des virgules pour attribuer des suffixes différents à Path1/Path2. (par défaut : 'conflict')"
   }
 }

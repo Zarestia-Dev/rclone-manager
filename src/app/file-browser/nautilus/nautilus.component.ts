@@ -10,9 +10,10 @@ import {
   output,
   signal,
   untracked,
-  ViewChild,
+  viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { fromEvent } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -35,7 +36,6 @@ import {
   DEFAULT_PICKER_OPTIONS,
 } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
-import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
 import { NautilusKeyboardDirective } from '../../shared/directives/nautilus-keyboard.directive';
 
 import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file-operations.service';
@@ -51,24 +51,24 @@ import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
-import { SlideMenuController } from './slide-menu';
+import { NautilusContextMenuComponent } from './context-menu/nautilus-context-menu.component';
 
 @Component({
   selector: 'app-nautilus',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NautilusSidebarComponent,
     NautilusToolbarComponent,
     NautilusTabsComponent,
     NautilusViewPaneComponent,
     NautilusBottomBarComponent,
-    TranslateModule,
+    TranslatePipe,
     MatIconModule,
     MatSidenavModule,
     MatButtonModule,
     MatDividerModule,
     CdkMenuModule,
-    CopyToClipboardDirective,
+    NautilusContextMenuComponent,
   ],
   providers: [
     FormatFileSizePipe,
@@ -103,9 +103,10 @@ export class NautilusComponent implements OnInit {
 
   // ── Outputs & ViewChild ──────────────────────────────────────────────────────
   readonly closeOverlay = output<FileBrowserItem[] | null>();
-  @ViewChild('sidenav') sidenav!: MatSidenav;
-  @ViewChild('fileUploadInput') fileUploadInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('folderUploadInput') folderUploadInput!: ElementRef<HTMLInputElement>;
+  readonly sidenav = viewChild(MatSidenav);
+  readonly fileUploadInput = viewChild<ElementRef<HTMLInputElement>>('fileUploadInput');
+  readonly folderUploadInput = viewChild<ElementRef<HTMLInputElement>>('folderUploadInput');
+  readonly contextMenu = viewChild(NautilusContextMenuComponent);
 
   // ── Responsive layout ────────────────────────────────────────────────────────
   private readonly _windowWidth = toSignal(
@@ -148,8 +149,8 @@ export class NautilusComponent implements OnInit {
   // ── UI state ─────────────────────────────────────────────────────────────────
   protected readonly isEditingPath = signal(false);
   protected readonly isSearchMode = signal(false);
+  protected readonly isCurrentPathRegistered = signal(false);
   protected readonly searchFilter = signal('');
-  protected readonly menuCtrl = new SlideMenuController('.nautilus-sliding-container');
   private readonly initialLocationApplied = signal(false);
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
@@ -319,6 +320,25 @@ export class NautilusComponent implements OnInit {
       this.isSidenavOpen.set(!this.isMobile());
     });
 
+    // Check SendTo registration status
+    effect(() => {
+      const remote = this.tabSvc.activeRemote();
+      const path = this.tabSvc.activePath();
+
+      if (remote && !remote.isLocal) {
+        this.nautilusService
+          .isSendToRegistered(remote.name, path)
+          .then(registered => {
+            this.isCurrentPathRegistered.set(registered);
+          })
+          .catch(err => {
+            console.error('Failed to check SendTo registration:', err);
+          });
+      } else {
+        this.isCurrentPathRegistered.set(false);
+      }
+    });
+
     // Fallback: apply initialLocation if remote data wasn't ready during setupInitialTab.
     effect(() => {
       const open = this.isPickerMode();
@@ -360,7 +380,7 @@ export class NautilusComponent implements OnInit {
             this.nautilusService.allRemotesLookup()
           );
           if (parsed && this.tabSvc.tabs().length > 0) {
-            this._navigate(parsed.remote, parsed.path, true);
+            this.navigate(parsed.remote, parsed.path, true);
             this.nautilusService.targetPath.set(null);
           }
         });
@@ -501,11 +521,11 @@ export class NautilusComponent implements OnInit {
 
   selectRemote(remote: ExplorerRoot | null): void {
     if (!remote) return;
-    this._navigate(remote, '', true);
+    this.navigate(remote, '', true);
   }
 
   updatePath(newPath: string): void {
-    this._navigate(this.tabSvc.activeRemote(), newPath, true);
+    this.navigate(this.tabSvc.activeRemote(), newPath, true);
   }
 
   navigateToSegment(index: number): void {
@@ -521,7 +541,7 @@ export class NautilusComponent implements OnInit {
       this.nautilusService.allRemotesLookup()
     );
     if (parsed) {
-      this._navigate(parsed.remote, parsed.path, true);
+      this.navigate(parsed.remote, parsed.path, true);
       return;
     }
 
@@ -539,7 +559,7 @@ export class NautilusComponent implements OnInit {
 
     if (item.entry.IsDir) {
       if (!isNewTab) {
-        this._navigate(pane.remote, item.entry.Path, true);
+        this.navigate(pane.remote, item.entry.Path, true);
       } else {
         this.tabSvc.createTab(pane.remote, item.entry.Path);
       }
@@ -562,8 +582,8 @@ export class NautilusComponent implements OnInit {
     }
   }
 
-  protected _navigate(remote: ExplorerRoot | null, path: string, newHistory = true): void {
-    this.tabSvc._navigate(remote, path, newHistory);
+  protected navigate(remote: ExplorerRoot | null, path: string, newHistory = true): void {
+    this.tabSvc.navigate(remote, path, newHistory);
   }
 
   openBookmark(bookmark: FileBrowserItem): void {
@@ -582,12 +602,12 @@ export class NautilusComponent implements OnInit {
     }
     this.selectRemote(remoteDetails);
     this.updatePath(bookmark.entry.Path);
-    if (this.isMobile()) this.sidenav.close();
+    if (this.isMobile()) this.sidenav()?.close();
   }
 
   selectStarred(): void {
     if (this.tabSvc.activeStarredMode()) return;
-    this._navigate(null, '', true);
+    this.navigate(null, '', true);
   }
 
   // ---------------------------------------------------------------------------
@@ -634,7 +654,7 @@ export class NautilusComponent implements OnInit {
   }
 
   setContextItem(item: FileBrowserItem | null, paneIndex?: 0 | 1): void {
-    this.menuCtrl.reset();
+    this.contextMenu()?.reset();
     const pIdx = paneIndex ?? this.tabSvc.activePaneIndex();
     const files = pIdx === 0 ? this.files() : this.filesRight();
     this.selectionSvc.handleContextItem(item, pIdx, files);
@@ -658,36 +678,12 @@ export class NautilusComponent implements OnInit {
   // Clipboard & file ops (thin wrappers over NautilusFileOperationsService)
   // ---------------------------------------------------------------------------
 
-  protected copyItems(): void {
-    const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
-    this.fileOps.copyItems(this.selectionSvc.getSelectedItemsList(files));
-  }
-
-  protected cutItems(): void {
-    const files = this.tabSvc.activePaneIndex() === 0 ? this.files() : this.filesRight();
-    this.fileOps.cutItems(this.selectionSvc.getSelectedItemsList(files));
-  }
-
-  protected clearClipboard(): void {
-    this.fileOps.clearClipboard();
-  }
-
   protected async pasteItems(): Promise<void> {
     await this.fileOps.pasteItems(
       this.tabSvc.activeRemote(),
       this.tabSvc.activePath(),
       this.allRemotesLookup()
     );
-    this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-  }
-
-  async undoLastOperation(): Promise<void> {
-    await this.fileOps.undoLastOperation();
-    this.tabSvc.refresh(this.tabSvc.activePaneIndex());
-  }
-
-  async redoLastOperation(): Promise<void> {
-    await this.fileOps.redoLastOperation();
     this.tabSvc.refresh(this.tabSvc.activePaneIndex());
   }
 
@@ -711,18 +707,10 @@ export class NautilusComponent implements OnInit {
   }
 
   onSidebarSidenavAction(action: 'close' | 'toggle'): void {
-    if (action === 'close') this.sidenav.close();
-    else this.sidenav.toggle();
-  }
-
-  protected getFormattedPath(item: FileBrowserItem | null): string {
-    if (!item) return this.fullPathInput();
-    return this.pathService.getFullDisplayPath(this.tabSvc.activeRemote(), item.entry.Path);
-  }
-
-  protected openContextMenuOpen(): void {
-    const item = this.actions.contextMenuItem();
-    if (item) this.navigateTo(item);
+    const sidenav = this.sidenav();
+    if (!sidenav) return;
+    if (action === 'close') sidenav.close();
+    else sidenav.toggle();
   }
 
   // ---------------------------------------------------------------------------
@@ -736,7 +724,7 @@ export class NautilusComponent implements OnInit {
    */
   async uploadFiles(): Promise<void> {
     if (isHeadlessMode()) {
-      this.fileUploadInput.nativeElement.click();
+      this.fileUploadInput()?.nativeElement.click();
       return;
     }
     const remote = this.tabSvc.activeRemote();
@@ -752,7 +740,7 @@ export class NautilusComponent implements OnInit {
    */
   async uploadFolder(): Promise<void> {
     if (isHeadlessMode()) {
-      this.folderUploadInput.nativeElement.click();
+      this.folderUploadInput()?.nativeElement.click();
       return;
     }
     const remote = this.tabSvc.activeRemote();
@@ -976,5 +964,33 @@ export class NautilusComponent implements OnInit {
           return 0;
       }
     });
+  }
+
+  protected async toggleSendToRegistration(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    const path = this.tabSvc.activePath();
+    if (!remote || remote.isLocal) return;
+
+    const registered = this.isCurrentPathRegistered();
+
+    try {
+      if (registered) {
+        await this.nautilusService.unregisterSendTo(remote.name, path);
+      } else {
+        await this.nautilusService.registerSendTo(remote.name, path);
+      }
+      this.isCurrentPathRegistered.set(!registered);
+
+      const msgKey = registered
+        ? 'nautilus.notifications.sendToRemoved'
+        : 'nautilus.notifications.sendToAdded';
+      this.notificationService.showSuccess(
+        this.translate.instant(msgKey, { remote: remote.name, path: path || '/' })
+      );
+    } catch (e) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.sendToFailed', { error: (e as Error).message })
+      );
+    }
   }
 }

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.2.9] - 2026-07-10
+
+### Added
+- **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80 (Check the wiki: https://hakanismail.info/zarestia/rclone-manager/docs/integrations)
+  - **Windows**: Creates a cascading "RClone Manager" right-click submenu ("Upload to [Remote]") and Send To folder shortcuts.
+  - **Linux**: Installs GNOME Nautilus Python extensions, Nautilus fallback shell scripts, KDE Dolphin service menus, and Nemo actions.
+  - **macOS**: Registers Finder Quick Actions (automator workflow services).
+  - **CLI Commands**: Added `--send-to-remote` and `--send-to-path` command line arguments to trigger uploads directly from system context menus and custom scripts. Added strict argument validation to require a destination remote when `--send-to-path` is used, and at least one source file/folder when `--send-to-remote` is specified.
+  - **Cleanup**: Automatically cleans up all custom integrations, registry entries, extensions, and shortcuts upon application uninstallation or manual path unregistration.
+- **Operations Support**: Expanded Rclone operations support by adding `check`, `delete`, `copyurl`, `archivecreate`, and `cryptcheck`.
+  - Added a new Action Selection Modal to choose and trigger these operations directly from the UI.
+  - Implemented a dedicated Check Results Table in the transfer activity panel to view detailed logs (differences, missing files, errors) for `check` and `cryptcheck` tasks.
+  - Integrated `cryptcheck` output parsing in the Rust backend to extract differences, missing source/destination files, and check errors.
+- **Manual Obscure Support**: Added a built-in Obscure Tool utility in the remote config wizard to securely encrypt sensitive fields (passwords, tokens, keys) using Rclone's native obscure functionality. #237
+  - Added an interactive UI panel to enter cleartext credentials, generate obscured values, and automatically apply them to targeted form controls or copy them to the clipboard.
+- New background for dmg installer.
+- **Librclone Support**: Added support for `librclone` (Beta testing feature for Android/iOS mobile targets). When `librclone` is enabled, application/rclone updates and local process management are disabled, while remote rclone instances and local servers remain supported.
+  - **Android Build & Cross-Compilation**: Added NDK target toolchain cross-compiler mappings for all architectures (`aarch64`, `armv7`, `x86_64`, `386`) and created a GitHub Actions build workflow.
+  - **DNS-over-HTTPS (DoH) Resolver**: Overrode the default Go network resolver on Android to proxy DNS queries through HTTPS (port 443) to Cloudflare/Google, bypassing Android's port 53 raw socket restriction. (Refer to platform docs: `https://hakanismail.info/zarestia/rclone-manager/docs/platform/configuration-android.md`)
+- **Deeplink support**: Added support for mobile custom URI scheme handler (`rclone-manager://oauth`) to automatically redirect and resume the application from web browsers during the OAuth process. (Needs Rclone 1.75 Beta and later.)
+
+### Changed
+- **Dependencies**: Upgraded frontend to **Angular v22**, **TypeScript v6.0**, and **ngx-translate v18**.
+  - Migrated the translation system from `TranslateModule` to a standalone, signal-driven `TranslatePipe`.
+- **Tauri Backend**: Updated Rust cargo crate constraints (`tower-http`, `notify`), while pinning `sysinfo` and `keyring` for compatibility.
+- Static flags updated. #242
+
+### Fixed
+- **Strict ESLint Compliance**: Resolved all strict lint errors (enforced `@typescript-eslint/no-non-null-assertion` and `@typescript-eslint/explicit-function-return-type` as errors). Removed all unsafe `!` assertions using optional chaining (`?.`), type-narrowed local variables, and nullish guards, and added explicit return type annotations to all methods, local helper closures, and factory functions.
+- Fix the overloaded time for DirCacheTime: '1000h' to default rclone value.
+- Fix the Rclone Flags modals not saves the numbers. Example: Transfers... #240
+- Fix for path inputs in remote config wizard. Windows paths handled correctly now. #238
+
 ## [v0.2.8] - 2026-06-17
 
 ### Added

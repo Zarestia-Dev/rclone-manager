@@ -15,11 +15,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { FlagType, RcConfigOption } from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import {
   matchesConfigSearch,
@@ -40,7 +41,8 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     SettingControlComponent,
     OperationConfigComponent,
     JsonEditorComponent,
-    TranslateModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
@@ -79,6 +81,7 @@ export class FlagConfigStepComponent {
   );
 
   readonly serveTypeValue = signal('');
+  readonly isAllowOtherEnabled = signal(false);
 
   readonly dynamicFieldBindings = computed(() => {
     const query = this.searchQuery();
@@ -94,7 +97,6 @@ export class FlagConfigStepComponent {
   });
 
   constructor() {
-    // Track serve type control value changes
     effect(onCleanup => {
       const group = this.configGroup();
       const typeCtrl = group?.get('options.type');
@@ -105,12 +107,32 @@ export class FlagConfigStepComponent {
       onCleanup(() => sub.unsubscribe());
     });
 
-    // Emit serve type changes
     effect(() => {
       const type = this.serveTypeValue();
       if (this.isServe()) {
         this.serveTypeChange.emit(type || 'http');
       }
+    });
+
+    effect(onCleanup => {
+      const options = this.optionsGroup();
+      if (!options) {
+        this.isAllowOtherEnabled.set(false);
+        return;
+      }
+
+      const checkValue = (): void => {
+        const allowOtherVal =
+          options.get('AllowOther')?.value ||
+          options.get('allow_other')?.value ||
+          options.get('allow-other')?.value;
+        this.isAllowOtherEnabled.set(!!allowOtherVal);
+      };
+
+      checkValue();
+
+      const sub = options.valueChanges.subscribe(() => checkValue());
+      onCleanup(() => sub.unsubscribe());
     });
   }
 

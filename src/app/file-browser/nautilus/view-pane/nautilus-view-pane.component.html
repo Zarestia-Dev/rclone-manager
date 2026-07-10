@@ -179,7 +179,7 @@
             </div>
           </th>
           <td mat-cell *matCellDef="let item">
-            {{ formatRelativeDate(item.entry.ModTime) }}
+            {{ item.entry.ModTime | formatRelativeDate }}
           </td>
         </ng-container>
 
@@ -187,7 +187,7 @@
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let item">
             <button
-              mat-icon-button
+              matIconButton
               class="star-button"
               (click)="toggleStar.emit(item); $event.stopPropagation()"
             >
@@ -231,7 +231,9 @@
       <mat-icon svgIcon="circle-exclamation"></mat-icon>
       <h2>{{ 'nautilus.errors.connectionFailed' | translate }}</h2>
       <p>{{ error() }}</p>
-      <button mat-stroked-button (click)="refresh.emit()">{{ 'common.retry' | translate }}</button>
+      <button matButton="outlined" (click)="refresh.emit()">
+        {{ 'common.retry' | translate }}
+      </button>
     </div>
   } @else if (files().length === 0 && !loading()) {
     <div class="empty-folder-container">

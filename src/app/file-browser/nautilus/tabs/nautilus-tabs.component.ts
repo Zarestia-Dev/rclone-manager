@@ -7,27 +7,34 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
   signal,
+  computed,
   inject,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 
 import { NautilusTabItem } from '@app/types';
 
+interface TabViewModel {
+  tab: NautilusTabItem;
+  index: number;
+  transform: string;
+  tooltip: string;
+}
+
 @Component({
   selector: 'app-nautilus-tabs',
-  standalone: true,
   imports: [
     MatIconModule,
     MatTooltipModule,
     MatDividerModule,
     CdkMenuModule,
-    TranslateModule,
+    TranslatePipe,
     ScrollShadowDirective,
   ],
   templateUrl: './nautilus-tabs.component.html',
@@ -64,6 +71,15 @@ export class NautilusTabsComponent {
   // --- Scroll shadow state ---
   protected readonly showLeft = signal(false);
   protected readonly showRight = signal(false);
+
+  readonly tabViewModels = computed<TabViewModel[]>(() =>
+    this.tabs().map((tab, index) => ({
+      tab,
+      index,
+      transform: this.getTabTransform(index),
+      tooltip: this.getTabTooltip(tab),
+    }))
+  );
 
   private readonly tabsScrollContainer =
     viewChild<ElementRef<HTMLDivElement>>('tabsScrollContainer');

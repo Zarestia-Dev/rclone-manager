@@ -1,12 +1,11 @@
-use log::{debug, warn};
 use std::sync::Arc;
+
+use log::{debug, warn};
 use tauri::{AppHandle, Manager};
 
+use crate::rclone::backend::{BackendManager, types::Backend};
 use crate::rclone::queries::{get_mounted_remotes, list_serves};
-use crate::{
-    rclone::backend::{BackendManager, types::Backend},
-    utils::types::remotes::RemoteCache,
-};
+use crate::utils::types::remotes::RemoteCache;
 
 /// Core logic to check and reconcile mounted remotes for the active backend
 async fn check_and_reconcile_mounts(
@@ -83,4 +82,24 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
 
     check_and_reconcile_serves(app_handle.clone(), backend, cache).await?;
     Ok(())
+}
+
+/// Fire-and-forget refresh of the mounted-remotes cache.
+///
+/// Equivalent to `force_check_mounted_remotes` but swallows the error into a
+/// `warn!` log line — useful after mount/unmount operations where a refresh
+/// failure is not actionable by the caller.
+pub async fn refresh_mounts_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_mounted_remotes(app.clone()).await {
+        warn!("Failed to refresh mounted remotes: {e}");
+    }
+}
+
+/// Fire-and-forget refresh of the serves cache.
+///
+/// See [`refresh_mounts_quietly`] for rationale.
+pub async fn refresh_serves_quietly(app: &AppHandle) {
+    if let Err(e) = force_check_serves(app.clone()).await {
+        warn!("Failed to refresh serves: {e}");
+    }
 }

@@ -1,0 +1,120 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--card-border-radius, var(--radius-md));
+  animation: fadeInUp var(--transition-cubic) both;
+
+  strong {
+    display: block;
+    font-size: var(--font-size-md);
+    margin-bottom: var(--space-xs);
+  }
+
+  p,
+  ::ng-deep p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--window-fg-color);
+    line-height: 1.5;
+    opacity: 0.9;
+
+    &:not(:last-child) {
+      margin-bottom: var(--space-xs);
+    }
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      text-decoration: underline;
+      opacity: 0.85;
+    }
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+  }
+
+  // ------------------ Severities ------------------
+
+  &.warning {
+    background: rgba(var(--orange-rgb), 0.1);
+
+    > mat-icon,
+    > div strong {
+      color: var(--orange);
+    }
+    > div a {
+      color: var(--accent-color, var(--primary-color));
+    }
+  }
+
+  &.info {
+    background: rgba(var(--accent-color-rgb), 0.1);
+
+    > mat-icon,
+    > div strong {
+      color: var(--accent-color);
+    }
+    > div a {
+      color: var(--accent-color);
+    }
+  }
+
+  &.error {
+    background: rgba(var(--destructive-color-rgb), 0.1);
+
+    > mat-icon,
+    > div strong {
+      color: var(--destructive-color);
+    }
+    > div a {
+      color: var(--accent-color, var(--primary-color));
+    }
+  }
+
+  &.success {
+    background: rgba(var(--success-color-rgb), 0.1);
+
+    > mat-icon,
+    > div strong {
+      color: var(--success-color);
+    }
+    > div a {
+      color: var(--success-color);
+    }
+  }
+
+  @media (max-width: 600px) {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+
+    > mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+    }
+
+    > div {
+      a {
+        mat-icon {
+          width: 14px;
+          height: 14px;
+          font-size: 14px;
+        }
+      }
+    }
+  }
+}

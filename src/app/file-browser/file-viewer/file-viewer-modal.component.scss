@@ -1,10 +1,16 @@
 :host {
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
   display: flex;
   flex-direction: column;
   background: rgba(var(--window-bg-color-rgb), 0.85);
   overflow: hidden;
+
+  // Safe area insets for edge-to-edge mode (Android/iOS status & nav bars)
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 
   .file-viewer-header {
     display: flex;
@@ -246,7 +252,7 @@
           font-size: var(--icon-size-2xl);
           width: var(--icon-size-2xl);
           height: var(--icon-size-2xl);
-          color: var(--error-color);
+          color: var(--warn-color);
           opacity: 0.8;
         }
 
@@ -265,9 +271,9 @@
           word-break: break-word;
           font-family: var(--font-mono);
           padding: var(--space-md);
-          background: rgba(var(--error-color-rgb), 0.05);
+          background: rgba(var(--warn-color-rgb), 0.05);
           border-radius: var(--radius-sm);
-          border: 1px solid rgba(var(--error-color-rgb), 0.1);
+          border: 1px solid rgba(var(--warn-color-rgb), 0.1);
         }
       }
 
@@ -467,7 +473,7 @@
         }
 
         .cm-activeLine {
-          background: rgba(var(--window-fg-color-rgb), 0.04);
+          background: var(--bg-elevated-1);
         }
 
         .cm-cursor {
@@ -508,7 +514,7 @@
       width: var(--icon-size-3xl);
       height: var(--icon-size-3xl);
       border-radius: 50%;
-      background: rgba(var(--window-fg-color-rgb), 0.05);
+      background: var(--bg-elevated-2);
       margin-bottom: var(--space-sm);
     }
 

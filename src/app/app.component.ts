@@ -25,7 +25,6 @@ import { SseClientService } from './services/infrastructure/platform/sse-client.
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [
     TitlebarComponent,
     OnboardingComponent,

@@ -5,7 +5,7 @@
   <p>{{ 'modals.quickAdd.title' | translate }}</p>
   <button
     type="button"
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'common.close' | translate"
   >
@@ -88,7 +88,7 @@
           </a>
 
           <button
-            mat-icon-button
+            matIconButton
             [appCopyToClipboard]="oauthUrlValue"
             [attr.aria-label]="'modals.oauth.copyLink' | translate"
             [matTooltip]="'modals.oauth.copyLink' | translate"
@@ -130,7 +130,7 @@
     @case ('setup') {
       <button
         type="button"
-        mat-flat-button
+        matButton="filled"
         class="primary"
         (click)="nextStep()"
         [disabled]="!isSetupStepValid()"
@@ -142,20 +142,20 @@
 
     @case ('operations') {
       @if (!isAuthInProgress()) {
-        <button type="button" mat-button (click)="prevStep()">
+        <button type="button" matButton="text" (click)="prevStep()">
           <mat-icon iconPositionStart svgIcon="left-arrow"></mat-icon>
           {{ 'common.back' | translate }}
         </button>
       }
 
       @if (isAuthInProgress() && !isAuthCancelled()) {
-        <button type="button" mat-button class="warn" (click)="cancelAuth()">
+        <button type="button" matButton="text" class="warn" (click)="cancelAuth()">
           {{ 'common.cancel' | translate }}
         </button>
       }
 
       <button
-        mat-flat-button
+        matButton="filled"
         class="primary"
         type="button"
         (click)="onSubmit()"
@@ -174,12 +174,12 @@
       @let continueLabel =
         (flow.isProcessing ? 'modals.quickAdd.buttons.processing' : 'common.continue') | translate;
 
-      <button mat-button class="warn" type="button" (click)="cancelAuth()">
+      <button matButton="text" class="warn" type="button" (click)="cancelAuth()">
         {{ 'common.cancel' | translate }}
       </button>
 
       <button
-        mat-flat-button
+        matButton="filled"
         class="primary"
         (click)="onInteractiveContinue(flow.answer)"
         [disabled]="isInteractiveContinueDisabled()"

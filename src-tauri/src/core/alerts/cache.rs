@@ -1,17 +1,18 @@
+use std::collections::VecDeque;
+
+use log::{debug, error};
+use tauri::{AppHandle, Emitter};
+use tokio::sync::RwLock;
+
 use crate::core::alerts::types::{
     AlertAction, AlertHistoryFilter, AlertHistoryPage, AlertRecord, AlertRule, AlertStats,
 };
 use crate::core::settings::AppSettingsManager;
-use log::{debug, error};
-use std::collections::VecDeque;
-use tauri::{AppHandle, Emitter};
-use tokio::sync::RwLock;
-
 use crate::utils::types::events::ALERT_FIRED;
 
 pub fn get_all_rules(manager: &AppSettingsManager) -> Vec<AlertRule> {
     manager
-        .sub_settings("alerts/rules")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_RULES)
         .ok()
         .and_then(|sub| sub.get_all_values().ok())
         .unwrap_or_default()
@@ -22,7 +23,7 @@ pub fn get_all_rules(manager: &AppSettingsManager) -> Vec<AlertRule> {
 
 pub fn get_rule(manager: &AppSettingsManager, id: &str) -> Option<AlertRule> {
     manager
-        .sub_settings("alerts/rules")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_RULES)
         .ok()
         .and_then(|sub| sub.get::<AlertRule>(id).ok())
 }
@@ -33,7 +34,7 @@ pub fn upsert_rule(manager: &AppSettingsManager, mut rule: AlertRule) -> Result<
     }
 
     let sub = manager
-        .sub_settings("alerts/rules")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_RULES)
         .map_err(|e| e.to_string())?;
 
     sub.set(&rule.id, &rule)
@@ -44,7 +45,7 @@ pub fn upsert_rule(manager: &AppSettingsManager, mut rule: AlertRule) -> Result<
 
 pub fn delete_rule(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
     let sub = manager
-        .sub_settings("alerts/rules")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_RULES)
         .map_err(|e| e.to_string())?;
 
     sub.delete(id)
@@ -64,7 +65,7 @@ pub async fn bump_rule_fired(
 
 pub fn get_all_actions(manager: &AppSettingsManager) -> Vec<AlertAction> {
     manager
-        .sub_settings("alerts/actions")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS)
         .ok()
         .and_then(|sub| sub.get_all_values().ok())
         .unwrap_or_default()
@@ -75,7 +76,7 @@ pub fn get_all_actions(manager: &AppSettingsManager) -> Vec<AlertAction> {
 
 pub fn get_action(manager: &AppSettingsManager, id: &str) -> Option<AlertAction> {
     manager
-        .sub_settings("alerts/actions")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS)
         .ok()
         .and_then(|sub| sub.get::<AlertAction>(id).ok())
 }
@@ -90,7 +91,7 @@ pub fn upsert_action(
 
     let id = action.id().to_string();
     let sub = manager
-        .sub_settings("alerts/actions")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS)
         .map_err(|e| e.to_string())?;
 
     sub.set(&id, &action)
@@ -101,7 +102,7 @@ pub fn upsert_action(
 
 pub fn delete_action(manager: &AppSettingsManager, id: &str) -> Result<(), String> {
     let sub = manager
-        .sub_settings("alerts/actions")
+        .sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS)
         .map_err(|e| e.to_string())?;
 
     sub.delete(id)
@@ -186,6 +187,7 @@ impl AlertRuleCache {
         }
     }
 }
+
 pub struct AlertHistoryCache {
     records: RwLock<VecDeque<AlertRecord>>,
     max_entries: usize,
@@ -321,7 +323,7 @@ impl AlertHistoryCache {
         let mut by_rule = std::collections::HashMap::new();
 
         for r in records.iter() {
-            *by_severity.entry(r.severity.clone()).or_insert(0) += 1;
+            *by_severity.entry(r.severity).or_insert(0) += 1;
             *by_rule.entry(r.rule_name.clone()).or_insert(0) += 1;
         }
 

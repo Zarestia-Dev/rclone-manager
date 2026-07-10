@@ -1,6 +1,5 @@
 import {
   Component,
-  HostListener,
   OnInit,
   inject,
   signal,
@@ -9,7 +8,8 @@ import {
   ChangeDetectionStrategy,
   viewChild,
 } from '@angular/core';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,6 +42,7 @@ import { SettingControlComponent } from 'src/app/shared/components/setting-contr
 import {
   JsonEditorComponent,
   JSON_EDITOR_LOOKUP_TABLE,
+  type JsonEditorLookupTable,
 } from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -156,9 +157,41 @@ const MAIN_CATEGORY_CONFIG: Record<
   },
 };
 
+interface OptionViewModel {
+  option: RcConfigOption;
+  uniqueKey: string;
+}
+
+interface CategoryViewModel {
+  category: string;
+  icon: string;
+  description: string;
+  matchCount: number;
+}
+
+interface ServiceViewModel {
+  name: string;
+  expanded: boolean;
+  icon: string;
+  description: string;
+  categories: CategoryViewModel[];
+}
+
+interface MainCategoryViewModel {
+  name: string;
+  titleKey: string;
+  description: string;
+  services: ServiceViewModel[];
+}
+
+interface SearchResultViewModel {
+  result: RCloneFlagsSearchResult;
+  serviceIcon: string;
+}
+
 @Component({
   selector: 'app-rclone-flags-modal',
-  standalone: true,
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     TitleCasePipe,
     MatIconModule,
@@ -171,7 +204,7 @@ const MAIN_CATEGORY_CONFIG: Record<
     SettingControlComponent,
     JsonEditorComponent,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     RcloneOptionTranslatePipe,
   ],
   templateUrl: './rclone-flags-modal.component.html',
@@ -180,7 +213,7 @@ const MAIN_CATEGORY_CONFIG: Record<
   providers: [
     {
       provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (modal: RcloneFlagsModalComponent) => modal.lookupTable,
+      useFactory: (modal: RcloneFlagsModalComponent): JsonEditorLookupTable => modal.lookupTable,
       deps: [RcloneFlagsModalComponent],
     },
   ],
@@ -191,7 +224,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private readonly fb = inject(FormBuilder);
-  private readonly translate = inject(TranslateService);
+  readonly translate = inject(TranslateService);
 
   readonly virtualScrollViewport = viewChild(CdkVirtualScrollViewport);
 
@@ -357,6 +390,58 @@ export class RcloneFlagsModalComponent implements OnInit {
     return this.groupedOptions()[page]?.[category] ?? [];
   });
 
+  readonly mainCategoryViewModels = computed<MainCategoryViewModel[]>(() => {
+    const order = ['General Settings', 'File System & Storage', 'Network & Servers'];
+    const grouped = this.servicesByMainCategory();
+    return order
+      .map((name): MainCategoryViewModel => {
+        const cfg = MAIN_CATEGORY_CONFIG[name];
+        const services = (grouped[name] ?? []).map((svc): ServiceViewModel => {
+          const serviceCfg = SERVICE_CONFIG[svc.name];
+          const categories = svc.categories.map((catName): CategoryViewModel => {
+            const catCfg = CATEGORY_CONFIG[catName];
+            return {
+              category: catName,
+              icon: catCfg?.icon ?? 'gear',
+              description: catCfg?.description ?? '',
+              matchCount: this.getMatchCountForCategory(svc.name, catName),
+            };
+          });
+          return {
+            name: svc.name,
+            expanded: svc.expanded,
+            icon: serviceCfg?.icon ?? 'gear',
+            description: serviceCfg?.description ?? '',
+            categories,
+          };
+        });
+        return {
+          name,
+          titleKey: cfg?.titleKey ?? name,
+          description: cfg?.description ?? '',
+          services,
+        };
+      })
+      .filter(mc => mc.services.length > 0);
+  });
+
+  readonly globalSearchResultViewModels = computed<SearchResultViewModel[]>(() =>
+    this.globalSearchResults().map(r => ({
+      result: r,
+      serviceIcon: this.getServiceIcon(r.service),
+    }))
+  );
+
+  readonly virtualScrollOptionViewModels = computed<OptionViewModel[]>(() =>
+    this.virtualScrollData().map(opt => {
+      const uniqueKey = this.getUniqueControlKey(opt);
+      return {
+        option: opt,
+        uniqueKey,
+      };
+    })
+  );
+
   // ── Constructor ────────────────────────────────────────────────────────────
 
   constructor() {
@@ -449,8 +534,9 @@ export class RcloneFlagsModalComponent implements OnInit {
     this.currentCategory.set(category ?? null);
     this.optionToFocus = optionName ?? null;
 
-    if (this.optionToFocus) {
-      queueMicrotask(() => this.scrollToOption(this.optionToFocus!));
+    const focus = this.optionToFocus;
+    if (focus) {
+      queueMicrotask(() => this.scrollToOption(focus));
     }
   }
 
@@ -535,7 +621,8 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   // ── Persistence ────────────────────────────────────────────────────────────
 
-  async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
+  async saveRCloneOption(optionName: string): Promise<void> {
+    const isAtDefault = this.isOptionAtDefault(optionName);
     const control = this.rcloneOptionsForm.get(optionName);
     if (!control || control.invalid || this.savingOptions().has(optionName) || control.pristine) {
       return;
@@ -660,7 +747,6 @@ export class RcloneFlagsModalComponent implements OnInit {
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
-  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

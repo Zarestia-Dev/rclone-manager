@@ -33,81 +33,20 @@
   </div>
 
   <div class="remote-status-indicators" aria-hidden="true">
-    @if (visibleStatusIndicators().includes('mount')) {
+    @for (vm of statusIndicatorViewModels(); track $index) {
       <div
-        class="app-pill p-accent"
-        [matTooltip]="getProfileTooltip('mount')"
+        [class]="
+          'app-pill ' +
+          vm.meta.pillClass +
+          (vm.meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[vm.op] : '')
+        "
+        [matTooltip]="vm.tooltip"
         matTooltipShowDelay="500"
       >
         <mat-icon
-          svgIcon="mount"
-          [class]="ACTION_ANIMATION_CLASS['mount']"
-          [attr.aria-label]="'detailShared.status.mounted' | translate"
-        ></mat-icon>
-      </div>
-    }
-    @if (visibleStatusIndicators().includes('sync')) {
-      <div
-        class="app-pill p-primary"
-        [matTooltip]="getProfileTooltip('sync')"
-        matTooltipShowDelay="500"
-      >
-        <mat-icon
-          svgIcon="refresh"
-          [class]="ACTION_ANIMATION_CLASS['sync']"
-          [attr.aria-label]="'detailShared.status.syncing' | translate"
-        ></mat-icon>
-      </div>
-    }
-    @if (visibleStatusIndicators().includes('copy')) {
-      <div
-        class="app-pill p-yellow"
-        [matTooltip]="getProfileTooltip('copy')"
-        matTooltipShowDelay="500"
-      >
-        <mat-icon
-          svgIcon="copy"
-          [class]="ACTION_ANIMATION_CLASS['copy']"
-          [attr.aria-label]="'detailShared.status.copying' | translate"
-        ></mat-icon>
-      </div>
-    }
-    @if (visibleStatusIndicators().includes('move')) {
-      <div
-        class="app-pill p-orange"
-        [matTooltip]="getProfileTooltip('move')"
-        matTooltipShowDelay="500"
-      >
-        <mat-icon
-          svgIcon="move"
-          [class]="ACTION_ANIMATION_CLASS['move']"
-          [attr.aria-label]="'detailShared.status.moving' | translate"
-        ></mat-icon>
-      </div>
-    }
-    @if (visibleStatusIndicators().includes('bisync')) {
-      <div
-        class="app-pill p-purple"
-        [matTooltip]="getProfileTooltip('bisync')"
-        matTooltipShowDelay="500"
-      >
-        <mat-icon
-          svgIcon="right-left"
-          [class]="ACTION_ANIMATION_CLASS['bisync']"
-          [attr.aria-label]="'detailShared.status.bisyncing' | translate"
-        ></mat-icon>
-      </div>
-    }
-    @if (visibleStatusIndicators().includes('serve')) {
-      <div
-        class="app-pill p-accent"
-        [class]="ACTION_ANIMATION_CLASS['serve']"
-        [matTooltip]="getProfileTooltip('serve')"
-        matTooltipShowDelay="500"
-      >
-        <mat-icon
-          svgIcon="satellite-dish"
-          [attr.aria-label]="'detailShared.status.serving' | translate"
+          [svgIcon]="vm.meta.icon"
+          [class]="vm.meta.animateContainer ? '' : ACTION_ANIMATION_CLASS[vm.op]"
+          [attr.aria-label]="vm.meta.ariaKey | translate"
         ></mat-icon>
       </div>
     }
@@ -115,90 +54,88 @@
 </div>
 
 @if (displayMode() === 'compact') {
-  <div class="remote-content">
-    <div class="quick-actions">
-      @for (button of actionButtons(); track button.id) {
-        <button
-          mat-mini-fab
-          [matTooltip]="button.tooltip"
-          matTooltipShowDelay="500"
-          [disabled]="button.isDisabled"
-          [class]="button.cssClass || ''"
-          (click)="onActionButtonClick({ id: button.id, event: $event })"
-        >
-          @if (button.isLoading) {
-            <mat-spinner diameter="24"></mat-spinner>
-          } @else {
-            <mat-icon [svgIcon]="button.icon"></mat-icon>
-          }
-        </button>
-      }
+  <div class="quick-actions">
+    @for (button of actionButtons(); track button.id) {
+      <button
+        matMiniFab
+        [matTooltip]="button.tooltip"
+        matTooltipShowDelay="500"
+        [disabled]="button.isDisabled"
+        [class]="button.cssClass || ''"
+        (click)="onActionButtonClick({ id: button.id, event: $event })"
+      >
+        @if (button.isLoading) {
+          <mat-spinner diameter="24"></mat-spinner>
+        } @else {
+          <mat-icon [svgIcon]="button.icon"></mat-icon>
+        }
+      </button>
+    }
 
-      @if (openableFolders().length === 1) {
+    @if (openableFolders().length === 1) {
+      <button
+        matMiniFab
+        [class]="openableFolders()[0].cssClass"
+        [matTooltip]="openableFolders()[0].tooltip"
+        matTooltipShowDelay="500"
+        [disabled]="isFolderOpening()"
+        (click)="onOpenFolderClick(openableFolders()[0], $event)"
+      >
+        @if (isFolderOpening()) {
+          <mat-spinner diameter="24"></mat-spinner>
+        } @else {
+          <mat-icon [svgIcon]="openableFolders()[0].icon"></mat-icon>
+        }
+      </button>
+    }
+
+    @if (openableFolders().length > 1) {
+      <div class="folder-cluster">
+        <div class="folder-blossom" role="menu">
+          @for (
+            folder of openableFolders();
+            track folder.operation + folder.profile + folder.path;
+            let i = $index
+          ) {
+            <button
+              matMiniFab
+              class="folder-blossom-item"
+              [class]="folder.cssClass"
+              [style.transition-delay]="i * 35 + 'ms'"
+              [matTooltip]="folder.tooltip"
+              matTooltipShowDelay="500"
+              matTooltipPosition="above"
+              [disabled]="isFolderOpening()"
+              (click)="onOpenFolderClick(folder, $event)"
+              role="menuitem"
+            >
+              @if (isFolderOpening()) {
+                <mat-spinner diameter="24"></mat-spinner>
+              } @else {
+                <mat-icon [svgIcon]="folder.icon"></mat-icon>
+              }
+            </button>
+          }
+        </div>
+
         <button
-          mat-mini-fab
-          [class]="openableFolders()[0].cssClass"
-          [matTooltip]="openableFolders()[0].tooltip"
+          matMiniFab
+          [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
+          [style]="folderBlossomStyle()"
+          [matTooltip]="'overviews.remoteCard.browse' | translate"
           matTooltipShowDelay="500"
           [disabled]="isFolderOpening()"
-          (click)="onOpenFolderClick(openableFolders()[0], $event)"
+          (click)="$event.stopPropagation()"
         >
           @if (isFolderOpening()) {
             <mat-spinner diameter="24"></mat-spinner>
           } @else {
-            <mat-icon [svgIcon]="openableFolders()[0].icon"></mat-icon>
+            <mat-icon svgIcon="folder"></mat-icon>
           }
+          <span class="folder-badge" aria-hidden="true">{{ openableFolders().length }}</span>
         </button>
-      }
-
-      @if (openableFolders().length > 1) {
-        <div class="folder-cluster">
-          <div class="folder-blossom" role="menu">
-            @for (
-              folder of openableFolders();
-              track folder.operation + folder.profile + folder.path;
-              let i = $index
-            ) {
-              <button
-                mat-mini-fab
-                class="folder-blossom-item"
-                [class]="folder.cssClass"
-                [style.transition-delay]="i * 35 + 'ms'"
-                [matTooltip]="folder.tooltip"
-                matTooltipShowDelay="500"
-                matTooltipPosition="above"
-                [disabled]="isFolderOpening()"
-                (click)="onOpenFolderClick(folder, $event)"
-                role="menuitem"
-              >
-                @if (isFolderOpening()) {
-                  <mat-spinner diameter="24"></mat-spinner>
-                } @else {
-                  <mat-icon [svgIcon]="folder.icon"></mat-icon>
-                }
-              </button>
-            }
-          </div>
-
-          <button
-            mat-mini-fab
-            [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
-            [style]="folderBlossomStyle()"
-            [matTooltip]="'overviews.remoteCard.browse' | translate"
-            matTooltipShowDelay="500"
-            [disabled]="isFolderOpening()"
-            (click)="$event.stopPropagation()"
-          >
-            @if (isFolderOpening()) {
-              <mat-spinner diameter="24"></mat-spinner>
-            } @else {
-              <mat-icon svgIcon="folder"></mat-icon>
-            }
-            <span class="folder-badge" aria-hidden="true">{{ openableFolders().length }}</span>
-          </button>
-        </div>
-      }
-    </div>
+      </div>
+    }
   </div>
 }
 
@@ -217,62 +154,57 @@
         </div>
       </div>
     } @else {
-      @for (operation of detailedOperations(); track operation) {
-        @let profiles = getConfiguredProfiles(operation);
-        @if (profiles.length > 0) {
-          <div class="profile-group" [ngClass]="getOperationCssClass(operation)">
+      @for (opVm of detailedOperationViewModels(); track $index) {
+        @if (opVm.profiles.length > 0) {
+          <div class="profile-group" [ngClass]="opVm.cssClass">
             <div class="profile-group-header">
               <span class="operation-label">
-                <mat-icon
-                  class="operation-icon"
-                  [svgIcon]="getOperationLabelIcon(operation)"
-                ></mat-icon>
-                {{ operation | titlecase }}
+                <mat-icon class="operation-icon" [svgIcon]="opVm.labelIcon"></mat-icon>
+                {{ opVm.operation | titlecase }}
               </span>
-              <span class="profile-count">{{ profiles.length }}</span>
+              <span class="profile-count">{{ opVm.profiles.length }}</span>
             </div>
             <div class="profile-pills">
-              @for (profile of profiles; track profile) {
-                @let isBusy = isProfileActionInProgress(operation, profile);
-                <div class="profile-item" [class.can-open]="canOpenProfilePath(operation, profile)">
+              @for (profileVm of opVm.profiles; track $index) {
+                <div class="profile-item" [class.can-open]="profileVm.canOpen">
                   <button
                     class="app-pill interactive"
-                    [ngClass]="'p-' + getOperationCssClass(operation)"
-                    [class.p-warn]="isProfileActive(operation, profile)"
-                    [class.p-dim]="isBusy"
-                    [disabled]="isBusy"
-                    [matTooltip]="getProfileChipTooltip(operation, profile)"
+                    [ngClass]="'p-' + opVm.cssClass"
+                    [class.p-warn]="profileVm.isActive"
+                    [class.p-dim]="profileVm.isBusy"
+                    [disabled]="profileVm.isBusy"
+                    [matTooltip]="profileVm.chipTooltip"
                     matTooltipShowDelay="500"
-                    (click)="onProfileChipClick(operation, profile, $event)"
+                    (click)="onProfileChipClick(opVm.operation, profileVm.name, $event)"
                   >
-                    <span class="pill-content">
-                      @if (isBusy) {
-                        <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
-                      } @else if (isProfileActive(operation, profile)) {
-                        <mat-icon
-                          class="profile-icon"
-                          [svgIcon]="operation === 'mount' ? 'eject' : 'stop'"
-                        ></mat-icon>
-                      }
-                      <span class="profile-name-text">{{ profile }}</span>
-                    </span>
+                    @if (profileVm.isBusy) {
+                      <mat-spinner class="profile-spinner" diameter="13"></mat-spinner>
+                    } @else if (profileVm.isActive) {
+                      <mat-icon
+                        class="profile-icon"
+                        [svgIcon]="opVm.operation === 'mount' ? 'eject' : 'stop'"
+                      ></mat-icon>
+                    }
+                    <span class="profile-name-text">{{ profileVm.name }}</span>
                   </button>
 
-                  @if (canOpenProfilePath(operation, profile)) {
-                    @for (path of getProfileOpenPaths(operation, profile); track path) {
+                  @if (profileVm.openPaths.length > 0) {
+                    @for (pathVm of profileVm.openPaths; track $index) {
                       <button
                         type="button"
                         class="profile-open-btn"
                         [disabled]="isFolderOpening()"
-                        [matTooltip]="getProfileOpenTooltip(profile, path)"
+                        [matTooltip]="pathVm.tooltip"
                         matTooltipShowDelay="500"
-                        (click)="onProfileOpenInFiles(operation, profile, path, $event)"
+                        (click)="
+                          onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
+                        "
                       >
                         @if (isFolderOpening()) {
                           <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
                         } @else {
                           <mat-icon
-                            [svgIcon]="pathService.isLocalPath(path) ? 'folder' : 'folder-open'"
+                            [svgIcon]="pathVm.isLocal ? 'folder' : 'folder-open'"
                           ></mat-icon>
                         }
                       </button>

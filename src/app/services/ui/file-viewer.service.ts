@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { outputToObservable } from '@angular/core/rxjs-interop';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { platform } from '@tauri-apps/plugin-os';
@@ -55,13 +56,15 @@ export class FileViewerService extends TauriBaseService {
       remoteName,
     };
 
-    const cleanup = () => {
+    const cleanup = (): void => {
       overlayRef.dispose();
       this._isViewerOpen.set(false);
       this._activeFileName.set(null);
     };
 
-    componentRef.instance.closeViewer.pipe(take(1)).subscribe(() => cleanup());
+    outputToObservable(componentRef.instance.closeViewer)
+      .pipe(take(1))
+      .subscribe(() => cleanup());
     overlayRef
       .backdropClick()
       .pipe(take(1))

@@ -4,7 +4,7 @@ import { NautilusService } from '../ui/nautilus.service';
 import { FilePickerConfig, FilePickerResult } from '@app/types';
 import { PathService } from '../infrastructure/platform/path.service';
 import { filter, firstValueFrom } from 'rxjs';
-import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
 import { BackendService } from '../infrastructure/system/backend.service';
 
 /**
@@ -24,7 +24,7 @@ export class FileSystemService extends TauriBaseService {
    * This is true in headless mode or when a remote rclone backend is active.
    */
   private isInternalBrowserPreferred(): boolean {
-    return isHeadlessMode() || this.backendService.activeBackend() !== 'Local';
+    return isHeadlessMode() || this.backendService.activeBackend() !== 'Local' || isMobile();
   }
 
   /**

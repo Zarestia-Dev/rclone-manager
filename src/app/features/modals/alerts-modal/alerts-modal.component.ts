@@ -3,7 +3,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogRef } from '@angular/material/dialog';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { AlertHistoryComponent } from './history/alert-history.component';
@@ -12,12 +12,11 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
 
 @Component({
   selector: 'app-alerts-modal',
-  standalone: true,
   imports: [
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
-    TranslateModule,
+    TranslatePipe,
     AlertHistoryComponent,
     AlertRulesComponent,
     AlertActionsComponent,
@@ -29,7 +28,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
         <mat-icon svgIcon="bell"></mat-icon>
       </button>
       <p class="header-title">{{ 'alerts.title' | translate }}</p>
-      <button mat-icon-button (click)="close()" [attr.aria-label]="'common.close' | translate">
+      <button matIconButton (click)="close()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
@@ -119,7 +118,7 @@ import { AlertActionsComponent } from './actions/alert-actions.component';
       font-size: 11px;
       font-weight: 700;
       line-height: 1;
-      background: rgba(var(--window-fg-color-rgb), 0.1);
+      background: var(--bg-elevated-4);
       color: var(--dim-color);
     }
   `,

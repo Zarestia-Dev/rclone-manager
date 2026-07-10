@@ -10,9 +10,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tauri::AppHandle;
 
-// ============================================================================
 // Portable Mode Helpers
-// ============================================================================
 
 /// Get the directory containing the executable (for portable mode)
 #[cfg(feature = "portable")]
@@ -24,9 +22,7 @@ fn get_executable_directory() -> Result<PathBuf, String> {
         .ok_or_else(|| "Failed to get executable directory".to_string())
 }
 
-// ============================================================================
 // AppPaths Struct
-// ============================================================================
 
 /// Centralized application paths
 #[derive(Debug, Clone, Serialize)]
@@ -119,18 +115,12 @@ impl AppPaths {
             res.unwrap_or_else(|_| cache_dir.join("logs"))
         };
 
-        // Resource directory
+        // Resource directory (fallback to cache/resources for mobile)
         let resource_dir = tauri::Manager::path(app)
             .resource_dir()
-            .map_err(|e| format!("Failed to get resource directory: {e}"))?;
-
-        #[cfg(feature = "web-server")]
-        {
-            use log::info;
-            info!("Config directory: {}", config_dir.display());
-            info!("Cache directory: {}", cache_dir.display());
-            info!("Resource directory: {}", resource_dir.display());
-        }
+            .ok()
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| cache_dir.join("resources"));
 
         Ok(Self {
             config_dir,
@@ -183,5 +173,10 @@ impl AppPaths {
     /// Get the path to the bundled serve template
     pub fn serve_template_path(&self) -> PathBuf {
         self.resource_dir.join("serve-template.html")
+    }
+
+    /// Get the path to the bundled OAuth template
+    pub fn oauth_template_path(&self) -> PathBuf {
+        self.resource_dir.join("oauth-template.html")
     }
 }

@@ -5,18 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { JobInfo, PathDisplayConfig, TransferActivityPanelConfig } from '@app/types';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { JobInfo, PathDisplayConfig, TransferActivityPanelConfig, NON_JOB_OPS } from '@app/types';
 import { FormatFileSizePipe, FormatTimePipe, FormatEtaPipe } from '@app/pipes';
-import {
-  TransferActivityPanelComponent,
-  PathDisplayComponent,
-} from '../../../shared/detail-shared';
+import { TransferActivityPanelComponent } from '../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
+import { PathDisplayComponent } from '../../../shared/detail-shared/path-display/path-display.component';
 import { IconService } from 'src/app/services/ui/icon.service';
-import {
-  JobManagementService,
-  mapRawTransfer,
-} from 'src/app/services/operations/job-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -24,13 +19,12 @@ import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-cli
 
 @Component({
   selector: 'app-job-detail-modal',
-  standalone: true,
   imports: [
     MatIconModule,
     MatButtonModule,
     MatProgressBarModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     FormatFileSizePipe,
     FormatTimePipe,
     FormatEtaPipe,
@@ -121,19 +115,14 @@ export class JobDetailModalComponent {
     const job = this.jobData();
     const stats = job.stats;
 
-    const completedTransfers = (((stats as any)?.completed ?? []) as any[]).map(mapRawTransfer);
-
-    const combined = [...completedTransfers].sort((a, b) => {
-      const timeA = a.completedAt ? Date.parse(a.completedAt) : 0;
-      const timeB = b.completedAt ? Date.parse(b.completedAt) : 0;
-      return timeB - timeA;
-    });
+    const combined = stats?.completed ?? [];
 
     return {
       activeTransfers: stats?.transferring ?? [],
       completedTransfers: combined,
       remoteName: this.pathService.formatPathDisplay(job.source) || job.backend_name || 'Rclone',
       showHistory: true,
+      jobType: job.job_type,
     };
   });
 
@@ -144,7 +133,9 @@ export class JobDetailModalComponent {
 
   readonly jobStatus = computed(() => this.jobData().status.toLowerCase());
   readonly isMount = computed(() => this.jobData().job_type === 'mount');
-  readonly showStatistics = computed(() => !['mount', 'serve'].includes(this.jobData().job_type));
+  readonly showStatistics = computed(
+    () => !(NON_JOB_OPS as readonly string[]).includes(this.jobData().job_type)
+  );
   readonly speedAvg = computed(() => (this.jobData().stats as any)?.speedAvg ?? 0);
   readonly lastError = computed(
     () => (this.jobData().stats as any)?.lastError || this.jobData().error || null

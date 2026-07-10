@@ -1,23 +1,24 @@
-import { Component, inject, ChangeDetectionStrategy, signal, HostListener } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { EscapeCloseDirective } from '../../../../../shared/directives/escape-close.directive';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption } from '@app/types';
 
 @Component({
   selector: 'app-alert-action-editor',
-  standalone: true,
   templateUrl: './alert-action-editor.component.html',
   styleUrls: ['./alert-action-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -27,7 +28,7 @@ import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption }
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -92,9 +93,8 @@ export class AlertActionEditorComponent {
   });
 
   constructor() {
-    this.data = this.dialogData?.actionId
-      ? this.alertService.actions().find(a => a.id === this.dialogData!.actionId)
-      : undefined;
+    const actionId = this.dialogData?.actionId;
+    this.data = actionId ? this.alertService.actions().find(a => a.id === actionId) : undefined;
 
     if (this.data) {
       const patch: any = { ...this.data };
@@ -147,7 +147,7 @@ export class AlertActionEditorComponent {
     all.forEach(f => this.form.get(f)?.clearValidators());
 
     const kind = this.form.controls.kind.value;
-    const required = (fields: string[]) =>
+    const required = (fields: string[]): void =>
       fields.forEach(f => this.form.get(f)?.setValidators([Validators.required]));
 
     if (kind === 'webhook') required(['url']);
@@ -161,7 +161,7 @@ export class AlertActionEditorComponent {
 
   // ── Headers ──────────────────────────────────────────────────────
 
-  get headers() {
+  get headers(): FormArray {
     return this.form.get('headers') as FormArray;
   }
 
@@ -311,7 +311,6 @@ export class AlertActionEditorComponent {
     this.dialogRef.close(action);
   }
 
-  @HostListener('document:keydown.escape')
   cancel(): void {
     this.dialogRef.close();
   }

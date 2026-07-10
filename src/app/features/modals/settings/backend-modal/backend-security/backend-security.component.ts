@@ -15,8 +15,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const newPassword = group.get('newPassword')?.value;
@@ -26,7 +27,6 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 
 @Component({
   selector: 'app-backend-security',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -37,7 +37,8 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
     MatTooltipModule,
     MatSlideToggleModule,
     MatExpansionModule,
-    TranslateModule,
+    TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './backend-security.component.html',
   styleUrls: ['./backend-security.component.scss'],
@@ -51,6 +52,7 @@ export class BackendSecurityComponent implements OnInit {
 
   readonly showCurrentPassword = signal(false);
   readonly showNewPassword = signal(false);
+  readonly showKeychainPassword = signal(false);
 
   readonly showKeychainInput = signal(false);
 
@@ -104,12 +106,17 @@ export class BackendSecurityComponent implements OnInit {
     this.showNewPassword.update(v => !v);
   }
 
+  toggleKeychainPasswordVisibility(): void {
+    this.showKeychainPassword.update(v => !v);
+  }
+
   onPanelOpened(): void {
     this.encryptForm.reset();
     this.changePasswordForm.reset();
     this.decryptPassword.reset();
     this.showCurrentPassword.set(false);
     this.showNewPassword.set(false);
+    this.showKeychainPassword.set(false);
   }
 
   async onKeychainToggle(event: { checked: boolean }): Promise<void> {
@@ -127,7 +134,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const password = this.keychainPassword.value!;
+    const password = this.keychainPassword.value || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.validatePassword(password);
@@ -137,6 +144,7 @@ export class BackendSecurityComponent implements OnInit {
       );
       this.showKeychainInput.set(false);
       this.keychainPassword.reset();
+      this.showKeychainPassword.set(false);
       await this.loadEncryptionStatus();
     } catch (error) {
       console.error('Failed to store password in keychain:', error);
@@ -148,6 +156,7 @@ export class BackendSecurityComponent implements OnInit {
   async cancelKeychainStore(): Promise<void> {
     this.showKeychainInput.set(false);
     this.keychainPassword.reset();
+    this.showKeychainPassword.set(false);
     await this.loadEncryptionStatus();
   }
 
@@ -157,7 +166,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const newPassword = this.encryptForm.value.newPassword!;
+    const newPassword = this.encryptForm.value.newPassword || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.encryptConfig(newPassword);
@@ -180,7 +189,7 @@ export class BackendSecurityComponent implements OnInit {
       return;
     }
 
-    const password = this.decryptPassword.value!;
+    const password = this.decryptPassword.value || '';
     this.encryptionLoading.set(true);
     try {
       await this.passwordService.unencryptConfig(password);

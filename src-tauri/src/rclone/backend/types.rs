@@ -1,16 +1,35 @@
-// Backend types for rclone manager
-//
-// Simplified flat structure - no nested types.
-
-use crate::utils::rclone::endpoints::core;
-use rcman::DeriveSettingsSchema;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-fn default_oauth_port() -> u16 {
-    51901
+use rcman::DeriveSettingsSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    rclone::{backend::runtime::RuntimeInfo, engine::core::DEFAULT_API_PORT},
+    utils::rclone::endpoints::{config, core},
+};
+
+/// Wrap a future in a per-call timeout, mapping an elapsed deadline to a
+/// fixed `"Connection timed out"` error and converting any inner error to
+/// `String`.
+async fn with_timeout<F, T, E>(timeout: std::time::Duration, fut: F) -> Result<T, String>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    match tokio::time::timeout(timeout, fut).await {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(_) => Err("Connection timed out".to_string()),
+    }
 }
 
+#[cfg(not(feature = "librclone"))]
+fn default_oauth_port() -> u16 {
+    use crate::rclone::engine::core::DEFAULT_OAUTH_PORT;
+    DEFAULT_OAUTH_PORT
+}
+
+#[cfg(not(feature = "librclone"))]
 fn default_oauth_host() -> String {
     "127.0.0.1".to_string()
 }
@@ -59,6 +78,7 @@ pub struct Backend {
     /// port for local backends, and we keep a consistent default for remote
     /// ones so the field is never absent.
     #[serde(default = "default_oauth_port")]
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: u16,
 
     /// Host the OAuth helper process listens on / that we connect to.
@@ -67,6 +87,7 @@ pub struct Backend {
     /// like `0.0.0.0`), because we make outgoing HTTP requests to it.
     /// In Docker environments set this to the container's accessible address.
     #[serde(default = "default_oauth_host")]
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: String,
 
     /// Config password for encrypted remote configs - stored in keychain
@@ -85,8 +106,26 @@ impl Default for Backend {
     }
 }
 
+pub use crate::utils::constants::LOCAL_BACKEND_NAME;
+
 pub fn default_backend_name() -> String {
-    "Local".to_string()
+    LOCAL_BACKEND_NAME.to_string()
+}
+
+impl Backend {
+    #[must_use]
+    pub fn is_local_name(name: &str) -> bool {
+        name == LOCAL_BACKEND_NAME
+    }
+
+    #[must_use]
+    pub fn profile_name_for(name: &str) -> &str {
+        if Self::is_local_name(name) {
+            crate::utils::constants::LOCAL_BACKEND_PROFILE
+        } else {
+            name
+        }
+    }
 }
 
 impl Backend {
@@ -97,10 +136,12 @@ impl Backend {
             is_local: true,
             is_auth_generated: false,
             host: "127.0.0.1".to_string(),
-            port: 51900,
+            port: DEFAULT_API_PORT,
             username: None,
             password: None,
-            oauth_port: 51901,
+            #[cfg(not(feature = "librclone"))]
+            oauth_port: default_oauth_port(),
+            #[cfg(not(feature = "librclone"))]
             oauth_host: "127.0.0.1".to_string(),
             config_password: None,
             config_path: None,
@@ -117,7 +158,9 @@ impl Backend {
             port,
             username: None,
             password: None,
+            #[cfg(not(feature = "librclone"))]
             oauth_port: default_oauth_port(),
+            #[cfg(not(feature = "librclone"))]
             oauth_host: default_oauth_host(),
             config_password: None,
             config_path: None,
@@ -156,6 +199,7 @@ impl Backend {
     }
 
     /// Get the OAuth HTTP URL for this backend
+    #[cfg(not(feature = "librclone"))]
     pub fn oauth_url(&self) -> String {
         let host = Self::format_url_host(&self.oauth_host);
         format!("http://{host}:{}", self.oauth_port)
@@ -164,6 +208,7 @@ impl Backend {
     /// Get the OAuth address (host:port) for TCP connection checks.
     ///
     /// Rust's `TcpStream::connect` requires brackets for IPv6 addresses.
+    #[cfg(not(feature = "librclone"))]
     pub fn oauth_addr(&self) -> String {
         let host = Self::format_url_host(&self.oauth_host);
         format!("{host}:{}", self.oauth_port)
@@ -195,6 +240,7 @@ impl Backend {
     }
 
     /// Build a full URL for a specific endpoint using the OAuth port
+    #[cfg(not(feature = "librclone"))]
     pub fn oauth_url_for(&self, endpoint: &str) -> String {
         format!("{}/{endpoint}", self.oauth_url().trim_end_matches('/'))
     }
@@ -241,71 +287,80 @@ impl Backend {
         Err(format!("Request failed (HTTP {status}): {error_msg}"))
     }
 
-    /// Fetch runtime version and config-path information from the rclone API.
     pub async fn fetch_runtime_info(
         &self,
-        client: &reqwest::Client,
+        transport: &dyn crate::rclone::backend::RcloneTransport,
         timeout: std::time::Duration,
     ) -> crate::rclone::backend::runtime::RuntimeInfo {
-        use crate::rclone::backend::runtime::RuntimeInfo;
-        use crate::rclone::queries::system::fetch_version_info;
+        let use_http = !self.is_local || !cfg!(feature = "librclone");
+        let client = reqwest::Client::new();
 
-        let mut info = RuntimeInfo::new();
+        let version_fut = async {
+            let res = if use_http {
+                with_timeout(timeout, self.post_json(&client, core::VERSION, None)).await
+            } else {
+                with_timeout(
+                    timeout,
+                    transport.rpc_with_timeout(core::VERSION, None, timeout),
+                )
+                .await
+            };
 
-        match tokio::time::timeout(timeout, fetch_version_info(self, client)).await {
-            Ok(Ok(version_data)) => {
-                log::debug!("Fetched version info for backend: {}", self.name);
+            match res {
+                Ok(json) => {
+                    serde_json::from_value::<crate::utils::types::rclone::RcloneCoreVersion>(json)
+                        .map_err(|e| format!("Failed to parse version: {e}"))
+                }
+                Err(e) => Err(format!("Failed to fetch version: {e}")),
+            }
+        };
+
+        let pid_fut = async {
+            let res = if use_http {
+                with_timeout(timeout, self.post_json(&client, core::PID, None)).await
+            } else {
+                with_timeout(timeout, transport.rpc(core::PID, None)).await
+            };
+
+            match res {
+                Ok(json) => json
+                    .get("pid")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|v| v as u32),
+                _ => None,
+            }
+        };
+
+        let config_path_fut = async {
+            let res = if use_http {
+                with_timeout(timeout, self.fetch_config_path_http(&client)).await
+            } else {
+                with_timeout(timeout, self.fetch_config_path(transport)).await
+            };
+
+            res.ok()
+        };
+
+        let (version_res, pid, config_path) = tokio::join!(version_fut, pid_fut, config_path_fut);
+
+        match version_res {
+            Ok(version_data) => {
+                let mut info = RuntimeInfo::new();
                 info.version = Some(version_data.version.clone());
                 info.os = Some(version_data.os.clone());
                 info.arch = Some(version_data.arch.clone());
                 info.go_version = Some(version_data.go_version.clone());
                 info.core_version = Some(version_data);
+                info.pid = pid;
+                info.config_path = config_path;
+                info.set_status(crate::rclone::backend::runtime::RuntimeStatus::Connected);
+                info
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 log::warn!("Failed to fetch version for backend {}: {e}", self.name);
-                return RuntimeInfo::with_error(e);
-            }
-            Err(_) => {
-                log::warn!("Timeout fetching version for backend {}", self.name);
-                return RuntimeInfo::with_error("Connection timed out");
+                RuntimeInfo::with_error(e)
             }
         }
-
-        // Fetch PID — also critical for some operations but we allow it to be None if it fails
-        match tokio::time::timeout(timeout, self.post_json(client, core::PID, None)).await {
-            Ok(Ok(json)) => {
-                info.pid = json
-                    .get("pid")
-                    .and_then(serde_json::Value::as_u64)
-                    .map(|v| v as u32);
-            }
-            _ => {
-                log::debug!("Could not fetch PID for backend {}", self.name);
-            }
-        }
-
-        // Config path is non-critical — log and continue on failure.
-        match tokio::time::timeout(timeout, self.fetch_config_path(client)).await {
-            Ok(Ok(path)) => {
-                log::debug!("Fetched config path for backend: {}", self.name);
-                info.config_path = Some(path);
-            }
-            Ok(Err(e)) => {
-                log::debug!(
-                    "Could not fetch config path for backend {} (non-critical): {e}",
-                    self.name
-                );
-            }
-            Err(_) => {
-                log::debug!(
-                    "Timeout fetching config path for backend {} (non-critical)",
-                    self.name
-                );
-            }
-        }
-
-        info.set_status(crate::rclone::backend::runtime::RuntimeStatus::Connected);
-        info
     }
 
     /// Build the URL used to fetch a remote file over the rclone serve endpoint.
@@ -329,18 +384,8 @@ impl Backend {
         )
     }
 
-    /// Helper to construct URL and fetch a remote file stream with authentication.
-    pub async fn fetch_file_stream(
-        &self,
-        client: &reqwest::Client,
-        remote: &str,
-        path: &str,
-    ) -> Result<reqwest::Response, String> {
-        self.fetch_file_stream_with_range(client, remote, path, None)
-            .await
-    }
-
-    /// Like [`fetch_file_stream`] but forwards an optional HTTP `Range` header.
+    /// Helper to construct URL and fetch a remote file stream with authentication,
+    /// forwarding an optional HTTP `Range` header.
     ///
     /// The custom URI protocol handler uses this to forward browser range
     /// requests unchanged, allowing rclone to return partial content and avoid
@@ -371,15 +416,13 @@ impl Backend {
     /// endpoint might not support local files or specific remote configurations.
     pub async fn fetch_file_via_cat(
         &self,
-        client: &reqwest::Client,
+        transport: &dyn crate::rclone::backend::RcloneTransport,
         remote: &str,
         path: &str,
         offset: Option<i64>,
         count: Option<i64>,
         os: Option<String>,
     ) -> Result<Vec<u8>, String> {
-        // Construct the full path argument.
-        // If remote is empty or ":", we use it as a local path.
         let full_path = if remote.is_empty() || remote == ":" {
             path.to_string()
         } else {
@@ -388,7 +431,7 @@ impl Backend {
             } else {
                 format!("{remote}:")
             };
-            crate::utils::rclone::util::build_full_path(&r_name, path)
+            crate::utils::json_helpers::build_full_path(&r_name, path)
         };
 
         let mut args = vec![full_path];
@@ -400,11 +443,11 @@ impl Backend {
         }
 
         let payload = self.build_core_command_payload("cat", args, false, os);
-        let response = self
-            .post_json(client, core::COMMAND, Some(&payload))
-            .await?;
+        let response = transport
+            .rpc(core::COMMAND, Some(&payload))
+            .await
+            .map_err(|e| e.to_string())?;
 
-        // Check if the command itself reported an error (rclone core/command returns {error: true, result: "..."})
         if response
             .get("error")
             .and_then(serde_json::Value::as_bool)
@@ -422,9 +465,6 @@ impl Backend {
             .and_then(|v| v.as_str())
             .ok_or_else(|| "No result in cat response".to_string())?;
 
-        // Note: rclone returns the output as a string. If it's binary data,
-        // it might be escaped or potentially corrupted if not valid UTF-8,
-        // but for 'cat' it's the best we can do via RC without a serve endpoint.
         Ok(result.as_bytes().to_vec())
     }
 
@@ -446,8 +486,25 @@ impl Backend {
     }
 
     /// Internal helper to fetch the config path from this backend's RC API.
-    async fn fetch_config_path(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
-        use crate::utils::rclone::endpoints::config;
+    async fn fetch_config_path(
+        &self,
+        transport: &dyn crate::rclone::backend::RcloneTransport,
+    ) -> Result<PathBuf, String> {
+        let paths = transport
+            .rpc(config::PATHS, Some(&serde_json::json!({})))
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let config_path = paths
+            .get("config")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "No config path in response".to_string())?;
+
+        Ok(PathBuf::from(config_path))
+    }
+
+    /// Internal helper to fetch the config path directly over HTTP.
+    async fn fetch_config_path_http(&self, client: &reqwest::Client) -> Result<PathBuf, String> {
         let paths = self
             .post_json(client, config::PATHS, Some(&serde_json::json!({})))
             .await?;
@@ -474,24 +531,30 @@ impl Backend {
     ) -> serde_json::Value {
         args.push("--ask-password=false".to_string());
 
-        // Handle password command
+        if let Some(config_path) = &self.config_path
+            && let Some(path_str) = config_path.to_str()
+        {
+            args.push(format!("--config={path_str}"));
+        }
+
         if let Some(pass) = &self.config_password {
             let is_windows = os
                 .as_ref()
                 .is_some_and(|os| os.to_lowercase().contains("windows"));
 
             if is_windows {
-                let escaped_pass = pass
-                    .replace('^', "^^")
-                    .replace('&', "^&")
-                    .replace('|', "^|")
-                    .replace('<', "^<")
-                    .replace('>', "^>");
-                args.push(format!("--password-command=cmd /C echo {escaped_pass}"));
-            } else {
-                let escaped_pass = pass.replace('\'', "'\\''");
+                use base64::{Engine as _, engine::general_purpose::STANDARD};
+                let base64_pass = STANDARD.encode(pass);
                 args.push(format!(
-                    "--password-command=sh -c \"printf '%s' '{escaped_pass}'\""
+                    "--password-command=powershell -NoProfile -Command \"[Console]::Out.Write([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{base64_pass}')))\""
+                ));
+            } else {
+                let mut octal_pass = String::new();
+                for byte in pass.as_bytes() {
+                    octal_pass.push_str(&format!("\\{:03o}", byte));
+                }
+                args.push(format!(
+                    "--password-command=sh -c \"printf '{octal_pass}'\""
                 ));
             }
         }
@@ -523,12 +586,12 @@ pub struct BackendInfo {
     pub has_config_password: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config_path: Option<PathBuf>,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_port: u16,
+    #[cfg(not(feature = "librclone"))]
     pub oauth_host: String,
-    // Include auth fields for edit form
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    // Include password for edit form (NOTE: Only sent to frontend, never stored in JSON)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -555,7 +618,9 @@ impl BackendInfo {
             has_auth: backend.has_valid_auth(),
             has_config_password: backend.config_password.is_some(),
             config_path: backend.config_path.clone(),
+            #[cfg(not(feature = "librclone"))]
             oauth_port: backend.oauth_port,
+            #[cfg(not(feature = "librclone"))]
             oauth_host: backend.oauth_host.clone(),
             username: backend.username.clone(),
             password: backend.password.clone(),
@@ -594,7 +659,9 @@ mod tests {
         assert!(backend.is_local);
         assert_eq!(backend.host, "127.0.0.1");
         assert_eq!(backend.port, 51900);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_port, 51901);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_host, "127.0.0.1");
     }
 
@@ -606,6 +673,7 @@ mod tests {
         assert!(!backend.is_local);
         assert_eq!(backend.host, "192.168.1.100");
         assert_eq!(backend.port, 51900);
+        #[cfg(not(feature = "librclone"))]
         assert_eq!(backend.oauth_port, 51901);
     }
 
@@ -641,12 +709,16 @@ mod tests {
         b.host = "::1".to_string();
         assert_eq!(b.api_url(), "http://[::1]:51900");
 
-        b.oauth_host = "::1".to_string();
-        assert_eq!(b.oauth_url(), "http://[::1]:51901");
-        assert_eq!(b.oauth_addr(), "[::1]:51901");
+        #[cfg(not(feature = "librclone"))]
+        {
+            b.oauth_host = "::1".to_string();
+            assert_eq!(b.oauth_url(), "http://[::1]:51901");
+            assert_eq!(b.oauth_addr(), "[::1]:51901");
+        }
     }
 
     #[test]
+    #[cfg(not(feature = "librclone"))]
     fn test_oauth_url() {
         let backend = Backend::new_local("Local");
         assert_eq!(backend.oauth_url(), "http://127.0.0.1:51901");
@@ -677,17 +749,17 @@ mod tests {
         let backend = Backend::new_local("Local");
         let json = serde_json::to_string(&backend).unwrap();
 
-        // name is skipped, password is None so also skipped
         assert!(!json.contains("\"name\""));
         assert!(json.contains("\"is_local\":true"));
         assert!(json.contains("\"host\":\"127.0.0.1\""));
+        #[cfg(not(feature = "librclone"))]
         assert!(json.contains("\"oauth_port\":51901"));
+        #[cfg(not(feature = "librclone"))]
         assert!(json.contains("\"oauth_host\":\"127.0.0.1\""));
     }
 
     #[test]
     fn test_deserialization_backward_compat() {
-        // Old configs without oauth_port or oauth_host should deserialize with defaults.
         let json = r#"{
             "is_local": false,
             "host": "10.0.0.1",
@@ -695,11 +767,13 @@ mod tests {
         }"#;
 
         let backend: Backend = serde_json::from_str(json).unwrap();
-        assert_eq!(backend.name, ""); // skipped, set from key
+        assert_eq!(backend.name, "");
         assert!(!backend.is_local);
         assert_eq!(backend.host, "10.0.0.1");
-        assert_eq!(backend.oauth_port, 51901); // default
-        assert_eq!(backend.oauth_host, "127.0.0.1"); // default
+        #[cfg(not(feature = "librclone"))]
+        assert_eq!(backend.oauth_port, 51901);
+        #[cfg(not(feature = "librclone"))]
+        assert_eq!(backend.oauth_host, "127.0.0.1");
     }
 
     #[test]

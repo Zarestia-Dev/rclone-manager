@@ -22,33 +22,39 @@
       <div
         class="status-chip"
         [class]="vc.key"
-        [class.selected]="vc.isSelected"
         [class.active]="vc.isActive"
-        [class.disabled]="!vc.canInteract"
+        [class.disabled]="vc.isLoading || !vc.canInteract"
         role="button"
         tabindex="0"
-        [attr.aria-pressed]="vc.isSelected"
+        aria-pressed="true"
         [attr.aria-label]="vc.ariaLabel"
         [matTooltip]="vc.tooltip | translate"
-        (click)="onToggleAction(vc.key)"
-        (keydown.enter)="onToggleAction(vc.key)"
-        (keydown.space)="$event.preventDefault(); onToggleAction(vc.key)"
+        (click)="onChipClick(vc)"
+        (keydown.enter)="onChipClick(vc)"
+        (keydown.space)="$event.preventDefault(); onChipClick(vc)"
       >
         <div class="status-dot">
-          <mat-icon [svgIcon]="vc.icon"></mat-icon>
+          @if (vc.isLoading) {
+            <mat-spinner diameter="16"></mat-spinner>
+          } @else {
+            <mat-icon [svgIcon]="vc.icon"></mat-icon>
+          }
         </div>
-
-        @if (vc.isSelected) {
-          <span class="selection-badge" aria-hidden="true">{{ vc.position }}</span>
-        }
-
         <span class="status-label">{{ vc.label | translate }}</span>
-
-        @if (vc.isSelected) {
-          <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
-        }
+        <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
       </div>
     }
+
+    <button
+      matIconButton
+      class="configure-toggle-btn"
+      (click)="onConfigureActions()"
+      [matTooltip]="'modals.actionSelection.configureTooltip' | translate"
+      matTooltipPosition="after"
+      matTooltipShowDelay="600"
+    >
+      <mat-icon svgIcon="settings"></mat-icon>
+    </button>
   </div>
 </div>
 
@@ -113,7 +119,7 @@
         @if (remoteAutomations().length > 1) {
           <div class="carousel-navigation">
             <button
-              mat-icon-button
+              matIconButton
               (click)="previousAutomationCard()"
               [disabled]="currentAutomationCardIndex() === 0"
               [matTooltip]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
@@ -122,7 +128,7 @@
               <mat-icon svgIcon="left-arrow"></mat-icon>
             </button>
             <button
-              mat-icon-button
+              matIconButton
               (click)="nextAutomationCard()"
               [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
               [matTooltip]="'dashboard.generalDetail.nextAutomationTooltip' | translate"

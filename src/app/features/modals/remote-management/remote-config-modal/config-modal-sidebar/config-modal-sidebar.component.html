@@ -160,6 +160,17 @@
           <mat-icon matListItemIcon svgIcon="terminal"></mat-icon>
           <span matListItemTitle>{{ 'wizards.cliImport.title' | translate }}</span>
         </button>
+
+        <button
+          mat-list-item
+          [activated]="state.showObscureTool()"
+          (click)="obscureToolToggled.emit()"
+          [matTooltip]="'wizards.obscure.title' | translate"
+          matTooltipPosition="right"
+        >
+          <mat-icon matListItemIcon svgIcon="lock"></mat-icon>
+          <span matListItemTitle>{{ 'wizards.obscure.title' | translate }}</span>
+        </button>
       </mat-nav-list>
     </div>
   }

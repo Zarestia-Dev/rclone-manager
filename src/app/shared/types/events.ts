@@ -1,49 +1,27 @@
-// Event constants for emit/listen operations
-
-import { GlobalStats } from './jobs';
+import { GlobalStats, JobStatus } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
-// Core engine events
-export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed';
-export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
+// Event constants
+export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
+export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
+export const REMOTE_CACHE_CHANGED = 'remote_cache_changed' as const;
+export const RCLONE_OAUTH_URL = 'rclone_oauth_url' as const;
+export const ALERT_FIRED = 'alert_fired' as const;
+export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed' as const;
+export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed' as const;
+export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed' as const;
+export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked' as const;
+export const UPDATE_TRAY_MENU = 'tray_menu_updated' as const;
+export const JOB_CACHE_CHANGED = 'job_cache_changed' as const;
+export const MOUNT_STATE_CHANGED = 'mount_state_changed' as const;
+export const SERVE_STATE_CHANGED = 'serve_state_changed' as const;
+export const SYSTEM_STATUS = 'system_status' as const;
+export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed' as const;
+export const NETWORK_STATUS_CHANGED = 'network_status_changed' as const;
+export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
+export const APP_EVENT = 'app_event' as const;
+export const BROWSE = 'browse' as const;
 
-// Remote management events
-export const REMOTE_CACHE_CHANGED = 'remote_cache_changed';
-export const RCLONE_OAUTH_URL = 'rclone_oauth_url';
-
-// Alert events
-export const ALERT_FIRED = 'alert_fired';
-
-// System and settings events
-export const REMOTE_SETTINGS_CHANGED = 'remote_settings_changed';
-export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed';
-export const BANDWIDTH_LIMIT_CHANGED = 'bandwidth_limit_changed';
-export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked';
-
-// UI and cache events
-export const UPDATE_TRAY_MENU = 'tray_menu_updated';
-export const JOB_CACHE_CHANGED = 'job_cache_changed';
-export const MOUNT_STATE_CHANGED = 'mount_state_changed';
-export const SERVE_STATE_CHANGED = 'serve_state_changed';
-export const SYSTEM_STATUS = 'system_status';
-
-// Plugin and installation events
-export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';
-
-// Network events
-export const NETWORK_STATUS_CHANGED = 'network_status_changed';
-
-// Automation event
-export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed';
-
-// Application events
-export const APP_EVENT = 'app_event';
-export const BROWSE = 'browse';
-
-/**
- * Strongly typed payload for settings change events
- * Matches the Rust backend's SettingsChangeEvent struct
- */
 export interface SettingsChangeEvent {
   category: string;
   key: string;
@@ -56,11 +34,12 @@ export interface OAuthUrlEvent {
 
 export interface JobChangeEvent {
   jobId: string;
-  status: 'Running' | 'Completed' | 'Failed' | 'Stopped';
+  status: JobStatus;
   remote?: string;
   source?: string;
   destination?: string;
 }
+
 export interface SystemStatusPayload {
   rcloneInfo: RcloneInfo | null;
   pid: number | null;

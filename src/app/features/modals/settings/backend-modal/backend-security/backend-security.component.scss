@@ -14,7 +14,7 @@
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-sm);
   background: rgba(var(--warn-color-rgb), 0.08);
-  box-shadow: 0 0 0 1px var(--warn-color);
+  box-shadow: var(--ring-warn);
 
   .status-icon {
     width: 40px;
@@ -132,22 +132,5 @@
   @media (max-width: 600px) {
     flex-direction: column;
     align-items: stretch;
-  }
-}
-
-// Warning text
-.warning-text {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) 0;
-  color: var(--warning-color);
-  font-size: var(--font-size-sm);
-  margin: 0;
-
-  mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
   }
 }

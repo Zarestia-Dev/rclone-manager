@@ -1,5 +1,5 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -10,15 +10,33 @@ import { MatDividerModule } from '@angular/material/divider';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { CopyToClipboardDirective } from '../../shared/directives/copy-to-clipboard.directive';
-import { JobInfo } from '@app/types';
+import { JobInfo, CompletedTransfer } from '@app/types';
 import { FormatFileSizePipe, FormatEtaPipe, FormatRateValuePipe } from '@app/pipes';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
+
+/**
+ * Pre-computes every per-job derived value the template needs so the change-detection
+ * cycle can read flat fields instead of invoking helper methods (which would re-run
+ * string lookups + `translate.instant()` calls on every CD pass).
+ */
+interface JobViewModel {
+  job: JobInfo;
+  typeIcon: string;
+  typeLabel: string;
+  actualFileName: string;
+  formattedSource: string;
+  progress: number;
+  isDelete: boolean;
+  transferredFiles: CompletedTransfer[];
+  transferredLabel: string;
+  formattedError: string | null;
+}
 
 @Component({
   selector: 'app-operations-panel',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatProgressBarModule,
@@ -30,56 +48,71 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     FormatFileSizePipe,
     FormatEtaPipe,
     FormatRateValuePipe,
-    TranslateModule,
+    TranslatePipe,
     CopyToClipboardDirective,
   ],
   templateUrl: './operations-panel.component.html',
   styleUrls: ['./operations-panel.component.scss'],
 })
-export class OperationsPanelComponent implements OnInit {
-  private jobManagementService = inject(JobManagementService);
-  private uiStateService = inject(UiStateService);
-  private translate = inject(TranslateService);
+export class OperationsPanelComponent {
+  private readonly jobManagementService = inject(JobManagementService);
+  private readonly uiStateService = inject(UiStateService);
+  private readonly translate = inject(TranslateService);
+  protected readonly settings = inject(NautilusSettingsService);
 
-  // Subscribe to reactive job stream
+  // Reactive state
   jobs = this.jobManagementService.nautilusJobs;
   isExpanded = signal(true);
-  isLoading = signal(false);
+  contextMenuJob = signal<JobInfo | null>(null);
 
-  // Computed
+  // Computed State
   activeJobs = computed(() => this.jobs().filter(j => j.status === 'Running'));
   completedJobs = computed(() => this.jobs().filter(j => j.status !== 'Running'));
   hasJobs = computed(() => this.jobs().length > 0);
 
-  ngOnInit(): void {
-    // Initial load from backend
+  /** Pre-computed view models for the main job list (one entry per `jobs()` item). */
+  readonly jobViewModels = computed<JobViewModel[]>(() =>
+    this.jobs().map(j => this.toJobViewModel(j))
+  );
+
+  /** Pre-computed view model for the currently-open context menu (or `null`). */
+  readonly contextMenuJobVM = computed<JobViewModel | null>(() => {
+    const job = this.contextMenuJob();
+    return job ? this.toJobViewModel(job) : null;
+  });
+
+  constructor() {
     this.jobManagementService.refreshJobs();
+  }
+
+  private toJobViewModel(job: JobInfo): JobViewModel {
+    return {
+      job,
+      typeIcon: this.getJobTypeIcon(job),
+      typeLabel: this.getJobTypeLabel(job),
+      actualFileName: this.getActualFileName(job),
+      formattedSource: this.getFormattedSource(job.source),
+      progress: this.getProgress(job),
+      isDelete: this.isDeleteOperation(job),
+      transferredFiles: this.getTransferredFiles(job),
+      transferredLabel: this.getTransferredLabel(job),
+      formattedError: this.getFormattedJobError(job.error),
+    };
   }
 
   toggleExpanded(): void {
     this.isExpanded.update(v => !v);
   }
 
-  /**
-   * Return a human-readable label for the job type, using translations when available.
-   */
   getJobTypeLabel(job: JobInfo): string {
     const key = `fileBrowser.operations.types.${job.job_type}`;
     const translated = this.translate.instant(key);
-    // If translation returns the key itself, fall back to a prettified name
-    if (translated === key) {
-      return job.job_type.replace(/_/g, ' ');
-    }
-    return translated;
+    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
   }
 
   getProgress(job: JobInfo): number {
     if (!job.stats || !job.stats.totalBytes) return 0;
     return Math.round((job.stats.bytes / job.stats.totalBytes) * 100);
-  }
-
-  getFileName(job: JobInfo): string {
-    return this.getJobTypeLabel(job);
   }
 
   resolveSourceString(source: string | string[]): string {
@@ -104,10 +137,9 @@ export class OperationsPanelComponent implements OnInit {
       return `${job.stats.totalTransfers} files`;
     }
     const path = job.destination || resolvedSource || '';
-    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination;
+    return this.uiStateService.extractFilename(path) || resolvedSource || job.destination || '';
   }
 
-  /** Get icon for the job's operation type */
   getJobTypeIcon(job: JobInfo): string {
     switch (job.job_type) {
       case 'delete':
@@ -116,8 +148,9 @@ export class OperationsPanelComponent implements OnInit {
       case 'rmdirs':
         return 'broom';
       case 'copy':
-      case 'copy_url':
         return 'copy';
+      case 'copyurl':
+        return 'link';
       case 'upload':
         return 'file-arrow-up';
       case 'move':
@@ -127,6 +160,8 @@ export class OperationsPanelComponent implements OnInit {
       case 'sync':
       case 'bisync':
         return 'refresh';
+      case 'check':
+        return 'search';
       case 'archivecreate':
         return 'box-archive';
       case 'archiveextract':
@@ -136,9 +171,8 @@ export class OperationsPanelComponent implements OnInit {
     }
   }
 
-  /** Whether this job is a delete-type operation (no byte progress) */
   isDeleteOperation(job: JobInfo): boolean {
-    return job.job_type === 'delete' || job.job_type === 'cleanup' || job.job_type === 'rmdirs';
+    return ['delete', 'cleanup', 'rmdirs'].includes(job.job_type);
   }
 
   getStatusIcon(job: JobInfo): string {
@@ -159,8 +193,7 @@ export class OperationsPanelComponent implements OnInit {
   async stopJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.stopJob(job.jobid, job.remote_name);
-      // Refresh the stream after stopping
-      await this.jobManagementService.refreshJobs();
+      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to stop job:', err);
     }
@@ -169,8 +202,7 @@ export class OperationsPanelComponent implements OnInit {
   async deleteJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.deleteJob(job.jobid);
-      // Refresh the stream after deleting
-      await this.jobManagementService.refreshJobs();
+      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to delete job:', err);
     }
@@ -181,18 +213,10 @@ export class OperationsPanelComponent implements OnInit {
     return Array.isArray(errors) ? errors.join('\n') : errors;
   }
 
-  /** Get list of transferred files for a job */
-  getTransferredFiles(job: JobInfo): string[] {
-    const stats = job.stats as any;
-    if (stats?.completed && Array.isArray(stats.completed)) {
-      return stats.completed.map((t: any) => t.name || t.path || 'Unknown file');
-    }
-
-    // Fallback to legacy uploaded_files
-    return job.uploaded_files || [];
+  getTransferredFiles(job: JobInfo): CompletedTransfer[] {
+    return job.stats?.completed?.length ? job.stats.completed : [];
   }
 
-  /** Get appropriate label for the list of transferred items */
   getTransferredLabel(job: JobInfo): string {
     switch (job.job_type) {
       case 'delete':
@@ -203,7 +227,7 @@ export class OperationsPanelComponent implements OnInit {
       case 'rename':
         return 'fileBrowser.operations.details.movedFiles';
       case 'copy':
-      case 'copy_url':
+      case 'copyurl':
         return 'fileBrowser.operations.details.copiedFiles';
       case 'sync':
       case 'bisync':

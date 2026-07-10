@@ -1,16 +1,12 @@
 use log::debug;
 
-use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::mount;
 use crate::utils::types::remotes::MountedRemote;
-use crate::utils::types::state::RcloneState;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, String> {
-    let client = &app.state::<RcloneState>().client;
-    let backend = app.state::<BackendManager>().get_active().await;
-    let json = backend
-        .post_json(client, mount::LISTMOUNTS, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(mount::LISTMOUNTS, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch mounted remotes: {e}"))?;
 
@@ -33,9 +29,8 @@ pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, S
 
 #[tauri::command]
 pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
-    let backend = app.state::<BackendManager>().get_active().await;
-    let json = backend
-        .post_json(&app.state::<RcloneState>().client, mount::TYPES, None)
+    let json = crate::rclone::commands::common::transport(&app)
+        .rpc(mount::TYPES, None)
         .await
         .map_err(|e| format!("❌ Failed to fetch mount types: {e}"))?;
 

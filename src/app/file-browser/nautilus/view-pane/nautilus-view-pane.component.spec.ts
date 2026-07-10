@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NautilusViewPaneComponent } from './nautilus-view-pane.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { provideTranslateService } from '@ngx-translate/core';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { FormatFileSizePipe } from '@app/pipes';
 
@@ -16,8 +16,8 @@ describe('NautilusViewPaneComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NautilusViewPaneComponent, TranslateModule.forRoot(), FormatFileSizePipe],
-      providers: [{ provide: IconService, useClass: MockIconService }],
+      imports: [NautilusViewPaneComponent, FormatFileSizePipe],
+      providers: [{ provide: IconService, useClass: MockIconService }, provideTranslateService()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NautilusViewPaneComponent);

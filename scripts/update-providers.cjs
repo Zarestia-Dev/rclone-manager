@@ -3,7 +3,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 // Configuration
-const DEFAULT_RCLONE_URL = 'http://127.0.0.1:51900';
+const DEFAULT_RCLONE_URL = 'http://127.0.0.1:5572';
 const PROJECT_ROOT = path.dirname(__dirname);
 const I18N_DIR = path.join(PROJECT_ROOT, 'resources', 'i18n');
 
@@ -13,15 +13,15 @@ const I18N_DIR = path.join(PROJECT_ROOT, 'resources', 'i18n');
 function getProviders(url) {
   console.log(`Fetching providers from ${url}...`);
   try {
-    const result = spawnSync(
-      'rclone',
-      ['rc', 'config/providers', '--rc-no-auth', '--url', url],
-      { encoding: 'utf8' }
-    );
+    const result = spawnSync('rclone', ['rc', 'config/providers', '--rc-no-auth', '--url', url], {
+      encoding: 'utf8',
+    });
 
     if (result.status !== 0) {
       console.error(`Error calling rclone: ${result.stderr}`);
-      console.log("Ensure rclone is running with 'rclone rcd --rc-no-auth --rc-addr :51900' or similar.");
+      console.log(
+        "Ensure rclone is running with 'rclone rcd --rc-no-auth --rc-addr :5572' or similar."
+      );
       return null;
     }
 
@@ -40,7 +40,9 @@ function getProviders(url) {
  * Simple title case helper.
  */
 function titleCase(s) {
-  return s.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+  return s
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
 
 /**
@@ -129,13 +131,17 @@ function updateFile(filePath, providersData) {
           const linesToInsert = missingOptions.map(opt => {
             const val = {
               title: titleCase(opt.Name),
-              help: opt.Help || ''
+              help: opt.Help || '',
             };
             return formatNewKeyBlock(opt.Name, val, 6);
           });
 
           const fullInsertion = linesToInsert.join('');
-          updatedContent = updatedContent.slice(0, endIdx) + fullInsertion + '\n    ' + updatedContent.slice(endIdx);
+          updatedContent =
+            updatedContent.slice(0, endIdx) +
+            fullInsertion +
+            '\n    ' +
+            updatedContent.slice(endIdx);
         }
       }
     } else {
@@ -165,16 +171,17 @@ function updateFile(filePath, providersData) {
         if (endIdx !== -1) {
           const optData = {};
           (pDef.Options || []).forEach(opt => {
-             if (opt.Name) {
-               optData[opt.Name] = {
-                 title: titleCase(opt.Name),
-                 help: opt.Help || ''
-               };
-             }
+            if (opt.Name) {
+              optData[opt.Name] = {
+                title: titleCase(opt.Name),
+                help: opt.Help || '',
+              };
+            }
           });
 
           const block = formatNewKeyBlock(pName, optData, 4);
-          updatedContent = updatedContent.slice(0, endIdx) + block + '\n  ' + updatedContent.slice(endIdx);
+          updatedContent =
+            updatedContent.slice(0, endIdx) + block + '\n  ' + updatedContent.slice(endIdx);
         }
       }
     }

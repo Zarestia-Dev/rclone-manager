@@ -33,9 +33,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager};
 use zip::ZipArchive;
 
-// =============================================================================
 // LEGACY MANIFEST TYPES (Only used for parsing old backup format)
-// =============================================================================
 
 /// Inner data archive name
 const INNER_DATA_ARCHIVE_NAME: &str = "data";
@@ -135,9 +133,7 @@ fn calculate_file_hash(path: &Path) -> Result<(String, u64), String> {
     Ok((hash, bytes_copied))
 }
 
-// =============================================================================
 // RESTORE FUNCTIONALITY
-// =============================================================================
 
 /// Restores a legacy app-format backup
 ///

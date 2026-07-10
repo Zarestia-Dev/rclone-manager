@@ -1,16 +1,18 @@
-use crate::{
-    core::settings::AppSettingsManager,
-    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
-};
-
 use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
-use crate::utils::types::{
-    events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
-    remotes::{MountedRemote, RemoteCache, ServeInstance},
+use crate::{
+    core::settings::AppSettingsManager,
+    rclone::{
+        backend::BackendManager,
+        queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
+    },
+    utils::types::{
+        events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED},
+        remotes::{MountedRemote, RemoteCache, ServeInstance},
+    },
 };
 
 /// Persistent context for `RemoteCache` — saved/restored on backend switches so that
@@ -58,11 +60,8 @@ impl RemoteCache {
         *self.serves.write().await = context.serves;
     }
 
-    // =========================================================================
-    // PROFILE MERGE HELPERS
     // These carry the profile field forward from the existing cache entry when the
     // rclone API (which has no concept of profiles) returns fresh data.
-    // =========================================================================
 
     fn merge_mount_profiles(
         incoming: Vec<MountedRemote>,
@@ -96,9 +95,7 @@ impl RemoteCache {
             .collect()
     }
 
-    // =========================================================================
     // REACTIVE CACHE UPDATES — emit events only when data actually changes
-    // =========================================================================
 
     /// Update mounted remotes cache and emit event if changed.
     /// Carries profiles forward from the existing cache. Returns true if changed.
@@ -116,7 +113,7 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Mount cache changed");
-        let _ = app_handle.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        let _ = app_handle.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         true
     }
 
@@ -136,13 +133,11 @@ impl RemoteCache {
         drop(cache);
 
         info!("📡 Serve cache changed");
-        let _ = app_handle.emit(SERVE_STATE_CHANGED, "cache_updated");
+        let _ = app_handle.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         true
     }
 
-    // =========================================================================
     // FULL REFRESH — called on startup / backend switch
-    // =========================================================================
 
     pub async fn refresh_remote_list(&self, app: AppHandle) -> Result<(), String> {
         if let Ok(remote_list) = get_remotes(app).await {
@@ -176,7 +171,7 @@ impl RemoteCache {
                 *mounted = Self::merge_mount_profiles(remotes, &existing);
                 debug!("🔄 Updated mounted remotes cache");
                 drop(mounted);
-                let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+                let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
                 Ok(())
             }
             Err(e) => {
@@ -199,7 +194,7 @@ impl RemoteCache {
                     cache_serves.len()
                 );
                 drop(cache_serves);
-                let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+                let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
                 Ok(())
             }
             Err(e) => {
@@ -234,9 +229,7 @@ impl RemoteCache {
         Ok(())
     }
 
-    // =========================================================================
     // POINT MUTATIONS — called immediately after a mount/serve operation succeeds
-    // =========================================================================
 
     /// Write a profile directly onto the matching mount cache entry.
     /// Must be called AFTER `force_check_mounted_remotes` so the entry exists.
@@ -257,10 +250,6 @@ impl RemoteCache {
             s.profile = profile;
         }
     }
-
-    // =========================================================================
-    // READS
-    // =========================================================================
 
     pub async fn get_mounted_remotes(&self) -> Vec<MountedRemote> {
         self.mounted.read().await.clone()
@@ -314,9 +303,7 @@ impl RemoteCache {
             .cloned()
     }
 
-    // =========================================================================
     // PROFILE RENAME — called when a profile is renamed in settings
-    // =========================================================================
 
     /// Rename a profile in all mounted remotes for a given remote.
     pub async fn rename_profile_in_mounts(
@@ -388,11 +375,8 @@ pub fn is_local_path(path: &str) -> bool {
     false
 }
 
-// --- Tauri Commands ---
-
 #[tauri::command]
 pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
-    use crate::rclone::backend::BackendManager;
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -402,7 +386,6 @@ pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Str
 
 #[tauri::command]
 pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
-    use crate::rclone::backend::BackendManager;
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -413,8 +396,6 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
 /// Get all remote settings from rcman sub-settings
 #[tauri::command]
 pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
-    use crate::rclone::backend::BackendManager;
-
     let manager = app.state::<AppSettingsManager>();
     let backend_manager = app.state::<BackendManager>();
     let remote_names = backend_manager.remote_cache.get_remotes().await;
@@ -429,7 +410,6 @@ pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::V
 pub async fn get_cached_mounted_remotes<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<MountedRemote>, String> {
-    use crate::rclone::backend::BackendManager;
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -441,7 +421,6 @@ pub async fn get_cached_mounted_remotes<R: Runtime>(
 pub async fn get_cached_serves<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<ServeInstance>, String> {
-    use crate::rclone::backend::BackendManager;
     Ok(app
         .state::<BackendManager>()
         .remote_cache
@@ -457,7 +436,6 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    use crate::rclone::backend::BackendManager;
     let updated = app
         .state::<BackendManager>()
         .remote_cache
@@ -465,7 +443,7 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(MOUNT_STATE_CHANGED, "cache_updated");
+        let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)
@@ -479,7 +457,6 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
     old_name: String,
     new_name: String,
 ) -> Result<usize, String> {
-    use crate::rclone::backend::BackendManager;
     let updated = app
         .state::<BackendManager>()
         .remote_cache
@@ -487,7 +464,7 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
         .await;
 
     if updated > 0 {
-        let _ = app.emit(SERVE_STATE_CHANGED, "cache_updated");
+        let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
     }
 
     Ok(updated)

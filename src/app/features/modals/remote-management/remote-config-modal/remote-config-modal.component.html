@@ -2,7 +2,7 @@
 
 <header data-tauri-drag-region>
   <button
-    mat-icon-button
+    matIconButton
     (click)="toggleSearchVisibility()"
     [matTooltip]="'shared.search.toggle' | translate"
     [attr.aria-label]="'shared.search.toggle' | translate"
@@ -24,7 +24,7 @@
     }
   </p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'common.close' | translate"
     [attr.title]="'common.close' | translate"
@@ -64,6 +64,7 @@
         (sharedNavigated)="state.navigateToShared($event)"
         (returnFromShared)="state.returnFromShared()"
         (cliImportToggled)="state.toggleCliImportVisibility()"
+        (obscureToolToggled)="state.toggleObscureToolVisibility()"
       />
     }
 
@@ -84,6 +85,13 @@
         (apply)="state.applyImportResult($event)"
       ></app-cli-import>
 
+      <app-obscure-tool
+        [visible]="state.showObscureTool()"
+        [sensitiveFields]="state.activeSensitiveFields()"
+        [provider]="state.remoteTypeSignal()"
+        (applyObscured)="state.applyObscuredValue($event.key, $event.value)"
+      ></app-obscure-tool>
+
       @if (state.oauthHelperUrl(); as oauthUrlValue) {
         <section class="oauth-helper oauth-helper--actions" aria-live="polite">
           <div class="oauth-helper-text">
@@ -102,7 +110,7 @@
             </a>
 
             <button
-              mat-icon-button
+              matIconButton
               [appCopyToClipboard]="oauthUrlValue"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
               [matTooltip]="'modals.oauth.copyLink' | translate"
@@ -142,6 +150,7 @@
                 [isLoading]="state.isRemoteConfigLoading()"
                 [existingRemotes]="state.existingRemotes()"
                 [remoteTypes]="state.remoteTypes()"
+                [isTypeLocked]="state.editTarget() === 'remote'"
                 [searchQuery]="state.searchQuery()"
                 [showAdvancedOptions]="state.showAdvancedOptions()"
                 [initialCommandOptions]="state.commandOptions()"
@@ -160,7 +169,6 @@
                 <app-profile-header [flagType]="flagType" />
 
                 @if (LINKED_PROFILE_TYPES.has(flagType)) {
-                  @let showVfs = flagType === 'mount' || flagType === 'serve';
                   <mat-expansion-panel class="linked-profiles-panel">
                     <mat-expansion-panel-header>
                       <mat-panel-title>
@@ -170,79 +178,29 @@
                       <mat-panel-description>
                         <span class="profile-count">{{
                           'modals.remoteConfig.advancedProfiles.linked'
-                            | translate: { count: (showVfs ? 1 : 0) + 3 }
+                            | translate: { count: state.linkedProfileSelectFields().length }
                         }}</span>
                       </mat-panel-description>
                     </mat-expansion-panel-header>
 
                     <div class="linked-profiles-content">
-                      @if (showVfs) {
+                      @for (field of state.linkedProfileSelectFields(); track field.type) {
                         <mat-form-field subscriptSizing="dynamic">
-                          <mat-label>{{
-                            'modals.remoteConfig.advancedProfiles.vfs' | translate
-                          }}</mat-label>
+                          <mat-label>{{ field.labelKey | translate }}</mat-label>
                           <mat-select
                             [formControl]="
-                              $any(state.remoteConfigForm.get(flagType + 'Config.vfsProfile'))
+                              $any(
+                                state.remoteConfigForm.get(flagType + 'Config.' + field.profileKey)
+                              )
                             "
-                            (selectionChange)="state.selectProfile('vfs', $event.value)"
+                            (selectionChange)="state.selectProfile(field.type, $event.value)"
                           >
-                            @for (opt of state.profileOptions().vfs; track opt) {
+                            @for (opt of state.profileOptions()[field.type]; track opt) {
                               <mat-option [value]="opt">{{ opt }}</mat-option>
                             }
                           </mat-select>
                         </mat-form-field>
                       }
-
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'modals.remoteConfig.advancedProfiles.filter' | translate
-                        }}</mat-label>
-                        <mat-select
-                          [formControl]="
-                            $any(state.remoteConfigForm.get(flagType + 'Config.filterProfile'))
-                          "
-                          (selectionChange)="state.selectProfile('filter', $event.value)"
-                        >
-                          @for (opt of state.profileOptions().filter; track opt) {
-                            <mat-option [value]="opt">{{ opt }}</mat-option>
-                          }
-                        </mat-select>
-                      </mat-form-field>
-
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'modals.remoteConfig.advancedProfiles.backend' | translate
-                        }}</mat-label>
-                        <mat-select
-                          [formControl]="
-                            $any(state.remoteConfigForm.get(flagType + 'Config.backendProfile'))
-                          "
-                          (selectionChange)="state.selectProfile('backend', $event.value)"
-                        >
-                          @for (opt of state.profileOptions().backend; track opt) {
-                            <mat-option [value]="opt">{{ opt }}</mat-option>
-                          }
-                        </mat-select>
-                      </mat-form-field>
-
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'modals.remoteConfig.advancedProfiles.runtimeRemote' | translate
-                        }}</mat-label>
-                        <mat-select
-                          [formControl]="
-                            $any(
-                              state.remoteConfigForm.get(flagType + 'Config.runtimeRemoteProfile')
-                            )
-                          "
-                          (selectionChange)="state.selectProfile('runtimeRemote', $event.value)"
-                        >
-                          @for (opt of state.profileOptions().runtimeRemote; track opt) {
-                            <mat-option [value]="opt">{{ opt }}</mat-option>
-                          }
-                        </mat-select>
-                      </mat-form-field>
                     </div>
                   </mat-expansion-panel>
                 }
@@ -269,6 +227,14 @@
               <!-- Final step: runtime remote configuration -->
               <section class="step-container">
                 <app-profile-header flagType="runtimeRemote" />
+
+                <app-alert-banner
+                  severity="info"
+                  [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
+                  [description]="
+                    'wizards.remoteConfig.runtimeRemoteWarning.description' | translate
+                  "
+                ></app-alert-banner>
 
                 <app-remote-config-step
                   class="step"

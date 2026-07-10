@@ -1,29 +1,25 @@
 <ng-container [formGroup]="opFormGroup()">
-  <mat-accordion class="automation-accordion" multi="true">
-    @if (showAutoStart()) {
-      <mat-expansion-panel hideToggle="true" [expanded]="false" disabled>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-slide-toggle formControlName="autoStart">
-              {{
-                'wizards.appOperation.enableAutoStart'
-                  | translate
-                    : {
-                        type:
-                          ('modals.remoteConfig.steps.' +
-                            (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                          | translate),
-                      }
-              }}
-            </mat-slide-toggle>
-          </mat-panel-title>
-          @if (description()) {
-            <mat-panel-description>{{ description() }}</mat-panel-description>
-          }
-        </mat-expansion-panel-header>
-      </mat-expansion-panel>
-    }
+  @if (showAutoStart()) {
+    <div class="auto-start-panel">
+      <mat-slide-toggle formControlName="autoStart">
+        {{
+          'wizards.appOperation.enableAutoStart'
+            | translate
+              : {
+                  type:
+                    ('modals.remoteConfig.steps.' +
+                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                    | translate),
+                }
+        }}
+      </mat-slide-toggle>
+      @if (description()) {
+        <span class="description">{{ description() }}</span>
+      }
+    </div>
+  }
 
+  <mat-accordion class="automation-accordion" multi="true">
     @if (!isMount() && !isServe() && showCronSection()) {
       <mat-expansion-panel
         [expanded]="cronPanelExpanded()"
@@ -50,7 +46,7 @@
           <mat-panel-description>
             @if (cronExpression()) {
               <code class="cron-tag">{{ cronExpression() }}</code>
-              <button mat-icon-button (click)="clearSchedule($event)" type="button">
+              <button matIconButton (click)="clearSchedule($event)" type="button">
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
             } @else {
@@ -110,31 +106,7 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (!isWatchPossible()) {
-          <div class="message warning" role="alert">
-            <mat-icon svgIcon="info" class="orange"></mat-icon>
-            <span>{{
-              (operationType() === 'bisync'
-                ? 'wizards.appOperation.watchRequiresLocal'
-                : 'wizards.appOperation.watchRequiresLocalSource'
-              ) | translate
-            }}</span>
-          </div>
-        }
-
         @if (isWatchPossible()) {
-          @if (hasMixedSources()) {
-            <div class="message info" role="alert">
-              <mat-icon svgIcon="info" class="primary"></mat-icon>
-              <span>{{ 'wizards.appOperation.watchMixedSourcesNote' | translate }}</span>
-            </div>
-          }
-
-          <div class="message info" role="alert">
-            <mat-icon svgIcon="info" class="primary"></mat-icon>
-            <span>{{ 'wizards.appOperation.watchFilterNote' | translate }}</span>
-          </div>
-
           <div class="watch-delay-section">
             <span class="watch-delay-label">{{
               'wizards.appOperation.watchDelay' | translate
@@ -167,13 +139,24 @@
     }
   </mat-accordion>
 
-  <div class="paths-container">
-    @if (isNewRemote()) {
-      <div class="message warning" role="alert">
-        <span>{{ 'wizards.appOperation.completionNote' | translate }}</span>
-      </div>
+  @if (warningBanners().length > 0 || infoBanners().length > 0) {
+    @if (warningBanners().length > 0) {
+      <app-alert-banner severity="warning">
+        @for (banner of warningBanners(); track $index) {
+          <p>{{ banner | translate }}</p>
+        }
+      </app-alert-banner>
     }
+    @if (infoBanners().length > 0) {
+      <app-alert-banner severity="info">
+        @for (banner of infoBanners(); track $index) {
+          <p>{{ banner | translate }}</p>
+        }
+      </app-alert-banner>
+    }
+  }
 
+  <div class="paths-container">
     @if (showSourcePath()) {
       <div class="section-header">
         <span class="section-title">
@@ -186,7 +169,7 @@
           }}
         </span>
         @if (canAddSource()) {
-          <button mat-button class="add-path-btn" (click)="addPath('source')" type="button">
+          <button matButton="text" class="add-path-btn" (click)="addPath('source')" type="button">
             <mat-icon svgIcon="plus"></mat-icon>
             {{ 'wizards.appOperation.addSource' | translate }}
           </button>
@@ -194,8 +177,48 @@
       </div>
 
       <div class="path-list">
-        @for (item of sourceItems(); track item.control) {
-          <ng-container *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }" />
+        @if (operationType() === 'copyurl') {
+          @for (item of sourceItems(); track item.control) {
+            <div class="path-item-row copyurl-row" [formGroup]="item.control">
+              <div class="path-type-selector">
+                <div class="static-pill copyurl-source">
+                  <mat-icon svgIcon="link" class="primary"></mat-icon>
+                  <span class="truncate">{{ 'wizards.appOperation.urlLabel' | translate }}</span>
+                </div>
+              </div>
+              <div class="copyurl-inputs-wrapper">
+                <mat-form-field appearance="fill" class="path-input-field url-field">
+                  <input
+                    matInput
+                    formControlName="path"
+                    [placeholder]="'wizards.appOperation.enterDownloadUrl' | translate"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="fill" class="path-input-field filename-field">
+                  <input
+                    matInput
+                    formControlName="filename"
+                    [placeholder]="
+                      'wizards.appOperation.copyUrlCustomFilenamePlaceholder' | translate
+                    "
+                  />
+                </mat-form-field>
+              </div>
+              @if (sourceItems().length > 1) {
+                <div class="action-suffix">
+                  <button matIconButton (click)="removePath('source', item.index)" type="button">
+                    <mat-icon svgIcon="trash" class="warn"></mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          @for (item of sourceItems(); track item.control) {
+            <ng-container
+              *ngTemplateOutlet="pathRow; context: { $implicit: item, isDest: false }"
+            />
+          }
         }
       </div>
     }
@@ -308,6 +331,7 @@
           (isDest ? isDestPickerDisabled() : isSourcePickerDisabled()) ? null : autocompleteMenu
         "
         [cdkMenuTriggerData]="{ item: item }"
+        (cdkMenuOpened)="onMenuOpened(item)"
       />
     </mat-form-field>
 

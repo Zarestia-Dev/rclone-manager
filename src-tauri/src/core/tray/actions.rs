@@ -10,14 +10,14 @@ use crate::{
             job::stop_job,
             mount::{mount_remote_profile, unmount_remote},
             serve::{start_serve_profile, stop_serve},
-            sync::{TransferType, start_profile_batch},
+            sync::start_profile_batch,
         },
     },
     utils::{
         app::notification::{JobStage, NotificationEvent, SystemStage, notify},
         types::{
             jobs::{JobStatus, JobType},
-            remotes::ProfileParams,
+            remotes::{OperationType, ProfileParams},
         },
     },
 };
@@ -47,18 +47,18 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     }
 }
 
-// ── Transfer jobs ────────────────────────────────────────────────────────────
+// Transfer jobs
 
 pub fn handle_start_job_profile(
     app: AppHandle,
     remote_name: &str,
     profile_name: &str,
-    transfer_type: TransferType,
+    transfer_type: OperationType,
 ) {
     let params = profile_params(remote_name, profile_name);
     let remote = remote_name.to_string();
     let profile = profile_name.to_string();
-    let type_label = format!("{transfer_type:?}"); // move öncesi yakala
+    let type_label = format!("{transfer_type:?}");
 
     tauri::async_runtime::spawn(async move {
         match start_profile_batch(app, transfer_type, params).await {
@@ -119,7 +119,7 @@ pub fn handle_stop_job_profile(
     });
 }
 
-// ── Mount ────────────────────────────────────────────────────────────────────
+// Mount
 
 fn get_mount_dest(
     manager: &AppSettingsManager,
@@ -168,7 +168,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     });
 }
 
-// ── Serve ────────────────────────────────────────────────────────────────────
+// Serve
 
 pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
     let params = profile_params(remote_name, profile_name);
@@ -193,23 +193,26 @@ pub fn handle_stop_serve_profile(app: AppHandle, serve_id: &str) {
         let backend_manager = app.state::<BackendManager>();
         let all_serves = backend_manager.remote_cache.get_serves().await;
 
-        let remote_name = all_serves
+        let instance = all_serves
             .iter()
-            .find(|s| s.id == serve_id)
-            .and_then(|s| s.params["fs"].as_str())
-            .map_or_else(
-                || "unknown_remote".to_string(),
-                |fs| fs.split(':').next().unwrap_or("").to_string(),
-            );
+            .find(|s| s.profile.as_deref() == Some(&serve_id) || s.id == serve_id);
 
-        match stop_serve(app.clone(), serve_id.clone(), remote_name.clone()).await {
-            Ok(_) => info!("Stopped serve {serve_id} for {remote_name}"),
-            Err(e) => error!("Failed to stop serve {serve_id}: {e}"),
+        let actual_id = instance
+            .map(|s| s.id.clone())
+            .unwrap_or_else(|| serve_id.clone());
+        let remote_name = instance.and_then(|s| s.params["fs"].as_str()).map_or_else(
+            || "unknown_remote".to_string(),
+            |fs| fs.split(':').next().unwrap_or("").to_string(),
+        );
+
+        match stop_serve(app.clone(), actual_id.clone(), remote_name.clone()).await {
+            Ok(_) => info!("Stopped serve {actual_id} for {remote_name}"),
+            Err(e) => error!("Failed to stop serve {actual_id}: {e}"),
         }
     });
 }
 
-// ── Global actions ───────────────────────────────────────────────────────────
+// Global actions
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {

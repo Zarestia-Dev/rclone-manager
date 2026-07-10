@@ -10,9 +10,10 @@ import {
   AlertSeverity,
   AlertStats,
   SeverityStyle,
-} from '../../shared/types/alerts';
+  ALERT_FIRED,
+  SettingsChangeEvent,
+} from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { ALERT_FIRED, SettingsChangeEvent } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 
 @Injectable({ providedIn: 'root' })

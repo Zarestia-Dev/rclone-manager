@@ -139,7 +139,6 @@ export class ServeManagementService extends TauriBaseService {
       })
     );
 
-    await this.refreshServes();
     return response;
   }
 
@@ -157,8 +156,6 @@ export class ServeManagementService extends TauriBaseService {
         errorParams: { id: serverId },
       }
     );
-
-    await this.refreshServes();
   }
 
   /**
@@ -173,46 +170,6 @@ export class ServeManagementService extends TauriBaseService {
         errorKey: 'serve.failedStopAll',
       }
     );
-
-    this._runningServes.set([]);
-  }
-
-  /**
-   * Get the current list of running serves
-   */
-  getRunningServes(): ServeListItem[] {
-    return this._runningServes();
-  }
-
-  /**
-   * Check if a specific serve is running
-   */
-  isServeRunning(serverId: string): boolean {
-    return this._runningServes().some(serve => serve.id === serverId);
-  }
-
-  /**
-   * Get serve instance by ID
-   */
-  getServeById(serverId: string): ServeListItem | undefined {
-    return this._runningServes().find(serve => serve.id === serverId);
-  }
-
-  /**
-   * Get serves for a specific remote
-   */
-  getServesByRemote(fs: string): ServeListItem[] {
-    const targetRemote = this.pathService.getRemoteNameFromFs(fs);
-    return this._runningServes().filter(
-      serve => this.pathService.getRemoteNameFromFs(serve.params?.fs) === targetRemote
-    );
-  }
-
-  /**
-   * Get serves by type
-   */
-  getServesByType(serveType: string): ServeListItem[] {
-    return this._runningServes().filter(serve => serve.params.type === serveType);
   }
 
   /**

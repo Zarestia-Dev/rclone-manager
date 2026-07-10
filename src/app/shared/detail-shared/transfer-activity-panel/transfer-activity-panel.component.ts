@@ -1,18 +1,19 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
-import { TransferActivityPanelConfig } from '../../types';
+import { CheckResultsTableComponent } from './check-results-table.component';
+import { SearchContainerComponent } from '../../components/search-container/search-container.component';
+import { TransferActivityPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-transfer-activity-panel',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatCardModule,
@@ -20,40 +21,76 @@ import { TransferActivityPanelConfig } from '../../types';
     MatTabsModule,
     MatButtonModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
+    CheckResultsTableComponent,
+    SearchContainerComponent,
   ],
   template: `
-    <mat-card class="detail-panel transfer-activity-panel">
+    <mat-card class="detail-panel">
       <mat-card-header class="panel-header">
         <mat-card-title>
-          <mat-icon svgIcon="download" class="primary-icon"></mat-icon>
-          <span>{{ 'shared.transferActivity.title' | translate }}</span>
+          <mat-icon
+            style="color: var(--mat-sys-primary)"
+            [svgIcon]="
+              config().jobType === 'check' || config().jobType === 'cryptcheck'
+                ? 'circle-check'
+                : 'download'
+            "
+          ></mat-icon>
+          <span>{{
+            (config().jobType === 'check' || config().jobType === 'cryptcheck'
+              ? 'shared.transferActivity.titleCheck'
+              : 'shared.transferActivity.title'
+            ) | translate
+          }}</span>
+
+          @if (config().completedTransfers.length > 0 || config().activeTransfers.length > 0) {
+            <button
+              matIconButton
+              [class.search-open]="searchVisible()"
+              (click)="toggleSearch()"
+              [matTooltip]="'shared.search.toggle' | translate"
+            >
+              <mat-icon svgIcon="search"></mat-icon>
+            </button>
+          }
+
           @if (config().showHistory) {
-            @if (isJobRunning()) {
-              <button
-                mat-icon-button
-                (click)="resetStats.emit()"
-                [matTooltip]="'shared.transferActivity.resetStats' | translate"
-              >
-                <mat-icon svgIcon="broom" class="primary-icon"></mat-icon>
-              </button>
-            } @else {
-              <button
-                mat-icon-button
-                (click)="deleteJob.emit()"
-                [matTooltip]="'detailShared.jobs.actions.delete' | translate"
-              >
-                <mat-icon svgIcon="trash" class="warn-icon"></mat-icon>
-              </button>
-            }
+            <button
+              matIconButton
+              (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
+              [matTooltip]="
+                (isJobRunning()
+                  ? 'shared.transferActivity.resetStats'
+                  : 'detailShared.jobs.actions.delete'
+                ) | translate
+              "
+            >
+              <mat-icon
+                [svgIcon]="isJobRunning() ? 'broom' : 'trash'"
+                [class]="isJobRunning() ? 'primary' : 'warn'"
+              ></mat-icon>
+            </button>
           }
         </mat-card-title>
       </mat-card-header>
 
+      <app-search-container
+        [visible]="searchVisible()"
+        [searchText]="searchTerm()"
+        (searchTextChange)="searchTerm.set($event)"
+      ></app-search-container>
+
       <mat-card-content class="panel-content">
-        @if (
+        @if (config().jobType === 'check' || config().jobType === 'cryptcheck') {
+          <app-check-results-table
+            [transfers]="config().completedTransfers"
+            [config]="config()"
+            [searchTerm]="searchTerm()"
+          ></app-check-results-table>
+        } @else if (
           config().showHistory &&
           config().activeTransfers.length > 0 &&
           config().completedTransfers.length > 0
@@ -68,18 +105,26 @@ import { TransferActivityPanelConfig } from '../../types';
               <ng-template matTabContent>
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
+                  [jobType]="config().jobType || 'sync'"
+                  [remoteName]="config().remoteName"
+                  [searchTerm]="searchTerm()"
                 ></app-active-transfers-table>
               </ng-template>
             </mat-tab>
             <mat-tab
               [label]="
-                'shared.transferActivity.tabs.recent'
-                  | translate: { count: config().completedTransfers.length }
+                (config().jobType === 'check' || config().jobType === 'cryptcheck'
+                  ? 'shared.transferActivity.tabs.recentCheck'
+                  : 'shared.transferActivity.tabs.recent'
+                ) | translate: { count: config().completedTransfers.length }
               "
             >
               <ng-template matTabContent>
                 <app-completed-transfers-table
                   [transfers]="config().completedTransfers"
+                  [jobType]="config().jobType || 'sync'"
+                  [remoteName]="config().remoteName"
+                  [searchTerm]="searchTerm()"
                 ></app-completed-transfers-table>
               </ng-template>
             </mat-tab>
@@ -87,17 +132,23 @@ import { TransferActivityPanelConfig } from '../../types';
         } @else if (config().showHistory && config().completedTransfers.length > 0) {
           <app-completed-transfers-table
             [transfers]="config().completedTransfers"
+            [jobType]="config().jobType || 'sync'"
+            [remoteName]="config().remoteName"
+            [searchTerm]="searchTerm()"
           ></app-completed-transfers-table>
         } @else {
           <app-active-transfers-table
             [transfers]="config().activeTransfers"
+            [jobType]="config().jobType || 'sync'"
+            [remoteName]="config().remoteName"
+            [searchTerm]="searchTerm()"
           ></app-active-transfers-table>
         }
       </mat-card-content>
     </mat-card>
   `,
   styles: `
-    .transfer-activity-panel {
+    .detail-panel {
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -105,11 +156,9 @@ import { TransferActivityPanelConfig } from '../../types';
         padding: 0;
         overflow: hidden;
       }
-      .primary-icon {
-        color: var(--mat-sys-primary);
-      }
-      .warn-icon {
-        color: var(--mat-sys-error);
+      .search-open {
+        background: rgba(var(--accent-color-rgb), 0.1) !important;
+        color: var(--accent-color) !important;
       }
     }
   `,
@@ -119,4 +168,13 @@ export class TransferActivityPanelComponent {
   readonly isJobRunning = input<boolean>(false);
   readonly resetStats = output<void>();
   readonly deleteJob = output<void>();
+
+  readonly searchVisible = signal(false);
+  readonly searchTerm = signal('');
+
+  toggleSearch(): void {
+    const nextVal = !this.searchVisible();
+    this.searchVisible.set(nextVal);
+    if (!nextVal) this.searchTerm.set('');
+  }
 }

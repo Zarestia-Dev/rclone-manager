@@ -1,11 +1,11 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import cronstrue from 'cronstrue';
 import { DatePipe, NgClass } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Automation } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
@@ -31,14 +31,14 @@ const DEFAULT_TOGGLE = { icon: 'help', tooltip: 'automation.toggle.enable' };
 
 @Component({
   selector: 'app-automation-card',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgClass,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     DatePipe,
     CopyToClipboardDirective,
   ],
@@ -95,7 +95,7 @@ export class AutomationCardComponent {
         );
       }
       return cronstrue.toString(cronExpr, {
-        locale: getCronstrueLocale(this.translate.getCurrentLang()),
+        locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
       });
     } catch {
       return this.automation().cronExpression;

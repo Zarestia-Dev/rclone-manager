@@ -1,0 +1,137 @@
+.modal-description {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--dim-color);
+}
+
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--view-bg-color);
+  box-shadow: var(--box-shadow);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--window-fg-color) 4%, var(--view-bg-color));
+  }
+
+  &.is-starred {
+    background: color-mix(in srgb, var(--primary-color) 6%, var(--view-bg-color));
+    box-shadow: 0 0 0 1px var(--primary-color);
+  }
+
+  &.is-disabled {
+    opacity: 0.5;
+  }
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--dim-color);
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.action-index-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: var(--accent-fg-color);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+
+  &.unstarred {
+    background-color: transparent;
+    color: var(--dim-color);
+    font-weight: 500;
+    opacity: 0.45;
+  }
+}
+
+.action-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .action-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--dim-color);
+
+    .is-starred & {
+      color: var(--primary-color);
+    }
+  }
+
+  .action-label {
+    font-size: var(--font-size-md);
+    color: var(--window-fg-color);
+    font-weight: 500;
+  }
+}
+
+// ─── Star button ─────────────────────────────────────────────────────────────
+
+.star-button {
+  color: var(--dim-color);
+
+  &.starred {
+    color: var(--yellow);
+  }
+}
+
+.drag-placeholder {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--primary-color);
+  transition: transform 0.2s ease;
+}
+
+.cdk-drag-animating {
+  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.action-list.cdk-drop-list-dragging .action-item:not(.cdk-drag-placeholder) {
+  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}

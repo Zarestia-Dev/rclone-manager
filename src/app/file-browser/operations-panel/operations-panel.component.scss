@@ -14,13 +14,7 @@
       color: var(--dim-color);
       font-weight: 600;
       letter-spacing: 0.5px;
-      font-size: 11px;
-
-      mat-icon {
-        width: var(--icon-size-sm);
-        height: var(--icon-size-sm);
-        font-size: var(--icon-size-sm);
-      }
+      font-size: var(--font-size-xs);
 
       .job-count {
         display: inline-flex;
@@ -28,14 +22,12 @@
         justify-content: center;
         min-width: 16px;
         height: 16px;
-        padding: 0 4px;
-        font-size: 10px;
+        padding: 0 var(--space-xxs);
+        font-size: var(--font-size-xxs);
         font-weight: 600;
         background: var(--primary-color);
         color: white;
-        border-radius: 8px;
-        text-transform: none;
-        letter-spacing: 0;
+        border-radius: var(--radius-lg);
       }
     }
   }
@@ -48,19 +40,17 @@
   .job-item {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-xxs);
+    padding: var(--space-xs) var(--space-sm);
     border-top: 1px solid var(--border-color);
-    transition: background 0.15s ease;
+    transition: var(--transition-fast);
 
     &:first-child {
       border-top: none;
     }
-
     &:hover {
-      background: rgba(var(--window-fg-color-rgb), 0.02);
+      background: var(--hover-bg-color);
     }
-
     &.completed {
       opacity: 0.6;
     }
@@ -69,7 +59,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--space-sm);
+      gap: var(--space-xs);
 
       .job-content {
         flex: 1;
@@ -78,7 +68,7 @@
         overflow: hidden;
 
         .job-name {
-          font-size: 13px;
+          font-size: var(--font-size-sm);
           font-weight: 600;
           color: var(--window-fg-color);
           white-space: nowrap;
@@ -87,22 +77,19 @@
         }
 
         .job-subname {
-          font-size: 11px;
+          font-size: var(--font-size-xs);
           color: var(--dim-color);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          margin-top: -2px;
         }
       }
 
       .job-type-icon {
-        width: 18px;
-        height: 18px;
-        font-size: 18px;
-        flex-shrink: 0;
+        width: var(--icon-size-sm);
+        height: var(--icon-size-sm);
+        font-size: var(--icon-size-sm);
         color: var(--dim-color);
-        margin-top: 2px;
       }
 
       .action-btn {
@@ -111,8 +98,7 @@
         font-size: var(--icon-size-sm);
         flex-shrink: 0;
         opacity: 0.4;
-        transition: opacity 0.15s ease;
-        margin-top: 2px;
+        transition: var(--transition-fast);
 
         &:hover {
           opacity: 1;
@@ -122,12 +108,12 @@
 
     .job-progress {
       height: 4px;
-      border-radius: 2px;
+      border-radius: var(--radius-xxs);
     }
 
     .job-stats {
       .stats-text {
-        font-size: 11px;
+        font-size: var(--font-size-xs);
         color: var(--dim-color);
       }
 
@@ -276,6 +262,24 @@
     grid-column: 1 / -1;
   }
 
+  .transferring-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 120px;
+    overflow: auto;
+    padding-right: 4px;
+    margin-top: 4px;
+  }
+
+  .transferring-file-entry {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(var(--window-fg-color-rgb), 0.04);
+    word-break: break-word;
+  }
+
   .uploaded-files-section {
     margin-top: var(--space-xs);
   }
@@ -290,10 +294,57 @@
   }
 
   .uploaded-file-entry {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 6px 8px;
     border-radius: 6px;
     background: rgba(var(--window-fg-color-rgb), 0.04);
-    word-break: break-word;
+    word-break: break-all;
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      overflow: hidden;
+      min-width: 0;
+
+      .file-name {
+        font-size: 13px;
+        color: var(--window-fg-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-size {
+        font-size: 11px;
+        color: var(--dim-color);
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+    }
+
+    &.failed {
+      background: rgba(var(--warn-color-rgb), 0.08);
+      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+
+      .file-info {
+        .file-name {
+          color: var(--warn-color);
+          font-weight: 500;
+        }
+      }
+
+      .error-icon {
+        color: var(--warn-color);
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+    }
   }
 }

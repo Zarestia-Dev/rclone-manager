@@ -10,7 +10,7 @@ import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 // Services
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
@@ -19,9 +19,8 @@ import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/a
 
 @Component({
   selector: 'app-banner',
-  standalone: true,
   templateUrl: './banner.component.html',
-  imports: [MatToolbarModule, MatIconModule, MatTooltipModule, TranslateModule],
+  imports: [MatToolbarModule, MatIconModule, MatTooltipModule, TranslatePipe],
   styleUrls: ['./banner.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NautilusTabsComponent } from './nautilus-tabs.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { provideTranslateService } from '@ngx-translate/core';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
@@ -10,12 +10,8 @@ describe('NautilusTabsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        NautilusTabsComponent,
-        TranslateModule.forRoot(),
-        MatIconTestingModule,
-        DragDropModule,
-      ],
+      imports: [NautilusTabsComponent, MatIconTestingModule, DragDropModule],
+      providers: [provideTranslateService()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NautilusTabsComponent);

@@ -4,7 +4,7 @@
   </button>
   <p>{{ displayName }}</p>
   <button
-    mat-icon-button
+    matIconButton
     (click)="close()"
     [attr.aria-label]="'fileBrowser.remoteAbout.close' | translate"
   >
@@ -37,8 +37,8 @@
                 <span class="value">
                   @if (usage.loading) {
                     <mat-spinner diameter="16"></mat-spinner>
-                  } @else if (usage.total_space !== undefined) {
-                    {{ usage.total_space | formatFileSize }}
+                  } @else if (usage.total !== undefined) {
+                    {{ usage.total | formatFileSize }}
                   } @else {
                     -
                   }
@@ -49,8 +49,8 @@
                 <span class="value">
                   @if (usage.loading) {
                     <mat-spinner diameter="16"></mat-spinner>
-                  } @else if (usage.used_space !== undefined) {
-                    {{ usage.used_space | formatFileSize }}
+                  } @else if (usage.used !== undefined) {
+                    {{ usage.used | formatFileSize }}
                   } @else {
                     -
                   }
@@ -61,8 +61,8 @@
                 <span class="value">
                   @if (usage.loading) {
                     <mat-spinner diameter="16"></mat-spinner>
-                  } @else if (usage.free_space !== undefined) {
-                    {{ usage.free_space | formatFileSize }}
+                  } @else if (usage.free !== undefined) {
+                    {{ usage.free | formatFileSize }}
                   } @else {
                     -
                   }
@@ -79,7 +79,7 @@
                 </span>
               </div>
               <button
-                mat-icon-button
+                matIconButton
                 (click)="fetchDiskUsage(true)"
                 [disabled]="usage.loading"
                 [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"

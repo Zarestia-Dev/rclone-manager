@@ -1,7 +1,7 @@
 <header data-tauri-drag-region [class.scrolled]="scrolled()">
   <div class="ghost-header-spacer" aria-hidden="true"></div>
   <p class="header-title-ghost">{{ 'modals.about.title' | translate }}</p>
-  <button mat-icon-button (click)="close()" [aria-label]="'common.close' | translate">
+  <button matIconButton (click)="close()" [aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -60,16 +60,29 @@
 
     <div class="stacked-buttons" role="tablist">
       @for (item of bottomNavItems; track item.viewId; let last = $last) {
-        <button
-          matButton
-          class="about-item"
-          role="tab"
-          [attr.aria-selected]="currentView().id === item.viewId"
-          (click)="navigateTo(item.viewId)"
-        >
-          <span>{{ item.label | translate }}</span>
-          <mat-icon [svgIcon]="item.icon"></mat-icon>
-        </button>
+        @if (item.viewId === 'donate') {
+          <a
+            matButton
+            class="about-item donate-btn-zarestia"
+            href="https://hakanismail.info/zarestia/support"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span>{{ item.label | translate }}</span>
+            <mat-icon svgIcon="heart"></mat-icon>
+          </a>
+        } @else {
+          <button
+            matButton
+            class="about-item"
+            role="tab"
+            [attr.aria-selected]="currentView().id === item.viewId"
+            (click)="navigateTo(item.viewId)"
+          >
+            <span>{{ item.label | translate }}</span>
+            <mat-icon [svgIcon]="item.icon"></mat-icon>
+          </button>
+        }
         @if (!last) {
           <mat-divider></mat-divider>
         }
@@ -88,11 +101,11 @@
     animate.leave="slide-overlay-leave"
   >
     <header data-tauri-drag-region>
-      <button mat-icon-button (click)="goBack()">
+      <button matIconButton (click)="goBack()">
         <mat-icon svgIcon="chevron-left"></mat-icon>
       </button>
       <p>{{ getPageTitle(overlay.id) | translate }}</p>
-      <button mat-icon-button (click)="close()">
+      <button matIconButton (click)="close()">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
@@ -179,8 +192,8 @@
                   <span class="detail-label">{{ 'modals.about.debugTools' | translate }}</span>
                   <span class="detail-value"></span>
                   <button
-                    mat-icon-button
-                    class="action-button"
+                    matIconButton
+                    class="about-button"
                     (click)="navigateTo('debugging')"
                     [matTooltip]="'modals.about.debugTools' | translate"
                     matTooltipPosition="right"
@@ -217,7 +230,7 @@
                 </div>
                 <div class="update-buttons">
                   <button
-                    mat-flat-button
+                    matButton="filled"
                     class="accent"
                     (click)="finishUpdate()"
                     [disabled]="restartingApp()"
@@ -249,7 +262,11 @@
                 </div>
 
                 @if (update.releaseNotes) {
-                  <button mat-stroked-button class="whats-new-button" (click)="showWhatsNew('app')">
+                  <button
+                    matButton="outlined"
+                    class="whats-new-button"
+                    (click)="showWhatsNew('app')"
+                  >
                     <mat-icon svgIcon="file-lines"></mat-icon>
                     {{ 'modals.about.whatsNew' | translate }}
                   </button>
@@ -293,9 +310,7 @@
                   <div class="update-buttons">
                     @for (link of instructions!.links; track link.url) {
                       <a
-                        mat-flat-button
-                        [attr.mat-flat-button]="link.primary ? '' : null"
-                        [attr.mat-stroked-button]="!link.primary ? '' : null"
+                        matButton="filled"
                         [href]="link.url"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -304,14 +319,14 @@
                         {{ link.label | translate }}
                       </a>
                     }
-                    <button mat-stroked-button (click)="skipUpdate()">
+                    <button matButton="outlined" (click)="skipUpdate()">
                       {{ 'modals.about.skipVersion' | translate }}
                     </button>
                   </div>
                 } @else {
                   <div class="update-buttons">
                     <button
-                      mat-flat-button
+                      matButton="filled"
                       (click)="installUpdate()"
                       [disabled]="appUpdateInProgress() || appDownloadInProgress()"
                     >
@@ -327,11 +342,11 @@
                       }
                     </button>
                     @if (appDownloadInProgress()) {
-                      <button mat-stroked-button color="warn" (click)="cancelAppUpdate()">
+                      <button matButton="outlined" color="warn" (click)="cancelAppUpdate()">
                         {{ 'common.cancel' | translate }}
                       </button>
                     } @else {
-                      <button mat-stroked-button (click)="skipUpdate()">
+                      <button matButton="outlined" (click)="skipUpdate()">
                         {{ 'modals.about.skipVersion' | translate }}
                       </button>
                     }
@@ -345,7 +360,7 @@
             }
 
             <button
-              mat-stroked-button
+              matButton="outlined"
               (click)="checkForUpdates()"
               [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
               class="check-button"
@@ -424,11 +439,11 @@
             </div>
 
             <div class="debug-actions-section">
-              <button mat-raised-button class="primary" (click)="openDevTools()">
+              <button matButton="elevated" class="primary" (click)="openDevTools()">
                 <mat-icon svgIcon="terminal"></mat-icon>
                 <span>{{ 'modals.about.openDevTools' | translate }}</span>
               </button>
-              <button mat-raised-button class="warn" (click)="restartApp()">
+              <button matButton="elevated" class="warn" (click)="restartApp()">
                 <mat-icon svgIcon="reset-wrench"></mat-icon>
                 <span>{{ 'modals.about.restartApp' | translate }}</span>
               </button>
@@ -486,24 +501,26 @@
                   <div class="detail-row">
                     <span class="detail-label">{{ 'modals.about.pid' | translate }}</span>
                     <span class="detail-value">{{ info.pid }}</span>
-                    <button
-                      mat-icon-button
-                      class="action-button"
-                      [matTooltip]="
-                        backendService.activeBackend() === 'Local'
-                          ? ('modals.about.killProcess' | translate)
-                          : ('modals.about.quitRclone' | translate)
-                      "
-                      matTooltipPosition="right"
-                      (click)="quitRcloneEngine()"
-                    >
-                      <mat-icon
-                        [svgIcon]="
-                          backendService.activeBackend() === 'Local' ? 'skull' : 'power-off'
+                    @if (!isLibrclone()) {
+                      <button
+                        matIconButton
+                        class="about-button"
+                        [matTooltip]="
+                          backendService.activeBackend() === 'Local'
+                            ? ('modals.about.killProcess' | translate)
+                            : ('modals.about.quitRclone' | translate)
                         "
-                        class="orange"
-                      ></mat-icon>
-                    </button>
+                        matTooltipPosition="right"
+                        (click)="quitRcloneEngine()"
+                      >
+                        <mat-icon
+                          [svgIcon]="
+                            backendService.activeBackend() === 'Local' ? 'skull' : 'power-off'
+                          "
+                          class="orange"
+                        ></mat-icon>
+                      </button>
+                    }
                   </div>
                 }
                 @if (memoryStats()) {
@@ -511,8 +528,8 @@
                     <span class="detail-label">{{ 'modals.about.memory' | translate }}</span>
                     <span class="detail-value">{{ memoryStats()!.Alloc | formatFileSize }}</span>
                     <button
-                      mat-icon-button
-                      class="action-button"
+                      matIconButton
+                      class="about-button"
                       (click)="showMemoryOverlay()"
                       matTooltipPosition="right"
                       [matTooltip]="'modals.about.viewMemoryStats' | translate"
@@ -527,8 +544,8 @@
                     {{ fsCacheEntries() }} {{ 'modals.about.entries' | translate }}
                   </span>
                   <button
-                    mat-icon-button
-                    class="action-button"
+                    matIconButton
+                    class="about-button"
                     (click)="clearFsCache()"
                     [disabled]="clearingFsCache()"
                     matTooltipPosition="right"
@@ -544,8 +561,7 @@
               </div>
             }
           </div>
-
-          @if (updaterEnabled()) {
+          @if (rcloneUpdateEnabled()) {
             @if (rcloneReadyToRestart()) {
               <div class="update-card restart-required">
                 <div class="update-header">
@@ -565,7 +581,7 @@
                 </div>
                 <div class="update-buttons">
                   <button
-                    mat-flat-button
+                    matButton="filled"
                     class="accent"
                     (click)="applyRcloneUpdate()"
                     [disabled]="restartingRcloneEngine()"
@@ -596,7 +612,7 @@
 
                 @if (rcloneUpdateInfo.releaseNotes) {
                   <button
-                    mat-stroked-button
+                    matButton="outlined"
                     class="whats-new-button"
                     (click)="showWhatsNew('rclone')"
                   >
@@ -619,11 +635,11 @@
                     }
                   </button>
                   @if (rcloneUpdateInProgress()) {
-                    <button mat-button color="warn" (click)="cancelRcloneUpdate()">
+                    <button matButton="text" color="warn" (click)="cancelRcloneUpdate()">
                       {{ 'common.cancel' | translate }}
                     </button>
                   } @else {
-                    <button mat-button (click)="skipRcloneUpdate()">
+                    <button matButton="text" (click)="skipRcloneUpdate()">
                       {{ 'modals.about.skipVersion' | translate }}
                     </button>
                   }
@@ -743,7 +759,7 @@
               </div>
               @if (update.releaseUrl) {
                 <a
-                  mat-stroked-button
+                  matButton="outlined"
                   [href]="update.releaseUrl"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -776,7 +792,7 @@
               </div>
               @if (rcloneUpdateInfo.releaseUrl) {
                 <a
-                  mat-stroked-button
+                  matButton="outlined"
                   [href]="rcloneUpdateInfo.releaseUrl"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -876,7 +892,7 @@
 
             <div class="debug-section">
               <h4>{{ 'modals.about.gc' | translate }}</h4>
-              <button mat-stroked-button (click)="runGarbageCollector()" [disabled]="runningGc()">
+              <button matButton="outlined" (click)="runGarbageCollector()" [disabled]="runningGc()">
                 @if (runningGc()) {
                   <mat-spinner diameter="16"></mat-spinner>
                   {{ 'modals.about.runningGc' | translate }}
@@ -975,7 +991,7 @@
       <div class="skipped-item">
         <span class="version">{{ version }}</span>
         <button
-          mat-icon-button
+          matIconButton
           (click)="isRclone ? unskipRcloneVersion(version) : unskipVersion(version)"
           [matTooltip]="'modals.about.restoreUpdate' | translate"
           class="restore-button"

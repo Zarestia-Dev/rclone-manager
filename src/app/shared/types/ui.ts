@@ -2,32 +2,13 @@ import { HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { PrimaryActionType } from './operations';
 import { Remote } from './remotes';
+import { OPERATION_REGISTRY } from './operation-registry';
+import { Entry, RcConfigOption } from './remote-config';
+import { VfsStats, VfsQueueItem } from 'src/app/services/operations/vfs.service';
 
-// =============================================================================
-// NAVIGATION / UI TYPES
-// =============================================================================
-
-// ---------------------------------------------------------------------------
-// Tab navigation
-// ---------------------------------------------------------------------------
-
-/**
- * The four top-level navigation tabs in the dashboard.
- *
- * Three of these (`mount`, `sync`, `serve`) correspond directly to a
- * PrimaryActionType and are used to drive both tab display and operation
- * dispatch. `general` is a pure overview tab with no associated operation.
- *
- * Use `OperationTab` when you need a type that excludes `general` — i.e.
- * wherever a tab value is guaranteed to map to a runnable operation.
- */
 export type AppTab = 'mount' | 'operations' | 'serve' | 'general';
-
-/**
- * A subset of AppTab that always corresponds to a runnable PrimaryActionType.
- * Use this for component inputs that should never receive `'general'`.
- */
-export type OperationTab = Exclude<AppTab, 'general'>; // 'mount' | 'operations' | 'serve'
+export const APP_TABS: readonly AppTab[] = ['mount', 'operations', 'serve', 'general'] as const;
+export type OperationTab = Exclude<AppTab, 'general'>;
 
 export interface ModeConfig {
   label: string;
@@ -36,7 +17,7 @@ export interface ModeConfig {
   inactiveTitle: string;
 }
 
-export const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
+export const MODE_CONFIG: Readonly<Record<OperationTab, ModeConfig>> = Object.freeze({
   mount: {
     label: 'appOverview.labels.mount',
     icon: 'mount',
@@ -55,7 +36,7 @@ export const MODE_CONFIG: Record<OperationTab, ModeConfig> = {
     activeTitle: 'appOverview.panelTitles.activeServes',
     inactiveTitle: 'appOverview.panelTitles.availableRemotes',
   },
-};
+});
 
 export interface ModalSize {
   width: string;
@@ -67,7 +48,7 @@ export interface ModalSize {
   disableClose?: boolean;
 }
 
-export const STANDARD_MODAL_SIZE: ModalSize = {
+export const STANDARD_MODAL_SIZE: Readonly<ModalSize> = Object.freeze({
   width: '90vw',
   maxWidth: '680px',
   minWidth: '362px',
@@ -75,18 +56,18 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   maxHeight: '800px',
   minHeight: '240px',
   disableClose: true,
-};
+});
 
-export const CONFIG_MODAL_SIZE: ModalSize = {
+export const CONFIG_MODAL_SIZE: Readonly<ModalSize> = Object.freeze({
   width: '95vw',
   maxWidth: '1024px',
   minWidth: '362px',
   height: '90vh',
   maxHeight: '860px',
   disableClose: true,
-};
+});
 
-export const ABOUT_MODAL_SIZE: ModalSize = {
+export const ABOUT_MODAL_SIZE: Readonly<ModalSize> = Object.freeze({
   width: '362px',
   maxWidth: '362px',
   minWidth: '362px',
@@ -94,14 +75,14 @@ export const ABOUT_MODAL_SIZE: ModalSize = {
   maxHeight: '650px',
   minHeight: '240px',
   disableClose: true,
-};
+});
 
 export interface ConfirmDialogData {
   title: string;
   message: string;
-  confirmText?: string; // Defaults to "Yes"
-  cancelText?: string; // Defaults to "No"
-  icon?: string; // Optional icon name for modal header
+  confirmText?: string;
+  cancelText?: string;
+  icon?: string;
   color?: 'primary' | 'accent' | 'warn';
 }
 
@@ -145,14 +126,14 @@ export interface PanelConfig {
 
 export const SCROLL_DELAY_MS = 60;
 
-export const ALL_PANELS: PanelConfig[] = [
+export const ALL_PANELS: readonly PanelConfig[] = Object.freeze([
   { id: 'remotes', title: 'generalOverview.panels.remotes', defaultVisible: true },
   { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
   { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
   { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
   { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
   { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
-];
+]);
 
 export interface DashboardPanel extends PanelConfig {
   visible: boolean;
@@ -170,65 +151,43 @@ export interface JobStatItem {
   formatAsBytes?: boolean;
 }
 
-import { Entry } from './remote-config';
-
-/**
- * Represents a file or folder with its full context attached.
- * This is the "Source of Truth" for any file object passed around the UI.
- */
 export interface FileBrowserItem {
-  /** The actual file/folder data returned by rclone */
   entry: Entry;
-
-  /** UI context metadata (where the file lives and how to render it) */
   meta: {
-    remote: string; // e.g. "gdrive:"
+    remote: string;
     isLocal: boolean;
-    remoteType?: string; // e.g. 's3', 'drive', etc. (used for icons)
+    remoteType?: string;
   };
 }
 
 export type CollectionType = 'starred' | 'bookmarks';
 
-// --- File Picker ---
 export type FilePickerMode = 'local' | 'remote' | 'both';
 export type FilePickerSelection = 'files' | 'folders' | 'both';
 
 export interface FilePickerConfig {
-  /** What roots are visible */
-  mode: FilePickerMode; // 'local' | 'remote' | 'both'
-  /** What can be selected */
-  selection: FilePickerSelection; // 'files' | 'folders' | 'both'
-  /** Allow multi-select. Default false for new API */
+  mode: FilePickerMode;
+  selection: FilePickerSelection;
   multi?: boolean;
-  /** Optional whitelist for remote roots and starred/bookmarks */
   allowedRemotes?: string[];
-  /** Optional file extension filter for selectable files (e.g. ['.jpg','.png']) */
   allowedExtensions?: string[];
-  /** Initial location like '/home/user', 'gdrive:' or 'gdrive:Photos' */
   initialLocation?: string;
-  /** Preselected full paths */
   preselect?: string[];
-  /** Minimum selection to enable Confirm (default 0) */
   minSelection?: number;
-  /** Optional request id to correlate picker result */
   requestId?: string;
 }
 
-export const DEFAULT_PICKER_OPTIONS: FilePickerConfig = {
+export const DEFAULT_PICKER_OPTIONS: Readonly<FilePickerConfig> = Object.freeze({
   mode: 'both',
   selection: 'both',
   multi: false,
   minSelection: 0,
-};
+});
 
 export interface FilePickerResult {
-  /** The selected items with full context. Each item knows its remote, isLocal, path, and full entry. */
   items: FileBrowserItem[];
-  /** Full normalized paths like '/home/user/...' or 'remote:path'. Kept for backward compatibility. */
   paths: string[];
   cancelled: boolean;
-  /** Optional request id that matches the open request */
   requestId?: string;
 }
 
@@ -241,7 +200,6 @@ export interface NotifyOptions {
   showError?: boolean;
 }
 
-// Matches the `BackupAnalysis` struct in `core/settings/backup/backup_types.rs`
 export interface BackupAnalysis {
   isEncrypted: boolean;
   archiveType: string;
@@ -253,7 +211,6 @@ export interface BackupAnalysis {
   contents?: BackupContentsInfo;
 }
 
-// Matches the `BackupContentsInfo` struct
 export interface BackupContentsInfo {
   settings: boolean;
   backendConfig: boolean;
@@ -277,64 +234,25 @@ export interface ActionViewModel {
   icon: string;
   isSelected: boolean;
   isActive: boolean;
-  /** 1-based position in primaryActions, 0 when not selected. */
   position: number;
-  /** False when max actions are selected and this action is not one of them. */
   canInteract: boolean;
-  /** Already a translation key — apply | translate in template. */
   tooltip: string;
-  /** Already translated — do NOT apply | translate in template. */
   ariaLabel: string;
+  isLoading?: boolean;
 }
 
-export const ACTION_CONFIGS: ActionConfig[] = [
-  {
-    key: 'mount',
-    label: 'actions.mount',
-    icon: 'mount',
-    getTooltip: remote => (remote.status.mount.active ? 'mount.mounted' : 'mount.toggleAction'),
-    getActiveState: remote => remote.status.mount.active || false,
-  },
-  {
-    key: 'sync',
-    label: 'actions.sync',
-    icon: 'refresh',
-    getTooltip: remote =>
-      remote.status.sync.active ? 'operations.syncing' : 'operations.toggleSync',
-    getActiveState: remote => remote.status.sync.active || false,
-  },
-  {
-    key: 'copy',
-    label: 'actions.copy',
-    icon: 'copy',
-    getTooltip: remote =>
-      remote.status.copy.active ? 'operations.copying' : 'operations.toggleCopy',
-    getActiveState: remote => remote.status.copy.active || false,
-  },
-  {
-    key: 'move',
-    label: 'actions.move',
-    icon: 'move',
-    getTooltip: remote =>
-      remote.status.move.active ? 'operations.moving' : 'operations.toggleMove',
-    getActiveState: remote => remote.status.move.active || false,
-  },
-  {
-    key: 'bisync',
-    label: 'actions.bisync',
-    icon: 'right-left',
-    getTooltip: remote =>
-      remote.status.bisync.active ? 'operations.bisyncActive' : 'operations.toggleBisync',
-    getActiveState: remote => remote.status.bisync.active || false,
-  },
-  {
-    key: 'serve',
-    label: 'actions.serve',
-    icon: 'serve',
-    getTooltip: remote => (remote.status.serve.active ? 'serve.serving' : 'serve.toggleAction'),
-    getActiveState: remote => remote.status.serve.active || false,
-  },
-];
+export const ACTION_CONFIGS: readonly ActionConfig[] = Object.freeze(
+  OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => ({
+    key: op.key as PrimaryActionType,
+    label: op.actionLabel,
+    icon: op.icon,
+    getTooltip: (remote: Remote): string => {
+      const state = (remote.status as any)[op.key];
+      return state?.active ? op.activeTooltip : op.inactiveTooltip;
+    },
+    getActiveState: (remote: Remote) => !!(remote.status as any)[op.key]?.active,
+  }))
+);
 
 export interface OperationMeta {
   startIcon: string;
@@ -344,74 +262,44 @@ export interface OperationMeta {
   cssClass: string;
 }
 
-export const TITLE_MAP: Record<AppTab, string> = {
+export const TITLE_MAP: Readonly<Record<AppTab, string>> = Object.freeze({
   mount: 'overviews.headers.mount',
   operations: 'overviews.headers.operations',
   serve: 'overviews.headers.serve',
   general: 'overviews.headers.general',
-};
+});
 
-export const ACTIVE_LABELS: Partial<Record<AppTab, string>> = {
+export const ACTIVE_LABELS: Readonly<Partial<Record<AppTab, string>>> = Object.freeze({
   mount: 'overviews.status.labels.mounted',
   operations: 'overviews.status.labels.active',
-};
+});
 
-export const INACTIVE_LABELS: Partial<Record<AppTab, string>> = {
+export const INACTIVE_LABELS: Readonly<Partial<Record<AppTab, string>>> = Object.freeze({
   mount: 'overviews.status.labels.unmounted',
   operations: 'overviews.status.labels.inactive',
-};
+});
 
-export const MODE_DEFAULTS: Record<AppTab, PrimaryActionType[]> = {
+export const MODE_DEFAULTS: Readonly<Record<AppTab, PrimaryActionType[]>> = Object.freeze({
   general: ['mount', 'sync', 'bisync'],
-  operations: ['sync', 'bisync', 'copy', 'move'],
+  operations: ['sync', 'bisync', 'copy'],
   mount: ['mount'],
   serve: ['serve'],
-};
+});
 
-export const OPERATION_META: Record<PrimaryActionType, OperationMeta> = {
-  mount: {
-    startIcon: 'mount',
-    stopIcon: 'eject',
-    startTooltip: 'overviews.remoteCard.actions.mount',
-    stopTooltip: 'overviews.remoteCard.actions.unmount',
-    cssClass: 'accent',
-  },
-  sync: {
-    startIcon: 'refresh',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startSync',
-    stopTooltip: 'overviews.remoteCard.actions.stopSync',
-    cssClass: 'primary',
-  },
-  copy: {
-    startIcon: 'copy',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startCopy',
-    stopTooltip: 'overviews.remoteCard.actions.stopCopy',
-    cssClass: 'yellow',
-  },
-  move: {
-    startIcon: 'move',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startMove',
-    stopTooltip: 'overviews.remoteCard.actions.stopMove',
-    cssClass: 'orange',
-  },
-  bisync: {
-    startIcon: 'right-left',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startBisync',
-    stopTooltip: 'overviews.remoteCard.actions.stopBisync',
-    cssClass: 'purple',
-  },
-  serve: {
-    startIcon: 'satellite-dish',
-    stopIcon: 'stop',
-    startTooltip: 'overviews.remoteCard.actions.startServe',
-    stopTooltip: 'overviews.remoteCard.actions.stopServe',
-    cssClass: 'accent',
-  },
-};
+export const OPERATION_META = Object.freeze(
+  Object.fromEntries(
+    OPERATION_REGISTRY.filter(op => op.isPrimary).map(op => [
+      op.key,
+      {
+        startIcon: op.startIcon,
+        stopIcon: op.stopIcon,
+        startTooltip: op.startTooltip,
+        stopTooltip: op.stopTooltip,
+        cssClass: op.cssClass,
+      },
+    ])
+  )
+) as Readonly<Record<PrimaryActionType, OperationMeta>>;
 
 export interface OpenInFilesEvent {
   remoteName: string;
@@ -427,8 +315,6 @@ export interface OpenableFolder {
   isLocal: boolean;
   icon: string;
 }
-
-// ── Consolidation of local UI types ──────────────────────────────────────────
 
 export interface OnboardingCard {
   key: string;
@@ -455,8 +341,6 @@ export interface ExpiryOption {
 }
 
 export type PageType = 'home' | string;
-
-import { RcConfigOption } from './remote-config';
 
 export type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 
@@ -510,8 +394,6 @@ export interface ChipDef {
   field: RcConfigOption;
 }
 
-import { VfsStats, VfsQueueItem } from 'src/app/services/operations/vfs.service';
-
 export interface VfsInstance {
   name: string;
   stats: VfsStats | null;
@@ -521,7 +403,6 @@ export interface VfsInstance {
 }
 
 // ── GNOME / Adwaita Light Syntax Highlighting ──
-// Colors inspired by GNOME Builder's light theme and Adwaita palette
 export const gnomeLightHighlighting = HighlightStyle.define([
   { tag: tags.keyword, color: '#0d7377' }, // Teal — keywords (if, const, return)
   { tag: tags.controlKeyword, color: '#0d7377', fontWeight: '500' },

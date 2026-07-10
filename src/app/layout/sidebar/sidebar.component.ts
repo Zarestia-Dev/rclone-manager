@@ -11,7 +11,7 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 import { Remote } from '@app/types';
@@ -23,13 +23,12 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
 
 @Component({
   selector: 'app-sidebar',
-  standalone: true,
   imports: [
     TitleCasePipe,
     MatCardModule,
     MatIconModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   templateUrl: './sidebar.component.html',
@@ -48,7 +47,8 @@ export class SidebarComponent {
   private readonly remoteFacade = inject(RemoteFacadeService);
 
   readonly selectedRemote = this.uiStateService.selectedRemote;
-  readonly hiddenRemotes = this.remoteFacade.hiddenRemoteNames;
+
+  readonly hiddenRemotesSet = computed(() => new Set(this.remoteFacade.hiddenRemoteNames()));
 
   readonly searchTerm = signal('');
   readonly searchVisible = signal(false);

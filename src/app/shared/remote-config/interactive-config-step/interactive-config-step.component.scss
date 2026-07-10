@@ -166,6 +166,12 @@
   gap: var(--space-md);
 }
 
+.example-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
 .input-card {
   background: var(--view-bg-color);
   border-radius: var(--card-border-radius);

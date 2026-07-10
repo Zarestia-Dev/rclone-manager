@@ -8,7 +8,7 @@
   <div class="bar-center">
     @if (isPickerMode()) {
       <button
-        mat-raised-button
+        matButton="elevated"
         class="accent"
         (click)="confirmSelection.emit()"
         [disabled]="isConfirmDisabled()"

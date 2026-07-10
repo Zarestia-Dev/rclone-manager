@@ -37,10 +37,13 @@ export interface AlertRule {
 
 export type AlertActionKind = 'webhook' | 'script' | 'os_toast' | 'telegram' | 'mqtt' | 'email';
 
-export interface WebhookAction {
+export interface BaseAlertAction {
   id: string;
   name: string;
   enabled: boolean;
+}
+
+export interface WebhookAction extends BaseAlertAction {
   kind: 'webhook';
   url: string;
   method: string;
@@ -51,10 +54,7 @@ export interface WebhookAction {
   retry_count: number;
 }
 
-export interface ScriptAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface ScriptAction extends BaseAlertAction {
   kind: 'script';
   command: string;
   args: string[];
@@ -62,17 +62,11 @@ export interface ScriptAction {
   env_vars: Record<string, string>;
 }
 
-export interface OsToastAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface OsToastAction extends BaseAlertAction {
   kind: 'os_toast';
 }
 
-export interface TelegramAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface TelegramAction extends BaseAlertAction {
   kind: 'telegram';
   bot_token: string;
   chat_id: string;
@@ -81,10 +75,7 @@ export interface TelegramAction {
   retry_count: number;
 }
 
-export interface MqttAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface MqttAction extends BaseAlertAction {
   kind: 'mqtt';
   broker_url: string;
   topic: string;
@@ -97,10 +88,7 @@ export interface MqttAction {
   retry_count: number;
 }
 
-export interface EmailAction {
-  id: string;
-  name: string;
-  enabled: boolean;
+export interface EmailAction extends BaseAlertAction {
   kind: 'email';
   smtp_server: string;
   smtp_port: number;

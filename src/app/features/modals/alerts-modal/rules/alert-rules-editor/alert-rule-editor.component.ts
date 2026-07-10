@@ -1,14 +1,15 @@
-import { Component, inject, computed, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { EscapeCloseDirective } from '../../../../../shared/directives/escape-close.directive';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
 import { AlertService } from 'src/app/services/alerts/alert.service';
@@ -17,9 +18,9 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
 
 @Component({
   selector: 'app-alert-rule-editor',
-  standalone: true,
   templateUrl: './alert-rule-editor.component.html',
   styleUrls: ['./alert-rule-editor.component.scss', '../../../../../styles/_shared-modal.scss'],
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -29,7 +30,7 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    TranslateModule,
+    TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -105,9 +106,8 @@ export class AlertRuleEditorComponent {
   });
 
   constructor() {
-    this.data = this.dialogData?.ruleId
-      ? this.alertService.rules().find(r => r.id === this.dialogData!.ruleId)
-      : undefined;
+    const ruleId = this.dialogData?.ruleId;
+    this.data = ruleId ? this.alertService.rules().find(r => r.id === ruleId) : undefined;
 
     if (this.data) this.form.patchValue(this.data);
   }
@@ -119,7 +119,6 @@ export class AlertRuleEditorComponent {
     this.dialogRef.close(val);
   }
 
-  @HostListener('document:keydown.escape')
   cancel(): void {
     this.dialogRef.close();
   }

@@ -27,7 +27,13 @@ export class PathService {
 
   normalizePath(p: string): string {
     if (!p) return '';
-    const normalized = p.replace(/\\/g, '/');
+    let normalized = p.replace(/\\/g, '/');
+
+    // Strip leading slash if it precedes a Windows drive letter (e.g., "/C:/path" -> "C:/path")
+    if (normalized.startsWith('/') && /^\/[a-zA-Z]:/.test(normalized)) {
+      normalized = normalized.substring(1);
+    }
+
     const isAbsolute = normalized.startsWith('/');
     const stack: string[] = [];
 
@@ -346,6 +352,10 @@ export class PathService {
     existingRemotes: string[] = []
   ): PathGroup {
     if (!fs) return { type: defaultType, path: '', remote: '' };
+
+    if (this.isLocalPath(fs)) {
+      return { type: 'local', path: fs, remote: '' };
+    }
 
     const colonIdx = fs.indexOf(':');
     if (colonIdx > -1) {

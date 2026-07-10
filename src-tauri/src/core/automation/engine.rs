@@ -1,9 +1,9 @@
 //! Cron scheduler engine using tokio-cron-scheduler
 
-use crate::rclone::commands::sync::{TransferType, start_profile_batch};
+use crate::rclone::commands::sync::start_profile_batch;
 use crate::rclone::state::automations::{AutomationsCache, CacheUpdateResult};
 use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify};
-use crate::utils::types::automation::{Automation, AutomationStatus, AutomationType};
+use crate::utils::types::automation::{Automation, AutomationStatus};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
@@ -12,9 +12,7 @@ use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
 
-// ============================================================================
 // CRON SCHEDULER
-// ============================================================================
 
 pub struct AutomationScheduler {
     pub scheduler: Arc<RwLock<Option<JobScheduler>>>,
@@ -370,7 +368,7 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
     let job_cache = &backend_manager.job_cache;
 
     let remote_name = automation.args.params.remote_name.clone();
-    let job_type = automation.automation_type.as_job_type();
+    let job_type = automation.automation_type.as_job_type().unwrap();
     let profile = Some(automation.args.params.profile_name.as_str());
 
     let is_running = automation.status == AutomationStatus::Running
@@ -408,12 +406,7 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
 
     let params = automation.args.params.clone();
 
-    let transfer_type = match automation.automation_type {
-        AutomationType::Copy => TransferType::Copy,
-        AutomationType::Sync => TransferType::Sync,
-        AutomationType::Move => TransferType::Move,
-        AutomationType::Bisync => TransferType::Bisync,
-    };
+    let transfer_type = automation.automation_type;
 
     let mut params = params;
     params.source = Some(crate::utils::types::origin::Origin::Automation);
@@ -467,9 +460,7 @@ fn get_run_expr_or_none(cron_expr: Option<&str>) -> Option<chrono::DateTime<Utc>
     get_next_run(expr).ok()
 }
 
-// ============================================================================
 // TESTS
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

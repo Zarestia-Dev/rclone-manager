@@ -10,10 +10,38 @@ import {
   CONFIG_MODAL_SIZE,
   ABOUT_MODAL_SIZE,
   BackupAnalysis,
+  JobInfo,
 } from '@app/types';
-import { JobInfo } from '../../shared/types/jobs';
-import { ApiClientService, isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import {
+  ApiClientService,
+  isHeadlessMode,
+  isMobile,
+} from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+
+const originalClose = MatDialogRef.prototype.close;
+MatDialogRef.prototype.close = function (this: MatDialogRef<any>, dialogResult?: any): void {
+  const container = this.id ? document.getElementById(this.id) : null;
+  const overlayElement = container?.closest('.cdk-overlay-pane');
+
+  if (overlayElement?.classList.contains('mobile-sheet-dialog') && window.innerWidth <= 450) {
+    if (container) {
+      if (container.classList.contains('closing')) {
+        return;
+      }
+      container.classList.add('closing');
+    }
+    const backdrop = overlayElement.parentElement?.querySelector('.cdk-overlay-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('closing');
+    }
+    setTimeout(() => {
+      originalClose.call(this, dialogResult);
+    }, 200);
+  } else {
+    originalClose.call(this, dialogResult);
+  }
+};
 
 export interface RemoteConfigModalOptions {
   remoteName?: string;
@@ -215,7 +243,7 @@ export class ModalService {
 
   private get standaloneEnabled(): boolean {
     return (
-      !isHeadlessMode() &&
+      (!isHeadlessMode() || !isMobile()) &&
       this.appSettings.options()?.['general.standalone_dialogs']?.value === true
     );
   }
@@ -227,6 +255,9 @@ export class ModalService {
   ): any {
     if (standalone && this.standaloneEnabled) {
       return this.spawnStandaloneWindow({ type, data: config.data, ...standalone });
+    }
+    if (config.height && !config.panelClass) {
+      config.panelClass = 'mobile-sheet-dialog';
     }
     const dialogPromise = this.loaders[type]().then(comp => this.dialog.open(comp, config));
     return new AsyncDialogRef(dialogPromise);
@@ -335,7 +366,7 @@ export class ModalService {
   }
 
   openJobDetail(job: JobInfo): any {
-    const data = { jobid: job.jobid, execute_id: job.execute_id };
+    const data = { ...job };
     return this.openModal(
       'job-detail',
       { ...STANDARD_MODAL_SIZE, disableClose: true, data },
@@ -418,7 +449,6 @@ export class ModalService {
         maxWidth: '1200px',
         height: '85vh',
         disableClose: false,
-        panelClass: 'alerts-modal-panel',
       },
       {
         title: this.translate.instant('alerts.title') || 'Alerts & Notifications',
@@ -472,6 +502,11 @@ export class ModalService {
   }
 
   openArchiveCreate(data: { items: any[]; defaultName: string }): any {
-    return this.openModal('archive-create', { width: '450px', disableClose: true, data });
+    return this.openModal('archive-create', {
+      width: '450px',
+      height: '600px',
+      disableClose: true,
+      data,
+    });
   }
 }

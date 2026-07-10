@@ -1,20 +1,34 @@
-use crate::core::{
-    automation::commands::reload_automations_from_configs, settings::AppSettingsManager,
-};
 use log::{debug, error, info};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
+#[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
+use tauri_plugin_autostart::ManagerExt;
+
 use crate::{
-    core::lifecycle::shutdown::shutdown_app,
-    rclone::commands::system::bandwidth_limit,
+    core::{
+        alerts::cache, automation::commands::reload_automations_from_configs,
+        lifecycle::shutdown::shutdown_app, settings::AppSettingsManager,
+    },
+    rclone::{backend::BackendManager, commands::system::bandwidth_limit},
     utils::{
         logging::log::update_log_level,
-        types::events::{
-            JOB_CACHE_CHANGED, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
-            SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
+        types::{
+            events::{
+                JOB_CACHE_CHANGED, JobChangeEvent, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
+                SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
+            },
+            state::EngineState,
         },
     },
+};
+
+#[cfg(all(target_os = "linux", feature = "flatpak"))]
+use crate::utils::app::platform::manage_flatpak_background_portal;
+#[cfg(feature = "tray")]
+use crate::utils::types::events::{
+    BACKEND_SWITCHED, MOUNT_STATE_CHANGED, REMOTE_SETTINGS_CHANGED, SERVE_STATE_CHANGED,
+    UPDATE_TRAY_MENU,
 };
 
 #[cfg(feature = "tray")]
@@ -44,11 +58,7 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            use crate::utils::types::state::EngineState;
-            app.state::<EngineState>()
-                .lock()
-                .await
-                .set_password_error(false);
+            app.state::<EngineState>().lock().await.clear_errors();
         });
     });
 }
@@ -58,7 +68,6 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(REMOTE_CACHE_CHANGED, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            use crate::rclone::backend::BackendManager;
             let cache = &app.state::<BackendManager>().remote_cache;
 
             let (r1, r2) = tokio::join!(
@@ -163,7 +172,6 @@ fn handle_notifications_change(app: &AppHandle, enabled: bool) {
     debug!("Notifications changed to: {enabled}");
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        use crate::core::alerts::cache;
         let manager = app.state::<AppSettingsManager>();
         let mut updated = false;
 
@@ -213,7 +221,6 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     #[cfg(all(target_os = "linux", feature = "flatpak"))]
     {
         tauri::async_runtime::spawn(async move {
-            use crate::utils::app::platform::manage_flatpak_background_portal;
             if let Err(e) = manage_flatpak_background_portal(enabled).await {
                 error!("Failed to update flatpak autostart: {e}");
             }
@@ -222,7 +229,6 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
 
     #[cfg(all(desktop, not(all(target_os = "linux", feature = "flatpak"))))]
     {
-        use tauri_plugin_autostart::ManagerExt;
         let autostart = _app.autolaunch();
         let _ = if enabled {
             autostart.enable()
@@ -256,29 +262,14 @@ fn handle_bandwidth_limit_change(app: &AppHandle, value: &Value) {
 
 fn handle_rclone_binary_change(app: &AppHandle, path: &str) {
     debug!("Rclone binary changed to: {path}");
-    match crate::rclone::engine::lifecycle::restart_for_config_change(
-        app,
-        "rclone_binary",
-        "previous",
-        path,
-    ) {
-        Ok(()) => info!("Rclone binary updated to: {path}"),
-        Err(e) => error!("Failed to restart engine for rclone binary change: {e}"),
-    }
+    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_binary");
+    info!("Rclone binary updated to: {path}");
 }
 
 fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
     debug!("Rclone additional flags changed to: {flags:?}");
-    let flags_str = serde_json::to_string(flags).unwrap_or_default();
-    match crate::rclone::engine::lifecycle::restart_for_config_change(
-        app,
-        "rclone_additional_flags",
-        "previous",
-        &flags_str,
-    ) {
-        Ok(()) => info!("Engine restarting due to additional flags change"),
-        Err(e) => error!("Failed to restart engine for flags change: {e}"),
-    }
+    crate::rclone::engine::lifecycle::restart_for_config_change(app, "rclone_additional_flags");
+    info!("Engine restarting due to additional flags change");
 }
 
 fn handle_job_cache_changed(app: &AppHandle) {
@@ -288,16 +279,12 @@ fn handle_job_cache_changed(app: &AppHandle) {
         let payload = event.payload().to_string();
 
         tauri::async_runtime::spawn(async move {
-            use crate::utils::types::events::JobChangeEvent;
             if let Ok(ev) = serde_json::from_str::<JobChangeEvent>(&payload)
                 && let Ok(id) = ev.job_id.parse::<u64>()
+                && let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
+                && !job.job_type.is_tray_relevant()
             {
-                use crate::rclone::backend::BackendManager;
-                if let Some(job) = app.state::<BackendManager>().job_cache.get_job(id).await
-                    && !job.job_type.is_tray_relevant()
-                {
-                    return;
-                }
+                return;
             }
 
             #[cfg(feature = "tray")]
@@ -325,15 +312,8 @@ fn handle_tray_visibility_change(app: &AppHandle, enabled: bool) {
     });
 }
 
-// These listeners all just trigger a tray update; keep them as a group rather
-// than duplicating the boilerplate across separate functions.
 #[cfg(feature = "tray")]
 fn register_tray_refresh_listeners(app: &AppHandle) {
-    use crate::utils::types::events::{
-        BACKEND_SWITCHED, MOUNT_STATE_CHANGED, REMOTE_SETTINGS_CHANGED, SERVE_STATE_CHANGED,
-        UPDATE_TRAY_MENU,
-    };
-
     for event in [
         SERVE_STATE_CHANGED,
         MOUNT_STATE_CHANGED,

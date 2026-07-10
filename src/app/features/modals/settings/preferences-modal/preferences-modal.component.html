@@ -58,23 +58,16 @@
       @if (hasSearchResults()) {
         <!-- Search result items, or empty state when nothing matches -->
         @if (searchResults().length > 0) {
-          @for (result of searchResults(); track result.category + '.' + result.key) {
-            @if (getFormControl(result.category, result.key); as ctrl) {
-              <div
-                class="setting-item"
-                role="listitem"
-                [class.layout-row]="isRowLayout(result.category, result.key)"
-              >
-                <ng-container
-                  [ngTemplateOutlet]="settingTemplate"
-                  [ngTemplateOutletContext]="{
-                    category: result.category,
-                    key: result.key,
-                    showCategory: true,
-                  }"
-                ></ng-container>
-              </div>
-            }
+          @for (vm of searchResultViewModels(); track vm.category + '.' + vm.key) {
+            <div class="setting-item" role="listitem" [class.layout-row]="vm.isRowLayout">
+              <ng-container
+                [ngTemplateOutlet]="settingTemplate"
+                [ngTemplateOutletContext]="{
+                  setting: vm,
+                  showCategory: true,
+                }"
+              ></ng-container>
+            </div>
           }
         } @else {
           <div class="empty-state" role="status" aria-live="polite">
@@ -103,17 +96,12 @@
         }
       } @else {
         @if (selectedTabKey(); as activeCategory) {
-          @for (key of selectedTabKeys(); track key) {
-            <div
-              class="setting-item"
-              role="listitem"
-              [class.layout-row]="isRowLayout(activeCategory, key)"
-            >
+          @for (vm of selectedTabViewModels(); track vm.key) {
+            <div class="setting-item" role="listitem" [class.layout-row]="vm.isRowLayout">
               <ng-container
                 [ngTemplateOutlet]="settingTemplate"
                 [ngTemplateOutletContext]="{
-                  category: activeCategory,
-                  key: key,
+                  setting: vm,
                   showCategory: false,
                 }"
               ></ng-container>
@@ -122,7 +110,7 @@
           @if (isGeneralTab()) {
             <div class="actions">
               <button
-                mat-raised-button
+                matButton="elevated"
                 class="warn"
                 (click)="resetSettings()"
                 [attr.aria-label]="'modals.preferences.aria.resetAll' | translate"
@@ -191,7 +179,7 @@
             {{ 'modals.preferences.discardChanges' | translate }}
           </button>
           <button
-            mat-raised-button
+            matButton="elevated"
             class="warn"
             (click)="savePendingChanges()"
             [attr.aria-label]="'modals.preferences.aria.saveAndRestart' | translate"
@@ -228,21 +216,21 @@
 }
 
 <!-- ── Setting Template ──────────────────────────────────────────────────── -->
-<ng-template #settingTemplate let-category="category" let-key="key" let-showCategory="showCategory">
-  @if (getMetadata(category, key); as meta) {
+<ng-template #settingTemplate let-setting="setting" let-showCategory="showCategory">
+  @if (setting.meta; as meta) {
     <div class="setting-item-header">
       <div class="setting-info">
-        <strong>{{ getSettingLabel(category, key, meta) }}</strong>
-        <p>{{ getSettingDescription(category, key, meta) }}</p>
+        <strong>{{ setting.label }}</strong>
+        <p>{{ setting.description }}</p>
         @if (showCategory) {
-          <small class="app-pill p-primary">{{ getCategoryDisplayName(category) }}</small>
+          <small class="app-pill p-primary">{{ setting.categoryDisplayName }}</small>
         }
       </div>
-      @if (isModified(category, key)) {
+      @if (setting.isModified) {
         <button
-          mat-icon-button
+          matIconButton
           class="reset-btn"
-          (click)="resetSetting(category, key)"
+          (click)="resetSetting(setting.category, setting.key)"
           [attr.aria-label]="
             ('modals.preferences.resetToDefault' | translate) + ': ' + meta.metadata?.display_name
           "
@@ -260,14 +248,14 @@
           @switch (meta.value_type) {
             @case ('bool') {
               <mat-slide-toggle
-                [formControl]="$any(getFormControl(category, key))"
-                (change)="onValueChange(category, key)"
+                [formControl]="$any(setting.control)"
+                (change)="onValueChange(setting.category, setting.key)"
               ></mat-slide-toggle>
             }
             @case ('int') {
               <div class="stepper-wrapper">
                 <app-number-input
-                  [formControl]="$any(getFormControl(category, key))"
+                  [formControl]="$any(setting.control)"
                   [placeholder]="(meta.metadata?.placeholder | translate) || ''"
                   [step]="meta.step || 1"
                   [min]="meta.min !== undefined ? meta.min : undefined"
@@ -276,11 +264,11 @@
                   [isSensitive]="false"
                   [allowNegative]="meta.min === undefined || meta.min < 0"
                   [ariaLabel]="meta.metadata?.display_name || ''"
-                  (blur)="onBlur(category, key)"
+                  (inputBlur)="onBlur(setting.category, setting.key)"
                 />
-                @if (isControlInvalid(category, key)) {
+                @if (setting.isInvalid) {
                   <mat-error class="preferences-stepper-error">{{
-                    getValidationMessage(category, key)
+                    setting.validationMessage
                   }}</mat-error>
                 }
               </div>
@@ -288,51 +276,51 @@
             @case ('string') {
               <ng-container
                 [ngTemplateOutlet]="textInputTemplate"
-                [ngTemplateOutletContext]="{ category, key, meta }"
+                [ngTemplateOutletContext]="{ setting: setting }"
               ></ng-container>
             }
             @case ('bandwidth') {
               <ng-container
                 [ngTemplateOutlet]="textInputTemplate"
-                [ngTemplateOutletContext]="{ category, key, meta }"
+                [ngTemplateOutletContext]="{ setting: setting }"
               ></ng-container>
             }
             @case ('select') {
               <mat-form-field class="input-field no-subscript" appearance="fill">
                 <mat-select
-                  [formControl]="$any(getFormControl(category, key))"
+                  [formControl]="$any(setting.control)"
                   [attr.aria-label]="meta.metadata?.display_name"
-                  (selectionChange)="onValueChange(category, key)"
+                  (selectionChange)="onValueChange(setting.category, setting.key)"
                 >
-                  @for (option of meta.options; track $any(option).value || option) {
-                    <mat-option [value]="$any(option).value ?? option">
-                      {{ getOptionLabel(option) }}
+                  @for (option of setting.options; track option.value) {
+                    <mat-option [value]="option.value">
+                      {{ option.label }}
                     </mat-option>
                   }
                 </mat-select>
-                @if (isControlInvalid(category, key)) {
-                  <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                @if (setting.isInvalid) {
+                  <mat-error>{{ setting.validationMessage }}</mat-error>
                 }
               </mat-form-field>
             }
             @case ('string[]') {
               <div class="array-control-wrapper">
                 <div class="array-items">
-                  @for (item of getArrayControls(category, key); track $index) {
+                  @for (item of setting.arrayItemViewModels; track item.control) {
                     <div class="array-item">
                       <mat-form-field appearance="fill" class="input-field">
                         <input
                           matInput
-                          [formControl]="getArrayItemControl(category, key, $index)"
+                          [formControl]="item.control"
                           [attr.aria-label]="
                             'modals.preferences.aria.itemIndex' | translate: { index: $index + 1 }
                           "
-                          (blur)="onBlur(category, key)"
+                          (blur)="onBlur(setting.category, setting.key)"
                         />
                         <button
                           matIconButton
                           matSuffix
-                          (click)="removeArrayItem(category, key, $index)"
+                          (click)="removeArrayItem(setting.category, setting.key, $index)"
                           [attr.aria-label]="
                             'modals.preferences.aria.removeItemIndex'
                               | translate: { index: $index + 1 }
@@ -340,21 +328,19 @@
                         >
                           <mat-icon svgIcon="close"></mat-icon>
                         </button>
-                        @if (isControlInvalid(category, key, $index)) {
-                          <mat-error>{{ getValidationMessage(category, key, $index) }}</mat-error>
+                        @if (item.isInvalid) {
+                          <mat-error>{{ item.validationMessage }}</mat-error>
                         }
                       </mat-form-field>
                     </div>
                   }
                 </div>
-                @if (isControlInvalid(category, key)) {
-                  <mat-error class="array-error">{{
-                    getValidationMessage(category, key)
-                  }}</mat-error>
+                @if (setting.isInvalid) {
+                  <mat-error class="array-error">{{ setting.validationMessage }}</mat-error>
                 }
                 <button
-                  mat-stroked-button
-                  (click)="addArrayItem(category, key)"
+                  matButton="outlined"
+                  (click)="addArrayItem(setting.category, setting.key)"
                   [attr.aria-label]="
                     'modals.preferences.aria.addNewItem'
                       | translate: { name: meta.metadata?.display_name }
@@ -370,10 +356,8 @@
               <ng-container
                 [ngTemplateOutlet]="pathPickerTemplate"
                 [ngTemplateOutletContext]="{
-                  category: category,
-                  key: key,
+                  setting: setting,
                   type: 'file',
-                  meta: meta,
                 }"
               ></ng-container>
             }
@@ -381,10 +365,8 @@
               <ng-container
                 [ngTemplateOutlet]="pathPickerTemplate"
                 [ngTemplateOutletContext]="{
-                  category: category,
-                  key: key,
+                  setting: setting,
                   type: 'folder',
-                  meta: meta,
                 }"
               ></ng-container>
             }
@@ -396,52 +378,47 @@
 </ng-template>
 
 <!-- ── Text Input Template (shared by 'string' and 'bandwidth' cases) ────── -->
-<ng-template #textInputTemplate let-category="category" let-key="key" let-meta="meta">
+<ng-template #textInputTemplate let-setting="setting">
   <mat-form-field class="input-field" appearance="fill">
     <input
       matInput
-      [formControl]="$any(getFormControl(category, key))"
-      [attr.aria-label]="meta.metadata?.display_name"
-      [placeholder]="(meta.metadata?.placeholder | translate) || ''"
-      (blur)="onBlur(category, key)"
+      [formControl]="$any(setting.control)"
+      [attr.aria-label]="setting.meta?.metadata?.display_name"
+      [placeholder]="(setting.meta?.metadata?.placeholder | translate) || ''"
+      (blur)="onBlur(setting.category, setting.key)"
     />
-    @if (isControlInvalid(category, key)) {
-      <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+    @if (setting.isInvalid) {
+      <mat-error>{{ setting.validationMessage }}</mat-error>
     }
   </mat-form-field>
 </ng-template>
 
 <!-- ── Path Picker Template (shared by 'file' and 'folder' cases) ──────── -->
-<ng-template
-  #pathPickerTemplate
-  let-category="category"
-  let-key="key"
-  let-type="type"
-  let-meta="meta"
->
+<ng-template #pathPickerTemplate let-setting="setting" let-type="type">
   <mat-form-field appearance="fill" class="input-field">
     <input
       matInput
-      [formControl]="$any(getFormControl(category, key))"
-      (input)="onPathInput(category, key)"
-      (blur)="onBlur(category, key)"
+      [formControl]="$any(setting.control)"
+      (input)="onPathInput(setting.category, setting.key)"
+      (blur)="onBlur(setting.category, setting.key)"
       [attr.aria-label]="
         'modals.preferences.aria.' + type + 'PathFor'
-          | translate: { name: meta.metadata?.display_name }
+          | translate: { name: setting.meta?.metadata?.display_name }
       "
     />
     <button
       matIconButton
       matSuffix
-      (click)="openPicker(category, key, type)"
+      (click)="openPicker(setting.category, setting.key, type)"
       [attr.aria-label]="
-        'modals.preferences.aria.browseFor' | translate: { name: meta.metadata?.display_name }
+        'modals.preferences.aria.browseFor'
+          | translate: { name: setting.meta?.metadata?.display_name }
       "
     >
       <mat-icon [svgIcon]="type"></mat-icon>
     </button>
-    @if (isControlInvalid(category, key)) {
-      <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+    @if (setting.isInvalid) {
+      <mat-error>{{ setting.validationMessage }}</mat-error>
     }
   </mat-form-field>
 </ng-template>

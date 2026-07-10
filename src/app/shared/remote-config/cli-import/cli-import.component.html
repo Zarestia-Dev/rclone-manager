@@ -30,12 +30,12 @@
         }
 
         <div class="actions">
-          <button mat-stroked-button (click)="clearInput()" [disabled]="!cliInput()">
+          <button matButton="outlined" (click)="clearInput()" [disabled]="!cliInput()">
             <mat-icon svgIcon="broom"></mat-icon>
             {{ 'common.clear' | translate }}
           </button>
           <button
-            mat-raised-button
+            matButton="elevated"
             class="accent"
             (click)="previewImport()"
             [disabled]="!cliInput().trim()"
@@ -249,7 +249,7 @@
             }
 
             <button
-              mat-raised-button
+              matButton="elevated"
               class="primary"
               [disabled]="isApplyDisabled()"
               (click)="onApply()"

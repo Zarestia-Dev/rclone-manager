@@ -137,21 +137,3 @@ pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), S
     let _ = kill_processes_on_port(oauth_port);
     Ok(())
 }
-
-#[cfg(all(target_os = "linux", not(feature = "web-server")))]
-pub fn cleanup_webkit_zombies() {
-    use sysinfo::{ProcessesToUpdate, System};
-
-    let mut system = System::new();
-    system.refresh_processes(ProcessesToUpdate::All, true);
-    let my_pid = std::process::id();
-
-    for process in system.processes().values() {
-        let name = process.name().to_string_lossy();
-        if (name.contains("WebKitNetwork") || name.contains("WebKitWeb"))
-            && process.parent().map(sysinfo::Pid::as_u32) == Some(my_pid)
-        {
-            let _ = process.kill();
-        }
-    }
-}

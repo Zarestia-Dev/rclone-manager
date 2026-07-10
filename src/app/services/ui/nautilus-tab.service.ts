@@ -9,13 +9,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import {
-  ExplorerRoot,
-  FileBrowserItem,
-  FilePickerConfig,
-  ORIGINS,
-  NautilusTabItem,
-} from '@app/types';
+import { ExplorerRoot, FileBrowserItem, FilePickerConfig, NautilusTabItem } from '@app/types';
 import { FileViewerService } from '../ui/file-viewer.service';
 
 export interface PaneState {
@@ -341,8 +335,8 @@ export class NautilusTabService {
     if (cfg.mode === 'local') return localDrives.length > 0;
     if (cfg.mode === 'remote') {
       if (cloudRemotes.length === 0) return false;
-      if (cfg.allowedRemotes?.length)
-        return cloudRemotes.some(x => cfg.allowedRemotes!.includes(x.name));
+      const allowed = cfg.allowedRemotes;
+      if (allowed?.length) return cloudRemotes.some(x => allowed.includes(x.name));
       return true;
     }
     return true;
@@ -604,7 +598,7 @@ export class NautilusTabService {
         };
       })
     );
-    this._navigate(entry.remote, entry.path, false);
+    this.navigate(entry.remote, entry.path, false);
   }
 
   goBack(): void {
@@ -615,7 +609,7 @@ export class NautilusTabService {
     this.traverseHistory(1);
   }
 
-  async _navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
+  async navigate(remote: ExplorerRoot | null, path: string, newHistory: boolean): Promise<void> {
     if (this.pendingPreviewFilePath() !== path) {
       this.pendingPreviewFilePath.set(null);
     }
@@ -800,7 +794,7 @@ export class NautilusTabService {
 
           return from(this.stopListReadGroup(readGroup)).pipe(
             switchMap(() =>
-              from(this.remoteOps.getRemotePaths(fsName, path, {}, ORIGINS.FILEMANAGER, readGroup))
+              from(this.remoteOps.getRemotePaths(fsName, path, {}, 'filemanager', readGroup))
             ),
             map(res =>
               (res.list || []).map(

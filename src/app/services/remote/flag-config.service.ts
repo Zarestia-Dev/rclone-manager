@@ -1,48 +1,90 @@
-import { Injectable, signal } from '@angular/core';
-import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
+import { Injectable, computed, signal } from '@angular/core';
+import {
+  FLAG_TYPES,
+  FlagType,
+  RcConfigOption,
+  GroupedRCloneOptions,
+  OPERATION_REGISTRY,
+} from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { staticFlagDefinitions } from './flag-definitions';
-
-type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
+import { MemoizedLoader, memoizedLoader } from './utils/memoized-loader.util';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FlagConfigService extends TauriBaseService {
-  private readonly _allFlagFields = signal<Record<FlagType, RcConfigOption[]> | null>(null);
-  readonly allFlagFields = this._allFlagFields.asReadonly();
+  // ── Single-value memoized loaders ──────────────────────────────────────────
+  // Each helper deduplicates concurrent loads (in-flight promise) and caches
+  // the resolved value in a readonly signal.
 
-  private readonly _groupedOptions = signal<GroupedRCloneOptions | null>(null);
-  readonly groupedOptions = this._groupedOptions.asReadonly();
+  private readonly allFlagFieldsLoader: MemoizedLoader<Record<FlagType, RcConfigOption[]>> =
+    memoizedLoader(async (): Promise<Record<FlagType, RcConfigOption[]>> => {
+      const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
+      await Promise.all(
+        FLAG_TYPES.map(async type => {
+          const dynamicFlags = await this.loadFlagFields(type);
+          const staticFlags = staticFlagDefinitions[type] || [];
+          result[type] = [...staticFlags, ...dynamicFlags];
+        })
+      );
+      return result as Record<FlagType, RcConfigOption[]>;
+    });
+  readonly allFlagFields = this.allFlagFieldsLoader.signal;
 
-  private readonly _serveFlagsMap = signal<Map<string, RcConfigOption[]>>(new Map());
-  readonly serveFlagsMap = this._serveFlagsMap.asReadonly();
+  private readonly groupedOptionsLoader: MemoizedLoader<GroupedRCloneOptions> = memoizedLoader(
+    (): Promise<GroupedRCloneOptions> =>
+      this.invokeCommand<GroupedRCloneOptions>('get_grouped_options_with_values')
+  );
+  readonly groupedOptions = this.groupedOptionsLoader.signal;
 
-  private allFlagFieldsPromise: Promise<Record<FlagType, RcConfigOption[]>> | null = null;
-  private groupedOptionsPromise: Promise<GroupedRCloneOptions> | null = null;
-  private readonly serveFlagsPromises = new Map<string, Promise<RcConfigOption[]>>();
+  // ── Keyed (per-serveType) memoized loader ───────────────────────────────────
+  // serve flags are keyed by serveType (http, webdav, sftp, …), so we keep a
+  // Map of independent loaders and aggregate their signals into a single
+  // Map<string, RcConfigOption[]> for consumers.
+
+  private readonly serveFlagsLoaders = new Map<string, MemoizedLoader<RcConfigOption[]>>();
+  // Bumps when a new serveType loader is created so the aggregate computed
+  // re-runs and picks up the new entry.
+  private readonly serveFlagsLoaderVersion = signal(0);
+  readonly serveFlagsMap = computed<Map<string, RcConfigOption[]>>(() => {
+    this.serveFlagsLoaderVersion();
+    const map = new Map<string, RcConfigOption[]>();
+    for (const [serveType, loader] of this.serveFlagsLoaders) {
+      const flags = loader.signal();
+      if (flags) map.set(serveType, flags);
+    }
+    return map;
+  });
+
+  private getOrCreateServeFlagsLoader(serveType: string): MemoizedLoader<RcConfigOption[]> {
+    let loader = this.serveFlagsLoaders.get(serveType);
+    if (!loader) {
+      loader = memoizedLoader(async (): Promise<RcConfigOption[]> => {
+        try {
+          const flags = await this.invokeCommand<RcConfigOption[]>('get_serve_flags', {
+            serveType,
+          });
+          const staticFlags = staticFlagDefinitions['serve'] || [];
+          return [...staticFlags, ...(flags ?? [])];
+        } catch (error) {
+          console.error(`Error loading serve flags for ${serveType}:`, error);
+          return [];
+        }
+      });
+      this.serveFlagsLoaders.set(serveType, loader);
+      this.serveFlagsLoaderVersion.update(v => v + 1);
+    }
+    return loader;
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
 
   /**
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.
    */
   async getGroupedOptions(): Promise<GroupedRCloneOptions> {
-    const current = this._groupedOptions();
-    if (current) return current;
-    if (this.groupedOptionsPromise) return this.groupedOptionsPromise;
-
-    this.groupedOptionsPromise = (async () => {
-      try {
-        const options = await this.invokeCommand<GroupedRCloneOptions>(
-          'get_grouped_options_with_values'
-        );
-        this._groupedOptions.set(options);
-        return options;
-      } finally {
-        this.groupedOptionsPromise = null;
-      }
-    })();
-
-    return this.groupedOptionsPromise;
+    return this.groupedOptionsLoader.load();
   }
 
   /**
@@ -75,34 +117,18 @@ export class FlagConfigService extends TauriBaseService {
    * Loads all flag fields for all defined flag types.
    */
   async loadAllFlagFields(): Promise<Record<FlagType, RcConfigOption[]>> {
-    const current = this._allFlagFields();
-    if (current) return current;
-    if (this.allFlagFieldsPromise) return this.allFlagFieldsPromise;
-
-    this.allFlagFieldsPromise = (async () => {
-      try {
-        const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
-
-        await Promise.all(
-          FLAG_TYPES.map(async type => {
-            const dynamicFlags = await this.loadFlagFields(type);
-            const staticFlags = staticFlagDefinitions[type] || [];
-            result[type] = [...staticFlags, ...dynamicFlags];
-          })
-        );
-        const finalResult = result as Record<FlagType, RcConfigOption[]>;
-        this._allFlagFields.set(finalResult);
-        return finalResult;
-      } finally {
-        this.allFlagFieldsPromise = null;
-      }
-    })();
-
-    return this.allFlagFieldsPromise;
+    return this.allFlagFieldsLoader.load();
   }
 
   async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
+      const isSyncOperation = OPERATION_REGISTRY.some(op => op.key === type && op.isSyncType);
+      if (isSyncOperation) {
+        const flags = await this.invokeCommand<RcConfigOption[]>('get_operation_flags', {
+          operation: type,
+        });
+        return flags ?? [];
+      }
       const command = `get_${type}_flags`;
       const flags = await this.invokeCommand<RcConfigOption[]>(command);
       return flags ?? [];
@@ -117,36 +143,6 @@ export class FlagConfigService extends TauriBaseService {
    * Serve is unique because each serve type has different flags.
    */
   async loadServeFlagFields(serveType: string): Promise<RcConfigOption[]> {
-    const currentMap = this._serveFlagsMap();
-    if (currentMap.has(serveType)) return currentMap.get(serveType)!;
-
-    const existing = this.serveFlagsPromises.get(serveType);
-    if (existing) return existing;
-
-    const promise = (async () => {
-      try {
-        const flags = await this.invokeCommand<RcConfigOption[]>('get_serve_flags', {
-          serveType,
-        });
-        const staticFlags = staticFlagDefinitions['serve'] || [];
-        const finalFlags = [...staticFlags, ...(flags ?? [])];
-
-        this._serveFlagsMap.update(map => {
-          const next = new Map(map);
-          next.set(serveType, finalFlags);
-          return next;
-        });
-
-        return finalFlags;
-      } catch (error) {
-        console.error(`Error loading serve flags for ${serveType}:`, error);
-        return [];
-      } finally {
-        this.serveFlagsPromises.delete(serveType);
-      }
-    })();
-
-    this.serveFlagsPromises.set(serveType, promise);
-    return promise;
+    return this.getOrCreateServeFlagsLoader(serveType).load();
   }
 }

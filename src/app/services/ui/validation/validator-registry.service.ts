@@ -221,7 +221,7 @@ export class ValidatorRegistryService {
       watchDelayCtrl.setValidators(this.requiredIfWatchEnabled());
     }
 
-    const updatePathsValidity = () => {
+    const updatePathsValidity = (): void => {
       if (sourceCtrl instanceof FormArray) {
         sourceCtrl.controls.forEach((c: AbstractControl) =>
           c.get('path')?.updateValueAndValidity()
@@ -386,6 +386,67 @@ export class ValidatorRegistryService {
         };
       }
       return null;
+    };
+  }
+
+  createUniqueNameValidator(config: { existingNames: string[]; typeLabel?: string }): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const existing = (config.existingNames || []).map(e => e.toString().trim().toLowerCase());
+      const val = (control.value || '').toString().trim().toLowerCase();
+      return existing.some(e => e === val) ? { alreadyExists: true } : null;
+    };
+  }
+
+  createForbiddenCharsValidator(forbidden: string[] = ['/', ':']): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const val = (control.value || '').toString();
+      return forbidden.some(ch => val.includes(ch)) ? { forbiddenChars: true } : null;
+    };
+  }
+
+  createDuplicateNameValidator(config: {
+    getExisting: () => { name: string }[];
+    getEditingName: () => string | undefined;
+    getMode: () => 'create' | 'edit' | null;
+  }): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const name = control.value?.trim().toLowerCase();
+      if (!name) return null;
+      if (config.getMode() === 'edit' && config.getEditingName()?.toLowerCase() === name)
+        return null;
+      const exists = config.getExisting().some(b => b.name.toLowerCase() === name);
+      return exists ? { duplicateName: true } : null;
+    };
+  }
+
+  createDuplicateHostValidator(config: {
+    getExisting: () => { name: string; host: string; port: number | string }[];
+    getEditingName: () => string | undefined;
+  }): ValidatorFn {
+    return (group: AbstractControl): ValidationErrors | null => {
+      const hostCtrl = group.get('host');
+      const portCtrl = group.get('port');
+      if (!hostCtrl?.value || !portCtrl?.value) return null;
+
+      const editingName = config.getEditingName();
+      const exists = config
+        .getExisting()
+        .some(
+          b =>
+            b.name !== editingName &&
+            b.host === hostCtrl.value &&
+            Number(b.port) === Number(portCtrl.value)
+        );
+
+      const hasDup = hostCtrl.hasError('duplicateHost');
+      if (exists && !hasDup) {
+        hostCtrl.setErrors({ ...hostCtrl.errors, duplicateHost: true });
+      } else if (!exists && hasDup) {
+        const { duplicateHost: _, ...errors } = hostCtrl.errors || {};
+        hostCtrl.setErrors(Object.keys(errors).length ? errors : null);
+      }
+
+      return exists ? { duplicateHost: true } : null;
     };
   }
 }

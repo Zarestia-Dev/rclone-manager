@@ -1,0 +1,186 @@
+<header data-tauri-drag-region>
+  <button class="header-icon" type="button">
+    <mat-icon svgIcon="pen"></mat-icon>
+  </button>
+  <p class="header-title">
+    {{ 'nautilus.modals.multiRename.title' | translate: { count: data.items.length } }}
+  </p>
+  <button
+    matIconButton
+    type="button"
+    (click)="dismiss()"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main>
+  <!-- Mode Selection (Segment Control) -->
+  <mat-button-toggle-group
+    [value]="mode()"
+    (change)="setMode($event.value)"
+    name="multi-rename-mode"
+    class="segment-control"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle value="template">
+      {{ 'nautilus.modals.multiRename.templateMode' | translate }}
+    </mat-button-toggle>
+    <mat-button-toggle value="replace">
+      {{ 'nautilus.modals.multiRename.replaceMode' | translate }}
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <form [formGroup]="form">
+    <!-- Template Mode Inputs -->
+    @if (mode() === 'template') {
+      <div class="form-row">
+        <mat-form-field appearance="fill" class="flex-grow">
+          <mat-label>{{ 'nautilus.modals.multiRename.templateInput' | translate }}</mat-label>
+          <input
+            #templateInput
+            matInput
+            formControlName="template"
+            placeholder="[Original file name] - [Counter]"
+          />
+        </mat-form-field>
+        <button
+          matButton="outlined"
+          [cdkMenuTriggerFor]="placeholderMenu"
+          type="button"
+          class="add-placeholder-btn"
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+          {{ 'nautilus.modals.multiRename.addPlaceholder' | translate }}
+        </button>
+        <ng-template #placeholderMenu>
+          <div class="material-context-menu" cdkMenu>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              type="button"
+              (click)="insertPlaceholder('[Original file name]')"
+            >
+              {{ 'nautilus.modals.multiRename.original' | translate }}
+            </button>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              type="button"
+              (click)="insertPlaceholder('[Counter]')"
+            >
+              {{ 'nautilus.modals.multiRename.counter' | translate }}
+            </button>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              type="button"
+              (click)="insertPlaceholder('[Date]')"
+            >
+              {{ 'nautilus.modals.multiRename.date' | translate }}
+            </button>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              type="button"
+              (click)="insertPlaceholder('[Extension]')"
+            >
+              {{ 'nautilus.modals.multiRename.extension' | translate }}
+            </button>
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Counter Config Panel (visible only when [Counter] is in template) -->
+      @if (showCounterConfig()) {
+        <div class="counter-config-grid">
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'nautilus.modals.multiRename.counterStart' | translate }}</mat-label>
+            <input matInput type="number" formControlName="counterStart" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'nautilus.modals.multiRename.counterStep' | translate }}</mat-label>
+            <input matInput type="number" formControlName="counterStep" min="1" />
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'nautilus.modals.multiRename.counterPadding' | translate }}</mat-label>
+            <mat-select formControlName="counterPadding">
+              <mat-option [value]="1">1 (e.g. 1)</mat-option>
+              <mat-option [value]="2">2 (e.g. 01)</mat-option>
+              <mat-option [value]="3">3 (e.g. 001)</mat-option>
+              <mat-option [value]="4">4 (e.g. 0001)</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+    }
+
+    <!-- Find & Replace Mode Inputs -->
+    @if (mode() === 'replace') {
+      <div class="form-row-grid">
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'nautilus.modals.multiRename.findLabel' | translate }}</mat-label>
+          <input matInput formControlName="findText" placeholder="text to find" />
+        </mat-form-field>
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'nautilus.modals.multiRename.replaceLabel' | translate }}</mat-label>
+          <input matInput formControlName="replaceWith" placeholder="replacement text" />
+        </mat-form-field>
+      </div>
+      <mat-checkbox formControlName="caseSensitive">
+        {{ 'nautilus.modals.multiRename.caseSensitive' | translate }}
+      </mat-checkbox>
+    }
+  </form>
+
+  <!-- Preview Table -->
+  <div class="preview-container">
+    <div class="preview-header">
+      <span class="col-orig">{{ 'nautilus.modals.multiRename.original' | translate }}</span>
+      <span class="col-arrow"></span>
+      <span class="col-new">{{ 'nautilus.modals.multiRename.newName' | translate }}</span>
+    </div>
+    <cdk-virtual-scroll-viewport itemSize="34" class="preview-list">
+      @for (p of previewItems(); track p.item.entry.Path) {
+        <div class="preview-row" [class.has-error]="p.hasError">
+          <span class="col-orig" [title]="p.originalName">{{ p.originalName }}</span>
+          <span class="col-arrow">
+            <mat-icon svgIcon="right-arrow"></mat-icon>
+          </span>
+          <span class="col-new" [title]="p.newName">
+            {{ p.newName }}
+            @if (p.hasError) {
+              <mat-icon
+                svgIcon="circle-exclamation"
+                class="error-icon"
+                [title]="'Duplicate or invalid name'"
+              ></mat-icon>
+            }
+          </span>
+        </div>
+      }
+    </cdk-virtual-scroll-viewport>
+  </div>
+</main>
+
+<footer>
+  <button matButton="filled" class="accent" type="button" (click)="dismiss()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    matButton="filled"
+    class="primary"
+    type="button"
+    [disabled]="hasErrors() || !hasChanges() || isSaving()"
+    (click)="onConfirm()"
+  >
+    {{ 'nautilus.modals.multiRename.rename' | translate }}
+  </button>
+</footer>
+
+@if (isSaving()) {
+  <div class="loading-overlay">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+}

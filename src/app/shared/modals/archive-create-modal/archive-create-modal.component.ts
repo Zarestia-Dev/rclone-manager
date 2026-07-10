@@ -1,21 +1,15 @@
-import { Component, HostListener, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import {
-  FormsModule,
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { TranslateModule } from '@ngx-translate/core';
-import { FileBrowserItem } from '@app/types';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { FileBrowserItem, RcConfigOption } from '@app/types';
+import { staticFlagDefinitions } from '../../../services/remote/flag-definitions';
+import { SettingControlComponent } from '../../components/setting-control/setting-control.component';
 
 export interface ArchiveCreateData {
   items: FileBrowserItem[];
@@ -24,19 +18,18 @@ export interface ArchiveCreateData {
 
 @Component({
   selector: 'app-archive-create-modal',
-  standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
-    MatCheckboxModule,
-    TranslateModule,
+    TranslatePipe,
+    SettingControlComponent,
   ],
+  host: {
+    '(keydown.escape)': 'dismiss()',
+  },
   template: `
     <header data-tauri-drag-region>
       <button>
@@ -45,96 +38,79 @@ export interface ArchiveCreateData {
       <p class="header-title">
         {{ 'nautilus.modals.archiveCreate.title' | translate }}
       </p>
-      <button mat-icon-button (click)="dismiss()" [attr.aria-label]="'common.close' | translate">
+      <button matIconButton (click)="dismiss()" [attr.aria-label]="'common.close' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </header>
 
     <main>
       <form [formGroup]="form">
-        <mat-form-field>
-          <mat-label>{{ 'nautilus.modals.archiveCreate.filenameLabel' | translate }}</mat-label>
-          <input matInput formControlName="filename" />
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>{{ 'nautilus.modals.archiveCreate.formatLabel' | translate }}</mat-label>
-          <mat-select formControlName="format">
-            @for (format of formats; track format) {
-              <mat-option [value]="format">{{ format }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>{{ 'nautilus.modals.archiveCreate.prefixLabel' | translate }}</mat-label>
-          <input matInput formControlName="prefix" />
-          <mat-hint>{{ 'nautilus.modals.archiveCreate.prefixHint' | translate }}</mat-hint>
-        </mat-form-field>
-
-        <mat-checkbox formControlName="fullPath">
-          {{ 'nautilus.modals.archiveCreate.fullPathLabel' | translate }}
-        </mat-checkbox>
-        <div class="field-hint">
-          {{ 'nautilus.modals.archiveCreate.fullPathHint' | translate }}
+        <div class="setting-card">
+          <app-setting-control [option]="filenameOption()" formControlName="filename" />
         </div>
+
+        @for (opt of archiveOptions; track opt.Name) {
+          <div class="setting-card">
+            <app-setting-control [option]="opt" [formControlName]="opt.FieldName || opt.Name" />
+          </div>
+        }
       </form>
     </main>
 
     <footer>
-      <button mat-flat-button [disabled]="form.invalid" (click)="onConfirm()">
+      <button matButton="filled" [disabled]="form.invalid" (click)="onConfirm()">
         {{ 'nautilus.modals.archiveCreate.compress' | translate }}
       </button>
     </footer>
   `,
   styles: [
     `
-      .field-hint {
-        font-size: var(--font-size-sm);
-        color: var(--text-muted);
-        padding-left: var(--space-lg);
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
       }
 
-      mat-checkbox {
-        margin-top: var(--space-md);
+      .setting-card {
+        ::ng-deep .setting-item {
+          box-shadow: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+        }
       }
     `,
   ],
   styleUrl: '../../../styles/_shared-modal.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ArchiveCreateModalComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
+export class ArchiveCreateModalComponent {
   private readonly dialogRef = inject(MatDialogRef<ArchiveCreateModalComponent>);
+  private readonly translate = inject(TranslateService);
   public readonly data = inject<ArchiveCreateData>(MAT_DIALOG_DATA);
 
-  public form!: FormGroup;
-  public readonly formats = [
-    'zip',
-    'tar',
-    'tar.gz',
-    'tar.bz2',
-    'tar.xz',
-    'tar.zst',
-    'tar.br',
-    'tar.sz',
-    'tar.mz',
-    'tar.lz',
-    'tar.lz4',
-  ];
+  public readonly form = new FormGroup({
+    filename: new FormControl(this.data.defaultName, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    format: new FormControl('zip', { nonNullable: true }),
+    prefix: new FormControl('', { nonNullable: true }),
+    fullPath: new FormControl(false, { nonNullable: true }),
+  });
 
-  ngOnInit(): void {
-    this.form = this.fb.group({
-      filename: [this.data.defaultName, [Validators.required]],
-      format: ['zip'],
-      prefix: [''],
-      fullPath: [false],
-    });
+  public readonly filenameOption = signal<RcConfigOption>(
+    this.buildFilenameOption(this.data.defaultName)
+  );
 
-    // Auto-update filename extension when format changes
-    this.form.get('format')?.valueChanges.subscribe(format => {
-      const currentFilename = this.form.get('filename')?.value || '';
-      const baseName = currentFilename.split('.')[0] || 'archive';
-      this.form.get('filename')?.setValue(`${baseName}.${format}`, { emitEvent: false });
+  public readonly archiveOptions = staticFlagDefinitions['archivecreate'];
+
+  constructor() {
+    this.form.controls.format.valueChanges.pipe(takeUntilDestroyed()).subscribe(format => {
+      const baseName = this.stripExtension(this.form.controls.filename.value);
+      const filename = `${baseName}.${format}`;
+
+      this.form.controls.filename.setValue(filename, { emitEvent: false });
+      this.filenameOption.set(this.buildFilenameOption(filename));
     });
   }
 
@@ -144,8 +120,26 @@ export class ArchiveCreateModalComponent implements OnInit {
     }
   }
 
-  @HostListener('keydown.escape')
   dismiss(): void {
     this.dialogRef.close();
+  }
+
+  private stripExtension(filename: string): string {
+    const lastDotIndex = filename.lastIndexOf('.');
+    return lastDotIndex > 0 ? filename.slice(0, lastDotIndex) : filename;
+  }
+
+  private buildFilenameOption(filename: string): RcConfigOption {
+    return {
+      Name: 'filename',
+      Help: this.translate.instant('nautilus.modals.archiveCreate.filenameDesc'),
+      Default: filename,
+      DefaultStr: filename,
+      Value: filename,
+      Type: 'string',
+      Advanced: false,
+      FieldName: this.translate.instant('nautilus.modals.archiveCreate.filenameLabel'),
+      Required: true,
+    };
   }
 }

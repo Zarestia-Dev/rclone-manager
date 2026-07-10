@@ -80,8 +80,7 @@
   }
 </div>
 
-<div class="layout-actions-blossom">
-  <!-- Blossom Panel (Visible on Hover) -->
+<div class="layout-actions-blossom" [class.open]="isBlossomOpen()">
   <div class="blossom-panel">
     <!-- Card Display Mode -->
     <button
@@ -126,6 +125,7 @@
     [matTooltip]="'generalOverview.layout.settings' | translate"
     matTooltipPosition="left"
     matTooltipShowDelay="500"
+    (click)="toggleBlossom($event)"
   >
     <mat-icon svgIcon="tune"></mat-icon>
   </button>

@@ -73,15 +73,22 @@
     "copying": "Kopyalanıyor",
     "moving": "Taşınıyor",
     "bisyncActive": "Çift Yönlü Senk. Aktif",
+    "checkActive": "Denetleme Etkin",
+    "cryptcheckActive": "Şifreli Denetim Etkin",
+    "deleteActive": "Silme Etkin",
+    "copyurlActive": "URL Kopyalama Etkin",
+    "archivecreateActive": "Arşiv Eylemi Etkin",
+    "archivecreating": "Arşivleniyor",
     "syncSummary": "Senkronize Ediliyor ({{count}})",
-    "syncWithProfile": "Senk: {{profiles}}",
-    "copyWithProfile": "Kopyala: {{profiles}}",
-    "moveWithProfile": "Taşı: {{profiles}}",
-    "bisyncWithProfile": "Çift Yönlü Senk: {{profiles}}",
     "toggleSync": "Senkronizasyonu Hızlı İşlem Olarak Değiştir",
     "toggleCopy": "Kopyalamayı Hızlı İşlem Olarak Değiştir",
     "toggleMove": "Taşımayı Hızlı İşlem Olarak Değiştir",
     "toggleBisync": "Çift Yönlü Senk. Hızlı İşlem Olarak Değiştir",
+    "toggleCheck": "Denetlemeyi Hızlı Eylem Olarak Değiştir",
+    "toggleCryptcheck": "Şifreli Denetimi Hızlı Eylem Olarak Değiştir",
+    "toggleDelete": "Silmeyi Hızlı Eylem Olarak Değiştir",
+    "toggleCopyurl": "URL Kopyalamayı Hızlı Eylem Olarak Değiştir",
+    "toggleArchivecreate": "Arşivi Hızlı Eylem Olarak Değiştir",
     "successStart": "{{remote}} ({{profile}}) için {{type}} başarıyla başlatıldı",
     "failedStart": "{{remote}} için {{type}} başlatılamadı: {{error}}"
   },
@@ -134,6 +141,10 @@
     "copy": "Kopyala",
     "move": "Taşı",
     "bisync": "Bisync",
+    "check": "Denetle",
+    "delete": "Sil",
+    "copyurl": "URL Kopyala",
+    "archivecreate": "Arşivle",
     "serve": "Sun",
     "start": "Başlat",
     "stop": "Durdur"
@@ -214,7 +225,9 @@
       "categories": {
         "app": "Uygulama Ayarları",
         "rclone": "Rclone Seçenekleri"
-      }
+      },
+      "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
+      "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
     }
   },
   "rcloneUpdate": {
@@ -710,10 +723,12 @@
     },
     "transferActivity": {
       "title": "Transfer Etkinliği",
+      "titleCheck": "Denetleme Etkinliği",
       "resetStats": "Etkinlikleri Sıfırla",
       "tabs": {
         "active": "Aktif ({{count}})",
-        "recent": "Son ({{count}})"
+        "recent": "Son ({{count}})",
+        "recentCheck": "Denetlenen ({{count}})"
       },
       "table": {
         "size": "Boyut",
@@ -728,13 +743,37 @@
         "transferError": "Transfer hatası",
         "transferCompleted": "Transfer tamamlandı",
         "preparing": "Hazırlanıyor",
-        "finalizing": "Tamamlanıyor..."
+        "finalizing": "Tamamlanıyor...",
+        "missingDst": "Hedefte Eksik",
+        "missingSrc": "Kaynakta Eksik",
+        "differ": "Dosya içerikleri farklı",
+        "error": "Hata"
+      },
+      "actions": {
+        "resolveToDst": "Hedefe Kopyala",
+        "resolveToSrc": "Kaynağa Kopyala",
+        "resolveOverwrite": "Dosya Uyuşmazliğini Gider",
+        "resolveOverwriteTitle": "Dosya Uyuşmazliğini Gider",
+        "resolveOverwriteMessage": "'{{name}}' dosyası hem kaynakta hem de hedefte mevcut ancak içerikleri farklı. Hedefteki dosyanın üzerine kaynak dosyasının yazılmasını istiyor musunuz?",
+        "overwriteDst": "Hedefin Üzerine Yaz",
+        "copyUrl": "URL Kopyala",
+        "download": "Dosyayı İndir",
+        "successSync": "Dosya senkronizasyon işlemi başarıyla başlatıldı",
+        "failSync": "Dosya senkronizasyonu başlatılamadı: {{error}}",
+        "successCopyUrl": "İndirme bağlantısı panoya kopyalandı",
+        "failCopyUrl": "İndirme URL'si oluşturulamadı",
+        "successDownload": "Dosya başarıyla indirildi",
+        "failDownload": "Dosya indirilemedi",
+        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı",
+        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}"
       },
       "empty": {
         "noActive": "Aktif transfer yok",
         "activeHint": "Transferler bir işlem başladığında burada görünecektir",
         "noRecent": "Son tamamlanan transfer yok",
-        "recentHint": "Tamamlanan transferler işlemler bittiğinde burada görünecektir"
+        "recentHint": "Tamamlanan transferler işlemler bittiğinde burada görünecektir",
+        "noRecentCheck": "Denetlenen dosya yok",
+        "recentHintCheck": "Denetlenen dosyalar iş tamamlandığında burada görünecektir"
       },
       "time": {
         "daysAgo": "{{count}} gün önce",
@@ -769,6 +808,7 @@
     "settingControl": {
       "default": "Varsayılan: {{ value }}",
       "resetToDefault": "Varsayılana sıfırla",
+      "obscureValue": "Şifreyi rclone kullanarak gizle",
       "enabled": "Etkin",
       "disabled": "Devre Dışı",
       "addItem": "Öğe Ekle",
@@ -956,6 +996,17 @@
       "importDestPath": "Hedef Yolunu İçe Aktar",
       "importMountPoint": "Bağlama Noktasını İçe Aktar"
     },
+    "obscure": {
+      "title": "Şifreyi Gizle (Obscure)",
+      "description": "Düz metin şifreyi rclone'un standart karartma algoritmasını kullanarak gizler. Bu değeri yapılandırma dosyalarında veya parametrelerinde güvenle kullanabilirsiniz.",
+      "clearPlaceholder": "Düz Metin Şifre / Dizi",
+      "clearPlaceholderText": "Düz metin şifreyi girin",
+      "action": "Gizle",
+      "resultTitle": "Gizlenmiş Değer",
+      "resultHelp": "Kopyala düğmesine tıklayın ve bu değeri gereken yere yapıştırın.",
+      "applyToField": "Gizlenmiş değeri alana uygula",
+      "apply": "Alana Uygula"
+    },
     "remoteConfig": {
       "remoteName": "Uzak Bağlantı Adı",
       "remoteNameRequired": "Uzak bağlantı adı gerekli",
@@ -975,12 +1026,17 @@
       "jsonEditorInfo": {
         "sync": "Senkronizasyon/Kopyalama/Taşıma Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
         "bisync": "Çift Yönlü Senkronizasyon (Bisync) Profili: 'path1' ve 'path2' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
+        "check": "Denetleme Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ayarlayın ve tüm denetleme bayraklarını '_config' içine yerleştirin.",
         "mount": "Bağlama (Mount) Profili: 'fs' ve 'mountPoint' yollarını, 'mountType' değerini, profil düzeyindeki alanları ayarlayın ve tüm bağlama seçeneklerini 'mountOpt' içine yerleştirin.",
         "serve": "Sunma (Serve) Profili: 'fs' yolunu, 'serveType' değerini, profil düzeyindeki alanları ayarlayın ve tüm sunma seçeneklerini '_config' içine yerleştirin.",
         "vfs": "VFS Profili: Özel Sanal Dosya Sistemi önbellekleme, arabelleğe alma ve uyumluluk seçeneklerini anahtar-değer çiftleri olarak ayarlayın.",
         "filter": "Filtre Profili: Dosya filtreleme seçeneklerini, dahil etme/hariç tutma kurallarını anahtar-değer çiftleri olarak ayarlayın.",
         "backend": "Arka Uç Profili: Gelişmiş protokol seçeneklerini ve uzak bağlantıya özel bağlantı ayarlarını anahtar-değer çiftleri olarak yapılandırın.",
         "runtimeRemote": "Çalışma Zamanı Uzak Bağlantısı: Dinamik bağlantı geçersiz kılmalarını ve performans ayarlarını anahtar-değer çiftleri olarak ayarlayın."
+      },
+      "runtimeRemoteWarning": {
+        "title": "Çalışma Zamanı Uzak Bağlantı Ayarları",
+        "description": "Bu ayarlar, çalışma zamanında bu uzak bağlantıyla etkileşim kurarken bağlantı özelliklerini dinamik olarak geçersiz kılmak veya performans ince ayarlarını uygulamak için kullanılır. Kalıcı rclone.conf dosyasına kaydedilmezler. Bu alanlardan herhangi biri şifre veya API anahtarı gibi hassas değerler içeriyorsa, kaydetmeden önce rclone'un obscure algoritması kullanılarak manuel olarak gizlenmeleri gerekir; rclone, bu tür alanlar için düz metin değerleri kabul etmez."
       },
       "showAdvanced": "Gelişmiş Seçenekleri Göster",
       "hideAdvanced": "Gelişmiş Seçenekleri Gizle",
@@ -1009,6 +1065,11 @@
       "loadingServeOptions": "{{type}} seçenekleri yükleniyor...",
       "serveDescription": "Sunmak istediğiniz uzak yolu seçin. Tüm uzak bağlantıyı veya belirli bir klasörü sunabilirsiniz.",
       "operationDescription": "Bu işlem için kaynak, hedef ve otomatik başlatma seçeneklerini yapılandırın.",
+      "allowOtherWarning": {
+        "title": "FUSE Yapılandırması Gerekli",
+        "description": "'--allow-other' seçeneğini etkinleştirmek, bağlama hatalarını önlemek için ana sistemde /etc/fuse.conf dosyasının yapılandırılmasını gerektirir. Lütfen /etc/fuse.conf dosyasında 'user_allow_other' seçeneğinin etkinleştirildiğinden (yorum işaretinin kaldırıldığından) emin olun.",
+        "learnMore": "Rclone Forum Desteğinde Ara"
+      },
       "hideCommandOptions": "Komut Seçeneklerini Gizle",
       "showCommandOptions": "Komut Seçeneklerini Göster",
       "quickAdd": "Hızlı Ekle",
@@ -1042,6 +1103,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
       "enableScheduled": "Zamanlanmış {{type}} Etkinleştir",
       "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
@@ -1062,8 +1124,13 @@
       "enterSourcePath": "Kaynak yolunu girin...",
       "otherRemotes": "Diğer Uzak Bağlantılar",
       "enterDestPath": "Hedef yolunu girin...",
+      "enterDownloadUrl": "İndirme URL'sini girin (örneğin, https://example.com/file.zip)",
+      "copyUrlCustomFilenamePlaceholder": "Otomatik dosya adı (isteğe bağlı)",
+      "copyUrlFileSettingsWarning": "Özel dosya adları yukarıdaki her URL satırı için ayrı ayrı ayarlanır. Boş bırakılan satırlarda otomatik belirlenen dosya adları kullanılacaktır.",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "Bağlama hedefi yerel bir klasör olmalıdır",
       "completionNote": "Uzak yol tamamlama, uzak bağlantı oluşturulduktan sonra kullanılabilir.",
+      "coreCommandNote": "Bu işlem yerel aktarım API'si yerine rclone aracılığıyla bir CLI komutu olarak çalışır. Yerel API işlemleri gibi çalışmazlar. Bazı hatalar, performans sorunları, eksik ilerleme güncellemeleri (tahmini kalan süre, veri hızı gibi) oluşabilir.",
       "loading": "Yükleniyor...",
       "upFolder": "Üst Klasör",
       "noItemsFound": "Bu dizinde öğe bulunamadı.",
@@ -1341,7 +1408,6 @@
       "close": "Kapat",
       "directory": "Klasör",
       "file": "Dosya",
-      "copied": "Kopyalandı!",
       "copyToClipboard": "Panoya kopyala",
       "getLink": "Bağlantı Al",
       "removeLink": "Bağlantıyı Kaldır",
@@ -1436,6 +1502,11 @@
       "syncSettings": "Senkronizasyon Ayarları",
       "moveSettings": "Taşıma Ayarları",
       "bisyncSettings": "Çift Yönlü Senkronizasyon Ayarları",
+      "checkSettings": "Denetleme Ayarları",
+      "cryptcheckSettings": "Şifreli Denetim Ayarları",
+      "deleteSettings": "Silme Ayarları",
+      "copyUrlSettings": "URL Kopyalama Ayarları",
+      "archivecreateSettings": "Arşiv Ayarları",
       "sync": "Senkronizasyon",
       "syncDesc": "Tek yönlü senkronizasyon",
       "bisync": "Çift Yönlü Senkronizasyon",
@@ -1444,6 +1515,16 @@
       "moveDesc": "Dosyaları taşı (kaynaktan sil)",
       "copy": "Kopyalama",
       "copyDesc": "Dosyaları kopyala (kaynağı koru)",
+      "check": "Denetle",
+      "checkDesc": "Kaynak ve hedefin eşleştiğini denetle",
+      "cryptcheck": "Şifreli Denetim",
+      "cryptcheckDesc": "Şifreli uzak sunucuların bütünlüğünü doğrula",
+      "delete": "Sil",
+      "deleteDesc": "Filtrelerle eşleşen dosyaları kalıcı olarak sil",
+      "copyurl": "URL Kopyala",
+      "copyUrlDesc": "Dosyalar için genel indirme bağlantıları (URL) oluşturun",
+      "archivecreate": "Arşivle",
+      "archivecreateDesc": "Klasörleri/dosyaları bir arşive (Zip, Tar vb.) sıkıştırın",
       "default": "Varsayılan",
       "serveBehave": "Sunucu protokollerini yapılandırın (HTTP, FTP, vb.). Çoklu profil desteklenir.",
       "mountBehave": "Bağlama davranışını ve sanal dosya sistemi ayarlarını yapılandırın.",
@@ -1495,8 +1576,6 @@
       "nextAutomationTooltip": "Sonraki otomasyon",
       "remoteConfiguration": "Uzak Bağlantı Yapılandırması",
       "editConfiguration": "Yapılandırmayı Düzenle",
-      "toggleQuickAction": "{{label}}'ı hızlı eylem olarak değiştir",
-      "quickActionSelected": "{{label}}, hızlı eylem {{position}} olarak seçildi",
       "remoteActionQuickSelection": "Uzak bağlantı hızlı eylem seçimi"
     }
   },
@@ -1542,6 +1621,17 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "Hızlı Eylemleri Yapılandır",
+      "description": "{{name}} için uzak sunucu panelinde düğme olarak gösterilecek eylemleri seçin. En fazla {{max}} eylemi yıldızlayabilir ve sıralarını sürükleyerek değiştirebilirsiniz.",
+      "removeStar": "Hızlı eylemlerden kaldır",
+      "addStar": "Hızlı eylemlere ekle",
+      "cancel": "İptal",
+      "save": "Değişiklikleri Kaydet",
+      "moreButton": "Daha Fazla",
+      "moreButtonTooltip": "Diğer İşlemler",
+      "configureTooltip": "Hızlı Eylemleri Yapılandır"
+    },
     "jobDetail": {
       "title": "İş Detayları #{{id}}",
       "sections": {
@@ -1587,6 +1677,7 @@
       "aboutRclone": "Rclone Hakkında",
       "credits": "Teşekkürler",
       "legal": "Yasal Bilgiler",
+      "donate": "Destek Ol",
       "website": "Web Sitesi",
       "wiki": "Wiki Sayfası",
       "reportIssues": "Hata Bildir",
@@ -1986,6 +2077,11 @@
         "bisync": "Çift Yönlü Senkronizasyon",
         "move": "Taşıma",
         "copy": "Kopyalama",
+        "check": "Denetle",
+        "delete": "Sil",
+        "copyurl": "URL Kopyala",
+        "archivecreate": "Arşivle",
+        "cryptcheck": "Şifreli Denetim",
         "filter": "Filtreleme",
         "vfs": "VFS",
         "backend": "Arka Uç",
@@ -2194,12 +2290,27 @@
       "archiveCreate": {
         "title": "Arşiv Oluştur",
         "filenameLabel": "Arşiv Dosya Adı",
-        "formatLabel": "Arşiv Formatı",
-        "prefixLabel": "Önek Yolu",
-        "prefixHint": "Ayarlandığında tam yolları geçersiz kılar",
-        "fullPathLabel": "Tam kaynak yollarını dahil et",
-        "fullPathHint": "Dizin yapısını kökten itibaren korur",
+        "filenameDesc": "Oluşturulacak sıkıştırılmış arşivin adını girin",
         "compress": "Sıkıştır"
+      },
+      "multiRename": {
+        "title": "{{count}} Dosyayı Yeniden Adlandır",
+        "templateMode": "Şablon kullanarak yeniden adlandır",
+        "replaceMode": "Metni bul ve değiştir",
+        "templateInput": "Şablon",
+        "addPlaceholder": "Ekle",
+        "findLabel": "Aranan metin",
+        "replaceLabel": "Yeni değer",
+        "caseSensitive": "Büyük/küçük harf duyarlı",
+        "counterStart": "Sayacı başlat",
+        "counterStep": "Artış",
+        "counterPadding": "Basamaklar (dolgu)",
+        "rename": "Yeniden Adlandır",
+        "original": "Orijinal ad",
+        "newName": "Yeni ad",
+        "counter": "Sayaç",
+        "date": "Tarih",
+        "extension": "Uzantı"
       }
     },
     "errors": {
@@ -2219,7 +2330,8 @@
       "minSelection": "Lütfen en az {{min}} öge seçin.",
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
       "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}",
-      "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi."
+      "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
+      "sendToFailed": "Dosya yöneticisi sağ tık menüsü güncellenemedi: {{error}}"
     },
     "contextMenu": {
       "open": "Aç",
@@ -2231,6 +2343,8 @@
       "refresh": "Yenile",
       "properties": "Özellikler",
       "reload": "Yeniden Yükle",
+      "addToSendTo": "Dosya Yöneticisi Sağ Tık Menüsüne Ekle",
+      "removeFromSendTo": "Dosya Yöneticisi Sağ Tık Menüsünden Kaldır",
       "copyLocation": "Konumu Kopyala",
       "selectAll": "Tümünü Seç",
       "removeBookmark": "Yer İmini Kaldır",
@@ -2258,7 +2372,10 @@
       "nextTab": "Sonraki Sekme",
       "previousTab": "Önceki Sekme",
       "toggleSplit": "Bölünmüş Görünüm",
-      "switchPane": "Panele Geç"
+      "switchPane": "Panele Geç",
+      "copyPublicLink": "Ortak Bağlantıyı Kopyala",
+      "createFolderWithItems": "Seçilenlerle Yeni Klasör...",
+      "renameMultiple": "Çoklu Yeniden Adlandır..."
     },
     "view": {
       "iconSize": "Simge Boyutu",
@@ -2278,7 +2395,10 @@
       "undoComplete": "Geri alma başarılı",
       "redoComplete": "Yineleme başarılı",
       "copyUrlStarted": "URL'den indiriliyor...",
-      "archiveCreateStarted": "Arşiv oluşturma başlatıldı..."
+      "getPublicLinkStarted": "Ortak bağlantı oluşturuluyor...",
+      "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
+      "sendToAdded": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsüne eklendi",
+      "sendToRemoved": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsünden kaldırıldı"
     }
   },
   "home": {
@@ -2309,7 +2429,6 @@
     },
     "errors": {
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
-      "updateActionsFailed": "Hızlı işlemler güncellenemedi",
       "openFailed": "{{name}} açılamadı",
       "resetSettingsFailed": "Uzak sunucu ayarları sıfırlanamadı",
       "deleteRemoteFailed": "Uzak sunucu silinemedi"
@@ -2600,8 +2719,6 @@
       "labels": {
         "unmounted": "Bağlı Olmayan",
         "mounted": "Bağlı",
-        "syncing": "Senkronize Ediliyor",
-        "offSync": "Senkronize Değil",
         "active": "Aktif",
         "inactive": "Pasif"
       }
@@ -2618,6 +2735,16 @@
         "stopMove": "Taşımayı Durdur",
         "startBisync": "Çift Yönlü Senkronizasyonu Başlat",
         "stopBisync": "Çift Yönlü Senkronizasyonu Durdur",
+        "startCheck": "Denetlemeyi Başlat",
+        "stopCheck": "Denetlemeyi Durdur",
+        "startCryptcheck": "Şifreli Denetimi Başlat",
+        "stopCryptcheck": "Şifreli Denetimi Durdur",
+        "startDelete": "Silmeyi Başlat",
+        "stopDelete": "Silmeyi Durdur",
+        "startCopyurl": "URL Kopyalamayı Başlat",
+        "stopCopyurl": "URL Kopyalamayı Durdur",
+        "startArchivecreate": "Arşivlemeyi Başlat",
+        "stopArchivecreate": "Arşivlemeyi Durdur",
         "startServe": "Sunucuyu Başlat",
         "stopServe": "Sunucuyu Durdur"
       },
@@ -2649,6 +2776,11 @@
     "copyCount": "Kopyala [{{active}}/{{total}}]",
     "moveCount": "Taşı [{{active}}/{{total}}]",
     "bisyncCount": "Çift Yönlü [{{active}}/{{total}}]",
+    "checkCount": "Denetle [{{active}}/{{total}}]",
+    "cryptcheckCount": "Şifreli Denetim [{{active}}/{{total}}]",
+    "deleteCount": "Sil [{{active}}/{{total}}]",
+    "copyurlCount": "URL Kopyala [{{active}}/{{total}}]",
+    "archivecreateCount": "Arşivle [{{active}}/{{total}}]",
     "serveCount": "Sunucu [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Yöneticisi",
     "tooltipTask": "1 İş",

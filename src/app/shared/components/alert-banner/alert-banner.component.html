@@ -1,0 +1,16 @@
+<mat-icon style="align-self: baseline" [svgIcon]="resolvedIcon()" />
+<div>
+  @if (title()) {
+    <strong>{{ title() }}</strong>
+  }
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+  <ng-content></ng-content>
+  @if (linkUrl()) {
+    <a [href]="linkUrl()" target="_blank">
+      {{ linkText() || linkUrl() }}
+      <mat-icon svgIcon="open-link" />
+    </a>
+  }
+</div>

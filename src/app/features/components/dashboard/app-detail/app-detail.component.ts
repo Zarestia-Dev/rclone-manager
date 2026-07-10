@@ -1,14 +1,23 @@
-import { NgClass, TitleCasePipe } from '@angular/common';
-import { Component, inject, computed, input, model, output, linkedSignal } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
+import {
+  Component,
+  inject,
+  computed,
+  input,
+  model,
+  output,
+  linkedSignal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { FormatTimePipe, FormatFileSizePipe } from '@app/pipes';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import {
   CompletedTransfer,
   GlobalStats,
@@ -41,44 +50,46 @@ import {
   CopyConfig,
   MoveConfig,
   BisyncConfig,
+  CheckConfig,
+  DeleteConfig,
+  CopyurlConfig,
+  ArchivecreateConfig,
   ProfileConfig,
-  JobStatsWithCompleted,
   StartJobEvent,
   StopJobEvent,
   ALL_PRIMARY_ACTIONS,
   SYNC_TYPES,
+  STANDARD_MODAL_SIZE,
+  MODE_DEFAULTS,
+  BACKEND_PROFILE_SUPPORTED_OPS,
 } from '@app/types';
-import {
-  JobInfoPanelComponent,
-  OperationControlComponent,
-  SettingsPanelComponent,
-  StatsPanelComponent,
-  TransferActivityPanelComponent,
-} from '../../../../shared/detail-shared';
+import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
+import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
+import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
+import { StatsPanelComponent } from '../../../../shared/detail-shared/stats-panel/stats-panel.component';
+import { TransferActivityPanelComponent } from '../../../../shared/detail-shared/transfer-activity-panel/transfer-activity-panel.component';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from 'src/app/services/ui/icon.service';
-import {
-  JobManagementService,
-  mapRawTransfer,
-} from 'src/app/services/operations/job-management.service';
+import { JobManagementService } from 'src/app/services/operations/job-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
+import { MatDialog } from '@angular/material/dialog';
+import { ActionSelectionModalComponent } from 'src/app/features/modals/action-selection-modal/action-selection-modal.component';
 
 @Component({
   selector: 'app-app-detail',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
     TitleCasePipe,
     MatIconModule,
     MatTooltipModule,
     MatDividerModule,
-    MatCardModule,
     MatButtonModule,
     MatTabsModule,
+    CdkMenuModule,
     OperationControlComponent,
     JobInfoPanelComponent,
     StatsPanelComponent,
@@ -86,7 +97,7 @@ import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
     TransferActivityPanelComponent,
     VfsControlPanelComponent,
     ServeCardComponent,
-    TranslateModule,
+    TranslatePipe,
   ],
   providers: [FormatFileSizePipe, FormatTimePipe],
   templateUrl: './app-detail.component.html',
@@ -113,11 +124,12 @@ export class AppDetailComponent {
   // --- Services ---
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly jobService = inject(JobManagementService);
-  readonly iconService = inject(IconService);
+  protected readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly formatFileSize = inject(FormatFileSizePipe);
   private readonly formatTime = inject(FormatTimePipe);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly dialog = inject(MatDialog);
 
   // Reactive i18n: force recomputation of translate.instant() calls on lang change.
   private readonly _lang = toSignal(this.translate.onLangChange, { initialValue: null });
@@ -135,14 +147,13 @@ export class AppDetailComponent {
     const profiles = this.profiles();
     const current = this._selectedProfiles()[op];
 
-    // If we have a saved selection that's still valid, use it
     if (current && profiles.some(p => p.name === current)) {
       return current;
     }
 
-    // Fallback to the first available profile (or 'default' if empty)
     return profiles[0]?.name ?? 'default';
   });
+
   protected readonly selectedRemote = computed(() => {
     const remote = this.remoteFacade.selectedRemote();
     if (!remote) throw new Error('[AppDetail] Selected remote is required');
@@ -190,7 +201,40 @@ export class AppDetailComponent {
     this.operationActiveState() ? (ACTION_ANIMATION_CLASS[this.currentOpType()] ?? '') : ''
   );
 
+  // CSS class for the icon container — single operation state class or empty.
+  protected readonly iconContainerClass = computed((): string => {
+    const remote = this.selectedRemote();
+    if (remote.status.mount.active) return 'mount';
+    if (remote.status.serve.active) return 'serve';
+    if (!this.isOperationsType() || !this.operationActiveState()) return '';
+    const op = this.selectedSyncOperation();
+    return op === 'check' || op === 'cryptcheck' ? 'check' : op;
+  });
+
+  // CSS class for operation-colored containers (profile selector, cron label).
+  protected readonly operationColorClass = computed((): string => {
+    const op = this.currentOpType();
+    return `operation-${op === 'cryptcheck' ? 'check' : op}`;
+  });
+
   // --- Derived: Sync Operations ---
+  readonly primarySyncOps = computed<SyncOperationType[]>(() => {
+    const remote = this.selectedRemote();
+    const syncTypesSet: ReadonlySet<string> = new Set(SYNC_TYPES);
+    const custom = (remote.syncActions ?? []).filter((a): a is SyncOperationType =>
+      syncTypesSet.has(a)
+    );
+    if (custom.length > 0) {
+      return custom.slice(0, 3);
+    }
+    return MODE_DEFAULTS.operations as SyncOperationType[];
+  });
+
+  readonly moreSyncOps = computed<SyncOperationType[]>(() => {
+    const primary = this.primarySyncOps();
+    return SYNC_TYPES.filter(type => !primary.includes(type));
+  });
+
   readonly syncOperations = computed<SyncOperationViewModel[]>(() =>
     SYNC_TYPES.map(type => ({
       type,
@@ -199,42 +243,46 @@ export class AppDetailComponent {
     }))
   );
 
-  readonly selectedSyncOpIndex = computed(() =>
-    this.syncOperations().findIndex(op => op.type === this.selectedSyncOperation())
+  readonly isMoreSelected = computed(() =>
+    this.moreSyncOps().includes(this.selectedSyncOperation())
   );
-  readonly selectedSyncOpCol = computed(() => this.selectedSyncOpIndex() % 2);
-  readonly selectedSyncOpRow = computed(() => Math.floor(this.selectedSyncOpIndex() / 2));
+
+  readonly isAnyMoreRunning = computed(() => {
+    const moreSet = new Set(this.moreSyncOps());
+    return this.syncOperations().some(op => moreSet.has(op.type) && op.isActive);
+  });
+
+  readonly moreButtonLabel = computed(() =>
+    this.translate.instant('modals.actionSelection.moreButton')
+  );
+
+  readonly moreButtonTooltip = computed(() => {
+    const base = this.translate.instant('modals.actionSelection.moreButtonTooltip');
+    if (!this.isMoreSelected()) return base;
+    const meta = OPERATION_METADATA[this.selectedSyncOperation()];
+    const label = meta?.typeLabel ? this.translate.instant(meta.typeLabel) : '';
+    return label ? `${base} · ${label}` : base;
+  });
 
   // --- Derived: Profiles ---
   readonly profiles = computed<{ name: string; label: string }[]>(() => {
     this._lang();
-    const configKey = REMOTE_CONFIG_KEYS[this.currentOpType() as keyof typeof REMOTE_CONFIG_KEYS];
-    if (!configKey) {
-      return [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
-    }
-    const profileMap = this.remoteSettings()[configKey as keyof RemoteSettings] as
-      | Record<string, unknown>
-      | undefined;
-    const names = profileMap ? Object.keys(profileMap) : [];
+    const profileMap = this.getProfileConfigMap(this.currentOpType());
+    const names = profileMap ? Object.keys(profileMap).sort() : [];
     return names.length > 0
       ? names.map(name => ({ name, label: name }))
       : [{ name: 'default', label: this.translate.instant('dashboard.appDetail.default') }];
   });
 
   readonly enrichedProfiles = computed(() => {
-    const configs = this.getProfileConfigMap(this.currentOpType()) as
-      | Record<
-          string,
-          {
-            app?: {
-              cronEnabled?: boolean;
-              cronExpression?: string | null;
-              watchEnabled?: boolean;
-              watchDelay?: number;
-            };
-          }
-        >
-      | undefined;
+    const configs = this.getProfileConfigMap<{
+      app?: {
+        cronEnabled?: boolean;
+        cronExpression?: string | null;
+        watchEnabled?: boolean;
+        watchDelay?: number;
+      };
+    }>(this.currentOpType());
 
     return this.profiles().map(p => {
       const cfg = configs?.[p.name];
@@ -280,47 +328,14 @@ export class AppDetailComponent {
     )
   );
 
-  readonly isDryRun = computed(() => {
-    const opType = this.currentOpType();
-    if (opType === 'bisync') {
-      const configKey = 'bisyncConfigs';
-      const profiles = this.remoteSettings()[configKey] as Record<string, BisyncConfig> | undefined;
-      const profile = this.selectedProfile();
-      const cfg = profiles?.[profile];
-      if (!cfg) return false;
-      return !!cfg.rclone?.dryRun;
-    } else if (['sync', 'copy', 'move'].includes(opType)) {
-      const configKey = REMOTE_CONFIG_KEYS[
-        opType as keyof typeof REMOTE_CONFIG_KEYS
-      ] as keyof RemoteSettings;
-      if (!configKey) return false;
-      const profiles = this.remoteSettings()[configKey] as
-        | Record<string, SyncConfig | CopyConfig | MoveConfig>
-        | undefined;
-      const profile = this.selectedProfile();
-      const cfg = profiles?.[profile];
-      const backendProfileName = cfg?.app?.backendProfile || 'default';
-
-      const backendConfigs = this.remoteSettings()['backendConfigs'] as
-        | Record<string, Record<string, any>>
-        | undefined;
-      const backendCfg = backendConfigs?.[backendProfileName];
-      return !!backendCfg?.['DryRun'];
-    }
-    return false;
-  });
+  readonly isDryRun = computed(() =>
+    this.getDryRunState(this.currentOpType(), this.selectedProfile())
+  );
 
   readonly isResync = computed(() => {
-    const opType = this.currentOpType();
-    if (opType === 'bisync') {
-      const configKey = 'bisyncConfigs';
-      const profiles = this.remoteSettings()[configKey] as Record<string, BisyncConfig> | undefined;
-      const profile = this.selectedProfile();
-      const cfg = profiles?.[profile];
-      if (!cfg) return false;
-      return !!cfg.rclone?.resync;
-    }
-    return false;
+    if (this.currentOpType() !== 'bisync') return false;
+    const profiles = this.getProfileConfigMap<BisyncConfig>('bisync');
+    return !!profiles?.[this.selectedProfile()]?.rclone?.resync;
   });
 
   // --- Derived: Live Data (from service) ---
@@ -329,10 +344,9 @@ export class AppDetailComponent {
   });
 
   readonly activeTransfers = computed<TransferFile[]>(() => {
-    const transferring =
-      (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)?.transferring ?? [];
+    const transferring = this.jobStats().transferring ?? [];
 
-    return (transferring as TransferFile[]).map(f => ({
+    return transferring.map(f => ({
       ...f,
       percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
       isError: false,
@@ -341,9 +355,7 @@ export class AppDetailComponent {
   });
 
   readonly completedTransfers = computed<CompletedTransfer[]>(() => {
-    const completed = (this.activeGroupJob()?.stats as JobStatsWithCompleted | undefined)
-      ?.completed;
-    return Array.isArray(completed) ? completed.map(mapRawTransfer) : [];
+    return this.jobStats().completed ?? [];
   });
 
   // --- Derived: Timing ---
@@ -372,12 +384,16 @@ export class AppDetailComponent {
     { profileName: string; cronExpression: string; humanReadable: string }[]
   >(() => {
     this._lang();
-    const configKey = REMOTE_CONFIG_KEYS[
-      this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
-    ] as keyof RemoteSettings;
-    const configs = this.remoteSettings()[configKey] as
-      | Record<string, SyncConfig | CopyConfig | MoveConfig | BisyncConfig>
-      | undefined;
+    const configs = this.getProfileConfigMap<
+      | SyncConfig
+      | CopyConfig
+      | MoveConfig
+      | BisyncConfig
+      | CheckConfig
+      | DeleteConfig
+      | CopyurlConfig
+      | ArchivecreateConfig
+    >(this.selectedSyncOperation());
     if (!configs) return [];
 
     return Object.entries(configs)
@@ -387,7 +403,7 @@ export class AppDetailComponent {
         const cronExpression = cfg.app.cronExpression ?? '';
         try {
           humanReadable = cronstrue(cronExpression, {
-            locale: getCronstrueLocale(this.translate.getCurrentLang()),
+            locale: getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US'),
           });
         } catch {
           console.warn(`Invalid cron expression for profile ${profileName}: ${cronExpression}`);
@@ -404,19 +420,20 @@ export class AppDetailComponent {
       : (schedules[0] ?? null);
   });
 
-  readonly hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
-
   readonly selectedWatcher = computed(() => {
-    const configKey = REMOTE_CONFIG_KEYS[
-      this.selectedSyncOperation() as keyof typeof REMOTE_CONFIG_KEYS
-    ] as keyof RemoteSettings;
-    const configs = this.remoteSettings()[configKey] as
-      | Record<string, SyncConfig | CopyConfig | MoveConfig | BisyncConfig>
-      | undefined;
+    const configs = this.getProfileConfigMap<
+      | SyncConfig
+      | CopyConfig
+      | MoveConfig
+      | BisyncConfig
+      | CheckConfig
+      | DeleteConfig
+      | CopyurlConfig
+      | ArchivecreateConfig
+    >(this.selectedSyncOperation());
     if (!configs) return null;
 
-    const selected = this.selectedProfile();
-    const profileName = selected || 'default';
+    const profileName = this.selectedProfile() || 'default';
     const cfg = configs[profileName];
     if (cfg?.app?.watchEnabled) {
       return {
@@ -426,8 +443,6 @@ export class AppDetailComponent {
     }
     return null;
   });
-
-  readonly hasWatcher = computed(() => this.selectedWatcher() !== null);
 
   // --- Derived: Settings Sections ---
   readonly operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
@@ -492,24 +507,16 @@ export class AppDetailComponent {
   });
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    const config = this.settingsPanelConfigMap().get(section.key);
-    if (!config) {
-      // Fallback to empty settings if section not found in map (should not happen)
-      return { section, settings: {} };
-    }
-    return config;
+    return this.settingsPanelConfigMap().get(section.key) ?? { section, settings: {} };
   }
 
   // --- Derived: Control Configs ---
   readonly controlConfigs = computed<OperationControlConfig[]>(() => {
     const type = this.currentOpType();
     const metadata = this.currentOpMetadata();
-    const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-    if (!configKey || !metadata) return [];
+    if (!metadata) return [];
 
-    const profiles = this.remoteSettings()[configKey as keyof RemoteSettings] as
-      | Record<string, ProfileConfig>
-      | undefined;
+    const profiles = this.getProfileConfigMap<ProfileConfig>(type);
     const entries = profiles ? Object.entries(profiles) : [];
 
     const all =
@@ -595,6 +602,7 @@ export class AppDetailComponent {
     operationColor: this.operationColor(),
     remoteName: this.selectedRemote().name,
     showHistory: this.completedTransfers().length > 0,
+    jobType: this.currentOpType(),
   }));
 
   // --- Public Methods ---
@@ -640,6 +648,31 @@ export class AppDetailComponent {
     });
   }
 
+  onConfigureActions(): void {
+    const remote = this.selectedRemote();
+    if (!remote) return;
+
+    const result$ = this.dialog
+      .open(ActionSelectionModalComponent, {
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        data: {
+          remoteName: remote.name,
+          primaryActions: remote.syncActions ?? [],
+          allowedKeys: SYNC_TYPES,
+        },
+        panelClass: 'mobile-sheet-dialog',
+      })
+      .afterClosed();
+
+    result$.subscribe((result: PrimaryActionType[] | undefined) => {
+      if (result === undefined) return;
+      this.remoteFacade
+        .updateRemoteSettings(remote.name, { syncActions: result })
+        .catch(error => console.error('Failed to update sync actions:', error));
+    });
+  }
+
   async onResetStats(): Promise<void> {
     const groupName = this.currentGroupName();
     try {
@@ -649,91 +682,75 @@ export class AppDetailComponent {
     }
   }
 
+  async onDeleteJob(): Promise<void> {
+    const job = this.activeGroupJob();
+    if (!job) return;
+    try {
+      await this.jobService.deleteJob(job.jobid);
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+    }
+  }
+
   async toggleDryRun(): Promise<void> {
     const opType = this.currentOpType();
     const profile = this.selectedProfile();
-    const settings = this.remoteSettings();
+    const remoteName = this.selectedRemote().name;
+    const newValue = !this.getDryRunState(opType, profile);
 
     if (opType === 'bisync') {
-      const configKey = 'bisyncConfigs';
-      const profiles = (settings[configKey] as Record<string, BisyncConfig>) ?? {};
+      const profiles = this.getProfileConfigMap<BisyncConfig>('bisync') ?? {};
       const existing = profiles[profile];
-      const currentDryRun = !!existing?.rclone?.dryRun;
-      const newDryRun = !currentDryRun;
-
-      const updatedProfiles = {
-        ...profiles,
-        [profile]: {
-          ...existing,
-          rclone: {
-            ...existing?.rclone,
-            dryRun: newDryRun,
-          },
+      await this.remoteFacade.updateRemoteSettings(remoteName, {
+        bisyncConfigs: {
+          ...profiles,
+          [profile]: { ...existing, rclone: { ...existing?.rclone, dryRun: newValue } },
         },
-      };
-
-      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
-        [configKey]: updatedProfiles,
       });
-    } else if (['sync', 'copy', 'move'].includes(opType)) {
-      const configKey = REMOTE_CONFIG_KEYS[
-        opType as keyof typeof REMOTE_CONFIG_KEYS
-      ] as keyof RemoteSettings;
-      if (!configKey) return;
+      return;
+    }
 
+    if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
       const profiles =
-        (settings[configKey] as Record<string, SyncConfig | CopyConfig | MoveConfig>) ?? {};
+        this.getProfileConfigMap<
+          | SyncConfig
+          | CopyConfig
+          | MoveConfig
+          | CheckConfig
+          | DeleteConfig
+          | CopyurlConfig
+          | ArchivecreateConfig
+        >(opType) ?? {};
       const cfg = profiles[profile];
       const backendProfileName = cfg?.app?.backendProfile || 'default';
-
-      const backendConfigs = (settings['backendConfigs'] as Record<string, any>) ?? {};
+      const backendConfigs =
+        (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
       const existingBackend = backendConfigs[backendProfileName] ?? {};
-      const currentDryRun = !!existingBackend['DryRun'];
-      const newDryRun = !currentDryRun;
 
-      const updatedBackend = {
-        ...existingBackend,
-        DryRun: newDryRun,
-      };
-
-      const updatedBackendConfigs = {
-        ...backendConfigs,
-        [backendProfileName]: updatedBackend,
-      };
-
-      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
-        backendConfigs: updatedBackendConfigs,
+      await this.remoteFacade.updateRemoteSettings(remoteName, {
+        backendConfigs: {
+          ...backendConfigs,
+          [backendProfileName]: { ...existingBackend, DryRun: newValue },
+        },
       });
     }
   }
 
   async toggleResync(): Promise<void> {
-    const opType = this.currentOpType();
+    if (this.currentOpType() !== 'bisync') return;
     const profile = this.selectedProfile();
-    const settings = this.remoteSettings();
+    const profiles = this.getProfileConfigMap<BisyncConfig>('bisync') ?? {};
+    const existing = profiles[profile];
 
-    if (opType === 'bisync') {
-      const configKey = 'bisyncConfigs';
-      const profiles = (settings[configKey] as Record<string, BisyncConfig>) ?? {};
-      const existing = profiles[profile];
-      const currentResync = !!existing?.rclone?.resync;
-      const newResync = !currentResync;
-
-      const updatedProfiles = {
+    await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
+      bisyncConfigs: {
         ...profiles,
         [profile]: {
           ...existing,
-          rclone: {
-            ...existing?.rclone,
-            resync: newResync,
-          },
+          rclone: { ...existing?.rclone, resync: !existing?.rclone?.resync },
         },
-      };
-
-      await this.remoteFacade.updateRemoteSettings(this.selectedRemote().name, {
-        [configKey]: updatedProfiles,
-      });
-    }
+      },
+    });
   }
 
   // --- Private Helpers ---
@@ -758,13 +775,35 @@ export class AppDetailComponent {
     return profileName ? !!op.activeProfiles?.[profileName] : !!op.active;
   }
 
-  private getProfileConfigMap(type: string): Record<string, unknown> | undefined {
+  private getProfileConfigMap<T = unknown>(type: string): Record<string, T> | undefined {
     const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
-    return configKey
-      ? (this.remoteSettings()[configKey as keyof RemoteSettings] as
-          | Record<string, unknown>
-          | undefined)
-      : undefined;
+    if (!configKey) return undefined;
+    return this.remoteSettings()[configKey as keyof RemoteSettings] as
+      | Record<string, T>
+      | undefined;
+  }
+
+  private getDryRunState(opType: string, profile: string): boolean {
+    if (opType === 'bisync') {
+      return !!this.getProfileConfigMap<BisyncConfig>('bisync')?.[profile]?.rclone?.dryRun;
+    }
+    if ((BACKEND_PROFILE_SUPPORTED_OPS as readonly string[]).includes(opType)) {
+      const profiles = this.getProfileConfigMap<
+        | SyncConfig
+        | CopyConfig
+        | MoveConfig
+        | CheckConfig
+        | DeleteConfig
+        | CopyurlConfig
+        | ArchivecreateConfig
+      >(opType);
+      const cfg = profiles?.[profile];
+      const backendProfileName = cfg?.app?.backendProfile || 'default';
+      const backendConfigs =
+        (this.remoteSettings()['backendConfigs'] as Record<string, Record<string, unknown>>) ?? {};
+      return !!backendConfigs[backendProfileName]?.['DryRun'];
+    }
+    return false;
   }
 
   private buildSettingsSections(
@@ -774,7 +813,7 @@ export class AppDetailComponent {
     group: 'operation' | 'shared'
   ): RemoteSettingsSection[] {
     const profiles = this.getProfileConfigMap(type);
-    const names = profiles ? Object.keys(profiles) : [];
+    const names = profiles ? Object.keys(profiles).sort() : [];
     return names.length > 0
       ? names.map(name => ({
           key: `${type}:${name}`,
@@ -790,6 +829,10 @@ export class AppDetailComponent {
     settings: RemoteSettings
   ): SettingsPanelConfig {
     const [key, profileName] = section.key.split(':');
+    // Note: `settings` is passed in (not read from this.remoteSettings()) so
+    // the panel config can be computed once for all sections via the
+    // settingsPanelConfigMap computed. We replicate the getProfileConfigMap
+    // lookup against the passed-in settings here.
     const configKey = REMOTE_CONFIG_KEYS[
       key as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
@@ -830,7 +873,6 @@ export class AppDetailComponent {
 
     const rclone = config.rclone || {};
     const resolvedSource = rclone.srcFs ?? rclone.path1 ?? rclone.fs;
-
     const resolvedDest = rclone.dstFs ?? rclone.path2 ?? rclone.mountPoint;
 
     const pathConfig: PathDisplayConfig =
@@ -855,6 +897,7 @@ export class AppDetailComponent {
             actionInProgress: (actionType as RemoteAction) ?? undefined,
             hasSource: !!resolvedSource,
             hasDestination: !!resolvedDest,
+            hideDestination: type === 'delete',
           };
 
     return {

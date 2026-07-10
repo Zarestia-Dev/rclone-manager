@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::state::automations::AutomationsCache;
 use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHANGED};
-use crate::utils::types::remotes::OperationConfigKey;
+use crate::utils::types::remotes::OperationType;
 
 /// **Save remote settings (per remote)**
 #[tauri::command]
@@ -64,7 +64,7 @@ pub async fn save_remote_settings(
 
     // Detect deleted profiles
     if let Some(ref existing_val) = existing {
-        for config_key in OperationConfigKey::ALL {
+        for config_key in OperationType::ALL {
             let key = config_key.as_str();
             if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
                 let new_configs = cleaned_settings.get(key).and_then(|v| v.as_object());
@@ -266,17 +266,27 @@ fn migrate_profiles_format(obj: &mut serde_json::Map<String, Value>) {
                     &[
                         "dryRun",
                         "resync",
+                        "resyncMode",
                         "checkAccess",
                         "checkFilename",
                         "maxDelete",
                         "force",
                         "checkSync",
+                        "compare",
+                        "conflictLoser",
+                        "conflictResolve",
+                        "conflictSuffix",
                         "createEmptySrcDirs",
                         "removeEmptyDirs",
+                        "downloadHash",
                         "filtersFile",
                         "ignoreListingChecksum",
+                        "maxLock",
+                        "noSlowHash",
+                        "slowHashSyncOnly",
+                        "recover",
                         "resilient",
-                        "workDir",
+                        "workdir",
                         "backupDir1",
                         "backupDir2",
                         "noCleanup",

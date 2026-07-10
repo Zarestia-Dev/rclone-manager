@@ -16,7 +16,7 @@ import {
 import { FormControl, FormGroup, FormArray } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
 
@@ -26,6 +26,7 @@ import {
   SharedProfileType,
   TranslationResult,
   ChipDef,
+  LINKED_PROFILE_TYPES,
 } from '@app/types';
 import { RcloneOptionTranslatePipe } from '@app/pipes';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
@@ -60,9 +61,12 @@ import {
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<
-  Signal<Record<string, { option: RcConfigOption; flagType: SharedProfileType }>>
->('JSON_EDITOR_LOOKUP_TABLE');
+export type JsonEditorLookupTable = Signal<
+  Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
+>;
+export const JSON_EDITOR_LOOKUP_TABLE = new InjectionToken<JsonEditorLookupTable>(
+  'JSON_EDITOR_LOOKUP_TABLE'
+);
 
 function toCamelCase(str: string): string {
   return str.replace(/^--?/, '').replace(/[-_]([a-z])/g, (_, char) => char.toUpperCase());
@@ -72,20 +76,19 @@ function toSnakeCase(str: string): string {
   return str.replace(/^--?/, '').replace(/-/g, '_');
 }
 
-const PROFILE_TYPES: SharedProfileType[] = ['sync', 'copy', 'move', 'bisync', 'mount', 'serve'];
-const NESTED_OPTIONS_TYPES: SharedProfileType[] = ['vfs', 'filter', 'backend'];
-const HAS_OPTIONS_GROUP_TYPES: SharedProfileType[] = [...PROFILE_TYPES, ...NESTED_OPTIONS_TYPES];
+const NESTED_OPTIONS_TYPES = new Set<SharedProfileType>(['vfs', 'filter', 'backend']);
+const HAS_OPTIONS_GROUP_TYPES = new Set<string>([...LINKED_PROFILE_TYPES, ...NESTED_OPTIONS_TYPES]);
 
 function isProfileType(type: string | null): boolean {
-  return !!type && PROFILE_TYPES.includes(type as SharedProfileType);
+  return !!type && LINKED_PROFILE_TYPES.has(type);
 }
 
 function isNestedOptionsType(type: string | null): boolean {
-  return !!type && NESTED_OPTIONS_TYPES.includes(type as SharedProfileType);
+  return !!type && NESTED_OPTIONS_TYPES.has(type as SharedProfileType);
 }
 
 function hasOptionsGroup(type: string | null): boolean {
-  return !!type && HAS_OPTIONS_GROUP_TYPES.includes(type as SharedProfileType);
+  return !!type && HAS_OPTIONS_GROUP_TYPES.has(type);
 }
 
 function buildRcloneCompletionSource(
@@ -207,7 +210,7 @@ function buildRcloneCompletionSource(
 
 @Component({
   selector: 'app-json-editor',
-  imports: [MatIconModule, MatTooltipModule, TranslateModule, RcloneOptionTranslatePipe],
+  imports: [MatIconModule, MatTooltipModule, TranslatePipe, RcloneOptionTranslatePipe],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -242,6 +245,8 @@ export class JsonEditorComponent {
         return 'wizards.remoteConfig.jsonEditorInfo.sync';
       case 'bisync':
         return 'wizards.remoteConfig.jsonEditorInfo.bisync';
+      case 'check':
+        return 'wizards.remoteConfig.jsonEditorInfo.check';
       case 'mount':
         return 'wizards.remoteConfig.jsonEditorInfo.mount';
       case 'serve':
@@ -256,8 +261,8 @@ export class JsonEditorComponent {
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly pathService = inject(PathService);
-  private readonly translateService = inject(TranslateService);
   private readonly sharedLookupTable = inject(JSON_EDITOR_LOOKUP_TABLE, { optional: true });
+  readonly translateService = inject(TranslateService);
 
   readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
 
@@ -1112,7 +1117,7 @@ export class JsonEditorComponent {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
         const type = this.flagType();
         const field = defs.find(f => getControlKey(f, type || undefined) === displayKey);
-        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? null;
+        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? latestRaw[controlKey] ?? null;
       } else {
         patch[controlKey] = latestRaw[controlKey];
       }
@@ -1264,7 +1269,7 @@ export class JsonEditorComponent {
 
     if (cb === ob) return true;
 
-    if (['sync', 'copy', 'move', 'bisync', 'backend'].includes(cb) && ob === 'main') {
+    if (['sync', 'copy', 'move', 'bisync', 'check', 'backend'].includes(cb) && ob === 'main') {
       return true;
     }
 

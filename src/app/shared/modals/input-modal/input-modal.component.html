@@ -42,10 +42,10 @@
   </div>
 
   <div class="modal-actions">
-    <button mat-flat-button class="primary" [disabled]="!form.valid" (click)="onConfirm()">
+    <button matButton="filled" class="primary" [disabled]="!form.valid" (click)="onConfirm()">
       {{ data.createLabel || ('shared.inputModal.create' | translate) }}
     </button>
-    <button mat-flat-button class="accent" (click)="onCancel()">
+    <button matButton="filled" class="accent" (click)="onCancel()">
       {{ 'common.cancel' | translate }}
     </button>
   </div>

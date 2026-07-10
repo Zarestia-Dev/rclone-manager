@@ -4,6 +4,7 @@ pub mod automation;
 pub mod bootstrap;
 
 use crate::core::lifecycle::startup::handle_startup;
+use crate::core::security::SafeEnvironmentManager;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::{APP_EVENT, SYSTEM_SETTINGS_CHANGED};
@@ -12,12 +13,15 @@ use log::{debug, error, info};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(feature = "tray")]
+use crate::core::tray::core::update_tray_menu;
+
 /// Handles async startup tasks using a phased approach
 pub async fn initialization(app_handle: tauri::AppHandle) {
-    debug!("🚀 Starting async startup tasks");
+    debug!("Starting async startup tasks");
 
     if let Err(e) = async_core_setup(&app_handle).await {
-        error!("🔥 Phase 0 Core Setup failed: {e}");
+        error!("Phase 0 Core Setup failed: {e}");
         let _ = app_handle.emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
@@ -26,7 +30,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
     }
 
     if let Err(e) = bootstrap::init_all(&app_handle).await {
-        error!("🔥 Phase 1 Bootstrap failed: {e}");
+        error!("Phase 1 Bootstrap failed: {e}");
         let _ = app_handle.emit(
             APP_EVENT,
             json!({ "status": "startup_failed", "message": e.clone() }),
@@ -34,23 +38,23 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         return;
     }
 
-    info!("🔍 Phase 2: Checking backend connectivity...");
+    info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
     if let Err(e) = initialize_caches(&app_handle).await {
-        error!("⚠️ Phase 3 Data hydration failed: {e}");
+        error!("Phase 3 Data hydration failed: {e}");
     }
 
-    info!("⏰ Phase 4: Starting services...");
+    info!("Phase 4: Starting services...");
 
     if let Err(e) = automation::initialize_automations(app_handle.clone()).await {
-        error!("❌ Failed to initialize automations: {e}");
+        error!("Failed to initialize automations: {e}");
     }
 
     #[cfg(feature = "updater")]
     crate::core::lifecycle::auto_updater::init_auto_updater(app_handle.clone());
 
-    info!("🎉 Phase 5: Applying runtime settings");
+    info!("Phase 5: Applying runtime settings");
     let settings_manager = app_handle.state::<AppSettingsManager>();
 
     if let Ok(settings) = settings_manager.get_all() {
@@ -68,10 +72,10 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         }
     }
 
-    info!("🚀 Phase 6: Running post-initialization tasks");
+    info!("Phase 6: Running post-initialization tasks");
     handle_startup(app_handle.clone()).await;
 
-    info!("🎉 Initialization complete");
+    info!("Initialization complete");
 
     crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 }
@@ -79,7 +83,7 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 /// Fully refreshes all system components after settings change or restore.
 #[tauri::command]
 pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
-    info!("🔄 Initiating full system refresh...");
+    info!("Initiating full system refresh...");
 
     let manager = app_handle.state::<AppSettingsManager>();
 
@@ -92,7 +96,6 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to reload backends: {e}"))?;
 
-    use crate::core::security::SafeEnvironmentManager;
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
         let _ = env_manager.init_with_stored_credentials(manager.inner());
     }
@@ -110,14 +113,13 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     )
     .await
     {
-        error!("⚠️ Failed to reload automations: {e}");
+        error!("Failed to reload automations: {e}");
     }
 
     apply_settings::apply_core_settings(&app_handle, &settings).await;
 
     #[cfg(feature = "tray")]
     {
-        use crate::core::tray::core::update_tray_menu;
         let _ = update_tray_menu(app_handle.clone()).await;
     }
 
@@ -132,13 +134,13 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
         )
         .ok();
 
-    info!("✅ System successfully refreshed");
+    info!("System successfully refreshed");
     Ok(())
 }
 
 /// Phase 3: Data - Hydrates caches and ensures defaults
 async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
-    info!("📊 Phase 3: Refreshing caches...");
+    info!("Phase 3: Refreshing caches...");
 
     let backend_manager = app_handle.state::<BackendManager>();
     if let Err(e) = backend_manager
@@ -146,20 +148,19 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
         .refresh_all(app_handle.clone())
         .await
     {
-        error!("❌ Failed to refresh backend caches: {e}");
+        error!("Failed to refresh backend caches: {e}");
         return Err(e);
     }
-    debug!("✅ Refreshed backend caches");
+    debug!("Refreshed backend caches");
 
     let manager = app_handle.state::<AppSettingsManager>();
     if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
-        error!("⚠️ Failed to seed alert defaults: {e}");
+        error!("Failed to seed alert defaults: {e}");
     } else {
-        // Reload the alert cache after seeding to ensure default rules are visible
         let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
         alert_cache.reload_rules(manager.inner()).await;
         alert_cache.reload_actions(manager.inner()).await;
-        info!("✅ Alert defaults seeded and cache reloaded");
+        info!("Alert defaults seeded and cache reloaded");
     }
 
     Ok(())
@@ -175,39 +176,40 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let backend_manager = app_handle.state::<BackendManager>();
 
     let active_name = backend_manager.get_active_name().await;
-    let client = app_handle.state::<RcloneState>().client.clone();
+    let transport = app_handle.state::<RcloneState>().transport.clone();
 
-    if active_name == "Local" {
+    if crate::rclone::backend::types::Backend::is_local_name(&active_name) {
         info!(
-            "⏭️ Skipping redundant Local backend connectivity check (already verified during engine startup)"
+            "Skipping redundant Local backend connectivity check (already verified during engine startup)"
         );
         backend_manager
             .set_runtime_status(
-                "Local",
+                crate::utils::constants::LOCAL_BACKEND_NAME,
                 crate::rclone::backend::runtime::RuntimeStatus::Connected,
             )
             .await;
-    } else if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity_or_fallback(
+    } else if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
         &backend_manager,
-        &client,
+        &*transport,
         BACKEND_CONNECTIVITY_TIMEOUT,
     )
     .await
     {
-        error!("🔥 Critical startup failure: {e}");
+        error!("Critical startup failure: {e}");
     }
 
     let app_handle_clone = app_handle.clone();
     tokio::spawn(async move {
         let backend_manager = app_handle_clone.state::<BackendManager>();
-        let client = app_handle_clone.state::<RcloneState>().client.clone();
-        crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &client).await;
+        let transport = app_handle_clone.state::<RcloneState>().transport.clone();
+        crate::rclone::backend::connectivity::check_other_backends(&backend_manager, &*transport)
+            .await;
     });
 }
 
 /// Phase 0: Core Setup - Initializes logging, i18n, security, and runs migrations asynchronously.
 async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
-    info!("⚙️ Phase 0: Initializing core services...");
+    info!("Phase 0: Initializing core services...");
 
     let app_paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
     let rcman_manager = app_handle.state::<AppSettingsManager>();
@@ -221,21 +223,19 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
         .get_all()
         .map_err(|e| format!("Failed to load settings during Phase 0: {e}"))?;
 
-    use crate::core::security::SafeEnvironmentManager;
     if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
-        debug!("🔐 Initializing environment manager credentials...");
+        debug!("Initializing environment manager credentials...");
         if let Err(e) = env_manager.init_with_stored_credentials(rcman_manager.inner()) {
             error!("Failed to initialize environment manager: {e}");
         }
     }
-
     crate::utils::i18n::init(app_paths.resource_dir);
     crate::utils::i18n::set_language(&settings.general.language);
 
-    debug!("📝 Initializing logging...");
+    debug!("Initializing logging...");
     crate::utils::logging::log::init_logging(&settings.developer.log_level, app_handle.clone())
         .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
-    info!("✅ Phase 0 Core Setup complete");
+    info!("Phase 0 Core Setup complete");
     Ok(())
 }

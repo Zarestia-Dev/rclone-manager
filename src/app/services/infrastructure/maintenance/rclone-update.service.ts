@@ -216,9 +216,9 @@ export class RcloneUpdateService extends TauriBaseService {
 
   async initialize(): Promise<void> {
     try {
-      const enabled = await this.invokeCommand<boolean>('is_updater_enabled');
-      this._isUpdaterEnabled.set(enabled);
-      if (!enabled) {
+      const isLibrclone = await this.invokeCommand<boolean>('is_librclone');
+      this._isUpdaterEnabled.set(!isLibrclone);
+      if (isLibrclone) {
         return;
       }
       await this.settings.initialize();

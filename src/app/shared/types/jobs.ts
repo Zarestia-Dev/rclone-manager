@@ -1,4 +1,7 @@
 import { JobActionType } from './operations';
+import { OPERATION_REGISTRY } from './operation-registry';
+import { Origin } from './origin';
+import type { CompletedTransfer } from './components';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 
@@ -42,29 +45,21 @@ export interface GlobalStats {
   transferring: TransferFile[];
   transfers: number;
   listed: number;
+  completed?: CompletedTransfer[];
   startTime?: string;
+  checkOutput?: {
+    differ?: string[];
+    missingOnDst?: string[];
+    missingOnSrc?: string[];
+    error?: string[];
+    status?: string;
+    success?: boolean;
+    hashType?: string;
+  };
 }
 
-export interface RawTransfer {
-  name?: string;
-  size?: number;
-  bytes?: number;
-  checked?: boolean;
-  error?: string;
-  group?: string;
-  started_at?: string;
-  completed_at?: string;
-  src_fs?: string;
-  dst_fs?: string;
-  srcFs?: string;
-  dstFs?: string;
-}
-
-export interface JobStatsWithCompleted extends GlobalStats {
-  completed?: RawTransfer[];
-}
-
-export const DEFAULT_JOB_STATS: GlobalStats = {
+// Frozen to prevent accidental mutation of the default state
+export const DEFAULT_JOB_STATS: Readonly<GlobalStats> = Object.freeze({
   bytes: 0,
   totalBytes: 0,
   speed: 0,
@@ -88,9 +83,8 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   transferTime: 0,
   transferring: [],
   listed: 0,
-};
-
-import { Origin } from './origin';
+  completed: [],
+});
 
 export interface JobInfo {
   jobid: number;
@@ -104,7 +98,6 @@ export interface JobInfo {
   error?: string;
   remote_name: string;
   stats: GlobalStats;
-  uploaded_files?: string[];
   group?: string;
   profile?: string;
   /** Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled") */
@@ -113,6 +106,7 @@ export interface JobInfo {
   backend_name?: string;
   /** True when the job was started with the --dry-run flag (no actual file changes). */
   dry_run?: boolean;
+  parent_job_id?: number;
 }
 
 export interface BatchMasterJob {
@@ -128,23 +122,17 @@ export interface BatchMasterJob {
   group?: string;
 }
 
-export const JOB_STATUS_BADGE_MAP: Record<string, string> = {
+export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   completed: 'p-primary',
   failed: 'p-warn',
   stopped: 'p-orange',
-};
+});
 
-export const JOB_ICON_MAP: Record<string, string> = {
-  sync: 'refresh',
-  copy: 'copy',
-  move: 'move',
-  bisync: 'right-left',
-  serve: 'serve',
-  mount: 'mount',
-  copy_url: 'copy',
-  delete: 'trash',
+export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
+  ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
+  copyurl: 'link',
   rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',
   upload: 'file-arrow-up',
-};
+});

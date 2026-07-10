@@ -1,6 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { Remote, RemoteStatus, RemoteOperationState, SyncOperationType } from '@app/types';
+import {
+  Remote,
+  RemoteStatus,
+  RemoteOperationState,
+  SyncOperationType,
+  SYNC_TYPES,
+  OPERATION_ICONS,
+} from '@app/types';
 
 @Injectable({ providedIn: 'root' })
 export class RemoteStatusService {
@@ -30,51 +37,33 @@ export class RemoteStatusService {
   }
 
   getSyncProfileCount(remote: Remote): number {
-    const s = remote.status;
-    return (
-      Object.keys(s.sync.activeProfiles || {}).length +
-      Object.keys(s.copy.activeProfiles || {}).length +
-      Object.keys(s.move.activeProfiles || {}).length +
-      Object.keys(s.bisync.activeProfiles || {}).length
-    );
+    return SYNC_TYPES.reduce((count, type) => {
+      const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
+      return count + Object.keys(state?.activeProfiles || {}).length;
+    }, 0);
   }
 
   getActiveSyncOperationIcon(remote: Remote): string {
-    const s = remote.status;
-    return s.sync.active
-      ? 'refresh'
-      : s.copy.active
-        ? 'copy'
-        : s.move.active
-          ? 'move'
-          : s.bisync.active
-            ? 'right-left'
-            : 'sync';
+    for (const type of SYNC_TYPES) {
+      const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
+      if (state?.active) {
+        return OPERATION_ICONS[type] || 'sync';
+      }
+    }
+    return 'sync';
   }
 
   getSyncOperationsTooltip(remote: Remote): string {
-    const s = remote.status,
-      details: string[] = [];
-    const sy = Object.keys(s.sync.activeProfiles || {});
-    if (sy.length)
-      details.push(
-        this.translate.instant('operations.syncWithProfile', { profiles: sy.join(', ') })
-      );
-    const cp = Object.keys(s.copy.activeProfiles || {});
-    if (cp.length)
-      details.push(
-        this.translate.instant('operations.copyWithProfile', { profiles: cp.join(', ') })
-      );
-    const mv = Object.keys(s.move.activeProfiles || {});
-    if (mv.length)
-      details.push(
-        this.translate.instant('operations.moveWithProfile', { profiles: mv.join(', ') })
-      );
-    const bi = Object.keys(s.bisync.activeProfiles || {});
-    if (bi.length)
-      details.push(
-        this.translate.instant('operations.bisyncWithProfile', { profiles: bi.join(', ') })
-      );
+    const details: string[] = [];
+    for (const type of SYNC_TYPES) {
+      const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
+      const profiles = Object.keys(state?.activeProfiles || {});
+      if (profiles.length) {
+        details.push(
+          this.translate.instant(`operations.${type}WithProfile`, { profiles: profiles.join(', ') })
+        );
+      }
+    }
     return details.length ? details.join(' • ') : this.translate.instant('operations.available');
   }
 
@@ -85,17 +74,14 @@ export class RemoteStatusService {
     return remote?.status[type as keyof RemoteStatus] as RemoteOperationState;
   }
 
-  getActiveSyncOperationType(remote: Remote): 'sync' | 'copy' | 'move' | 'bisync' | null {
-    const s = remote.status;
-    return s.sync.active
-      ? 'sync'
-      : s.copy.active
-        ? 'copy'
-        : s.move.active
-          ? 'move'
-          : s.bisync.active
-            ? 'bisync'
-            : null;
+  getActiveSyncOperationType(remote: Remote): SyncOperationType | null {
+    for (const type of SYNC_TYPES) {
+      const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
+      if (state?.active) {
+        return type;
+      }
+    }
+    return null;
   }
 
   getServeProfileCount(remote: Remote): number {
@@ -152,11 +138,11 @@ export class RemoteStatusService {
   hasActiveOperations(remote: Remote): boolean {
     return (
       this.isMounted(remote) ||
-      remote.status.sync.active ||
-      remote.status.copy.active ||
-      remote.status.move.active ||
-      remote.status.bisync.active ||
-      this.isServing(remote)
+      this.isServing(remote) ||
+      SYNC_TYPES.some(type => {
+        const state = remote.status[type as keyof RemoteStatus] as RemoteOperationState | undefined;
+        return !!state?.active;
+      })
     );
   }
 }

@@ -1,27 +1,39 @@
-import { Component, input, ChangeDetectionStrategy, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  inject,
+  ChangeDetectionStrategy,
+  computed,
+  effect,
+  untracked,
+} from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslateModule } from '@ngx-translate/core';
-import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
+import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
+import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
+import { TransferOperationsService } from './transfer-operations.service';
 
 @Component({
   selector: 'app-active-transfers-table',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [TransferOperationsService],
   imports: [
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
-    TranslateModule,
+    MatButtonModule,
+    TranslatePipe,
     FormatFileSizePipe,
+    FormatFsNamePipe,
     FormatTimePipe,
   ],
   template: `
     <div class="card-list-container">
-      @if (transfers().length > 0) {
-        @for (transfer of enrichedTransfers(); track transfer.name) {
+      @if (enrichedTransfers().length > 0) {
+        @for (transfer of enrichedTransfers(); track transfer.uniqueId) {
           <div class="card-row-item">
             <div class="card-header">
               <div class="card-info-left">
@@ -66,10 +78,169 @@ import { TransferFile } from '@app/types';
             </div>
 
             @if (transfer.srcFs || transfer.dstFs) {
-              <div class="card-paths">
-                <code class="path-pill src">{{ transfer.srcFs || '?' }}</code>
+              <div class="card-paths-v2">
+                <div class="path-group src">
+                  <code class="path-pill src" [title]="transfer.srcFs">{{
+                    (transfer.srcFs | formatFsName) || '?'
+                  }}</code>
+                  @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
+                  @let canDownloadSrc = ops.canDownloadSource(transfer, jobType());
+                  @let hasSrcActions = canCopySrc || canDownloadSrc;
+                  @if (hasSrcActions) {
+                    <div class="path-actions">
+                      @if (canCopySrc) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-src') ||
+                          ops.isFeaturesLoading(transfer.srcFs);
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlSource(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="loading ? 'refresh' : 'link'"
+                            [class.animate-spin]="loading"
+                          ></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadSrc) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadSource(transfer, transfer.uniqueId);
+                            $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
+                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-src')
+                                ? 'refresh'
+                                : 'download'
+                            "
+                            [class.animate-spin]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-src')
+                            "
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+
                 <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                <code class="path-pill dst">{{ transfer.dstFs || '?' }}</code>
+
+                <div class="path-group dst">
+                  <code class="path-pill dst" [title]="transfer.dstFs">{{
+                    (transfer.dstFs | formatFsName) || '?'
+                  }}</code>
+                  @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
+                  @let canDownloadDst = ops.canDownloadDst(transfer, jobType());
+                  @let hasDstActions = canCopyDst || canDownloadDst;
+                  @if (hasDstActions) {
+                    <div class="path-actions">
+                      @if (canCopyDst) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-dst') ||
+                          ops.isFeaturesLoading(transfer.dstFs);
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="loading ? 'refresh' : 'link'"
+                            [class.animate-spin]="loading"
+                          ></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadDst) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
+                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-dst')
+                                ? 'refresh'
+                                : 'download'
+                            "
+                            [class.animate-spin]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-dst')
+                            "
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            } @else if (remoteName()) {
+              <div class="card-paths-v2">
+                <div class="path-group dst">
+                  <code class="path-pill dst" [title]="remoteName()">{{
+                    remoteName() | formatFsName
+                  }}</code>
+                  @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
+                  @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
+                  @let hasFbActions = canCopyFb || canDownloadFb;
+                  @if (hasFbActions) {
+                    <div class="path-actions">
+                      @if (canCopyFb) {
+                        @let loading =
+                          ops.loadingUrlIds().has(transfer.uniqueId + '-fallback') ||
+                          ops.isFallbackFeaturesLoading(remoteName());
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.copyUrlFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
+                          [disabled]="loading"
+                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="loading ? 'refresh' : 'link'"
+                            [class.animate-spin]="loading"
+                          ></mat-icon>
+                        </button>
+                      }
+                      @if (canDownloadFb) {
+                        <button
+                          class="small-action-btn"
+                          (click)="
+                            ops.downloadFallback(transfer, transfer.uniqueId, remoteName());
+                            $event.stopPropagation()
+                          "
+                          [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
+                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                        >
+                          <mat-icon
+                            [svgIcon]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
+                                ? 'refresh'
+                                : 'download'
+                            "
+                            [class.animate-spin]="
+                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
+                            "
+                          ></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
             }
 
@@ -82,9 +253,10 @@ import { TransferFile } from '@app/types';
 
             <div class="card-footer">
               <div class="card-footer-left">
-                <span class="size-text">
-                  {{ transfer.bytes | formatFileSize }} / {{ transfer.size | formatFileSize }}
-                </span>
+                <span class="size-text"
+                  >{{ transfer.bytes | formatFileSize }} /
+                  {{ transfer.size | formatFileSize }}</span
+                >
               </div>
               <div class="card-footer-right">
                 @if (transfer.speed > 0) {
@@ -100,6 +272,12 @@ import { TransferFile } from '@app/types';
             </div>
           </div>
         }
+      } @else if (searchTerm()) {
+        <div class="empty-state">
+          <mat-icon svgIcon="search"></mat-icon>
+          <span>{{ 'shared.search.title' | translate }}</span>
+          <p>{{ 'shared.search.description' | translate }}</p>
+        </div>
       } @else {
         <div class="empty-state">
           <mat-icon svgIcon="download"></mat-icon>
@@ -112,9 +290,40 @@ import { TransferFile } from '@app/types';
 })
 export class ActiveTransfersTableComponent {
   readonly transfers = input.required<TransferFile[]>();
+  readonly jobType = input<string>('sync');
+  readonly remoteName = input<string>('');
+  readonly searchTerm = input('');
+
+  protected readonly ops = inject(TransferOperationsService);
+
+  private readonly remotesList = computed(
+    () => {
+      const remotes = new Set<string>();
+      for (const t of this.transfers()) {
+        if (t.srcFs) remotes.add(t.srcFs);
+        if (t.dstFs) remotes.add(t.dstFs);
+      }
+      return Array.from(remotes).sort();
+    },
+    {
+      equal: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
+    }
+  );
+
+  private readonly _preloadEffect = effect(() => {
+    const remotes = this.remotesList();
+    if (remotes.length > 0) {
+      untracked(() => this.ops.preloadFeatures(this.transfers()));
+    }
+  });
 
   protected readonly enrichedTransfers = computed(() => {
-    return this.transfers().map(transfer => ({
+    const search = this.searchTerm().toLowerCase().trim();
+    const items = this.transfers();
+
+    const filtered = search ? items.filter(t => t.name.toLowerCase().includes(search)) : items;
+
+    return filtered.map(transfer => ({
       ...transfer,
       isPreparing: transfer.percentage == null || isNaN(transfer.percentage),
       speedClass:
@@ -123,6 +332,7 @@ export class ActiveTransfersTableComponent {
           : transfer.speed > 1048576
             ? 'speed-medium'
             : 'speed-slow',
+      uniqueId: `${transfer.group || ''}-${transfer.name}`,
     }));
   });
 }

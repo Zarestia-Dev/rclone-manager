@@ -1,14 +1,19 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal, computed } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
-import { ExplorerRoot, FileBrowserItem, ORIGINS, RemoteFeatures } from '@app/types';
+import { ModalService } from 'src/app/services/ui/modal.service';
+import { ExplorerRoot, FileBrowserItem, RemoteFeatures } from '@app/types';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
-import { FileViewerService } from '../ui/file-viewer.service';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { MultiRenameModalComponent } from 'src/app/shared/modals/multi-rename-modal/multi-rename-modal.component';
+import { FileViewerService } from './file-viewer.service';
 
 @Injectable()
 export class NautilusActionsService {
@@ -21,6 +26,9 @@ export class NautilusActionsService {
   private readonly remoteFacadeSvc = inject(RemoteFacadeService);
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
+  private readonly modalService = inject(ModalService);
+  private readonly clipboard = inject(Clipboard);
+  private readonly dialog = inject(MatDialog);
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
 
@@ -42,7 +50,7 @@ export class NautilusActionsService {
     );
     const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
 
-    this.nautilusService.openProperties({
+    this.modalService.openProperties({
       remoteName,
       path,
       isLocal,
@@ -57,14 +65,14 @@ export class NautilusActionsService {
   }
 
   openShortcutsModal(): void {
-    this.nautilusService.openKeyboardShortcuts({ nautilus: true });
+    this.modalService.openKeyboardShortcuts({ nautilus: true });
   }
 
   openAboutModal(remote: ExplorerRoot): void {
     const normalized = remote.isLocal
       ? remote.name
       : this.pathSvc.normalizeRemoteForRclone(remote.name);
-    this.nautilusService.openRemoteAbout({
+    this.modalService.openRemoteAbout({
       displayName: remote.name,
       normalizedName: normalized,
       type: remote.type,
@@ -83,7 +91,7 @@ export class NautilusActionsService {
 
     try {
       const normalized = r.isLocal ? r.name : this.pathSvc.normalizeRemoteForRclone(r.name);
-      await this.remoteOps.cleanup(normalized, undefined, ORIGINS.FILEMANAGER);
+      await this.remoteOps.cleanup(normalized, undefined, 'filemanager');
       this.notificationService.showInfo(
         this.translate.instant('nautilus.notifications.trashEmptied')
       );
@@ -243,6 +251,110 @@ export class NautilusActionsService {
     if (remote) this.nautilusService.newNautilusWindow(remote.name, bookmark.entry.Path);
   }
 
+  readonly supportsPublicLink = computed(() => {
+    const item = this.contextMenuItem();
+    const remote = this.tabSvc.activeRemote();
+    const activeRemoteName = item?.meta.remote ?? remote?.name;
+    if (!activeRemoteName) return false;
+    const isLocal = item?.meta.isLocal ?? remote?.isLocal ?? true;
+    if (isLocal) return false;
+    const baseName = this.pathSvc.normalizeRemoteName(activeRemoteName);
+    const features = this.remoteFacadeSvc.featuresSignal(baseName)() as RemoteFeatures;
+    return !!features?.PublicLink;
+  });
+
+  async copyPublicLink(): Promise<void> {
+    const item = this.contextMenuItem();
+    const remote = this.tabSvc.activeRemote();
+    if (!item || !remote) return;
+
+    const remoteName = this.pathSvc.normalizeRemoteForRclone(item.meta.remote ?? remote.name);
+    this.notificationService.showInfo(
+      this.translate.instant('nautilus.notifications.getPublicLinkStarted')
+    );
+
+    try {
+      const result = await this.remoteOps.getPublicLink(remoteName, item.entry.Path);
+      if (result && result.url) {
+        const success = this.clipboard.copy(result.url);
+        if (success) {
+          this.notificationService.showSuccess(this.translate.instant('common.copied'));
+        } else {
+          this.notificationService.showError(this.translate.instant('common.copyFailed'));
+        }
+      } else {
+        this.notificationService.showError(
+          this.translate.instant('fileBrowser.properties.failGetLink')
+        );
+      }
+    } catch (err) {
+      console.error('Failed to get public link:', err);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.properties.failGetLink')
+      );
+    }
+  }
+
+  async createFolderWithSelectedItems(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return;
+
+    const items = this._getSelectedItemsList(this.tabSvc.activeFiles());
+    if (items.length === 0) return;
+
+    const existingNames = this.tabSvc.activeFiles().map(f => f.entry.Name);
+    const ref = await this.notificationService.openInput({
+      title: this.translate.instant('nautilus.modals.newFolder.title'),
+      label: this.translate.instant('nautilus.modals.newFolder.label'),
+      icon: 'folder',
+      placeholder: this.translate.instant('nautilus.modals.newFolder.placeholder'),
+      existingNames,
+    });
+
+    try {
+      const folderName = await firstValueFrom(ref.afterClosed());
+      if (!folderName) return;
+
+      const currentPath = this.tabSvc.activePath();
+      const newPath = this.pathSvc.joinPath(currentPath, folderName);
+      const normalizedRemote = this.pathSvc.normalizeRemoteForRclone(remote.name);
+
+      await this.remoteOps.makeDirectory(normalizedRemote, newPath, 'filemanager');
+      await this.fileOps.performFileOperations(items, remote, newPath, 'move');
+
+      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex() as 0 | 1);
+      this._refresh();
+    } catch (err) {
+      console.error('Failed to create folder with selected items', err);
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.createFolderFailed', {
+          name: 'selection',
+          error: (err as Error).message || String(err),
+        })
+      );
+    }
+  }
+
+  async openMultiRename(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) return;
+
+    const items = this._getSelectedItemsList(this.tabSvc.activeFiles());
+    if (items.length === 0) return;
+
+    const ref = this.dialog.open(MultiRenameModalComponent, {
+      data: { items, remote },
+      disableClose: true,
+      panelClass: 'mobile-sheet-dialog',
+    });
+
+    const changed = await firstValueFrom(ref.afterClosed());
+    if (changed) {
+      this.tabSvc.syncSelection(new Set(), this.tabSvc.activePaneIndex() as 0 | 1);
+      this._refresh();
+    }
+  }
+
   private _refresh(): void {
     const remote = this.tabSvc.activeRemote();
     if (remote) {
@@ -274,5 +386,13 @@ export class NautilusActionsService {
       );
     }
     return remote;
+  }
+
+  private _getSelectedItemsList(currentFiles: FileBrowserItem[]): FileBrowserItem[] {
+    const selection =
+      this.tabSvc.activePaneIndex() === 0
+        ? this.tabSvc.selectedItems()
+        : this.tabSvc.selectedItemsRight();
+    return currentFiles.filter((item: FileBrowserItem) => selection.has(this._itemKey(item)));
   }
 }

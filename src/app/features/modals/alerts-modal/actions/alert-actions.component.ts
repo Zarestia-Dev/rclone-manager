@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -16,7 +16,6 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
 @Component({
   selector: 'app-alert-actions',
-  standalone: true,
   imports: [
     MatTableModule,
     MatButtonModule,
@@ -24,7 +23,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
     MatTooltipModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
-    TranslateModule,
+    TranslatePipe,
     SearchContainerComponent,
   ],
   template: `
@@ -32,14 +31,14 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
       <!-- Toolbar -->
       <div class="toolbar">
         <button
-          mat-icon-button
+          matIconButton
           (click)="searchVisible.set(!searchVisible())"
           [matTooltip]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        <button mat-flat-button (click)="createAction()">
+        <button matButton="filled" (click)="createAction()">
           <mat-icon svgIcon="plus"></mat-icon>
           {{ 'alerts.createAction' | translate }}
         </button>
@@ -119,7 +118,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                 <div class="row-actions">
                   <!-- Test -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="testAction(action)"
                     [matTooltip]="'alerts.testAction' | translate"
                     [disabled]="alerts.testingActionIds().has(action.id)"
@@ -136,7 +135,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
                   <!-- Edit -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="editAction(action)"
                     [matTooltip]="'common.edit' | translate"
                   >
@@ -145,7 +144,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
 
                   <!-- Delete -->
                   <button
-                    mat-icon-button
+                    matIconButton
                     (click)="deleteAction(action)"
                     [matTooltip]="'common.delete' | translate"
                   >
@@ -297,8 +296,10 @@ export class AlertActionsComponent {
     this.dialog
       .open(AlertActionEditorComponent, {
         width: '600px',
+        maxHeight: '80vh',
         disableClose: false,
         data: { actionId: undefined },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async action => {
@@ -310,8 +311,10 @@ export class AlertActionsComponent {
     this.dialog
       .open(AlertActionEditorComponent, {
         width: '600px',
+        maxHeight: '80vh',
         disableClose: false,
         data: { actionId: action.id },
+        panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .subscribe(async updated => {
