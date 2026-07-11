@@ -1,5 +1,19 @@
 use std::path::{Path, PathBuf};
 
+/// Display label shown in the Windows context menu submenu header.
+const CONTEXT_MENU_LABEL: &str = if cfg!(feature = "web-server") {
+    "RClone Manager Headless"
+} else {
+    "RClone Manager"
+};
+
+/// Registry sub-key name — must differ between desktop and headless so both can coexist.
+const REGISTRY_KEY: &str = if cfg!(feature = "web-server") {
+    "RCloneManagerHeadless"
+} else {
+    "RCloneManager"
+};
+
 struct WindowsPaths {
     send_to: PathBuf,
 }
@@ -25,13 +39,13 @@ fn register_context_menu_entry(
     icon_path: &str,
     command: &str,
 ) -> Result<(), String> {
-    let parent_path = format!(r"{root_path}\shell\RCloneManager");
+    let parent_path = format!(r"{root_path}\shell\{REGISTRY_KEY}");
 
     let (parent_key, _) = hkcu
         .create_subkey(&parent_path)
         .map_err(|e| format!("Failed creating registry key '{parent_path}': {e}"))?;
     parent_key
-        .set_value("MUIVerb", &"RClone Manager")
+        .set_value("MUIVerb", &CONTEXT_MENU_LABEL)
         .map_err(|e| format!("Failed creating registry key '{parent_path}': {e}"))?;
     parent_key
         .set_value("Icon", &icon_path)
@@ -61,7 +75,7 @@ fn register_context_menu_entry(
 fn unregister_context_menu_entry(hkcu: &winreg::RegKey, root_path: &str, name: &str) {
     use winreg::enums::KEY_ALL_ACCESS;
 
-    let parent_path = format!(r"{root_path}\shell\RCloneManager");
+    let parent_path = format!(r"{root_path}\shell\{REGISTRY_KEY}");
     let Ok(parent_key) = hkcu.open_subkey_with_flags(&parent_path, KEY_ALL_ACCESS) else {
         return;
     };
@@ -74,7 +88,7 @@ fn unregister_context_menu_entry(hkcu: &winreg::RegKey, root_path: &str, name: &
     if shell_key.enum_keys().count() == 0 {
         drop(shell_key);
         drop(parent_key);
-        let _ = hkcu.delete_subkey_all(&parent_path);
+        let _ = hkcu.delete_subkey_all(format!(r"{root_path}\shell\{REGISTRY_KEY}"));
     }
 }
 
@@ -189,7 +203,7 @@ pub fn is_registered(name: &str) -> Result<bool, String> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
 
     let registered_under = |root_path: &str| {
-        hkcu.open_subkey(format!(r"{root_path}\shell\RCloneManager\shell\{name}"))
+        hkcu.open_subkey(format!(r"{root_path}\shell\{REGISTRY_KEY}\shell\{name}"))
             .is_ok()
     };
 

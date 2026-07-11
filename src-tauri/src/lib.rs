@@ -378,6 +378,12 @@ fn setup_app(
         initialization(app_handle_clone).await;
     });
 
+    #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+    {
+        use tauri_plugin_deep_link::DeepLinkExt;
+        app.deep_link().register_all()?;
+    }
+
     #[cfg(feature = "web-server")]
     {
         use crate::server::start_web_server;

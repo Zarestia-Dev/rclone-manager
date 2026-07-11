@@ -70,7 +70,7 @@ impl RcApiEngine {
 
         let mut kill_error: Option<EngineError> = None;
 
-        if self.is_running() && child.id().is_some() {
+        if child.id().is_some() {
             let state = app.state::<RcloneState>();
             let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 

@@ -107,6 +107,14 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
                 }
             }
         }
+
+        // Kill the OAuth subprocess if it's still alive.
+        let state = app_handle.state::<RcloneState>();
+        if let Some(mut child) = state.oauth_process.lock().await.take() {
+            info!("Killing OAuth process during shutdown");
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+        }
     }
 
     // Clear the in-memory config password so late-spawned processes can't read it.

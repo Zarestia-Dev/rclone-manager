@@ -320,7 +320,23 @@ pub async fn update_remote(
         return Err("Missing remote type".into());
     };
 
-    let mut body = json!({ "name": name, "parameters": parameters });
+    let mut params_map = parameters;
+    if !params_map.contains_key("config_template_file")
+        && !params_map.contains_key("config_template")
+    {
+        let paths_res = crate::core::paths::AppPaths::from_app_handle(&app);
+        if let Ok(paths) = paths_res {
+            let oauth_tmpl = paths.oauth_template_path();
+            if oauth_tmpl.exists() {
+                params_map.insert(
+                    "config_template_file".to_string(),
+                    Value::String(oauth_tmpl.to_string_lossy().to_string()),
+                );
+            }
+        }
+    }
+
+    let mut body = json!({ "name": name, "parameters": params_map });
 
     if let Some(ref extra) = opt {
         body["opt"] = extra.clone();

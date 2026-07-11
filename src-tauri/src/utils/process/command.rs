@@ -20,7 +20,8 @@ impl Command {
 
         cmd.stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .stdin(Stdio::piped());
+            .stdin(Stdio::piped())
+            .kill_on_drop(true);
 
         #[cfg(windows)]
         {

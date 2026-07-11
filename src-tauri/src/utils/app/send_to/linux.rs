@@ -58,8 +58,12 @@ pub fn register(
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
     let exec_path = if cfg!(feature = "flatpak") {
-        let app_id = std::env::var("FLATPAK_ID")
-            .unwrap_or_else(|_| crate::utils::app::platform::APP_ID.to_string());
+        let default_app_id = if cfg!(feature = "web-server") {
+            format!("{}.headless", crate::utils::app::platform::APP_ID)
+        } else {
+            crate::utils::app::platform::APP_ID.to_string()
+        };
+        let app_id = std::env::var("FLATPAK_ID").unwrap_or(default_app_id);
         format!("flatpak run {app_id}")
     } else {
         format!("\"{}\"", current_exe.to_string_lossy())
