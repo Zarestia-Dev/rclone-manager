@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-
-use log::{error, info};
 use tauri::{AppHandle, Emitter, command};
 
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
@@ -115,7 +113,7 @@ pub fn is_metered() -> bool {
     let connection = match Connection::system() {
         Ok(c) => c,
         Err(e) => {
-            error!("Failed to connect to D-Bus: {e}");
+            log::error!("Failed to connect to D-Bus: {e}");
             return false;
         }
     };
@@ -128,7 +126,7 @@ pub fn is_metered() -> bool {
     ) {
         Ok(p) => p,
         Err(e) => {
-            error!("NetworkManager D-Bus proxy error: {e}");
+            log::error!("NetworkManager D-Bus proxy error: {e}");
             return false;
         }
     };
@@ -136,7 +134,7 @@ pub fn is_metered() -> bool {
     match proxy.get_property::<u32>("Metered") {
         Ok(status) => matches!(status, 1 | 3),
         Err(e) => {
-            error!("Failed to read Metered property: {e}");
+            log::error!("Failed to read Metered property: {e}");
             false
         }
     }
@@ -150,7 +148,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
-            error!("Failed to connect to D-Bus: {e}");
+            log::error!("Failed to connect to D-Bus: {e}");
             return;
         }
     };
@@ -165,13 +163,13 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
     {
         Ok(p) => p,
         Err(e) => {
-            error!("Failed to create NetworkManager D-Bus proxy: {e}");
+            log::error!("Failed to create NetworkManager D-Bus proxy: {e}");
             return;
         }
     };
 
     let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
-    info!("Listening for NetworkManager 'Metered' property changes...");
+    log::info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
         log::debug!("'Metered' property changed!");
@@ -180,7 +178,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
         };
 
         if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-            error!("Failed to emit network status change event: {e}");
+            log::error!("Failed to emit network status change event: {e}");
         }
     }
 }
@@ -188,7 +186,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
 #[cfg(all(target_os = "linux", feature = "container"))]
 #[must_use]
 pub fn is_metered() -> bool {
-    info!(
+    log::info!(
         "is_metered: container mode does not support metered network detection, returning false."
     );
     false
@@ -198,7 +196,7 @@ pub fn is_metered() -> bool {
 pub async fn monitor_network_changes(app_handle: AppHandle) {
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-        error!("Failed to emit network status change event: {e}");
+        log::error!("Failed to emit network status change event: {e}");
     }
 }
 
@@ -206,7 +204,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
 pub fn is_metered() -> bool {
     // macOS does not support metered network detection.
     // Always return false.
-    info!("is_metered: macOS does not support metered network detection, returning false.");
+    log::info!("is_metered: macOS does not support metered network detection, returning false.");
     false
 }
 
@@ -239,13 +237,13 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
             is_metered: is_metered(),
         };
         if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
-            error!("Failed to emit network status change event: {e}");
+            log::error!("Failed to emit network status change event: {e}");
         }
         Ok(())
     });
 
     if let Err(e) = NetworkInformation::NetworkStatusChanged(&handler) {
-        error!("Failed to register network status changed handler: {e}");
+        log::error!("Failed to register network status changed handler: {e}");
     }
 }
 

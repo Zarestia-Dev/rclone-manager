@@ -955,11 +955,9 @@ button {
   align-items: center;
   justify-content: center;
 
-  .mat-button-wrapper,
-  > span:not(.mat-mdc-button-persistent-ripple):not(.mat-ripple-element) {
+  span {
     display: flex;
     flex-direction: row;
-    align-items: center;
     gap: var(--space-xs);
   }
 

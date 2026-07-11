@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.2.9] - 2026-07-10
+## [v0.2.9] - 2026-07-11
 
 ### Added
 - **Context Menu Integration**: Added native context menu file manager integration support across Windows, Linux, and macOS. Allows users to register paths from the File Browser to right-click files/folders in the system file manager and upload them directly to a remote. #80 (Check the wiki: https://hakanismail.info/zarestia/rclone-manager/docs/integrations)

@@ -2,9 +2,9 @@ name: CI (Lint & Compile Check)
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [master, dev]
   pull_request:
-    branches: [ master, dev ]
+    branches: [master, dev]
 
 jobs:
   validate:
@@ -14,6 +14,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-latest, macos-latest]
+    env:
+      # Skip the rclone/Go build + link check in CI. The build.rs will emit
+      # cargo:warning=... instead of panicking when Go or the rclone source
+      # tree isn't available. Clippy still type-checks the FFI module — it
+      # just doesn't actually link librclone.a. Release builds (which DO
+      # need rclone) should run in a separate workflow with Go + rclone
+      # checked out, NOT set this env var.
+      LIBRCLONE_SKIP_LINK_CHECK: '1'
 
     steps:
       - name: Checkout Code
@@ -35,7 +43,7 @@ jobs:
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: './src-tauri -> target'
 
       # 4. Install OS-specific system libraries (Linux only)
       - name: Install Linux dependencies
