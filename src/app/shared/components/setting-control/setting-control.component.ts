@@ -110,8 +110,16 @@ export class SettingControlComponent implements ControlValueAccessor {
     return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
   });
 
+  readonly isPasswordField = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return false;
+    if (opt.IsPassword || opt.Sensitive) return true;
+    const name = opt.Name.toLowerCase();
+    return SENSITIVE_KEYS.some(key => name.includes(key.toLowerCase()));
+  });
+
   readonly showObscureButton = computed(() => {
-    if (!this.isSensitiveField()) return false;
+    if (!this.isPasswordField()) return false;
     if (this.remoteState) {
       if (this.remoteState.activeStepType() === 'runtimeRemote') {
         return true;
