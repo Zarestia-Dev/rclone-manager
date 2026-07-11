@@ -4,22 +4,26 @@
     <!-- Define the SendToFolder directory structure under the root TARGETDIR -->
     <DirectoryRef Id="TARGETDIR">
       <Directory Id="AppDataFolder" Name="AppData">
-        <Directory Id="MicrosoftFolder" Name="Microsoft">
-          <Directory Id="WindowsFolder" Name="Windows">
+        <Directory Id="AppDataMicrosoftDir" Name="Microsoft">
+          <Directory Id="AppDataWindowsDir" Name="Windows">
             <Directory Id="SendToFolder" Name="SendTo" />
           </Directory>
         </Directory>
       </Directory>
     </DirectoryRef>
-
     <DirectoryRef Id="SendToFolder">
       <Component Id="CleanupSendToShortcuts" Guid="F90B1E63-8CA6-4DDF-9C1D-F8E3B6897EFA">
         <RemoveFile Id="RemoveSendToShortcuts" Name="* (RClone Manager).lnk" On="uninstall" />
-        
+
+        <!-- Clean up the intermediate directories we declared under AppDataFolder -->
+        <RemoveFolder Id="RemoveSendToFolder" On="uninstall" />
+        <RemoveFolder Id="RemoveAppDataWindowsDir" Directory="AppDataWindowsDir" On="uninstall" />
+        <RemoveFolder Id="RemoveAppDataMicrosoftDir" Directory="AppDataMicrosoftDir" On="uninstall" />
+
         <!-- Cleanup registry keys on uninstallation -->
         <RegistryKey Root="HKCU" Key="Software\Classes\*\shell\RCloneManager" ForceDeleteOnUninstall="yes" />
         <RegistryKey Root="HKCU" Key="Software\Classes\Directory\shell\RCloneManager" ForceDeleteOnUninstall="yes" />
-        
+
         <!-- KeyPath dummy value to make the component self-contained -->
         <RegistryValue Root="HKCU" Key="Software\Classes\*\shell\RCloneManager" Name="WixCleanupHelper" Value="1" Type="integer" KeyPath="yes" />
       </Component>
