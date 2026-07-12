@@ -3,6 +3,7 @@ import { Component, computed, input, inject, output, ChangeDetectionStrategy } f
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
@@ -58,6 +59,33 @@ interface DetailedOperationViewModel {
   profiles: ProfileChipViewModel[];
 }
 
+/** Per-operation profile picker entry used by the compact card's hover blossom. */
+interface ProfilePickerEntry {
+  operation: PrimaryActionType;
+  profile: string;
+  isActive: boolean;
+  isBusy: boolean;
+  startIcon: string;
+  stopIcon: string;
+  cssClass: string;
+  tooltip: string;
+}
+
+/** Per-operation group of profile picker entries (one group per operation). */
+interface ProfilePickerGroup {
+  operation: PrimaryActionType;
+  cssClass: string;
+  /** Single-button trigger tooltip when only one profile exists. */
+  triggerTooltip: string;
+  /** Icon to show on the trigger button. */
+  triggerIcon: string;
+  /** Whether the operation is currently active (any profile running). */
+  isActive: boolean;
+  /** Whether at least one in-flight action targets this operation. */
+  isBusy: boolean;
+  entries: ProfilePickerEntry[];
+}
+
 @Component({
   selector: 'app-remote-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,6 +94,7 @@ interface DetailedOperationViewModel {
     TitleCasePipe,
     MatIconModule,
     MatButtonModule,
+    MatMenuModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
     TranslatePipe,
@@ -113,8 +142,6 @@ export class RemoteCardComponent {
   readonly actionStates = computed(
     () => this.remoteFacade.actionInProgress()[this.remote().name] ?? []
   );
-
-  private readonly actionState = computed(() => this.actionStates()[0]?.type ?? null);
 
   private readonly anySyncActive = computed(() => SYNC_TYPES.some(op => this.isOpActive(op)));
 
@@ -179,6 +206,12 @@ export class RemoteCardComponent {
     this.actionStates().some(a => a.type === 'open')
   );
 
+  isFolderOpeningFor(op: PrimaryActionType, profile: string): boolean {
+    return this.actionStates().some(
+      a => a.type === 'open' && a.operationType === op && a.profileName === profile
+    );
+  }
+
   readonly openableFolders = computed<OpenableFolder[]>(() => {
     const currentMode = this.mode();
     const relevantOps: PrimaryActionType[] =
@@ -198,7 +231,9 @@ export class RemoteCardComponent {
       for (const profile of Object.keys(activeProfiles)) {
         for (const path of this.getProfileOpenPaths(op, profile)) {
           const local = this.pathService.isLocalPath(path);
-          const profileSuffix = profile === 'default' ? '' : ` · ${profile}`;
+          // Show the profile name in the tooltip regardless — all profiles
+          // are equal now, none is hidden behind a 'default' suppression.
+          const profileSuffix = ` · ${profile}`;
           folders.push({
             operation: op,
             profile,
@@ -244,6 +279,64 @@ export class RemoteCardComponent {
     }))
   );
 
+  /**
+   * Per-operation profile-picker groups for compact mode.
+   *
+   * For each action button that has multiple configured profiles, this produces
+   * a group with one entry per profile. The template uses this to render a
+   * `.folder-blossom`-style hover popup on the action button so the user can
+   * pick which profile to act on — there is no longer any "default profile"
+   * auto-pick.
+   *
+   * Operations with exactly one configured profile produce a single-entry group
+   * — the template renders those as a plain action button (no blossom).
+   */
+  readonly profilePickerGroups = computed<ProfilePickerGroup[]>(() => {
+    if (this.displayMode() !== 'compact') return [];
+    const buttons = this.actionButtons();
+    const groups: ProfilePickerGroup[] = [];
+    for (const btn of buttons) {
+      const op = btn.id as PrimaryActionType;
+      const configured = this.getConfiguredProfiles(op);
+      if (configured.length === 0) continue;
+      const meta = OPERATION_META[op];
+      const isActive = this.isOpActive(op);
+      // isBusy for the group trigger: true if ANY profile of this op is in progress.
+      const isBusy = this.actionStates().some(
+        a =>
+          a.type === op ||
+          (op === 'mount' && a.type === 'unmount') ||
+          (a.type === 'stop' && a.operationType === op)
+      );
+      const entries: ProfilePickerEntry[] = configured.map(profile => ({
+        operation: op,
+        profile,
+        isActive: this.isProfileActive(op, profile),
+        isBusy: this.isProfileActionInProgress(op, profile),
+        startIcon: meta?.startIcon ?? 'play',
+        stopIcon: op === 'mount' ? 'eject' : 'stop',
+        cssClass: meta?.cssClass ?? 'primary',
+        tooltip: this.getProfileChipTooltip(op, profile),
+      }));
+      groups.push({
+        operation: op,
+        cssClass: meta?.cssClass ?? 'primary',
+        triggerTooltip: btn.tooltip,
+        triggerIcon: btn.icon,
+        isActive,
+        isBusy,
+        entries,
+      });
+    }
+    return groups;
+  });
+
+  readonly profilePickerGroupByOp = computed<Record<string, ProfilePickerGroup>>(() => {
+    const map: Record<string, ProfilePickerGroup> = {};
+    for (const g of this.profilePickerGroups()) map[g.operation] = g;
+    return map;
+  });
+
   readonly detailedOperationViewModels = computed<DetailedOperationViewModel[]>(() =>
     this.detailedOperations().map(operation => ({
       operation,
@@ -274,14 +367,22 @@ export class RemoteCardComponent {
     const meta = OPERATION_META[type];
     if (!meta) return null;
 
-    const actionState = this.actionState();
+    // Compute inProgress for this specific operation type only (not global first-action).
+    const inProgress = this.actionStates().some(
+      a =>
+        a.type === type ||
+        (type === 'mount' && a.type === 'unmount') ||
+        (a.type === 'stop' && a.operationType === type)
+    );
     const isActive = !startOnly && this.isOpActive(type);
-    const inProgress = actionState === type || (!startOnly && actionState === 'stop');
     const isLoading = startOnly
-      ? actionState === type
+      ? this.actionStates().some(a => a.type === type)
       : type === 'mount' || type === 'serve'
         ? inProgress
         : inProgress && isActive;
+
+    const configuredCount = this.getConfiguredProfiles(type).length;
+    const hasNoProfiles = configuredCount === 0;
 
     const activeProfile = this.getFirstActiveProfile(type);
     return {
@@ -291,7 +392,7 @@ export class RemoteCardComponent {
         ? `${this.translate.instant(meta.stopTooltip)} (${activeProfile})`
         : this.translate.instant(meta.startTooltip),
       isLoading,
-      isDisabled: inProgress,
+      isDisabled: inProgress || hasNoProfiles,
       cssClass: isActive ? 'warn' : meta.cssClass,
     };
   }
@@ -350,26 +451,66 @@ export class RemoteCardComponent {
     const type = action.id as PrimaryActionType;
     if (!OPERATION_META[type]) return;
     const remoteName = this.remote().name;
+
+    // Stop case: if the operation is active, stop the first active profile.
+    // (For multi-profile stops, the user should click the per-profile blossom
+    // or the detailed-mode pill — those go through onProfilePickerClick.)
     if (this.isOpActive(type)) {
-      this.stopJob.emit({ type, remoteName, profileName: this.getFirstActiveProfile(type) });
-    } else {
-      this.startJob.emit({ type, remoteName });
+      const profileName = this.getFirstActiveProfile(type);
+      if (profileName) {
+        this.stopJob.emit({ type, remoteName, profileName });
+      }
+      return;
+    }
+
+    // Start case: if exactly one profile is configured, start it directly.
+    // If zero or multiple profiles are configured, do nothing here — the
+    // multi-profile case is handled by the hover blossom; the zero-profile
+    // case is a no-op (the action button should be disabled in that case).
+    const configured = this.getConfiguredProfiles(type);
+    if (configured.length === 1) {
+      this.startJob.emit({ type, remoteName, profileName: configured[0] });
     }
   }
 
+  /**
+   * Per-profile action click from the compact-mode hover blossom.
+   * Starts or stops the specific profile the user clicked.
+   */
+  onProfilePickerClick(operation: PrimaryActionType, profile: string, event: Event): void {
+    event.stopPropagation();
+    const remoteName = this.remote().name;
+    if (this.isProfileActive(operation, profile)) {
+      this.stopJob.emit({ type: operation, remoteName, profileName: profile });
+    } else {
+      this.startJob.emit({ type: operation, remoteName, profileName: profile });
+    }
+    (event.currentTarget as HTMLElement)?.blur();
+  }
+
   onProfileOpenInFiles(
-    _operationType: PrimaryActionType,
-    _profileName: string,
+    operationType: PrimaryActionType,
+    profileName: string,
     path: string,
     event: Event
   ): void {
     event.stopPropagation();
-    this.openInFiles.emit({ remoteName: this.remote().name, path });
+    this.openInFiles.emit({
+      remoteName: this.remote().name,
+      path,
+      profileName,
+      operationType,
+    });
   }
 
   onOpenFolderClick(folder: OpenableFolder, event: Event): void {
     event.stopPropagation();
-    this.openInFiles.emit({ remoteName: this.remote().name, path: folder.path });
+    this.openInFiles.emit({
+      remoteName: this.remote().name,
+      path: folder.path,
+      profileName: folder.profile,
+      operationType: folder.operation,
+    });
     (event.currentTarget as HTMLElement)?.blur();
   }
 
@@ -388,7 +529,10 @@ export class RemoteCardComponent {
 
   isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
     return this.actionStates().some(a => {
+      // If a profileName is stored, it must match exactly.
       if (a.profileName && a.profileName !== profile) return false;
+      // If no profileName is stored, only match if there is only one configured profile.
+      if (!a.profileName && this.getConfiguredProfiles(op).length > 1) return false;
       return a.type === 'stop' ? a.operationType === op : a.type === op;
     });
   }
@@ -451,8 +595,7 @@ export class RemoteCardComponent {
 
   private opStatus(op: PrimaryActionType): RemoteOperationState | RemoteServeState {
     return this.remote().status[op as keyof Omit<RemoteStatus, 'diskUsage'>] as
-      | RemoteOperationState
-      | RemoteServeState;
+      RemoteOperationState | RemoteServeState;
   }
 
   isOpActive(op: PrimaryActionType): boolean {
@@ -465,7 +608,7 @@ export class RemoteCardComponent {
 
   getFirstActiveProfile(op: PrimaryActionType): string {
     const profiles = this.getActiveProfiles(op);
-    return profiles ? (Object.keys(profiles)[0] ?? 'default') : 'default';
+    return profiles ? (Object.keys(profiles)[0] ?? '') : '';
   }
 
   getProfileTooltip(op: PrimaryActionType): string {

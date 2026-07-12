@@ -2103,6 +2103,8 @@
         "new": "Yeni Profil Adı",
         "save": "Kaydet",
         "cancel": "İptal",
+        "noProfiles": "Yapılandırılmış profil yok",
+        "placeholder": "Profil Seçin",
         "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
         "disabledReason": {
           "defaultProtected": "Varsayılan profil yeniden adlandırılamaz veya silinemez",

@@ -71,6 +71,7 @@ pub enum EngineStatus {
     Ready,
     Error { message: String },
     PasswordError,
+    AuthError { message: String },
     PathError,
     VersionError { version: String, required: String },
     Updating,
@@ -92,6 +93,9 @@ impl From<&crate::utils::types::state::EnginePhase> for EngineStatus {
                 required: required.clone(),
             },
             EnginePhase::FailedPassword => Self::PasswordError,
+            EnginePhase::FailedAuth { message } => Self::AuthError {
+                message: message.clone(),
+            },
             EnginePhase::FailedOther { message } => Self::Error {
                 message: message.clone(),
             },

@@ -81,6 +81,8 @@ pub enum EnginePhase {
     FailedVersion { version: String, required: String },
     /// Cannot start: config password missing or wrong.
     FailedPassword,
+    /// Cannot start: the RC API is reachable but rejected our credentials
+    FailedAuth { message: String },
     /// Cannot start: any other unrecoverable error.
     FailedOther { message: String },
 }
@@ -112,9 +114,14 @@ impl EnginePhase {
         match self {
             #[cfg(not(feature = "librclone"))]
             Self::FailedPath | Self::FailedVersion { .. } | Self::Updating => true,
-            Self::FailedPassword | Self::FailedOther { .. } => true,
+            Self::FailedPassword | Self::FailedAuth { .. } | Self::FailedOther { .. } => true,
             _ => false,
         }
+    }
+
+    #[must_use]
+    pub fn is_auth_failure(&self) -> bool {
+        matches!(self, Self::FailedPassword | Self::FailedAuth { .. })
     }
 }
 
@@ -134,6 +141,7 @@ impl std::fmt::Display for EnginePhase {
                 write!(f, "Version Error ({version} < {required})")
             }
             Self::FailedPassword => write!(f, "Password Error"),
+            Self::FailedAuth { message } => write!(f, "Auth Error: {message}"),
             Self::FailedOther { message } => write!(f, "Error: {message}"),
         }
     }

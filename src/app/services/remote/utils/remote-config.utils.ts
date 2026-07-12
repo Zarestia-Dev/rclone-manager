@@ -1,9 +1,4 @@
-import {
-  RcConfigQuestionResponse,
-  InteractiveFlowState,
-  RcConfigOption,
-  DEFAULT_PROFILE_NAME,
-} from '@app/types';
+import { RcConfigQuestionResponse, InteractiveFlowState, RcConfigOption } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import { PathGroup } from '../../infrastructure/platform/path.service';
 
@@ -226,16 +221,17 @@ export function mapFormToConfigProfile(
     cronExpression: formData['cronExpression'] ?? null,
     watchEnabled: formData['watchEnabled'] ?? false,
     watchDelay: formData['watchDelay'] ?? 5,
-    vfsProfile: formData['vfsProfile'] || DEFAULT_PROFILE_NAME,
-    filterProfile: formData['filterProfile'] || DEFAULT_PROFILE_NAME,
-    backendProfile: formData['backendProfile'] || DEFAULT_PROFILE_NAME,
+    vfsProfile: formData['vfsProfile'] || undefined,
+    filterProfile: formData['filterProfile'] || undefined,
+    backendProfile: formData['backendProfile'] || undefined,
   };
 
   if ('runtimeRemoteProfile' in formData) {
     const selectedProfile = String(formData['runtimeRemoteProfile'] || '').trim();
-    app['runtimeRemoteProfile'] = ctx.runtimeRemoteProfileNames?.includes(selectedProfile)
-      ? selectedProfile
-      : DEFAULT_PROFILE_NAME;
+    app['runtimeRemoteProfile'] =
+      selectedProfile && ctx.runtimeRemoteProfileNames?.includes(selectedProfile)
+        ? selectedProfile
+        : undefined;
   }
 
   const rclone: Record<string, any> = {};
@@ -354,10 +350,10 @@ export function mapConfigToFormProfile(
     cronExpression: appConfig['cronExpression'] ?? null,
     watchEnabled: appConfig['watchEnabled'] ?? false,
     watchDelay: appConfig['watchDelay'] ?? 5,
-    vfsProfile: appConfig['vfsProfile'] || 'default',
-    filterProfile: appConfig['filterProfile'] || 'default',
-    backendProfile: appConfig['backendProfile'] || 'default',
-    runtimeRemoteProfile: appConfig['runtimeRemoteProfile'] || 'default',
+    vfsProfile: appConfig['vfsProfile'] || 'Default',
+    filterProfile: appConfig['filterProfile'] || 'Default',
+    backendProfile: appConfig['backendProfile'] || 'Default',
+    runtimeRemoteProfile: appConfig['runtimeRemoteProfile'] || 'Default',
   };
 
   const mapping = OPERATION_PATH_MAPPINGS[type];

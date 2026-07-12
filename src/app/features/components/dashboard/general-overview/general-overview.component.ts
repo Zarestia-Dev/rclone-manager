@@ -267,7 +267,13 @@ export class GeneralOverviewComponent {
   // --- Serve actions ---
   stopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
-    if (remoteName) this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
+    if (remoteName)
+      this.stopJob.emit({
+        type: 'serve',
+        remoteName,
+        serveId: serve.id,
+        profileName: serve.profile || '',
+      });
   }
 
   handleServeCardClick(serve: ServeListItem): void {

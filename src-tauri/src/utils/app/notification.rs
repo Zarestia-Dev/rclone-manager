@@ -147,10 +147,19 @@ pub enum MountStage {
 #[serde(tag = "stage", content = "data", rename_all = "snake_case")]
 pub enum EngineStage {
     PasswordRequired,
+    /// RC API HTTP auth failed — rcd rejected `--rc-user`/`--rc-pass`.
+    /// Distinct from `PasswordRequired` (config-file encryption password).
+    AuthFailed {
+        error: String,
+    },
     BinaryNotFound,
-    ConnectionFailed { error: String },
+    ConnectionFailed {
+        error: String,
+    },
     Restarted,
-    RestartFailed { error: String },
+    RestartFailed {
+        error: String,
+    },
 }
 
 // Main Notification Event Enum
@@ -516,6 +525,11 @@ impl NotificationEvent {
                     title: t("notification.title.enginePasswordRequired"),
                     body: t("notification.body.enginePasswordRequired"),
                     level: LogLevel::Warn,
+                },
+                EngineStage::AuthFailed { error } => RenderedContent {
+                    title: t("notification.title.engineAuthFailed"),
+                    body: t_with_params("notification.body.engineAuthFailed", &[("error", error)]),
+                    level: LogLevel::Error,
                 },
                 EngineStage::BinaryNotFound => RenderedContent {
                     title: t("notification.title.engineBinaryNotFound"),

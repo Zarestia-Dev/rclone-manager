@@ -32,8 +32,14 @@
           [class]="backend.statusClass"
           [matTooltip]="backend.statusTooltip"
         >
-          <mat-icon [svgIcon]="backend.icon"></mat-icon>
-          <span class="status-dot" [class]="backend.statusClass"></span>
+          @if (switchingTo() === backend.name) {
+            <div class="connecting-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+          } @else {
+            <mat-icon [svgIcon]="backend.icon"></mat-icon>
+            <span class="status-dot" [class]="backend.statusClass"></span>
+          }
         </div>
 
         <div class="backend-info">
@@ -41,6 +47,11 @@
             <span class="name">{{ backend.name }}</span>
             @if (backend.isActive) {
               <span class="badge active">{{ 'modals.backend.active' | translate }}</span>
+            }
+            @if (switchingTo() === backend.name) {
+              <span class="badge connecting">
+                {{ 'modals.backend.connecting' | translate }}
+              </span>
             }
           </div>
           <div class="backend-subtitle">
@@ -202,6 +213,7 @@
                   type="text"
                   formControlName="host"
                   [placeholder]="'modals.backend.fields.host.placeholder' | translate"
+                  (input)="onConnectionFieldChange()"
                 />
                 @if (backendForm.get('host')?.hasError('required')) {
                   <mat-error>{{ 'common.required' | translate }}</mat-error>
@@ -220,6 +232,7 @@
                   type="number"
                   formControlName="port"
                   [placeholder]="'modals.backend.fields.port.placeholder' | translate"
+                  (input)="onConnectionFieldChange()"
                 />
                 @if (backendForm.get('port')?.hasError('required')) {
                   <mat-error>{{ 'common.required' | translate }}</mat-error>
@@ -232,7 +245,44 @@
                 }
               </mat-form-field>
             </div>
+
+            <!-- Inline Test Connection button — probes the rcd without saving -->
+            <button
+              type="button"
+              matButton="outlined"
+              class="test-form-btn"
+              (click)="testFormConnection()"
+              [disabled]="
+                testingForm() ||
+                backendForm.get('host')?.invalid ||
+                backendForm.get('port')?.invalid
+              "
+              [matTooltip]="'modals.backend.testFormConnection.tooltip' | translate"
+            >
+              @if (testingForm()) {
+                <mat-spinner diameter="18"></mat-spinner>
+                {{ 'modals.backend.testFormConnection.testing' | translate }}
+              } @else {
+                <mat-icon svgIcon="bolt"></mat-icon>
+                {{ 'modals.backend.testFormConnection.label' | translate }}
+              }
+            </button>
           </div>
+
+          <!-- Inline test result banner -->
+          @if (formTestResult(); as result) {
+            <div
+              class="form-test-result"
+              [class.success]="result.success"
+              [class.error]="!result.success"
+            >
+              <mat-icon [svgIcon]="result.success ? 'circle-check' : 'circle-xmark'"></mat-icon>
+              <span class="result-message">{{ result.message }}</span>
+              @if (result.version) {
+                <span class="result-version">v{{ result.version }}</span>
+              }
+            </div>
+          }
 
           <!-- Authentication Group -->
           <div class="auth-group">

@@ -304,6 +304,8 @@ export const OPERATION_META = Object.freeze(
 export interface OpenInFilesEvent {
   remoteName: string;
   path?: string;
+  profileName?: string;
+  operationType?: PrimaryActionType;
 }
 
 export interface OpenableFolder {
@@ -324,12 +326,7 @@ export interface OnboardingCard {
 }
 
 export type OnboardingAction =
-  | 'install-rclone'
-  | 'install-plugin'
-  | 'config-next'
-  | 'unlock'
-  | 'finish'
-  | 'next';
+  'install-rclone' | 'install-plugin' | 'config-next' | 'unlock' | 'finish' | 'next';
 
 export interface RemoteAboutData {
   remote: { displayName: string; normalizedName: string; type?: string };

@@ -79,7 +79,7 @@
       </button>
     }
 
-    @if (!this.data.isLocal || this.isHeadless()) {
+    @if (isDownloadVisible()) {
       <button
         matIconButton
         matTooltip="{{ 'fileBrowser.fileViewer.download' | translate: { name: fileName() } }}"

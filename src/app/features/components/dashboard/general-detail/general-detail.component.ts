@@ -190,19 +190,23 @@ export class GeneralDetailComponent {
 
     if (isActive) {
       const activeProfiles = status?.activeProfiles;
-      const profileName = activeProfiles
-        ? (Object.keys(activeProfiles)[0] ?? 'default')
-        : 'default';
+      const profileName = activeProfiles ? (Object.keys(activeProfiles)[0] ?? '') : '';
+      if (!profileName) return;
       this.stopJob.emit({
         type: actionKey,
         remoteName: remote.name,
         profileName,
       });
     } else {
-      this.startJob.emit({
-        type: actionKey,
-        remoteName: remote.name,
-      });
+      const configured = status?.configuredProfiles as string[] | undefined;
+      if (!configured || configured.length === 0) return;
+      if (configured.length === 1) {
+        this.startJob.emit({
+          type: actionKey,
+          remoteName: remote.name,
+          profileName: configured[0],
+        });
+      }
     }
   }
 

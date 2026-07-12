@@ -66,10 +66,9 @@ pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> 
         .switch_to(settings_manager.inner(), &name)
         .await?;
 
-    if backend.is_local {
-        info!("Starting Local engine after switching from remote backend...");
-        start_engine_if_not_running(&app).await;
-    }
+    crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
+    info!("Re-evaluating engine after backend switch to '{name}'");
+    start_engine_if_not_running(&app).await;
 
     configure_remote_backend(&app, &backend).await;
 
@@ -347,6 +346,46 @@ pub async fn test_backend_connection(
             os: None,
             config_path: None,
         }),
+    }
+}
+
+#[tauri::command]
+pub async fn test_backend_connection_details(
+    app: AppHandle,
+    host: String,
+    port: u16,
+    username: Option<String>,
+    password: Option<String>,
+) -> Result<TestConnectionResult, String> {
+    debug!("Testing unsaved connection details: {host}:{port}");
+
+    // Instantiate a temporary remote Backend object
+    let mut temp_backend = Backend::new_remote("temp_test_backend", host, port);
+    temp_backend.username = username;
+    temp_backend.password = password;
+
+    let transport = app.state::<RcloneState>().transport.clone();
+    let timeout = std::time::Duration::from_secs(5);
+    let runtime_info = temp_backend.fetch_runtime_info(&*transport, timeout).await;
+
+    if runtime_info.is_connected() {
+        Ok(TestConnectionResult {
+            success: true,
+            message: "Connection successful".to_string(),
+            version: runtime_info.version,
+            os: runtime_info.os,
+            config_path: runtime_info.config_path,
+        })
+    } else {
+        Ok(TestConnectionResult {
+            success: false,
+            message: runtime_info
+                .error_message()
+                .unwrap_or_else(|| "Connection failed".to_string()),
+            version: None,
+            os: None,
+            config_path: None,
+        })
     }
 }
 

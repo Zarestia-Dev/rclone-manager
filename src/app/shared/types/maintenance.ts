@@ -7,12 +7,14 @@ export interface RepairData {
     | 'mount_plugin'
     | 'config_corrupt'
     | 'backend_unreachable'
-    | 'rclone_password';
+    | 'rclone_password'
+    | 'rclone_auth';
   title?: string;
   message?: string;
   requiresPassword?: boolean;
   showStoreOption?: boolean;
   passwordDescription?: string;
+  authError?: string;
 }
 
 export type RepairMode = 'standard' | 'install' | 'config';

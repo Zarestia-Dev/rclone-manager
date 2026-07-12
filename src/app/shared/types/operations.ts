@@ -42,7 +42,7 @@ export type RemoteActionProgress = Record<string, ActionState[]>;
 export interface StartJobEvent {
   type: PrimaryActionType;
   remoteName: string;
-  profileName?: string;
+  profileName: string;
 }
 
 export interface StopJobEvent {

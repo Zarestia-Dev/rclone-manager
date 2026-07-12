@@ -9,7 +9,7 @@ pub enum TrayAction {
     StopProfile(OperationType, String, String),
 
     // Remote-level actions
-    Browse(String),
+    Browse(String, String),
     BrowseInApp(String),
 
     // Global actions
@@ -37,7 +37,7 @@ impl TrayAction {
                     format!("stop_{}_profile__{remote}__{profile}", op.as_str())
                 }
             }
-            Self::Browse(remote) => format!("browse_remote__{remote}"),
+            Self::Browse(remote, profile) => format!("browse_profile__{remote}__{profile}"),
             Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
             Self::StopAllJobs => "stop_all_jobs".to_string(),
@@ -67,10 +67,9 @@ impl TrayAction {
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {
-            // Action without profile (browse or global)
+            // Action without profile (browse-in-app or global)
             let (prefix, remote) = (parts[0], parts[1]);
             match prefix {
-                "browse_remote" => return Some(Self::Browse(remote.to_string())),
                 "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
                 _ => return None,
             }
@@ -82,6 +81,10 @@ impl TrayAction {
         }
 
         let (prefix, remote, profile) = (parts[0], parts[1].to_string(), parts[2].to_string());
+
+        if prefix == "browse_profile" {
+            return Some(Self::Browse(remote, profile));
+        }
 
         if prefix == "unmount_profile" {
             return Some(Self::StopProfile(OperationType::Mount, remote, profile));
@@ -125,7 +128,7 @@ mod tests {
             TrayAction::StartProfile(OperationType::Sync, "remote".to_string(), "p".to_string()),
             TrayAction::StartProfile(OperationType::Check, "remote".to_string(), "p".to_string()),
             TrayAction::StopProfile(OperationType::Check, "remote".to_string(), "p".to_string()),
-            TrayAction::Browse("remote".to_string()),
+            TrayAction::Browse("remote".to_string(), "profile1".to_string()),
             TrayAction::BrowseInApp("remote".to_string()),
             TrayAction::UnmountAll,
             TrayAction::OpenFileBrowser,
@@ -140,12 +143,5 @@ mod tests {
                 TrayAction::from_id(&id).unwrap_or_else(|| panic!("Should parse back: {id}"));
             assert_eq!(action, parsed);
         }
-    }
-
-    #[test]
-    fn test_legacy_browse_id() {
-        let id = "browse_remote__myRemote";
-        let parsed = TrayAction::from_id(id).unwrap();
-        assert_eq!(parsed, TrayAction::Browse("myRemote".to_string()));
     }
 }

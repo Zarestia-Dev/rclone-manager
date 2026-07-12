@@ -151,17 +151,17 @@
               startJob.emit({
                 type: $event,
                 remoteName: selectedRemote().name,
-                profileName: opConfig.profileName,
+                profileName: opConfig.profileName || '',
               })
             "
             (stopJob)="
               stopJob.emit({
                 type: $event,
                 remoteName: selectedRemote().name,
-                profileName: opConfig.profileName,
+                profileName: opConfig.profileName || '',
               })
             "
-            (openPath)="triggerOpenInFiles($event)"
+            (openPath)="triggerOpenInFiles($event, opConfig.profileName, opConfig.operationType)"
           >
           </app-operation-control>
         }
@@ -212,6 +212,7 @@
                       type: 'serve',
                       remoteName: selectedRemote().name,
                       serveId: serve.id,
+                      profileName: serve.profile || '',
                     })
                   "
                 ></app-serve-card>

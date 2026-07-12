@@ -76,6 +76,10 @@ mat-toolbar {
     .banner-message {
       font-weight: 700;
     }
+
+    &.auth-error {
+      background: var(--warn-color);
+    }
   }
 
   // GPU-accelerated slide toggle animation

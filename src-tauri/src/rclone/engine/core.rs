@@ -45,9 +45,16 @@ impl RcApiEngine {
         }
     }
 
-    /// Mark the engine as having a password-related failure.
+    /// Mark the engine as having a password-related failure
+    /// (rclone config file encryption password missing/wrong).
     pub fn mark_password_failed(&mut self) {
         self.phase = EnginePhase::FailedPassword;
+    }
+
+    /// Mark the engine as having an RC API HTTP-auth failure
+    /// (`--rc-user` / `--rc-pass` rejected by rcd with 401/403).
+    pub fn mark_auth_failed(&mut self, message: String) {
+        self.phase = EnginePhase::FailedAuth { message };
     }
 
     /// Mark the engine as having a binary-path failure (desktop only).
@@ -98,6 +105,14 @@ mod tests {
             engine.start_block_reason(),
             Some(EnginePhase::FailedPassword)
         ));
+
+        engine.clear_errors();
+        engine.mark_auth_failed("HTTP 401 from rcd".to_string());
+        assert!(matches!(
+            engine.start_block_reason(),
+            Some(EnginePhase::FailedAuth { .. })
+        ));
+        assert!(engine.phase.is_auth_failure());
 
         #[cfg(not(feature = "librclone"))]
         {

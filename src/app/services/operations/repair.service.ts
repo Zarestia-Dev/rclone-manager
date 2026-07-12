@@ -133,6 +133,25 @@ export class RepairService extends TauriBaseService {
         },
       ],
     },
+    rclone_auth: {
+      titleKey: 'repairSheet.titles.authRequired',
+      messageKey: 'repairSheet.messages.authRequired',
+      progressKey: 'repairSheet.progress.restartingEngine',
+      buttonTextKey: 'repairSheet.actions.openBackendSettings',
+      icon: 'lock',
+      details: [
+        {
+          icon: 'circle-info',
+          labelKey: 'repairSheet.details.issueLabel',
+          valueKey: 'repairSheet.details.rcloneAuth.issue',
+        },
+        {
+          icon: 'lock',
+          labelKey: 'repairSheet.details.actionLabel',
+          valueKey: 'repairSheet.details.rcloneAuth.action',
+        },
+      ],
+    },
   } as const;
 
   private readonly defaultRepairUi = {
@@ -174,6 +193,18 @@ export class RepairService extends TauriBaseService {
   }
 
   /**
+   * Clear the engine's auth-failed state so the poller can retry.
+   *
+   * This doesn't fix the underlying credentials — the user must open the
+   * backend settings and correct them. We just clear the `FailedAuth`
+   * phase so the engine isn't stuck; once the user saves updated
+   * credentials, the engine will auto-restart on the next poll cycle.
+   */
+  async repairRcloneAuth(): Promise<void> {
+    return this.invokeCommand('clear_engine_auth_error');
+  }
+
+  /**
    * Execute repair based on repair data type
    * @param repairData The repair data containing type and other info
    * @note For repairs requiring additional parameters (e.g., custom installation path),
@@ -190,6 +221,8 @@ export class RepairService extends TauriBaseService {
         return this.repairConfigCorrupt();
       case 'backend_unreachable':
         return this.repairBackendUnreachable();
+      case 'rclone_auth':
+        return this.repairRcloneAuth();
       case 'rclone_password':
         // Password handling is done in the component, this is a no-op
         return Promise.resolve();

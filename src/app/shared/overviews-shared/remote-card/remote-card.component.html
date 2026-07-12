@@ -56,20 +56,66 @@
 @if (displayMode() === 'compact') {
   <div class="quick-actions">
     @for (button of actionButtons(); track button.id) {
-      <button
-        matMiniFab
-        [matTooltip]="button.tooltip"
-        matTooltipShowDelay="500"
-        [disabled]="button.isDisabled"
-        [class]="button.cssClass || ''"
-        (click)="onActionButtonClick({ id: button.id, event: $event })"
-      >
-        @if (button.isLoading) {
-          <mat-spinner diameter="24"></mat-spinner>
-        } @else {
-          <mat-icon [svgIcon]="button.icon"></mat-icon>
-        }
-      </button>
+      @let pickerGroup = profilePickerGroupByOp()[button.id];
+      @if (pickerGroup && pickerGroup.entries.length > 1) {
+        <!-- Multi-profile action: click menu lets the user pick which profile. -->
+        <mat-menu
+          #profileMenu="matMenu"
+          xPosition="after"
+          yPosition="above"
+          class="blossom-menu-panel"
+        >
+          @for (entry of pickerGroup.entries; track entry.operation + entry.profile) {
+            <button
+              mat-menu-item
+              [class]="entry.cssClass"
+              [class.isActive]="entry.isActive"
+              [disabled]="entry.isBusy"
+              (click)="onProfilePickerClick(entry.operation, entry.profile, $event)"
+            >
+              @if (entry.isBusy) {
+                <mat-spinner diameter="18" class="entry-spinner"></mat-spinner>
+              } @else {
+                <mat-icon [svgIcon]="entry.isActive ? entry.stopIcon : entry.startIcon"></mat-icon>
+              }
+              <span>{{ entry.profile }}</span>
+            </button>
+          }
+        </mat-menu>
+
+        <button
+          matMiniFab
+          [class]="pickerGroup.cssClass"
+          [class.p-warn]="pickerGroup.isActive"
+          [matTooltip]="pickerGroup.triggerTooltip"
+          matTooltipShowDelay="500"
+          [matMenuTriggerFor]="profileMenu"
+          (click)="$event.stopPropagation()"
+        >
+          @if (pickerGroup.isBusy) {
+            <mat-spinner diameter="24"></mat-spinner>
+          } @else {
+            <mat-icon [svgIcon]="pickerGroup.triggerIcon"></mat-icon>
+          }
+          <span class="folder-badge" aria-hidden="true">{{ pickerGroup.entries.length }}</span>
+        </button>
+      } @else {
+        <!-- Single-profile (or zero-profile) action: plain button. -->
+        <button
+          matMiniFab
+          [matTooltip]="button.tooltip"
+          matTooltipShowDelay="500"
+          [disabled]="button.isDisabled"
+          [class]="button.cssClass || ''"
+          (click)="onActionButtonClick({ id: button.id, event: $event })"
+        >
+          @if (button.isLoading) {
+            <mat-spinner diameter="24"></mat-spinner>
+          } @else {
+            <mat-icon [svgIcon]="button.icon"></mat-icon>
+          }
+        </button>
+      }
     }
 
     @if (openableFolders().length === 1) {
@@ -90,51 +136,42 @@
     }
 
     @if (openableFolders().length > 1) {
-      <div class="folder-cluster">
-        <div class="folder-blossom" role="menu">
-          @for (
-            folder of openableFolders();
-            track folder.operation + folder.profile + folder.path;
-            let i = $index
-          ) {
-            <button
-              matMiniFab
-              class="folder-blossom-item"
-              [class]="folder.cssClass"
-              [style.transition-delay]="i * 35 + 'ms'"
-              [matTooltip]="folder.tooltip"
-              matTooltipShowDelay="500"
-              matTooltipPosition="above"
-              [disabled]="isFolderOpening()"
-              (click)="onOpenFolderClick(folder, $event)"
-              role="menuitem"
-            >
-              @if (isFolderOpening()) {
-                <mat-spinner diameter="24"></mat-spinner>
-              } @else {
-                <mat-icon [svgIcon]="folder.icon"></mat-icon>
-              }
-            </button>
-          }
-        </div>
+      <mat-menu
+        #folderMenu="matMenu"
+        xPosition="after"
+        yPosition="above"
+        class="blossom-menu-panel"
+      >
+        @for (folder of openableFolders(); track folder.operation + folder.profile + folder.path) {
+          <button
+            mat-menu-item
+            [class]="folder.cssClass"
+            [disabled]="isFolderOpeningFor(folder.operation, folder.profile)"
+            (click)="onOpenFolderClick(folder, $event)"
+          >
+            <mat-icon [svgIcon]="folder.icon"></mat-icon>
+            <span>{{ folder.profile }} ({{ pathService.getFilename(folder.path) || '/' }})</span>
+          </button>
+        }
+      </mat-menu>
 
-        <button
-          matMiniFab
-          [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
-          [style]="folderBlossomStyle()"
-          [matTooltip]="'overviews.remoteCard.browse' | translate"
-          matTooltipShowDelay="500"
-          [disabled]="isFolderOpening()"
-          (click)="$event.stopPropagation()"
-        >
-          @if (isFolderOpening()) {
-            <mat-spinner diameter="24"></mat-spinner>
-          } @else {
-            <mat-icon svgIcon="folder"></mat-icon>
-          }
-          <span class="folder-badge" aria-hidden="true">{{ openableFolders().length }}</span>
-        </button>
-      </div>
+      <button
+        matMiniFab
+        [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
+        [style]="folderBlossomStyle()"
+        [matTooltip]="'overviews.remoteCard.browse' | translate"
+        matTooltipShowDelay="500"
+        [disabled]="isFolderOpening()"
+        [matMenuTriggerFor]="folderMenu"
+        (click)="$event.stopPropagation()"
+      >
+        @if (isFolderOpening()) {
+          <mat-spinner diameter="24"></mat-spinner>
+        } @else {
+          <mat-icon svgIcon="folder"></mat-icon>
+        }
+        <span class="folder-badge" aria-hidden="true">{{ openableFolders().length }}</span>
+      </button>
     }
   </div>
 }
@@ -193,14 +230,14 @@
                       <button
                         type="button"
                         class="profile-open-btn"
-                        [disabled]="isFolderOpening()"
+                        [disabled]="isFolderOpeningFor(opVm.operation, profileVm.name)"
                         [matTooltip]="pathVm.tooltip"
                         matTooltipShowDelay="500"
                         (click)="
                           onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
                         "
                       >
-                        @if (isFolderOpening()) {
+                        @if (isFolderOpeningFor(opVm.operation, profileVm.name)) {
                           <mat-spinner class="profile-open-spinner" diameter="14"></mat-spinner>
                         } @else {
                           <mat-icon

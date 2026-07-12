@@ -11,6 +11,7 @@ pub enum EngineError {
     RestartFailed(String),
     CacheRefreshFailed(String),
     PasswordRequired,
+    RcAuthFailed(String),
     RcloneNotFound,
     WrongPassword,
     VersionTooOld { version: String, required: String },
@@ -43,6 +44,9 @@ impl fmt::Display for EngineError {
             }
             Self::PasswordRequired => {
                 crate::localized_error!("backendErrors.rclone.configEncrypted")
+            }
+            Self::RcAuthFailed(err) => {
+                crate::localized_error!("backendErrors.rclone.rcAuthFailed", "error" => err)
             }
             Self::RcloneNotFound => crate::localized_error!("backendErrors.rclone.binaryNotFound"),
             Self::WrongPassword => {

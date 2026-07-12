@@ -53,9 +53,10 @@ export type EngineStatus =
   | { status: 'ready' }
   | { status: 'error'; payload: { message: string } }
   | { status: 'passwordError' }
+  | { status: 'authError'; payload: { message: string } }
   | { status: 'pathError' }
   | { status: 'versionError'; payload: { version: string; required: string } }
   | { status: 'updating' }
   | { status: 'restarted'; payload: { reason: string } };
 
-export type EngineErrorType = 'password' | 'path' | 'version' | 'generic' | null;
+export type EngineErrorType = 'password' | 'path' | 'version' | 'auth' | 'generic' | null;

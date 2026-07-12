@@ -36,7 +36,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
 import {
   RemoteType,
   RemoteConfigSections,
-  DEFAULT_PROFILE_NAME,
   REMOTE_CONFIG_KEYS,
   CommandOption,
   WizardStep,
@@ -475,40 +474,29 @@ export class QuickAddRemoteComponent {
       };
     }
 
+    const profileName = 'Default';
+
     return {
       [REMOTE_CONFIG_KEYS.mount]: {
-        [DEFAULT_PROFILE_NAME]: {
+        [profileName]: {
           ...mountProfile,
-          vfsProfile: DEFAULT_PROFILE_NAME,
         },
       },
       [REMOTE_CONFIG_KEYS.copy]: {
-        [DEFAULT_PROFILE_NAME]: buildProfile('copy', operations.copy),
+        [profileName]: buildProfile('copy', operations.copy),
       },
       [REMOTE_CONFIG_KEYS.sync]: {
-        [DEFAULT_PROFILE_NAME]: buildProfile('sync', operations.sync),
+        [profileName]: buildProfile('sync', operations.sync),
       },
       [REMOTE_CONFIG_KEYS.bisync]: {
-        [DEFAULT_PROFILE_NAME]: buildProfile('bisync', operations.bisync),
+        [profileName]: buildProfile('bisync', operations.bisync),
       },
       [REMOTE_CONFIG_KEYS.move]: {
-        [DEFAULT_PROFILE_NAME]: buildProfile('move', operations.move),
+        [profileName]: buildProfile('move', operations.move),
       },
       [REMOTE_CONFIG_KEYS.serve]: {
-        [DEFAULT_PROFILE_NAME]: {
+        [profileName]: {
           ...buildProfile('serve', operations.serve),
-          vfsProfile: DEFAULT_PROFILE_NAME,
-        },
-      },
-      [REMOTE_CONFIG_KEYS.filter]: { [DEFAULT_PROFILE_NAME]: {} },
-      [REMOTE_CONFIG_KEYS.vfs]: {
-        [DEFAULT_PROFILE_NAME]: {
-          options: preset.vfs || {},
-        },
-      },
-      [REMOTE_CONFIG_KEYS.backend]: {
-        [DEFAULT_PROFILE_NAME]: {
-          options: preset.backend || {},
         },
       },
       showOnTray: true,

@@ -64,7 +64,14 @@
           <app-general-overview
             (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
-            (browseRemote)="openRemoteInFiles($event.remoteName, $event.path ?? 'mount')"
+            (browseRemote)="
+              openRemoteInFiles(
+                $event.remoteName,
+                $event.path ?? 'mount',
+                $event.profileName,
+                $event.operationType
+              )
+            "
             (selectRemote)="selectRemote($event)"
             (openBackendModal)="openBackendModal()"
           >
@@ -74,7 +81,14 @@
           <app-app-overview
             [mode]="mainOperationType()"
             (remoteSelected)="selectRemote($event)"
-            (openInFiles)="openRemoteInFiles($event.remoteName, $event.path ?? currentTab())"
+            (openInFiles)="
+              openRemoteInFiles(
+                $event.remoteName,
+                $event.path ?? currentTab(),
+                $event.profileName,
+                $event.operationType
+              )
+            "
             (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
             (openBackendModal)="openBackendModal()"
@@ -112,7 +126,14 @@
                 $event.autoAddProfile
               )
             "
-            (openInFiles)="openRemoteInFiles($event.remoteName, $event.path)"
+            (openInFiles)="
+              openRemoteInFiles(
+                $event.remoteName,
+                $event.path,
+                $event.profileName,
+                $event.operationType
+              )
+            "
             (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
             (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)"
           >

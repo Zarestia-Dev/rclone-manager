@@ -2103,6 +2103,8 @@
         "new": "Nom du nouveau profil",
         "save": "Sauvegarder",
         "cancel": "Annuler",
+        "noProfiles": "Aucun profil configuré",
+        "placeholder": "Sélectionner un profil",
         "inUseWarning": "Impossible de supprimer le profil \"{{name}}\" - il est utilisé par {{count}} actif {{type}}(s)",
         "disabledReason": {
           "defaultProtected": "Le profil par défaut ne peut pas être renommé ou supprimé",

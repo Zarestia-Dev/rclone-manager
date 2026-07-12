@@ -166,7 +166,7 @@
             @if (state.currentStep() < state.stepConfigs().length) {
               @let flagType = $any(state.stepConfigs()[state.currentStep() - 1].type);
               <section class="step-container">
-                <app-profile-header [flagType]="flagType" />
+                <app-profile-switcher [flagType]="flagType" />
 
                 @if (LINKED_PROFILE_TYPES.has(flagType)) {
                   <mat-expansion-panel class="linked-profiles-panel">
@@ -226,7 +226,7 @@
             } @else {
               <!-- Final step: runtime remote configuration -->
               <section class="step-container">
-                <app-profile-header flagType="runtimeRemote" />
+                <app-profile-switcher flagType="runtimeRemote" />
 
                 <app-alert-banner
                   severity="info"

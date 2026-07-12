@@ -536,9 +536,9 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             }
             _ => {}
         },
-        TrayAction::Browse(_remote) => {
+        TrayAction::Browse(_remote, _profile) => {
             #[cfg(not(feature = "web-server"))]
-            handle_browse_remote(app, &_remote);
+            handle_browse_remote(app, &_remote, &_profile);
         }
         TrayAction::BrowseInApp(remote) => {
             #[cfg(not(feature = "web-server"))]

@@ -193,6 +193,7 @@ export enum RepairSheetType {
   RCLONE_PASSWORD = 'rclone_password',
   RCLONE_BINARY = 'rclone_binary',
   RCLONE_VERSION = 'rclone_version',
+  RCLONE_AUTH = 'rclone_auth',
 }
 
 export type LocalDiskUsageColor = 'primary' | 'accent' | 'warn';

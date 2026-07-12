@@ -2103,6 +2103,8 @@
         "new": "New Profile Name",
         "save": "Save",
         "cancel": "Cancel",
+        "noProfiles": "No profiles configured",
+        "placeholder": "Select Profile",
         "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
         "disabledReason": {
           "defaultProtected": "Default profile cannot be renamed or deleted",

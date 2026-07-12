@@ -272,9 +272,9 @@ impl NotificationEvent {
                 EngineStage::BinaryNotFound | EngineStage::RestartFailed { .. } => {
                     AlertSeverity::Critical
                 }
-                EngineStage::PasswordRequired | EngineStage::ConnectionFailed { .. } => {
-                    AlertSeverity::High
-                }
+                EngineStage::PasswordRequired
+                | EngineStage::ConnectionFailed { .. }
+                | EngineStage::AuthFailed { .. } => AlertSeverity::High,
                 EngineStage::Restarted => AlertSeverity::Info,
             },
             Self::AppUpdate(stage) | Self::RcloneUpdate(stage) => match stage {

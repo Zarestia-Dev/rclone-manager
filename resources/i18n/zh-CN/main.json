@@ -2103,6 +2103,8 @@
         "new": "新配置文件名称",
         "save": "保存",
         "cancel": "取消",
+        "noProfiles": "未配置配置文件",
+        "placeholder": "选择配置文件",
         "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
         "disabledReason": {
           "defaultProtected": "默认配置文件无法重命名或删除",

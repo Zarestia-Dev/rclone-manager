@@ -85,12 +85,24 @@ export class EventListenersService extends TauriBaseService {
     );
   }
 
+  listenToRcloneEngineAuthError(): Observable<{ message: string }> {
+    return this.listenToEngineStatus().pipe(
+      filter(
+        (event): event is { status: 'authError'; payload: { message: string } } =>
+          event.status === 'authError'
+      ),
+      map(event => event.payload)
+    );
+  }
+
   listenToEngineErrorState(): Observable<EngineErrorType> {
     return this.listenToEngineStatus().pipe(
       map(state => {
         switch (state.status) {
           case 'passwordError':
             return 'password' as const;
+          case 'authError':
+            return 'auth' as const;
           case 'pathError':
             return 'path' as const;
           case 'versionError':

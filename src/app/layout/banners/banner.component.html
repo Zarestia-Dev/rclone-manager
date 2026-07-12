@@ -47,10 +47,17 @@
 </mat-toolbar>
 
 @if (engineError(); as errorType) {
-  <mat-toolbar class="engine-error-banner slide-toggle-banner visible" role="alert">
+  <mat-toolbar
+    class="engine-error-banner slide-toggle-banner visible"
+    [class.auth-error]="errorType === 'auth'"
+    role="alert"
+  >
     @switch (errorType) {
       @case ('password') {
         <mat-icon svgIcon="key" class="error-icon"></mat-icon>
+      }
+      @case ('auth') {
+        <mat-icon svgIcon="lock" class="error-icon"></mat-icon>
       }
       @default {
         <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
@@ -58,8 +65,12 @@
     }
 
     <span class="banner-message">{{ 'banners.engine.' + errorType + '.title' | translate }}</span>
-    <span class="banner-subtitle">{{
-      'banners.engine.' + errorType + '.subtitle' | translate: { required: minRcloneVersion() }
-    }}</span>
+    @if (errorType === 'auth') {
+      <span class="banner-subtitle">{{ 'banners.engine.auth.subtitle' | translate }}</span>
+    } @else {
+      <span class="banner-subtitle">{{
+        'banners.engine.' + errorType + '.subtitle' | translate: { required: minRcloneVersion() }
+      }}</span>
+    }
   </mat-toolbar>
 }

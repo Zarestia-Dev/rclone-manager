@@ -121,20 +121,12 @@ pub fn handle_stop_job_profile(
 
 // Mount
 
-fn get_mount_dest(
-    manager: &AppSettingsManager,
-    remote: &str,
-    profile: Option<&str>,
-) -> Option<String> {
+fn get_mount_dest(manager: &AppSettingsManager, remote: &str, profile: &str) -> Option<String> {
     let settings = crate::utils::types::remotes::RemoteSettings::load(manager, remote).ok()?;
     let settings_val = serde_json::to_value(&settings).ok()?;
     let mount_configs = settings.mount_configs.as_ref()?;
 
-    let config_profile = match profile {
-        Some(p) => mount_configs.get(p)?,
-        None => mount_configs.values().next()?,
-    };
-
+    let config_profile = mount_configs.get(profile)?;
     let config = serde_json::to_value(config_profile).ok()?;
 
     crate::rclone::commands::common::parse_common_config(&config, &settings_val).map(|p| p.dest)
@@ -159,7 +151,7 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
 
     tauri::async_runtime::spawn(async move {
         let manager = app.state::<AppSettingsManager>();
-        let mount_point = get_mount_dest(&manager, &remote, Some(&profile)).unwrap_or_default();
+        let mount_point = get_mount_dest(&manager, &remote, &profile).unwrap_or_default();
 
         match unmount_remote(app, mount_point.clone(), remote.clone()).await {
             Ok(_) => info!("Unmounted {remote} / {profile}"),
@@ -241,18 +233,20 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
 }
 
 #[cfg(not(feature = "web-server"))]
-pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
+pub fn handle_browse_remote(app: &AppHandle, remote_name: &str, profile_name: &str) {
     use tauri_plugin_opener::OpenerExt;
     let remote = remote_name.to_string();
+    let profile = profile_name.to_string();
     let app_clone = app.clone();
 
     tauri::async_runtime::spawn(async move {
-        let mount_point = get_mount_dest(&app_clone.state::<AppSettingsManager>(), &remote, None)
-            .unwrap_or_default();
+        let mount_point =
+            get_mount_dest(&app_clone.state::<AppSettingsManager>(), &remote, &profile)
+                .unwrap_or_default();
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
-            Ok(()) => info!("Opened file manager for {remote}"),
-            Err(e) => error!("Failed to open file manager for {remote}: {e}"),
+            Ok(()) => info!("Opened file manager for {remote} / {profile}"),
+            Err(e) => error!("Failed to open file manager for {remote} / {profile}: {e}"),
         }
     });
 }

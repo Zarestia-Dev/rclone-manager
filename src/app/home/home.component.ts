@@ -159,7 +159,7 @@ export class HomeComponent {
   async startJob(
     operationType: PrimaryActionType,
     remoteName: string,
-    profileName?: string
+    profileName: string
   ): Promise<void> {
     try {
       await this.remoteFacadeService.startJob(remoteName, operationType, profileName, 'dashboard');
@@ -171,8 +171,8 @@ export class HomeComponent {
   async stopJob(
     type: PrimaryActionType,
     remoteName: string,
-    serveId?: string,
-    profileName?: string
+    serveId: string | undefined,
+    profileName: string | undefined
   ): Promise<void> {
     try {
       await this.remoteFacadeService.stopJob(remoteName, type, serveId, profileName);
@@ -215,10 +215,17 @@ export class HomeComponent {
 
   async openRemoteInFiles(
     remoteName: string,
-    pathOrOperation?: string | PrimaryActionType
+    pathOrOperation?: string | PrimaryActionType,
+    profileName?: string,
+    operationType?: PrimaryActionType
   ): Promise<void> {
     try {
-      await this.remoteFacadeService.openRemoteInFiles(remoteName, pathOrOperation);
+      await this.remoteFacadeService.openRemoteInFiles(
+        remoteName,
+        pathOrOperation,
+        profileName,
+        operationType
+      );
     } catch (error) {
       console.error('Open remote failed:', error);
     }

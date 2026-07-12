@@ -1,7 +1,8 @@
 use log::{debug, error};
-use tauri::{AppHandle, Window, command};
+use tauri::{AppHandle, Emitter, Window, command};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[command]
 pub async fn get_folder_location(
@@ -136,4 +137,98 @@ pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, S
     debug!("File locations: {file_locations:?}");
 
     Ok(file_locations)
+}
+
+#[command]
+pub async fn get_save_file_location(
+    app: AppHandle,
+    default_name: Option<String>,
+) -> Result<Option<String>, String> {
+    let mut dialog = app.dialog().file();
+    if let Some(ref name) = default_name {
+        dialog = dialog.set_file_name(name);
+    }
+    let file_location = dialog.blocking_save_file().map(|path| path.to_string());
+    Ok(file_location)
+}
+
+#[command]
+pub async fn download_file(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    destination: String,
+    total_size: Option<u64>,
+    is_local: bool,
+) -> Result<(), String> {
+    let transport = crate::rclone::commands::common::transport(&app);
+
+    // Resolve target path and remote for rclone
+    let (remote_arg, path_arg) = if is_local {
+        let mut full_path = std::path::PathBuf::from(remote);
+        full_path.push(path);
+        ("".to_string(), full_path.to_string_lossy().into_owned())
+    } else {
+        (remote, path)
+    };
+
+    let mut reader = transport
+        .read_file(&remote_arg, &path_arg, None)
+        .await
+        .map_err(|e| format!("Failed to read file: {e}"))?;
+
+    let mut file = tokio::fs::File::create(&destination)
+        .await
+        .map_err(|e| format!("Failed to create destination file: {e}"))?;
+
+    let mut buffer = vec![0; 65536]; // 64KB chunk
+    let mut downloaded_bytes: u64 = 0;
+
+    #[derive(serde::Serialize, Clone)]
+    struct DownloadProgressPayload {
+        destination: String,
+        downloaded: u64,
+        total: Option<u64>,
+        done: bool,
+    }
+
+    loop {
+        let n = reader
+            .read(&mut buffer)
+            .await
+            .map_err(|e| format!("Error reading source file: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])
+            .await
+            .map_err(|e| format!("Error writing destination file: {e}"))?;
+        downloaded_bytes += n as u64;
+
+        let _ = app.emit(
+            "download-file-progress",
+            DownloadProgressPayload {
+                destination: destination.clone(),
+                downloaded: downloaded_bytes,
+                total: total_size,
+                done: false,
+            },
+        );
+    }
+
+    file.flush()
+        .await
+        .map_err(|e| format!("Error flushing destination file: {e}"))?;
+
+    let _ = app.emit(
+        "download-file-progress",
+        DownloadProgressPayload {
+            destination: destination.clone(),
+            downloaded: downloaded_bytes,
+            total: total_size,
+            done: true,
+        },
+    );
+
+    Ok(())
 }

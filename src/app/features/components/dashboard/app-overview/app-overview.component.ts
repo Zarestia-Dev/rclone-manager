@@ -64,7 +64,7 @@ export class AppOverviewComponent {
   readonly startJob = output<{
     type: PrimaryActionType;
     remoteName: string;
-    profileName?: string;
+    profileName: string;
   }>();
   readonly stopJob = output<StopJobEvent>();
   readonly openBackendModal = output<void>();
@@ -111,7 +111,7 @@ export class AppOverviewComponent {
     this.remoteSelected.emit(remote);
   }
 
-  triggerOpenInFiles(event: { remoteName: string; path?: string }): void {
+  triggerOpenInFiles(event: OpenInFilesEvent): void {
     if (event?.remoteName) this.openInFiles.emit(event);
   }
 

@@ -22,6 +22,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
             #[cfg(all(desktop, not(feature = "web-server")))]
             (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
+            #[cfg(all(desktop, not(feature = "web-server")))]
+            (get_save_file_location, $crate::utils::io::file_helper::get_save_file_location, [default_name: Option<String>]);
+            #[cfg(all(desktop, not(feature = "web-server")))]
+            (download_file, $crate::utils::io::file_helper::download_file, [remote: String, path: String, destination: String, total_size: Option<u64>, is_local: bool]);
 
             // UI & THEME
             // UI / Theming (Desktop Only)
@@ -222,6 +226,8 @@ macro_rules! MASTER_COMMAND_LIST {
             (update_backend, $crate::rclone::commands::backend::update_backend, [params: $crate::rclone::commands::backend::UpdateBackendParams]);
             (remove_backend, $crate::rclone::commands::backend::remove_backend, [name: String]);
             (test_backend_connection, $crate::rclone::commands::backend::test_backend_connection, [name: String]);
+            (test_backend_connection_details, $crate::rclone::commands::backend::test_backend_connection_details, [host: String, port: u16, username: Option<String>, password: Option<String>]);
+            (clear_engine_auth_error, $crate::rclone::engine::lifecycle::clear_engine_auth_error, []);
 
             // AUTOMATIONS
             (get_automations, $crate::rclone::state::automations::get_automations, []);

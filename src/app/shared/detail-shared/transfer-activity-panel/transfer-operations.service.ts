@@ -1,13 +1,10 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Entry } from '@app/types';
 import { TranslateService } from '@ngx-translate/core';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { FileSystemService } from 'src/app/services/operations/file-system.service';
-import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import { DownloadService } from 'src/app/services/operations/download.service';
 
 type TransferTarget = 'src' | 'dst' | 'fallback';
 
@@ -18,8 +15,7 @@ export class TransferOperationsService {
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
-  private readonly fileSystemService = inject(FileSystemService);
-  private readonly fileViewerService = inject(FileViewerService);
+  private readonly downloadService = inject(DownloadService);
 
   readonly loadingUrlIds = signal<Set<string>>(new Set());
   readonly downloadingIds = signal<Set<string>>(new Set());
@@ -337,43 +333,8 @@ export class TransferOperationsService {
   }
 
   private async performDownload(fileRemote: string, path: string, fileName: string): Promise<void> {
-    if (isHeadlessMode()) {
-      const rawUrl = await this.fileViewerService.generateUrl(
-        { Path: path, Name: fileName } as unknown as Entry,
-        fileRemote,
-        this.pathService.isLocalPath(fileRemote) || fileRemote === '/'
-      );
-      const url = new URL(rawUrl);
-      url.searchParams.set('download', 'true');
-
-      const link = document.createElement('a');
-      link.href = url.toString();
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      this.notifications.showInfo(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
-      );
-    } else {
-      const selectedPath = await this.fileSystemService.selectFolder();
-      if (selectedPath) {
-        this.notifications.showInfo(
-          this.translate.instant('fileBrowser.fileViewer.downloading', { name: fileName })
-        );
-        await this.remoteOps.transferItems(
-          [{ remote: fileRemote, path, name: fileName, isDir: false }],
-          selectedPath,
-          '',
-          'copy',
-          'dashboard'
-        );
-        this.notifications.showSuccess(
-          this.translate.instant('shared.transferActivity.actions.successDownload')
-        );
-      }
-    }
+    const isLocal = this.pathService.isLocalPath(fileRemote) || fileRemote === '/';
+    await this.downloadService.download(fileRemote, path, fileName, isLocal);
   }
 
   private async confirmAndDelete(

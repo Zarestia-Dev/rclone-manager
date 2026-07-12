@@ -46,6 +46,17 @@
         margin: 0;
         line-height: 1.5;
       }
+
+      .auth-error-detail {
+        margin-top: var(--space-xs);
+        padding: var(--space-xs) var(--space-sm);
+        background: rgba(var(--warn-color-rgb), 0.08);
+        border-inline-start: 3px solid var(--warn-color);
+        border-radius: var(--radius-xs);
+        font-family: var(--font-mono);
+        font-size: var(--font-size-sm);
+        color: var(--window-fg-color);
+      }
     }
   }
 

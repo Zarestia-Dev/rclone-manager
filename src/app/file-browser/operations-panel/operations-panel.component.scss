@@ -202,7 +202,7 @@
           flex: 1;
 
           .detail-label {
-            color: var(--error-color);
+            color: var(--warn-color);
             margin-bottom: 4px;
           }
 
@@ -215,7 +215,7 @@
             padding-right: 4px;
 
             .error-entry {
-              color: var(--error-color);
+              color: var(--warn-color);
               word-break: break-all;
               padding: 6px 8px;
               border-radius: 6px;

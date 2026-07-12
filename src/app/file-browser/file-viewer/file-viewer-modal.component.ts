@@ -36,7 +36,8 @@ import { StreamLanguage, syntaxHighlighting } from '@codemirror/language';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { JobManagementService } from 'src/app/services/operations/job-management.service';
-import { FileSystemService } from 'src/app/services/operations/file-system.service';
+import { DownloadService } from 'src/app/services/operations/download.service';
+import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -75,6 +76,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly http = inject(HttpClient);
   private readonly fileViewerService = inject(FileViewerService);
+  private readonly downloadService = inject(DownloadService);
+  private readonly backendService = inject(BackendService);
   public readonly iconService = inject(IconService);
   private readonly translate = inject(TranslateService);
   private readonly remoteOps = inject(RemoteFileOperationsService);
@@ -82,7 +85,6 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
   private readonly jobManagementService = inject(JobManagementService);
-  private readonly fileSystemService = inject(FileSystemService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly readJobGroup = `ui/file-viewer/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -106,6 +108,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
   currentFileType = signal<string>('text');
   isHeadless = computed(() => isHeadlessMode());
+  isDownloadVisible = computed(() => {
+    return (
+      this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
+    );
+  });
 
   isLoading = signal(true);
   isDownloading = signal(false);
@@ -794,67 +801,25 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Download the current file to a selected destination using copyFile
-   * Opens a folder picker to let user choose where to save
+   * Download the current file using the DownloadService
    */
   async download(): Promise<void> {
     if (this.isDownloading()) return;
-
-    if (isHeadlessMode()) {
-      try {
-        const url = new URL(this.rawUrl());
-        url.searchParams.set('download', 'true');
-
-        const link = document.createElement('a');
-        link.href = url.toString();
-        link.download = this.fileName();
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        this.notificationService.showInfo(
-          this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
-        );
-      } catch (err) {
-        console.error('Failed to trigger browser download:', err);
-        this.notificationService.showError(
-          this.translate.instant('fileBrowser.fileViewer.errorDownload')
-        );
-      }
-      return;
-    }
-
     this.isDownloading.set(true);
-
     try {
-      // Let user select a local folder for download destination
-      const selectedPath = await this.fileSystemService.selectFolder();
-
-      // Start the copy job
       const fsName = this.data.isLocal
         ? this.data.remoteName
         : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
-      await this.remoteOps.transferItems(
-        [
-          {
-            remote: fsName,
-            path: this.currentItem().Path,
-            name: this.fileName(),
-            isDir: false,
-          },
-        ],
-        selectedPath,
-        '',
-        'copy',
-        'filemanager'
-      );
-
-      this.notificationService.showInfo(
-        this.translate.instant('fileBrowser.fileViewer.downloading', { name: this.fileName() })
+      await this.downloadService.download(
+        fsName,
+        this.currentItem().Path,
+        this.fileName(),
+        this.data.isLocal,
+        this.fileSize() || undefined
       );
     } catch (err) {
-      console.error('Failed to start download:', err);
+      console.error('Failed to download file:', err);
     } finally {
       this.isDownloading.set(false);
     }

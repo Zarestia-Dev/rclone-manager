@@ -89,6 +89,11 @@ export class BackendModalComponent implements OnInit {
   readonly copyBackendFrom = signal<string>('none');
   readonly copyRemotesFrom = signal<string>('none');
 
+  readonly testingForm = signal(false);
+  readonly formTestResult = signal<{ success: boolean; message: string; version?: string } | null>(
+    null
+  );
+
   readonly activeConfigPath = this.backendService.activeConfigPath;
 
   readonly backendForm: FormGroup;
@@ -242,6 +247,43 @@ export class BackendModalComponent implements OnInit {
     this.updateAuthValidators(false);
     this.showPassword.set(false);
     this.showConfigPassword.set(false);
+    this.formTestResult.set(null);
+    this.testingForm.set(false);
+  }
+
+  async testFormConnection(): Promise<void> {
+    const host = this.backendForm.get('host')?.value;
+    const port = Number(this.backendForm.get('port')?.value);
+    if (!host || !port) return;
+
+    this.testingForm.set(true);
+    this.formTestResult.set(null);
+    try {
+      const result = await this.backendService.testConnectionDetails({
+        host,
+        port,
+        username: this.backendForm.get('has_auth')?.value
+          ? this.backendForm.get('username')?.value
+          : undefined,
+        password: this.backendForm.get('has_auth')?.value
+          ? this.backendForm.get('password')?.value
+          : undefined,
+      });
+      this.formTestResult.set(result);
+    } catch (error) {
+      this.formTestResult.set({
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      this.testingForm.set(false);
+    }
+  }
+
+  onConnectionFieldChange(): void {
+    if (this.formTestResult() !== null) {
+      this.formTestResult.set(null);
+    }
   }
 
   async switchToBackend(name: string): Promise<void> {

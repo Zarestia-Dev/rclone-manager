@@ -1,0 +1,114 @@
+<div class="profile-switcher">
+  @let pState = profileStateForType();
+  @let selProfile = selectedName();
+  @let pList = profileList();
+
+  @if (pState.mode === 'view') {
+    <mat-form-field subscriptSizing="dynamic" class="profile-select-field">
+      <mat-label>{{ 'modals.remoteConfig.profile.label' | translate }}</mat-label>
+      <mat-select
+        [value]="selProfile"
+        (selectionChange)="state.selectProfile(flagType(), $event.value)"
+        panelClass="profile-select-panel"
+        [placeholder]="'modals.remoteConfig.profile.placeholder' | translate"
+      >
+        @if (pList.length === 0) {
+          <mat-option disabled [value]="null">
+            {{ 'modals.remoteConfig.profile.noProfiles' | translate }}
+          </mat-option>
+        }
+        @for (profile of pList; track profile.name) {
+          <mat-option [value]="profile.name">
+            <div class="profile-option-row">
+              <span class="profile-name">{{ profile.name }}</span>
+              <button
+                mat-icon-button
+                type="button"
+                (click)="state.duplicateProfile(flagType(), profile.name); $event.stopPropagation()"
+                [attr.title]="'modals.remoteConfig.profile.duplicate' | translate"
+              >
+                <mat-icon svgIcon="copy" class="accent"></mat-icon>
+              </button>
+            </div>
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="profile-actions">
+      <button
+        matIconButton
+        (click)="state.startAddProfile(flagType())"
+        [attr.title]="'modals.remoteConfig.profile.add' | translate"
+      >
+        <mat-icon svgIcon="plus"></mat-icon>
+      </button>
+      @if (selProfile) {
+        <span
+          class="action-tooltip-anchor"
+          [matTooltip]="renameDisabledReason()"
+          [matTooltipDisabled]="!renameDisabledReason()"
+        >
+          <button
+            matIconButton
+            (click)="state.startEditProfile(flagType())"
+            [attr.title]="'modals.remoteConfig.profile.rename' | translate"
+            [disabled]="renameDisabled()"
+          >
+            <mat-icon svgIcon="pen"></mat-icon>
+          </button>
+        </span>
+        <span
+          class="action-tooltip-anchor"
+          [matTooltip]="deleteReasonFor(selProfile)"
+          [matTooltipDisabled]="!deleteReasonFor(selProfile)"
+        >
+          <button
+            matIconButton
+            class="warn"
+            (click)="state.deleteProfile(flagType(), selProfile)"
+            [disabled]="deleteDisabledFor(selProfile)"
+            [attr.title]="'modals.remoteConfig.profile.delete' | translate"
+          >
+            <mat-icon svgIcon="trash"></mat-icon>
+          </button>
+        </span>
+      }
+    </div>
+  } @else {
+    <mat-form-field subscriptSizing="dynamic" class="profile-input">
+      <mat-label>{{
+        (pState.mode === 'add'
+          ? 'modals.remoteConfig.profile.new'
+          : 'modals.remoteConfig.profile.rename'
+        ) | translate
+      }}</mat-label>
+      <input
+        matInput
+        [ngModel]="pState.tempName"
+        (ngModelChange)="state.setProfileTempName(flagType(), $event)"
+        [ngModelOptions]="{ standalone: true }"
+        (keyup.enter)="state.saveProfile(flagType())"
+        (keyup.escape)="state.cancelProfileEdit(flagType())"
+        autoFocus
+      />
+    </mat-form-field>
+
+    <div class="profile-actions">
+      <button
+        matIconButton
+        (click)="state.saveProfile(flagType())"
+        [attr.title]="'modals.remoteConfig.profile.save' | translate"
+      >
+        <mat-icon svgIcon="circle-check" class="primary"></mat-icon>
+      </button>
+      <button
+        matIconButton
+        (click)="state.cancelProfileEdit(flagType())"
+        [attr.title]="'modals.remoteConfig.profile.cancel' | translate"
+      >
+        <mat-icon svgIcon="circle-xmark" class="warn"></mat-icon>
+      </button>
+    </div>
+  }
+</div>

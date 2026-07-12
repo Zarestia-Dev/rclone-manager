@@ -212,102 +212,132 @@
     }
   }
 
-  // ── Folder blossom cluster ─────────────────────────────────────────────────
+  // ── Folder badge and menus ──────────────────────────────────────────────────
 
-  .folder-cluster {
-    position: relative;
-    z-index: 10;
-    display: inline-flex;
+  .folder-badge {
+    position: absolute;
+    top: var(--space-xxs);
+    right: -var(--space-md);
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: flex;
     align-items: center;
     justify-content: center;
-
-    &::before {
-      content: "";
-      position: absolute;
-      bottom: 100%;
-      left: 0;
-      right: 0;
-      height: 14px;
-      pointer-events: auto;
-    }
-
-    .folder-badge {
-      position: absolute;
-      top: var(--space-xxs);
-      right: -var(--space-md);
-      min-width: 16px;
-      height: 16px;
-      border-radius: 8px;
-      background: var(--accent-color);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 16px;
-      text-align: center;
-      pointer-events: none;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      transition: transform 0.15s ease;
-      display: flex;
-      justify-content: center;
-    }
-
-    .folder-blossom {
-      position: absolute;
-      bottom: calc(100% + 10px);
-      left: 50%;
-      transform: translateX(-50%) translateY(4px) scale(0.9);
-      transform-origin: bottom center;
-
-      display: flex;
-      gap: var(--space-xs);
-      padding: 6px;
-      background: var(--window-bg-color);
-      border: 1px solid rgba(var(--window-fg-color-rgb), 0.1);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-popover);
-      opacity: 0;
-      transition:
-        opacity 0.18s ease 150ms,
-        transform 0.22s ease 150ms;
-
-      &::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border: 6px solid transparent;
-        border-top-color: var(--window-bg-color);
-        pointer-events: none;
-      }
-
-      .folder-blossom-item {
-        opacity: 0;
-        transform: scale(0.65) translateY(6px);
-        transition:
-          opacity 0.18s ease,
-          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-    }
-
-    &:hover,
-    &:focus-within {
-      .folder-blossom {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateX(-50%) translateY(0) scale(1);
-        transition:
-          opacity 0.18s ease 0ms,
-          transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
-
-        .folder-blossom-item {
-          opacity: 1;
-          transform: none;
-        }
-      }
-    }
+    z-index: 2;
   }
 
+  button[matMiniFab] {
+    position: relative;
+  }
+}
+
+// ── Global MatMenu styles override for premium styling ───────────────────────
+::ng-deep .blossom-menu-panel.mat-mdc-menu-panel {
+  background: var(--window-bg-color) !important;
+  border: 1px solid rgba(var(--window-fg-color-rgb), 0.1) !important;
+  box-shadow: var(--shadow-popover) !important;
+  border-radius: var(--radius-md) !important;
+  min-width: 170px !important;
+  max-width: 170px !important;
+  margin-left: -67px !important; // Center the 170px menu over the 36px trigger button
+  margin-bottom: 8px !important;
+  overflow: visible !important;
+
+  // Triangle border (sits behind the fill)
+  &::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: rgba(var(--window-fg-color-rgb), 0.1);
+    z-index: 9;
+    pointer-events: none;
+  }
+
+  // Triangle fill (obscures the border at the top edge)
+  &::after {
+    content: "";
+    position: absolute;
+    top: 99%; // Slightly overlaps the border line for seamless integration
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--window-bg-color);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .mat-mdc-menu-content {
+    padding: 6px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  button.mat-mdc-menu-item {
+    min-height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--window-fg-color) !important;
+
+    .mdc-list-item__primary-text {
+      font-size: var(--font-size-sm) !important;
+      font-weight: 500 !important;
+      color: var(--window-fg-color) !important;
+    }
+
+    mat-icon {
+      color: white;
+      margin-right: 8px !important;
+      --mdc-list-item-leading-icon-color: var(--dim-color);
+      width: 16px !important;
+      height: 16px !important;
+      font-size: 16px !important;
+    }
+
+    .entry-spinner {
+      margin-right: 8px;
+      flex-shrink: 0;
+      --mdc-circular-progress-active-indicator-color: var(--dim-color);
+    }
+
+    // Active state styling
+    &.isActive {
+      background: rgba(var(--menu-color-rgb), 0.1) !important;
+
+      .mdc-list-item__primary-text {
+        color: var(--menu-color) !important;
+        font-weight: 600 !important;
+      }
+
+      mat-icon {
+        color: var(--menu-color) !important;
+        --mdc-list-item-leading-icon-color: var(--menu-color);
+      }
+
+      &:hover {
+        background: rgba(var(--menu-color-rgb), 0.16) !important;
+      }
+    }
+
+    &:hover:not(.isActive) {
+      background: rgba(var(--window-fg-color-rgb), 0.05) !important;
+    }
+  }
+}
+
+:host {
   .profile-details-section {
     padding: var(--space-md);
     display: flex;

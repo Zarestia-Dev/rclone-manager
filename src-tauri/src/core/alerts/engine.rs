@@ -176,7 +176,7 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
             severity_code: severity.as_code(),
             event_kind: kind.as_str().to_string(),
             remote: remote.clone().unwrap_or_default(),
-            profile: profile.clone().unwrap_or_else(|| "Default".to_string()),
+            profile: profile.clone().unwrap_or_default(),
             backend: backend.clone().unwrap_or_default(),
             operation: operation.clone().unwrap_or_default(),
             origin: origin.clone(),

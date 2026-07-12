@@ -8,6 +8,9 @@
       <div class="repair-content">
         <h3>{{ displayTitle() }}</h3>
         <p>{{ displayMessage() }}</p>
+        @if (data.authError) {
+          <p class="auth-error-detail">{{ data.authError }}</p>
+        }
       </div>
     </div>
 

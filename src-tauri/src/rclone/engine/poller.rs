@@ -13,7 +13,7 @@ use crate::utils::rclone::endpoints::{core, job, mount, serve};
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::{SystemStatus, SystemStatusPayload};
 use crate::utils::types::remotes::MountedRemote;
-use crate::utils::types::state::RcloneState;
+use crate::utils::types::state::{EngineState, RcloneState};
 
 const BURST_TICK_COUNT: u32 = 5;
 
@@ -81,7 +81,7 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 burst_ticks = BURST_TICK_COUNT;
                 if !status.running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
-                    if !status.updating && !status.should_exit {
+                    if !status.updating && !status.should_exit && !status.auth_failed {
                         start_engine_if_not_running(&app_handle).await;
                     }
                 }
@@ -108,9 +108,14 @@ pub fn start_system_poller(app_handle: AppHandle) {
                     let _ = app_handle.emit(SYSTEM_STATUS, payload);
                 }
                 Err(e) => {
-                    error!("Poller batch failed, restarting engine: {e}");
-                    crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
-                    start_engine_if_not_running(&app_handle).await;
+                    if is_auth_error(&e) {
+                        error!("Poller batch failed with auth error (not restarting): {e}");
+                        mark_engine_auth_failed(&app_handle, e).await;
+                    } else {
+                        error!("Poller batch failed, restarting engine: {e}");
+                        crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
+                        start_engine_if_not_running(&app_handle).await;
+                    }
                     burst_ticks = BURST_TICK_COUNT;
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::error());
                 }
@@ -139,6 +144,18 @@ pub fn start_system_poller(app_handle: AppHandle) {
             .poller_running
             .store(false, Ordering::Release);
     });
+}
+
+fn is_auth_error(err: &str) -> bool {
+    err.contains("HTTP 401") || err.contains("HTTP 403")
+}
+
+async fn mark_engine_auth_failed(app: &AppHandle, raw_error: String) {
+    let state = app.state::<EngineState>();
+    let mut engine = state.lock().await;
+    engine.mark_auth_failed(raw_error);
+    drop(engine);
+    crate::rclone::engine::lifecycle::emit_block_status_for_phase(app).await;
 }
 
 fn get_batch_result<'a>(

@@ -57,6 +57,7 @@ import {
   ProfileConfig,
   StartJobEvent,
   StopJobEvent,
+  OpenInFilesEvent,
   ALL_PRIMARY_ACTIONS,
   SYNC_TYPES,
   STANDARD_MODAL_SIZE,
@@ -117,7 +118,7 @@ export class AppDetailComponent {
     remoteType?: string;
     autoAddProfile?: boolean;
   }>();
-  readonly openInFiles = output<{ remoteName: string; path: string }>();
+  readonly openInFiles = output<OpenInFilesEvent>();
   readonly startJob = output<StartJobEvent>();
   readonly stopJob = output<StopJobEvent>();
 
@@ -433,7 +434,8 @@ export class AppDetailComponent {
     >(this.selectedSyncOperation());
     if (!configs) return null;
 
-    const profileName = this.selectedProfile() || 'default';
+    const profileName = this.selectedProfile();
+    if (!profileName) return null;
     const cfg = configs[profileName];
     if (cfg?.app?.watchEnabled) {
       return {
@@ -635,8 +637,13 @@ export class AppDetailComponent {
     });
   }
 
-  triggerOpenInFiles(path: string): void {
-    this.openInFiles.emit({ remoteName: this.selectedRemote().name, path });
+  triggerOpenInFiles(path: string, profileName?: string, operationType?: PrimaryActionType): void {
+    this.openInFiles.emit({
+      remoteName: this.selectedRemote().name,
+      path,
+      profileName,
+      operationType,
+    });
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
@@ -759,9 +766,7 @@ export class AppDetailComponent {
     type: SyncOperationType | 'mount' | 'serve'
   ): RemoteOperationState | RemoteServeState | null {
     return (this.selectedRemote().status[type as keyof Omit<RemoteStatus, 'diskUsage'>] ?? null) as
-      | RemoteOperationState
-      | RemoteServeState
-      | null;
+      RemoteOperationState | RemoteServeState | null;
   }
 
   private isOperationActive(type: string, profileName?: string): boolean {
@@ -779,8 +784,7 @@ export class AppDetailComponent {
     const configKey = REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS];
     if (!configKey) return undefined;
     return this.remoteSettings()[configKey as keyof RemoteSettings] as
-      | Record<string, T>
-      | undefined;
+      Record<string, T> | undefined;
   }
 
   private getDryRunState(opType: string, profile: string): boolean {

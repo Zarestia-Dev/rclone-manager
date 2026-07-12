@@ -2103,6 +2103,8 @@
         "new": "Nombre del nuevo perfil",
         "save": "Guardar",
         "cancel": "Cancelar",
+        "noProfiles": "Sin perfiles configurados",
+        "placeholder": "Seleccionar perfil",
         "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
         "disabledReason": {
           "defaultProtected": "El perfil predeterminado no se puede renombrar ni eliminar",

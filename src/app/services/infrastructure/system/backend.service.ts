@@ -163,6 +163,27 @@ export class BackendService extends TauriBaseService {
     }
   }
 
+  async testConnectionDetails(details: {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+  }): Promise<{ success: boolean; message: string; version?: string; os?: string }> {
+    try {
+      return await this.invokeCommand<TestConnectionResult>('test_backend_connection_details', {
+        host: details.host,
+        port: details.port,
+        username: details.username || null,
+        password: details.password || null,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
   async checkStartupConnectivity(): Promise<void> {
     const activeName = await this.getActiveBackend();
     if (activeName === 'Local') return;

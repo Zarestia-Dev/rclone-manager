@@ -7,7 +7,6 @@ import {
   RemoteType,
   FLAG_TYPES,
   REMOTE_NAME_REGEX,
-  DEFAULT_PROFILE_NAME,
   CommandOption,
   RcConfigOption,
   REMOTE_CONFIG_KEYS,
@@ -100,6 +99,8 @@ export class RemoteConfigStateService {
     'DumpFlags',
   ]);
   private static readonly LINKED_TYPES = new Set(['vfs', 'filter', 'backend', 'runtimeRemote']);
+
+  static readonly AUTO_PROFILE_NAME = 'Default';
 
   private readonly fb = inject(FormBuilder);
   private readonly authStateService = inject(AuthStateService);
@@ -217,7 +218,7 @@ export class RemoteConfigStateService {
     this.profileRecord(() => ({ mode: 'view' as 'view' | 'edit' | 'add', tempName: '' }))
   );
   readonly profiles = signal(this.profileRecord(() => ({}) as Record<string, any>));
-  readonly selectedProfileName = signal(this.profileRecord(() => DEFAULT_PROFILE_NAME));
+  readonly selectedProfileName = signal(this.profileRecord(() => null as string | null));
   readonly highlightedFields = signal<
     { controlKey: string; flagType: SharedProfileType; profileName: string }[]
   >([]);
@@ -228,8 +229,15 @@ export class RemoteConfigStateService {
       vfs: Object.keys(this.profiles()['vfs'] ?? {}),
       filter: Object.keys(this.profiles()['filter'] ?? {}),
       backend: Object.keys(this.profiles()['backend'] ?? {}),
-      runtimeRemote: runtimeNames.length > 0 ? runtimeNames : [DEFAULT_PROFILE_NAME],
+      runtimeRemote: runtimeNames,
     };
+  });
+
+  readonly hasAnyProfile = computed(() => {
+    const map = this.profileNamesMap();
+    return Object.fromEntries(
+      this.PROFILE_TYPES.map(t => [t, (map[t]?.length ?? 0) > 0])
+    ) as Record<SharedProfileType, boolean>;
   });
 
   readonly profileLists = computed(
@@ -470,10 +478,10 @@ export class RemoteConfigStateService {
       cronEnabled: [false],
       cronExpression: [null],
       source: this.createSourcePathGroup(),
-      vfsProfile: [DEFAULT_PROFILE_NAME],
-      filterProfile: [DEFAULT_PROFILE_NAME],
-      backendProfile: [DEFAULT_PROFILE_NAME],
-      runtimeRemoteProfile: [DEFAULT_PROFILE_NAME],
+      vfsProfile: [RemoteConfigStateService.AUTO_PROFILE_NAME],
+      filterProfile: [RemoteConfigStateService.AUTO_PROFILE_NAME],
+      backendProfile: [RemoteConfigStateService.AUTO_PROFILE_NAME],
+      runtimeRemoteProfile: [RemoteConfigStateService.AUTO_PROFILE_NAME],
       options: this.fb.group({}),
     });
   }
@@ -500,10 +508,10 @@ export class RemoteConfigStateService {
       });
     if (fields.includes('autoStart') && !fields.includes('type')) group['cronExpression'] = [null];
     if (LINKED_PROFILE_TYPES.has(flagType)) {
-      group['vfsProfile'] = [DEFAULT_PROFILE_NAME];
-      group['filterProfile'] = [DEFAULT_PROFILE_NAME];
-      group['backendProfile'] = [DEFAULT_PROFILE_NAME];
-      group['runtimeRemoteProfile'] = [DEFAULT_PROFILE_NAME];
+      group['vfsProfile'] = [RemoteConfigStateService.AUTO_PROFILE_NAME];
+      group['filterProfile'] = [RemoteConfigStateService.AUTO_PROFILE_NAME];
+      group['backendProfile'] = [RemoteConfigStateService.AUTO_PROFILE_NAME];
+      group['runtimeRemoteProfile'] = [RemoteConfigStateService.AUTO_PROFILE_NAME];
     }
     group['options'] = this.fb.group({});
     return this.fb.group(group);
@@ -863,42 +871,51 @@ export class RemoteConfigStateService {
     const vendor = this.remoteForm.get('vendor')?.value;
     const preset = this.presetsService.resolvePresets(remoteType, vendor);
 
-    // 1. Patch VFS default profile
+    // 1. Patch the currently-selected VFS profile
     if (preset.vfs) {
-      this.profiles.update(p => ({
-        ...p,
-        vfs: {
-          ...p.vfs,
-          [DEFAULT_PROFILE_NAME]: { ...p.vfs[DEFAULT_PROFILE_NAME], ...preset.vfs },
-        },
-      }));
-    }
-
-    // 2. Patch mount default profile's options
-    if (preset.mount && Object.keys(preset.mount).length) {
-      const currentMount = this.profiles().mount[DEFAULT_PROFILE_NAME] || {};
-      const rclone = currentMount.rclone || {};
-      this.profiles.update(p => ({
-        ...p,
-        mount: {
-          ...p.mount,
-          [DEFAULT_PROFILE_NAME]: {
-            ...currentMount,
-            rclone: { ...rclone, mountOpt: { ...rclone.mountOpt, ...preset.mount } },
+      const selected = this.selectedProfileName()['vfs'];
+      if (selected) {
+        this.profiles.update(p => ({
+          ...p,
+          vfs: {
+            ...p.vfs,
+            [selected]: { ...p.vfs[selected], ...preset.vfs },
           },
-        },
-      }));
+        }));
+      }
     }
 
-    // 3. Patch backend default profile
+    // 2. Patch the currently-selected mount profile's options
+    if (preset.mount && Object.keys(preset.mount).length) {
+      const selected = this.selectedProfileName()['mount'];
+      if (selected) {
+        const currentMount = this.profiles().mount[selected] || {};
+        const rclone = currentMount.rclone || {};
+        this.profiles.update(p => ({
+          ...p,
+          mount: {
+            ...p.mount,
+            [selected]: {
+              ...currentMount,
+              rclone: { ...rclone, mountOpt: { ...rclone.mountOpt, ...preset.mount } },
+            },
+          },
+        }));
+      }
+    }
+
+    // 3. Patch the currently-selected backend profile
     if (preset.backend) {
-      this.profiles.update(p => ({
-        ...p,
-        backend: {
-          ...p.backend,
-          [DEFAULT_PROFILE_NAME]: { ...p.backend[DEFAULT_PROFILE_NAME], ...preset.backend },
-        },
-      }));
+      const selected = this.selectedProfileName()['backend'];
+      if (selected) {
+        this.profiles.update(p => ({
+          ...p,
+          backend: {
+            ...p.backend,
+            [selected]: { ...p.backend[selected], ...preset.backend },
+          },
+        }));
+      }
     }
 
     // 4. Patch remote-specific config options
@@ -920,13 +937,15 @@ export class RemoteConfigStateService {
     for (const type of this.PROFILE_TYPES) {
       const val =
         this.existingConfig?.[REMOTE_CONFIG_KEYS[type as keyof typeof REMOTE_CONFIG_KEYS]];
-      newProfiles[type] =
-        val && Object.keys(val).length ? ({ ...val } as any) : { [DEFAULT_PROFILE_NAME]: {} };
+      const hasExisting = val && Object.keys(val).length > 0;
+      newProfiles[type] = hasExisting
+        ? ({ ...val } as Record<string, any>)
+        : ({ [RemoteConfigStateService.AUTO_PROFILE_NAME]: {} } as Record<string, any>);
       newSelected[type] =
         dialogData?.targetProfile &&
         Object.keys(newProfiles[type]).includes(dialogData.targetProfile)
           ? dialogData.targetProfile
-          : Object.keys(newProfiles[type])[0] || DEFAULT_PROFILE_NAME;
+          : (Object.keys(newProfiles[type])[0] ?? null);
     }
     this.profiles.set(newProfiles);
     this.selectedProfileName.set(newSelected);
@@ -945,18 +964,6 @@ export class RemoteConfigStateService {
     action: 'rename' | 'delete'
   ): { disabled: boolean; reason: string } {
     const t = type as SharedProfileType;
-    if (!profileName || profileName.toLowerCase() === DEFAULT_PROFILE_NAME)
-      return {
-        disabled: true,
-        reason: this.translate.instant(
-          'modals.remoteConfig.profile.disabledReason.defaultProtected'
-        ),
-      };
-    if (action === 'delete' && (this.profileLists()[t] || []).length <= 1)
-      return {
-        disabled: true,
-        reason: this.translate.instant('modals.remoteConfig.profile.disabledReason.lastProfile'),
-      };
     if (
       (action === 'rename' && !this.JOB_TYPES.has(t)) ||
       (action === 'delete' && !this.JOB_TYPES.has(t) && t !== 'mount' && t !== 'serve') ||
@@ -1014,10 +1021,32 @@ export class RemoteConfigStateService {
     this.setProfileMode(t, 'add', name);
   }
 
+  /**
+   * Clones an existing profile's config under a new auto-generated name
+   * (e.g. `profile`, `profile-2`, …) and immediately enters rename mode
+   * so the user can name the duplicate. The new profile becomes selected.
+   */
+  duplicateProfile(type: string, sourceName: string): void {
+    const t = type as SharedProfileType;
+    const source = this.profiles()[t]?.[sourceName];
+    if (!source) return;
+    const existing = Object.keys(this.profiles()[t] || {});
+    const newName = findUniqueName(sourceName || 'profile', existing);
+    this.dirtyProfileTypes.add(t);
+    this.profiles.update(p => ({
+      ...p,
+      [t]: { ...p[t], [newName]: structuredClone(source) },
+    }));
+    void this.selectProfile(t, newName).then(() => {
+      // Enter rename mode so the user can name the duplicate.
+      this.setProfileMode(t, 'edit', newName);
+    });
+  }
+
   startEditProfile(type: string): void {
     const t = type as SharedProfileType,
       n = this.selectedProfileName()[t];
-    if (n && n.toLowerCase() !== DEFAULT_PROFILE_NAME) this.setProfileMode(t, 'edit', n);
+    if (n) this.setProfileMode(t, 'edit', n);
   }
 
   cancelProfileEdit(type: string): void {
@@ -1036,6 +1065,10 @@ export class RemoteConfigStateService {
       void this.selectProfile(t, newName);
     } else if (state.mode === 'edit') {
       const oldName = this.selectedProfileName()[t];
+      if (!oldName) {
+        this.cancelProfileEdit(t);
+        return;
+      }
       if (oldName === newName) {
         this.cancelProfileEdit(t);
         return;
@@ -1056,7 +1089,6 @@ export class RemoteConfigStateService {
   deleteProfile(type: string, name: string): void {
     const t = type as SharedProfileType;
     this.dirtyProfileTypes.add(t);
-    if (name.toLowerCase() === DEFAULT_PROFILE_NAME) return;
 
     if (this.currentRemoteName()) {
       const u = this.getProfileUsage(t, name);
@@ -1079,12 +1111,26 @@ export class RemoteConfigStateService {
     });
     if (this.selectedProfileName()[t] === name) {
       const remaining = Object.keys(this.profiles()[t] || {});
-      if (remaining.length) void this.selectProfile(t, remaining[0]);
-      else {
-        this.profiles.update(p => ({ ...p, [t]: { [DEFAULT_PROFILE_NAME]: {} } }));
-        void this.selectProfile(t, DEFAULT_PROFILE_NAME);
+      if (remaining.length) {
+        void this.selectProfile(t, remaining[0]);
+      } else {
+        this.selectedProfileName.update(p => ({ ...p, [t]: null }));
+        const group = this.remoteConfigForm.get(`${t}Config`);
+        if (group) {
+          group.reset({}, { emitEvent: false });
+        }
       }
     }
+  }
+
+  private findUniqueAutoProfileName(type: SharedProfileType): string {
+    const existing = Object.keys(this.profiles()[type] || {});
+    if (!existing.includes(RemoteConfigStateService.AUTO_PROFILE_NAME)) {
+      return RemoteConfigStateService.AUTO_PROFILE_NAME;
+    }
+    let i = 2;
+    while (existing.includes(`${RemoteConfigStateService.AUTO_PROFILE_NAME}-${i}`)) i++;
+    return `${RemoteConfigStateService.AUTO_PROFILE_NAME}-${i}`;
   }
 
   setProfileTempName(type: string, name: string): void {
@@ -1145,10 +1191,12 @@ export class RemoteConfigStateService {
   async selectLinkedProfile(type: SharedProfileType, name: string): Promise<void> {
     const n = this.profileNamesMap()[type]?.includes(name)
       ? name
-      : this.profileNamesMap()[type]?.[0] || DEFAULT_PROFILE_NAME;
+      : (this.profileNamesMap()[type]?.[0] ?? null);
     this.selectedProfileName.update(p => ({ ...p, [type]: n }));
-    const c = this.profiles()[type]?.[n];
-    if (c) await this.populateProfileForm(type, c);
+    if (n) {
+      const c = this.profiles()[type]?.[n];
+      if (c) await this.populateProfileForm(type, c);
+    }
   }
 
   saveCurrentProfile(type: EditTarget): void {
@@ -1207,7 +1255,8 @@ export class RemoteConfigStateService {
     if (this.isNewRemoteCreation() && t) {
       this.applyPresets(t);
       for (const flagType of this.PROFILE_TYPES) {
-        const activeProfile = this.selectedProfileName()[flagType] || DEFAULT_PROFILE_NAME;
+        const activeProfile = this.selectedProfileName()[flagType];
+        if (!activeProfile) continue;
         const profileData = this.profiles()[flagType]?.[activeProfile];
         if (profileData) {
           await this.populateProfileForm(flagType, profileData);
@@ -1242,7 +1291,8 @@ export class RemoteConfigStateService {
         const t = this.remoteForm.get('type')?.value;
         this.applyPresets(t);
         for (const flagType of this.PROFILE_TYPES) {
-          const activeProfile = this.selectedProfileName()[flagType] || DEFAULT_PROFILE_NAME;
+          const activeProfile = this.selectedProfileName()[flagType];
+          if (!activeProfile) continue;
           const profileData = this.profiles()[flagType]?.[activeProfile];
           if (profileData) {
             void this.populateProfileForm(flagType, profileData);
@@ -1311,9 +1361,7 @@ export class RemoteConfigStateService {
     }
 
     const activeProfileName =
-      mode === 'patch'
-        ? this.selectedProfileName()[targetType] || DEFAULT_PROFILE_NAME
-        : profileName;
+      mode === 'patch' ? (this.selectedProfileName()[targetType] ?? profileName) : profileName;
     if (this.editTarget() && this.editTarget() !== targetType) this.editTarget.set(targetType);
     const idx = this.stepConfigs().findIndex(s => s.type === targetType);
     if (idx !== -1) this.currentStep.set(idx + 1);
@@ -1365,23 +1413,23 @@ export class RemoteConfigStateService {
       processedLinked.add(targetFlagType);
       const pCtrl = group.get(`${targetFlagType}Profile`);
       if (!pCtrl) continue;
-      const currProfileVal = pCtrl.value || DEFAULT_PROFILE_NAME;
+      const currProfileVal: string | null = pCtrl.value || null;
 
-      if (mode !== 'patch' && currProfileVal === DEFAULT_PROFILE_NAME) {
+      if (mode !== 'patch' && !currProfileVal) {
         if (!this.profiles()[targetFlagType]?.[profileName]) {
+          const existingEntries = Object.values(this.profiles()[targetFlagType] ?? {});
+          const seedEntry = existingEntries[0] ?? {};
           this.profiles.update(p => ({
             ...p,
             [targetFlagType]: {
               ...p[targetFlagType],
-              [profileName]: structuredClone(
-                this.profiles()[targetFlagType]?.[DEFAULT_PROFILE_NAME] || {}
-              ),
+              [profileName]: structuredClone(seedEntry),
             },
           }));
         }
         pCtrl.setValue(profileName);
         await this.selectLinkedProfile(targetFlagType, profileName);
-      } else {
+      } else if (currProfileVal) {
         await this.selectLinkedProfile(targetFlagType, currProfileVal);
       }
     }
@@ -1444,7 +1492,7 @@ export class RemoteConfigStateService {
         uKey,
         targetFlagType,
         RemoteConfigStateService.LINKED_TYPES.has(targetFlagType)
-          ? group.get(`${targetFlagType}Profile`)?.value || DEFAULT_PROFILE_NAME
+          ? group.get(`${targetFlagType}Profile`)?.value || activeProfileName
           : activeProfileName
       );
     }
@@ -1486,7 +1534,8 @@ export class RemoteConfigStateService {
         this.remoteForm.get('type')?.setValue(this.dialogData.remoteType);
       await this.syncRuntimeRemoteType();
       const type = this.editTarget() as SharedProfileType,
-        profile = this.profiles()[type]?.[this.selectedProfileName()[type]];
+        selectedName = this.selectedProfileName()[type],
+        profile = selectedName ? this.profiles()[type]?.[selectedName] : undefined;
       if (type === 'runtimeRemote')
         this.remoteForm
           .get('type')

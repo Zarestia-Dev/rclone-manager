@@ -276,22 +276,46 @@ fn build_remote_submenu(
     let is_mounted = remote_summary.mount_profiles.iter().any(|p| p.is_active);
     let is_serving = remote_summary.serve_profiles.iter().any(|p| p.is_active);
 
-    let (browse_id, browse_label) = if is_mounted {
-        (
-            TrayAction::Browse(remote.clone()).to_id(),
-            t!("tray.browse"),
-        )
+    if is_mounted {
+        let mounted_profiles: Vec<&TrayProfileSummary> = remote_summary
+            .mount_profiles
+            .iter()
+            .filter(|p| p.is_active)
+            .collect();
+        if mounted_profiles.len() <= 1 {
+            let p = mounted_profiles
+                .first()
+                .map(|p| p.name.clone())
+                .unwrap_or_default();
+            submenu_items.push(MenuItemKind::Regular(RegularItem {
+                id: TrayAction::Browse(remote.clone(), p).to_id(),
+                label: t!("tray.browse"),
+                enabled: true,
+            }));
+        } else {
+            let items = mounted_profiles
+                .iter()
+                .map(|p| {
+                    MenuItemKind::Regular(RegularItem {
+                        id: TrayAction::Browse(remote.clone(), p.name.clone()).to_id(),
+                        label: p.name.clone(),
+                        enabled: true,
+                    })
+                })
+                .collect();
+            submenu_items.push(MenuItemKind::Submenu(SubmenuPlan {
+                label: t!("tray.browse"),
+                enabled: true,
+                items,
+            }));
+        }
     } else {
-        (
-            TrayAction::BrowseInApp(remote.clone()).to_id(),
-            t!("tray.browseInApp"),
-        )
-    };
-    submenu_items.push(MenuItemKind::Regular(RegularItem {
-        id: browse_id,
-        label: browse_label,
-        enabled: true,
-    }));
+        submenu_items.push(MenuItemKind::Regular(RegularItem {
+            id: TrayAction::BrowseInApp(remote.clone()).to_id(),
+            label: t!("tray.browseInApp"),
+            enabled: true,
+        }));
+    }
 
     let display_name = if remote.chars().count() > 20 {
         let truncated: String = remote.chars().take(17).collect();

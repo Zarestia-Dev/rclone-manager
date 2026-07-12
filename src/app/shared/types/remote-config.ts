@@ -16,8 +16,6 @@ export const FLAG_TYPES = Object.freeze([
   'backend',
 ]) as readonly FlagType[];
 
-export const DEFAULT_PROFILE_NAME = 'default';
-
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 

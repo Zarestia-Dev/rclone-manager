@@ -47,7 +47,7 @@ import {
   PROFILE_ICONS,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
-import { ProfileHeaderComponent } from './profile-header/profile-header.component';
+import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
@@ -73,7 +73,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     InteractiveConfigStepComponent,
     SearchContainerComponent,
     CopyToClipboardDirective,
-    ProfileHeaderComponent,
+    ProfileSwitcherComponent,
     ConfigModalSidebarComponent,
     ConfigModalFooterComponent,
   ],

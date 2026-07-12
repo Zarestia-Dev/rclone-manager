@@ -303,7 +303,6 @@ export class RemoteFacadeService extends TauriBaseService {
         if (state) {
           if (JSON.stringify(state.base().config) !== JSON.stringify(config)) {
             this.remoteService.clearCache(name);
-            void this.remoteService.getFeatures(name, config.type);
           }
           state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
         } else {
@@ -446,27 +445,32 @@ export class RemoteFacadeService extends TauriBaseService {
   async startJob(
     remoteName: string,
     opType: SyncOperationType | 'mount' | 'serve',
-    profileName?: string,
+    profileName: string,
     source: Origin = 'dashboard',
     noCache?: boolean
   ): Promise<void> {
+    if (!profileName) {
+      throw new Error(
+        `Cannot start ${opType} on ${remoteName}: no profile specified. Pick a profile first.`
+      );
+    }
     const settings = this.getRemoteSettings(remoteName);
     const configKey = REMOTE_CONFIG_KEYS[
       opType as keyof typeof REMOTE_CONFIG_KEYS
     ] as keyof RemoteSettings;
     const profiles = settings[configKey] as Record<string, Record<string, unknown>> | undefined;
-    const targetProfile =
-      profileName ?? (profiles?.['default'] ? 'default' : Object.keys(profiles ?? {})[0]);
 
-    if (!targetProfile || !profiles?.[targetProfile]) {
-      throw new Error(`Configuration for ${opType} not found on ${remoteName}.`);
+    if (!profiles?.[profileName]) {
+      throw new Error(
+        `Configuration for ${opType} profile '${profileName}' not found on ${remoteName}.`
+      );
     }
 
     await this.executeAction(
       remoteName,
       opType as RemoteAction,
-      () => this.dispatchJobStart(opType, remoteName, targetProfile, source, noCache),
-      targetProfile,
+      () => this.dispatchJobStart(opType, remoteName, profileName, source, noCache),
+      profileName,
       opType
     );
   }
@@ -502,9 +506,14 @@ export class RemoteFacadeService extends TauriBaseService {
   async stopJob(
     remoteName: string,
     type: SyncOperationType | 'mount' | 'serve',
-    serveId?: string,
-    profileName?: string
+    serveId: string | undefined,
+    profileName: string | undefined
   ): Promise<void> {
+    if (!profileName && !serveId) {
+      throw new Error(
+        `Cannot stop ${type} on ${remoteName}: no profile specified. Pick a profile first.`
+      );
+    }
     await this.executeAction(
       remoteName,
       'stop',
@@ -567,7 +576,12 @@ export class RemoteFacadeService extends TauriBaseService {
     });
   }
 
-  async openRemoteInFiles(remoteName: string, pathOrOperation?: string): Promise<void> {
+  async openRemoteInFiles(
+    remoteName: string,
+    pathOrOperation?: string,
+    profileName?: string,
+    operationType?: PrimaryActionType
+  ): Promise<void> {
     let path = pathOrOperation ?? '';
 
     if (OPERATION_TYPE_KEYS.has(path)) {
@@ -578,12 +592,28 @@ export class RemoteFacadeService extends TauriBaseService {
     }
 
     if (this.pathService.isLocalPath(path)) {
-      await this.executeAction(remoteName, 'open', () => this.fileSystemService.openInFiles(path));
+      await this.executeAction(
+        remoteName,
+        'open',
+        () => this.fileSystemService.openInFiles(path),
+        profileName,
+        operationType
+      );
     } else {
-      await this.executeAction(remoteName, 'open', async () => {
-        const { remote: targetRemoteName, path: relativePath } = this.pathService.splitFsPath(path);
-        await this.nautilusService.newNautilusWindow(targetRemoteName || remoteName, relativePath);
-      });
+      await this.executeAction(
+        remoteName,
+        'open',
+        async () => {
+          const { remote: targetRemoteName, path: relativePath } =
+            this.pathService.splitFsPath(path);
+          await this.nautilusService.newNautilusWindow(
+            targetRemoteName || remoteName,
+            relativePath
+          );
+        },
+        profileName,
+        operationType
+      );
     }
   }
 
@@ -597,8 +627,7 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
     const base = this.remoteStates.get(remoteName)?.base() as
-      | Omit<Remote, 'status' | 'features'>
-      | undefined;
+      Omit<Remote, 'status' | 'features'> | undefined;
     if (!base) return null;
 
     const newName = this.generateUniqueRemoteName(base.name.replace(/-\d+$/, ''));
@@ -695,7 +724,6 @@ export class RemoteFacadeService extends TauriBaseService {
       enriched: this.createEnrichedSignal(name, baseSig),
     };
     this.remoteStates.set(name, state);
-    void this.remoteService.getFeatures(name, config?.type);
     return state;
   }
 
@@ -765,7 +793,22 @@ export class RemoteFacadeService extends TauriBaseService {
             mounts,
             Object.keys(mountConfigs),
             mountConfigs,
-            m => m.profile,
+            m => {
+              if (m.profile) return m.profile;
+              for (const [profName, profConfig] of Object.entries(mountConfigs)) {
+                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
+                const configMountPoint = rclone['mountPoint'] as string;
+                if (
+                  configMountPoint === m.mount_point ||
+                  (configMountPoint &&
+                    m.mount_point &&
+                    configMountPoint.replace(/\/$/, '') === m.mount_point.replace(/\/$/, ''))
+                ) {
+                  return profName;
+                }
+              }
+              return undefined;
+            },
             m => m.mount_point
           ),
         },
@@ -774,7 +817,25 @@ export class RemoteFacadeService extends TauriBaseService {
             serves,
             Object.keys(serveConfigs),
             serveConfigs,
-            s => s.profile,
+            s => {
+              if (s.profile) return s.profile;
+              for (const [profName, profConfig] of Object.entries(serveConfigs)) {
+                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
+                const configFs = rclone['fs'] as string;
+                const configType = rclone['serveType'] as string;
+                if (
+                  configFs === s.params.fs ||
+                  (configFs &&
+                    s.params.fs &&
+                    configFs.replace(/:$/, '') === s.params.fs.replace(/:$/, ''))
+                ) {
+                  if (configType === s.params.type) {
+                    return profName;
+                  }
+                }
+              }
+              return undefined;
+            },
             s => s.id
           ),
           count: serves.length,
@@ -861,11 +922,11 @@ function buildActiveProfiles<T, V>(
   getValue: (i: T) => V
 ): Record<string, V> {
   const result: Record<string, V> = {};
-  const fallback = profileNames[0] ?? 'default';
+  const fallback = profileNames.length === 1 ? (profileNames[0] ?? null) : null;
   for (const item of items) {
     const profile = getProfile(item)?.trim();
     const target = profile && profile.length > 0 ? profile : fallback;
-    if (!(target in result)) result[target] = getValue(item);
+    if (target && !(target in result)) result[target] = getValue(item);
   }
   return result;
 }
