@@ -378,7 +378,10 @@ fn setup_app(
         initialization(app_handle_clone).await;
     });
 
-    #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+    #[cfg(any(
+        all(target_os = "linux", not(feature = "flatpak")),
+        all(debug_assertions, windows)
+    ))]
     {
         use tauri_plugin_deep_link::DeepLinkExt;
         app.deep_link().register_all()?;
@@ -533,9 +536,9 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             }
             _ => {}
         },
-        TrayAction::Browse(_remote) => {
+        TrayAction::Browse(_remote, _profile) => {
             #[cfg(not(feature = "web-server"))]
-            handle_browse_remote(app, &_remote);
+            handle_browse_remote(app, &_remote, &_profile);
         }
         TrayAction::BrowseInApp(remote) => {
             #[cfg(not(feature = "web-server"))]
