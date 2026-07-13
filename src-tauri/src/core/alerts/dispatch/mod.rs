@@ -4,6 +4,7 @@ pub mod os_toast;
 pub mod script;
 pub mod telegram;
 pub mod webhook;
+pub mod whatsapp;
 
 use std::time::Duration;
 

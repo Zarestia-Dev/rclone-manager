@@ -297,6 +297,8 @@ export class AlertService extends TauriBaseService {
         return 'terminal';
       case 'telegram':
         return 'telegram';
+      case 'whatsapp':
+        return 'whatsapp';
       case 'mqtt':
         return 'message';
       case 'email':

@@ -9,13 +9,7 @@ export interface SeverityStyle {
 }
 
 export type AlertEventKind =
-  | 'job'
-  | 'serve'
-  | 'mount'
-  | 'engine'
-  | 'update'
-  | 'automation'
-  | 'system';
+  'job' | 'serve' | 'mount' | 'engine' | 'update' | 'automation' | 'system';
 
 export interface AlertRule {
   id: string;
@@ -35,7 +29,8 @@ export interface AlertRule {
   auto_acknowledge?: boolean;
 }
 
-export type AlertActionKind = 'webhook' | 'script' | 'os_toast' | 'telegram' | 'mqtt' | 'email';
+export type AlertActionKind =
+  'webhook' | 'script' | 'os_toast' | 'telegram' | 'whatsapp' | 'mqtt' | 'email';
 
 export interface BaseAlertAction {
   id: string;
@@ -68,8 +63,20 @@ export interface OsToastAction extends BaseAlertAction {
 
 export interface TelegramAction extends BaseAlertAction {
   kind: 'telegram';
+  mode?: 'bot' | 'botless';
   bot_token: string;
   chat_id: string;
+  body_template: string;
+  timeout_secs: number;
+  retry_count: number;
+}
+
+export interface WhatsappAction extends BaseAlertAction {
+  kind: 'whatsapp';
+  phone: string;
+  apikey: string;
+  provider?: 'callmebot' | 'custom_gateway';
+  gateway_url?: string;
   body_template: string;
   timeout_secs: number;
   retry_count: number;
@@ -107,6 +114,7 @@ export type AlertAction =
   | ScriptAction
   | OsToastAction
   | TelegramAction
+  | WhatsappAction
   | MqttAction
   | EmailAction;
 

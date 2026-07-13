@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Bot-less Telegram & WhatsApp Alerts**: Added support for bot-less Telegram notifications (via CallMeBot API) and a dedicated WhatsApp alert action channel to the Alert & Notification system.
+  - **Telegram Bot-less Mode**: Allows sending Telegram alerts directly to your Telegram `@username` without needing to create a bot token via `@BotFather`.
+  - **WhatsApp Notification Channel**: Added a new `whatsapp` alert action type supporting CallMeBot (`https://api.callmebot.com/whatsapp.php`) for personal WhatsApp push notifications, as well as custom HTTP gateway URLs.
+
+### Fixed
+- **Encryption Detection in Non-Librclone Mode**: Resolved an issue where non-librclone mode failed to correctly detect when an Rclone configuration file was encrypted.
+
 ## [v0.2.9] - 2026-07-11
 
 ### Added

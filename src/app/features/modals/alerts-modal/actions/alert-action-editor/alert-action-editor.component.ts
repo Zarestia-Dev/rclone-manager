@@ -47,6 +47,7 @@ export class AlertActionEditorComponent {
     { value: 'webhook', label: 'alerts.action.webhook' },
     { value: 'script', label: 'alerts.action.script' },
     { value: 'telegram', label: 'alerts.action.telegram' },
+    { value: 'whatsapp', label: 'alerts.action.whatsapp' },
     { value: 'mqtt', label: 'alerts.action.mqtt' },
     { value: 'email', label: 'alerts.action.email' },
   ];
@@ -72,8 +73,14 @@ export class AlertActionEditorComponent {
     command: [''],
     argsRaw: [''],
     // Telegram
+    telegram_mode: ['bot' as 'bot' | 'botless'],
     bot_token: [''],
     chat_id: [''],
+    // WhatsApp
+    phone: [''],
+    apikey: [''],
+    whatsapp_provider: ['callmebot' as 'callmebot' | 'custom_gateway'],
+    gateway_url: [''],
     // MQTT
     host: ['localhost'],
     port: [1883],
@@ -101,6 +108,14 @@ export class AlertActionEditorComponent {
 
       if (this.data.kind === 'script') {
         patch.argsRaw = (this.data as ScriptAction).args.join(' ');
+      }
+
+      if (this.data.kind === 'telegram') {
+        patch.telegram_mode = (this.data as any).mode || 'bot';
+      }
+
+      if (this.data.kind === 'whatsapp') {
+        patch.whatsapp_provider = (this.data as any).provider || 'callmebot';
       }
 
       if (this.data.kind === 'webhook') {
@@ -143,7 +158,19 @@ export class AlertActionEditorComponent {
   }
 
   onKindChange(): void {
-    const all = ['url', 'command', 'bot_token', 'chat_id', 'host', 'topic', 'smtp_server', 'to'];
+    const all = [
+      'url',
+      'command',
+      'bot_token',
+      'chat_id',
+      'phone',
+      'apikey',
+      'gateway_url',
+      'host',
+      'topic',
+      'smtp_server',
+      'to',
+    ];
     all.forEach(f => this.form.get(f)?.clearValidators());
 
     const kind = this.form.controls.kind.value;
@@ -152,11 +179,28 @@ export class AlertActionEditorComponent {
 
     if (kind === 'webhook') required(['url']);
     else if (kind === 'script') required(['command']);
-    else if (kind === 'telegram') required(['bot_token', 'chat_id']);
-    else if (kind === 'mqtt') required(['host', 'topic']);
+    else if (kind === 'telegram') {
+      const mode = this.form.controls.telegram_mode.value;
+      if (mode === 'bot') required(['bot_token', 'chat_id']);
+      else required(['chat_id']);
+    } else if (kind === 'whatsapp') {
+      const provider = this.form.controls.whatsapp_provider.value;
+      if (provider === 'callmebot') required(['phone', 'apikey']);
+      else required(['phone', 'gateway_url']);
+    } else if (kind === 'mqtt') required(['host', 'topic']);
     else if (kind === 'email') required(['smtp_server', 'to']);
 
     Object.keys(this.form.controls).forEach(k => this.form.get(k)?.updateValueAndValidity());
+  }
+
+  setTelegramMode(mode: 'bot' | 'botless'): void {
+    this.form.controls.telegram_mode.setValue(mode);
+    this.onKindChange();
+  }
+
+  setWhatsappProvider(provider: 'callmebot' | 'custom_gateway'): void {
+    this.form.controls.whatsapp_provider.setValue(provider);
+    this.onKindChange();
   }
 
   // ── Headers ──────────────────────────────────────────────────────
@@ -270,8 +314,20 @@ export class AlertActionEditorComponent {
     } else if (val.kind === 'telegram') {
       action = {
         ...base,
+        mode: val.telegram_mode,
         bot_token: val.bot_token,
         chat_id: val.chat_id,
+        body_template: val.body_template,
+        timeout_secs: val.timeout_secs,
+        retry_count: val.retry_count,
+      };
+    } else if (val.kind === 'whatsapp') {
+      action = {
+        ...base,
+        phone: val.phone,
+        apikey: val.apikey,
+        provider: val.whatsapp_provider,
+        gateway_url: val.gateway_url,
         body_template: val.body_template,
         timeout_secs: val.timeout_secs,
         retry_count: val.retry_count,

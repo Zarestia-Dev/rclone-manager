@@ -119,6 +119,7 @@ export const BASE_ICONS: Record<string, string> = {
   webhook: 'assets/icons/general/webhook.svg',
   desktop: 'assets/icons/general/desktop.svg',
   telegram: 'assets/icons/general/telegram.svg',
+  whatsapp: 'assets/icons/general/whatsapp.svg',
   message: 'assets/icons/general/message.svg',
   envelope: 'assets/icons/general/envelope.svg',
   link: 'assets/icons/general/link.svg',
