@@ -1338,7 +1338,9 @@
     },
     "launchRestoreFailed": "Échec du lancement du flux de restauration",
     "backupSuccess": "Sauvegarde créée avec succès",
-    "restoreSuccess": "Les paramètres ont été restaurés avec succès"
+    "backupFailed": "Échec de la création de la sauvegarde: {{error}}",
+    "restoreSuccess": "La sauvegarde a été restaurée avec succès",
+    "restoreFailed": "Échec de la restauration de la sauvegarde: {{error}}"
   },
   "updates": {
     "cancelFailed": "Échec de l'annulation du téléchargement de la mise à jour de rclone.",

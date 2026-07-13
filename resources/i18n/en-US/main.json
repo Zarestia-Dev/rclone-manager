@@ -1338,7 +1338,9 @@
     },
     "launchRestoreFailed": "Failed to launch restore flow",
     "backupSuccess": "Backup created successfully",
-    "restoreSuccess": "Settings restored successfully"
+    "backupFailed": "Failed to create backup: {{error}}",
+    "restoreSuccess": "Backup restored successfully",
+    "restoreFailed": "Failed to restore backup: {{error}}"
   },
   "updates": {
     "cancelFailed": "Failed to cancel the update download.",

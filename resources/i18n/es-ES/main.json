@@ -1338,7 +1338,9 @@
     },
     "launchRestoreFailed": "Error al iniciar el flujo de restauración",
     "backupSuccess": "Copia de seguridad creada correctamente",
-    "restoreSuccess": "Ajustes restaurados correctamente"
+    "backupFailed": "Error al crear la copia de seguridad: {{error}}",
+    "restoreSuccess": "Copia de seguridad restaurada correctamente",
+    "restoreFailed": "Error al restaurar la copia de seguridad: {{error}}"
   },
   "updates": {
     "cancelFailed": "Error al cancelar la descarga de actualización.",

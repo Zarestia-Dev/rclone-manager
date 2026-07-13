@@ -51,6 +51,8 @@ fn register_rclone_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder<R> {
             } else if let Some(stripped) = uri.strip_prefix("http://rclone.localhost/") {
                 // Fallback if WebView2 doesn't transform
                 stripped
+            } else if let Some(stripped) = uri.strip_prefix("https://rclone.localhost/") {
+                stripped
             } else {
                 &uri
             };
@@ -177,6 +179,8 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
             stripped // Leaves the leading slash, e.g., "/home/user"
         } else if let Some(stripped) = uri.strip_prefix("http://local-asset.localhost") {
             stripped
+        } else if let Some(stripped) = uri.strip_prefix("https://local-asset.localhost") {
+            stripped
         } else if let Some(stripped) = uri.strip_prefix("local-asset://") {
             stripped
         } else {
@@ -189,10 +193,15 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
             Err(_) => path_part.to_string(),
         };
 
+        // Normalize multiple leading slashes (e.g., "//sdcard/music/..." -> "/sdcard/music/...")
+        let mut final_path = decoded_path;
+        while final_path.starts_with("//") {
+            final_path.remove(0);
+        }
+
         // Strip leading slash if it looks like a Windows drive path (e.g., /C:/folder)
         // This is now done at runtime for all platforms to handle cases where
         // Windows-style paths are passed to a Linux manager.
-        let mut final_path = decoded_path;
         if final_path.starts_with('/') && final_path.chars().nth(2) == Some(':') {
             final_path = final_path[1..].to_string();
         }
@@ -208,6 +217,14 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                 .body("Path traversal denied".as_bytes().to_vec())
                 .unwrap());
             return;
+        }
+
+        // Android path alias mapping (/sdcard/ -> /storage/emulated/0/)
+        if final_path.starts_with("/sdcard/") {
+            let alt_path = final_path.replacen("/sdcard/", "/storage/emulated/0/", 1);
+            if std::path::Path::new(&alt_path).exists() {
+                final_path = alt_path;
+            }
         }
 
         let file_path = std::path::Path::new(&final_path);
@@ -251,57 +268,46 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                         "✅ Opened local asset: {final_path_clone} (size: {file_size} bytes)"
                     );
 
-                    // Handle HTTP 206 Partial Content
-                    let mut start = 0;
-                    let mut end = if file_size > 0 { file_size - 1 } else { 0 };
+                    // Check for HTTP Range request
+                    let range_header = request.headers().get("Range").and_then(|v| v.to_str().ok());
                     let mut is_range_request = false;
+                    let mut start: u64 = 0;
+                    let mut end: u64 = if file_size > 0 { file_size - 1 } else { 0 };
 
-                    if let Some(range_val) = request.headers().get("Range").and_then(|v| v.to_str().ok())
+                    if let Some(range_val) = range_header
                         && let Some(stripped) = range_val.strip_prefix("bytes=")
                     {
-                        is_range_request = true;
                         let parts: Vec<&str> = stripped.split('-').collect();
                         if let Some(s) = parts.first().and_then(|s| s.parse::<u64>().ok()) {
                             start = s;
+                            is_range_request = true;
                         }
                         if parts.len() > 1
                             && !parts[1].is_empty()
                             && let Ok(e) = parts[1].parse::<u64>()
                         {
                             end = e;
+                            is_range_request = true;
                         }
                     }
 
-                    if end >= file_size && file_size > 0 {
-                        end = file_size - 1;
-                    }
+                    if is_range_request && file_size > 0 {
+                        if end >= file_size {
+                            end = file_size - 1;
+                        }
 
-                    if start > end {
-                        responder.respond(tauri::http::Response::builder()
-                            .status(416) // Range Not Satisfiable
-                            .header("Access-Control-Allow-Origin", "*")
-                            .header("Content-Range", format!("bytes */{file_size}"))
-                            .body(vec![])
-                            .unwrap());
-                        return;
-                    }
+                        if start > end {
+                            responder.respond(tauri::http::Response::builder()
+                                .status(416) // Range Not Satisfiable
+                                .header("Access-Control-Allow-Origin", "*")
+                                .header("Content-Range", format!("bytes */{file_size}"))
+                                .body(vec![])
+                                .unwrap());
+                            return;
+                        }
 
-                    let max_chunk_size = 2 * 1024 * 1024;
-                    let mut chunk_size = if file_size > 0 {
-                        (end - start + 1) as usize
-                    } else {
-                        0
-                    };
-
-                    let mut is_truncated = false;
-                    if chunk_size > max_chunk_size {
-                        chunk_size = max_chunk_size;
-                        end = start + chunk_size as u64 - 1;
-                        is_truncated = true;
-                    }
-
-                    let mut buffer = vec![0; chunk_size];
-                    if file_size > 0 {
+                        let chunk_size = (end - start + 1) as usize;
+                        let mut buffer = vec![0; chunk_size];
                         if let Err(e) = file.seek(SeekFrom::Start(start)) {
                             error!("❌ Seek error in local asset '{final_path_clone}': {e}");
                             responder.respond(tauri::http::Response::builder()
@@ -312,29 +318,40 @@ fn register_local_asset_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
                             return;
                         }
                         let _ = file.read_exact(&mut buffer);
-                    }
 
-                    let response_builder = tauri::http::Response::builder()
-                        .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Accept-Ranges", "bytes")
-                        .header("Content-Length", chunk_size.to_string());
-
-                    if (is_range_request || is_truncated) && file_size > 0 {
-                        responder.respond(response_builder
+                        responder.respond(tauri::http::Response::builder()
                             .status(206)
-                            .header(
-                                "Content-Range",
-                                format!("bytes {start}-{end}/{file_size}"),
-                            )
+                            .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Accept-Ranges", "bytes")
+                            .header("Content-Range", format!("bytes {start}-{end}/{file_size}"))
+                            .header("Content-Length", chunk_size.to_string())
                             .body(buffer)
                             .unwrap());
                     } else {
-                        responder.respond(response_builder.status(200).body(buffer).unwrap());
+                        let mut buffer = Vec::with_capacity(file_size as usize);
+                        if file_size > 0 && let Err(e) = file.read_to_end(&mut buffer) {
+                            error!("❌ Read error in local asset '{final_path_clone}': {e}");
+                            responder.respond(tauri::http::Response::builder()
+                                .status(500)
+                                .header("Access-Control-Allow-Origin", "*")
+                                .body(format!("Read error: {e}").into_bytes())
+                                .unwrap());
+                            return;
+                        }
+
+                        responder.respond(tauri::http::Response::builder()
+                            .status(200)
+                            .header(tauri::http::header::CONTENT_TYPE, mime_type_clone)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Accept-Ranges", "bytes")
+                            .header("Content-Length", buffer.len().to_string())
+                            .body(buffer)
+                            .unwrap());
                     }
                 }
                 Err(e) => {
-                    debug!("Standard open failed for local asset {final_path_clone}, attempting transport fallback: {e}");
+                    warn!("Standard open failed for local asset {final_path_clone}, attempting transport fallback: {e}");
 
                     let rclone_state = app_handle.state::<RcloneState>();
                     let transport = rclone_state.transport.clone();
@@ -420,6 +437,8 @@ fn register_audio_cover_protocol<R: Runtime>(mut builder: Builder<R>) -> Builder
             let path_part = if let Some(stripped) = uri.strip_prefix("audio-cover://localhost/") {
                 stripped
             } else if let Some(stripped) = uri.strip_prefix("http://audio-cover.localhost/") {
+                stripped
+            } else if let Some(stripped) = uri.strip_prefix("https://audio-cover.localhost/") {
                 stripped
             } else if let Some(stripped) = uri.strip_prefix("audio-cover://") {
                 stripped

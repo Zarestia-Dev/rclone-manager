@@ -1338,7 +1338,9 @@
     },
     "launchRestoreFailed": "启动恢复流程失败",
     "backupSuccess": "备份创建成功",
-    "restoreSuccess": "设置恢复成功"
+    "backupFailed": "创建备份失败: {{error}}",
+    "restoreSuccess": "备份恢复成功",
+    "restoreFailed": "恢复备份失败: {{error}}"
   },
   "updates": {
     "cancelFailed": "取消更新下载失败。",

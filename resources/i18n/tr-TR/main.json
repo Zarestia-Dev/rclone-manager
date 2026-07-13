@@ -1338,7 +1338,9 @@
     },
     "launchRestoreFailed": "Geri yükleme akışı başlatılamadı",
     "backupSuccess": "Yedekleme başarıyla oluşturuldu",
-    "restoreSuccess": "Ayarlar başarıyla geri yüklendi"
+    "backupFailed": "Yedekleme oluşturulamadı: {{error}}",
+    "restoreSuccess": "Yedekleme başarıyla geri yüklendi",
+    "restoreFailed": "Yedekleme geri yüklenemedi: {{error}}"
   },
   "updates": {
     "cancelFailed": "Güncelleme indirmesi iptal edilemedi.",
