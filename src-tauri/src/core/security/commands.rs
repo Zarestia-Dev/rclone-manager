@@ -250,6 +250,7 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 
         let output = build_rclone_command(&app, None, config_path.as_deref(), None)
             .args(["listremotes", "--ask-password=false"])
+            .env_remove("RCLONE_CONFIG_PASS")
             .output()
             .await
             .map_err(

@@ -225,9 +225,7 @@
       "categories": {
         "app": "Ajustes de la aplicación",
         "rclone": "Opciones de Rclone"
-      },
-      "remoteSaved": "Remoto guardado correctamente",
-      "remoteSaveFailed": "Error al guardar el remoto: {{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -515,7 +513,9 @@
         "label": "Marcadores",
         "description": "Lista de ubicaciones marcadas para un acceso rápido."
       }
-    }
+    },
+    "remoteSaved": "Remoto guardado correctamente",
+    "remoteSaveFailed": "Error al guardar el remoto: {{error}}"
   },
   "banners": {
     "development": {
@@ -763,9 +763,7 @@
         "successCopyUrl": "URL de descarga copiada al portapapeles",
         "failCopyUrl": "Error al generar la URL de descarga",
         "successDownload": "Archivo descargado correctamente",
-        "failDownload": "Error al descargar el archivo",
-        "resolveStarted": "Se inició la resolución del conflicto de archivos",
-        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}"
+        "failDownload": "Error al descargar el archivo"
       },
       "empty": {
         "noActive": "No hay transferencias activas",
@@ -786,6 +784,10 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
+      },
+      "messages": {
+        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}",
+        "resolveStarted": "Se inició la resolución del conflicto de archivos"
       }
     },
     "inputModal": {
@@ -2107,8 +2109,6 @@
         "placeholder": "Seleccionar perfil",
         "inUseWarning": "No se puede borrar el perfil \"{{name}}\": está siendo usado por {{count}} {{type}}(s) activos",
         "disabledReason": {
-          "defaultProtected": "El perfil predeterminado no se puede renombrar ni eliminar",
-          "lastProfile": "Debe permanecer al menos un perfil",
           "inUse": "El perfil está en uso por una operación {{operation}} en ejecución. Deténgala primero."
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "Error al actualizar la caché de rclone: {{error}}",
       "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
       "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
-      "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}"
+      "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
+      "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}"
     },
     "security": {
       "passwordEmpty": "La contraseña no puede estar vacía",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "Error al establecer el tema de la aplicación: {{error}}",
       "unlockFailed": "Desbloqueo fallido: {{error}}",
-      "killFailed": "Error al terminar el proceso: {{error}}",
-      "quitFailed": "Error al cerrar el motor de rclone: {{error}}"
+      "killFailed": "Error al terminar el proceso: {{error}}"
     },
     "remote": {
       "configFailed": "Error al configurar el remoto: {{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "Error al reiniciar el motor",
       "engineConnectionFailed": "Error de conexión con el motor",
       "engineBinaryNotFound": "Rclone no encontrado",
-      "enginePasswordRequired": "Contraseña requerida"
+      "enginePasswordRequired": "Contraseña requerida",
+      "engineAuthFailed": "Error de Autenticación del Motor"
     },
     "body": {
       "mountSucceeded": "Perfil {{remote}} '{{profile}}' de {{backend}} montado con éxito en {{mountPoint}}.",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "Error al reiniciar el motor: {{error}}",
       "engineConnectionFailed": "No se pudo conectar con el motor rclone: {{error}}",
       "engineBinaryNotFound": "Binario de rclone no encontrado, verifique su configuración.",
-      "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración."
+      "enginePasswordRequired": "Se requiere contraseña para acceder al archivo de configuración.",
+      "engineAuthFailed": "Error al autenticar con el motor de rclone: {{error}}"
     }
   },
   "repairSheet": {

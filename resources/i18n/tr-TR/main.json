@@ -225,9 +225,7 @@
       "categories": {
         "app": "Uygulama Ayarları",
         "rclone": "Rclone Seçenekleri"
-      },
-      "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
-      "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -515,7 +513,9 @@
         "label": "Yer İmleri",
         "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
       }
-    }
+    },
+    "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
+    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
   },
   "banners": {
     "development": {
@@ -763,9 +763,7 @@
         "successCopyUrl": "İndirme bağlantısı panoya kopyalandı",
         "failCopyUrl": "İndirme URL'si oluşturulamadı",
         "successDownload": "Dosya başarıyla indirildi",
-        "failDownload": "Dosya indirilemedi",
-        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı",
-        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}"
+        "failDownload": "Dosya indirilemedi"
       },
       "empty": {
         "noActive": "Aktif transfer yok",
@@ -786,6 +784,10 @@
           "seconds": "{{seconds}}sn",
           "lessThanSecond": "<1sn"
         }
+      },
+      "messages": {
+        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}",
+        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı"
       }
     },
     "inputModal": {
@@ -2107,8 +2109,6 @@
         "placeholder": "Profil Seçin",
         "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
         "disabledReason": {
-          "defaultProtected": "Varsayılan profil yeniden adlandırılamaz veya silinemez",
-          "lastProfile": "En az bir profil kalmalıdır",
           "inUse": "Profil çalışan bir {{operation}} tarafından kullanılıyor. Önce onu durdurun."
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "Rclone önbelleği yenilenemedi: {{error}}",
       "invalidFlags": "Geçersiz rclone bayrakları tespit edildi: {{error}}",
       "updateRemoteUnsupported": "Bu rclone sürümü için uzaktan güncelleme desteklenmiyor",
-      "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}"
+      "backupFailed": "Mevcut rclone ikili dosyası yedeklenemedi: {{error}}",
+      "rcAuthFailed": "Rclone uzaktan kontrol kimlik doğrulaması başarısız oldu: {{error}}"
     },
     "security": {
       "passwordEmpty": "Şifre boş olamaz",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "Uygulama teması ayarlanamadı: {{error}}",
       "unlockFailed": "Kilit açma başarısız: {{error}}",
-      "killFailed": "İşlem sonlandırılamadı: {{error}}",
-      "quitFailed": "Rclone motoru kapatılamadı: {{error}}"
+      "killFailed": "İşlem sonlandırılamadı: {{error}}"
     },
     "remote": {
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "Motor Başlatılamadı",
       "engineConnectionFailed": "Motor Bağlantı Hatası",
       "engineBinaryNotFound": "Rclone Bulunamadı",
-      "enginePasswordRequired": "Şifre Gerekli"
+      "enginePasswordRequired": "Şifre Gerekli",
+      "engineAuthFailed": "Motor Kimlik Doğrulaması Başarısız"
     },
     "body": {
       "mountSucceeded": "{{backend}} sistemindeki {{remote}} profili '{{profile}}', {{mountPoint}} adresine bağlandı.",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "Motor yeniden başlatılırken hata oluştu: {{error}}",
       "engineConnectionFailed": "Rclone motoruna bağlanılamadı: {{error}}",
       "engineBinaryNotFound": "Rclone ikili dosyası bulunamadı, lütfen ayarları kontrol edin.",
-      "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir."
+      "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir.",
+      "engineAuthFailed": "Rclone motoru ile kimlik doğrulaması başarısız oldu: {{error}}"
     }
   },
   "repairSheet": {

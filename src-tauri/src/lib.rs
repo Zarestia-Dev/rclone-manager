@@ -165,69 +165,71 @@ pub fn run() {
 
     #[cfg(not(feature = "web-server"))]
     {
-        builder = builder.on_window_event(|window, event| match event {
-            WindowEvent::CloseRequested { api, .. } => {
-                let app_handle = window.app_handle();
+        builder = builder
+            .plugin(tauri_plugin_deep_link::init())
+            .on_window_event(|window, event| match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    let app_handle = window.app_handle();
 
-                let destroy_on_close = app_handle
-                    .try_state::<core::settings::AppSettingsManager>()
-                    .and_then(|manager| {
-                        manager
-                            .get_all()
-                            .ok()
-                            .map(|s| s.developer.destroy_window_on_close)
-                    })
-                    .unwrap_or(false);
+                    let destroy_on_close = app_handle
+                        .try_state::<core::settings::AppSettingsManager>()
+                        .and_then(|manager| {
+                            manager
+                                .get_all()
+                                .ok()
+                                .map(|s| s.developer.destroy_window_on_close)
+                        })
+                        .unwrap_or(false);
 
-                #[cfg(feature = "tray")]
-                let tray_enabled = app_handle
-                    .try_state::<core::settings::AppSettingsManager>()
-                    .and_then(|manager| manager.get_all().ok().map(|s| s.general.tray_enabled))
-                    .unwrap_or(false);
+                    #[cfg(feature = "tray")]
+                    let tray_enabled = app_handle
+                        .try_state::<core::settings::AppSettingsManager>()
+                        .and_then(|manager| manager.get_all().ok().map(|s| s.general.tray_enabled))
+                        .unwrap_or(false);
 
-                #[cfg(not(feature = "tray"))]
-                let tray_enabled = false;
+                    #[cfg(not(feature = "tray"))]
+                    let tray_enabled = false;
 
-                if window.label() == "main" {
-                    if tray_enabled {
-                        if destroy_on_close {
-                            log::debug!("Optimization Enabled: Destroying window to free RAM");
-                        } else {
-                            #[cfg(desktop)]
-                            if let Err(e) = window.hide() {
-                                log::error!("Failed to hide window: {e}");
+                    if window.label() == "main" {
+                        if tray_enabled {
+                            if destroy_on_close {
+                                log::debug!("Optimization Enabled: Destroying window to free RAM");
+                            } else {
+                                #[cfg(desktop)]
+                                if let Err(e) = window.hide() {
+                                    log::error!("Failed to hide window: {e}");
+                                }
+                                api.prevent_close();
                             }
+                            #[cfg(target_os = "macos")]
+                            crate::utils::app::platform::update_macos_dock_visibility(app_handle);
+                        } else {
                             api.prevent_close();
+                            let window_ = window.clone();
+                            tauri::async_runtime::spawn(async move {
+                                window_
+                                    .app_handle()
+                                    .state::<RcloneState>()
+                                    .set_shutting_down();
+                                let _ = core::lifecycle::shutdown::shutdown_app(
+                                    window_.app_handle().clone(),
+                                )
+                                .await;
+                            });
                         }
-                        #[cfg(target_os = "macos")]
-                        crate::utils::app::platform::update_macos_dock_visibility(app_handle);
-                    } else {
-                        api.prevent_close();
-                        let window_ = window.clone();
-                        tauri::async_runtime::spawn(async move {
-                            window_
-                                .app_handle()
-                                .state::<RcloneState>()
-                                .set_shutting_down();
-                            let _ = core::lifecycle::shutdown::shutdown_app(
-                                window_.app_handle().clone(),
-                            )
-                            .await;
-                        });
                     }
                 }
-            }
-            WindowEvent::Destroyed => {
-                #[cfg(target_os = "macos")]
-                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
-            }
-            #[cfg(desktop)]
-            WindowEvent::Focused(true) => {
-                #[cfg(target_os = "macos")]
-                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
-            }
-            _ => {}
-        });
+                WindowEvent::Destroyed => {
+                    #[cfg(target_os = "macos")]
+                    crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
+                }
+                #[cfg(desktop)]
+                WindowEvent::Focused(true) => {
+                    #[cfg(target_os = "macos")]
+                    crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
+                }
+                _ => {}
+            });
     }
 
     #[cfg(all(desktop, not(feature = "flatpak")))]
@@ -241,8 +243,7 @@ pub fn run() {
     builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_deep_link::init());
+        .plugin(tauri_plugin_opener::init());
 
     #[cfg(feature = "desktop")]
     {
@@ -379,7 +380,11 @@ fn setup_app(
     });
 
     #[cfg(any(
-        all(target_os = "linux", not(feature = "flatpak")),
+        all(
+            target_os = "linux",
+            not(feature = "flatpak"),
+            not(feature = "web-server")
+        ),
         all(debug_assertions, windows)
     ))]
     {

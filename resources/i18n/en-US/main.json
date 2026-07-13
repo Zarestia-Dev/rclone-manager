@@ -225,9 +225,7 @@
       "categories": {
         "app": "Application Settings",
         "rclone": "Rclone Options"
-      },
-      "remoteSaved": "Remote saved successfully",
-      "remoteSaveFailed": "Failed to save remote: {{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -377,6 +375,8 @@
     "resetFailed": "Failed to reset {{key}} to default.",
     "loadFailed": "Could not load application settings.",
     "remoteResetSuccess": "Settings for {{remote}} reset successfully",
+    "remoteSaved": "Remote saved successfully",
+    "remoteSaveFailed": "Failed to save remote: {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Enable Tray Icon",
@@ -763,7 +763,9 @@
         "successCopyUrl": "Download URL copied to clipboard",
         "failCopyUrl": "Failed to generate download URL",
         "successDownload": "File downloaded successfully",
-        "failDownload": "Failed to download file",
+        "failDownload": "Failed to download file"
+      },
+      "messages": {
         "resolveStarted": "File mismatch resolution started",
         "resolveFailed": "Failed to resolve file mismatch: {{error}}"
       },
@@ -2107,8 +2109,6 @@
         "placeholder": "Select Profile",
         "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
         "disabledReason": {
-          "defaultProtected": "Default profile cannot be renamed or deleted",
-          "lastProfile": "At least one profile must remain",
           "inUse": "Profile is in use by a running {{operation}}. Stop it first."
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "Failed to refresh rclone cache: {{error}}",
       "invalidFlags": "Invalid rclone flags detected: {{error}}",
       "updateRemoteUnsupported": "Remote update is not supported for this rclone version",
-      "backupFailed": "Failed to backup current rclone binary: {{error}}"
+      "backupFailed": "Failed to backup current rclone binary: {{error}}",
+      "rcAuthFailed": "Rclone remote control authentication failed: {{error}}"
     },
     "security": {
       "passwordEmpty": "Password cannot be empty",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "Failed to set application theme: {{error}}",
       "unlockFailed": "Unlock failed: {{error}}",
-      "killFailed": "Failed to kill process: {{error}}",
-      "quitFailed": "Failed to quit rclone engine: {{error}}"
+      "killFailed": "Failed to kill process: {{error}}"
     },
     "remote": {
       "configFailed": "Failed to configure remote: {{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "Engine Restart Failed",
       "engineConnectionFailed": "Engine Connection Error",
       "engineBinaryNotFound": "Rclone Not Found",
-      "enginePasswordRequired": "Password Required"
+      "enginePasswordRequired": "Password Required",
+      "engineAuthFailed": "Engine Authentication Failed"
     },
     "body": {
       "mountSucceeded": "Successfully mounted {{remote}} profile '{{profile}}' from {{backend}} at {{mountPoint}}.",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "Error restarting engine: {{error}}",
       "engineConnectionFailed": "Could not connect to rclone engine: {{error}}",
       "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
-      "enginePasswordRequired": "Password is required to access the configuration file."
+      "enginePasswordRequired": "Password is required to access the configuration file.",
+      "engineAuthFailed": "Failed to authenticate with rclone engine: {{error}}"
     }
   },
   "repairSheet": {

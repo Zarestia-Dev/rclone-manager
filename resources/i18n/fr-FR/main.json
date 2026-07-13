@@ -225,9 +225,7 @@
       "categories": {
         "app": "Paramètres de l'application",
         "rclone": "Options Rclone"
-      },
-      "remoteSaved": "Remote enregistré avec succès",
-      "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -515,7 +513,9 @@
         "label": "Signets",
         "description": "Liste des signets pour un accès rapide."
       }
-    }
+    },
+    "remoteSaved": "Remote enregistré avec succès",
+    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
   },
   "banners": {
     "development": {
@@ -763,9 +763,7 @@
         "successCopyUrl": "URL de téléchargement copiée dans le presse-papiers",
         "failCopyUrl": "Échec de la génération de l'URL de téléchargement",
         "successDownload": "Fichier téléchargé avec succès",
-        "failDownload": "Échec du téléchargement du fichier",
-        "resolveStarted": "La résolution du conflit de fichiers a commencé",
-        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
+        "failDownload": "Échec du téléchargement du fichier"
       },
       "empty": {
         "noActive": "Aucun transfert actif",
@@ -786,6 +784,10 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
+      },
+      "messages": {
+        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}",
+        "resolveStarted": "La résolution du conflit de fichiers a commencé"
       }
     },
     "inputModal": {
@@ -2107,8 +2109,6 @@
         "placeholder": "Sélectionner un profil",
         "inUseWarning": "Impossible de supprimer le profil \"{{name}}\" - il est utilisé par {{count}} actif {{type}}(s)",
         "disabledReason": {
-          "defaultProtected": "Le profil par défaut ne peut pas être renommé ou supprimé",
-          "lastProfile": "Au moins un profil doit rester",
           "inUse": "Le profil est utilisé par un {{operation}} en cours d'exécution. Arrêtez-le d'abord."
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "Échec de l'actualisation du cache de rclone : {{error}}",
       "invalidFlags": "Flags rclone non valides détectés : {{error}}",
       "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
-      "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}"
+      "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}",
+      "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}"
     },
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "Impossible de définir le thème de l'application : {{error}}",
       "unlockFailed": "Échec du déblocage : {{error}}",
-      "killFailed": "Impossible de tuer le processus : {{error}}",
-      "quitFailed": "Impossible de quitter le moteur de rclone : {{error}}"
+      "killFailed": "Impossible de tuer le processus : {{error}}"
     },
     "remote": {
       "configFailed": "Échec de la configuration du dépôt distant : {{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "Échec du redémarrage du moteur",
       "engineConnectionFailed": "Erreur de connexion au moteur",
       "engineBinaryNotFound": "Rclone non trouvé",
-      "enginePasswordRequired": "Mot de passe requis"
+      "enginePasswordRequired": "Mot de passe requis",
+      "engineAuthFailed": "Échec de l'Authentification du Moteur"
     },
     "body": {
       "mountSucceeded": "Le profil {{remote}} '{{profile}}' a été monté avec succès depuis {{backend}} à {{mountPoint}}.",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "Erreur de redémarrage du moteur : {{error}}",
       "engineConnectionFailed": "Impossible de se connecter au moteur de rclone : {{error}}",
       "engineBinaryNotFound": "Le binaire rclone n'a pas été trouvé, veuillez vérifier vos paramètres.",
-      "enginePasswordRequired": "Le mot de passe est requis pour accéder au fichier de configuration."
+      "enginePasswordRequired": "Le mot de passe est requis pour accéder au fichier de configuration.",
+      "engineAuthFailed": "Échec de l'authentification auprès du moteur rclone: {{error}}"
     }
   },
   "repairSheet": {

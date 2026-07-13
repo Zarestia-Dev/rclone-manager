@@ -225,9 +225,7 @@
       "categories": {
         "app": "Налаштування застосунку",
         "rclone": "Параметри Rclone"
-      },
-      "remoteSaved": "Віддалене сховище успішно збережено",
-      "remoteSaveFailed": "Не вдалося зберегти віддалене сховище: {{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -515,7 +513,9 @@
         "label": "Закладки",
         "description": "Список збережених у закладках розташувань для швидкого доступу."
       }
-    }
+    },
+    "remoteSaved": "Віддалене сховище успішно збережено",
+    "remoteSaveFailed": "Не вдалося зберегти віддалене сховище: {{error}}"
   },
   "banners": {
     "development": {
@@ -763,9 +763,7 @@
         "successCopyUrl": "Посилання для завантаження скопійовано в буфер обміну",
         "failCopyUrl": "Не вдалося згенерувати посилання для завантаження",
         "successDownload": "Файл успішно завантажено",
-        "failDownload": "Не вдалося завантажити файл",
-        "resolveStarted": "Розв'язання невідповідності файлів розпочато",
-        "resolveFailed": "Не вдалося вирішити розбіжність файлів: {{error}}"
+        "failDownload": "Не вдалося завантажити файл"
       },
       "empty": {
         "noActive": "Немає активних передавань",
@@ -786,6 +784,10 @@
           "seconds": "{{seconds}} с",
           "lessThanSecond": "<1 с"
         }
+      },
+      "messages": {
+        "resolveFailed": "Не вдалося вирішити розбіжність файлів: {{error}}",
+        "resolveStarted": "Розв'язання невідповідності файлів розпочато"
       }
     },
     "inputModal": {
@@ -2107,8 +2109,6 @@
         "placeholder": "Оберіть профіль",
         "inUseWarning": "Неможливо видалити профіль «{{name}}» — він використовується активними {{type}} ({{count}})",
         "disabledReason": {
-          "defaultProtected": "Типовий профіль неможливо перейменувати чи видалити",
-          "lastProfile": "Має залишитися щонайменше один профіль",
           "inUse": "Профіль використовується запущеною операцією {{operation}}. Спочатку зупиніть її."
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "Не вдалося оновити кеш rclone: {{error}}",
       "invalidFlags": "Виявлено невірні flags rclone: {{error}}",
       "updateRemoteUnsupported": "Оновлення сховища не підтримується для цієї версії rclone",
-      "backupFailed": "Не вдалося створити резервну копію поточного виконуваного файлу rclone: {{error}}"
+      "backupFailed": "Не вдалося створити резервну копію поточного виконуваного файлу rclone: {{error}}",
+      "rcAuthFailed": "Помилка автентифікації віддаленого керування rclone: {{error}}"
     },
     "security": {
       "passwordEmpty": "Пароль не може бути порожнім",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "Не вдалося встановити тему застосунку: {{error}}",
       "unlockFailed": "Не вдалося розблокувати: {{error}}",
-      "killFailed": "Не вдалося завершити процес: {{error}}",
-      "quitFailed": "Не вдалося завершити роботу рушія rclone: {{error}}"
+      "killFailed": "Не вдалося завершити процес: {{error}}"
     },
     "remote": {
       "configFailed": "Не вдалося налаштувати сховище: {{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "Не вдалося перезапустити рушій",
       "engineConnectionFailed": "Помилка зʼєднання з рушієм",
       "engineBinaryNotFound": "Rclone не знайдено",
-      "enginePasswordRequired": "Потрібен пароль"
+      "enginePasswordRequired": "Потрібен пароль",
+      "engineAuthFailed": "Помилка автентифікації двигуна"
     },
     "body": {
       "mountSucceeded": "Успішно змонтовано {{remote}}, профіль «{{profile}}» з {{backend}} у {{mountPoint}}.",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "Помилка перезапуску рушія: {{error}}",
       "engineConnectionFailed": "Не вдалося підключитися до рушія rclone: {{error}}",
       "engineBinaryNotFound": "Виконуваний файл Rclone не знайдено, перевірте налаштування.",
-      "enginePasswordRequired": "Для доступу до файлу конфігурації потрібен пароль."
+      "enginePasswordRequired": "Для доступу до файлу конфігурації потрібен пароль.",
+      "engineAuthFailed": "Не вдалося автентифікуватися в двигуні rclone: {{error}}"
     }
   },
   "repairSheet": {

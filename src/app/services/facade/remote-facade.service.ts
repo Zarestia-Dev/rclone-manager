@@ -152,6 +152,7 @@ export class RemoteFacadeService extends TauriBaseService {
 
   constructor() {
     super();
+    void this.refreshAll();
 
     // Primary trigger: engine ready event (fires after caches are populated)
     this.eventListeners

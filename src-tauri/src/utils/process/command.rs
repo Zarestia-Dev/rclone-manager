@@ -64,6 +64,14 @@ impl Command {
         self
     }
 
+    pub fn env_remove<K>(mut self, key: K) -> Self
+    where
+        K: AsRef<OsStr>,
+    {
+        self.inner.env_remove(key);
+        self
+    }
+
     pub fn spawn(mut self) -> std::io::Result<tokio::process::Child> {
         self.inner.spawn()
     }

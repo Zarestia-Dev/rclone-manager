@@ -225,9 +225,7 @@
       "categories": {
         "app": "应用设置",
         "rclone": "Rclone 选项"
-      },
-      "remoteSaved": "远程存储已成功保存",
-      "remoteSaveFailed": "保存远程存储失败：{{error}}"
+      }
     }
   },
   "rcloneUpdate": {
@@ -515,7 +513,9 @@
         "label": "书签",
         "description": "快速访问的书签路径列表"
       }
-    }
+    },
+    "remoteSaved": "远程存储已成功保存",
+    "remoteSaveFailed": "保存远程存储失败：{{error}}"
   },
   "banners": {
     "development": {
@@ -763,9 +763,7 @@
         "successCopyUrl": "下载 URL 已复制到剪贴板",
         "failCopyUrl": "生成下载 URL 失败",
         "successDownload": "文件下载成功",
-        "failDownload": "下载文件失败",
-        "resolveStarted": "文件不匹配处理已开始",
-        "resolveFailed": "解决文件不匹配失败：{{error}}"
+        "failDownload": "下载文件失败"
       },
       "empty": {
         "noActive": "无正在进行的传输",
@@ -786,6 +784,10 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "<1秒"
         }
+      },
+      "messages": {
+        "resolveFailed": "解决文件不匹配失败：{{error}}",
+        "resolveStarted": "文件不匹配处理已开始"
       }
     },
     "inputModal": {
@@ -2107,8 +2109,6 @@
         "placeholder": "选择配置文件",
         "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
         "disabledReason": {
-          "defaultProtected": "默认配置文件无法重命名或删除",
-          "lastProfile": "必须保留至少一个配置文件",
           "inUse": "配置文件正在被运行中的 {{operation}} 使用，请先停止它。"
         }
       },
@@ -2585,7 +2585,8 @@
       "cacheRefreshFailed": "刷新 rclone 缓存失败: {{error}}",
       "invalidFlags": "检测到无效的 rclone 标志: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支持远程更新",
-      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}"
+      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
+      "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -2642,8 +2643,7 @@
     "system": {
       "themeSetFailed": "设置应用主题失败: {{error}}",
       "unlockFailed": "解锁失败：{{error}}",
-      "killFailed": "结束进程失败：{{error}}",
-      "quitFailed": "退出 rclone 引擎失败：{{error}}"
+      "killFailed": "终止进程失败：{{error}}"
     },
     "remote": {
       "configFailed": "配置远程存储失败：{{error}}"
@@ -2827,7 +2827,8 @@
       "engineRestartFailed": "引擎重启失败",
       "engineConnectionFailed": "引擎连接错误",
       "engineBinaryNotFound": "未找到 Rclone",
-      "enginePasswordRequired": "需要密码"
+      "enginePasswordRequired": "需要密码",
+      "engineAuthFailed": "引擎身份验证失败"
     },
     "body": {
       "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
@@ -2863,7 +2864,8 @@
       "engineRestartFailed": "重启引擎时发生错误：{{error}}",
       "engineConnectionFailed": "无法连接到 rclone 引擎：{{error}}",
       "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
-      "enginePasswordRequired": "访问配置文件需要密码。"
+      "enginePasswordRequired": "访问配置文件需要密码。",
+      "engineAuthFailed": "无法通过 rclone 引擎身份验证：{{error}}"
     }
   },
   "repairSheet": {
