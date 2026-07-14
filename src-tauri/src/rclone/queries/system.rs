@@ -15,12 +15,18 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
 
-    let config_path = paths
+    let config_path_str = paths
         .get("config")
         .and_then(|v| v.as_str())
         .ok_or("No config path in response")?;
 
-    Ok(PathBuf::from(config_path))
+    let path = PathBuf::from(config_path_str);
+    if path.is_absolute() {
+        Ok(path)
+    } else {
+        let app_paths = crate::core::paths::AppPaths::from_app_handle(&app)?;
+        Ok(app_paths.config_dir.join(path))
+    }
 }
 
 #[tauri::command]

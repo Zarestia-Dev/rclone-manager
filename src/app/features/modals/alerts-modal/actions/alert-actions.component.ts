@@ -4,7 +4,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
@@ -22,7 +21,6 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
     MatIconModule,
     MatTooltipModule,
     MatSlideToggleModule,
-    MatProgressSpinnerModule,
     TranslatePipe,
     SearchContainerComponent,
   ],
@@ -54,7 +52,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.actions().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="24"> </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 
@@ -124,10 +122,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                     [disabled]="alerts.testingActionIds().has(action.id)"
                   >
                     @if (alerts.testingActionIds().has(action.id)) {
-                      <mat-progress-spinner
-                        mode="indeterminate"
-                        diameter="24"
-                      ></mat-progress-spinner>
+                      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     } @else {
                       <mat-icon svgIcon="play"></mat-icon>
                     }

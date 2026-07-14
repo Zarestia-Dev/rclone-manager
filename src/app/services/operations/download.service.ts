@@ -36,7 +36,7 @@ export class DownloadService {
           remote,
           isLocal
         );
-        const url = new URL(rawUrl);
+        const url = new URL(rawUrl, window.location.origin);
         url.searchParams.set('download', 'true');
 
         const link = document.createElement('a');

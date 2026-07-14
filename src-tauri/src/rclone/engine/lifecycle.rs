@@ -159,7 +159,7 @@ pub async fn start_engine_if_not_running(app: &AppHandle) {
     let state = app.state::<EngineState>();
     let mut engine = state.lock().await;
     if !engine.is_running() {
-        start(&mut engine, app).await;
+        engine.init(app).await;
     }
 }
 

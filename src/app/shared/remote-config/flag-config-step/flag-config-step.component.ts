@@ -12,7 +12,6 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -35,7 +34,6 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     MatFormFieldModule,
     MatSelectModule,
     MatIconModule,
-    MatProgressSpinnerModule,
     MatButtonModule,
     MatTooltipModule,
     SettingControlComponent,

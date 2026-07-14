@@ -121,12 +121,15 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly showObscureButton = computed(() => {
     if (!this.isPasswordField()) return false;
     if (this.remoteState) {
-      if (this.remoteState.activeStepType() === 'runtimeRemote') {
+      const activeStep = this.remoteState.activeStepType();
+      if (activeStep === 'runtimeRemote' || this.remoteState.editTarget()) {
         return true;
       }
       const opts = this.remoteState.commandOptions();
       const obscureOpt = opts.find(o => o.key === 'obscure');
-      if (obscureOpt && obscureOpt.value === true) {
+      const noObscureOpt = opts.find(o => o.key === 'noObscure');
+      const isObscureActive = obscureOpt?.value === true && !(noObscureOpt?.value === true);
+      if (isObscureActive) {
         return false;
       }
     }

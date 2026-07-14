@@ -39,12 +39,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 
 type PresetKey =
-  | 'daily-9am'
-  | 'daily-6pm'
-  | 'weekday-9am'
-  | 'weekly-monday'
-  | 'every-6-hours'
-  | 'monthly-1st';
+  'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
 
 @Component({
   selector: 'app-cron-input',

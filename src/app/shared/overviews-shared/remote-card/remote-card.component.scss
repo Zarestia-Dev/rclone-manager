@@ -194,8 +194,6 @@
     overflow: visible;
 
     button[matMiniFab] {
-      width: 36px !important;
-      height: 36px !important;
       transition: var(--transition-fast);
 
       mat-icon {
@@ -203,6 +201,7 @@
         width: var(--icon-size-sm);
         height: var(--icon-size-sm);
       }
+
       &:hover {
         transform: scale(var(--action-btn-scale-hover));
       }
@@ -217,7 +216,7 @@
   .folder-badge {
     position: absolute;
     top: var(--space-xxs);
-    right: -var(--space-md);
+    right: calc(var(--space-md) * -1);
     min-width: 16px;
     height: 16px;
     border-radius: 8px;
@@ -233,107 +232,6 @@
     align-items: center;
     justify-content: center;
     z-index: 2;
-  }
-
-  button[matMiniFab] {
-    position: relative;
-  }
-}
-
-// ── Global MatMenu styles override for premium styling ───────────────────────
-::ng-deep .blossom-menu-panel.mat-mdc-menu-panel {
-  background: var(--window-bg-color) !important;
-  border: 1px solid rgba(var(--window-fg-color-rgb), 0.1) !important;
-  box-shadow: var(--shadow-popover) !important;
-  border-radius: var(--radius-md) !important;
-  min-width: 170px !important;
-  max-width: 170px !important;
-  margin-left: -67px !important; // Center the 170px menu over the 36px trigger button
-  margin-bottom: 8px !important;
-  overflow: visible !important;
-
-  // Triangle border (sits behind the fill)
-  &::before {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 7px solid transparent;
-    border-top-color: rgba(var(--window-fg-color-rgb), 0.1);
-    z-index: 9;
-    pointer-events: none;
-  }
-
-  // Triangle fill (obscures the border at the top edge)
-  &::after {
-    content: "";
-    position: absolute;
-    top: 99%; // Slightly overlaps the border line for seamless integration
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--window-bg-color);
-    z-index: 10;
-    pointer-events: none;
-  }
-
-  .mat-mdc-menu-content {
-    padding: 6px !important;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  button.mat-mdc-menu-item {
-    min-height: 38px !important;
-    padding: 0 12px !important;
-    border-radius: var(--radius-sm) !important;
-    color: var(--window-fg-color) !important;
-
-    .mdc-list-item__primary-text {
-      font-size: var(--font-size-sm) !important;
-      font-weight: 500 !important;
-      color: var(--window-fg-color) !important;
-    }
-
-    mat-icon {
-      color: white;
-      margin-right: 8px !important;
-      --mdc-list-item-leading-icon-color: var(--dim-color);
-      width: 16px !important;
-      height: 16px !important;
-      font-size: 16px !important;
-    }
-
-    .entry-spinner {
-      margin-right: 8px;
-      flex-shrink: 0;
-      --mdc-circular-progress-active-indicator-color: var(--dim-color);
-    }
-
-    // Active state styling
-    &.isActive {
-      background: rgba(var(--menu-color-rgb), 0.1) !important;
-
-      .mdc-list-item__primary-text {
-        color: var(--menu-color) !important;
-        font-weight: 600 !important;
-      }
-
-      mat-icon {
-        color: var(--menu-color) !important;
-        --mdc-list-item-leading-icon-color: var(--menu-color);
-      }
-
-      &:hover {
-        background: rgba(var(--menu-color-rgb), 0.16) !important;
-      }
-    }
-
-    &:hover:not(.isActive) {
-      background: rgba(var(--window-fg-color-rgb), 0.05) !important;
-    }
   }
 }
 

@@ -19,7 +19,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -76,7 +75,6 @@ interface PathItem {
     CdkMenuModule,
     CronInputComponent,
     NumberInputComponent,
-    MatProgressSpinner,
     MatTooltipModule,
     TranslatePipe,
     AlertBannerComponent,

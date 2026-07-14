@@ -2,7 +2,6 @@ import { Component, OnInit, inject, ChangeDetectionStrategy, computed } from '@a
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,7 +30,6 @@ import { WindowControlsComponent } from 'src/app/shared/components/window-contro
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatProgressSpinnerModule,
     MatBadgeModule,
     TranslatePipe,
     WindowControlsComponent,

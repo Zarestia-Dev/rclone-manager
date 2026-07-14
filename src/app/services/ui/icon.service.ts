@@ -8,14 +8,7 @@ import { getIconForMimeType, getGenericIconForMimeType } from './constants/mime-
 import { Entry } from '@app/types';
 
 export type FileCategory =
-  | 'image'
-  | 'video'
-  | 'audio'
-  | 'pdf'
-  | 'directory'
-  | 'binary'
-  | 'text'
-  | 'archive';
+  'image' | 'video' | 'audio' | 'pdf' | 'directory' | 'binary' | 'text' | 'archive';
 
 @Injectable({
   providedIn: 'root',
@@ -47,9 +40,10 @@ export class IconService {
 
     // Register all icons with MatIconRegistry
     for (const [name, path] of Object.entries(this.allIcons)) {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
       this.iconRegistry.addSvgIcon(
         name.toLowerCase(),
-        this.sanitizer.bypassSecurityTrustResourceUrl(path)
+        this.sanitizer.bypassSecurityTrustResourceUrl(normalizedPath)
       );
     }
   }

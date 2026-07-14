@@ -14,7 +14,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { fromEvent } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 
@@ -27,6 +27,7 @@ import { CdkMenuModule } from '@angular/cdk/menu';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { PathNavigationService } from 'src/app/services/infrastructure/platform/path-navigation.service';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import {
   Entry,
@@ -89,6 +90,7 @@ export class NautilusComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathService = inject(PathService);
+  private readonly pathNav = inject(PathNavigationService);
   private readonly formatFileSizePipe = inject(FormatFileSizePipe);
   private readonly keyboard = inject(NautilusKeyboardDirective);
 
@@ -133,8 +135,8 @@ export class NautilusComponent implements OnInit {
     const opts = this.pickerOptions();
     const count = this.tabSvc.selectedItems().size;
     if (opts.selection === 'files' && count === 0) return true;
-    if (opts.selection === 'folders' && count === 0) return false; // current folder is allowed
-    if (opts.selection === 'both' && count === 0) return false; // current folder is allowed
+    if (opts.selection === 'folders' && count === 0) return false;
+    if (opts.selection === 'both' && count === 0) return false;
     return count < (opts.minSelection ?? 0);
   });
   protected readonly title = computed(() => {
@@ -152,6 +154,7 @@ export class NautilusComponent implements OnInit {
   protected readonly isCurrentPathRegistered = signal(false);
   protected readonly searchFilter = signal('');
   private readonly initialLocationApplied = signal(false);
+  private readonly _initialUrlSyncDone = signal(false);
   private readonly _langChange = toSignal(this.translate.onLangChange.pipe(startWith(null)));
 
   // ── Computed path / breadcrumbs ──────────────────────────────────────────────
@@ -386,8 +389,6 @@ export class NautilusComponent implements OnInit {
         });
       }
     });
-
-    // Sync browser URL to the active remote/path.
     effect(() => {
       if (this.isPickerMode()) return;
       const remote = this.tabSvc.activeRemote();
@@ -396,20 +397,44 @@ export class NautilusComponent implements OnInit {
       const activeFile = this.fileViewerSvc.activeFileName();
 
       untracked(() => {
-        let newPath = '/';
-        if (isStandalone) {
-          const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
-          newPath = remote
-            ? `/nautilus/${encodeURIComponent(remote.name)}${displayPath ? `/${displayPath}` : ''}`
-            : '/nautilus';
+        if (!isStandalone) return;
+
+        const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
+
+        const remoteName = remote?.name ?? null;
+        const desiredPath = this.pathNav.buildRelativeNautilusPath(remoteName, displayPath);
+        const currentPath = this.pathNav.currentPath();
+
+        if (currentPath === desiredPath) {
+          this._initialUrlSyncDone.set(true);
+          return;
         }
-        if (window.location.pathname !== newPath) {
-          window.history.replaceState(null, '', newPath + window.location.search);
+
+        if (!this._initialUrlSyncDone()) {
+          this.pathNav.replaceCurrent(remoteName, displayPath);
+          this._initialUrlSyncDone.set(true);
+        } else {
+          this.pathNav.navigateTo(remoteName, displayPath);
         }
       });
     });
 
-    // Sync window title to the active remote/path.
+    this.pathNav.locationChanges$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(loc => {
+      if (this.isPickerMode()) return;
+      if (!this.nautilusService.isStandaloneWindow()) return;
+      const remote = loc.remote;
+      if (!remote) return;
+
+      const remoteRoot =
+        this.allRemotesLookup().find(
+          r =>
+            this.pathService.normalizeRemoteName(r.name) ===
+            this.pathService.normalizeRemoteName(remote)
+        ) ?? null;
+
+      void this.tabSvc.navigate(remoteRoot, loc.path ?? '', false);
+    });
+
     effect(() => {
       const isPicker = this.isPickerMode();
       const remote = this.tabSvc.activeRemote();

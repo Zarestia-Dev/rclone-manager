@@ -29,7 +29,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 import { NumberInputComponent } from '../../../../shared/components/number-input/number-input.component';
 
@@ -85,7 +84,6 @@ interface SettingViewModel {
     MatTooltipModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     SearchContainerComponent,
     TranslatePipe,
     NgTemplateOutlet,
@@ -592,9 +590,7 @@ export class PreferencesModalComponent {
   private toSettingViewModel(category: string, key: string): SettingViewModel {
     const meta = this.enrichedOptions()[`${category}.${key}`];
     const control = this.settingsForm.get(category)?.get(key) as
-      | FormControl
-      | FormArray
-      | undefined;
+      FormControl | FormArray | undefined;
     const type = meta?.value_type;
     const isRowLayout = type === 'bool' || type === 'int';
 

@@ -155,7 +155,7 @@
             [disabled]="encryptionLoading() || changePasswordForm.invalid"
           >
             @if (encryptionLoading()) {
-              <mat-spinner diameter="18"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
             } @else {
               {{ 'modals.backend.security.updatePassword' | translate }}
             }
@@ -204,7 +204,7 @@
             [disabled]="encryptionLoading() || decryptPassword.invalid"
           >
             @if (encryptionLoading()) {
-              <mat-spinner diameter="18"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
             } @else {
               {{ 'modals.backend.security.removeEncryption' | translate }}
             }
@@ -265,7 +265,7 @@
             [disabled]="encryptionLoading() || encryptForm.invalid"
           >
             @if (encryptionLoading()) {
-              <mat-spinner diameter="18"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
             } @else {
               {{ 'modals.backend.security.enableEncryption' | translate }}
             }

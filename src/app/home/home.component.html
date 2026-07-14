@@ -58,7 +58,7 @@
     }
 
     <!-- Overview Components -->
-    @if (remotes().length > 0 && !remote && !isLoading()) {
+    @if (remotes().length > 0 && !remote) {
       @switch (currentTab()) {
         @case ('general') {
           <app-general-overview

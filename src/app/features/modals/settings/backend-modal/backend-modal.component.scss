@@ -187,35 +187,21 @@
   }
 
   .badge {
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
+    border-radius: var(--radius-xs);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    font-weight: 600;
 
     &.active {
       background: var(--primary-color);
       color: white;
     }
 
-    // Connecting badge — animated pulsing background so it's clearly
-    // distinguishable from the static "active" badge.
     &.connecting {
       background: rgba(var(--primary-color-rgb), 0.2);
       color: var(--primary-color);
-      animation: pulse-badge 1.5s ease-in-out infinite;
     }
-  }
-}
-
-@keyframes pulse-badge {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
   }
 }
 
@@ -348,79 +334,6 @@
 }
 
 // ============================================================================
-// Inline Test Connection (add/edit form)
-// ============================================================================
-.test-form-btn {
-  align-self: flex-end;
-  white-space: nowrap;
-  min-width: 140px;
-  height: 40px;
-
-  mat-spinner {
-    display: inline-block;
-    margin-inline-end: var(--space-xs);
-  }
-
-  mat-icon {
-    margin-inline-end: var(--space-xs);
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-  }
-}
-
-// Inline test result banner — shown after a form test completes.
-.form-test-result {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-
-  mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .result-message {
-    flex: 1;
-  }
-
-  .result-version {
-    font-family: var(--font-mono);
-    opacity: 0.7;
-    font-size: 0.85rem;
-  }
-
-  &.success {
-    background: rgba(76, 175, 80, 0.1);
-    color: #2e7d32;
-    border: 1px solid rgba(76, 175, 80, 0.3);
-
-    mat-icon {
-      color: #2e7d32;
-    }
-  }
-
-  &.error {
-    background: rgba(244, 67, 54, 0.1);
-    color: #c62828;
-    border: 1px solid rgba(244, 67, 54, 0.3);
-
-    mat-icon {
-      color: #c62828;
-    }
-  }
-}
-
-// ============================================================================
 // Responsive
 // ============================================================================
 @media (max-width: 500px) {
@@ -435,12 +348,5 @@
       border-top: 1px solid var(--border-color);
       opacity: 1;
     }
-  }
-
-  // On narrow screens, the test button wraps to a new line below the
-  // host/port fields instead of sitting awkwardly squashed beside them.
-  .test-form-btn {
-    align-self: stretch;
-    width: 100%;
   }
 }

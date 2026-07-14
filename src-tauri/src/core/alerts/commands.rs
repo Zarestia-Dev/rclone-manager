@@ -165,6 +165,7 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
     let dispatch_ctx = app.state::<DispatchContext>();
 
     match action {
+        #[cfg(feature = "tauri-plugin-notification")]
         AlertAction::OsToast(_) => dispatch::os_toast::dispatch(&app, &ctx)?,
         AlertAction::Webhook(ref a) => {
             let client = if a.tls_verify {
@@ -177,6 +178,9 @@ pub async fn test_alert_action(app: AppHandle, id: String) -> Result<bool, Strin
         AlertAction::Script(ref a) => dispatch::script::dispatch(a, &ctx).await?,
         AlertAction::Telegram(ref a) => {
             dispatch::telegram::dispatch(a, &ctx, &dispatch_ctx.client).await?
+        }
+        AlertAction::Whatsapp(ref a) => {
+            dispatch::whatsapp::dispatch(a, &ctx, &dispatch_ctx.client).await?
         }
         AlertAction::Mqtt(ref a) => dispatch::mqtt::dispatch(a, &ctx, &dispatch_ctx).await?,
         AlertAction::Email(ref a) => dispatch::email::dispatch(a, &ctx).await?,

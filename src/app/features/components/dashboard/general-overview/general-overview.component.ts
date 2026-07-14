@@ -10,7 +10,6 @@ import {
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -66,7 +65,6 @@ interface RunningJobViewModel {
     DecimalPipe,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatExpansionModule,
     MatProgressBarModule,
     MatTooltipModule,

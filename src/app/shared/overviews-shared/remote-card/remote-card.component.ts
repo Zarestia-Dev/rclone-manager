@@ -3,8 +3,7 @@ import { Component, computed, input, inject, output, ChangeDetectionStrategy } f
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppTab,
@@ -94,8 +93,7 @@ interface ProfilePickerGroup {
     TitleCasePipe,
     MatIconModule,
     MatButtonModule,
-    MatMenuModule,
-    MatProgressSpinnerModule,
+    CdkMenuModule,
     MatTooltipModule,
     TranslatePipe,
   ],

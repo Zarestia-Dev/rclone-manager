@@ -1,0 +1,156 @@
+:host {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+}
+
+g {
+  transform-origin: center;
+  transform-box: view-box;
+}
+
+.svg-logo {
+  width: 100%;
+  height: 100%;
+  max-width: 128px;
+  max-height: 128px;
+  user-select: none;
+  overflow: visible;
+}
+
+/* Outer Ethereal Orbit & Orbiting Satellite */
+.loading-orbit-group {
+  transform-origin: 256px 256px;
+  animation: orbitRotate 3s linear infinite;
+}
+
+.loading-orbit-sweep {
+  transform-origin: 256px 256px;
+  stroke-dasharray: 1558;
+  stroke-dashoffset: 1000;
+  animation: orbitSweep 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes orbitRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbitSweep {
+  0% {
+    stroke-dashoffset: 1350;
+  }
+  50% {
+    stroke-dashoffset: 400;
+  }
+  100% {
+    stroke-dashoffset: 1350;
+  }
+}
+
+/* --- SVG ENTRANCE KEYFRAMES --- */
+@keyframes materialPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chromeSnap {
+  0% {
+    transform: scale(0.3) rotate(-135deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* --- CONTINUOUS LOADING WAVE ANIMATIONS FOR INNER SHAPES --- */
+@keyframes shapeWaveDark {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06) rotate(-4deg);
+    filter: brightness(1.2) drop-shadow(0 0 6px rgba(63, 121, 173, 0.5));
+  }
+}
+
+@keyframes shapeWaveLight {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06) rotate(4deg);
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(112, 202, 242, 0.6));
+  }
+}
+
+@keyframes shapeWaveLighter {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06) rotate(-3deg);
+    filter: brightness(1.3) drop-shadow(0 0 6px rgba(180, 227, 249, 0.7));
+  }
+}
+
+/* --- INITIALIZATION & ANIMATION STAGING --- */
+.bg-shadow,
+.bg-base,
+.shape-dark-blue,
+.shape-light-blue,
+.shape-lighter-blue {
+  opacity: 0;
+}
+
+.bg-shadow {
+  animation: materialPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.bg-base {
+  animation: materialPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
+}
+
+.shape-dark-blue {
+  animation:
+    chromeSnap 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards,
+    shapeWaveDark 2.4s ease-in-out 0.85s infinite;
+}
+
+.shape-light-blue {
+  animation:
+    chromeSnap 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.22s forwards,
+    shapeWaveLight 2.4s ease-in-out 1.2s infinite;
+}
+
+.shape-lighter-blue {
+  animation:
+    chromeSnap 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.29s forwards,
+    shapeWaveLighter 2.4s ease-in-out 1.55s infinite;
+}

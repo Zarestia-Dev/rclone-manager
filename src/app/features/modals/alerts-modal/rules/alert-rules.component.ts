@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
@@ -27,7 +26,6 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
     MatSlideToggleModule,
     TranslatePipe,
     SearchContainerComponent,
-    MatProgressSpinnerModule,
   ],
   template: `
     <div class="rules-container">
@@ -57,8 +55,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.rules().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="32" strokeWidth="2">
-            </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 

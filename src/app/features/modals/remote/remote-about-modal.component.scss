@@ -11,6 +11,11 @@
   padding: 48px 0;
   gap: var(--space-md);
   color: var(--dim-color);
+
+  mat-icon {
+    height: var(--icon-size-2xl);
+    width: var(--icon-size-2xl);
+  }
 }
 
 .error-state {

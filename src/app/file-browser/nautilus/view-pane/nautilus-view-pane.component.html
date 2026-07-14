@@ -249,7 +249,7 @@
 
   @if (loading()) {
     <div class="loading-overlay">
-      <mat-spinner diameter="24"></mat-spinner>
+      <mat-icon svgIcon="spinner"></mat-icon>
       <span>{{ 'common.loading' | translate }}</span>
       <button class="nav-button" (click)="cancelLoad.emit(paneIndex())">
         <mat-icon svgIcon="close"></mat-icon>

@@ -211,14 +211,17 @@ pub struct ActionCommon {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum AlertAction {
+    #[cfg(feature = "tauri-plugin-notification")]
+    #[serde(rename = "os_toast")]
+    OsToast(OsToastAction),
     #[serde(rename = "webhook")]
     Webhook(WebhookAction),
     #[serde(rename = "script")]
     Script(ScriptAction),
-    #[serde(rename = "os_toast")]
-    OsToast(OsToastAction),
     #[serde(rename = "telegram")]
     Telegram(TelegramAction),
+    #[serde(rename = "whatsapp")]
+    Whatsapp(WhatsappAction),
     #[serde(rename = "mqtt")]
     Mqtt(MqttAction),
     #[serde(rename = "email")]
@@ -230,22 +233,26 @@ impl rcman::SettingsSchema for AlertAction {
         let mut meta = std::collections::HashMap::new();
 
         // Merge schemas from all variants to satisfy rcman's strict schema validation.
+        #[cfg(feature = "tauri-plugin-notification")]
+        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<WebhookAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<ScriptAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<TelegramAction as rcman::SettingsSchema>::get_metadata());
+        meta.extend(<WhatsappAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<EmailAction as rcman::SettingsSchema>::get_metadata());
 
         meta.insert(
             "kind".to_string(),
             rcman::SettingMetadata::select(
-                "os_toast",
+                "webhook",
                 vec![
+                    #[cfg(feature = "tauri-plugin-notification")]
+                    rcman::opt("os_toast", "System Notification"),
                     rcman::opt("webhook", "Webhook"),
                     rcman::opt("script", "Shell Script"),
-                    rcman::opt("os_toast", "System Notification"),
                     rcman::opt("telegram", "Telegram"),
+                    rcman::opt("whatsapp", "WhatsApp"),
                     rcman::opt("mqtt", "MQTT"),
                     rcman::opt("email", "Email"),
                 ],
@@ -265,7 +272,14 @@ impl std::fmt::Display for AlertAction {
 
 impl Default for AlertAction {
     fn default() -> Self {
-        Self::OsToast(OsToastAction::default())
+        #[cfg(feature = "tauri-plugin-notification")]
+        {
+            Self::OsToast(OsToastAction::default())
+        }
+        #[cfg(not(feature = "tauri-plugin-notification"))]
+        {
+            Self::Webhook(WebhookAction::default())
+        }
     }
 }
 
@@ -273,10 +287,12 @@ impl AlertAction {
     /// Returns a reference to the shared fields common to all action variants.
     pub fn common(&self) -> &ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &a.common,
             Self::Webhook(a) => &a.common,
             Self::Script(a) => &a.common,
-            Self::OsToast(a) => &a.common,
             Self::Telegram(a) => &a.common,
+            Self::Whatsapp(a) => &a.common,
             Self::Mqtt(a) => &a.common,
             Self::Email(a) => &a.common,
         }
@@ -285,10 +301,12 @@ impl AlertAction {
     /// Returns a mutable reference to the shared fields.
     pub fn common_mut(&mut self) -> &mut ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &mut a.common,
             Self::Webhook(a) => &mut a.common,
             Self::Script(a) => &mut a.common,
-            Self::OsToast(a) => &mut a.common,
             Self::Telegram(a) => &mut a.common,
+            Self::Whatsapp(a) => &mut a.common,
             Self::Mqtt(a) => &mut a.common,
             Self::Email(a) => &mut a.common,
         }
@@ -306,16 +324,19 @@ impl AlertAction {
         self.common().enabled
     }
 
+    #[cfg(feature = "tauri-plugin-notification")]
     pub fn set_enabled(&mut self, enabled: bool) {
         self.common_mut().enabled = enabled;
     }
 
     pub fn kind_str(&self) -> &'static str {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(_) => "os_toast",
             Self::Webhook(_) => "webhook",
             Self::Script(_) => "script",
-            Self::OsToast(_) => "os_toast",
             Self::Telegram(_) => "telegram",
+            Self::Whatsapp(_) => "whatsapp",
             Self::Mqtt(_) => "mqtt",
             Self::Email(_) => "email",
         }
@@ -414,23 +435,34 @@ impl Default for ScriptAction {
 /// Fires a system notification using `tauri-plugin-notification`.
 /// Enabled/disabled state is toggled directly when the user changes the
 /// `general.notifications` setting.
+#[cfg(feature = "tauri-plugin-notification")]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, DeriveSettingsSchema)]
 pub struct OsToastAction {
     #[serde(flatten)]
     pub common: ActionCommon,
 }
 
-/// Telegram bot notification action.
+fn default_telegram_mode() -> String {
+    "bot".to_string()
+}
+
+fn default_whatsapp_provider() -> String {
+    "callmebot".to_string()
+}
+
+/// Telegram notification action.
 ///
-/// Sends messages to Telegram using the Bot API.
+/// Supports Bot API ("bot" mode) and Bot-less Telegram via CallMeBot / Gateway ("botless" mode).
 /// The `body_template` supports Handlebars variables like webhook actions.
 #[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 pub struct TelegramAction {
     #[serde(flatten)]
     pub common: ActionCommon,
+    #[serde(default = "default_telegram_mode")]
+    pub mode: String,
     #[setting(secret, label = "Bot Token", input_type = "password")]
     pub bot_token: String,
-    #[setting(secret, label = "Chat ID", input_type = "password")]
+    #[setting(secret, label = "Chat ID / Username", input_type = "password")]
     pub chat_id: String,
     #[setting(label = "Message Template", input_type = "textarea")]
     pub body_template: String,
@@ -448,8 +480,53 @@ impl Default for TelegramAction {
                 name: String::new(),
                 enabled: true,
             },
+            mode: default_telegram_mode(),
             bot_token: String::new(),
             chat_id: String::new(),
+            body_template: String::new(),
+            timeout_secs: 30,
+            retry_count: 0,
+        }
+    }
+}
+
+/// WhatsApp notification action (via CallMeBot API or custom HTTP gateway).
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
+pub struct WhatsappAction {
+    #[serde(flatten)]
+    pub common: ActionCommon,
+    #[setting(
+        secret,
+        label = "Phone Number",
+        placeholder = "+1234567890",
+        input_type = "password"
+    )]
+    pub phone: String,
+    #[setting(secret, label = "API Key (CallMeBot)", input_type = "password")]
+    pub apikey: String,
+    #[serde(default = "default_whatsapp_provider")]
+    pub provider: String,
+    pub gateway_url: Option<String>,
+    #[setting(label = "Message Template", input_type = "textarea")]
+    pub body_template: String,
+    #[setting(label = "Timeout (s)", min = 1, max = 300)]
+    pub timeout_secs: u64,
+    #[setting(label = "Retry Count", min = 0, max = 3)]
+    pub retry_count: u8,
+}
+
+impl Default for WhatsappAction {
+    fn default() -> Self {
+        Self {
+            common: ActionCommon {
+                id: String::new(),
+                name: String::new(),
+                enabled: true,
+            },
+            phone: String::new(),
+            apikey: String::new(),
+            provider: default_whatsapp_provider(),
+            gateway_url: None,
             body_template: String::new(),
             timeout_secs: 30,
             retry_count: 0,

@@ -83,7 +83,8 @@ pub async fn restore_settings(
     if let Ok(result) = manager.backup().analyze(&backup_path)
         && result.format_version.parse::<u64>().unwrap_or(0) >= 1
     {
-        return restore_rcman_backup(&backup_path, options, &manager, &app).await;
+        return restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref())
+            .await;
     }
 
     let file = File::open(&backup_path)
@@ -105,7 +106,7 @@ pub async fn restore_settings(
 
     match format {
         BackupFormatVersion::Rcman => {
-            restore_rcman_backup(&backup_path, options, &manager, &app).await
+            restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref()).await
         }
         BackupFormatVersion::AppLegacy => {
             restore_legacy_backup(&backup_path, password, &manifest_json, &app).await
@@ -125,6 +126,7 @@ async fn restore_rcman_backup(
     options: rcman::RestoreOptions,
     manager: &AppSettingsManager,
     app_handle: &AppHandle,
+    password: Option<&str>,
 ) -> Result<String, String> {
     info!("Restoring using rcman library...");
 
@@ -152,7 +154,7 @@ async fn restore_rcman_backup(
             if let Ok(config_data) = manager.backup().get_external_config_from_backup(
                 backup_path,
                 &archive_filename,
-                None,
+                password,
             ) {
                 let content =
                     String::from_utf8(config_data).map_err(|e| format!("Invalid UTF-8: {e}"))?;

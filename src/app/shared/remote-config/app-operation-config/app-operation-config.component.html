@@ -376,7 +376,7 @@
     <div class="material-context-menu" cdkMenu>
       @if (state.isLoading) {
         <div class="menu-item disabled">
-          <mat-spinner diameter="16" />
+          <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           <span class="item-label">{{ 'wizards.appOperation.loading' | translate }}</span>
         </div>
       } @else {

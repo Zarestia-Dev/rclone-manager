@@ -81,7 +81,10 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 burst_ticks = BURST_TICK_COUNT;
                 if !status.running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
-                    if !status.updating && !status.should_exit && !status.auth_failed {
+                    if status.auth_failed {
+                        crate::rclone::engine::lifecycle::emit_block_status_for_phase(&app_handle)
+                            .await;
+                    } else if !status.updating && !status.should_exit {
                         start_engine_if_not_running(&app_handle).await;
                     }
                 }

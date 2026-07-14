@@ -59,7 +59,7 @@
         </button>
 
         @for (segment of pathSegments(); track segment.path) {
-          <span class="path-separator">/</span>
+          <span class="path-separator">{{ pathSeparator() }}</span>
           <button
             class="path-segment"
             [attr.data-segment-index]="$index"

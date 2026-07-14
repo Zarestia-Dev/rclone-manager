@@ -59,7 +59,7 @@
             (cut)="preventClipboardOnSensitive($event)"
             (blur)="commitValue()"
           />
-          @if (isSensitiveField() && showObscureButton()) {
+          @if (isPasswordField() && showObscureButton()) {
             <button
               matSuffix
               type="button"

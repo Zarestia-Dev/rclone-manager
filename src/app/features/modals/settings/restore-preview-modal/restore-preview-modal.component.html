@@ -321,14 +321,18 @@
     [disabled]="isVerifying() || (isEncrypted && !password())"
   >
     @if (isVerifying()) {
-      <mat-spinner diameter="24"></mat-spinner>
-      <span>{{ 'backup.restore.verifying' | translate }}</span>
-    } @else {
-      <span>{{
-        isEncrypted
-          ? ('backup.restore.decryptAndRestore' | translate)
-          : ('backup.restore.restoreAction' | translate)
-      }}</span>
+      <mat-icon svgIcon="spinner"></mat-icon>
     }
+    <span>
+      @if (isVerifying()) {
+        {{ 'backup.restore.verifying' | translate }}
+      } @else {
+        {{
+          isEncrypted
+            ? ('backup.restore.decryptAndRestore' | translate)
+            : ('backup.restore.restoreAction' | translate)
+        }}
+      }
+    </span>
   </button>
 </footer>

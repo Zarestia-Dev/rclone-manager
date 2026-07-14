@@ -1,9 +1,12 @@
 pub mod email;
 pub mod mqtt;
-pub mod os_toast;
 pub mod script;
 pub mod telegram;
 pub mod webhook;
+pub mod whatsapp;
+
+#[cfg(feature = "tauri-plugin-notification")]
+pub mod os_toast;
 
 use std::time::Duration;
 

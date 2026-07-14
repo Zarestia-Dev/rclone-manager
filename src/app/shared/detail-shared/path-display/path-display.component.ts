@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { PathDisplayConfig } from '@app/types';
@@ -26,14 +25,7 @@ interface SourcePathItem {
 @Component({
   selector: 'app-path-display',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatIconModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
-    CdkMenuModule,
-    TranslatePipe,
-  ],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, CdkMenuModule, TranslatePipe],
   styleUrls: ['./path-display.component.scss'],
   template: `
     <div class="path-section">
@@ -106,7 +98,7 @@ interface SourcePathItem {
               [matTooltip]="'detailShared.pathDisplay.openInExplorer' | translate"
             >
               @if (config().actionInProgress === 'open') {
-                <mat-spinner diameter="24"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
               } @else {
                 <mat-icon [svgIcon]="destinationIsLocal() ? 'folder' : 'folder-open'"></mat-icon>
               }

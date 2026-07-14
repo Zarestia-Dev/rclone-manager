@@ -21,6 +21,7 @@ pub fn get_all_rules(manager: &AppSettingsManager) -> Vec<AlertRule> {
         .collect()
 }
 
+#[cfg(feature = "tauri-plugin-notification")]
 pub fn get_rule(manager: &AppSettingsManager, id: &str) -> Option<AlertRule> {
     manager
         .sub_settings(crate::utils::constants::SUB_ALERTS_RULES)
@@ -74,6 +75,7 @@ pub fn get_all_actions(manager: &AppSettingsManager) -> Vec<AlertAction> {
         .collect()
 }
 
+#[cfg(feature = "tauri-plugin-notification")]
 pub fn get_action(manager: &AppSettingsManager, id: &str) -> Option<AlertAction> {
     manager
         .sub_settings(crate::utils::constants::SUB_ALERTS_ACTIONS)

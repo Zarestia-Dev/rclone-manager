@@ -48,7 +48,7 @@ import { FormatFileSizePipe } from '@app/pipes';
               [disabled]="cfg.loading"
               [attr.aria-label]="'detailShared.diskUsage.retry' | translate"
             >
-              <mat-icon svgIcon="rotate-right" [class.animate-spin]="cfg.loading"></mat-icon>
+              <mat-icon [svgIcon]="cfg.loading ? 'spinner' : 'rotate-right'"></mat-icon>
             </button>
           }
         </div>

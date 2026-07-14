@@ -101,10 +101,7 @@
       [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
       {{ repairActionTextKey() | translate }}
-      <mat-icon
-        [svgIcon]="repairButtonIcon()"
-        [class.animate-spin]="installing() || isSubmittingPassword()"
-      ></mat-icon>
+      <mat-icon [svgIcon]="repairButtonIcon()"></mat-icon>
     </button>
   </div>
 </form>

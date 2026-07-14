@@ -15,7 +15,7 @@
   <!-- Serve fields loading indicator -->
   @if (isServe() && isLoadingServeFields() && !showJsonMode()) {
     <div class="loading-container">
-      <mat-spinner diameter="30" />
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
       <span>{{
         'wizards.remoteConfig.loadingServeOptions' | translate: { type: serveTypeValue() }
       }}</span>

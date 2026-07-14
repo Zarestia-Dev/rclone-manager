@@ -23,9 +23,9 @@
 
 <main>
   @if (loadingStat()) {
-    <div class="loading-container main-loader">
-      <mat-spinner diameter="40"></mat-spinner>
-      <p>{{ 'fileBrowser.properties.loading' | translate }}</p>
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+      <span>{{ 'fileBrowser.properties.loading' | translate }}</span>
     </div>
   } @else {
     @let currentItem = item();
@@ -76,7 +76,7 @@
 
         @if (loadingSize()) {
           <div class="section-loader">
-            <mat-spinner diameter="24"></mat-spinner>
+            <mat-icon svgIcon="spinner"></mat-icon>
             <span>{{ 'fileBrowser.properties.calculating' | translate }}</span>
           </div>
         } @else if (size()) {
@@ -98,7 +98,7 @@
 
       @if (loadingDiskUsage()) {
         <div class="section-loader">
-          <mat-spinner diameter="24"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
           <span>{{ 'fileBrowser.properties.checking' | translate }}</span>
         </div>
       } @else if (diskUsage()) {
@@ -124,7 +124,7 @@
 
       @if (loadingHashes()) {
         <div class="section-loader">
-          <mat-spinner diameter="24"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
           <span>{{ 'fileBrowser.properties.loadingHashes' | translate }}</span>
         </div>
       } @else if (hashError()) {
@@ -160,7 +160,7 @@
                     (click)="!isHashLoading(hashType) && calculateHash(hashType)"
                   >
                     @if (isHashLoading(hashType)) {
-                      <mat-spinner diameter="14"></mat-spinner>
+                      <mat-icon svgIcon="spinner"></mat-icon>
                     }
                     {{ hashType | uppercase }}
                   </button>
@@ -187,8 +187,7 @@
                 [appCopyToClipboard]="bulkHashResult()"
                 [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
                 >{{ bulkHashResult() }}
-                </textarea
-              >
+                </textarea>
               <button matButton="outlined" (click)="bulkHashResult.set(null)">
                 {{ 'fileBrowser.properties.calculateAnother' | translate }}
               </button>
@@ -213,7 +212,7 @@
                   (click)="!calculatingBulkHash() && calculateBulkHash(hashType)"
                 >
                   @if (calculatingBulkHash() && bulkHashType() === hashType) {
-                    <mat-spinner diameter="14"></mat-spinner>
+                    <mat-icon svgIcon="spinner"></mat-icon>
                   }
                   {{ hashType | uppercase }}
                 </button>
@@ -236,7 +235,7 @@
 
         @if (loadingPublicLink()) {
           <div class="section-loader">
-            <mat-spinner diameter="24"></mat-spinner>
+            <mat-icon svgIcon="spinner"></mat-icon>
             <span>{{
               publicLinkUrl()
                 ? ('fileBrowser.properties.removingLink' | translate)

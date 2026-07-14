@@ -5,6 +5,7 @@ use tauri_plugin_opener::OpenerExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[command]
+#[cfg(desktop)]
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,

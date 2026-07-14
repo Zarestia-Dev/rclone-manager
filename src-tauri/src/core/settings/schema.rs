@@ -48,6 +48,7 @@ pub struct GeneralSettings {
         label = "settings.general.notifications.label",
         description = "settings.general.notifications.description"
     )]
+    #[cfg(feature = "tauri-plugin-notification")]
     pub notifications: bool,
 
     #[setting(
@@ -66,7 +67,7 @@ pub struct GeneralSettings {
 
 impl Default for GeneralSettings {
     fn default() -> Self {
-        let system_locale = tauri_plugin_os::locale().unwrap_or_else(|| "en-US".to_string());
+        let system_locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
 
         let language = if SUPPORTED_LANGUAGES.contains(&system_locale.as_str()) {
             system_locale
@@ -77,9 +78,10 @@ impl Default for GeneralSettings {
         Self {
             #[cfg(feature = "tray")]
             tray_enabled: true,
+            #[cfg(feature = "tauri-plugin-notification")]
+            notifications: true,
             language,
             start_on_startup: false,
-            notifications: true,
             restrict: true,
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,

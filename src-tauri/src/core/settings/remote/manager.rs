@@ -65,7 +65,7 @@ pub async fn save_remote_settings(
     // Detect deleted profiles
     if let Some(ref existing_val) = existing {
         for config_key in OperationType::ALL {
-            let key = config_key.as_str();
+            let key = config_key.config_key();
             if let Some(old_configs) = existing_val.get(key).and_then(|v| v.as_object()) {
                 let new_configs = cleaned_settings.get(key).and_then(|v| v.as_object());
                 for profile_name in old_configs.keys() {

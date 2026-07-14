@@ -81,8 +81,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                     [matTooltip]="'shared.transferActivity.actions.resolveToDst' | translate"
                   >
                     <mat-icon
-                      [svgIcon]="isResolving(transfer) ? 'refresh' : 'right-arrow'"
-                      [class.animate-spin]="isResolving(transfer)"
+                      [svgIcon]="isResolving(transfer) ? 'spinner' : 'right-arrow'"
                     ></mat-icon>
                   </button>
                 }
@@ -116,8 +115,8 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
-                              [svgIcon]="loading ? 'refresh' : 'link'"
-                              [class.animate-spin]="loading"
+                              [svgIcon]="loading ? 'spinner' : 'link'"
+                              class="colorful-spinner"
                             ></mat-icon>
                           </button>
                         }
@@ -134,12 +133,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             <mat-icon
                               [svgIcon]="
                                 ops.downloadingIds().has(transfer.uniqueId + '-src')
-                                  ? 'refresh'
+                                  ? 'spinner'
                                   : 'download'
                               "
-                              [class.animate-spin]="
-                                ops.downloadingIds().has(transfer.uniqueId + '-src')
-                              "
+                              class="colorful-spinner"
                             ></mat-icon>
                           </button>
                         }
@@ -153,12 +150,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             <mat-icon
                               [svgIcon]="
                                 ops.deletingIds().has(transfer.uniqueId + '-src-del')
-                                  ? 'refresh'
+                                  ? 'spinner'
                                   : 'trash'
                               "
-                              [class.animate-spin]="
-                                ops.deletingIds().has(transfer.uniqueId + '-src-del')
-                              "
+                              class="colorful-spinner"
                             ></mat-icon>
                           </button>
                         }
@@ -193,8 +188,8 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
-                              [svgIcon]="loading ? 'refresh' : 'link'"
-                              [class.animate-spin]="loading"
+                              [svgIcon]="loading ? 'spinner' : 'link'"
+                              [class.colorful-spinner]="loading"
                             ></mat-icon>
                           </button>
                         }
@@ -210,12 +205,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             <mat-icon
                               [svgIcon]="
                                 ops.downloadingIds().has(transfer.uniqueId + '-dst')
-                                  ? 'refresh'
+                                  ? 'spinner'
                                   : 'download'
                               "
-                              [class.animate-spin]="
-                                ops.downloadingIds().has(transfer.uniqueId + '-dst')
-                              "
+                              class="colorful-spinner"
                             ></mat-icon>
                           </button>
                         }
@@ -229,12 +222,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             <mat-icon
                               [svgIcon]="
                                 ops.deletingIds().has(transfer.uniqueId + '-dst-del')
-                                  ? 'refresh'
+                                  ? 'spinner'
                                   : 'trash'
                               "
-                              [class.animate-spin]="
-                                ops.deletingIds().has(transfer.uniqueId + '-dst-del')
-                              "
+                              class="colorful-spinner"
                             ></mat-icon>
                           </button>
                         }
@@ -269,8 +260,8 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -287,12 +278,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(transfer.uniqueId + '-fallback')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -306,12 +295,10 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.deletingIds().has(transfer.uniqueId + '-fallback-del')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'trash'
                             "
-                            [class.animate-spin]="
-                              ops.deletingIds().has(transfer.uniqueId + '-fallback-del')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -391,7 +378,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
         }
         @if (processedItems().length > displayLimit()) {
           <div class="infinite-scroll-loader">
-            <mat-icon svgIcon="refresh" class="animate-spin"></mat-icon>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
             <span>{{ 'common.loading' | translate }}</span>
           </div>
         }

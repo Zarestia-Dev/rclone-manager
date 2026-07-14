@@ -47,6 +47,7 @@ export class BackupRestoreService extends TauriBaseService {
       },
       {
         successKey: 'backup.backupSuccess',
+        errorKey: 'backup.backupFailed',
       }
     );
   }
@@ -71,6 +72,7 @@ export class BackupRestoreService extends TauriBaseService {
       },
       {
         successKey: 'backup.restoreSuccess',
+        errorKey: 'backup.restoreFailed',
       }
     );
   }
@@ -80,14 +82,17 @@ export class BackupRestoreService extends TauriBaseService {
    * Returns null if no file selected or analysis failed
    */
   async selectAndAnalyzeBackup(): Promise<{ path: string; analysis: BackupAnalysis } | null> {
-    const path = await this.fileSystemService.selectFile();
-    if (!path) return null;
-
     try {
+      const path = await this.fileSystemService.selectFile();
+      if (!path) return null;
+
       const analysis = await this.analyzeBackupFile(path);
       if (!analysis) return null;
       return { path, analysis };
     } catch (error) {
+      if (error instanceof Error && error.message === 'File selection cancelled') {
+        return null;
+      }
       console.error('Failed to analyze backup:', error);
       this.notificationService.showError(this.translate.instant('backup.analyzeFailed'));
       return null;

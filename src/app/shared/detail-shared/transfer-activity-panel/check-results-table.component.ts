@@ -77,8 +77,8 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                     [matTooltip]="item.resolveTooltip | translate"
                   >
                     <mat-icon
-                      [svgIcon]="isResolving(item) ? 'refresh' : item.resolveIcon"
-                      [class.animate-spin]="isResolving(item)"
+                      [svgIcon]="isResolving(item) ? 'spinner' : item.resolveIcon"
+                      class="colorful-spinner"
                     ></mat-icon>
                   </button>
                 }
@@ -108,8 +108,8 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -125,10 +125,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(item.uniqueId + '-src')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="ops.downloadingIds().has(item.uniqueId + '-src')"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -142,10 +142,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.deletingIds().has(item.uniqueId + '-src-del')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'trash'
                             "
-                            [class.animate-spin]="ops.deletingIds().has(item.uniqueId + '-src-del')"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -176,8 +176,8 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -191,10 +191,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(item.uniqueId + '-dst')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="ops.downloadingIds().has(item.uniqueId + '-dst')"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -208,10 +208,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.deletingIds().has(item.uniqueId + '-dst-del')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'trash'
                             "
-                            [class.animate-spin]="ops.deletingIds().has(item.uniqueId + '-dst-del')"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -248,8 +248,8 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -266,12 +266,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(item.uniqueId + '-fallback')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="
-                              ops.downloadingIds().has(item.uniqueId + '-fallback')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -285,12 +283,10 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           <mat-icon
                             [svgIcon]="
                               ops.deletingIds().has(item.uniqueId + '-fallback-del')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'trash'
                             "
-                            [class.animate-spin]="
-                              ops.deletingIds().has(item.uniqueId + '-fallback-del')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -346,7 +342,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
         }
         @if (processedItems().length > displayLimit()) {
           <div class="infinite-scroll-loader">
-            <mat-icon svgIcon="refresh" class="animate-spin"></mat-icon>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
             <span>{{ 'common.loading' | translate }}</span>
           </div>
         }

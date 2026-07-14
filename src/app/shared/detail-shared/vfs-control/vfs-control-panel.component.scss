@@ -1,32 +1,3 @@
-.loading-state {
-  padding: 32px 16px;
-  text-align: center;
-
-  p {
-    margin-top: 16px;
-    opacity: 0.7;
-  }
-}
-
-.loading-shade {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  gap: 16px;
-  background: var(--window-bg-color);
-  border-radius: 8px;
-  margin-bottom: 20px;
-  color: rgba(0, 0, 0, 0.54);
-
-  p {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

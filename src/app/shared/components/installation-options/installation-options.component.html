@@ -95,10 +95,7 @@
 
           @if (existingBinaryControl.value?.trim()) {
             <div class="binary-status" [class]="binaryTestResult()">
-              <mat-icon
-                [svgIcon]="statusIcon()"
-                [class.animate-spin]="binaryTestResult() === 'testing'"
-              ></mat-icon>
+              <mat-icon [svgIcon]="statusIcon()" class="colorful-spinner"></mat-icon>
               <span>{{ statusText() }}</span>
               @if (binaryTestResult() !== 'valid') {
                 <button

@@ -232,24 +232,60 @@
 
       <!-- TELEGRAM -->
       @if (form.controls.kind.value === 'telegram') {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ 'alerts.action.botToken' | translate }}</mat-label>
-          <mat-icon matPrefix svgIcon="key"></mat-icon>
-          <input
-            matInput
-            type="password"
-            formControlName="bot_token"
-            placeholder="123456789:ABCdef…"
-          />
-          @if (form.controls.bot_token.hasError('required')) {
-            <mat-error>{{ 'common.required' | translate }}</mat-error>
-          }
-        </mat-form-field>
+        <div class="presets-row">
+          <span class="mini-label">{{ 'alerts.action.mode' | translate }}</span>
+          <button
+            matButton="outlined"
+            type="button"
+            [class.is-active]="form.controls.telegram_mode.value === 'bot'"
+            (click)="setTelegramMode('bot')"
+          >
+            <mat-icon svgIcon="key"></mat-icon> {{ 'alerts.action.telegram_bot' | translate }}
+          </button>
+          <button
+            matButton="outlined"
+            type="button"
+            [class.is-active]="form.controls.telegram_mode.value === 'botless'"
+            (click)="setTelegramMode('botless')"
+          >
+            <mat-icon svgIcon="comment"></mat-icon>
+            {{ 'alerts.action.telegram_botless' | translate }}
+          </button>
+        </div>
+
+        @if (form.controls.telegram_mode.value === 'bot') {
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.action.botToken' | translate }}</mat-label>
+            <mat-icon matPrefix svgIcon="key"></mat-icon>
+            <input
+              matInput
+              type="password"
+              formControlName="bot_token"
+              placeholder="123456789:ABCdef…"
+            />
+            @if (form.controls.bot_token.hasError('required')) {
+              <mat-error>{{ 'common.required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        }
 
         <mat-form-field appearance="fill">
-          <mat-label>{{ 'alerts.action.chatId' | translate }}</mat-label>
+          <mat-label>{{
+            (form.controls.telegram_mode.value === 'botless'
+              ? 'alerts.action.usernameOrChatId'
+              : 'alerts.action.chatId'
+            ) | translate
+          }}</mat-label>
           <mat-icon matPrefix svgIcon="comment"></mat-icon>
-          <input matInput formControlName="chat_id" placeholder="-1001234567890" />
+          <input
+            matInput
+            formControlName="chat_id"
+            [placeholder]="
+              form.controls.telegram_mode.value === 'botless'
+                ? '@username or 12345678'
+                : '-1001234567890'
+            "
+          />
           @if (form.controls.chat_id.hasError('required')) {
             <mat-error>{{ 'common.required' | translate }}</mat-error>
           }
@@ -286,7 +322,112 @@
 
         <div class="info-box accent">
           <mat-icon svgIcon="info"></mat-icon>
-          <span>{{ 'alerts.action.telegram_info' | translate }}</span>
+          <span>{{
+            (form.controls.telegram_mode.value === 'botless'
+              ? 'alerts.action.telegram_botless_info'
+              : 'alerts.action.telegram_info'
+            ) | translate
+          }}</span>
+        </div>
+      }
+
+      <!-- WHATSAPP -->
+      @if (form.controls.kind.value === 'whatsapp') {
+        <div class="presets-row">
+          <span class="mini-label">{{ 'alerts.action.provider' | translate }}</span>
+          <button
+            matButton="outlined"
+            type="button"
+            [class.is-active]="form.controls.whatsapp_provider.value === 'callmebot'"
+            (click)="setWhatsappProvider('callmebot')"
+          >
+            <mat-icon svgIcon="whatsapp"></mat-icon> CallMeBot
+          </button>
+          <button
+            matButton="outlined"
+            type="button"
+            [class.is-active]="form.controls.whatsapp_provider.value === 'custom_gateway'"
+            (click)="setWhatsappProvider('custom_gateway')"
+          >
+            <mat-icon svgIcon="link"></mat-icon> {{ 'alerts.action.customGateway' | translate }}
+          </button>
+        </div>
+
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'alerts.action.phone' | translate }}</mat-label>
+          <mat-icon matPrefix svgIcon="user"></mat-icon>
+          <input matInput formControlName="phone" placeholder="+1234567890" />
+          @if (form.controls.phone.hasError('required')) {
+            <mat-error>{{ 'common.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        @if (form.controls.whatsapp_provider.value === 'callmebot') {
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.action.apiKey' | translate }}</mat-label>
+            <mat-icon matPrefix svgIcon="key"></mat-icon>
+            <input
+              matInput
+              type="password"
+              formControlName="apikey"
+              placeholder="CallMeBot API Key"
+            />
+            @if (form.controls.apikey.hasError('required')) {
+              <mat-error>{{ 'common.required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        } @else {
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.action.gatewayUrl' | translate }}</mat-label>
+            <mat-icon matPrefix svgIcon="link"></mat-icon>
+            <input
+              matInput
+              formControlName="gateway_url"
+              placeholder="https://api.example.com/whatsapp"
+            />
+            @if (form.controls.gateway_url.hasError('required')) {
+              <mat-error>{{ 'common.required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        }
+
+        <div class="form-row two-col">
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.action.timeout' | translate }}</mat-label>
+            <input matInput type="number" formControlName="timeout_secs" />
+            <span matSuffix class="field-suffix">sec</span>
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>{{ 'alerts.action.retryCount' | translate }}</mat-label>
+            <input matInput type="number" formControlName="retry_count" min="0" max="5" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'alerts.action.messageTemplate' | translate }}</mat-label>
+          <textarea matInput formControlName="body_template" rows="4" class="code-font"></textarea>
+        </mat-form-field>
+
+        <div class="info-box">
+          <mat-icon svgIcon="info"></mat-icon>
+          <div class="info-content">
+            <span class="info-title">{{ 'alerts.action.messageTemplateHint' | translate }}</span>
+            <div class="tags-row">
+              @for (key of templateKeys(); track key) {
+                <code class="tag">{{ '{{' }}{{ key }}{{ '}}' }}</code>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="info-box accent">
+          <mat-icon svgIcon="info"></mat-icon>
+          <span>{{
+            (form.controls.whatsapp_provider.value === 'callmebot'
+              ? 'alerts.action.whatsapp_callmebot_info'
+              : 'alerts.action.whatsapp_gateway_info'
+            ) | translate
+          }}</span>
         </div>
       }
 

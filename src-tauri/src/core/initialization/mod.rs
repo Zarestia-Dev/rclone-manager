@@ -38,12 +38,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         return;
     }
 
-    // Phase 1 (bootstrap) already populated all caches and emitted
-    // EngineStatus::Ready via post_start::run_post_start_setup.
-    // Unlock the poller NOW so the frontend can hydrate remotes immediately
-    // instead of waiting for the remaining (non-critical) phases to finish.
-    crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
-
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
@@ -80,6 +74,8 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     info!("Phase 6: Running post-initialization tasks");
     handle_startup(app_handle.clone()).await;
+
+    crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
     info!("Initialization complete");
 }
@@ -157,14 +153,17 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     }
     debug!("Refreshed backend caches");
 
-    let manager = app_handle.state::<AppSettingsManager>();
-    if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
-        error!("Failed to seed alert defaults: {e}");
-    } else {
-        let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
-        alert_cache.reload_rules(manager.inner()).await;
-        alert_cache.reload_actions(manager.inner()).await;
-        info!("Alert defaults seeded and cache reloaded");
+    #[cfg(feature = "tauri-plugin-notification")]
+    {
+        let manager = app_handle.state::<AppSettingsManager>();
+        if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
+            error!("Failed to seed alert defaults: {e}");
+        } else {
+            let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
+            alert_cache.reload_rules(manager.inner()).await;
+            alert_cache.reload_actions(manager.inner()).await;
+            info!("Alert defaults seeded and cache reloaded");
+        }
     }
 
     Ok(())

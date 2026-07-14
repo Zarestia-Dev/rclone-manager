@@ -34,7 +34,7 @@
           [attr.aria-label]="'fileBrowser.fileViewer.save' | translate"
         >
           @if (isSaving()) {
-            <mat-spinner diameter="24"></mat-spinner>
+            <mat-icon svgIcon="spinner"></mat-icon>
           } @else {
             <mat-icon svgIcon="floppy-disk"></mat-icon>
           }
@@ -72,7 +72,7 @@
         [attr.aria-label]="'fileBrowser.fileViewer.extract' | translate"
       >
         @if (isExtracting()) {
-          <mat-spinner diameter="24"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
           <mat-icon svgIcon="unarchive"></mat-icon>
         }
@@ -89,7 +89,7 @@
         [attr.aria-label]="'fileBrowser.fileViewer.download' | translate: { name: fileName() }"
       >
         @if (isDownloading()) {
-          <mat-spinner diameter="24"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
           <mat-icon svgIcon="download"></mat-icon>
         }
@@ -114,7 +114,7 @@
       role="status"
       [attr.aria-label]="'fileBrowser.fileViewer.loadingContent' | translate"
     >
-      <mat-spinner diameter="50"></mat-spinner>
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
     </div>
   }
 
@@ -145,7 +145,7 @@
       <div class="audio-container">
         <div class="audio-icon-wrapper">
           @if (isLoadingCover()) {
-            <mat-spinner diameter="40"></mat-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           } @else if (coverImage()) {
             <img [src]="coverImage()" [alt]="fileName()" />
           } @else {

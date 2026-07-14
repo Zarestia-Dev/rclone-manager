@@ -64,7 +64,7 @@
           <a
             matButton
             class="about-item donate-btn-zarestia"
-            href="https://hakanismail.info/zarestia/support"
+            href="https://github.com/sponsors/Zarestia-Dev"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -204,7 +204,7 @@
               </div>
             } @else {
               <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
                 <span>{{ 'common.loading' | translate }}</span>
               </div>
             }
@@ -236,7 +236,7 @@
                     [disabled]="restartingApp()"
                   >
                     @if (restartingApp()) {
-                      <mat-spinner diameter="16"></mat-spinner>
+                      <mat-icon svgIcon="spinner"></mat-icon>
                     }
                     <span>{{ 'modals.about.restartNow' | translate }}</span>
                   </button>
@@ -330,8 +330,12 @@
                       (click)="installUpdate()"
                       [disabled]="appUpdateInProgress() || appDownloadInProgress()"
                     >
+                      <mat-icon
+                        [svgIcon]="
+                          appUpdateInProgress() || appDownloadInProgress() ? 'spinner' : 'circle-up'
+                        "
+                      ></mat-icon>
                       @if (appUpdateInProgress() || appDownloadInProgress()) {
-                        <mat-spinner diameter="16"></mat-spinner>
                         {{
                           appDownloadInProgress()
                             ? ('modals.about.downloading' | translate)
@@ -365,12 +369,11 @@
               [disabled]="appIsChecking() || appDownloadInProgress() || appReadyToRestart()"
               class="check-button"
             >
-              @if (appIsChecking()) {
-                <mat-spinner diameter="16"></mat-spinner>
-                {{ 'modals.about.checking' | translate }}
-              } @else {
-                {{ 'modals.about.checkUpdates' | translate }}
-              }
+              <mat-icon [svgIcon]="appIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
+              {{
+                (appIsChecking() ? 'modals.about.checking' : 'modals.about.checkUpdates')
+                  | translate
+              }}
             </button>
 
             <div class="settings-section">
@@ -450,7 +453,7 @@
             </div>
           } @else {
             <div class="loading">
-              <mat-spinner diameter="24"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
               <span>{{ 'common.loading' | translate }}</span>
             </div>
           }
@@ -461,7 +464,7 @@
           <div class="rclone-info">
             @if (loadingRclone()) {
               <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
                 <span>{{ 'modals.about.loadingRclone' | translate }}</span>
               </div>
             }
@@ -552,7 +555,7 @@
                     [matTooltip]="'modals.about.clear' | translate"
                   >
                     @if (clearingFsCache()) {
-                      <mat-spinner diameter="16"></mat-spinner>
+                      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     } @else {
                       <mat-icon svgIcon="trash" class="warn"></mat-icon>
                     }
@@ -587,7 +590,7 @@
                     [disabled]="restartingRcloneEngine()"
                   >
                     @if (restartingRcloneEngine()) {
-                      <mat-spinner diameter="16"></mat-spinner>
+                      <mat-icon svgIcon="spinner"></mat-icon>
                     }
                     <span>{{ 'modals.about.restartNow' | translate }}</span>
                   </button>
@@ -627,8 +630,10 @@
                     (click)="installRcloneUpdate()"
                     [disabled]="rcloneUpdateInProgress()"
                   >
+                    <mat-icon
+                      [svgIcon]="rcloneUpdateInProgress() ? 'spinner' : 'rclone'"
+                    ></mat-icon>
                     @if (rcloneUpdateInProgress()) {
-                      <mat-spinner diameter="16"></mat-spinner>
                       {{ 'modals.about.downloading' | translate }}
                     } @else {
                       {{ 'modals.about.updateRclone' | translate }}
@@ -660,12 +665,11 @@
               [disabled]="rcloneIsChecking() || rcloneUpdateInProgress() || rcloneReadyToRestart()"
               class="check-button"
             >
-              @if (rcloneIsChecking()) {
-                <mat-spinner diameter="16"></mat-spinner>
-                {{ 'modals.about.checking' | translate }}
-              } @else {
-                {{ 'modals.about.checkRcloneUpdates' | translate }}
-              }
+              <mat-icon [svgIcon]="rcloneIsChecking() ? 'spinner' : 'rotate-right'"></mat-icon>
+              {{
+                (rcloneIsChecking() ? 'modals.about.checking' : 'modals.about.checkRcloneUpdates')
+                  | translate
+              }}
             </button>
 
             <div class="settings-section">
@@ -893,20 +897,13 @@
             <div class="debug-section">
               <h4>{{ 'modals.about.gc' | translate }}</h4>
               <button matButton="outlined" (click)="runGarbageCollector()" [disabled]="runningGc()">
-                @if (runningGc()) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                  {{ 'modals.about.runningGc' | translate }}
-                } @else {
-                  <ng-container>
-                    <mat-icon svgIcon="broom"></mat-icon>
-                    {{ 'modals.about.runGc' | translate }}
-                  </ng-container>
-                }
+                <mat-icon [svgIcon]="runningGc() ? 'spinner' : 'broom'"></mat-icon>
+                {{ (runningGc() ? 'modals.about.runningGc' : 'modals.about.runGc') | translate }}
               </button>
             </div>
           } @else {
             <div class="loading">
-              <mat-spinner diameter="24"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
               <span>{{ 'common.loading' | translate }}</span>
             </div>
           }

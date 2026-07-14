@@ -7,7 +7,8 @@ import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
-import { isHeadlessMode } from '../infrastructure/platform/api-client.service';
+import { PathNavigationService } from '../infrastructure/platform/path-navigation.service';
+import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({
@@ -17,6 +18,7 @@ export class FileViewerService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
+  private readonly pathNavigationService = inject(PathNavigationService);
 
   private readonly _isViewerOpen = signal<boolean>(false);
   public readonly isViewerOpen = this._isViewerOpen.asReadonly();
@@ -85,12 +87,20 @@ export class FileViewerService extends TauriBaseService {
         const encodedPath = encodeURIComponent(fullPath);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}`;
       }
+      if (platform() === 'windows' || isMobile()) {
+        return `http://audio-cover.localhost/local/${encodeURIComponent(fullPath)}`;
+      }
       return `audio-cover://localhost/local/${encodeURIComponent(fullPath)}`;
     } else {
       if (isHeadlessMode()) {
         const encodedRemote = encodeURIComponent(remoteName);
         const encodedPath = encodeURIComponent(path);
         return `${this.apiClient.getApiBase()}/stream/audio-cover?path=${encodedPath}&remote=${encodedRemote}`;
+      }
+      if (platform() === 'windows' || isMobile()) {
+        return `http://audio-cover.localhost/remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(
+          path
+        )}`;
       }
       return `audio-cover://localhost/remote/${encodeURIComponent(remoteName)}/${encodeURIComponent(
         path
@@ -136,14 +146,14 @@ export class FileViewerService extends TauriBaseService {
       }
 
       const activePlatform = platform();
-      const isWindows = activePlatform === 'windows';
-      const encodedSegments = this.pathService.encodePath(fullPath, true, {
-        platform: activePlatform,
-        protocol: isWindows ? 'http' : 'local-asset',
-      });
+      const isHttpScheme = activePlatform === 'windows' || isMobile();
+      const encodedSegments = this.pathNavigationService.encodePath(fullPath);
 
-      if (isWindows) {
-        return `http://local-asset.localhost/${encodedSegments}`;
+      if (isHttpScheme) {
+        const cleanSegments = encodedSegments.startsWith('/')
+          ? encodedSegments.substring(1)
+          : encodedSegments;
+        return `http://local-asset.localhost/${cleanSegments}`;
       }
 
       const pathWithSlash = encodedSegments.startsWith('/')
@@ -153,7 +163,7 @@ export class FileViewerService extends TauriBaseService {
     }
 
     const rName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
-    const encodedPath = this.pathService.encodePath(path, false);
+    const encodedPath = this.pathNavigationService.encodePath(path);
 
     if (isHeadlessMode()) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(
@@ -163,7 +173,7 @@ export class FileViewerService extends TauriBaseService {
 
     const urlSafeRemote = this.pathService.normalizeRemoteName(rName);
     const encodedRemote = encodeURIComponent(urlSafeRemote);
-    if (platform() === 'windows') {
+    if (platform() === 'windows' || isMobile()) {
       return `http://rclone.localhost/${encodedRemote}/${encodedPath}`;
     }
     return `rclone://localhost/${encodedRemote}/${encodedPath}`;
