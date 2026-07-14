@@ -22,6 +22,8 @@ import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/a
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { WindowService } from 'src/app/services/ui/window.service';
 
 @Component({
   selector: 'app-root',
@@ -51,8 +53,13 @@ export class AppComponent implements OnInit {
   private readonly loadingService = inject(GlobalLoadingService);
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly windowService = inject(WindowService);
+  private readonly uiStateService = inject(UiStateService);
 
   readonly completedOnboarding = this.onboardingStateService.isCompleted;
+  readonly isTauri = !isHeadlessMode();
+  readonly isMaximized = this.windowService.isMaximized;
+  readonly platform = this.uiStateService.platform;
 
   constructor() {
     inject(IconService);
@@ -102,5 +109,15 @@ export class AppComponent implements OnInit {
       console.error('Error saving onboarding status:', error);
       throw error;
     }
+  }
+
+  onResizeHandleMousedown(
+    event: MouseEvent,
+    direction:
+      'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West'
+  ): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    void this.windowService.startResizeDragging(direction);
   }
 }

@@ -23,4 +23,14 @@
       }
     }
   }
+  @if (isTauri && platform === 'linux' && !isMaximized()) {
+    <div class="resize-handle n" (mousedown)="onResizeHandleMousedown($event, 'North')"></div>
+    <div class="resize-handle s" (mousedown)="onResizeHandleMousedown($event, 'South')"></div>
+    <div class="resize-handle e" (mousedown)="onResizeHandleMousedown($event, 'East')"></div>
+    <div class="resize-handle w" (mousedown)="onResizeHandleMousedown($event, 'West')"></div>
+    <div class="resize-handle nw" (mousedown)="onResizeHandleMousedown($event, 'NorthWest')"></div>
+    <div class="resize-handle ne" (mousedown)="onResizeHandleMousedown($event, 'NorthEast')"></div>
+    <div class="resize-handle sw" (mousedown)="onResizeHandleMousedown($event, 'SouthWest')"></div>
+    <div class="resize-handle se" (mousedown)="onResizeHandleMousedown($event, 'SouthEast')"></div>
+  }
 </div>

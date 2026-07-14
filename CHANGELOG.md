@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Linux Window Resize Handles**: Added custom HTML/CSS resize handle borders in the frontend shell layout to restore cursor and drag-to-resize functionality on undecorated Linux windows. #236
+
+## [v0.3.0] - 2026-07-14
+
 ### Added
 - **Bot-less Telegram & WhatsApp Alerts**: Added support for bot-less Telegram notifications (via CallMeBot API) and a dedicated WhatsApp alert action channel to the Alert & Notification system.
   - **Telegram Bot-less Mode**: Allows sending Telegram alerts directly to your Telegram `@username` without needing to create a bot token via `@BotFather`.

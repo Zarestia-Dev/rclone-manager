@@ -3,6 +3,9 @@ import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
+export type ResizeDirection =
+  'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -94,6 +97,14 @@ export class WindowService extends TauriBaseService {
       await this.appWindow?.close();
     } catch (error) {
       console.error('Failed to close window:', error);
+    }
+  }
+
+  async startResizeDragging(direction: ResizeDirection): Promise<void> {
+    try {
+      await this.appWindow?.startResizeDragging(direction);
+    } catch (error) {
+      console.error('Failed to start resize dragging:', error);
     }
   }
 
