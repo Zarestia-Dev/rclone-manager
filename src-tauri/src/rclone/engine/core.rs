@@ -173,4 +173,46 @@ mod tests {
         engine.clear_errors();
         assert!(matches!(engine.phase, EnginePhase::Stopped));
     }
+
+    #[test]
+    fn test_engine_phase_flags() {
+        // Test is_failed
+        assert!(EnginePhase::FailedPassword.is_failed());
+        assert!(
+            EnginePhase::FailedAuth {
+                message: "auth failed".into()
+            }
+            .is_failed()
+        );
+        assert!(
+            EnginePhase::FailedOther {
+                message: "other failed".into()
+            }
+            .is_failed()
+        );
+        assert!(!EnginePhase::Stopped.is_failed());
+        assert!(!EnginePhase::Running.is_failed());
+
+        // Test is_auth_failure
+        assert!(EnginePhase::FailedPassword.is_auth_failure());
+        assert!(
+            EnginePhase::FailedAuth {
+                message: "auth failed".into()
+            }
+            .is_auth_failure()
+        );
+        assert!(
+            !EnginePhase::FailedOther {
+                message: "other failed".into()
+            }
+            .is_auth_failure()
+        );
+        assert!(!EnginePhase::Stopped.is_auth_failure());
+
+        // Test is_shutting_down
+        assert!(EnginePhase::Stopping.is_shutting_down());
+        assert!(EnginePhase::Stopped.is_shutting_down());
+        assert!(!EnginePhase::Running.is_shutting_down());
+        assert!(!EnginePhase::FailedPassword.is_shutting_down());
+    }
 }

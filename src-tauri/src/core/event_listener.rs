@@ -58,7 +58,10 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            app.state::<EngineState>().lock().await.clear_errors();
+            let state = app.state::<EngineState>();
+            let mut engine = state.lock().await;
+            engine.clear_errors();
+            engine.init(&app).await;
         });
     });
 }

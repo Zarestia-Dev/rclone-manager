@@ -38,12 +38,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
         return;
     }
 
-    // Phase 1 (bootstrap) already populated all caches and emitted
-    // EngineStatus::Ready via post_start::run_post_start_setup.
-    // Unlock the poller NOW so the frontend can hydrate remotes immediately
-    // instead of waiting for the remaining (non-critical) phases to finish.
-    crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
-
     info!("Phase 2: Checking backend connectivity...");
     check_active_backend_connectivity(&app_handle).await;
 
@@ -80,6 +74,8 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 
     info!("Phase 6: Running post-initialization tasks");
     handle_startup(app_handle.clone()).await;
+
+    crate::rclone::engine::lifecycle::mark_startup_complete(&app_handle);
 
     info!("Initialization complete");
 }
