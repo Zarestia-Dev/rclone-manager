@@ -13,6 +13,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { AlertAction, AlertActionKind, ScriptAction, WebhookAction, KindOption } from '@app/types';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-alert-action-editor',
@@ -43,7 +44,9 @@ export class AlertActionEditorComponent {
   templateKeys = signal<string[]>([]);
 
   readonly kinds: KindOption[] = [
-    { value: 'os_toast', label: 'alerts.action.os_toast' },
+    ...(isHeadlessMode()
+      ? []
+      : [{ value: 'os_toast' as AlertActionKind, label: 'alerts.action.os_toast' }]),
     { value: 'webhook', label: 'alerts.action.webhook' },
     { value: 'script', label: 'alerts.action.script' },
     { value: 'telegram', label: 'alerts.action.telegram' },
