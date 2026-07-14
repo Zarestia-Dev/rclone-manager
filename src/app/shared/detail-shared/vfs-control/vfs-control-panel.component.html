@@ -5,18 +5,12 @@
       <span>{{ 'shared.vfsControl.title' | translate }}</span>
     </mat-card-title>
   </mat-card-header>
-
   <mat-card-content>
     @if (vfsNotFound()) {
       <div class="empty-state">
         <mat-icon svgIcon="vfs"></mat-icon>
         <span>{{ 'shared.vfsControl.noVfsFound' | translate }}</span>
         <p>{{ 'shared.vfsControl.noVfsRunning' | translate }}</p>
-      </div>
-    } @else if (loading() && vfsInstances().length === 0) {
-      <div class="loading-state">
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        <p>{{ 'shared.vfsControl.loading' | translate }}</p>
       </div>
     } @else if (vfsInstances().length > 0) {
       @if (vfsInstances().length > 1) {
@@ -113,8 +107,8 @@
               </div>
             </div>
           } @else {
-            <div class="loading-shade">
-              <mat-spinner diameter="48" mode="indeterminate"></mat-spinner>
+            <div class="loading-container">
+              <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
               <p>{{ 'shared.vfsControl.loadingStats' | translate }}</p>
             </div>
           }
@@ -143,7 +137,7 @@
               @if (vfs.queue.length === 0) {
                 @if (!vfs.stats) {
                   <div class="empty-state">
-                    <mat-spinner diameter="36"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                     <span>{{ 'shared.vfsControl.fetchingQueue' | translate }}</span>
                   </div>
                 } @else {
@@ -424,6 +418,11 @@
           }
         }
       }
+    } @else if (loading()) {
+      <div class="loading-shade">
+        <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+        <p>{{ 'shared.vfsControl.loading' | translate }}</p>
+      </div>
     }
   </mat-card-content>
 
@@ -436,7 +435,7 @@
         </div>
       } @else if (pollIntervalLoading()) {
         <div class="poll-interval-container">
-          <mat-spinner diameter="24"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
           <span>{{ 'common.loading' | translate }}</span>
         </div>
       } @else {
@@ -485,8 +484,19 @@
         [matTooltip]="'shared.vfsControl.actions.refreshAll' | translate"
         [disabled]="loading()"
       >
-        <mat-icon [class.spin]="loading()" svgIcon="refresh"></mat-icon>
+        @if (loading()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="refresh"></mat-icon>
+        }
       </button>
     </mat-card-actions>
+  }
+
+  @if (loading() && vfsInstances().length > 0) {
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+      <span>{{ 'shared.vfsControl.loading' | translate }}</span>
+    </div>
   }
 </mat-card>

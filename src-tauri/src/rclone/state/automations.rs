@@ -221,26 +221,26 @@ impl AutomationsCache {
         };
 
         let operations = [
-            (OperationType::Sync, OperationType::Sync),
-            (OperationType::Copy, OperationType::Copy),
-            (OperationType::Move, OperationType::Move),
-            (OperationType::Bisync, OperationType::Bisync),
-            (OperationType::Check, OperationType::Check),
-            (OperationType::Delete, OperationType::Delete),
-            (OperationType::Copyurl, OperationType::Copyurl),
-            (OperationType::Archivecreate, OperationType::Archivecreate),
-            (OperationType::Cryptcheck, OperationType::Cryptcheck),
+            OperationType::Sync,
+            OperationType::Copy,
+            OperationType::Move,
+            OperationType::Bisync,
+            OperationType::Check,
+            OperationType::Delete,
+            OperationType::Copyurl,
+            OperationType::Archivecreate,
+            OperationType::Cryptcheck,
         ];
 
-        for (config_key, automation_type) in operations {
-            if let Some(profiles) = obj.get(config_key.as_str()).and_then(|v| v.as_object()) {
+        for op_type in operations {
+            if let Some(profiles) = obj.get(op_type.config_key()).and_then(|v| v.as_object()) {
                 for (profile_name, profile_val) in profiles {
                     if let Ok(config) = serde_json::from_value::<ProfileConfig>(profile_val.clone())
                         && let Some(automation) = self.create_automation_struct(
                             backend_name,
                             remote_name,
                             profile_name,
-                            &automation_type,
+                            &op_type,
                             &config,
                         )
                     {
@@ -1354,5 +1354,54 @@ mod tests {
         let a_automations = cache.get_automations_for_backend("backend_a").await;
         assert_eq!(a_automations.len(), 1);
         assert_eq!(a_automations[0].backend_name, "backend_a");
+    }
+
+    #[test]
+    fn test_collect_automations_from_remote() {
+        let cache = make_cache();
+        let remote_settings = json!({
+            "syncConfigs": {
+                "watcher_profile": {
+                    "app": {
+                        "watchEnabled": true,
+                        "watchDelay": 5
+                    },
+                    "rclone": {
+                        "srcFs": "/local/src",
+                        "dstFs": "remote:/dst"
+                    }
+                }
+            },
+            "copyConfigs": {
+                "scheduled_profile": {
+                    "app": {
+                        "cronEnabled": true,
+                        "cronExpression": "0 12 * * *"
+                    },
+                    "rclone": {
+                        "srcFs": "/local/backup",
+                        "dstFs": "remote:/backup"
+                    }
+                }
+            }
+        });
+
+        let automations =
+            cache.collect_automations_from_remote("local", "gdrive", &remote_settings);
+        assert_eq!(automations.len(), 2);
+
+        let watcher = automations
+            .iter()
+            .find(|a| a.profile_name == "watcher_profile")
+            .expect("watcher automation found");
+        assert_eq!(watcher.automation_type, OperationType::Sync);
+        assert!(watcher.watch_enabled);
+
+        let scheduled = automations
+            .iter()
+            .find(|a| a.profile_name == "scheduled_profile")
+            .expect("scheduled automation found");
+        assert_eq!(scheduled.automation_type, OperationType::Copy);
+        assert_eq!(scheduled.cron_expression.as_deref(), Some("0 12 * * *"));
     }
 }

@@ -235,11 +235,9 @@
   </div>
 
   @if (isLoading()) {
-    <div class="loading-container anim-fade">
-      <div class="loading-inner">
-        <mat-spinner diameter="24"></mat-spinner>
-        <span>{{ 'wizards.remoteConfig.loadingOptions' | translate }}</span>
-      </div>
+    <div class="loading-container">
+      <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+      <span>{{ 'wizards.remoteConfig.loadingOptions' | translate }}</span>
     </div>
   }
 

@@ -51,7 +51,7 @@
     >
       @if (state.isAuthInProgress() && !state.isAuthCancelled()) {
         <div class="saving-overlay" aria-hidden="true">
-          <mat-spinner diameter="16"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         </div>
       }
       <span>{{ state.saveButtonLabel() | translate }}</span>
@@ -77,7 +77,7 @@
     >
       @if (flow.isProcessing && !state.isAuthCancelled()) {
         <div class="saving-overlay" aria-hidden="true">
-          <mat-spinner diameter="16"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         </div>
       }
       <span>{{ continueLabel }}</span>

@@ -1952,6 +1952,7 @@
       "addBackend": "添加后端",
       "editBackend": "编辑后端",
       "active": "已启用",
+      "connecting": "连接中...",
       "local": "本地",
       "name": "名称",
       "enableAuth": "自定义身份验证",

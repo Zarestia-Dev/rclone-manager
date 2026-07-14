@@ -1,14 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 @Component({
   selector: 'app-config-modal-footer',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinner, MatProgressBar, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, MatProgressBar, TranslatePipe],
   templateUrl: './config-modal-footer.component.html',
   styleUrl: './config-modal-footer.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -13,7 +13,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ReactiveFormsModule, FormGroup, FormBuilder, FormControl } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -196,7 +195,6 @@ interface SearchResultViewModel {
     TitleCasePipe,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatExpansionModule,
     ScrollingModule,
     ReactiveFormsModule,

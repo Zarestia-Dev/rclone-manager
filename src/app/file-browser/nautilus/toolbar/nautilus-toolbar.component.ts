@@ -87,6 +87,15 @@ export class NautilusToolbarComponent {
     this.layout() === 'grid' ? 'list' : 'grid'
   );
 
+  protected readonly pathSeparator = computed((): string => {
+    const remote = this.activeRemote();
+    if (remote?.isLocal) {
+      const isWin = /^[a-zA-Z]:[\\/]?/.test(remote.name) || remote.name.includes('\\');
+      if (isWin) return '\\';
+    }
+    return '/';
+  });
+
   constructor() {
     afterRenderEffect(() => {
       this.pathSegments(); // tracked dependency

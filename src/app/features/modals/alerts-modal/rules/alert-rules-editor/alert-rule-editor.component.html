@@ -55,6 +55,9 @@
       <mat-form-field appearance="fill">
         <mat-label>{{ 'alerts.actions' | translate }}</mat-label>
         <mat-select formControlName="action_ids" multiple>
+          <mat-select-trigger>
+            {{ getSelectedActionNames() }}
+          </mat-select-trigger>
           @for (a of actions(); track a.id) {
             <mat-option [value]="a.id">
               <div class="action-option">

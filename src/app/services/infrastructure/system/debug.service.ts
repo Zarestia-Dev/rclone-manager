@@ -99,9 +99,7 @@ export class DebugService extends TauriBaseService {
 
   private buildMenuItems(target: HTMLElement): MenuEntry[] {
     const inputEl = target.closest('input, textarea') as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | null;
+      HTMLInputElement | HTMLTextAreaElement | null;
     const editableEl = !inputEl
       ? (target.closest('[contenteditable="true"]') as HTMLElement | null)
       : null;

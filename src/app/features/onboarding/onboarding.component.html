@@ -10,7 +10,6 @@
       animate.leave="fade-in-out-leave"
       [title]="'onboarding.loadingTitle' | translate"
       [message]="'onboarding.loadingMessage' | translate"
-      icon="refresh"
     ></app-loading-overlay>
   }
 
@@ -102,10 +101,7 @@
               !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
             "
           >
-            <mat-icon
-              [svgIcon]="installing() ? 'refresh' : 'download'"
-              [class.animate-spin]="installing()"
-            ></mat-icon>
+            <mat-icon [svgIcon]="installing() ? 'spinner' : 'download'"></mat-icon>
             {{ installButtonText() | translate }}
           </button>
         }
@@ -116,10 +112,7 @@
             (click)="installMountPlugin()"
             [disabled]="downloadingPlugin()"
           >
-            <mat-icon
-              [svgIcon]="downloadingPlugin() ? 'refresh' : 'download'"
-              [class.animate-spin]="downloadingPlugin()"
-            ></mat-icon>
+            <mat-icon [svgIcon]="downloadingPlugin() ? 'spinner' : 'download'"></mat-icon>
             {{
               (downloadingPlugin()
                 ? 'onboarding.actions.installingPlugin'
@@ -148,7 +141,7 @@
             [disabled]="!configPassword() || isSubmittingPassword()"
           >
             @if (isSubmittingPassword()) {
-              <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
             } @else {
               <span>{{ 'onboarding.actions.unlock' | translate }}</span>
             }

@@ -1952,6 +1952,7 @@
       "addBackend": "Arka Uç Ekle",
       "editBackend": "Arka Uç Düzenle",
       "active": "Aktif",
+      "connecting": "Bağlanıyor...",
       "local": "Yerel",
       "name": "Ad",
       "enableAuth": "Kimlik Doğrulamasını Özelleştir",

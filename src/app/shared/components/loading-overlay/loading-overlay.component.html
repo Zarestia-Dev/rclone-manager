@@ -4,8 +4,8 @@
     animate.enter="loading-spinner-enter"
     animate.leave="loading-spinner-leave"
   >
-    <div class="loading-spinner">
-      <mat-icon [svgIcon]="icon()" class="animate-spin"></mat-icon>
+    <div class="loading-logo">
+      <app-animated-logo></app-animated-logo>
     </div>
     <h2>{{ title() | translate }}</h2>
     <p>{{ message() | translate }}</p>

@@ -8,13 +8,17 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, merge } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { EventListenersService } from 'src/app/services/infrastructure/system/event-listeners.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import {
+  PathNavigationService,
+  NautilusLocation,
+} from 'src/app/services/infrastructure/platform/path-navigation.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { takeUntilDestroyed, outputToObservable } from '@angular/core/rxjs-interop';
 import {
@@ -36,6 +40,7 @@ export class NautilusService extends TauriBaseService {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly remoteManagement = inject(RemoteManagementService);
   private readonly pathService = inject(PathService);
+  private readonly pathNav = inject(PathNavigationService);
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
@@ -108,6 +113,16 @@ export class NautilusService extends TauriBaseService {
       this.loadCollection(type)
     );
     this.setupBrowseListener();
+
+    merge(
+      this.eventListenersService.listenToRcloneEngineReady(),
+      this.eventListenersService.listenToRemoteCacheUpdated(),
+      this.eventListenersService.listenToRemoteSettingsChanged()
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.loadRemoteData();
+      });
   }
 
   async loadRemoteData(): Promise<void> {
@@ -197,14 +212,7 @@ export class NautilusService extends TauriBaseService {
   }
 
   getNautilusUrl(remote: string | null, path: string | null): string {
-    let url = `${window.location.origin}/nautilus`;
-    if (remote) {
-      url += `/${encodeURIComponent(remote)}`;
-      if (path) {
-        url += `/${this.pathService.encodePath(path, false)}`;
-      }
-    }
-    return url;
+    return this.pathNav.buildNautilusUrl(remote, path);
   }
 
   private getNautilusLabel(remote: string | null): string {
@@ -367,50 +375,8 @@ export class NautilusService extends TauriBaseService {
     pathName: string,
     hash: string
   ): { remoteName: string | null; remotePath: string | null } {
-    const fromSegments = (
-      input: string
-    ): { remoteName: string | null; remotePath: string | null } => {
-      const [first, ...rest] = this.pathService.splitSegments(input);
-      const decodedFirst = first ? decodeURIComponent(first) : null;
-
-      if (
-        decodedFirst &&
-        (decodedFirst.startsWith('/') || /^[a-zA-Z]:/.test(decodedFirst)) &&
-        this.pathService.splitSegments(decodedFirst).length > 1
-      ) {
-        const parsed = this.pathService.parseLocation(decodedFirst, this.allRemotesLookup());
-        if (parsed) {
-          return {
-            remoteName: parsed.remote.name,
-            remotePath: parsed.path,
-          };
-        }
-      }
-
-      return {
-        remoteName: decodedFirst,
-        remotePath: rest.length ? this.pathService.decodePath(rest.join('/')) : null,
-      };
-    };
-
-    if (pathName.includes('/nautilus')) {
-      const result = fromSegments(
-        pathName.slice(pathName.indexOf('/nautilus') + '/nautilus'.length)
-      );
-      if (result.remoteName) return result;
-    }
-
-    if (hash.startsWith('#/nautilus')) {
-      const result = fromSegments(hash.slice('#/nautilus'.length));
-      if (result.remoteName) return result;
-    }
-
-    const browseRemote = urlParams.get('browse');
-    if (browseRemote) {
-      return { remoteName: browseRemote, remotePath: urlParams.get('path') };
-    }
-
-    return { remoteName: null, remotePath: null };
+    const loc: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash);
+    return { remoteName: loc.remote, remotePath: loc.path };
   }
 
   private setupBrowseListener(): void {

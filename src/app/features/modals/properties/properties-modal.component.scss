@@ -9,16 +9,6 @@ header {
   }
 }
 
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  gap: var(--space-md);
-  color: var(--dim-color);
-}
-
 .error-block {
   padding: var(--space-sm);
   background: rgba(var(--warn-color-rgb), 0.1);

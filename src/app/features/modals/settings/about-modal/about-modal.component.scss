@@ -155,12 +155,6 @@
     overflow-x: hidden;
     padding: var(--space-sm);
   }
-}
-
-// ----------------------------------------------------------------------------
-// View: Rclone Info
-// ----------------------------------------------------------------------------
-.rclone-info {
   .loading {
     display: flex;
     align-items: center;
@@ -170,7 +164,12 @@
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
   }
+}
 
+// ----------------------------------------------------------------------------
+// View: Rclone Info
+// ----------------------------------------------------------------------------
+.rclone-info {
   .error {
     display: flex;
     align-items: center;
@@ -632,15 +631,6 @@
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-sm);
-    }
-
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-md);
-      padding: var(--space-xl);
-      color: var(--dim-color);
     }
   }
 }

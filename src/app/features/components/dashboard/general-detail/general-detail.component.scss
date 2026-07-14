@@ -215,16 +215,6 @@
     font-size: var(--icon-size-sm);
     color: var(--dim-color);
   }
-
-  mat-spinner {
-    --mdc-circular-progress-active-indicator-color: var(--dim-color);
-  }
-}
-
-.status-chip.active {
-  .status-dot mat-spinner {
-    --mdc-circular-progress-active-indicator-color: white;
-  }
 }
 
 .status-label {

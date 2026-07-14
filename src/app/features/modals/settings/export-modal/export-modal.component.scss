@@ -236,22 +236,6 @@
   }
 }
 
-// Loading
-.loading-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-lg);
-  color: var(--dim-color);
-
-  p {
-    font-size: var(--font-size-md);
-    font-weight: 500;
-  }
-}
-
 // Responsive
 @media (max-width: 640px) {
   .options-grid {

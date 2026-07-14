@@ -4,7 +4,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertService } from 'src/app/services/alerts/alert.service';
@@ -21,7 +20,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     MatIconModule,
     MatTooltipModule,
     MatTableModule,
-    MatProgressSpinnerModule,
     TranslatePipe,
     SearchContainerComponent,
   ],
@@ -125,8 +123,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
         <!-- Loading -->
         @if (alerts.isLoading() && alerts.history().length === 0) {
           <div class="empty-state">
-            <mat-progress-spinner mode="indeterminate" diameter="32" strokeWidth="2">
-            </mat-progress-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         }
 

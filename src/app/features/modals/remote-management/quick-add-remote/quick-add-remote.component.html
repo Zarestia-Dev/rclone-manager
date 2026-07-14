@@ -112,7 +112,7 @@
     }
     @if (isAuthCancelled()) {
       <div class="message warning">
-        <mat-spinner diameter="16"></mat-spinner>
+        <mat-icon svgIcon="spinner"></mat-icon>
         <span>{{ 'modals.quickAdd.interactive.cancelling' | translate }}</span>
       </div>
     }
@@ -162,7 +162,7 @@
         [disabled]="isAuthInProgress() || quickAddFormStatus() !== 'VALID'"
       >
         @if (isAuthInProgress() && !isAuthCancelled()) {
-          <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
           <mat-icon iconPositionEnd svgIcon="plus"></mat-icon>
         }
@@ -187,7 +187,7 @@
         [attr.title]="continueLabel"
       >
         @if (flow.isProcessing) {
-          <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         }
         {{ continueLabel }}
       </button>

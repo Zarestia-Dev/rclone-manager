@@ -17,7 +17,6 @@ import { MatInputModule } from '@angular/material/input';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -43,7 +42,6 @@ export interface MultiRenameData {
     CdkMenuModule,
     MatSelectModule,
     MatCheckboxModule,
-    MatProgressSpinnerModule,
     MatButtonToggleModule,
     ScrollingModule,
     TranslatePipe,

@@ -7,6 +7,7 @@ import { Entry } from '@app/types';
 import { take } from 'rxjs/operators';
 import { IconService } from './icon.service';
 import { PathService } from '../infrastructure/platform/path.service';
+import { PathNavigationService } from '../infrastructure/platform/path-navigation.service';
 import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
@@ -17,6 +18,7 @@ export class FileViewerService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private readonly iconService = inject(IconService);
   private readonly pathService = inject(PathService);
+  private readonly pathNavigationService = inject(PathNavigationService);
 
   private readonly _isViewerOpen = signal<boolean>(false);
   public readonly isViewerOpen = this._isViewerOpen.asReadonly();
@@ -145,10 +147,7 @@ export class FileViewerService extends TauriBaseService {
 
       const activePlatform = platform();
       const isHttpScheme = activePlatform === 'windows' || isMobile();
-      const encodedSegments = this.pathService.encodePath(fullPath, true, {
-        platform: activePlatform,
-        protocol: isHttpScheme ? 'http' : 'local-asset',
-      });
+      const encodedSegments = this.pathNavigationService.encodePath(fullPath);
 
       if (isHttpScheme) {
         const cleanSegments = encodedSegments.startsWith('/')
@@ -164,7 +163,7 @@ export class FileViewerService extends TauriBaseService {
     }
 
     const rName = remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
-    const encodedPath = this.pathService.encodePath(path, false);
+    const encodedPath = this.pathNavigationService.encodePath(path);
 
     if (isHeadlessMode()) {
       return `${this.apiClient.getApiBase()}/stream/remote?remote=${encodeURIComponent(

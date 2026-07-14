@@ -683,9 +683,23 @@ export class RemoteConfigStateService {
 
   async init(dialogData: DialogData): Promise<void> {
     this.dialogData = dialogData;
-    if (dialogData?.cloneFrom || dialogData?.name) {
-      await this.remoteFacade.loadRemotes();
-    }
+    this.editTarget.set(dialogData?.editTarget || null);
+    this.cloneTarget.set(!!dialogData?.cloneFrom);
+
+    const remotesLoadPromise =
+      dialogData?.cloneFrom || dialogData?.name
+        ? this.remoteFacade.loadRemotes()
+        : Promise.resolve();
+
+    await Promise.all([
+      remotesLoadPromise,
+      this.loadExistingRemotes(),
+      this.loadRemoteTypes(),
+      this.loadMountTypes(),
+      this.loadServeTypes(),
+      this.loadAllFlagFields(),
+      this.loadServeFields(),
+    ]);
 
     if (dialogData?.cloneFrom) {
       this.existingConfig = await this.remoteFacade.cloneRemote(dialogData.cloneFrom);
@@ -696,19 +710,7 @@ export class RemoteConfigStateService {
       };
     }
 
-    this.editTarget.set(dialogData?.editTarget || null);
-    this.cloneTarget.set(!!dialogData?.cloneFrom);
     this.refreshRemoteNameValidator();
-
-    await Promise.all([
-      this.loadExistingRemotes(),
-      this.loadRemoteTypes(),
-      this.loadMountTypes(),
-      this.loadServeTypes(),
-    ]);
-    await this.loadAllFlagFields();
-    await this.loadServeFields();
-
     this.initProfiles(this.dialogData, this.dialogData?.autoAddProfile, this.editTarget() as any);
     this.initCurrentStep();
     await this.populateFormIfEditingOrCloning();
@@ -1249,8 +1251,7 @@ export class RemoteConfigStateService {
 
   async onRemoteTypeChange(): Promise<void> {
     const t = this.remoteForm.get('type')?.value as string;
-    await this.loadRemoteFields(t);
-    await this.syncRuntimeRemoteType();
+    await Promise.all([this.loadRemoteFields(t), this.syncRuntimeRemoteType()]);
 
     if (this.isNewRemoteCreation() && t) {
       this.applyPresets(t);

@@ -1952,6 +1952,7 @@
       "addBackend": "Agregar backend",
       "editBackend": "Editar backend",
       "active": "Activo",
+      "connecting": "Conectando...",
       "local": "Local",
       "name": "Nombre",
       "enableAuth": "Personalizar autenticación",

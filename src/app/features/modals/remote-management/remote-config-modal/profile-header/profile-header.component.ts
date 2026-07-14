@@ -40,7 +40,7 @@ export class ProfileHeaderComponent {
   readonly profileList = computed(() => this.state.profileLists()[this.flagType()]);
 
   private readonly actionState = computed(() =>
-    this.state.getProfileActionState(this.flagType(), this.selectedName())
+    this.state.getProfileActionState(this.flagType(), this.selectedName() ?? '')
   );
   readonly renameDisabled = computed(() => this.actionState().rename.disabled);
   readonly deleteDisabled = computed(() => this.actionState().delete.disabled);

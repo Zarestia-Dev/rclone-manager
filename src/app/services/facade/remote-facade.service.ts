@@ -17,6 +17,7 @@ import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
+import { FlagConfigService } from '../remote/flag-config.service';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
@@ -74,6 +75,7 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly pathService = inject(PathService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly statusService = inject(RcloneStatusService);
+  private readonly flagConfigService = inject(FlagConfigService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -357,8 +359,11 @@ export class RemoteFacadeService extends TauriBaseService {
 
   async refreshAll(): Promise<void> {
     this.isLoading.set(true);
+    void this.flagConfigService.loadAllFlagFields();
+    void this.remoteService.getRemoteTypes();
     try {
       await Promise.all([
+        this.statusService.refreshStatus(),
         this.loadRemotes(),
         this.mountService.getMountedRemotes(),
         this.serveService.refreshServes(),

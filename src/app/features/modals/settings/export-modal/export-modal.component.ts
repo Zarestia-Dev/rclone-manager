@@ -16,7 +16,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -67,7 +66,6 @@ const EXPORT_TYPE_TO_ID: Record<string, string> = {
     MatInputModule,
     MatTooltipModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatSlideToggleModule,
     MatCheckboxModule,
     TranslatePipe,

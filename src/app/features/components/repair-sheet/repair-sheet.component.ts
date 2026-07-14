@@ -121,7 +121,7 @@ export class RepairSheetComponent {
   });
 
   readonly repairButtonIcon = computed(() => {
-    if (this.installing()) return 'refresh';
+    if (this.installing()) return 'spinner';
     if (this.isSubmittingPassword()) return 'download';
     if (this.showConfigOptions()) return 'file';
     return this.repairService.getRepairButtonIcon(this.data.type);

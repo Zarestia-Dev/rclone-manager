@@ -100,10 +100,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                           [disabled]="loading"
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
-                          <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
-                          ></mat-icon>
+                          <mat-icon [svgIcon]="loading ? 'spinner' : 'link'"></mat-icon>
                         </button>
                       }
                       @if (canDownloadSrc) {
@@ -119,11 +116,8 @@ import { TransferOperationsService } from './transfer-operations.service';
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(transfer.uniqueId + '-src')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
-                            "
-                            [class.animate-spin]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-src')
                             "
                           ></mat-icon>
                         </button>
@@ -156,8 +150,8 @@ import { TransferOperationsService } from './transfer-operations.service';
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -173,12 +167,10 @@ import { TransferOperationsService } from './transfer-operations.service';
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(transfer.uniqueId + '-dst')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-dst')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -211,8 +203,8 @@ import { TransferOperationsService } from './transfer-operations.service';
                           [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
-                            [svgIcon]="loading ? 'refresh' : 'link'"
-                            [class.animate-spin]="loading"
+                            [svgIcon]="loading ? 'spinner' : 'link'"
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }
@@ -229,12 +221,10 @@ import { TransferOperationsService } from './transfer-operations.service';
                           <mat-icon
                             [svgIcon]="
                               ops.downloadingIds().has(transfer.uniqueId + '-fallback')
-                                ? 'refresh'
+                                ? 'spinner'
                                 : 'download'
                             "
-                            [class.animate-spin]="
-                              ops.downloadingIds().has(transfer.uniqueId + '-fallback')
-                            "
+                            class="colorful-spinner"
                           ></mat-icon>
                         </button>
                       }

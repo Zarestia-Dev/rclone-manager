@@ -11,7 +11,6 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -35,7 +34,6 @@ import { TranslatePipe } from '@ngx-translate/core';
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatTooltipModule,
     MatExpansionModule,
     MatProgressBarModule,
@@ -94,7 +92,7 @@ import { TranslatePipe } from '@ngx-translate/core';
               "
             >
               @if (config().isLoading) {
-                <mat-spinner diameter="24"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
               } @else {
                 <mat-icon
                   [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
@@ -115,7 +113,7 @@ import { TranslatePipe } from '@ngx-translate/core';
           <div class="disk-usage-info">
             @if (isDiskUsageLoading() && !diskUsage()) {
               <div class="usage-loading">
-                <mat-spinner diameter="16"></mat-spinner>
+                <mat-icon svgIcon="spinner"></mat-icon>
                 <span class="stat-label">{{ 'detailShared.diskUsage.loading' | translate }}</span>
               </div>
             } @else if (diskUsage(); as usage) {
@@ -172,7 +170,7 @@ import { TranslatePipe } from '@ngx-translate/core';
             class="full-action-button"
           >
             @if (config().isLoading) {
-              <mat-spinner diameter="24"></mat-spinner>
+              <mat-icon svgIcon="spinner"></mat-icon>
             } @else {
               <mat-icon
                 [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"

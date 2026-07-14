@@ -13,7 +13,6 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatTableModule } from '@angular/material/table';
@@ -30,7 +29,6 @@ import { Entry, FileBrowserItem } from '@app/types';
   imports: [
     NgTemplateOutlet,
     MatIconModule,
-    MatProgressSpinnerModule,
     MatButtonModule,
     CdkMenuModule,
     MatTableModule,

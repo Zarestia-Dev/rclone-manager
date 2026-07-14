@@ -10,8 +10,8 @@
 
 @if (isLoading()) {
   <div class="loading-container">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>{{ 'modals.export.preparing' | translate }}</p>
+    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+    <span>{{ 'modals.export.preparing' | translate }}</span>
   </div>
 } @else {
   <main>
@@ -180,15 +180,8 @@
       (click)="onExport()"
       [disabled]="!canExport() || isExporting()"
     >
-      @if (isExporting()) {
-        <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
-        {{ 'modals.export.exporting' | translate }}
-      } @else {
-        <ng-container>
-          <mat-icon svgIcon="export"></mat-icon>
-          {{ 'modals.export.exportNow' | translate }}
-        </ng-container>
-      }
+      <mat-icon [svgIcon]="isExporting() ? 'spinner' : 'export'"></mat-icon>
+      {{ (isExporting() ? 'modals.export.exporting' : 'modals.export.exportNow') | translate }}
     </button>
   </footer>
 }

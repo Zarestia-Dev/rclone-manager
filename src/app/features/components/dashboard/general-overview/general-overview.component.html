@@ -140,10 +140,10 @@
                       @let bandwidth = bandwidthLimit();
                       @if (bandwidth?.loading) {
                         <div class="loading fade-in" aria-live="polite">
-                          <mat-spinner
-                            diameter="24"
+                          <mat-icon
+                            svgIcon="spinner"
                             [attr.aria-label]="'generalOverview.bandwidth.aria.loading' | translate"
-                          ></mat-spinner>
+                          ></mat-icon>
                           <span>{{ 'generalOverview.bandwidth.loading' | translate }}</span>
                         </div>
                       } @else if (bandwidth?.error) {
@@ -217,10 +217,10 @@
 
                       @if (isLoadingStats()) {
                         <div class="loading fade-in" aria-live="polite">
-                          <mat-spinner
-                            diameter="24"
+                          <mat-icon
+                            svgIcon="spinner"
                             [attr.aria-label]="'generalOverview.system.aria.loading' | translate"
-                          ></mat-spinner>
+                          ></mat-icon>
                           <span>{{ 'generalOverview.system.loading' | translate }}</span>
                         </div>
                       } @else {
@@ -300,10 +300,10 @@
 
                       @if (isLoadingStats()) {
                         <div class="loading fade-in" aria-live="polite">
-                          <mat-spinner
-                            diameter="24"
+                          <mat-icon
+                            svgIcon="spinner"
                             [attr.aria-label]="'generalOverview.jobs.aria.loading' | translate"
-                          ></mat-spinner>
+                          ></mat-icon>
                           <span>{{ 'generalOverview.jobs.loading' | translate }}</span>
                         </div>
                       } @else {

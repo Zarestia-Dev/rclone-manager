@@ -112,6 +112,13 @@ export class AlertRuleEditorComponent {
     if (this.data) this.form.patchValue(this.data);
   }
 
+  getSelectedActionNames(): string {
+    const selectedIds = this.form.controls.action_ids.value;
+    if (!selectedIds?.length) return '';
+    const map = new Map(this.actions().map(a => [a.id, a.name]));
+    return selectedIds.map(id => map.get(id) ?? id).join(', ');
+  }
+
   save(): void {
     if (this.form.invalid) return;
     const val = this.form.getRawValue();

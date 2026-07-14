@@ -16,7 +16,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import type { AddBackendArgs, BackendInfo, FilePickerConfig } from '@app/types';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -28,6 +27,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { BACKEND_CONSTANTS } from 'src/app/shared/constants/backend.constants';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({
   selector: 'app-backend-modal',
@@ -39,7 +39,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatProgressSpinnerModule,
     MatTooltipModule,
     MatCheckboxModule,
     MatTabsModule,
@@ -47,6 +46,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     TranslatePipe,
     MatExpansionModule,
     MatSlideToggle,
+    AlertBannerComponent,
   ],
   templateUrl: './backend-modal.component.html',
   styleUrls: ['./backend-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -259,15 +259,14 @@ export class BackendModalComponent implements OnInit {
     this.testingForm.set(true);
     this.formTestResult.set(null);
     try {
+      const username = this.backendForm.get('username')?.value || undefined;
+      const password = this.backendForm.get('password')?.value || undefined;
+
       const result = await this.backendService.testConnectionDetails({
         host,
         port,
-        username: this.backendForm.get('has_auth')?.value
-          ? this.backendForm.get('username')?.value
-          : undefined,
-        password: this.backendForm.get('has_auth')?.value
-          ? this.backendForm.get('password')?.value
-          : undefined,
+        username,
+        password,
       });
       this.formTestResult.set(result);
     } catch (error) {

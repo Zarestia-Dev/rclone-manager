@@ -12,7 +12,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -34,7 +33,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
   standalone: true,
   hostDirectives: [EscapeCloseDirective],
   imports: [
-    MatProgressSpinnerModule,
     MatIconModule,
     MatFormFieldModule,
     MatSelectModule,

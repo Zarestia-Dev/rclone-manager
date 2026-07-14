@@ -224,6 +224,12 @@ export class PathService {
   getFullDisplayPath(remote: ExplorerRoot | null, path: string): string {
     if (!remote) return path;
     if (remote.isLocal) {
+      const isWindowsDrive = /^[a-zA-Z]:[\\/]?/.test(remote.name) || remote.name.includes('\\');
+      if (isWindowsDrive) {
+        const cleanPath = path ? path.replace(/^[\\/]+/, '').replace(/\//g, '\\') : '';
+        const sep = remote.name.endsWith('\\') || remote.name.endsWith('/') ? '' : '\\';
+        return cleanPath ? `${remote.name}${sep}${cleanPath}` : remote.name;
+      }
       const sep = remote.name.endsWith('/') || remote.name.endsWith('\\') ? '' : '/';
       return path ? `${remote.name}${sep}${path}` : remote.name;
     }
@@ -270,35 +276,6 @@ export class PathService {
     return Array.isArray(path) ? path.join('\n') : path;
   }
 
-  encodePath(
-    path: string,
-    isLocal: boolean,
-    options: { platform?: string; protocol?: string } = {}
-  ): string {
-    if (!path) return '';
-
-    const normalized = path.replace(/\\/g, '/');
-    const isWindows = options.platform === 'windows';
-    const isHttp = options.protocol === 'http';
-
-    const encodedSegments = this.splitSegments(normalized).map((seg, i) => {
-      if (i === 0 && /^[A-Za-z]:$/.test(seg)) {
-        return isWindows && isHttp ? seg.replace(':', '%3A') : seg;
-      }
-      return encodeURIComponent(seg);
-    });
-
-    const joined = encodedSegments.join('/');
-    return normalized.startsWith('/') && !joined.startsWith('/') ? '/' + joined : joined;
-  }
-
-  decodePath(path: string): string {
-    if (!path) return '';
-    return this.splitSegments(path)
-      .map(seg => decodeURIComponent(seg))
-      .join('/');
-  }
-
   parseLocation(
     rawInput: string,
     knownRemotes: ExplorerRoot[]
@@ -342,7 +319,16 @@ export class PathService {
     }
 
     const exactMatch = knownRemotes.find(r => r.name === normalized || r.name === rawInput);
-    return exactMatch ? { remote: exactMatch, path: '' } : null;
+    if (exactMatch) return { remote: exactMatch, path: '' };
+
+    // Fallback: If no colon present, but POSIX root drive ('/') exists in knownRemotes, treat as local path under '/'
+    const posixRoot = knownRemotes.find(r => r.isLocal && r.name === '/');
+    if (posixRoot) {
+      const cleanPath = normalized.replace(/^\/+/, '');
+      return { remote: posixRoot, path: cleanPath };
+    }
+
+    return null;
   }
 
   parseFsString(

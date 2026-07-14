@@ -14,7 +14,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TitleCasePipe } from '@angular/common';
 import {
   DiskUsage,
@@ -51,7 +50,6 @@ import { ActionSelectionModalComponent } from 'src/app/features/modals/action-se
     MatIconModule,
     MatTooltipModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,

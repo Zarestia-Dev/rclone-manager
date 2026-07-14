@@ -19,7 +19,7 @@
       <div class="tab-content">
         @if (loadingAbout()) {
           <div class="loading-placeholder">
-            <mat-spinner diameter="40"></mat-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
             <p>{{ 'fileBrowser.remoteAbout.loading' | translate }}</p>
           </div>
         } @else if (errorAbout()) {
@@ -36,7 +36,7 @@
                 <span class="label">{{ 'fileBrowser.remoteAbout.totalSpace' | translate }}</span>
                 <span class="value">
                   @if (usage.loading) {
-                    <mat-spinner diameter="16"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.total !== undefined) {
                     {{ usage.total | formatFileSize }}
                   } @else {
@@ -48,7 +48,7 @@
                 <span class="label">{{ 'fileBrowser.remoteAbout.usedSpace' | translate }}</span>
                 <span class="value">
                   @if (usage.loading) {
-                    <mat-spinner diameter="16"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.used !== undefined) {
                     {{ usage.used | formatFileSize }}
                   } @else {
@@ -60,7 +60,7 @@
                 <span class="label">{{ 'fileBrowser.remoteAbout.freeSpace' | translate }}</span>
                 <span class="value">
                   @if (usage.loading) {
-                    <mat-spinner diameter="16"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else if (usage.free !== undefined) {
                     {{ usage.free | formatFileSize }}
                   } @else {
@@ -72,7 +72,7 @@
                 <span class="label">{{ 'fileBrowser.remoteAbout.objectCount' | translate }}</span>
                 <span class="value">
                   @if (loadingSize()) {
-                    <mat-spinner diameter="16"></mat-spinner>
+                    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
                   } @else {
                     {{ sizeInfo()?.count || 0 }}
                   }
@@ -85,7 +85,7 @@
                 [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
                 matTooltipPosition="left"
               >
-                <mat-icon svgIcon="rotate-right" [class.animate-spin]="usage.loading"></mat-icon>
+                <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
               </button>
             </mat-card>
 
@@ -136,7 +136,7 @@
       <div class="tab-content">
         @if (loadingAbout()) {
           <div class="loading-placeholder">
-            <mat-spinner diameter="40"></mat-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         } @else if (features().length > 0) {
           <div class="features-grid">
@@ -174,7 +174,7 @@
       <div class="tab-content">
         @if (loadingAbout()) {
           <div class="loading-placeholder">
-            <mat-spinner diameter="40"></mat-spinner>
+            <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
           </div>
         } @else if (metadataGroups().length > 0) {
           <mat-accordion multi>

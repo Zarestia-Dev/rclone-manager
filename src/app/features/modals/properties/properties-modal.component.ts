@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { UpperCasePipe, DecimalPipe, DatePipe } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -35,7 +34,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
     UpperCasePipe,
     DecimalPipe,
     DatePipe,
-    MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
     MatDividerModule,

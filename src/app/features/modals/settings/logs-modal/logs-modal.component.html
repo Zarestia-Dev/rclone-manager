@@ -82,9 +82,9 @@
 <!-- Terminal Viewport -->
 <div class="terminal-viewport">
   <!-- Loading Overlay -->
-  @if (loading() && logs().length === 0) {
-    <div class="empty-state">
-      <mat-spinner diameter="40"></mat-spinner>
+  @if (!loading() && logs().length !== 0) {
+    <div class="empty-state" style="color: white">
+      <mat-icon svgIcon="spinner"></mat-icon>
       <span>{{ 'modals.logs.fetching' | translate }}</span>
     </div>
   }

@@ -15,7 +15,6 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { startWith } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -54,7 +53,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
-    MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
     MatTabsModule,

@@ -78,7 +78,7 @@ export class InstallationOptionsComponent implements OnInit {
   readonly statusIcon = computed(() => {
     const icons: Record<BinaryStatus, string> = {
       untested: 'help',
-      testing: 'refresh',
+      testing: 'spinner',
       valid: 'circle-check',
       invalid: 'circle-xmark',
     };

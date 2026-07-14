@@ -6,12 +6,12 @@ import {
   computed,
   ChangeDetectionStrategy,
   output,
+  OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
@@ -40,7 +40,6 @@ import {
     MatTooltipModule,
     LoadingOverlayComponent,
     InstallationOptionsComponent,
-    MatProgressSpinnerModule,
     PasswordManagerComponent,
     TranslatePipe,
   ],
@@ -48,7 +47,7 @@ import {
   styleUrls: ['./onboarding.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OnboardingComponent {
+export class OnboardingComponent implements OnInit {
   completed = output<void>();
 
   // ─── Services ───────────────────────────────────────────────────────────────
@@ -207,19 +206,18 @@ export class OnboardingComponent {
       .listenToRcloneEngineReady()
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.passwordValidationError.set(null));
-
-    this.initOnboarding();
   }
 
   // ─── Init ────────────────────────────────────────────────────────────────────
 
-  private async initOnboarding(): Promise<void> {
+  async ngOnInit(): Promise<void> {
     try {
       await this.systemHealth.runAllChecks();
     } catch (error) {
       console.error('OnboardingComponent: System checks failed', error);
+    } finally {
+      this.animationState.set('visible');
     }
-    this.animationState.set('visible');
   }
 
   // ─── Keyboard Navigation ─────────────────────────────────────────────────────

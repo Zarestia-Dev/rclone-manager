@@ -38,6 +38,7 @@ export const BASE_ICONS: Record<string, string> = {
   star: 'assets/icons/status/star.svg',
   'star-outline': 'assets/icons/status/star-outline.svg',
   question: 'assets/icons/status/question.svg',
+  spinner: 'assets/icons/status/spinner.svg',
 
   // ------------------- File & Folder Icons -------------------
   file: 'assets/icons/files/file.svg',

@@ -22,7 +22,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormsModule } from '@angular/forms';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSliderModule } from '@angular/material/slider';
 import { filter, retry, switchMap } from 'rxjs/operators';
 import { timer } from 'rxjs';
@@ -75,7 +74,6 @@ interface QueueRow extends VfsQueueItem {
     FormsModule,
     FormatFileSizePipe,
     MatSliderModule,
-    MatProgressSpinnerModule,
     TranslatePipe,
     AlertBannerComponent,
   ],

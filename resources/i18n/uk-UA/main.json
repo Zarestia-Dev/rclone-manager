@@ -1952,6 +1952,7 @@
       "addBackend": "Додати бекенд",
       "editBackend": "Редагувати бекенд",
       "active": "Активний",
+      "connecting": "З'єднання...",
       "local": "Local",
       "name": "Назва",
       "enableAuth": "Налаштувати автентифікацію",

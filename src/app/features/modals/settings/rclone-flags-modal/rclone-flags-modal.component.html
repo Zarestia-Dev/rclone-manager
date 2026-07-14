@@ -21,8 +21,8 @@
 ></app-search-container>
 
 @if (isLoading()) {
-  <div class="loading-overlay">
-    <mat-spinner diameter="50"></mat-spinner>
+  <div class="loading-container">
+    <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
   </div>
 } @else if (currentPage() === 'home') {
   <main>
@@ -165,7 +165,7 @@
         [attr.aria-label]="'modals.rcloneFlags.reset.aria' | translate"
       >
         @if (isResetting()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <mat-icon svgIcon="spinner"></mat-icon>
         } @else {
           <mat-icon svgIcon="rotate-right"></mat-icon>
         }

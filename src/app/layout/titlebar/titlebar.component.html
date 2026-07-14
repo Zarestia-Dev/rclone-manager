@@ -33,14 +33,7 @@
       @if (connectionService.status() !== 'checking') {
         <mat-icon svgIcon="no-internet" aria-hidden="true"></mat-icon>
       } @else {
-        <mat-progress-spinner
-          class="accent"
-          diameter="24"
-          mode="indeterminate"
-          strokeWidth="4"
-          aria-hidden="true"
-        >
-        </mat-progress-spinner>
+        <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
       }
     </button>
   }
