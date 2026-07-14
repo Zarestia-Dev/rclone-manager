@@ -273,14 +273,15 @@ async fn process_internal(req: AlertRequest, dispatch_ctx: &DispatchContext) {
 }
 
 async fn execute_action(
-    app: &AppHandle,
+    _app: &AppHandle,
     action: &AlertAction,
     ctx: &TemplateContext,
     client: &reqwest::Client,
     dispatch_ctx: &DispatchContext,
 ) -> Result<(), String> {
     match action {
-        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(app, ctx),
+        #[cfg(feature = "tauri-plugin-notification")]
+        AlertAction::OsToast(_) => dispatch::os_toast::dispatch(_app, ctx),
         AlertAction::Webhook(a) => dispatch::webhook::dispatch(a, ctx, client).await,
         AlertAction::Script(a) => dispatch::script::dispatch(a, ctx).await,
         AlertAction::Telegram(a) => dispatch::telegram::dispatch(a, ctx, client).await,

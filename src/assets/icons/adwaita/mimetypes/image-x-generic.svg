@@ -1,13 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg height="128px" viewBox="0 0 128 128" width="128px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <linearGradient id="image_x_generic_a" gradientUnits="userSpaceOnUse" x1="16.280764" x2="93.490864" y1="36.90527325" y2="96.5379485">
-        <stop offset="0" stop-color="#1a5fb4"/>
-        <stop offset="0.11613" stop-color="#813d9c"/>
-        <stop offset="0.377272" stop-color="#ed333b"/>
-        <stop offset="0.666759" stop-color="#ff7800"/>
-        <stop offset="1" stop-color="#f6d32d"/>
-    </linearGradient>
-    <path d="m 16 27.929688 h 96 c 4.433594 0 8 3.570312 8 8 v 50.070312 l -30 30 h -74 c -4.433594 0 -8 -3.566406 -8 -8 v -72.070312 c 0 -4.429688 3.566406 -8 8 -8 z m 0 0" fill="#f6f5f4"/>
-    <path d="m 120 86.125 h -22 c -4.433594 0 -8 3.570312 -8 8 v 21.875 z m 0 0" fill="#deddda"/>
-    <path d="m 16 36 v 72 h 74 v -13.875 c 0 -4.433594 3.566406 -8 8 -8 h 14 v -50.125 z m 0 0" fill="url(#image_x_generic_a)"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><linearGradient id="image_x_generic_a" x1="16.281" x2="93.491" y1="36.905" y2="96.538" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a5fb4"/><stop offset=".116" stop-color="#813d9c"/><stop offset=".377" stop-color="#ed333b"/><stop offset=".667" stop-color="#ff7800"/><stop offset="1" stop-color="#f6d32d"/></linearGradient><path fill="#f6f5f4" d="M16 27.93h96c4.434 0 8 3.57 8 8V86l-30 30H16a7.98 7.98 0 0 1-8-8V35.93c0-4.43 3.566-8 8-8m0 0"/><path fill="#deddda" d="M120 86.125H98c-4.434 0-8 3.57-8 8V116zm0 0"/><path fill="url(#image_x_generic_a)" d="M16 36v72h74V94.125c0-4.434 3.566-8 8-8h14V36zm0 0"/></svg>

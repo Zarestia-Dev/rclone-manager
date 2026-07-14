@@ -13,18 +13,18 @@ macro_rules! MASTER_COMMAND_LIST {
     ($action:ident) => {
         $action! {
             // FILE OPERATIONS (Utils)
-            // File Picker / System Interaction (Desktop Only)
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            // File Picker / System Interaction
+            #[cfg(not(feature = "web-server"))]
             (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
             #[cfg(all(desktop, not(feature = "web-server")))]
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(not(feature = "web-server"))]
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(not(feature = "web-server"))]
             (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(not(feature = "web-server"))]
             (get_save_file_location, $crate::utils::io::file_helper::get_save_file_location, [default_name: Option<String>]);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(not(feature = "web-server"))]
             (download_file, $crate::utils::io::file_helper::download_file, [remote: String, path: String, destination: String, total_size: Option<u64>, is_local: bool]);
 
             // UI & THEME

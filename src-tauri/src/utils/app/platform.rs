@@ -100,7 +100,7 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
     }
 }
 
-// This one uses ashpd, same as the one above but I left it here as a comment. Maybe it will be useful for someone later.
+// // This one uses ashpd, same as the one above but I left it here as a comment. Maybe it will be useful for someone later.
 // #[cfg(feature = "flatpak")]
 // pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String> {
 //     use ashpd::desktop::background::Background;

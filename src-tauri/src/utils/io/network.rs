@@ -108,36 +108,40 @@ impl LinkChecker {
 #[cfg(all(target_os = "linux", not(feature = "container")))]
 #[must_use]
 pub fn is_metered() -> bool {
-    use zbus::blocking::{Connection, Proxy};
+    std::thread::spawn(|| {
+        use zbus::blocking::{Connection, Proxy};
 
-    let connection = match Connection::system() {
-        Ok(c) => c,
-        Err(e) => {
-            log::error!("Failed to connect to D-Bus: {e}");
-            return false;
-        }
-    };
+        let connection = match Connection::system() {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("Failed to connect to D-Bus: {e}");
+                return false;
+            }
+        };
 
-    let proxy = match Proxy::new(
-        &connection,
-        "org.freedesktop.NetworkManager",
-        "/org/freedesktop/NetworkManager",
-        "org.freedesktop.NetworkManager",
-    ) {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("NetworkManager D-Bus proxy error: {e}");
-            return false;
-        }
-    };
+        let proxy = match Proxy::new(
+            &connection,
+            "org.freedesktop.NetworkManager",
+            "/org/freedesktop/NetworkManager",
+            "org.freedesktop.NetworkManager",
+        ) {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("NetworkManager D-Bus proxy error: {e}");
+                return false;
+            }
+        };
 
-    match proxy.get_property::<u32>("Metered") {
-        Ok(status) => matches!(status, 1 | 3),
-        Err(e) => {
-            log::error!("Failed to read Metered property: {e}");
-            false
+        match proxy.get_property::<u32>("Metered") {
+            Ok(status) => matches!(status, 1 | 3),
+            Err(e) => {
+                log::error!("Failed to read Metered property: {e}");
+                false
+            }
         }
-    }
+    })
+    .join()
+    .unwrap_or(false)
 }
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]

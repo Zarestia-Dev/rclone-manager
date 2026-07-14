@@ -18,7 +18,7 @@ pub async fn provision_rclone(
     app_handle: tauri::AppHandle,
     path: Option<String>,
 ) -> Result<String, String> {
-    let os = tauri_plugin_os::platform();
+    let os = std::env::consts::OS;
     let arch = get_arch();
 
     let install_dir = match path {

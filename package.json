@@ -1,6 +1,6 @@
 {
   "name": "rclone-manager",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -21,6 +21,7 @@
     "sync:flags": "node scripts/update-flags.cjs",
     "sync:providers": "node scripts/update-providers.cjs",
     "sync:endpoints": "node scripts/update-endpoints.cjs",
+    "optimize:svg": "svgo -f src/assets -r && node scripts/fix-svg-ids.cjs",
     "prepare": "husky"
   },
   "private": true,
@@ -79,6 +80,7 @@
     "karma-jasmine-html-reporter": "~2.2.0",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.4",
+    "svgo": "^4.0.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.0"
   },

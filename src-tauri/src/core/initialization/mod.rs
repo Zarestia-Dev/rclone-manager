@@ -157,14 +157,17 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     }
     debug!("Refreshed backend caches");
 
-    let manager = app_handle.state::<AppSettingsManager>();
-    if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
-        error!("Failed to seed alert defaults: {e}");
-    } else {
-        let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
-        alert_cache.reload_rules(manager.inner()).await;
-        alert_cache.reload_actions(manager.inner()).await;
-        info!("Alert defaults seeded and cache reloaded");
+    #[cfg(feature = "tauri-plugin-notification")]
+    {
+        let manager = app_handle.state::<AppSettingsManager>();
+        if let Err(e) = crate::core::alerts::seed::seed_defaults(manager.inner()) {
+            error!("Failed to seed alert defaults: {e}");
+        } else {
+            let alert_cache = app_handle.state::<crate::core::alerts::cache::AlertRuleCache>();
+            alert_cache.reload_rules(manager.inner()).await;
+            alert_cache.reload_actions(manager.inner()).await;
+            info!("Alert defaults seeded and cache reloaded");
+        }
     }
 
     Ok(())

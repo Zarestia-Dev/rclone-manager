@@ -7,8 +7,8 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     core::{
-        alerts::cache, automation::commands::reload_automations_from_configs,
-        lifecycle::shutdown::shutdown_app, settings::AppSettingsManager,
+        automation::commands::reload_automations_from_configs, lifecycle::shutdown::shutdown_app,
+        settings::AppSettingsManager,
     },
     rclone::{backend::BackendManager, commands::system::bandwidth_limit},
     utils::{
@@ -102,6 +102,7 @@ fn handle_settings_changed(app: &AppHandle) {
 
         match serde_json::from_str::<SettingsChangeEvent>(event.payload()) {
             Ok(change) => match (change.category.as_str(), change.key.as_str()) {
+                #[cfg(feature = "tauri-plugin-notification")]
                 ("general", "notifications") => {
                     if let Some(enabled) = change.value.as_bool() {
                         handle_notifications_change(&app, enabled);
@@ -168,10 +169,13 @@ fn handle_settings_changed(app: &AppHandle) {
     });
 }
 
+#[cfg(feature = "tauri-plugin-notification")]
 fn handle_notifications_change(app: &AppHandle, enabled: bool) {
     debug!("Notifications changed to: {enabled}");
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
+        use crate::core::alerts::cache;
+
         let manager = app.state::<AppSettingsManager>();
         let mut updated = false;
 

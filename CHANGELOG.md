@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **WhatsApp Notification Channel**: Added a new `whatsapp` alert action type supporting CallMeBot (`https://api.callmebot.com/whatsapp.php`) for personal WhatsApp push notifications, as well as custom HTTP gateway URLs.
 
 ### Fixed
+- Linux zbus panics across the app.
 - **Encryption Detection in Non-Librclone Mode**: Resolved an issue where non-librclone mode failed to correctly detect when an Rclone configuration file was encrypted.
 - **Task State & Status Refreshing**: Fixed an issue where active tasks, automated file watchers, and scheduled jobs failed to update their statuses and progress properly in the UI.
 - **Desktop Remote File Downloads**: Resolved a bug in desktop mode where downloading files or folders from remote storage directly to the local PC filesystem failed to execute.

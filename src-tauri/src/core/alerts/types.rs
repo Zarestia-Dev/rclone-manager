@@ -211,12 +211,13 @@ pub struct ActionCommon {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum AlertAction {
+    #[cfg(feature = "tauri-plugin-notification")]
+    #[serde(rename = "os_toast")]
+    OsToast(OsToastAction),
     #[serde(rename = "webhook")]
     Webhook(WebhookAction),
     #[serde(rename = "script")]
     Script(ScriptAction),
-    #[serde(rename = "os_toast")]
-    OsToast(OsToastAction),
     #[serde(rename = "telegram")]
     Telegram(TelegramAction),
     #[serde(rename = "whatsapp")]
@@ -232,9 +233,10 @@ impl rcman::SettingsSchema for AlertAction {
         let mut meta = std::collections::HashMap::new();
 
         // Merge schemas from all variants to satisfy rcman's strict schema validation.
+        #[cfg(feature = "tauri-plugin-notification")]
+        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<WebhookAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<ScriptAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<TelegramAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<WhatsappAction as rcman::SettingsSchema>::get_metadata());
         meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
@@ -243,11 +245,12 @@ impl rcman::SettingsSchema for AlertAction {
         meta.insert(
             "kind".to_string(),
             rcman::SettingMetadata::select(
-                "os_toast",
+                "webhook",
                 vec![
+                    #[cfg(feature = "tauri-plugin-notification")]
+                    rcman::opt("os_toast", "System Notification"),
                     rcman::opt("webhook", "Webhook"),
                     rcman::opt("script", "Shell Script"),
-                    rcman::opt("os_toast", "System Notification"),
                     rcman::opt("telegram", "Telegram"),
                     rcman::opt("whatsapp", "WhatsApp"),
                     rcman::opt("mqtt", "MQTT"),
@@ -269,7 +272,14 @@ impl std::fmt::Display for AlertAction {
 
 impl Default for AlertAction {
     fn default() -> Self {
-        Self::OsToast(OsToastAction::default())
+        #[cfg(feature = "tauri-plugin-notification")]
+        {
+            Self::OsToast(OsToastAction::default())
+        }
+        #[cfg(not(feature = "tauri-plugin-notification"))]
+        {
+            Self::Webhook(WebhookAction::default())
+        }
     }
 }
 
@@ -277,9 +287,10 @@ impl AlertAction {
     /// Returns a reference to the shared fields common to all action variants.
     pub fn common(&self) -> &ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &a.common,
             Self::Webhook(a) => &a.common,
             Self::Script(a) => &a.common,
-            Self::OsToast(a) => &a.common,
             Self::Telegram(a) => &a.common,
             Self::Whatsapp(a) => &a.common,
             Self::Mqtt(a) => &a.common,
@@ -290,9 +301,10 @@ impl AlertAction {
     /// Returns a mutable reference to the shared fields.
     pub fn common_mut(&mut self) -> &mut ActionCommon {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(a) => &mut a.common,
             Self::Webhook(a) => &mut a.common,
             Self::Script(a) => &mut a.common,
-            Self::OsToast(a) => &mut a.common,
             Self::Telegram(a) => &mut a.common,
             Self::Whatsapp(a) => &mut a.common,
             Self::Mqtt(a) => &mut a.common,
@@ -312,15 +324,17 @@ impl AlertAction {
         self.common().enabled
     }
 
+    #[cfg(feature = "tauri-plugin-notification")]
     pub fn set_enabled(&mut self, enabled: bool) {
         self.common_mut().enabled = enabled;
     }
 
     pub fn kind_str(&self) -> &'static str {
         match self {
+            #[cfg(feature = "tauri-plugin-notification")]
+            Self::OsToast(_) => "os_toast",
             Self::Webhook(_) => "webhook",
             Self::Script(_) => "script",
-            Self::OsToast(_) => "os_toast",
             Self::Telegram(_) => "telegram",
             Self::Whatsapp(_) => "whatsapp",
             Self::Mqtt(_) => "mqtt",
@@ -421,6 +435,7 @@ impl Default for ScriptAction {
 /// Fires a system notification using `tauri-plugin-notification`.
 /// Enabled/disabled state is toggled directly when the user changes the
 /// `general.notifications` setting.
+#[cfg(feature = "tauri-plugin-notification")]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, DeriveSettingsSchema)]
 pub struct OsToastAction {
     #[serde(flatten)]

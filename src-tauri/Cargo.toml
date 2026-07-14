@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.2.9"
+version = "0.3.0"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -20,16 +20,11 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
-tauri-plugin-notification = "2"
-tauri-plugin-deep-link = "2"
-tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full", "process"] }
 async-trait = "0.1"
-tauri-plugin-os = "2"
 zip = "8"
 reqwest = { version = "0.13", default-features = false, features = ["json", "blocking", "rustls", "multipart", "stream", "query"] }
 once_cell = "1"
@@ -55,12 +50,16 @@ rumqttc = "0.25"
 rustls-native-certs = "0.8"
 rustls = { version = "0.23", features = ["ring"] }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "tokio1-rustls-tls", "builder", "hostname"] }
+sys-locale = "0.3"
 
 
-tauri-plugin-shell = { version = "2", optional = true }
-tauri-plugin-window-state = { version = "2", optional = true }
-tauri-plugin-dialog = { version = "2", optional = true }
-tauri-plugin-clipboard-manager = { version = "2", optional = true }
+tauri-plugin-shell = { version = "2", optional = true, default-features = false }
+tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
+tauri-plugin-clipboard-manager = { version = "2", optional = true, default-features = false }
+tauri-plugin-notification = { version = "2", optional = true, default-features = false }
+tauri-plugin-deep-link = { version = "2", optional = true, default-features = false }
+tauri-plugin-os = { version = "2", optional = true, default-features = false }
+tauri-plugin-opener = { version = "2", optional = true, default-features = false }
 
 # rcman - Rust Config Manager library
 rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
@@ -85,6 +84,7 @@ nix = "0.31"
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
 futures-lite = "2"
+notify-rust = "4"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation"] }
@@ -95,18 +95,24 @@ winreg = "0.52"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
+tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
 [features]
 updater = ["dep:tauri-plugin-updater"]
+tauri-plugin-notification = ["dep:tauri-plugin-notification"]
+tauri-plugin-deep-link = ["dep:tauri-plugin-deep-link"]
 
 web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "updater"]
 
 # Container
 container = ["web-server"]
 
+shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-shell", "tauri-plugin-os"]
+
 # For GUI features
-desktop = ["tauri-plugin-shell", "tauri-plugin-window-state", "tauri-plugin-dialog", "tauri/devtools", "tauri-plugin-clipboard-manager", "updater"]
-tray = ["tauri/tray-icon", "tauri/image-png"]
+desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri", "tauri-plugin-opener"]
+tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
 default = ["desktop", "tray"]
 
 # Managed by package managers or not compatible with updater
@@ -115,11 +121,8 @@ flatpak = ["desktop", "tray"]
 
 # In-process rclone via librclone FFI (mobile target).
 librclone = []
+mobile = ["librclone", "shared-tauri"]
 
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
-
-[patch.crates-io]
-rcman = { path = "../../rcman" }
-
