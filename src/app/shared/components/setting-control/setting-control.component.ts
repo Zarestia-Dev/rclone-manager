@@ -41,6 +41,7 @@ import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-m
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
+import { isCommaArrayType, isConvertibleType, isMultiselectType } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-setting-control',
@@ -83,6 +84,30 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly option = input<RcConfigOption | null>(null);
   readonly optionOverrides = input<Record<string, Partial<RcConfigOption>>>({});
   readonly provider = input<string | null>(null);
+  readonly showFlag = input(true);
+
+  readonly flagNames = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return [];
+
+    // Exclude internal subcommand selection fields from displaying flags
+    if (opt.Name === 'mountType' || opt.Name === 'type') {
+      return [];
+    }
+
+    const optName = opt.Name.replace(/_/g, '-');
+    const flags: string[] = [];
+
+    const providerVal = this.provider();
+    if (providerVal && !opt.NoPrefix) {
+      const providerLower = providerVal.toLowerCase().trim();
+      flags.push(`--${providerLower}-${optName}`);
+    } else {
+      flags.push(`--${optName}`);
+    }
+
+    return flags;
+  });
 
   readonly valueCommit = output<void>();
   readonly valueChanged = output<boolean>();
@@ -149,11 +174,6 @@ export class SettingControlComponent implements ControlValueAccessor {
     min_age: { DefaultStr: '0s', Default: 0 },
     max_age: { DefaultStr: '0s', Default: 0 },
   };
-
-  private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
-  private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
-
-  private readonly MULTISELECT_TYPES = [...this.COMMA_ARRAY_TYPES, 'SpaceSepList', 'stringArray'];
 
   static readonly DUMP_FLAGS_FALLBACK = [
     'headers',
@@ -355,7 +375,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       return current === defaultVal;
     }
 
-    if (optType && this.MULTISELECT_TYPES.includes(optType)) {
+    if (optType && isMultiselectType(optType)) {
       const toArray = (v: unknown): string[] => {
         if (Array.isArray(v)) return v.map(String);
         if (typeof v === 'string') {
@@ -455,13 +475,13 @@ export class SettingControlComponent implements ControlValueAccessor {
       value = this.uiDefaultValue();
     }
 
-    if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
+    if (isConvertibleType(opt.Type)) {
       return typeof value === 'number'
         ? this.valueMapper.machineToHuman(value, opt.Type, opt.ValueStr)
         : value || opt.ValueStr || opt.DefaultStr || '';
     }
 
-    if (this.COMMA_ARRAY_TYPES.includes(opt.Type)) {
+    if (isCommaArrayType(opt.Type)) {
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
@@ -582,7 +602,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       return this.splitToArray(str, ',');
     }
 
-    if (this.CONVERTIBLE_TYPES.includes(opt.Type)) {
+    if (isConvertibleType(opt.Type)) {
       return typeof opt.Value === 'number'
         ? this.valueMapper.machineToHuman(opt.Value, opt.Type, opt.ValueStr)
         : opt.ValueStr || opt.DefaultStr || '';
@@ -753,7 +773,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
 
-    const isMultiSelect = this.MULTISELECT_TYPES.includes(opt.Type);
+    const isMultiSelect = isMultiselectType(opt.Type);
     if (opt.Examples && !isMultiSelect) {
       validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }

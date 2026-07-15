@@ -45,6 +45,7 @@ import { staticFlagDefinitions } from './flag-definitions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RemotePresetsService } from './remote-presets';
 import { getRcloneCfg } from 'src/app/shared/utils/profile-config.util';
+import { isArrayType } from 'src/app/shared/utils';
 
 export interface StepConfig {
   readonly label: string;
@@ -90,14 +91,6 @@ const FLAG_TYPE_FIELDS: Partial<Record<string, readonly string[]>> = {
 
 @Injectable()
 export class RemoteConfigStateService {
-  private static readonly ARRAY_TYPES = new Set([
-    'stringArray',
-    'CommaSepList',
-    'SpaceSepList',
-    'Bits',
-    'Encoding',
-    'DumpFlags',
-  ]);
   private static readonly LINKED_TYPES = new Set(['vfs', 'filter', 'backend', 'runtimeRemote']);
 
   static readonly AUTO_PROFILE_NAME = 'Default';
@@ -697,9 +690,9 @@ export class RemoteConfigStateService {
       this.loadRemoteTypes(),
       this.loadMountTypes(),
       this.loadServeTypes(),
-      this.loadAllFlagFields(),
-      this.loadServeFields(),
     ]);
+
+    await Promise.all([this.loadAllFlagFields(), this.loadServeFields()]);
 
     if (dialogData?.cloneFrom) {
       this.existingConfig = await this.remoteFacade.cloneRemote(dialogData.cloneFrom);
@@ -1460,7 +1453,7 @@ export class RemoteConfigStateService {
       const ctrl = tOptGroup.get(uKey);
       if (!ctrl) continue;
 
-      if (RemoteConfigStateService.ARRAY_TYPES.has(match.Type)) {
+      if (isArrayType(match.Type)) {
         let arr: any[] = [];
         if (processedKeys.has(uKey)) {
           const cVal = ctrl.value;

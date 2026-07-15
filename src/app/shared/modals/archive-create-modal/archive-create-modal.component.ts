@@ -46,12 +46,20 @@ export interface ArchiveCreateData {
     <main>
       <form [formGroup]="form">
         <div class="setting-card">
-          <app-setting-control [option]="filenameOption()" formControlName="filename" />
+          <app-setting-control
+            [option]="filenameOption()"
+            formControlName="filename"
+            [showFlag]="false"
+          />
         </div>
 
         @for (opt of archiveOptions; track opt.Name) {
           <div class="setting-card">
-            <app-setting-control [option]="opt" [formControlName]="opt.FieldName || opt.Name" />
+            <app-setting-control
+              [option]="opt"
+              [formControlName]="opt.FieldName || opt.Name"
+              [showFlag]="false"
+            />
           </div>
         }
       </form>

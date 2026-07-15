@@ -55,7 +55,7 @@
             <div class="info-grid">
               <div class="info-item">
                 <span class="label">{{ 'wizards.cliImport.operation' | translate }}:</span>
-                <span class="value capitalize" [class.highlight]="verb">
+                <span class="value" [class.highlight]="verb">
                   {{ verb || ('wizards.cliImport.patch' | translate) }}
                 </span>
               </div>
@@ -63,7 +63,7 @@
               @if (result.serveSubtype) {
                 <div class="info-item">
                   <span class="label">{{ 'wizards.cliImport.serveType' | translate }}:</span>
-                  <code class="value capitalize">{{ result.serveSubtype }}</code>
+                  <code class="value">{{ result.serveSubtype }}</code>
                 </div>
               }
 
@@ -98,18 +98,48 @@
           @if (mappedFlags(); as flags) {
             @if (flags.length > 0) {
               <div class="preview-group">
-                <h5 class="success-header">
-                  <mat-icon svgIcon="circle-check"></mat-icon>
-                  {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ flags.length }})
-                </h5>
+                <div class="preview-group-header">
+                  <h5 class="success-header">
+                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ selectedFlags().size }}/{{
+                      flags.length
+                    }})
+                  </h5>
+                  <div class="selection-actions">
+                    <button
+                      matButton="text"
+                      type="button"
+                      class="link-btn"
+                      (click)="selectAllFlags()"
+                    >
+                      {{ 'common.selectAll' | translate }}
+                    </button>
+                    <span class="separator">|</span>
+                    <button
+                      matButton="text"
+                      type="button"
+                      class="link-btn"
+                      (click)="deselectAllFlags()"
+                    >
+                      {{ 'common.deselectAll' | translate }}
+                    </button>
+                  </div>
+                </div>
                 <div class="flag-list">
                   @for (item of flags; track item.flag.key) {
-                    <div class="flag-row">
-                      <code class="flag-key">--{{ item.flag.key }}</code>
-                      <span class="arrow">→</span>
-                      <code class="form-field">{{ item.fieldName }}</code>
-                      <span class="equals">=</span>
-                      <code class="flag-val">{{ item.coercedValue }}</code>
+                    <div class="flag-row select-row">
+                      <mat-checkbox
+                        [ngModel]="isFlagSelected(item.flag.key)"
+                        (ngModelChange)="toggleFlag(item.flag.key)"
+                      >
+                        <div class="flag-row-content">
+                          <code class="flag-key">--{{ item.flag.key }}</code>
+                          <span class="arrow">→</span>
+                          <code class="form-field">{{ item.fieldName }}</code>
+                          <span class="equals">=</span>
+                          <code class="flag-val">{{ item.coercedValue }}</code>
+                        </div>
+                      </mat-checkbox>
                     </div>
                   }
                 </div>
@@ -128,7 +158,7 @@
                 <div class="flag-list">
                   @for (macro of macros; track macro.source) {
                     <div class="flag-row">
-                      <code class="flag-key">{{ macro.source }}</code>
+                      <code class="flag-key">{{ macro.source | translate }}</code>
                       <span class="arrow">:</span>
                       <code class="flag-val">{{ macro.value }}</code>
                     </div>
@@ -159,7 +189,7 @@
             }
           }
 
-          <div class="profile-apply-section">
+          <div class="profile-apply-section no-subscript">
             <h4>{{ 'wizards.cliImport.applyConfig' | translate }}</h4>
 
             @if (result.sourcePath || result.destPath) {
@@ -187,37 +217,25 @@
             }
 
             @if (!result.verb) {
-              <div
-                class="patch-info-box"
-                [class.warning]="!activeStep() || activeStep() === 'remote'"
-              >
-                <mat-icon
-                  [svgIcon]="
-                    !activeStep() || activeStep() === 'remote' ? 'circle-exclamation' : 'info'
-                  "
-                ></mat-icon>
-                <span>
-                  {{
-                    (!activeStep() || activeStep() === 'remote'
-                      ? 'wizards.cliImport.patchInfoRemoteStep'
-                      : 'wizards.cliImport.patchInfo'
-                    ) | translate
-                  }}
-                </span>
-              </div>
+              <app-alert-banner
+                [severity]="!canPatch() ? 'warning' : 'info'"
+                [description]="
+                  (!canPatch()
+                    ? 'wizards.cliImport.patchInfoRemoteStep'
+                    : 'wizards.cliImport.patchInfo'
+                  ) | translate
+                "
+              />
             }
 
             <mat-radio-group [ngModel]="profileMode()" (ngModelChange)="profileMode.set($event)">
-              <mat-radio-button value="new" [disabled]="!result.verb">
+              <mat-radio-button value="new" [disabled]="!canCreateNew()">
                 {{ 'wizards.cliImport.newProfile' | translate }}
               </mat-radio-button>
-              <mat-radio-button
-                value="override"
-                [disabled]="!result.verb || detectedVerbProfiles().length === 0"
-              >
+              <mat-radio-button value="override" [disabled]="!canOverride()">
                 {{ 'wizards.cliImport.overrideProfile' | translate }}
               </mat-radio-button>
-              <mat-radio-button value="patch">
+              <mat-radio-button value="patch" [disabled]="!canPatch()">
                 {{ 'wizards.cliImport.patchProfile' | translate }}
               </mat-radio-button>
             </mat-radio-group>
@@ -239,7 +257,7 @@
                 <mat-label>{{ 'wizards.cliImport.selectProfile' | translate }}</mat-label>
                 <mat-select
                   [ngModel]="selectedOverrideProfile()"
-                  (ngModelChange)="$event ? profileMode.set('override') : null"
+                  (ngModelChange)="selectedOverrideProfile.set($event)"
                 >
                   @for (p of detectedVerbProfiles(); track p) {
                     <mat-option [value]="p">{{ p }}</mat-option>

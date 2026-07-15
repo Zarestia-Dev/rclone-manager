@@ -1,18 +1,9 @@
 import { Injectable } from '@angular/core';
 import { RcConfigOption } from '@app/types';
+import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneValueMapperService {
-  private static readonly INT_TYPES = new Set([
-    'int',
-    'int64',
-    'int32',
-    'uint',
-    'uint32',
-    'uint64',
-  ]);
-  private static readonly FLOAT_TYPES = new Set(['float', 'float32', 'float64']);
-
   machineToHuman(value: unknown, type: string, fallback = ''): string {
     if (value == null) return fallback;
     switch (type) {
@@ -182,12 +173,12 @@ export class RcloneValueMapperService {
   }
 
   humanToMachine(value: unknown, type: string): unknown {
-    if (RcloneValueMapperService.INT_TYPES.has(type)) {
+    if (isIntType(type)) {
       if (typeof value !== 'string' || !value.trim()) return value;
       const p = parseInt(value, 10);
       return isNaN(p) ? value : p;
     }
-    if (RcloneValueMapperService.FLOAT_TYPES.has(type)) {
+    if (isFloatType(type)) {
       if (typeof value !== 'string' || !value.trim()) return value;
       const p = parseFloat(value);
       return isNaN(p) ? value : p;

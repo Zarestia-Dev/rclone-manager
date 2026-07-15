@@ -6,8 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Small UI improvements. #252 #253
+
 ### Fixed
 - **Linux Window Resize Handles**: Added custom HTML/CSS resize handle borders in the frontend shell layout to restore cursor and drag-to-resize functionality on undecorated Linux windows. #236
+- **Remote Configuration Flags Loading**: Fixed a bug where flag configs sometimes failed to load and cached failed/empty results in the `MemoizedLoader` until a UI reload. Also resolved a race condition during modal initialization by sequencing metadata and dependent flag fields loading.
 
 ## [v0.3.0] - 2026-07-14
 

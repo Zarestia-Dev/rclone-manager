@@ -146,6 +146,43 @@
   padding: var(--space-sm);
   box-shadow: var(--box-shadow);
 
+  .preview-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--space-xs);
+    margin-bottom: var(--space-xs);
+
+    .selection-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: var(--font-size-xs);
+
+      .link-btn {
+        font-size: var(--font-size-xs);
+        height: auto;
+        padding: 0;
+        min-width: 0;
+        line-height: 1;
+        color: var(--primary-color);
+        cursor: pointer;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      .separator {
+        color: var(--dim-color);
+        margin: 0 4px;
+      }
+    }
+  }
+
   h5 {
     margin: 0;
     display: flex;
@@ -218,6 +255,25 @@
         margin-left: 2px;
       }
     }
+
+    &.select-row {
+      padding: 0;
+      background-color: transparent;
+
+      mat-checkbox {
+        width: 100%;
+        padding: 6px var(--space-xs);
+        background-color: var(--sidebar-bg-color);
+        border-radius: var(--border-radius);
+      }
+
+      .flag-row-content {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+        vertical-align: middle;
+      }
+    }
   }
 }
 
@@ -228,40 +284,11 @@
   border-radius: var(--border-radius);
   padding: var(--space-md);
   box-shadow: var(--box-shadow);
+  gap: var(--space-sm);
 
   h4 {
     margin: 0;
     font-size: var(--font-size-md);
     font-weight: 600;
-  }
-}
-
-.capitalize {
-  text-transform: capitalize;
-}
-
-.patch-info-box {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  color: var(--accent-color);
-  font-size: var(--font-size-sm);
-  background-color: color-mix(in srgb, var(--accent-color) 10%, transparent);
-  border: 1px solid var(--accent-color);
-  padding: var(--space-sm);
-  border-radius: var(--border-radius);
-
-  mat-icon {
-    color: var(--accent-color);
-  }
-
-  &.warning {
-    color: var(--warn-color);
-    background-color: color-mix(in srgb, var(--warn-color) 10%, transparent);
-    border-color: var(--warn-color);
-
-    mat-icon {
-      color: var(--warn-color);
-    }
   }
 }

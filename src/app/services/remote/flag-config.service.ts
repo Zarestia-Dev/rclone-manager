@@ -69,7 +69,7 @@ export class FlagConfigService extends TauriBaseService {
           return [...staticFlags, ...(flags ?? [])];
         } catch (error) {
           console.error(`Error loading serve flags for ${serveType}:`, error);
-          return [];
+          throw error;
         }
       });
       this.serveFlagsLoaders.set(serveType, loader);
@@ -134,7 +134,7 @@ export class FlagConfigService extends TauriBaseService {
       return flags ?? [];
     } catch (error) {
       console.error(`Error loading ${type} flags:`, error);
-      return [];
+      throw error;
     }
   }
 

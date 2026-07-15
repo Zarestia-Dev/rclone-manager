@@ -39,7 +39,7 @@
     </span>
   }
 
-  @if (((state.currentStep() > 1 && !state.editTarget()) || state.editTarget()) && !flow.isActive) {
+  @if ((state.currentStep() > 1 || state.editTarget()) && !flow.isActive) {
     <button
       matButton="filled"
       (click)="submitForm.emit()"

@@ -28,7 +28,9 @@
     "all": "All",
     "description": "Description",
     "password": "Password",
-    "username": "Username"
+    "username": "Username",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All"
   },
   "validators": {
     "integer": "Must be a valid integer",

@@ -28,7 +28,9 @@
     "all": "全部",
     "description": "描述",
     "password": "密码",
-    "username": "用户名"
+    "username": "用户名",
+    "selectAll": "全选",
+    "deselectAll": "取消全选"
   },
   "validators": {
     "integer": "必须为有效的整数",

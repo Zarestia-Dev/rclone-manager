@@ -28,7 +28,9 @@
     "all": "Tout",
     "description": "Description",
     "password": "Mot de passe",
-    "username": "Nom d'utilisateur"
+    "username": "Nom d'utilisateur",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner"
   },
   "validators": {
     "integer": "Doit être un entier valide",

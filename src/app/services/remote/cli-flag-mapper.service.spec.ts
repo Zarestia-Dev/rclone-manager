@@ -280,8 +280,10 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should strip bash-style comments', () => {
+      // Line continuation (\) + newline joins the lines, then # starts a comment
+      // that runs to the end of the line.
       const tokens = service.tokenize(
-        'rclone sync src: dst: --filter "- /**" \\ # comment\n --addr :8080'
+        'rclone sync src: dst: --filter "- /**" \\\n# comment\n --addr :8080'
       );
       expect(tokens).toEqual([
         'rclone',
@@ -310,6 +312,23 @@ describe('CliFlagMapperService', () => {
         raw: '--max-delete -10',
         key: 'max-delete',
         value: '-10',
+        hasMacro: false,
+      });
+    });
+
+    it('should not consume the next token when it is a valid flag', () => {
+      const parsed = service.parse('rclone sync src: dst: --verbose --dry-run', new Set());
+      expect(parsed.flags.length).toBe(2);
+      expect(parsed.flags[0]).toEqual({
+        raw: '--verbose',
+        key: 'verbose',
+        value: true,
+        hasMacro: false,
+      });
+      expect(parsed.flags[1]).toEqual({
+        raw: '--dry-run',
+        key: 'dry-run',
+        value: true,
         hasMacro: false,
       });
     });

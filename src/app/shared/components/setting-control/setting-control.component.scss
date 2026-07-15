@@ -9,7 +9,7 @@
     flex: 1;
     min-width: 0;
 
-    strong {
+    span {
       display: block;
       font-weight: 600;
       font-size: var(--font-size-base);
@@ -18,7 +18,15 @@
 
       .required-asterisk {
         color: var(--warn-color);
-        margin-left: 2px;
+      }
+
+      code {
+        font-weight: 500;
+        background-color: rgba(var(--primary-color-rgb), var(--active-opacity));
+        color: var(--primary-color);
+        padding: 2px 6px 0;
+        border-radius: var(--radius-xxs);
+        margin-left: var(--space-xs);
       }
     }
 
@@ -31,20 +39,18 @@
       overflow-wrap: break-word;
       white-space: normal;
 
-      // Override the block strong style for inline use inside help text
-      strong {
+      // Override the block span style for inline use inside help text
+      span {
         font-weight: 600;
         color: var(--window-fg-color);
         display: inline;
-        margin: 0;
         font-size: inherit;
       }
 
       code {
         background-color: rgba(0, 0, 0, 0.05);
-        border-radius: 3px;
-        padding: 2px 6px;
-        font-family: var(--font-mono);
+        border-radius: var(--radius-xxs);
+        padding: 2px 6px 0;
         font-size: var(--font-size-xs);
         color: var(--warn-color);
         word-break: break-word;
@@ -182,7 +188,11 @@
 
     .setting-info {
       p,
-      strong {
+      span {
+        display: flex;
+        gap: var(--space-xs);
+        flex-direction: column;
+        align-items: center;
         font-size: var(--font-size-sm);
       }
 

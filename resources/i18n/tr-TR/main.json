@@ -28,7 +28,9 @@
     "all": "Tümü",
     "description": "Açıklama",
     "password": "Şifre",
-    "username": "Kullanıcı Adı"
+    "username": "Kullanıcı Adı",
+    "selectAll": "Tümünü Seç",
+    "deselectAll": "Tümünü Temizle"
   },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",

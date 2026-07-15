@@ -28,7 +28,9 @@
     "all": "Усі",
     "description": "Опис",
     "password": "Пароль",
-    "username": "Імʼя користувача"
+    "username": "Імʼя користувача",
+    "selectAll": "Виділити все",
+    "deselectAll": "Зняти виділення"
   },
   "validators": {
     "integer": "Має бути коректне ціле число",

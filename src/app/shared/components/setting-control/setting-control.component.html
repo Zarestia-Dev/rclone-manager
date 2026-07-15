@@ -2,7 +2,7 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <strong>
+        <span>
           {{
             opt.Name
               | rcloneOptionTranslate
@@ -12,9 +12,14 @@
                 : translate.currentLang()
           }}
           @if (opt.Required) {
-            <span class="required-asterisk">*</span>
+            <small class="required-asterisk">*</small>
           }
-        </strong>
+          @if (showFlag()) {
+            @for (flag of flagNames(); track flag) {
+              <code class="flag-badge">{{ flag }}</code>
+            }
+          }
+        </span>
         <p
           class="help-text"
           [innerHTML]="

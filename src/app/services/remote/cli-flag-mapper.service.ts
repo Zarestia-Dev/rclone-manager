@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { RcConfigOption, SharedProfileType } from '@app/types';
+import { isIntType, isFloatType } from 'src/app/shared/utils';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -40,6 +41,7 @@ export interface ImportResult {
   destPath?: string;
   classified: ClassifiedFlag[];
 }
+const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
 
 @Injectable({ providedIn: 'root' })
 export class CliFlagMapperService {
@@ -167,7 +169,7 @@ export class CliFlagMapperService {
         continue;
       }
 
-      if (token[0] === '-' && /^-{1,2}[a-zA-Z0-9_]/.test(token)) {
+      if (token[0] === '-' && FLAG_PATTERN.test(token)) {
         let rawKey: string;
         let rawValue: string | boolean = true;
         let originalToken = token;
@@ -184,8 +186,10 @@ export class CliFlagMapperService {
             existingBools.has(cleanKey.replace(/-/g, '_')) ||
             existingBools.has(cleanKey.replace(/_/g, '-'));
 
-          if (i + 1 < len && !tokens[i + 1].startsWith('-') && !isKnownBool) {
-            rawValue = tokens[++i];
+          const nextToken = tokens[i + 1];
+          if (nextToken && !FLAG_PATTERN.test(nextToken) && !isKnownBool) {
+            rawValue = nextToken;
+            i++;
             originalToken = `${rawKey} ${rawValue}`;
           }
         }
@@ -260,50 +264,21 @@ export class CliFlagMapperService {
     return table;
   }
 
-  isImportCompatible(flagType: SharedProfileType, verb?: string): boolean {
-    if (!verb) return true;
-    const v = verb.toLowerCase();
-    const ft = flagType.toLowerCase();
-
-    if (ft === 'vfs') return v === 'mount' || v === 'serve';
-    if (
-      ft === 'mount' ||
-      ft === 'serve' ||
-      ft === 'sync' ||
-      ft === 'copy' ||
-      ft === 'move' ||
-      ft === 'bisync'
-    )
-      return v === ft;
-    return ft === 'filter' || ft === 'backend' || ft === 'runtimeremote';
-  }
-
   classify(
     parsed: ParsedCLI,
     lookupTable: Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
   ): ImportResult {
-    const verb = parsed.verb || 'sync';
     const classified: ClassifiedFlag[] = parsed.flags.map(flag => {
       const keyLower = flag.key.toLowerCase();
       const match = lookupTable[keyLower] || lookupTable[keyLower.replace(/[-_]/g, '')];
 
       if (match) {
-        if (this.isImportCompatible(match.flagType, verb)) {
-          return {
-            flag,
-            status: 'mapped',
-            flagType: match.flagType,
-            fieldName: getControlKey(match.option, match.flagType),
-            coercedValue: this.coerceValue(flag.value, match.option.Type),
-          };
-        }
         return {
           flag,
-          status: 'unknown',
-          guidance: this.translateService.instant('wizards.cliImport.wrongBlockGuidance', {
-            block: match.flagType,
-            verb,
-          }),
+          status: 'mapped',
+          flagType: match.flagType,
+          fieldName: getControlKey(match.option, match.flagType),
+          coercedValue: this.coerceValue(flag.value, match.option.Type),
         };
       }
       return { flag, status: 'unknown' };
@@ -312,27 +287,17 @@ export class CliFlagMapperService {
     return { ...parsed, classified };
   }
 
-  private static readonly INT_TYPES = new Set([
-    'int',
-    'int64',
-    'int32',
-    'uint',
-    'uint32',
-    'uint64',
-  ]);
-  private static readonly FLOAT_TYPES = new Set(['float', 'float32', 'float64']);
-
   private coerceValue(val: string | boolean, type: string): unknown {
     if (typeof val === 'boolean') return val;
     if (type === 'bool' || type === 'Tristate') {
       const s = val.toLowerCase().trim();
       return s === 'true' || s === '1' || s === 'yes';
     }
-    if (CliFlagMapperService.INT_TYPES.has(type)) {
+    if (isIntType(type)) {
       const num = parseInt(val, 10);
       return isNaN(num) ? val : num;
     }
-    if (CliFlagMapperService.FLOAT_TYPES.has(type)) {
+    if (isFloatType(type)) {
       const num = parseFloat(val);
       return isNaN(num) ? val : num;
     }
