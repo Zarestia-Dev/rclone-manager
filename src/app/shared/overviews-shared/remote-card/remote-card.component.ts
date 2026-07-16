@@ -120,7 +120,7 @@ export class RemoteCardComponent {
   readonly mode = input<AppTab>('general');
   readonly displayMode = input<CardDisplayMode>('compact');
   readonly primaryActionLabel = input('Start');
-  readonly activeIcon = input('circle-check');
+  readonly activeIcon = input('check-circle');
   readonly primaryActions = input<PrimaryActionType[]>([]);
   readonly syncActions = input<PrimaryActionType[]>([]);
   readonly maxGeneralButtons = input(3);

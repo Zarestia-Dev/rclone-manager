@@ -325,9 +325,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         ? this.data.remoteName
         : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
 
-      const lastSlashIndex = item.Path.lastIndexOf('/');
-      const dirPath = lastSlashIndex > -1 ? item.Path.substring(0, lastSlashIndex) : '';
-      const filename = lastSlashIndex > -1 ? item.Path.substring(lastSlashIndex + 1) : item.Path;
+      const dirPath = this.pathService.getDirname(item.Path);
+      const filename = this.pathService.getFilename(item.Path);
 
       const content = new TextEncoder().encode(this.editContent());
       await this.remoteOps.uploadFileSimple(fsName, dirPath, filename, content);
@@ -621,10 +620,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       if (this.currentFileType() === 'archive') {
         const item = this.currentItem();
         const source = this.data.isLocal
-          ? (this.data.remoteName === '/'
-              ? `/${item.Path}`
-              : `${this.data.remoteName}/${item.Path}`
-            ).replace(/\/+/g, '/')
+          ? this.pathService.joinPath(this.data.remoteName, item.Path)
           : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
 
         this.remoteOps
@@ -843,10 +839,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const selectedPath = result.paths[0];
 
       const source = this.data.isLocal
-        ? (this.data.remoteName === '/'
-            ? `/${item.Path}`
-            : `${this.data.remoteName}/${item.Path}`
-          ).replace(/\/+/g, '/')
+        ? this.pathService.joinPath(this.data.remoteName, item.Path)
         : `${this.pathService.normalizeRemoteForRclone(this.data.remoteName)}${item.Path}`;
 
       this.notificationService.showInfo(

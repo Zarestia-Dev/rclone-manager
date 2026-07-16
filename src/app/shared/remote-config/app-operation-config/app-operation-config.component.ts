@@ -42,7 +42,11 @@ import {
   PathSelectionService,
   PathSelectionState,
 } from 'src/app/services/remote/path-selection.service';
-import { PathService, PathGroup } from 'src/app/services/infrastructure/platform/path.service';
+import {
+  PathService,
+  PathGroup,
+  PathInspectionStatus,
+} from 'src/app/services/infrastructure/platform/path.service';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
@@ -334,7 +338,9 @@ export class OperationConfigComponent {
       }
     });
 
-    this.destroyRef.onDestroy(() => this.clearAutocomplete());
+    this.destroyRef.onDestroy(() => {
+      this.clearAutocomplete();
+    });
   }
 
   private getPathItems(group: PathDirection): PathItem[] {
@@ -560,5 +566,11 @@ export class OperationConfigComponent {
   onMenuOpened(item: PathItem): void {
     const id = `${item.group}-${item.index}`;
     this.pathSelectionService.triggerLoad(id, item.remoteName, item.pathControl.value);
+  }
+
+  getPathStatus(item: PathItem): PathInspectionStatus | null {
+    const type = this.operationType();
+    if (type !== 'mount' && type !== 'bisync') return null;
+    return this.pathService.getPathStatus(item.pathControl.value, type, this.currentRemoteName());
   }
 }

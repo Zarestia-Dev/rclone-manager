@@ -24,35 +24,37 @@
       >
         <mat-icon svgIcon="plus"></mat-icon>
       </button>
-      <span
-        class="action-tooltip-anchor"
-        [matTooltip]="renameDisabledReason()"
-        [matTooltipDisabled]="!renameDisabledReason()"
-      >
-        <button
-          matIconButton
-          (click)="state.startEditProfile(flagType())"
-          [attr.title]="'modals.remoteConfig.profile.rename' | translate"
-          [disabled]="renameDisabled()"
+      @if (selProfile) {
+        <span
+          class="action-tooltip-anchor"
+          [matTooltip]="renameDisabledReason()"
+          [matTooltipDisabled]="!renameDisabledReason()"
         >
-          <mat-icon svgIcon="pen"></mat-icon>
-        </button>
-      </span>
-      <span
-        class="action-tooltip-anchor"
-        [matTooltip]="deleteDisabledReason()"
-        [matTooltipDisabled]="!deleteDisabledReason()"
-      >
-        <button
-          matIconButton
-          class="warn"
-          (click)="state.deleteProfile(flagType(), selProfile)"
-          [attr.title]="'modals.remoteConfig.profile.delete' | translate"
-          [disabled]="deleteDisabled()"
+          <button
+            matIconButton
+            (click)="state.startEditProfile(flagType())"
+            [attr.title]="'modals.remoteConfig.profile.rename' | translate"
+            [disabled]="renameDisabled()"
+          >
+            <mat-icon svgIcon="pen"></mat-icon>
+          </button>
+        </span>
+        <span
+          class="action-tooltip-anchor"
+          [matTooltip]="deleteDisabledReason()"
+          [matTooltipDisabled]="!deleteDisabledReason()"
         >
-          <mat-icon svgIcon="trash"></mat-icon>
-        </button>
-      </span>
+          <button
+            matIconButton
+            class="warn"
+            (click)="state.deleteProfile(flagType(), selProfile)"
+            [attr.title]="'modals.remoteConfig.profile.delete' | translate"
+            [disabled]="deleteDisabled()"
+          >
+            <mat-icon svgIcon="trash"></mat-icon>
+          </button>
+        </span>
+      }
     </div>
   } @else {
     <mat-form-field subscriptSizing="dynamic" class="profile-input">
@@ -79,7 +81,7 @@
         (click)="state.saveProfile(flagType())"
         [attr.title]="'modals.remoteConfig.profile.save' | translate"
       >
-        <mat-icon svgIcon="circle-check" class="primary"></mat-icon>
+        <mat-icon svgIcon="check-circle" class="primary"></mat-icon>
       </button>
       <button
         matIconButton

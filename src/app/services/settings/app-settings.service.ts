@@ -71,6 +71,12 @@ export class AppSettingsService extends TauriBaseService {
   }
 
   async getSettingValue<T = unknown>(key: string): Promise<T | undefined> {
+    // Fast path: once settings are loaded (the common case after app boot),
+    // skip the observable dance entirely and read synchronously.
+    const current = this._options();
+    if (current) {
+      return current[key]?.value as T | undefined;
+    }
     const setting$ = this.options$.pipe(
       filter(options => options !== null),
       first(),

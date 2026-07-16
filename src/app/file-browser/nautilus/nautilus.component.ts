@@ -402,7 +402,11 @@ export class NautilusComponent implements OnInit {
         const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
 
         const remoteName = remote?.name ?? null;
-        const desiredPath = this.pathNav.buildRelativeNautilusPath(remoteName, displayPath);
+        const desiredPath = this.pathNav.buildRelativeNautilusPath(
+          remoteName,
+          displayPath,
+          this.pathService.pathStyleForRemote(remote)
+        );
         const currentPath = this.pathNav.currentPath();
 
         if (currentPath === desiredPath) {
@@ -411,10 +415,18 @@ export class NautilusComponent implements OnInit {
         }
 
         if (!this._initialUrlSyncDone()) {
-          this.pathNav.replaceCurrent(remoteName, displayPath);
+          this.pathNav.replaceCurrent(
+            remoteName,
+            displayPath,
+            this.pathService.pathStyleForRemote(remote)
+          );
           this._initialUrlSyncDone.set(true);
         } else {
-          this.pathNav.navigateTo(remoteName, displayPath);
+          this.pathNav.navigateTo(
+            remoteName,
+            displayPath,
+            this.pathService.pathStyleForRemote(remote)
+          );
         }
       });
     });

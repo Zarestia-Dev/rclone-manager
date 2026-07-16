@@ -7,7 +7,6 @@ import {
   FormArray,
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
-import { UiStateService } from '../state/ui-state.service';
 import { BackendService } from '../../infrastructure/system/backend.service';
 import { REMOTE_NAME_REGEX } from '@app/types';
 import { Observable, merge } from 'rxjs';
@@ -19,17 +18,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class ValidatorRegistryService {
   private readonly validators = new Map<string, ValidatorFn>();
   private readonly translate = inject(TranslateService);
-  private readonly uiStateService = inject(UiStateService);
   private readonly backendService = inject(BackendService);
   private readonly regexCache = new Map<string, RegExp>();
-
-  private isWindowsTarget(): boolean {
-    const active = this.backendService
-      .backends()
-      .find(b => b.name === this.backendService.activeBackend());
-    const targetOs = active && !active.isLocal ? active.os : this.uiStateService.platform;
-    return !!targetOs?.toLowerCase().includes('windows');
-  }
 
   constructor() {
     this.validators.set('crossPlatformPath', this.crossPlatformPathValidator());
@@ -326,7 +316,7 @@ export class ValidatorRegistryService {
       const value = control.value;
       if (!value) return null;
 
-      if (this.isWindowsTarget()) {
+      if (this.backendService.isWindows()) {
         const winAbs =
           /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
         if (winAbs.test(value)) return null;

@@ -22,7 +22,7 @@ export const BASE_ICONS: Record<string, string> = {
   bisync: 'assets/icons/navigation/right-left.svg',
 
   // ------------------- Status Icons -------------------
-  'circle-check': 'assets/icons/status/circle-check.svg',
+  'check-circle': 'assets/icons/status/check-circle.svg',
   'circle-exclamation': 'assets/icons/status/circle-exclamation.svg',
   'circle-info': 'assets/icons/status/circle-info.svg',
   'circle-up': 'assets/icons/status/circle-up.svg',
@@ -45,6 +45,7 @@ export const BASE_ICONS: Record<string, string> = {
   folder: 'assets/icons/files/folder.svg',
   'folder-off': 'assets/icons/files/folder-off.svg',
   'folder-open': 'assets/icons/files/folder-open.svg',
+  'folder-plus': 'assets/icons/files/folder-plus.svg',
   'file-lines': 'assets/icons/files/file-lines.svg',
   'file-arrow-up': 'assets/icons/files/file-arrow-up.svg',
   database: 'assets/icons/files/database.svg',

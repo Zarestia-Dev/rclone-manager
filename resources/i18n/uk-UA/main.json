@@ -32,6 +32,15 @@
     "selectAll": "Виділити все",
     "deselectAll": "Зняти виділення"
   },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "Чисто та порожньо",
+      "nonEmpty": "Каталог містить файли",
+      "colliding": "Використовується {{details}}",
+      "willCreate": "Папку буде створено після створення сховища.",
+      "checking": "Перевірка шляху..."
+    }
+  },
   "validators": {
     "integer": "Має бути коректне ціле число",
     "float": "Має бути коректне десяткове число",
@@ -445,6 +454,10 @@
       "completed_onboarding": {
         "label": "Початкове налаштування завершено",
         "description": "Чи завершив користувач процес початкового налаштування"
+      },
+      "default_mount_directory": {
+        "label": "Каталог монтування за замовчуванням",
+        "description": "Шаблон локального шляху за замовчуванням для монтування. Підтримує змінні {home} та {remote} (напр. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -993,7 +1006,6 @@
       "macroDetected": "Виявлено макроси оболонки",
       "macroDesc": "Бекенд визначить ці значення під час запуску завдання. Підтримувані макроси: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Нерозпізнані flags (ігноруються)",
-      "wrongBlockGuidance": "Параметр належить до блоку конфігурації «{{block}}» і не підтримується у профілі {{verb}}.",
       "applyConfig": "Застосувати до профілю",
       "newProfile": "Створити новий профіль",
       "overrideProfile": "Перезаписати наявний профіль",
@@ -2905,7 +2917,8 @@
       "backendError": "Помилка бекенду",
       "passwordRequired": "Потрібен пароль",
       "systemIssue": "Проблема системи",
-      "versionTooOld": "Rclone застарів"
+      "versionTooOld": "Rclone застарів",
+      "authRequired": "Потрібна автентифікація"
     },
     "messages": {
       "missingRclone": "Не вдалося знайти виконуваний файл rclone. Встановіть його, щоб продовжити.",
@@ -2915,7 +2928,8 @@
       "passwordRequired": "Вашу конфігурацію rclone зашифровано. Введіть пароль.",
       "versionTooOld": "Ваша версія rclone старіша за {{required}}. Оновіть її, щоб продовжити.",
       "defaultParams": "Системний компонент працює некоректно.",
-      "mountPluginStatusError": "Не вдалося перевірити стан"
+      "mountPluginStatusError": "Не вдалося перевірити стан",
+      "authRequired": "Сервер відхилив підключення через помилку автентифікації."
     },
     "progress": {
       "installingRclone": "Встановлення Rclone...",
@@ -2960,6 +2974,10 @@
       "rclonePassword": {
         "issue": "Зашифрована конфігурація",
         "action": "Розблокувати"
+      },
+      "rcloneAuth": {
+        "issue": "Автентифікацію відхилено",
+        "action": "Завершити застарілий процес та перезапустити рушій"
       }
     },
     "tooltips": {

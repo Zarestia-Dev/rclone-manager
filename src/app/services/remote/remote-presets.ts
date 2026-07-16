@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { UiStateService } from '../ui/state/ui-state.service';
 
 export type StorageFamily = 's3' | 'webdav' | 'generic';
 
@@ -142,7 +141,6 @@ function mergePresets(target: PresetValues, source: PresetValues): PresetValues 
 })
 export class RemotePresetsService {
   private readonly backendService = inject(BackendService);
-  private readonly uiStateService = inject(UiStateService);
 
   /**
    * Returns the storage family classification for a given remote type.
@@ -152,15 +150,11 @@ export class RemotePresetsService {
     return REMOTE_FAMILY_MAP[remoteType.toLowerCase().replace(/\s+/g, '')] || 'generic';
   }
 
-  /**
-   * Resolves the target OS/platform based on active backend's OS or fallback to UI platform.
-   */
   getTargetPlatform(): string {
-    const active = this.backendService
-      .backends()
-      .find(b => b.name === this.backendService.activeBackend());
-    const targetOs = active && !active.isLocal ? active.os : this.uiStateService.platform;
-    return (targetOs || 'linux').toLowerCase();
+    return (
+      this.backendService.backends().find(b => b.name === this.backendService.activeBackend())
+        ?.os || 'linux'
+    ).toLowerCase();
   }
 
   /**

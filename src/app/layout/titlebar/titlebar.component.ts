@@ -78,9 +78,9 @@ export class TitlebarComponent implements OnInit {
   });
 
   readonly themes: { id: Theme; icon: string; label: string; class: string }[] = [
-    { id: 'system', icon: 'circle-check', label: 'titlebar.menu.system', class: 'system' },
-    { id: 'light', icon: 'circle-check', label: 'titlebar.menu.light', class: 'light' },
-    { id: 'dark', icon: 'circle-check', label: 'titlebar.menu.dark', class: 'dark' },
+    { id: 'system', icon: 'check-circle', label: 'titlebar.menu.system', class: 'system' },
+    { id: 'light', icon: 'check-circle', label: 'titlebar.menu.light', class: 'light' },
+    { id: 'dark', icon: 'check-circle', label: 'titlebar.menu.dark', class: 'dark' },
   ];
 
   readonly addRemoteMenuItems = [

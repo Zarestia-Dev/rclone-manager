@@ -32,6 +32,15 @@
     "selectAll": "Tout sélectionner",
     "deselectAll": "Tout désélectionner"
   },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "Propre & Vide",
+      "nonEmpty": "Le dossier contient des fichiers",
+      "colliding": "Utilisé par {{details}}",
+      "willCreate": "Le dossier sera créé après la création du dépôt distant.",
+      "checking": "Vérification du chemin..."
+    }
+  },
   "validators": {
     "integer": "Doit être un entier valide",
     "float": "Doit être un nombre décimal valide",
@@ -445,6 +454,10 @@
       "completed_onboarding": {
         "label": "Terminer l’onboarding",
         "description": "Si l'utilisateur a terminé le processus d'intégration"
+      },
+      "default_mount_directory": {
+        "label": "Dossier de montage par défaut",
+        "description": "Modèle de chemin local par défaut pour le montage. Prend en charge les variables {home} et {remote} (ex. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -993,7 +1006,6 @@
       "macroDetected": "Macros Shell Détectées",
       "macroDesc": "Le backend résoudra ces valeurs lors du démarrage du job. Macros supportées : date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Flags non reconnus (ignorés)",
-      "wrongBlockGuidance": "L'option appartient au bloc de configuration '{{block}}' et n'est pas prise en charge dans le profil {{verb}}.",
       "applyConfig": "Appliquer au profil",
       "newProfile": "Créer un nouveau profil",
       "overrideProfile": "Remplacer le profil existant",
@@ -2905,7 +2917,8 @@
       "backendError": "Erreur Backend",
       "passwordRequired": "Mot de passe requis",
       "systemIssue": "Problème Système",
-      "versionTooOld": "Rclone obsolète"
+      "versionTooOld": "Rclone obsolète",
+      "authRequired": "Authentification requise"
     },
     "messages": {
       "missingRclone": "Le binaire rclone n'a pas été trouvé. Veuillez l'installer pour continuer.",
@@ -2915,7 +2928,8 @@
       "passwordRequired": "La configuration de votre rclone est chiffrée. Veuillez entrer votre mot de passe.",
       "versionTooOld": "Votre version de rclone est antérieure à {{required}}. Veuillez la mettre à jour pour continuer.",
       "defaultParams": "Un composant système ne fonctionne pas correctement.",
-      "mountPluginStatusError": "Échec de la vérification du statut"
+      "mountPluginStatusError": "Échec de la vérification du statut",
+      "authRequired": "Le serveur a rejeté la connexion en raison d'un échec d'authentification."
     },
     "progress": {
       "installingRclone": "Installation de rclone...",
@@ -2960,6 +2974,10 @@
       "rclonePassword": {
         "issue": "Configuration chiffrée",
         "action": "Déverrouiller"
+      },
+      "rcloneAuth": {
+        "issue": "Authentification rejetée",
+        "action": "Arrêter le processus obsolète et redémarrer le moteur"
       }
     },
     "tooltips": {

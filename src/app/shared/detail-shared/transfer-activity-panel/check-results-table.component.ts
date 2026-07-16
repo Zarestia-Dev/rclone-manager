@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CompletedTransfer, TransferActivityPanelConfig } from '@app/types';
-import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -45,7 +45,6 @@ export interface EnrichedCheckResult extends CompletedTransfer {
     TranslatePipe,
     CopyToClipboardDirective,
     FormatFileSizePipe,
-    FormatFsNamePipe,
     FormatTimePipe,
   ],
   template: `
@@ -88,9 +87,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
             @if (item.srcFs || item.dstFs) {
               <div class="card-paths-v2">
                 <div class="path-group src">
-                  <code class="path-pill src" [title]="item.srcFs">{{
-                    (item.srcFs | formatFsName) || '?'
-                  }}</code>
+                  <code class="path-pill src" [title]="item.srcFs">{{ item.srcFs || '?' }}</code>
                   @let canCopySrc = ops.canCopyUrlSource(item, config().jobType || 'check');
                   @let canDownloadSrc = ops.canDownloadSource(item, config().jobType || 'check');
                   @let canDeleteSrc = ops.canDeleteSource(item, config().jobType || 'check');
@@ -156,9 +153,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                 <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
 
                 <div class="path-group dst">
-                  <code class="path-pill dst" [title]="item.dstFs">{{
-                    (item.dstFs | formatFsName) || '?'
-                  }}</code>
+                  <code class="path-pill dst" [title]="item.dstFs">{{ item.dstFs || '?' }}</code>
                   @let canCopyDst = ops.canCopyUrlDst(item, config().jobType || 'check');
                   @let canDownloadDst = ops.canDownloadDst(item, config().jobType || 'check');
                   @let canDeleteDst = ops.canDeleteDst(item, config().jobType || 'check');
@@ -223,7 +218,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="config().remoteName">{{
-                    config().remoteName | formatFsName
+                    config().remoteName
                   }}</code>
                   @let canCopyFb =
                     ops.canCopyUrlFallback(item, config().jobType || 'check', config().remoteName);
@@ -354,7 +349,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
         </div>
       } @else {
         <div class="empty-state">
-          <mat-icon svgIcon="circle-check"></mat-icon>
+          <mat-icon svgIcon="check-circle"></mat-icon>
           <span>{{ 'shared.transferActivity.empty.noRecentCheck' | translate }}</span>
           <p>{{ 'shared.transferActivity.empty.recentHintCheck' | translate }}</p>
         </div>
@@ -456,7 +451,7 @@ export class CheckResultsTableComponent extends BaseTransfersTableComponent<Enri
           break;
         case 'checked':
           badgeClass = 'p-accent';
-          badgeIcon = 'circle-check';
+          badgeIcon = 'check-circle';
           badgeText = 'shared.transferActivity.status.checked';
           break;
         case 'failed':

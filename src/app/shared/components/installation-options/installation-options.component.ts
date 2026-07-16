@@ -79,7 +79,7 @@ export class InstallationOptionsComponent implements OnInit {
     const icons: Record<BinaryStatus, string> = {
       untested: 'help',
       testing: 'spinner',
-      valid: 'circle-check',
+      valid: 'check-circle',
       invalid: 'circle-xmark',
     };
     return icons[this.binaryTestResult()];

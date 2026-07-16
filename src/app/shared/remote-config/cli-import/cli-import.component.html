@@ -100,7 +100,7 @@
               <div class="preview-group">
                 <div class="preview-group-header">
                   <h5 class="success-header">
-                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    <mat-icon svgIcon="check-circle"></mat-icon>
                     {{ 'wizards.cliImport.mappedFlags' | translate }} ({{ selectedFlags().size }}/{{
                       flags.length
                     }})
@@ -272,7 +272,7 @@
               [disabled]="isApplyDisabled()"
               (click)="onApply()"
             >
-              <mat-icon svgIcon="circle-check"></mat-icon>
+              <mat-icon svgIcon="check-circle"></mat-icon>
               {{
                 (profileMode() === 'patch'
                   ? 'wizards.cliImport.applyPatch'

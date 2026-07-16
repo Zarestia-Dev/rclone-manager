@@ -32,6 +32,15 @@
     "selectAll": "Select All",
     "deselectAll": "Deselect All"
   },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "Clean & Empty",
+      "nonEmpty": "Directory has files",
+      "colliding": "In use by {{details}}",
+      "willCreate": "Folder will be created after remote creation.",
+      "checking": "Checking path..."
+    }
+  },
   "validators": {
     "integer": "Must be a valid integer",
     "float": "Must be a valid decimal number",
@@ -447,6 +456,10 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
+      },
+      "default_mount_directory": {
+        "label": "Default Mount Directory",
+        "description": "Default local path template for mounting remotes. Supports {home} and {remote} placeholders (e.g. {home}/rclone/manager/{remote})."
       }
     },
     "developer": {
@@ -993,7 +1006,6 @@
       "macroDetected": "Shell Macros Detected",
       "macroDesc": "The backend will resolve these values at runtime when starting the job. Supported macros: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Unrecognized Flags (Ignored)",
-      "wrongBlockGuidance": "Option belongs to the '{{block}}' configuration block and is not supported in {{verb}} profile.",
       "applyConfig": "Apply to Profile",
       "newProfile": "Create New Profile",
       "overrideProfile": "Override Existing Profile",
@@ -2905,7 +2917,8 @@
       "backendError": "Backend Error",
       "passwordRequired": "Password Required",
       "systemIssue": "System Issue",
-      "versionTooOld": "Rclone Outdated"
+      "versionTooOld": "Rclone Outdated",
+      "authRequired": "Authentication Required"
     },
     "messages": {
       "missingRclone": "The rclone binary could not be found. Please install it to continue.",
@@ -2915,7 +2928,8 @@
       "passwordRequired": "Your rclone configuration is encrypted. Please enter your password.",
       "versionTooOld": "Your rclone version is older than {{required}}. Please update it to continue.",
       "defaultParams": "A system component is not functioning correctly.",
-      "mountPluginStatusError": "Failed to check status"
+      "mountPluginStatusError": "Failed to check status",
+      "authRequired": "The backend rejected the connection due to an authentication failure."
     },
     "progress": {
       "installingRclone": "Installing Rclone...",
@@ -2960,6 +2974,10 @@
       "rclonePassword": {
         "issue": "Encrypted config",
         "action": "Unlock"
+      },
+      "rcloneAuth": {
+        "issue": "Authentication rejected",
+        "action": "Kill stale process and restart engine"
       }
     },
     "tooltips": {

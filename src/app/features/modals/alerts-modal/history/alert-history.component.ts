@@ -218,7 +218,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                     <div class="action-results">
                       @for (res of alert.action_results; track res.action_id) {
                         <mat-icon
-                          [svgIcon]="res.success ? 'circle-check' : 'circle-xmark'"
+                          [svgIcon]="res.success ? 'check-circle' : 'circle-xmark'"
                           [class]="res.success ? 'primary' : 'warn'"
                           [matTooltip]="res.action_name + (res.error ? ': ' + res.error : '')"
                         ></mat-icon>
@@ -233,7 +233,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                     (click)="acknowledge(alert.id)"
                     [matTooltip]="'common.acknowledge' | translate"
                   >
-                    <mat-icon svgIcon="circle-check"></mat-icon>
+                    <mat-icon svgIcon="check-circle"></mat-icon>
                   </button>
                 </div>
               </td>

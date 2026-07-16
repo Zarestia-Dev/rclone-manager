@@ -108,7 +108,7 @@ export class RemoteConfigStateService {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly pathService = inject(PathService);
+  readonly pathService = inject(PathService);
   private readonly valueMapper = inject(RcloneValueMapperService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly presetsService = inject(RemotePresetsService);
@@ -176,7 +176,6 @@ export class RemoteConfigStateService {
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
   readonly oauthUrl = this.authStateService.oauthUrl;
   readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
-  // Delegated to RemoteCreationOrchestrator — pass-through, same public API.
   readonly interactiveFlowState = this.orchestrator.interactiveFlowState;
 
   readonly isRemoteConfigLoading = signal(false);
@@ -198,7 +197,6 @@ export class RemoteConfigStateService {
 
   readonly lookupTable = computed(() =>
     this.cliFlagMapper.buildLookupTable(
-      // Inlined from the former `allFlagFields` computed — it had no other consumers.
       { ...this.dynamicFlagFields(), runtimeRemote: this.dynamicRuntimeRemoteFields() },
       this.remoteTypeSignal() || undefined
     )
@@ -265,6 +263,18 @@ export class RemoteConfigStateService {
   readonly isPopulatingForm = signal(false);
   readonly dirtyProfileTypes = new Set<SharedProfileType>();
   dialogData!: DialogData;
+
+  private profilePopulateGenerations = new Map<string, number>();
+
+  private getGeneration(type: string): number {
+    return this.profilePopulateGenerations.get(type) || 0;
+  }
+
+  private bumpGeneration(type: string): number {
+    const next = (this.profilePopulateGenerations.get(type) || 0) + 1;
+    this.profilePopulateGenerations.set(type, next);
+    return next;
+  }
 
   readonly currentRemoteName = computed(
     () => this.dialogData?.name || this.remoteNameSignal() || ''
@@ -672,6 +682,28 @@ export class RemoteConfigStateService {
 
   constructor() {
     effect(() => this.setFormState(this.isAuthInProgress()));
+    effect(() => {
+      const rName = this.currentRemoteName();
+      if (!this.isNewRemoteCreation() || !rName) return;
+
+      for (const type of ['mount', 'bisync'] as const) {
+        const group = this.remoteConfigForm.get(`${type}Config`) as FormGroup;
+        if (!group) continue;
+        const dstCtrl = group.get('dest') as FormGroup;
+        if (!dstCtrl) continue;
+
+        const pathCtrl = dstCtrl.get('path');
+        if (pathCtrl && pathCtrl.pristine) {
+          const generation = this.bumpGeneration(type);
+          void this.pathService.resolveDefaultPath(rName, type).then(defaultPath => {
+            if (generation !== this.getGeneration(type)) return;
+            if (pathCtrl.pristine) {
+              dstCtrl.patchValue({ type: 'local', path: defaultPath });
+            }
+          });
+        }
+      }
+    });
   }
 
   async init(dialogData: DialogData): Promise<void> {
@@ -1118,16 +1150,6 @@ export class RemoteConfigStateService {
     }
   }
 
-  private findUniqueAutoProfileName(type: SharedProfileType): string {
-    const existing = Object.keys(this.profiles()[type] || {});
-    if (!existing.includes(RemoteConfigStateService.AUTO_PROFILE_NAME)) {
-      return RemoteConfigStateService.AUTO_PROFILE_NAME;
-    }
-    let i = 2;
-    while (existing.includes(`${RemoteConfigStateService.AUTO_PROFILE_NAME}-${i}`)) i++;
-    return `${RemoteConfigStateService.AUTO_PROFILE_NAME}-${i}`;
-  }
-
   setProfileTempName(type: string, name: string): void {
     this.profileState.update(p => ({
       ...p,
@@ -1560,6 +1582,7 @@ export class RemoteConfigStateService {
     config: Record<string, unknown>
   ): Promise<void> {
     this.isPopulatingForm.set(true);
+    const generation = this.bumpGeneration(type);
     const group = this.remoteConfigForm.get(`${type}Config`);
     if (!group) {
       this.isPopulatingForm.set(false);
@@ -1615,7 +1638,18 @@ export class RemoteConfigStateService {
     } else if (srcCtrl instanceof FormGroup) srcCtrl.patchValue(vals['source']);
 
     const dstCtrl = group.get('dest');
-    if (dstCtrl instanceof FormGroup) dstCtrl.patchValue(vals['dest']);
+    if (dstCtrl instanceof FormGroup) {
+      dstCtrl.patchValue(vals['dest']);
+      if ((type === 'mount' || type === 'bisync') && !vals['dest']?.path) {
+        const opType = type as 'mount' | 'bisync';
+        void this.pathService.resolveDefaultPath(rName, opType).then(defaultPath => {
+          if (generation !== this.getGeneration(type)) return;
+          if (!dstCtrl.get('path')?.value) {
+            dstCtrl.patchValue({ type: 'local', path: defaultPath });
+          }
+        });
+      }
+    }
 
     const optsGroup = group.get('options') as FormGroup;
     if (optsGroup) {

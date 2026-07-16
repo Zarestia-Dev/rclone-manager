@@ -379,3 +379,63 @@ app-alert-banner {
     }
   }
 }
+
+// ── Path row wrapper & status badge ──────────────────────────────────────────
+.path-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-bottom: 1px solid var(--border-color);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.path-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-xs);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  transition: var(--transition-normal);
+  animation: fadeIn 0.25s ease-out;
+
+  .badge-icon {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    font-size: var(--icon-size-sm);
+  }
+
+  .badge-text {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  &.clean {
+    background: rgba(var(--success-color-rgb), var(--active-opacity));
+    color: var(--success-color);
+  }
+
+  &.non-empty {
+    background: rgba(var(--orange-rgb), var(--active-opacity));
+    color: var(--orange);
+  }
+
+  &.colliding {
+    background: rgba(var(--warn-color-rgb), var(--active-opacity));
+    color: var(--warn-color);
+  }
+
+  &.will-create {
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    color: var(--accent-color);
+  }
+
+  &.checking {
+    background: rgba(var(--dim-color-rgb), var(--active-opacity));
+    color: var(--dim-color);
+  }
+}

@@ -32,7 +32,7 @@ export class AlertBannerComponent {
       case 'error':
         return 'circle-xmark';
       case 'success':
-        return 'circle-check';
+        return 'check-circle';
       case 'warning':
       default:
         return 'warning';

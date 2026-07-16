@@ -23,6 +23,7 @@ import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { WindowControlsComponent } from 'src/app/shared/components/window-controls/window-controls.component';
 import { ExplorerRoot } from '@app/types';
 import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
+import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 @Component({
   selector: 'app-nautilus-toolbar',
@@ -41,6 +42,7 @@ import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
   protected readonly nautilusService = inject(NautilusService);
+  private readonly pathService = inject(PathService);
   private readonly injector = inject(Injector);
 
   // --- Inputs ---
@@ -87,14 +89,9 @@ export class NautilusToolbarComponent {
     this.layout() === 'grid' ? 'list' : 'grid'
   );
 
-  protected readonly pathSeparator = computed((): string => {
-    const remote = this.activeRemote();
-    if (remote?.isLocal) {
-      const isWin = /^[a-zA-Z]:[\\/]?/.test(remote.name) || remote.name.includes('\\');
-      if (isWin) return '\\';
-    }
-    return '/';
-  });
+  protected readonly pathSeparator = computed((): string =>
+    this.pathService.pathStyleForRemote(this.activeRemote()) === 'windows' ? '\\' : '/'
+  );
 
   constructor() {
     afterRenderEffect(() => {

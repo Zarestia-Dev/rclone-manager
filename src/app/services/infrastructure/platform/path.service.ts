@@ -1,10 +1,17 @@
-import { Injectable } from '@angular/core';
-import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { Injectable, inject, Injector, signal } from '@angular/core';
+import { ExplorerRoot, FileBrowserItem, LocalDrive } from '@app/types';
+import { BackendService } from '../system/backend.service';
+import { ApiClientService } from './api-client.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
+import { RemoteFileOperationsService } from '../../remote/remote-file-operations.service';
+import { RemoteFacadeService } from '../../facade/remote-facade.service';
 
 export interface PathSegment {
   name: string;
   path: string;
 }
+
+export type PathStyle = 'posix' | 'windows';
 
 export type PathGroupType = 'local' | 'currentRemote' | `otherRemote:${string}`;
 
@@ -14,9 +21,36 @@ export interface PathGroup {
   remote: string;
 }
 
+export type DefaultPathOp = 'mount' | 'bisync';
+
+export interface PathInspectionStatus {
+  state: 'clean' | 'nonEmpty' | 'colliding' | 'willCreate' | 'checking';
+  details?: string;
+  icon: string;
+  badgeClass: string;
+  labelKey: string;
+}
+
+const MOUNT_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}';
+const BISYNC_TEMPLATE_FALLBACK = '{home}/rclone-manager/{remote}-bisync';
+const HOME_FALLBACK_POSIX = '/root/rclone-manager';
+const MAX_DEFAULT_PATH_ATTEMPTS = 10;
+
 @Injectable({ providedIn: 'root' })
 export class PathService {
   private readonly remoteNames = new Set<string>();
+  private readonly backendService = inject(BackendService);
+  private readonly apiClient = inject(ApiClientService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly remoteFileOps = inject(RemoteFileOperationsService);
+  private readonly injector = inject(Injector);
+
+  private get remoteFacade(): RemoteFacadeService {
+    return this.injector.get(RemoteFacadeService);
+  }
+
+  private readonly statuses = signal<Record<string, PathInspectionStatus>>({});
+  private readonly checkingKeys = new Set<string>();
 
   setRemoteNames(names: string[]): void {
     this.remoteNames.clear();
@@ -25,15 +59,18 @@ export class PathService {
     }
   }
 
+  enginePathStyle(): PathStyle {
+    return this.backendService.isWindows() ? 'windows' : 'posix';
+  }
+
+  pathStyleForRemote(remote: { isLocal: boolean } | null | undefined): PathStyle {
+    if (!remote || remote.isLocal) return this.enginePathStyle();
+    return 'posix';
+  }
+
   normalizePath(p: string): string {
     if (!p) return '';
-    let normalized = p.replace(/\\/g, '/');
-
-    // Strip leading slash if it precedes a Windows drive letter (e.g., "/C:/path" -> "C:/path")
-    if (normalized.startsWith('/') && /^\/[a-zA-Z]:/.test(normalized)) {
-      normalized = normalized.substring(1);
-    }
-
+    const normalized = p.replace(/\\/g, '/');
     const isAbsolute = normalized.startsWith('/');
     const stack: string[] = [];
 
@@ -47,6 +84,14 @@ export class PathService {
     }
 
     return (isAbsolute ? '/' : '') + stack.join('/');
+  }
+
+  normalizeForPlatform(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
+    if (!path) return '';
+    if (pathStyle === 'windows') {
+      return path.replace(/\//g, '\\').replace(/([^:\\])\\+/g, '$1\\');
+    }
+    return path.replace(/\\/g, '/').replace(/\/+/g, '/');
   }
 
   joinPath(...segments: string[]): string {
@@ -66,11 +111,11 @@ export class PathService {
     return normalized.substring(0, lastSlash);
   }
 
-  getParentPath(path: string): string {
-    if (!path || path === '/' || /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
+  getParentPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): string {
+    if (!path || path === '/') return '';
+    if (pathStyle === 'windows' && /^[a-zA-Z]:[\\/]?$/.test(path)) return '';
 
-    const normalized = path.replace(/\\/g, '/');
-    const segments = this.splitSegments(normalized);
+    const segments = this.splitSegments(path);
     if (segments.length <= 1) return path.startsWith('/') ? '/' : '';
 
     segments.pop();
@@ -83,16 +128,23 @@ export class PathService {
     return parts.map((name, i) => ({ name, path: parts.slice(0, i + 1).join('/') }));
   }
 
-  normalizeRemoteForRclone(remoteName?: string): string {
+  normalizeRemoteForRclone(
+    remoteName?: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): string {
     if (!remoteName) return '';
-    if (remoteName.startsWith('/')) return remoteName;
-    if (/^[A-Za-z]:[\\/]/.test(remoteName)) return remoteName;
+    const isAbsoluteLocal =
+      pathStyle === 'windows' ? /^[A-Za-z]:[\\/]/.test(remoteName) : remoteName.startsWith('/');
+
+    if (isAbsoluteLocal) return remoteName;
     return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 
-  normalizeRemoteName(remoteName?: string, isLocal = false): string {
+  normalizeRemoteName(remoteName?: string, pathStyle: PathStyle = this.enginePathStyle()): string {
     if (!remoteName) return '';
-    if (isLocal && /^[a-zA-Z]:$/.test(remoteName)) return remoteName;
+    if (pathStyle === 'windows' && /^[a-zA-Z]:$/.test(remoteName)) {
+      return remoteName;
+    }
     return remoteName
       .trim()
       .replace(/:$/, '')
@@ -103,35 +155,11 @@ export class PathService {
     const p = Array.isArray(path) ? path[0] : path;
     if (!p) return false;
 
-    // If it starts with or matches a known remote name, it is a remote path
     const colonIdx = p.indexOf(':');
-    if (colonIdx > -1) {
-      const remotePart = p.substring(0, colonIdx);
-      if (this.remoteNames.has(this.normalizeRemoteName(remotePart))) {
-        return false;
-      }
-    } else if (this.remoteNames.has(this.normalizeRemoteName(p))) {
-      return false;
-    }
+    const remotePart = colonIdx > -1 ? p.substring(0, colonIdx) : p;
+    const normalized = this.normalizeRemoteName(remotePart);
 
-    // If there is no colon, it's definitely a local path
-    if (colonIdx === -1) {
-      return true;
-    }
-
-    // If the colon is at index 1 (like C: or C:\), it's a drive letter (local path)
-    if (colonIdx === 1) {
-      return true;
-    }
-
-    // If there is a path separator before the first colon, the colon is part of the path (local path)
-    const remotePart = p.substring(0, colonIdx);
-    if (remotePart.includes('/') || remotePart.includes('\\')) {
-      return true;
-    }
-
-    // Otherwise, it starts with a remote name (e.g., "remote:path"), so it's not a local path
-    return false;
+    return !this.remoteNames.has(normalized);
   }
 
   splitFsPath(fullPath: string | string[]): { remote: string; path: string } {
@@ -147,13 +175,33 @@ export class PathService {
     };
   }
 
-  splitLocalPath(path: string): { remote: string; remainder: string } {
-    if (path.startsWith('/')) return { remote: '/', remainder: path.substring(1) };
-
-    const match = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
-    if (match) return { remote: match[1] + (match[2] ?? '\\'), remainder: match[3] };
-
+  splitLocalPath(
+    path: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): { remote: string; remainder: string } {
+    if (pathStyle === 'windows') {
+      const match = path.match(/^([a-zA-Z]:)([\\/]?)(.*)$/);
+      if (match) return { remote: match[1] + (match[2] ?? '\\'), remainder: match[3] };
+    } else if (path.startsWith('/')) {
+      return { remote: '/', remainder: path.substring(1) };
+    }
     return { remote: path, remainder: '' };
+  }
+
+  splitLocalForStat(
+    path: string,
+    pathStyle: PathStyle = this.enginePathStyle()
+  ): { root: string; relative: string } {
+    if (pathStyle === 'windows') {
+      const match = path.match(/^([A-Za-z]:)(.*)$/);
+      const root = match ? match[1] + '/' : 'C:/';
+      const remainder = match ? match[2] : path;
+      let relative = remainder.replace(/\\/g, '/');
+      if (relative.startsWith('/')) relative = relative.substring(1);
+      return { root, relative };
+    }
+    const relative = path.startsWith('/') ? path.substring(1) : path;
+    return { root: '/', relative };
   }
 
   normalizeFs(fs: unknown): string {
@@ -221,17 +269,18 @@ export class PathService {
     return value === 'currentRemote' ? currentRemoteName : null;
   }
 
-  getFullDisplayPath(remote: ExplorerRoot | null, path: string): string {
+  getFullDisplayPath(remote: ExplorerRoot | null, path: string, pathStyle?: PathStyle): string {
     if (!remote) return path;
+    const style = pathStyle ?? this.pathStyleForRemote(remote);
     if (remote.isLocal) {
-      const isWindowsDrive = /^[a-zA-Z]:[\\/]?/.test(remote.name) || remote.name.includes('\\');
-      if (isWindowsDrive) {
-        const cleanPath = path ? path.replace(/^[\\/]+/, '').replace(/\//g, '\\') : '';
-        const sep = remote.name.endsWith('\\') || remote.name.endsWith('/') ? '' : '\\';
-        return cleanPath ? `${remote.name}${sep}${cleanPath}` : remote.name;
+      const slash = style === 'windows' ? '\\' : '/';
+      let cleanPath = path;
+      if (style === 'windows' && path) {
+        cleanPath = path.replace(/^[\\/]+/, '').replace(/\//g, '\\');
       }
-      const sep = remote.name.endsWith('/') || remote.name.endsWith('\\') ? '' : '/';
-      return path ? `${remote.name}${sep}${path}` : remote.name;
+      const hasSep = remote.name.endsWith('/') || remote.name.endsWith('\\');
+      const sep = hasSep ? '' : slash;
+      return cleanPath ? `${remote.name}${sep}${cleanPath}` : remote.name;
     }
     const prefix = remote.name.includes(':') ? remote.name : `${remote.name}:`;
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -368,9 +417,6 @@ export class PathService {
     const entryPath = item.entry.Path;
 
     if (isLocal) {
-      // For local items, reconstruct the full absolute path.
-      // meta.remote is the drive root (e.g. "/" or "C:\").
-      // entry.Path is the remainder under that root.
       const fullPath = this.joinPath(remote, entryPath);
       return { type: 'local', path: fullPath, remote: '' };
     }
@@ -382,5 +428,234 @@ export class PathService {
       normalizedRemote === normalizedCurrent ? 'currentRemote' : `otherRemote:${normalizedRemote}`;
 
     return { type, path: entryPath, remote: normalizedRemote };
+  }
+
+  /**
+   * Get the inspection status of a local path.
+   * If not cached, triggers background validation and returns a 'checking' status immediately.
+   */
+  getPathStatus(
+    path: string | undefined | null,
+    opType: string,
+    remoteName: string
+  ): PathInspectionStatus | null {
+    if (!path || !path.trim()) {
+      return null;
+    }
+    const trimmedPath = path.trim();
+    const cacheKey = `${remoteName}:${opType}:${trimmedPath}`;
+
+    const cached = this.statuses()[cacheKey];
+    if (cached) {
+      return cached;
+    }
+
+    this.triggerInspection(cacheKey, trimmedPath, remoteName);
+
+    return {
+      state: 'checking',
+      icon: 'spinner',
+      badgeClass: 'checking',
+      labelKey: 'remoteConfig.pathStatus.checking',
+    };
+  }
+
+  private async triggerInspection(key: string, path: string, remoteName: string): Promise<void> {
+    if (this.checkingKeys.has(key)) return;
+    this.checkingKeys.add(key);
+
+    try {
+      const status = await this.runInspection(path, remoteName);
+      this.statuses.update(m => ({ ...m, [key]: status }));
+    } catch {
+      const fallback: PathInspectionStatus = {
+        state: 'willCreate',
+        icon: 'folder-plus',
+        badgeClass: 'will-create',
+        labelKey: 'remoteConfig.pathStatus.willCreate',
+      };
+      this.statuses.update(m => ({ ...m, [key]: fallback }));
+    } finally {
+      this.checkingKeys.delete(key);
+    }
+  }
+
+  private async runInspection(path: string, remoteName: string): Promise<PathInspectionStatus> {
+    // 1. Collision check (highest priority, synchronous)
+    const collisions = this.remoteFacade.checkMountPathCollision(path, remoteName);
+    if (collisions.length > 0) {
+      const c = collisions[0];
+      return {
+        state: 'colliding',
+        details: `${c.remoteName} (${c.opType})`,
+        icon: 'triangle-exclamation',
+        badgeClass: 'colliding',
+        labelKey: 'remoteConfig.pathStatus.colliding',
+      };
+    }
+
+    // 2. Async check via Rclone API
+    const { root, relative } = this.splitLocalForStat(path);
+    try {
+      const statRes = await this.remoteFileOps.getStat(root, relative);
+      if (!statRes?.item) {
+        return {
+          state: 'willCreate',
+          icon: 'folder-plus',
+          badgeClass: 'will-create',
+          labelKey: 'remoteConfig.pathStatus.willCreate',
+        };
+      }
+
+      const sizeRes = await this.remoteFileOps.getSize(root, relative).catch(() => null);
+      if (sizeRes && sizeRes.count > 0) {
+        return {
+          state: 'nonEmpty',
+          icon: 'folder-open',
+          badgeClass: 'non-empty',
+          labelKey: 'remoteConfig.pathStatus.nonEmpty',
+        };
+      }
+
+      return {
+        state: 'clean',
+        icon: 'check-circle',
+        badgeClass: 'clean',
+        labelKey: 'remoteConfig.pathStatus.clean',
+      };
+    } catch {
+      return {
+        state: 'willCreate',
+        icon: 'folder-plus',
+        badgeClass: 'will-create',
+        labelKey: 'remoteConfig.pathStatus.willCreate',
+      };
+    }
+  }
+
+  /**
+   * Resolve a unique default local path for mount or bisync based on config templates.
+   */
+  async resolveDefaultPath(remoteName: string, opType: DefaultPathOp): Promise<string> {
+    const [template, home] = await Promise.all([this.getPathTemplate(opType), this.resolveHome()]);
+    const remote = this.sanitizeRemoteName(remoteName);
+    const raw = this.substitute(template, home, remote);
+    const normalized = this.normalizeForPlatform(raw);
+    return this.ensureMountableDefault(normalized);
+  }
+
+  private async getPathTemplate(opType: DefaultPathOp): Promise<string> {
+    const settingKey = opType === 'bisync' ? 'default_bisync_directory' : 'default_mount_directory';
+    const fallback = opType === 'bisync' ? BISYNC_TEMPLATE_FALLBACK : MOUNT_TEMPLATE_FALLBACK;
+    const stored = await this.appSettingsService.getSettingValue<string>(settingKey);
+    return stored && stored.trim() ? stored : fallback;
+  }
+
+  private async resolveHome(): Promise<string> {
+    try {
+      const drives = await this.apiClient.invoke<LocalDrive[]>('get_local_drives');
+      if (drives && drives.length > 0) {
+        const first = drives[0];
+        const candidate = first.name || first.mount_point || '';
+        if (candidate) return candidate;
+      }
+    } catch (err) {
+      console.warn('[PathService] Could not query Rclone local drives:', err);
+    }
+    return HOME_FALLBACK_POSIX;
+  }
+
+  private sanitizeRemoteName(remoteName: string): string {
+    return (remoteName || 'cloud-remote').replace(/[:/\\]/g, '-');
+  }
+
+  private substitute(template: string, home: string, remote: string): string {
+    return template.replace('{home}', home).replace('{remote}', remote);
+  }
+
+  private async ensureMountableDefault(path: string): Promise<string> {
+    const { root, relative } = this.splitLocalForStat(path);
+
+    for (let attempt = 0; attempt < MAX_DEFAULT_PATH_ATTEMPTS; attempt++) {
+      const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
+      const candidate = `${path}${suffix}`;
+      const candidateRel = `${relative}${suffix}`;
+
+      try {
+        const stat = await this.remoteFileOps.getStat(root, candidateRel);
+        if (!stat?.item) {
+          return candidate;
+        }
+        try {
+          const size = await this.remoteFileOps.getSize(root, candidateRel);
+          if (!size || size.count === 0) {
+            return candidate;
+          }
+        } catch {
+          return candidate;
+        }
+      } catch {
+        return candidate;
+      }
+    }
+    return path;
+  }
+
+  isTrulyLocalPath(path: string, pathStyle: PathStyle = this.enginePathStyle()): boolean {
+    if (!path) return false;
+    const colonIdx = path.indexOf(':');
+    if (colonIdx > -1) {
+      if (pathStyle === 'windows' && /^[a-zA-Z]:/.test(path)) {
+        return this.isLocalPath(path);
+      }
+      return false;
+    }
+    return this.isLocalPath(path);
+  }
+
+  async createLocalDirectory(path: string, parentOnly = false): Promise<void> {
+    if (!path) return;
+    let targetPath = path;
+    if (parentOnly) {
+      targetPath = this.getParentPath(path);
+      if (!targetPath) return;
+    }
+    const { root, relative } = this.splitLocalForStat(targetPath);
+    try {
+      await this.remoteFileOps.makeDirectory(root, relative);
+    } catch (err) {
+      console.error(`[PathService] Failed to create directory: ${targetPath}`, err);
+    }
+  }
+
+  async createRequiredDirectories(settings: Record<string, any>): Promise<void> {
+    const pathStyle = this.enginePathStyle();
+
+    // 1. Handle Mount Configs
+    const mountConfigs = settings['mountConfigs'] || {};
+    for (const config of Object.values(mountConfigs) as any[]) {
+      const mountPoint = config?.rclone?.mountPoint || config?.mountPoint;
+      if (
+        mountPoint &&
+        typeof mountPoint === 'string' &&
+        this.isTrulyLocalPath(mountPoint, pathStyle)
+      ) {
+        await this.createLocalDirectory(mountPoint, pathStyle === 'windows');
+      }
+    }
+
+    // 2. Handle Bisync Configs
+    const bisyncConfigs = settings['bisyncConfigs'] || {};
+    for (const config of Object.values(bisyncConfigs) as any[]) {
+      const path1 = config?.rclone?.path1 || config?.path1;
+      const path2 = config?.rclone?.path2 || config?.path2;
+
+      if (path1 && typeof path1 === 'string' && this.isTrulyLocalPath(path1, pathStyle)) {
+        await this.createLocalDirectory(path1, false);
+      }
+      if (path2 && typeof path2 === 'string' && this.isTrulyLocalPath(path2, pathStyle)) {
+        await this.createLocalDirectory(path2, false);
+      }
+    }
   }
 }

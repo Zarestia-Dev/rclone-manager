@@ -35,7 +35,7 @@ import { TransferActivityPanelConfig } from '@app/types';
             style="color: var(--mat-sys-primary)"
             [svgIcon]="
               config().jobType === 'check' || config().jobType === 'cryptcheck'
-                ? 'circle-check'
+                ? 'check-circle'
                 : 'download'
             "
           ></mat-icon>

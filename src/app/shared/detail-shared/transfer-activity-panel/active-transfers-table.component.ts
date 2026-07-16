@@ -12,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
-import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { TransferFile } from '@app/types';
 import { TransferOperationsService } from './transfer-operations.service';
 
@@ -27,7 +27,6 @@ import { TransferOperationsService } from './transfer-operations.service';
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
-    FormatFsNamePipe,
     FormatTimePipe,
   ],
   template: `
@@ -56,7 +55,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                 }
                 @if (transfer.isCompleted) {
                   <mat-icon
-                    svgIcon="circle-check"
+                    svgIcon="check-circle"
                     class="success-badge-icon primary"
                     [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
                   ></mat-icon>
@@ -81,7 +80,7 @@ import { TransferOperationsService } from './transfer-operations.service';
               <div class="card-paths-v2">
                 <div class="path-group src">
                   <code class="path-pill src" [title]="transfer.srcFs">{{
-                    (transfer.srcFs | formatFsName) || '?'
+                    transfer.srcFs || '?'
                   }}</code>
                   @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
                   @let canDownloadSrc = ops.canDownloadSource(transfer, jobType());
@@ -130,7 +129,7 @@ import { TransferOperationsService } from './transfer-operations.service';
 
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="transfer.dstFs">{{
-                    (transfer.dstFs | formatFsName) || '?'
+                    transfer.dstFs || '?'
                   }}</code>
                   @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
                   @let canDownloadDst = ops.canDownloadDst(transfer, jobType());
@@ -181,9 +180,7 @@ import { TransferOperationsService } from './transfer-operations.service';
             } @else if (remoteName()) {
               <div class="card-paths-v2">
                 <div class="path-group dst">
-                  <code class="path-pill dst" [title]="remoteName()">{{
-                    remoteName() | formatFsName
-                  }}</code>
+                  <code class="path-pill dst" [title]="remoteName()">{{ remoteName() }}</code>
                   @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
                   @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
                   @let hasFbActions = canCopyFb || canDownloadFb;

@@ -274,6 +274,11 @@ export class RemoteConfigModalComponent {
 
     const updatedConfig = this.buildUpdateConfig();
     await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
+    try {
+      await this.state.pathService.createRequiredDirectories(updatedConfig);
+    } catch (err) {
+      console.error('Failed to create required directories:', err);
+    }
     return { success: true };
   }
 

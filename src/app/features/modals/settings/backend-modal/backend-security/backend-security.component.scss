@@ -127,7 +127,6 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
-  margin-top: var(--space-xs);
 
   @media (max-width: 600px) {
     flex-direction: column;

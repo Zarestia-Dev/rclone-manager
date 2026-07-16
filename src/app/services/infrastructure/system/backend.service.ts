@@ -1,5 +1,6 @@
 import { computed, inject, Injectable, signal, resource } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { TauriBaseService } from '../platform/tauri-base.service';
 import { AppSettingsService } from '../../settings/app-settings.service';
 import { EventListenersService } from './event-listeners.service';
@@ -28,10 +29,15 @@ export class BackendService extends TauriBaseService {
 
   constructor() {
     super();
-    this.eventListenersService
-      .listenToRcloneEngineReady()
+    merge(
+      this.eventListenersService.listenToRcloneEngineReady(),
+      this.eventListenersService.listenToBackendSwitched()
+    )
       .pipe(takeUntilDestroyed())
-      .subscribe(() => {
+      .subscribe(evt => {
+        if (typeof evt === 'string') {
+          this.activeBackend.set(evt);
+        }
         this.backendData.reload();
       });
   }
@@ -44,6 +50,11 @@ export class BackendService extends TauriBaseService {
   readonly isLocalBackend = computed(() => {
     const active = this.backends().find(b => b.name === this.activeBackend());
     return active?.isLocal ?? true;
+  });
+
+  readonly isWindows = computed(() => {
+    const active = this.backends().find(b => b.name === this.activeBackend());
+    return active?.os?.toLowerCase().includes('windows') ?? false;
   });
 
   // Legacy API support for components expecting a Promise

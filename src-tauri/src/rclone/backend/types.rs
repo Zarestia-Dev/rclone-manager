@@ -284,7 +284,10 @@ impl Backend {
             })
             .unwrap_or(body);
 
-        Err(format!("Request failed (HTTP {status}): {error_msg}"))
+        Err(format!(
+            "Request failed (HTTP {}): {error_msg}",
+            status.as_u16()
+        ))
     }
 
     pub async fn fetch_runtime_info(

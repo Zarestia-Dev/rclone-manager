@@ -32,6 +32,15 @@
     "selectAll": "Tümünü Seç",
     "deselectAll": "Tümünü Temizle"
   },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "Temiz ve Boş",
+      "nonEmpty": "Klasörde dosyalar var",
+      "colliding": "{{details}} tarafından kullanılıyor",
+      "willCreate": "Klasör, uzak bağlantı oluşturulduktan sonra oluşturulacaktır.",
+      "checking": "Yol kontrol ediliyor..."
+    }
+  },
   "validators": {
     "integer": "Geçerli bir tam sayı olmalıdır",
     "float": "Geçerli bir ondalık sayı olmalıdır",
@@ -445,6 +454,10 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
+      },
+      "default_mount_directory": {
+        "label": "Varsayılan Bağlama Klasörü",
+        "description": "Remotelar için varsayılan yerel yol şablonu. {home} ve {remote} değişkenlerini destekler (ör. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -993,7 +1006,6 @@
       "macroDetected": "Kabuk Makroları Algılandı",
       "macroDesc": "Arka uç, işi başlatırken bu değerleri çalışma zamanında çözecektir. Desteklenen makrolar: date, date +FORMAT, hostname, user, os.",
       "unrecognizedFlags": "Tanınmayan Bayraklar (Yoksayıldı)",
-      "wrongBlockGuidance": "Seçenek '{{block}}' yapılandırma bloğuna ait ve {{verb}} profilinde desteklenmiyor.",
       "applyConfig": "Profile Uygula",
       "newProfile": "Yeni Profil Oluştur",
       "overrideProfile": "Mevcut Profilin Üzerine Yaz",
@@ -2905,7 +2917,8 @@
       "backendError": "Arka Uç Hatası",
       "passwordRequired": "Parola Gerekli",
       "systemIssue": "Sistem Sorunu",
-      "versionTooOld": "Rclone Eski"
+      "versionTooOld": "Rclone Eski",
+      "authRequired": "Kimlik Doğrulama Gerekli"
     },
     "messages": {
       "missingRclone": "Rclone ikili dosyası bulunamadı. Devam etmek için lütfen kurun.",
@@ -2915,7 +2928,8 @@
       "passwordRequired": "Rclone yapılandırmanız şifrelenmiş. Lütfen parolanızı girin.",
       "versionTooOld": "Rclone sürümünüz {{required}} sürümünden daha eski. Devam etmek için lütfen güncelleyin.",
       "defaultParams": "Bir sistem bileşeni düzgün çalışmıyor.",
-      "mountPluginStatusError": "Durum kontrol edilemedi"
+      "mountPluginStatusError": "Durum kontrol edilemedi",
+      "authRequired": "Kimlik doğrulama hatası nedeniyle bağlantı reddedildi."
     },
     "progress": {
       "installingRclone": "Rclone Kuruluyor...",
@@ -2960,6 +2974,10 @@
       "rclonePassword": {
         "issue": "Şifreli yapılandırma",
         "action": "Kilidi Aç"
+      },
+      "rcloneAuth": {
+        "issue": "Kimlik doğrulama reddedildi",
+        "action": "Eski süreci sonlandır ve motoru yeniden başlat"
       }
     },
     "tooltips": {

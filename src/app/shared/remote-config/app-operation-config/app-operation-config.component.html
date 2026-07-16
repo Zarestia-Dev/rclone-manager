@@ -241,133 +241,145 @@
 </ng-container>
 
 <ng-template #pathRow let-item let-isDest="isDest">
-  <div class="path-item-row" [formGroup]="item.control">
-    <div class="path-type-selector">
-      @if ((isDest && isMount()) || (!isDest && (isMount() || isServe()))) {
-        <div class="static-pill" [class.local]="isDest" [class.mount-remote]="!isDest">
-          <mat-icon
-            [svgIcon]="isDest ? 'folder' : 'hard-drive'"
-            [class]="isDest ? 'purple' : 'primary'"
-          ></mat-icon>
-          <span class="truncate">{{
-            isDest ? ('wizards.appOperation.localPath' | translate) : currentRemoteName() + ':'
-          }}</span>
-        </div>
-      } @else {
-        <button
-          class="type-dropdown-btn"
-          type="button"
-          [cdkMenuTriggerFor]="typeMenu"
-          [class.local]="item.type === 'local'"
-          [class.remote]="item.type === 'currentRemote'"
-          [class.other]="item.type === 'otherRemote'"
-        >
-          @switch (item.type) {
-            @case ('local') {
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-              <span class="truncate">{{ 'wizards.appOperation.localPath' | translate }}</span>
-            }
-            @case ('currentRemote') {
-              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-              <span class="truncate">{{ currentRemoteName() }}:</span>
-            }
-            @case ('otherRemote') {
-              <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-              <span class="truncate">{{ item.remoteName }}:</span>
-            }
-          }
-          <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
-        </button>
-
-        <ng-template #typeMenu>
-          <div class="material-context-menu" cdkMenu>
-            <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'local')">
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-              <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
-            </button>
-            <button
-              cdkMenuItem
-              class="menu-item"
-              (cdkMenuItemTriggered)="setType(item, 'currentRemote')"
-            >
-              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-              <span class="item-label">{{ currentRemoteName() }}:</span>
-            </button>
-            @if (otherRemotes().length) {
-              <mat-divider />
-              <div class="menu-group-label">
-                {{ 'wizards.appOperation.otherRemotes' | translate }}
-              </div>
-              @for (remote of otherRemotes(); track remote) {
-                <button
-                  cdkMenuItem
-                  class="menu-item"
-                  (cdkMenuItemTriggered)="setType(item, 'otherRemote:' + remote)"
-                >
-                  <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                  <span class="item-label">{{ remote }}:</span>
-                </button>
+  <div class="path-row-wrapper">
+    <div class="path-item-row" [formGroup]="item.control">
+      <div class="path-type-selector">
+        @if ((isDest && isMount()) || (!isDest && (isMount() || isServe()))) {
+          <div class="static-pill" [class.local]="isDest" [class.mount-remote]="!isDest">
+            <mat-icon
+              [svgIcon]="isDest ? 'folder' : 'hard-drive'"
+              [class]="isDest ? 'purple' : 'primary'"
+            ></mat-icon>
+            <span class="truncate">{{
+              isDest ? ('wizards.appOperation.localPath' | translate) : currentRemoteName() + ':'
+            }}</span>
+          </div>
+        } @else {
+          <button
+            class="type-dropdown-btn"
+            type="button"
+            [cdkMenuTriggerFor]="typeMenu"
+            [class.local]="item.type === 'local'"
+            [class.remote]="item.type === 'currentRemote'"
+            [class.other]="item.type === 'otherRemote'"
+          >
+            @switch (item.type) {
+              @case ('local') {
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                <span class="truncate">{{ 'wizards.appOperation.localPath' | translate }}</span>
+              }
+              @case ('currentRemote') {
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                <span class="truncate">{{ currentRemoteName() }}:</span>
+              }
+              @case ('otherRemote') {
+                <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                <span class="truncate">{{ item.remoteName }}:</span>
               }
             }
-          </div>
-        </ng-template>
-      }
-    </div>
+            <mat-icon svgIcon="chevron-down" class="dropdown-arrow"></mat-icon>
+          </button>
 
-    <mat-form-field appearance="fill" class="path-input-field">
-      <input
-        matInput
-        formControlName="path"
-        [placeholder]="
-          (isDest
-            ? 'wizards.appOperation.enterDestPath'
-            : isServe()
-              ? 'wizards.appOperation.rootFolderSpecific'
-              : 'wizards.appOperation.enterSourcePath'
-          ) | translate
-        "
-        (input)="onInputChanged($event, item)"
-        [cdkMenuTriggerFor]="
-          (isDest ? isDestPickerDisabled() : isSourcePickerDisabled()) ? null : autocompleteMenu
-        "
-        [cdkMenuTriggerData]="{ item: item }"
-        (cdkMenuOpened)="onMenuOpened(item)"
-      />
-    </mat-form-field>
+          <ng-template #typeMenu>
+            <div class="material-context-menu" cdkMenu>
+              <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'local')">
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
+              </button>
+              <button
+                cdkMenuItem
+                class="menu-item"
+                (cdkMenuItemTriggered)="setType(item, 'currentRemote')"
+              >
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                <span class="item-label">{{ currentRemoteName() }}:</span>
+              </button>
+              @if (otherRemotes().length) {
+                <mat-divider />
+                <div class="menu-group-label">
+                  {{ 'wizards.appOperation.otherRemotes' | translate }}
+                </div>
+                @for (remote of otherRemotes(); track remote) {
+                  <button
+                    cdkMenuItem
+                    class="menu-item"
+                    (cdkMenuItemTriggered)="setType(item, 'otherRemote:' + remote)"
+                  >
+                    <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                    <span class="item-label">{{ remote }}:</span>
+                  </button>
+                }
+              }
+            </div>
+          </ng-template>
+        }
+      </div>
 
-    <div class="action-suffix">
-      <button
-        matIconButton
-        [disabled]="isDest ? isDestPickerDisabled() : isSourcePickerDisabled()"
-        (click)="selectPath(item); $event.stopPropagation()"
-        type="button"
-      >
-        <mat-icon
-          [svgIcon]="item.type === 'local' ? 'folder' : 'hard-drive'"
-          [class.purple]="
-            item.type === 'local' && !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
+      <mat-form-field appearance="fill" class="path-input-field">
+        <input
+          matInput
+          formControlName="path"
+          [placeholder]="
+            (isDest
+              ? 'wizards.appOperation.enterDestPath'
+              : isServe()
+                ? 'wizards.appOperation.rootFolderSpecific'
+                : 'wizards.appOperation.enterSourcePath'
+            ) | translate
           "
-          [class.primary]="
-            item.type === 'currentRemote' &&
-            !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
+          (input)="onInputChanged($event, item)"
+          [cdkMenuTriggerFor]="
+            (isDest ? isDestPickerDisabled() : isSourcePickerDisabled()) ? null : autocompleteMenu
           "
-          [class.accent]="
-            item.type === 'otherRemote' &&
-            !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
-          "
-        ></mat-icon>
-      </button>
-      @if (!isDest && canAddSource() && sourceItems().length > 1) {
+          [cdkMenuTriggerData]="{ item: item }"
+          (cdkMenuOpened)="onMenuOpened(item)"
+        />
+      </mat-form-field>
+
+      <div class="action-suffix">
         <button
           matIconButton
-          class="remove-btn"
-          (click)="removePath('source', item.index)"
+          [disabled]="isDest ? isDestPickerDisabled() : isSourcePickerDisabled()"
+          (click)="selectPath(item); $event.stopPropagation()"
           type="button"
         >
-          <mat-icon svgIcon="trash" class="warn"></mat-icon>
+          <mat-icon
+            [svgIcon]="item.type === 'local' ? 'folder' : 'hard-drive'"
+            [class.purple]="
+              item.type === 'local' && !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
+            "
+            [class.primary]="
+              item.type === 'currentRemote' &&
+              !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
+            "
+            [class.accent]="
+              item.type === 'otherRemote' &&
+              !(isDest ? isDestPickerDisabled() : isSourcePickerDisabled())
+            "
+          ></mat-icon>
         </button>
-      }
+        @if (!isDest && canAddSource() && sourceItems().length > 1) {
+          <button
+            matIconButton
+            class="remove-btn"
+            (click)="removePath('source', item.index)"
+            type="button"
+          >
+            <mat-icon svgIcon="trash" class="warn"></mat-icon>
+          </button>
+        }
+      </div>
     </div>
+    @if (item.type === 'local' && item.pathControl.value) {
+      @if (getPathStatus(item); as status) {
+        <div class="path-status-badge" [class]="status.badgeClass">
+          <mat-icon [svgIcon]="status.icon" class="badge-icon"></mat-icon>
+          <span class="badge-text">{{
+            status.labelKey | translate: { details: status.details || '' }
+          }}</span>
+        </div>
+      }
+    }
   </div>
 </ng-template>
 

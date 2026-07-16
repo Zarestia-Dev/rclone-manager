@@ -12,6 +12,7 @@ import {
   SERVE_STATE_CHANGED,
   SYSTEM_STATUS,
   RCLONE_ENGINE_STATUS_CHANGED,
+  BACKEND_SWITCHED,
   EngineStatus,
   RCLONE_PASSWORD_STORED,
   BROWSE,
@@ -209,5 +210,9 @@ export class EventListenersService extends TauriBaseService {
 
   listenToSystemStatus(): Observable<SystemStatusPayload> {
     return this.listenToEvent<SystemStatusPayload>(SYSTEM_STATUS);
+  }
+
+  listenToBackendSwitched(): Observable<string> {
+    return this.listenToEvent<string>(BACKEND_SWITCHED);
   }
 }

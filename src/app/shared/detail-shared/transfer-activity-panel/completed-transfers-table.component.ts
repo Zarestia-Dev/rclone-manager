@@ -4,7 +4,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormatFileSizePipe, FormatFsNamePipe, FormatTimePipe } from '@app/pipes';
+import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
 import { CompletedTransfer } from '@app/types';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -40,7 +40,6 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
-    FormatFsNamePipe,
     MatProgressBarModule,
     FormatTimePipe,
   ],
@@ -92,7 +91,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
               <div class="card-paths-v2">
                 <div class="path-group src">
                   <code class="path-pill src" [title]="transfer.srcFs">{{
-                    (transfer.srcFs | formatFsName) || '?'
+                    transfer.srcFs || '?'
                   }}</code>
                   @if (transfer.status !== 'checked') {
                     @let canCopySrc = ops.canCopyUrlSource(transfer, jobType());
@@ -166,7 +165,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
 
                 <div class="path-group dst">
                   <code class="path-pill dst" [title]="transfer.dstFs">{{
-                    (transfer.dstFs | formatFsName) || '?'
+                    transfer.dstFs || '?'
                   }}</code>
                   @if (transfer.status !== 'checked') {
                     @let canCopyDst = ops.canCopyUrlDst(transfer, jobType());
@@ -237,9 +236,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
             } @else if (remoteName() && transfer.status !== 'checked') {
               <div class="card-paths-v2">
                 <div class="path-group dst">
-                  <code class="path-pill dst" [title]="remoteName()">{{
-                    remoteName() | formatFsName
-                  }}</code>
+                  <code class="path-pill dst" [title]="remoteName()">{{ remoteName() }}</code>
                   @let canCopyFb = ops.canCopyUrlFallback(transfer, jobType(), remoteName());
                   @let canDownloadFb = ops.canDownloadFallback(transfer, jobType(), remoteName());
                   @let canDeleteFb = ops.canDeleteFallback(transfer, jobType(), remoteName());
@@ -390,7 +387,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
         </div>
       } @else {
         <div class="empty-state">
-          <mat-icon svgIcon="circle-check"></mat-icon>
+          <mat-icon svgIcon="check-circle"></mat-icon>
           <span>{{
             (jobType() === 'check'
               ? 'shared.transferActivity.empty.noRecentCheck'
@@ -466,7 +463,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
       }
 
       let badgeClass = 'p-primary';
-      let badgeIcon = 'circle-check';
+      let badgeIcon = 'check-circle';
       let badgeText = 'shared.transferActivity.status.completed';
 
       switch (status) {
@@ -477,7 +474,7 @@ export class CompletedTransfersTableComponent extends BaseTransfersTableComponen
           break;
         case 'checked':
           badgeClass = 'p-accent';
-          badgeIcon = 'circle-check';
+          badgeIcon = 'check-circle';
           badgeText = 'shared.transferActivity.status.checked';
           break;
         case 'partial':

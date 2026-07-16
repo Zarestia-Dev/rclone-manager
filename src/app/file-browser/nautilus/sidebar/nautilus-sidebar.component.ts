@@ -165,7 +165,7 @@ export class NautilusSidebarComponent {
   }
 
   private _bookmarkKey(bm: FileBrowserItem): string {
-    const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '', bm.meta.isLocal);
+    const remote = this.pathService.normalizeRemoteName(bm.meta.remote ?? '');
     return `${remote}::${bm.entry.Path}`;
   }
 

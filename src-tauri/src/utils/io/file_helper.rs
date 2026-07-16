@@ -9,10 +9,13 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub async fn get_folder_location(
     app: AppHandle,
     require_empty: bool,
+    initial_path: Option<String>,
 ) -> Result<Option<String>, String> {
-    let folder = match app
-        .dialog()
-        .file()
+    let mut dialog = app.dialog().file();
+    if let Some(path) = initial_path {
+        dialog = dialog.set_directory(path);
+    }
+    let folder = match dialog
         .set_title("Select Folder")
         .blocking_pick_folder()
         .map(|p| p.to_string())

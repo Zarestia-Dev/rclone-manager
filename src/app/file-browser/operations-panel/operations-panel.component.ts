@@ -180,7 +180,7 @@ export class OperationsPanelComponent {
       case 'Running':
         return 'refresh';
       case 'Completed':
-        return 'circle-check';
+        return 'check-circle';
       case 'Failed':
         return 'circle-xmark';
       case 'Stopped':

@@ -137,8 +137,8 @@ export class RepairService extends TauriBaseService {
       titleKey: 'repairSheet.titles.authRequired',
       messageKey: 'repairSheet.messages.authRequired',
       progressKey: 'repairSheet.progress.restartingEngine',
-      buttonTextKey: 'repairSheet.actions.openBackendSettings',
-      icon: 'lock',
+      buttonTextKey: 'repairSheet.actions.restartEngine',
+      icon: 'skull',
       details: [
         {
           icon: 'circle-info',
@@ -146,7 +146,7 @@ export class RepairService extends TauriBaseService {
           valueKey: 'repairSheet.details.rcloneAuth.issue',
         },
         {
-          icon: 'lock',
+          icon: 'skull',
           labelKey: 'repairSheet.details.actionLabel',
           valueKey: 'repairSheet.details.rcloneAuth.action',
         },

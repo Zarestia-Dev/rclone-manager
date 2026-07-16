@@ -17,6 +17,7 @@ import { ServeManagementService } from '../operations/serve-management.service';
 import { JobManagementService } from '../operations/job-management.service';
 import { NotificationService } from '../ui/notification.service';
 import { TranslateService } from '@ngx-translate/core';
+import { PathService } from '../infrastructure/platform/path.service';
 import {
   getAppCfg,
   getRcloneCfg,
@@ -39,6 +40,7 @@ export class RemoteCreationOrchestrator {
   private readonly jobManagementService = inject(JobManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
+  private readonly pathService = inject(PathService);
 
   readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
 
@@ -148,6 +150,11 @@ export class RemoteCreationOrchestrator {
     const { remoteData, finalConfig } = this.pendingConfig;
     this.interactiveFlowState.set(createInitialInteractiveFlowState());
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
+    try {
+      await this.pathService.createRequiredDirectories(finalConfig);
+    } catch (err) {
+      console.error('Failed to create required directories:', err);
+    }
     await this.remoteManagementService.getRemotes();
     this.authStateService.resetAuthState();
     await this.triggerAutoStartJobs(remoteData.name, finalConfig);

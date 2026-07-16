@@ -157,6 +157,12 @@ pub struct CoreSettings {
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
+
+    #[setting(
+        label = "settings.core.default_mount_directory.label",
+        description = "settings.core.default_mount_directory.description"
+    )]
+    pub default_mount_directory: String,
 }
 
 impl Default for CoreSettings {
@@ -174,6 +180,7 @@ impl Default for CoreSettings {
             rclone_additional_flags: vec![],
             rclone_env_vars: vec![],
             completed_onboarding: false,
+            default_mount_directory: "{home}/rclone-manager/{remote}".to_string(),
         }
     }
 }

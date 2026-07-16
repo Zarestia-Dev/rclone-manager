@@ -172,16 +172,81 @@ export class RemoteFacadeService extends TauriBaseService {
 
     merge(
       this.eventListeners.listenToRemoteCacheUpdated(),
-      this.eventListeners.listenToRemoteSettingsChanged()
+      this.eventListeners.listenToRemoteSettingsChanged(),
+      this.eventListeners.listenToBackendSwitched()
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.loadRemotes());
   }
 
-  // --- Settings ---
+  // --- Settings & Path Collisions ---
 
   getRemoteSettings(remoteName: string): RemoteSettings {
     return (this.remoteSettings()[remoteName] ?? {}) as RemoteSettings;
+  }
+
+  checkMountPathCollision(
+    proposedPath: string,
+    currentRemoteName: string,
+    currentProfileName?: string
+  ): { remoteName: string; profileName: string; opType: string; path: string }[] {
+    if (!proposedPath || !proposedPath.trim()) return [];
+
+    const normTarget = proposedPath
+      .trim()
+      .replace(/[/\\]+$/, '')
+      .toLowerCase();
+    const collisions: { remoteName: string; profileName: string; opType: string; path: string }[] =
+      [];
+    const allSettings = this.remoteSettings();
+
+    const opKeys = ['mount', 'bisync'] as const;
+
+    for (const [rName, rConfig] of Object.entries(allSettings)) {
+      if (!rConfig) continue;
+
+      for (const opType of opKeys) {
+        const profilesMap = rConfig[opType] as Record<string, any> | undefined;
+        if (!profilesMap || typeof profilesMap !== 'object') continue;
+
+        for (const [pName, pConfig] of Object.entries(profilesMap)) {
+          if (!pConfig || typeof pConfig !== 'object') continue;
+          if (rName === currentRemoteName && pName === currentProfileName) continue;
+
+          const pathsToCheck: string[] = [];
+          if (opType === 'mount') {
+            if (pConfig.mountPoint) pathsToCheck.push(pConfig.mountPoint);
+            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
+            if (pConfig.rclone?.mountOpt?.mountPoint)
+              pathsToCheck.push(pConfig.rclone.mountOpt.mountPoint);
+          } else if (opType === 'bisync') {
+            if (pConfig.path1) pathsToCheck.push(pConfig.path1);
+            if (pConfig.path2) pathsToCheck.push(pConfig.path2);
+            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
+          }
+
+          for (const rawPath of pathsToCheck) {
+            if (!rawPath || typeof rawPath !== 'string') continue;
+            if (!this.pathService.isLocalPath(rawPath)) continue;
+
+            const normPath = rawPath
+              .trim()
+              .replace(/[/\\]+$/, '')
+              .toLowerCase();
+            if (normPath === normTarget) {
+              collisions.push({
+                remoteName: rName,
+                profileName: pName,
+                opType,
+                path: rawPath,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return collisions;
   }
 
   async updateRemoteSettings(remoteName: string, updates: Partial<RemoteSettings>): Promise<void> {

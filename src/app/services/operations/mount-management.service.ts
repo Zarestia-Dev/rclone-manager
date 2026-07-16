@@ -6,13 +6,7 @@ import { MountedRemote, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
-import { FileSystemService } from './file-system.service';
 
-/**
- * Service for managing rclone mounts
- * Handles mount/unmount operations and mount state management
- * Self-refreshes on MOUNT_STATE_CHANGED events from backend
- */
 @Injectable({
   providedIn: 'root',
 })
@@ -24,20 +18,29 @@ export class MountManagementService extends TauriBaseService {
     groupBy(this._mountedRemotes(), m => this.pathService.getRemoteNameFromFs(m.fs))
   );
 
-  private eventListeners = inject(EventListenersService);
-  private destroyRef = inject(DestroyRef);
-  private fileSystemService = inject(FileSystemService);
-  private pathService = inject(PathService);
+  private readonly mountsByRemoteProfile = computed(() => {
+    const map = new Map<string, MountedRemote[]>();
+    for (const m of this._mountedRemotes()) {
+      const key = this.pathService.getRemoteNameFromFs(m.fs);
+      const list = map.get(key);
+      if (list) {
+        list.push(m);
+      } else {
+        map.set(key, [m]);
+      }
+    }
+    return map;
+  });
+
+  private readonly eventListeners = inject(EventListenersService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pathService = inject(PathService);
 
   constructor() {
     super();
     this.initializeEventListeners();
   }
 
-  /**
-   * Initialize event listeners for mount state changes
-   * Service auto-refreshes when backend emits mount state changes or engine becomes ready
-   */
   private initializeEventListeners(): void {
     merge(
       this.eventListeners.listenToMountCacheUpdated(),
@@ -51,26 +54,12 @@ export class MountManagementService extends TauriBaseService {
       });
   }
 
-  /**
-   * Get mounted remotes with details
-   */
   async getMountedRemotes(): Promise<MountedRemote[]> {
     const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
     this._mountedRemotes.set(mountedRemotes);
     return mountedRemotes;
   }
 
-  /**
-   * Get mount types
-   */
-  async getMountTypes(): Promise<string[]> {
-    return this.invokeCommand<string[]>('get_mount_types');
-  }
-
-  /**
-   * Mount a remote using a named profile
-   * Backend resolves all options (mount, vfs, filter, backend) from cached settings
-   */
   async mountRemoteProfile(
     remoteName: string,
     profileName: string,
@@ -78,10 +67,10 @@ export class MountManagementService extends TauriBaseService {
     noCache?: boolean
   ): Promise<void> {
     const params = {
-      remoteName: remoteName,
-      profileName: profileName,
-      source: source,
-      noCache: noCache,
+      remoteName,
+      profileName,
+      source,
+      noCache,
     };
 
     await this.invokeWithNotification(
@@ -96,9 +85,6 @@ export class MountManagementService extends TauriBaseService {
     );
   }
 
-  /**
-   * Unmount a remote
-   */
   async unmountRemote(mountPoint: string, remoteName: string): Promise<void> {
     await this.invokeWithNotification(
       'unmount_remote',
@@ -112,24 +98,14 @@ export class MountManagementService extends TauriBaseService {
     );
   }
 
-  /**
-   * Force check mounted remotes
-   */
-  public async forceCheckMountedRemotes(): Promise<void> {
+  async forceCheckMountedRemotes(): Promise<void> {
     await this.invokeCommand('force_check_mounted_remotes');
   }
 
-  /**
-   * Open mount point in file manager
-   */
-  async openInFiles(mountPoint: string): Promise<void> {
-    return this.fileSystemService.openInFiles(mountPoint);
+  async getMountTypes(): Promise<string[]> {
+    return this.invokeCommand<string[]>('get_mount_types');
   }
 
-  /**
-   * Rename a profile in all cached mounts for a given remote
-   * Returns the number of mounts updated
-   */
   async renameProfileInMountCache(
     remoteName: string,
     oldName: string,
@@ -148,16 +124,9 @@ export class MountManagementService extends TauriBaseService {
     return updated;
   }
 
-  /**
-   * Get mounts for a specific remote and profile
-   */
   getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
-    return this._mountedRemotes().filter(mount => {
-      const matchesRemote = this.pathService.getRemoteNameFromFs(mount.fs) === remoteName;
-      if (profile) {
-        return matchesRemote && mount.profile === profile;
-      }
-      return matchesRemote;
-    });
+    const all = this.mountsByRemoteProfile().get(remoteName) ?? [];
+    if (!profile) return all;
+    return all.filter(m => m.profile === profile);
   }
 }

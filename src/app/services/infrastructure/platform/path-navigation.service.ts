@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
 import { Location } from '@angular/common';
 import { Subject } from 'rxjs';
-import { PathSegment, PathService } from './path.service';
+import { PathSegment, PathService, PathStyle } from './path.service';
 
 export interface NautilusLocation {
   /** Remote name as it appears in `ExplorerRoot.name` (e.g. `C:`, `/`, `googledrive`). */
@@ -46,9 +46,17 @@ export class PathNavigationService implements OnDestroy {
     this._locationChanges.complete();
   }
 
-  encodePath(path: string): string {
+  /**
+   * Encode a filesystem path for inclusion in a URL segment.
+   *
+   * Paths are always stored in canonical POSIX form internally; the `pathStyle`
+   * parameter tells the encoder whether the *input* might contain Windows
+   * backslashes that need normalising first.  Derived from
+   * `PathService.pathStyleForRemote()` — never guessed from string shape.
+   */
+  encodePath(path: string, pathStyle: PathStyle = 'posix'): string {
     if (!path) return '';
-    const normalized = path.replace(/\\/g, '/');
+    const normalized = pathStyle === 'windows' ? path.replace(/\\/g, '/') : path;
     const segments = this.pathService.splitSegments(normalized);
     const encoded = segments.map(seg => encodeURIComponent(seg));
     const joined = encoded.join('/');
@@ -84,29 +92,54 @@ export class PathNavigationService implements OnDestroy {
     }
   }
 
-  buildNautilusUrl(remote: string | null, path: string | null): string {
+  buildNautilusUrl(
+    remote: string | null,
+    path: string | null,
+    pathStyle: PathStyle = 'posix'
+  ): string {
     let url = `${window.location.origin}/nautilus`;
     if (remote) {
       url += `/${this.encodeRemote(remote)}`;
       if (path) {
-        url += `/${this.encodePath(path)}`;
+        url += `/${this.encodePath(path, pathStyle)}`;
       }
     }
     return url;
   }
 
-  buildRelativeNautilusPath(remote: string | null, path: string | null): string {
+  buildRelativeNautilusPath(
+    remote: string | null,
+    path: string | null,
+    pathStyle: PathStyle = 'posix'
+  ): string {
     let url = '/nautilus';
     if (remote) {
       url += `/${this.encodeRemote(remote)}`;
       if (path) {
-        url += `/${this.encodePath(path)}`;
+        url += `/${this.encodePath(path, pathStyle)}`;
       }
     }
     return url;
   }
 
-  parseLocation(urlParams: URLSearchParams, pathName: string, hash: string): NautilusLocation {
+  /**
+   * Parse a nautilus URL back into remote + path.
+   *
+   * The `pathStyle` parameter controls drive-letter/POSIX-root recovery logic
+   * and must come from `PathService.pathStyleForRemote()` for the target
+   * remote — never inferred from the URL string itself.
+   *
+   * Default is `'posix'` because the recovery logic for Windows drive letters
+   * is only relevant when the remote IS a local Windows drive; all other
+   * remotes (SFTP, S3, Google Drive, etc.) use POSIX-style paths regardless
+   * of the engine OS.
+   */
+  parseLocation(
+    urlParams: URLSearchParams,
+    pathName: string,
+    hash: string,
+    pathStyle: PathStyle = 'posix'
+  ): NautilusLocation {
     const fromSegments = (input: string): NautilusLocation => {
       const stripped = input.replace(/^\/+/, '');
       const segments = this.pathService.splitSegments(stripped);
@@ -118,14 +151,20 @@ export class PathNavigationService implements OnDestroy {
 
       const decodedFirst = this.decodeRemote(first);
 
+      // Defensive recovery: a previous encoder may have URL-encoded an entire
+      // absolute path (e.g. `/home/user` or `C:\Users\Foo`) as a single
+      // segment. We only split it when the engine-reported pathStyle tells us
+      // the remote uses that style — never guessed from string shape alone.
+      const isPosixAbsoluteFused = decodedFirst.startsWith('/');
+      const isWindowsDriveFused = pathStyle === 'windows' && /^[a-zA-Z]:[\\/]/.test(decodedFirst);
       if (
         decodedFirst &&
-        (decodedFirst.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(decodedFirst)) &&
+        (isPosixAbsoluteFused || isWindowsDriveFused) &&
         this.pathService.splitSegments(decodedFirst).length > 1
       ) {
         let remoteName: string;
         let remainder: string;
-        if (decodedFirst.startsWith('/')) {
+        if (isPosixAbsoluteFused) {
           remoteName = '/';
           remainder = decodedFirst.replace(/^\/+/, '');
         } else {
@@ -179,14 +218,14 @@ export class PathNavigationService implements OnDestroy {
     );
   }
 
-  navigateTo(remote: string | null, path: string | null): void {
-    const url = this.buildRelativeNautilusPath(remote, path);
+  navigateTo(remote: string | null, path: string | null, pathStyle: PathStyle = 'posix'): void {
+    const url = this.buildRelativeNautilusPath(remote, path, pathStyle);
     this.location.go(url);
     this._currentPath.set(url);
   }
 
-  replaceCurrent(remote: string | null, path: string | null): void {
-    const url = this.buildRelativeNautilusPath(remote, path);
+  replaceCurrent(remote: string | null, path: string | null, pathStyle: PathStyle = 'posix'): void {
+    const url = this.buildRelativeNautilusPath(remote, path, pathStyle);
     this.location.replaceState(url);
     this._currentPath.set(url);
   }
@@ -199,8 +238,8 @@ export class PathNavigationService implements OnDestroy {
     return this.pathService.joinPath(...segments);
   }
 
-  getParentPath(path: string): string {
-    return this.pathService.getParentPath(path);
+  getParentPath(path: string, pathStyle?: PathStyle): string {
+    return this.pathService.getParentPath(path, pathStyle);
   }
 
   getPathSegments(path: string): PathSegment[] {
@@ -215,11 +254,8 @@ export class PathNavigationService implements OnDestroy {
     return p ? p.replace(/\\/g, '/') : p;
   }
 
-  toNativeDisplay(canonicalPath: string, remoteName: string): string {
+  toNativeDisplay(canonicalPath: string, pathStyle: PathStyle = 'posix'): string {
     if (!canonicalPath) return canonicalPath;
-    if (/^[a-zA-Z]:[\\/]/.test(remoteName) || /^[a-zA-Z]:$/.test(remoteName)) {
-      return canonicalPath.replace(/\//g, '\\');
-    }
-    return canonicalPath;
+    return pathStyle === 'windows' ? canonicalPath.replace(/\//g, '\\') : canonicalPath;
   }
 }

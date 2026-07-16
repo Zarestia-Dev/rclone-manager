@@ -220,7 +220,7 @@
       >
         <span class="item-label">{{ opt.label | translate }}</span>
         @if (settings.sortKey() === opt.key) {
-          <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
+          <mat-icon svgIcon="check-circle" class="selection-icon"></mat-icon>
         }
       </button>
     }
@@ -235,7 +235,7 @@
     >
       <span class="item-label">{{ 'nautilus.contextMenu.toggleSplit' | translate }}</span>
       @if (tabSvc.isSplitEnabled()) {
-        <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
+        <mat-icon svgIcon="check-circle" class="selection-icon"></mat-icon>
       }
     </button>
 
@@ -247,7 +247,7 @@
     >
       <span class="item-label">{{ 'nautilus.view.showHidden' | translate }}</span>
       @if (settings.showHidden()) {
-        <mat-icon svgIcon="circle-check" class="selection-icon"></mat-icon>
+        <mat-icon svgIcon="check-circle" class="selection-icon"></mat-icon>
       }
     </button>
   </div>

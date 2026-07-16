@@ -110,8 +110,8 @@ export class AutomationCardComponent {
 
     const mapPathToIcon = (path: string): string => {
       const isLocal = this.pathService.isLocalPath(path);
-      const lastSegment = path.split(/[\\/]/).pop() ?? '';
-      const isFile = lastSegment.includes('.') && !path.endsWith('/') && !path.endsWith('\\');
+      const lastSegment = this.pathService.splitSegments(path).pop() ?? '';
+      const isFile = lastSegment.includes('.') && !path.endsWith('/');
       if (isFile) {
         return 'file-lines';
       }

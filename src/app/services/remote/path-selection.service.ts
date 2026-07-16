@@ -3,7 +3,6 @@ import { AbstractControl } from '@angular/forms';
 import { RemoteFileOperationsService } from '../remote/remote-file-operations.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { BackendService } from '../infrastructure/system/backend.service';
-import { UiStateService } from '../ui/state/ui-state.service';
 import { RemoteManagementService } from '../remote/remote-management.service';
 import { Entry } from '@app/types';
 
@@ -20,7 +19,6 @@ export class PathSelectionService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly pathService = inject(PathService);
   private readonly backendService = inject(BackendService);
-  private readonly uiStateService = inject(UiStateService);
   private readonly remoteManagement = inject(RemoteManagementService);
 
   private readonly pathStates = new Map<string, WritableSignal<PathSelectionState>>();
@@ -97,14 +95,6 @@ export class PathSelectionService {
     }
   }
 
-  private isWindowsTarget(): boolean {
-    const active = this.backendService
-      .backends()
-      .find(b => b.name === this.backendService.activeBackend());
-    const targetOs = active && !active.isLocal ? active.os : this.uiStateService.platform;
-    return !!targetOs?.toLowerCase().includes('windows');
-  }
-
   private async fetchEntries(
     fieldId: string,
     remoteName: string,
@@ -122,7 +112,7 @@ export class PathSelectionService {
 
     const isLocal = remoteName === '';
 
-    if (isLocal && this.isWindowsTarget() && !path) {
+    if (isLocal && this.backendService.isWindows() && !path) {
       stateSignal.update(s => ({ ...s, isLoading: true, currentPath: path }));
       try {
         const drives = await this.remoteManagement.getLocalDrives();

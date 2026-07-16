@@ -7,11 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
-- Small UI improvements. #252 #253
+- UI improvements. #251 #252 #253 
 
 ### Fixed
+- **Rclone Auth Error Detection**: Fixed an HTTP status code formatting bug where formatting the `StatusCode` display string (e.g., `"401 Unauthorized"`) prevented parsing the status code numerically in the error classifier. This resulted in auth failures (HTTP 401) being misclassified as generic startup/connection failures, preventing the engine from triggering the Auth Required repair sheet in the UI.
 - **Linux Window Resize Handles**: Added custom HTML/CSS resize handle borders in the frontend shell layout to restore cursor and drag-to-resize functionality on undecorated Linux windows. #236
 - **Remote Configuration Flags Loading**: Fixed a bug where flag configs sometimes failed to load and cached failed/empty results in the `MemoizedLoader` until a UI reload. Also resolved a race condition during modal initialization by sequencing metadata and dependent flag fields loading.
+- **Detached Modal Backend Synchronization**: Fixed an issue where switching active backends (e.g., between Local and Remote) did not update path opening and file picker handlers in detached modal windows, causing system file manager or internal Nautilus actions to target the wrong backend until a UI reload.
 
 ## [v0.3.0] - 2026-07-14
 

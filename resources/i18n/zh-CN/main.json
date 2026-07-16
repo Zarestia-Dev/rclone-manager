@@ -32,6 +32,15 @@
     "selectAll": "全选",
     "deselectAll": "取消全选"
   },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "干净且为空",
+      "nonEmpty": "目录包含文件",
+      "colliding": "已被 {{details}} 使用",
+      "willCreate": "创建远程存储后将创建文件夹。",
+      "checking": "正在检查路径..."
+    }
+  },
   "validators": {
     "integer": "必须为有效的整数",
     "float": "必须为有效的小数",
@@ -445,6 +454,10 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
+      },
+      "default_mount_directory": {
+        "label": "默认挂载目录",
+        "description": "用于挂载远程的默认本地路径模板。支持 {home} 和 {remote} 占位符（例如：{home}/rclone-manager/{remote}）。"
       }
     },
     "developer": {
@@ -993,7 +1006,6 @@
       "macroDetected": "检测到 Shell 宏",
       "macroDesc": "后端将在启动任务时于运行时解析这些值。支持的宏：date、date +FORMAT、hostname、user、os。",
       "unrecognizedFlags": "未识别的标志（已忽略）",
-      "wrongBlockGuidance": "该选项属于 '{{block}}' 配置块，在 {{verb}} 配置中不受支持。",
       "applyConfig": "应用到配置文件",
       "newProfile": "创建新配置文件",
       "overrideProfile": "覆盖现有配置文件",
@@ -2905,7 +2917,8 @@
       "backendError": "后端错误",
       "passwordRequired": "需要密码",
       "systemIssue": "系统问题",
-      "versionTooOld": "Rclone 版本过旧"
+      "versionTooOld": "Rclone 版本过旧",
+      "authRequired": "需要身份验证"
     },
     "messages": {
       "missingRclone": "未找到 rclone 可执行文件，请安装后继续。",
@@ -2915,7 +2928,8 @@
       "passwordRequired": "rclone 配置已加密，请输入密码。",
       "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
-      "mountPluginStatusError": "状态检查失败"
+      "mountPluginStatusError": "状态检查失败",
+      "authRequired": "由于身份验证失败，后端拒绝了连接。"
     },
     "progress": {
       "installingRclone": "正在安装 Rclone…",
@@ -2960,6 +2974,10 @@
       "rclonePassword": {
         "issue": "配置已加密",
         "action": "解锁"
+      },
+      "rcloneAuth": {
+        "issue": "身份验证被拒绝",
+        "action": "终止过时进程并重启引擎"
       }
     },
     "tooltips": {

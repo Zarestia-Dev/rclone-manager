@@ -36,7 +36,7 @@ export class RemotesPanelComponent {
   mode = input<AppTab>('general');
   displayMode = input<CardDisplayMode>('compact');
   primaryActionLabel = input('Start');
-  activeIcon = input('circle-check');
+  activeIcon = input('check-circle');
 
   remoteSelected = output<Remote>();
   openInFiles = output<OpenInFilesEvent>();

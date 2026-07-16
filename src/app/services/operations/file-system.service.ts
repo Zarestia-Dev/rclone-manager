@@ -53,6 +53,7 @@ export class FileSystemService extends TauriBaseService {
     try {
       return await this.invokeCommand<string>('get_folder_location', {
         requireEmpty: requireEmpty || false,
+        initialPath,
       });
     } catch (error) {
       this.notificationService.confirmModal(

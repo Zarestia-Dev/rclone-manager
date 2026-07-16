@@ -370,7 +370,7 @@ export class NautilusTabService {
       const remote = ref.remote();
       if (!remote) continue;
 
-      const normRemote = this.pathService.normalizeRemoteName(remote.name, remote.isLocal);
+      const normRemote = this.pathService.normalizeRemoteName(remote.name);
       const normPath = this.pathService.normalizePath(ref.path()).replace(/^\/+|\/+$/g, '');
 
       if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {
@@ -383,10 +383,7 @@ export class NautilusTabService {
       tabs.map(tab => {
         const updatePane = (pane: PaneState): PaneState => {
           if (!pane.remote) return pane;
-          const normRemote = this.pathService.normalizeRemoteName(
-            pane.remote.name,
-            pane.remote.isLocal
-          );
+          const normRemote = this.pathService.normalizeRemoteName(pane.remote.name);
           const normPath = this.pathService.normalizePath(pane.path).replace(/^\/+|\/+$/g, '');
 
           if (normRemote === normalizedTargetRemote && normPath === normalizedTargetPath) {

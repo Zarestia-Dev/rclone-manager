@@ -77,7 +77,7 @@ export class NautilusService extends TauriBaseService {
   readonly starredKeys = computed(() => {
     const set = new Set<string>();
     for (const i of this._starredItems()) {
-      const remote = this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal);
+      const remote = this.pathService.normalizeRemoteName(i.meta?.remote);
       set.add(`${remote}:${i.entry.Path}`);
     }
     return set;
@@ -117,7 +117,8 @@ export class NautilusService extends TauriBaseService {
     merge(
       this.eventListenersService.listenToRcloneEngineReady(),
       this.eventListenersService.listenToRemoteCacheUpdated(),
-      this.eventListenersService.listenToRemoteSettingsChanged()
+      this.eventListenersService.listenToRemoteSettingsChanged(),
+      this.eventListenersService.listenToBackendSwitched()
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -186,12 +187,9 @@ export class NautilusService extends TauriBaseService {
     const { remoteName, remotePath } = this.parseNautilusLocation(urlParams, pathName, hash);
 
     if (remoteName) {
-      if (remotePath) {
-        const isLocal =
-          remoteName.startsWith('/') || (remoteName.length >= 2 && remoteName[1] === ':');
-        this.targetPath.set(
-          this.pathService.getFullDisplayPath({ name: remoteName, isLocal } as any, remotePath)
-        );
+      const remoteRoot = this.lookupRemote(remoteName);
+      if (remotePath && remoteRoot) {
+        this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, remotePath));
       } else {
         this.selectedNautilusRemote.set(remoteName);
       }
@@ -212,7 +210,9 @@ export class NautilusService extends TauriBaseService {
   }
 
   getNautilusUrl(remote: string | null, path: string | null): string {
-    return this.pathNav.buildNautilusUrl(remote, path);
+    const remoteRoot = remote ? this.lookupRemote(remote) : null;
+    const pathStyle = this.pathService.pathStyleForRemote(remoteRoot);
+    return this.pathNav.buildNautilusUrl(remote, path, pathStyle);
   }
 
   private getNautilusLabel(remote: string | null): string {
@@ -256,11 +256,9 @@ export class NautilusService extends TauriBaseService {
     if (this.browserOverlayRef) return;
 
     if (remote) {
-      if (path) {
-        const isLocal = remote.startsWith('/') || (remote.length >= 2 && remote[1] === ':');
-        this.targetPath.set(
-          this.pathService.getFullDisplayPath({ name: remote, isLocal } as any, path)
-        );
+      const remoteRoot = this.lookupRemote(remote);
+      if (path && remoteRoot) {
+        this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, path));
       } else {
         this.selectedNautilusRemote.set(remote);
       }
@@ -326,17 +324,17 @@ export class NautilusService extends TauriBaseService {
     }
   }
 
-  isSaved(type: CollectionType, remote: string, path: string, isLocal = false): boolean {
+  isSaved(type: CollectionType, remote: string, path: string): boolean {
     if (type === 'starred') {
-      const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
+      const cleanRemote = this.pathService.normalizeRemoteName(remote);
       return this.starredKeys().has(`${cleanRemote}:${path}`);
     }
-    const cleanRemote = this.pathService.normalizeRemoteName(remote, isLocal);
+    const cleanRemote = this.pathService.normalizeRemoteName(remote);
     return this.collectionConfig[type]
       .signal()
       .some(
         i =>
-          this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) === cleanRemote &&
+          this.pathService.normalizeRemoteName(i.meta?.remote) === cleanRemote &&
           i.entry.Path === path
       );
   }
@@ -349,19 +347,16 @@ export class NautilusService extends TauriBaseService {
       return;
     }
 
-    const normalizedRemote = this.pathService.normalizeRemoteName(
-      item.meta?.remote ?? '',
-      item.meta?.isLocal
-    );
+    const normalizedRemote = this.pathService.normalizeRemoteName(item.meta?.remote ?? '');
     const list = config.signal();
-    const isPresent = this.isSaved(type, normalizedRemote, item.entry.Path, item.meta?.isLocal);
+    const isPresent = this.isSaved(type, normalizedRemote, item.entry.Path);
 
     const newList = isPresent
       ? list.filter(
           i =>
             !(
-              this.pathService.normalizeRemoteName(i.meta?.remote, i.meta?.isLocal) ===
-                normalizedRemote && i.entry.Path === item.entry.Path
+              this.pathService.normalizeRemoteName(i.meta?.remote) === normalizedRemote &&
+              i.entry.Path === item.entry.Path
             )
         )
       : [...list, { ...item, meta: { ...item.meta, remote: normalizedRemote } }];
@@ -375,8 +370,33 @@ export class NautilusService extends TauriBaseService {
     pathName: string,
     hash: string
   ): { remoteName: string | null; remotePath: string | null } {
-    const loc: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash);
+    const firstPass: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash);
+    if (!firstPass.remote) {
+      return { remoteName: null, remotePath: null };
+    }
+    const remoteRoot = this.lookupRemote(firstPass.remote);
+    const pathStyle = this.pathService.pathStyleForRemote(remoteRoot);
+    if (pathStyle === 'posix') {
+      return { remoteName: firstPass.remote, remotePath: firstPass.path };
+    }
+    const loc: NautilusLocation = this.pathNav.parseLocation(urlParams, pathName, hash, pathStyle);
     return { remoteName: loc.remote, remotePath: loc.path };
+  }
+
+  /**
+   * Resolve a parsed remote name to its `ExplorerRoot` from the engine-populated
+   * registry (local drives + cloud remotes). Returns `null` if the remote is
+   * not currently registered — callers should treat that as "no display path
+   * available" rather than guessing `isLocal` from the name's shape.
+   */
+  private lookupRemote(remoteName: string): ExplorerRoot | null {
+    const all = this.allRemotesLookup();
+    const byName = all.find(r => r.name === remoteName);
+    if (byName) return byName;
+    // `parseLocation` returns remote names like `C:` for drive roots and `/`
+    // for POSIX roots — match those against the registry by normalized name.
+    const normalized = this.pathService.normalizeRemoteName(remoteName);
+    return all.find(r => this.pathService.normalizeRemoteName(r.name) === normalized) ?? null;
   }
 
   private setupBrowseListener(): void {
