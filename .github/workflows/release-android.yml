@@ -1,4 +1,4 @@
-name: "Release Android"
+name: 'Release Android'
 on:
   workflow_dispatch:
 
@@ -17,12 +17,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: "npm"
+          cache: 'npm'
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: '1.22'
 
       - name: Install Rust stable and Android targets
         uses: dtolnay/rust-toolchain@stable
@@ -36,8 +36,8 @@ jobs:
       - name: Setup Java (JDK 17)
         uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
-          java-version: "17"
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -56,10 +56,41 @@ jobs:
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
         run: |
-          npm run tauri android build -- --debug --features librclone -- --no-default-features
+          npm run tauri -- android build --debug --apk --split-per-abi --features librclone -- --no-default-features
 
       - name: Upload Debug APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rclone-manager-android-apks
-          path: src-tauri/gen/android/app/build/outputs/apk/debug/*.apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Prepare Package (Android)
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          # Find all apk files recursively under build/outputs/apk/
+          find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | while read -r f; do
+              name=$(basename "$f")
+              new_name=$(echo "$name" | sed "s/^app-/RClone Manager_${VERSION}_/")
+              cp "$f" "$new_name"
+              echo "Prepared package: $new_name"
+          done
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: android-v${{ steps.get_version.outputs.VERSION }}
+          name: 'RClone Manager Android v${{ steps.get_version.outputs.VERSION }}'
+          draft: true
+          prerelease: false
+          files: |
+            RClone Manager_*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

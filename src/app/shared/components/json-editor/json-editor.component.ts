@@ -59,7 +59,6 @@ import {
   closeBracketsKeymap,
 } from '@codemirror/autocomplete';
 import { syntaxTree, bracketMatching, indentOnInput } from '@codemirror/language';
-import { oneDark } from '@codemirror/theme-one-dark';
 
 export type JsonEditorLookupTable = Signal<
   Record<string, { option: RcConfigOption; flagType: SharedProfileType }>
@@ -367,10 +366,6 @@ export class JsonEditorComponent {
     const container = this.editorContainer();
     if (!container) return;
 
-    const isDark =
-      this.hostEl.nativeElement.closest('[data-theme="dark"]') !== null ||
-      window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     const completionSource = buildRcloneCompletionSource(
       () => this.fieldDefs(),
       () => this.flagType()
@@ -563,17 +558,7 @@ export class JsonEditorComponent {
       linter(jsonParseLinter()),
       rcloneLinter,
       autocompletion({ override: [completionSource] }),
-      ...(isDark ? [oneDark] : []),
-      EditorView.baseTheme({
-        '&': {
-          fontFamily: 'var(--font-mono)',
-          fontSize: '13px',
-          borderRadius: 'var(--radius-md, 6px)',
-          height: '100%',
-        },
-        '.cm-scroller': { overflow: 'auto' },
-        '.cm-content': { padding: '8px 0' },
-      }),
+      EditorView.theme({}, { dark: true }),
       EditorView.updateListener.of(update => {
         if (!update.docChanged) return;
         const text = update.state.doc.toString();

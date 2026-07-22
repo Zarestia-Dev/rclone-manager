@@ -187,8 +187,7 @@
     text-align: center;
 
     .setting-info {
-      p,
-      span {
+      p {
         display: flex;
         gap: var(--space-xs);
         flex-direction: column;

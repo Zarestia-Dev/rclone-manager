@@ -184,7 +184,7 @@
       @if (isMarkdownFile() && showMarkdownPreview()) {
         <div class="markdown-preview markdown-body" [innerHTML]="renderedMarkdown()"></div>
       } @else {
-        <div #editorContainer class="code-mirror-container"></div>
+        <div #editorContainer class="code-mirror"></div>
       }
     }
     @case ('archive') {

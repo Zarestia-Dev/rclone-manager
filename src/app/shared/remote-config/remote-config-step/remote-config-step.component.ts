@@ -70,6 +70,7 @@ export class RemoteConfigStepComponent {
   readonly isLoading = input<boolean>(false);
   readonly existingRemotes = input<string[]>([]);
   readonly isTypeLocked = input(false);
+  readonly isNameLocked = input(false);
   readonly remoteTypes = input<RemoteType[]>([]);
   readonly visibility = input<RemoteConfigStepVisibility>({});
   readonly showAdvancedOptions = input<boolean>(false);
@@ -277,7 +278,7 @@ export class RemoteConfigStepComponent {
       const nameControl = this.form().get('name');
       if (!nameControl) return;
 
-      if (this.isTypeLocked()) {
+      if (this.isNameLocked()) {
         nameControl.disable(opts);
       } else {
         nameControl.enable(opts);

@@ -29,8 +29,7 @@ import { marked } from 'marked';
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { StreamLanguage, syntaxHighlighting } from '@codemirror/language';
+import { StreamLanguage } from '@codemirror/language';
 
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -42,7 +41,7 @@ import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
-import { Entry, FilePickerResult, gnomeLightHighlighting } from '@app/types';
+import { Entry, FilePickerResult } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -211,11 +210,9 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     if (!editorContainer) return;
 
     // Detect current theme
-    const isDark = document.documentElement.classList.contains('dark');
-
     const extensions: any[] = [
       basicSetup,
-      ...(isDark ? [oneDark] : [syntaxHighlighting(gnomeLightHighlighting)]),
+      EditorView.theme({}, { dark: true }),
       keymap.of([]),
       EditorView.editable.of(!readOnly),
       EditorState.readOnly.of(readOnly),

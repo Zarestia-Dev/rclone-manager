@@ -10,6 +10,8 @@
           matInput
           [formControl]="remoteSearchCtrl"
           [matAutocomplete]="auto"
+          [matAutocompleteDisabled]="isTypeLocked()"
+          [readonly]="isTypeLocked()"
           [placeholder]="'wizards.remoteConfig.remoteTypePlaceholder' | translate"
         />
         @if (remoteType && !isTypeLocked()) {
@@ -92,6 +94,7 @@
           matInput
           formControlName="name"
           id="remoteName"
+          [readonly]="isNameLocked()"
           [placeholder]="'wizards.remoteConfig.remoteNamePlaceholder' | translate"
         />
         @if (nameCtrl?.hasError('required')) {

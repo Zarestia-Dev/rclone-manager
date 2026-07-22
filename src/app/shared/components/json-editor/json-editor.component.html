@@ -39,20 +39,18 @@
   }
 </div>
 
-<div class="editor-wrapper">
-  <div #editorContainer class="editor-container"></div>
+<div #editorContainer class="code-mirror"></div>
 
-  @if (parseError(); as err) {
-    <div class="parse-error" role="alert" aria-live="polite">
-      <mat-icon svgIcon="circle-xmark" />
-      <span>{{ err.key | translate: err.params }}</span>
-    </div>
-  }
+@if (parseError(); as err) {
+  <div class="parse-error" role="alert" aria-live="polite">
+    <mat-icon svgIcon="circle-xmark" />
+    <span>{{ err.key | translate: err.params }}</span>
+  </div>
+}
 
-  @if (parseWarning(); as warn) {
-    <div class="parse-warning" role="alert" aria-live="polite">
-      <mat-icon svgIcon="circle-exclamation" />
-      <span>{{ warn.key | translate: warn.params }}</span>
-    </div>
-  }
-</div>
+@if (parseWarning(); as warn) {
+  <div class="parse-warning" role="alert" aria-live="polite">
+    <mat-icon svgIcon="circle-exclamation" />
+    <span>{{ warn.key | translate: warn.params }}</span>
+  </div>
+}

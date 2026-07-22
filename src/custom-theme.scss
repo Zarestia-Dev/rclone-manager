@@ -1363,7 +1363,7 @@ mat-accordion {
 }
 
 // ============================================================================
-// SECTION 6: MARKDOWN STYLING
+// SECTION 7: MARKDOWN STYLING
 // ============================================================================
 // Reusable styles for rendering markdown content to match the application theme.
 // Mimics VS Code's markdown preview.
@@ -1630,7 +1630,7 @@ mat-accordion {
 }
 
 // ============================================================================
-// SECTION 6: UNIFIED CARD LAYOUT SYSTEM (Jobs & Transfer Activity)
+// SECTION 8: UNIFIED CARD LAYOUT SYSTEM (Jobs & Transfer Activity)
 // ============================================================================
 
 .card-list-container {
@@ -1714,7 +1714,6 @@ mat-accordion {
   overflow: hidden;
   padding: 0;
   transition: var(--transition-fast);
-  background: color-mix(in srgb, var(--window-fg-color) 6%, transparent);
   color: var(--dim-color);
 
   &:hover:not(:disabled) {
@@ -2045,6 +2044,190 @@ mat-accordion {
 
     &::-webkit-scrollbar {
       display: none;
+    }
+  }
+}
+
+// ============================================================================
+// CODE MIRROR (VS CODE DESIGN) - GLOBAL STYLES.SCSS İÇİN
+// ============================================================================
+
+.code-mirror {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+  background: var(--view-bg-color);
+  overflow: hidden;
+
+  .cm-editor {
+    height: 100%;
+    width: 100%;
+    background: var(--view-bg-color) !important;
+    color: var(--window-fg-color) !important;
+
+    // 1. Editor Scrollbars (VS Code Style)
+    .cm-scroller {
+      font-family: var(--font-mono) !important;
+      line-height: 1.5;
+      overflow: auto;
+    }
+
+    .cm-scroller::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    .cm-scroller::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .cm-scroller::-webkit-scrollbar-thumb {
+      background: rgba(var(--window-fg-color-rgb), 0.2);
+      border-radius: 5px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .cm-scroller::-webkit-scrollbar-thumb:hover {
+      background: rgba(var(--window-fg-color-rgb), 0.4);
+      background-clip: padding-box;
+    }
+
+    // 2. Gutters & Active Line (VS Code Style)
+    .cm-gutters {
+      background: var(--view-bg-color) !important;
+      color: rgba(var(--window-fg-color-rgb), 0.6) !important;
+      border-right: 1px solid var(--border-color) !important;
+      padding-right: 4px;
+    }
+
+    .cm-activeLineGutter {
+      background: rgba(var(--window-fg-color-rgb), 0.05) !important;
+      color: var(--window-fg-color) !important;
+    }
+
+    .cm-activeLine {
+      background: rgba(var(--window-fg-color-rgb), 0.03) !important;
+    }
+
+    .cm-cursor {
+      border-left-color: var(--accent-color) !important;
+      border-left-width: 2px;
+    }
+
+    .cm-selectionBackground {
+      background: rgba(var(--accent-color-rgb), 0.2) !important;
+    }
+
+    &.cm-focused .cm-selectionBackground {
+      background: rgba(var(--accent-color-rgb), 0.3) !important;
+    }
+
+    // 3. Search Panel (VS Code Style)
+    .cm-panels {
+      background: var(--headerbar-bg-color) !important;
+      border-bottom: 1px solid var(--border-color) !important;
+      color: var(--window-fg-color) !important;
+      font-size: var(--font-size-sm);
+      padding: var(--space-xs) var(--space-sm);
+      display: flex;
+      gap: var(--space-xs);
+      align-items: center;
+    }
+
+    .cm-panels input[type="text"],
+    .cm-panels input[type="checkbox"] {
+      background: var(--view-bg-color) !important;
+      color: var(--window-fg-color) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--radius-xs);
+      padding: 4px 8px;
+      outline: none;
+    }
+
+    .cm-panels button {
+      background: var(--view-bg-color) !important;
+      color: var(--window-fg-color) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--radius-xs);
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    // 4. Search Highlights (VS Code Style)
+    .cm-searchMatch {
+      background: rgba(var(--accent-color-rgb), 0.25) !important;
+      outline: 1px solid rgba(var(--accent-color-rgb), 0.4) !important;
+      border-radius: 2px;
+    }
+
+    // 5. Tooltips & Autocomplete (VS Code Style)
+    .cm-tooltip {
+      background: var(--popover-bg-color) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--radius-xs) !important;
+      color: var(--window-fg-color) !important;
+      box-shadow: var(--shadow-gnome);
+      overflow: hidden;
+    }
+
+    .cm-tooltip-autocomplete ul li[aria-selected="true"] {
+      background: var(--accent-color) !important;
+      color: var(--accent-fg-color) !important;
+    }
+
+    // 6. Syntax Highlighting (VS Code Renk Eşleştirmesi)
+    .tok-keyword,
+    .cm-keyword {
+      color: var(--gnome-purple-2) !important;
+    }
+    .tok-string,
+    .cm-string {
+      color: var(--gnome-orange-3) !important;
+    }
+    .tok-number,
+    .cm-number {
+      color: var(--gnome-green-4) !important;
+    }
+    .tok-bool,
+    .cm-bool {
+      color: var(--gnome-blue-3) !important;
+    }
+    .tok-comment,
+    .cm-comment {
+      color: var(--dim-color) !important;
+      font-style: italic;
+    }
+    .tok-variableName,
+    .cm-variableName {
+      color: var(--window-fg-color) !important;
+    }
+    .tok-propertyName,
+    .cm-propertyName {
+      color: var(--gnome-blue-1) !important;
+    }
+    .tok-function,
+    .cm-function {
+      color: var(--gnome-yellow-5) !important;
+    }
+    .tok-typeName,
+    .cm-typeName {
+      color: var(--gnome-green-4) !important;
+    }
+    .tok-atom,
+    .cm-atom {
+      color: var(--gnome-orange-3) !important;
+    }
+    .tok-meta,
+    .cm-meta {
+      color: var(--dim-color) !important;
+    }
+    .tok-punctuation,
+    .cm-punctuation {
+      color: var(--window-fg-color) !important;
     }
   }
 }

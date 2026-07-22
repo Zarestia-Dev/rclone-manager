@@ -191,7 +191,7 @@
 
   .pdf-viewer,
   .markdown-preview,
-  .code-mirror-container,
+  .code-mirror,
   .archive-container {
     width: calc(100% - 90px);
     height: calc(100% - 20px);
@@ -351,148 +351,6 @@
     }
   }
 
-  .code-mirror-container {
-    height: 100%;
-    font-size: var(--font-size-md);
-
-    ::ng-deep .cm-editor {
-      height: 100%;
-      background: transparent;
-      border-radius: var(--radius-sm);
-
-      .cm-panels {
-        background: var(--headerbar-bg-color);
-        border-bottom: 1px solid var(--border-color);
-        color: var(--window-fg-color);
-        font-size: var(--font-size-sm);
-        padding: var(--space-xs) var(--space-sm);
-
-        &.cm-panels-top {
-          border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-        }
-
-        label {
-          color: var(--window-fg-color);
-          font-size: var(--font-size-sm);
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        input,
-        button {
-          font-size: var(--font-size-sm);
-        }
-
-        input[type="text"],
-        input[type="checkbox"] {
-          background: var(--view-bg-color);
-          color: var(--window-fg-color);
-          box-shadow: var(--box-shadow);
-          border-radius: var(--radius-xs);
-          padding: 3px 8px;
-          outline: none;
-          transition: border-color 0.15s ease;
-
-          &:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.15);
-          }
-        }
-
-        button {
-          background: var(--view-bg-color);
-          color: var(--window-fg-color);
-          box-shadow: var(--box-shadow);
-          border-radius: var(--radius-xs);
-          padding: 3px 10px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-
-          &:hover {
-            background: var(--selected-bg-color);
-          }
-
-          &[name="close"] {
-            background: transparent;
-            border: none;
-            font-size: 18px;
-            padding: 2px 6px;
-            opacity: 0.6;
-
-            &:hover {
-              opacity: 1;
-            }
-          }
-        }
-
-        br {
-          display: none;
-        }
-      }
-
-      .cm-selectionBackground {
-        background: rgba(var(--accent-color-rgb), 0.2) !important;
-      }
-
-      &.cm-focused .cm-selectionBackground {
-        background: rgba(var(--accent-color-rgb), 0.3) !important;
-      }
-
-      .cm-searchMatch {
-        background: rgba(var(--accent-color-rgb), 0.2);
-        outline: 1px solid rgba(var(--accent-color-rgb), 0.4);
-        border-radius: 2px;
-
-        &.cm-searchMatch-selected {
-          background: rgba(var(--accent-color-rgb), 0.4);
-        }
-      }
-
-      .cm-tooltip {
-        background: var(--popover-bg-color);
-        box-shadow: var(--box-shadow);
-        border-radius: var(--radius-xs);
-        color: var(--window-fg-color);
-        box-shadow: var(--shadow-gnome);
-      }
-
-      &:not(.cm-theme-dark) {
-        .cm-content {
-          color: var(--window-fg-color);
-          caret-color: var(--window-fg-color);
-        }
-
-        .cm-gutters {
-          background: var(--sidebar-bg-color);
-          color: var(--dim-color);
-          border-right: 1px solid var(--border-color);
-        }
-
-        .cm-activeLineGutter {
-          background: var(--selected-bg-color);
-        }
-
-        .cm-activeLine {
-          background: var(--bg-elevated-1);
-        }
-
-        .cm-cursor {
-          border-left-color: var(--window-fg-color);
-        }
-
-        .cm-selectionMatch {
-          background: rgba(var(--accent-color-rgb), 0.12);
-        }
-
-        .cm-matchingBracket {
-          background: rgba(var(--accent-color-rgb), 0.15);
-          outline: 1px solid rgba(var(--accent-color-rgb), 0.3);
-        }
-      }
-    }
-  }
-
   // ── Unsupported / Directory ────────────────────────────────────────────
   .unsupported-container {
     display: flex;
@@ -601,7 +459,7 @@
 
     .pdf-viewer,
     .markdown-preview,
-    .code-mirror-container,
+    .code-mirror,
     .archive-container {
       width: 100%;
       height: 100%;
