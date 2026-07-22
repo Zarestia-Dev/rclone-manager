@@ -52,7 +52,7 @@ describe('InteractiveConfigStepComponent', () => {
     fixture.componentRef.setInput('question', makeQuestion({ Exclusive: false }));
     fixture.detectChanges();
 
-    expect(component.selectedIndex()).toBeNull();
+    expect(component.selectedIndex()).toBe(0); // Defaults to first example 's3'
 
     component.onSelectionChange(1);
     expect(component.answer()).toBe('gcs');
@@ -61,5 +61,36 @@ describe('InteractiveConfigStepComponent', () => {
     component.onAnswerChange('custom-storage');
     expect(component.answer()).toBe('custom-storage');
     expect(component.selectedIndex()).toBeNull();
+  });
+
+  it('maps 1-based numeric DefaultStr to example value correctly', () => {
+    fixture.componentRef.setInput(
+      'question',
+      makeQuestion({
+        DefaultStr: '2',
+        Exclusive: true,
+        Examples: [
+          { Value: 'onedrive', Help: 'OneDrive Personal' },
+          { Value: 'sharepoint', Help: 'SharePoint Site' },
+        ],
+      })
+    );
+    fixture.detectChanges();
+
+    expect(component.answer()).toBe('sharepoint');
+    expect(component.selectedIndex()).toBe(1);
+  });
+
+  it('renders an error card when question has an error message', () => {
+    fixture.componentRef.setInput('question', {
+      State: 'choose_type',
+      Option: null,
+      Error: 'Failed to query available drives',
+    });
+    fixture.detectChanges();
+
+    expect(component.hasError()).toBeTrue();
+    expect(component.errorMessage()).toBe('Failed to query available drives');
+    expect(fixture.nativeElement.querySelector('app-alert-banner')).toBeTruthy();
   });
 });

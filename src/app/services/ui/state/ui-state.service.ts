@@ -34,6 +34,13 @@ export class UiStateService {
     })()
   );
   public readonly currentTab = this._currentTab.asReadonly();
+
+  // JSON Editor mode state
+  private readonly _showJsonMode = signal<boolean>(
+    this.localStorage.get<boolean>('ui.showJsonMode', false)
+  );
+  public readonly showJsonMode = this._showJsonMode.asReadonly();
+
   // Selected remote state
   private readonly _selectedRemote = signal<Remote | null>(null);
   public readonly selectedRemote = this._selectedRemote.asReadonly();
@@ -79,6 +86,16 @@ export class UiStateService {
 
   getCurrentTab(): AppTab {
     return this._currentTab();
+  }
+
+  // === JSON Editor Mode ===
+  setShowJsonMode(value: boolean): void {
+    this._showJsonMode.set(value);
+    this.localStorage.set('ui.showJsonMode', value);
+  }
+
+  toggleShowJsonMode(): void {
+    this.setShowJsonMode(!this._showJsonMode());
   }
 
   // === Remote Selection ===

@@ -1,5 +1,7 @@
-::ng-deep .mat-mdc-tab-body-wrapper {
-  padding: var(--space-md);
+.cron-tabs {
+  ::ng-deep .mat-mdc-tab-body-wrapper {
+    padding: var(--space-md);
+  }
 }
 
 // Section titles

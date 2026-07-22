@@ -2,24 +2,26 @@
   <ng-template #settingInfo let-opt>
     <div class="setting">
       <div class="setting-info">
-        <span>
-          {{
-            opt.Name
-              | rcloneOptionTranslate
-                : 'title'
-                : opt.FieldName || opt.Name
-                : provider()
-                : translate.currentLang()
-          }}
-          @if (opt.Required) {
-            <small class="required-asterisk">*</small>
-          }
+        <div class="setting-title">
+          <span>
+            {{
+              opt.Name
+                | rcloneOptionTranslate
+                  : 'title'
+                  : opt.FieldName || opt.Name
+                  : provider()
+                  : translate.currentLang()
+            }}
+            @if (opt.Required) {
+              <small class="required-asterisk">*</small>
+            }
+          </span>
           @if (showFlag()) {
             @for (flag of flagNames(); track flag) {
-              <code class="flag-badge">{{ flag }}</code>
+              <code>{{ flag }}</code>
             }
           }
-        </span>
+        </div>
         <p
           class="help-text"
           [innerHTML]="
@@ -69,7 +71,7 @@
               matSuffix
               type="button"
               matIconButton
-              [disabled]="!control()?.value || isObscuring()"
+              [disabled]="!hasObscurableValue() || isObscuring()"
               (click)="obscureFieldValue($event)"
               [matTooltip]="'shared.settingControl.obscureValue' | translate"
               [attr.aria-label]="'shared.settingControl.obscureValue' | translate"

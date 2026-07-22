@@ -172,11 +172,46 @@
   gap: var(--space-md);
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  margin: var(--space-xs) 0;
+  color: var(--dim-color);
+  font-size: var(--font-size-sm);
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+  }
+
+  span {
+    padding: 0 var(--space-md);
+    font-weight: 500;
+  }
+}
+
 .input-card {
   background: var(--view-bg-color);
   border-radius: var(--card-border-radius);
   padding: var(--space-lg);
   box-shadow: var(--shadow-gnome);
+}
+
+.custom-value-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+mat-hint {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
 }
 
 // =============================================

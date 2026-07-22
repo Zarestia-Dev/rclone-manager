@@ -21,6 +21,7 @@
     "copyFailed": "Échec de la copie dans le presse-papiers",
     "required": "Ce champ est obligatoire.",
     "clear": "Effacer",
+    "reset": "Réinitialiser",
     "name": "Nom",
     "status": "Statut",
     "time": "Heure",
@@ -828,8 +829,7 @@
     "actions": {
       "hide": "Masquer",
       "show": "Afficher",
-      "open": "Ouvrir",
-      "reset": "Réinitialiser"
+      "open": "Ouvrir"
     },
     "overviewHeader": {
       "manageBackends": "Gérer les Backends",
@@ -1087,6 +1087,10 @@
       "chooseOption": "Choisissez une option",
       "selectOption": "Sélectionner une option",
       "enterValue": "Entrer une valeur",
+      "orEnterCustom": "Ou saisissez une valeur personnalisée",
+      "customValueActive": "Valeur personnalisée active",
+      "customValueHint": "Utilisation de la valeur personnalisée saisie",
+      "selectedFromListHint": "Utilisation de la valeur suggérée sélectionnée dans la liste",
       "inputField": "Champ de saisie",
       "fieldRequired": "Ce champ est obligatoire",
       "readyToContinue": "Prêt à continuer",
@@ -1143,7 +1147,7 @@
       "watchMixedSourcesNote": "Seuls les répertoires sources locaux seront surveillés en temps réel. Les changements sur les sources distantes ne déclencheront pas automatiquement la synchronisation.",
       "watchFilterNote": "Le surveillant de fichiers respecte votre profil de filtrage. Les modifications des fichiers ou dossiers exclus (selon un motif, une taille ou un âge) ne déclencheront pas de synchronisation.",
       "scheduleDescription": "Lorsqu'elle est activée, cette opération exécutera <strong>récurrente</strong> en fonction du calendrier cron ci-dessous.",
-      "notConfigured": "Non configuré",
+      "scheduleSubtitle": "Exécutez cette opération automatiquement selon une planification récurrente.",
       "sourcePaths": "Chemin de la source",
       "destinationPath": "Chemin de la destination",
       "localPath": "Chemin local",
@@ -1655,13 +1659,15 @@
     "actionSelection": {
       "title": "Configurer les actions rapides",
       "description": "Choisissez les actions à afficher sous forme de boutons sur le tableau de bord distant pour {{name}}. Marquez d'une étoile jusqu'à {{max}} actions, et faites-les glisser pour modifier leur ordre.",
-      "removeStar": "Retirer des actions rapides",
-      "addStar": "Ajouter aux actions rapides",
-      "cancel": "Annuler",
-      "save": "Enregistrer les modifications",
       "moreButton": "Plus",
       "moreButtonTooltip": "Plus d'opérations",
       "configureTooltip": "Configurer les actions rapides"
+    },
+    "itemOrderVisibility": {
+      "addStar": "Ajouter aux actions rapides",
+      "removeStar": "Retirer des actions rapides",
+      "showItem": "Afficher l'élément",
+      "hideItem": "Masquer l'élément"
     },
     "jobDetail": {
       "title": "Détails du job #{{id}}",
@@ -2242,6 +2248,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "Configurer les éléments de la barre latérale",
+      "configureDescription": "Faites glisser les éléments pour les réordonner, ou utilisez l'icône de l'œil pour masquer ou afficher les disques et distants."
+    },
     "shortcuts": {
       "title": "Afficher les raccourcis clavier"
     },

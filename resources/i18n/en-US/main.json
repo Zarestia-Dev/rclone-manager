@@ -21,6 +21,7 @@
     "copyFailed": "Failed to copy to clipboard",
     "required": "This field is required.",
     "clear": "Clear",
+    "reset": "Reset",
     "name": "Name",
     "status": "Status",
     "time": "Time",
@@ -828,8 +829,7 @@
     "actions": {
       "hide": "Hide",
       "show": "Show",
-      "open": "Open",
-      "reset": "Reset"
+      "open": "Open"
     },
     "overviewHeader": {
       "manageBackends": "Manage Backends",
@@ -1087,6 +1087,10 @@
       "chooseOption": "Choose an option",
       "selectOption": "Select option",
       "enterValue": "Enter value",
+      "orEnterCustom": "Or enter a custom value",
+      "customValueActive": "Custom Value Active",
+      "customValueHint": "Using custom value entered in input field",
+      "selectedFromListHint": "Using suggested value selected from list",
       "inputField": "Input field",
       "fieldRequired": "This field is required",
       "readyToContinue": "Ready to continue",
@@ -1143,7 +1147,7 @@
       "watchMixedSourcesNote": "Only local source directories will be monitored in real-time. Changes on remote sources will not trigger sync automatically.",
       "watchFilterNote": "The file watcher respects your Filter Profile. Changes to files or directories that match your exclusions (e.g. by pattern, size, or age) will not trigger a sync.",
       "scheduleDescription": "When enabled, this operation will run <strong>recurring</strong> based on the cron schedule below.",
-      "notConfigured": "Not configured",
+      "scheduleSubtitle": "Run this operation automatically on a recurring schedule.",
       "sourcePaths": "Source Paths",
       "destinationPath": "Destination Path",
       "localPath": "Local Path",
@@ -1655,13 +1659,15 @@
     "actionSelection": {
       "title": "Configure Quick Actions",
       "description": "Choose which actions to display as buttons on the remote dashboard for {{name}}. Star up to {{max}} actions, and drag to change their order.",
-      "removeStar": "Remove from quick actions",
-      "addStar": "Add to quick actions",
-      "cancel": "Cancel",
-      "save": "Save Changes",
       "moreButton": "More",
       "moreButtonTooltip": "More Operations",
       "configureTooltip": "Configure Quick Actions"
+    },
+    "itemOrderVisibility": {
+      "addStar": "Add to quick actions",
+      "removeStar": "Remove from quick actions",
+      "showItem": "Show item",
+      "hideItem": "Hide item"
     },
     "jobDetail": {
       "title": "Job Details #{{id}}",
@@ -2242,6 +2248,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "Configure Sidebar Items",
+      "configureDescription": "Drag items to reorder them, or toggle the eye icon to hide or show drives and cloud remotes in the sidebar."
+    },
     "shortcuts": {
       "title": "Nautilus Keyboard Shortcuts"
     },

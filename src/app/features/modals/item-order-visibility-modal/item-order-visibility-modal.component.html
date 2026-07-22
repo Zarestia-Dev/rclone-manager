@@ -1,0 +1,98 @@
+<header data-tauri-drag-region>
+  <button>
+    <mat-icon [svgIcon]="iconHeader"></mat-icon>
+  </button>
+  <p data-tauri-drag-region>{{ title | translate }}</p>
+  <button matIconButton (click)="onCancel()" [attr.aria-label]="'common.cancel' | translate">
+    <mat-icon svgIcon="close"></mat-icon>
+  </button>
+</header>
+
+@if (description) {
+  <p class="modal-description">
+    {{ description | translate: descriptionParams }}
+  </p>
+}
+<main cdkDropList (cdkDropListDropped)="onDrop($event)">
+  @for (item of items(); track item.id) {
+    @let toggleLabel =
+      (mode === 'star'
+        ? item.isVisible
+          ? 'modals.itemOrderVisibility.removeStar'
+          : 'modals.itemOrderVisibility.addStar'
+        : item.isVisible
+          ? 'modals.itemOrderVisibility.hideItem'
+          : 'modals.itemOrderVisibility.showItem'
+      ) | translate;
+
+    <div
+      class="action-item"
+      [class.is-starred]="item.isVisible"
+      [class.is-disabled]="!item.isVisible && !canShowMore()"
+      cdkDrag
+      cdkDragPreviewClass="action-drag-preview"
+    >
+      <div class="drag-handle" cdkDragHandle>
+        <mat-icon svgIcon="drag-indicator"></mat-icon>
+      </div>
+
+      @if (mode === 'star') {
+        <div class="action-index-badge" [class.unstarred]="!item.isVisible">
+          {{ item.isVisible ? visibleIndexMap().get(item.id) : '-' }}
+        </div>
+      }
+
+      <div class="action-info">
+        @if (item.icon) {
+          <mat-icon [svgIcon]="item.icon" class="action-icon"></mat-icon>
+        }
+        <div class="label-group">
+          <span class="action-label">{{ item.label | translate }}</span>
+          @if (item.subLabel) {
+            <span class="action-sublabel">({{ item.subLabel }})</span>
+          }
+        </div>
+      </div>
+
+      <button
+        matIconButton
+        class="toggle-button"
+        [class.starred]="mode === 'star' && item.isVisible"
+        [class.visible]="mode === 'visibility' && item.isVisible"
+        (click)="toggleVisibility(item.id)"
+        [disabled]="!item.isVisible && !canShowMore()"
+        [attr.aria-label]="toggleLabel"
+        [matTooltip]="toggleLabel"
+      >
+        @if (mode === 'star') {
+          <mat-icon [svgIcon]="item.isVisible ? 'star' : 'star-outline'"></mat-icon>
+        } @else {
+          <mat-icon [svgIcon]="item.isVisible ? 'eye' : 'eye-off'"></mat-icon>
+        }
+      </button>
+
+      <div class="drag-placeholder" *cdkDragPlaceholder>
+        <mat-icon svgIcon="move"></mat-icon>
+      </div>
+    </div>
+  }
+</main>
+
+<footer>
+  <button
+    matIconButton
+    class="warn"
+    (click)="onReset()"
+    [disabled]="!canReset()"
+    [matTooltip]="'common.reset' | translate"
+  >
+    <mat-icon svgIcon="refresh"></mat-icon>
+  </button>
+  <div class="footer-spacer"></div>
+  <button matButton="text" (click)="onCancel()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button matButton="filled" (click)="onSave()" [disabled]="!hasChanges()">
+    {{ 'common.save' | translate }}
+  </button>
+</footer>

@@ -281,34 +281,12 @@ export class RemoteFacadeService extends TauriBaseService {
     forceRefresh = false
   ): Promise<DiskUsage | null> {
     const state = this.getOrCreateRemoteState(remoteName);
-    const features = await this.remoteService.getFeatures(
-      remoteName,
-      state.base().type,
-      source,
-      group
-    );
-
-    if (features.Error) {
-      state.disk.update((cur: DiskUsage) => ({
-        ...cur,
-        loading: false,
-        error: true,
-        errorMessage: features.Error,
-      }));
-      return null;
-    }
-    if (!features.About) {
-      state.disk.update((cur: DiskUsage) => ({
-        ...cur,
-        notSupported: true,
-        loading: false,
-        error: false,
-      }));
-      return null;
-    }
 
     const cached = state.disk();
-    if (!forceRefresh && cached.total !== undefined && !cached.loading && !cached.error) {
+    if (
+      !forceRefresh &&
+      ((cached.total !== undefined && !cached.loading && !cached.error) || cached.notSupported)
+    ) {
       return cached;
     }
 
@@ -331,6 +309,19 @@ export class RemoteFacadeService extends TauriBaseService {
       state.disk.set(result);
       return result;
     } catch (error) {
+      const errStr = String(error).toLowerCase();
+      const isNotSupported = errStr.includes("doesn't support");
+
+      if (isNotSupported) {
+        const notSuppResult: DiskUsage = {
+          notSupported: true,
+          loading: false,
+          error: false,
+        };
+        state.disk.set(notSuppResult);
+        return notSuppResult;
+      }
+
       state.disk.update((cur: DiskUsage) => ({
         ...cur,
         loading: false,
@@ -742,23 +733,9 @@ export class RemoteFacadeService extends TauriBaseService {
         concatMap(async remote => {
           if (generation !== this.backgroundLoadGeneration) return null;
           try {
-            const features = await this.remoteService.getFeatures(remote.name, remote.type);
-            if (generation !== this.backgroundLoadGeneration) return null;
-
-            const state = this.remoteStates.get(remote.name);
-            if (!state) return null;
-
-            if (!features.About) {
-              state.disk.set({ notSupported: true, loading: false, error: false });
-              return null;
-            }
-
-            return this.getCachedOrFetchDiskUsage(remote.name);
+            return await this.getCachedOrFetchDiskUsage(remote.name);
           } catch (e) {
-            console.error(
-              `[RemoteFacadeService] Error loading features/disk usage for ${remote.name}:`,
-              e
-            );
+            console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
             return null;
           }
         }),

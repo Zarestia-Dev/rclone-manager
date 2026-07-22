@@ -64,6 +64,7 @@ import {
   MODE_DEFAULTS,
   BACKEND_PROFILE_SUPPORTED_OPS,
 } from '@app/types';
+import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
 import { OperationControlComponent } from '../../../../shared/detail-shared/operation-control/operation-control.component';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared/settings-panel/settings-panel.component';
@@ -77,8 +78,11 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 import { toString as cronstrue } from 'cronstrue';
 import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
-import { MatDialog } from '@angular/material/dialog';
-import { ActionSelectionModalComponent } from 'src/app/features/modals/action-selection-modal/action-selection-modal.component';
+import {
+  ItemOrderVisibilityModalComponent,
+  ItemOrderVisibilityResult,
+  buildActionOrderItems,
+} from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
 @Component({
   selector: 'app-app-detail',
@@ -659,25 +663,39 @@ export class AppDetailComponent {
     const remote = this.selectedRemote();
     if (!remote) return;
 
-    const result$ = this.dialog
-      .open(ActionSelectionModalComponent, {
+    const currentPrimary = remote.syncActions?.length
+      ? remote.syncActions
+      : (MODE_DEFAULTS.operations as PrimaryActionType[]);
+    const items = buildActionOrderItems(currentPrimary, SYNC_TYPES);
+    const defaultItems = buildActionOrderItems(
+      MODE_DEFAULTS.operations as PrimaryActionType[],
+      SYNC_TYPES
+    );
+
+    this.dialog
+      .open(ItemOrderVisibilityModalComponent, {
         ...STANDARD_MODAL_SIZE,
         disableClose: true,
         data: {
-          remoteName: remote.name,
-          primaryActions: remote.syncActions ?? [],
-          allowedKeys: SYNC_TYPES,
+          title: 'modals.actionSelection.title',
+          description: 'modals.actionSelection.description',
+          descriptionParams: { name: remote.name, max: 3 },
+          mode: 'star',
+          maxVisible: 3,
+          items,
+          defaultItems,
         },
         panelClass: 'mobile-sheet-dialog',
       })
-      .afterClosed();
-
-    result$.subscribe((result: PrimaryActionType[] | undefined) => {
-      if (result === undefined) return;
-      this.remoteFacade
-        .updateRemoteSettings(remote.name, { syncActions: result })
-        .catch(error => console.error('Failed to update sync actions:', error));
-    });
+      .afterClosed()
+      .subscribe((result: ItemOrderVisibilityResult<PrimaryActionType> | undefined) => {
+        if (!result) return;
+        this.remoteFacade
+          .updateRemoteSettings(remote.name, {
+            syncActions: result.isReset ? [] : (result.orderedVisibleIds as PrimaryActionType[]),
+          })
+          .catch(error => console.error('Failed to update sync actions:', error));
+      });
   }
 
   async onResetStats(): Promise<void> {

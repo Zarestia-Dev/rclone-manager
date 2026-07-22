@@ -961,34 +961,36 @@ button {
     gap: var(--space-xs);
   }
 
-  &.primary {
-    color: white !important;
-    background: var(--primary-color) !important;
-  }
+  &:not(:disabled):not([disabled]):not(.mat-mdc-button-disabled) {
+    &.primary {
+      color: white !important;
+      background: var(--primary-color) !important;
+    }
 
-  &.accent {
-    color: white !important;
-    background: var(--accent-color) !important;
-  }
+    &.accent {
+      color: white !important;
+      background: var(--accent-color) !important;
+    }
 
-  &.warn {
-    color: white !important;
-    background: var(--warn-color) !important;
-  }
+    &.warn {
+      color: white !important;
+      background: var(--warn-color) !important;
+    }
 
-  &.yellow {
-    color: white !important;
-    background: var(--yellow) !important;
-  }
+    &.yellow {
+      color: white !important;
+      background: var(--yellow) !important;
+    }
 
-  &.purple {
-    color: white !important;
-    background: var(--purple) !important;
-  }
+    &.purple {
+      color: white !important;
+      background: var(--purple) !important;
+    }
 
-  &.orange {
-    color: white !important;
-    background: var(--orange) !important;
+    &.orange {
+      color: white !important;
+      background: var(--orange) !important;
+    }
   }
 }
 
@@ -998,6 +1000,76 @@ button {
   overflow: hidden;
   clip-path: inset(0 round var(--app-border-radius));
   contain: paint;
+}
+
+#linux-resize-handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+
+  .resize-handle {
+    position: absolute;
+    pointer-events: auto;
+    background-color: transparent;
+
+    &.n {
+      top: 0;
+      left: 8px;
+      right: 8px;
+      height: 4px;
+      cursor: n-resize;
+    }
+    &.s {
+      bottom: 0;
+      left: 8px;
+      right: 8px;
+      height: 4px;
+      cursor: s-resize;
+    }
+    &.e {
+      top: 8px;
+      bottom: 8px;
+      right: 0;
+      width: 4px;
+      cursor: e-resize;
+    }
+    &.w {
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 4px;
+      cursor: w-resize;
+    }
+    &.nw {
+      top: 0;
+      left: 0;
+      width: 12px;
+      height: 12px;
+      cursor: nwse-resize;
+    }
+    &.ne {
+      top: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      cursor: nesw-resize;
+    }
+    &.sw {
+      bottom: 0;
+      left: 0;
+      width: 12px;
+      height: 12px;
+      cursor: nesw-resize;
+    }
+    &.se {
+      bottom: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      cursor: nwse-resize;
+    }
+  }
 }
 
 // Form fields
@@ -1152,6 +1224,12 @@ mat-accordion {
   border-radius: var(--radius-md);
   padding: 6px;
   box-shadow: var(--shadow-popover);
+
+  &.limited {
+    min-width: 280px;
+    max-width: 420px;
+    max-height: clamp(200px, 45vh, 360px);
+  }
 
   .menu-item {
     all: unset;

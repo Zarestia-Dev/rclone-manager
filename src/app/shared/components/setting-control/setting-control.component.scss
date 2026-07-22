@@ -9,8 +9,11 @@
     flex: 1;
     min-width: 0;
 
-    span {
-      display: block;
+    .setting-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-xs);
       font-weight: 600;
       font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
@@ -26,7 +29,6 @@
         color: var(--primary-color);
         padding: 2px 6px 0;
         border-radius: var(--radius-xxs);
-        margin-left: var(--space-xs);
       }
     }
 
@@ -187,9 +189,7 @@
     text-align: center;
 
     .setting-info {
-      p {
-        display: flex;
-        gap: var(--space-xs);
+      .setting-title {
         flex-direction: column;
         align-items: center;
         font-size: var(--font-size-sm);

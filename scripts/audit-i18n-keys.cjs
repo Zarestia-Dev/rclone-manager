@@ -211,6 +211,15 @@ function collectUsage(files, knownKeys, knownPrefixes) {
           backend.add(key);
         }
       }
+
+      // Rust format! dynamic key prefix regex: e.g. t(&format!("notification.title.{key_prefix}..."))
+      const rustFormatDynamicRegex =
+        /\bt(?:_with_params)?\(\s*&?format!\(\s*"([a-zA-Z][a-zA-Z0-9_-]*(?:\.[a-zA-Z][a-zA-Z0-9_-]*)+)/g;
+      for (const prefix of extractMatchesNoFilter(source, rustFormatDynamicRegex, 1)) {
+        if (prefix.includes('.') && knownPrefixes.has(prefix)) {
+          dynamicPrefixes.add(prefix);
+        }
+      }
       continue;
     }
 

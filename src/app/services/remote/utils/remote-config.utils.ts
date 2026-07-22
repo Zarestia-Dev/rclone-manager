@@ -42,14 +42,37 @@ export function getDefaultAnswerFromQuestion(
 
   if (opt.Type === 'bool') {
     if (typeof opt.Value === 'boolean') return opt.Value;
-    if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
-    if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
+    if (opt.ValueStr !== undefined && opt.ValueStr !== '') {
+      return opt.ValueStr.toLowerCase() === 'true';
+    }
+    if (opt.DefaultStr !== undefined && opt.DefaultStr !== '') {
+      return opt.DefaultStr.toLowerCase() === 'true';
+    }
     return typeof opt.Default === 'boolean' ? opt.Default : true;
   }
 
-  return (
-    opt.ValueStr || opt.DefaultStr || String(opt.Default ?? '') || opt.Examples?.[0]?.Value || ''
-  );
+  let defVal = '';
+  if (opt.ValueStr) {
+    defVal = opt.ValueStr;
+  } else if (opt.DefaultStr) {
+    defVal = opt.DefaultStr;
+  } else if (opt.Default !== undefined && opt.Default !== null) {
+    defVal = String(opt.Default);
+  } else if (opt.Examples?.length) {
+    defVal = opt.Examples[0].Value;
+  }
+
+  if (opt.Examples?.length) {
+    const hasExactMatch = opt.Examples.some(ex => ex.Value === defVal);
+    if (!hasExactMatch) {
+      const num = parseInt(defVal, 10);
+      if (!isNaN(num) && num >= 1 && num <= opt.Examples.length) {
+        return opt.Examples[num - 1].Value;
+      }
+    }
+  }
+
+  return defVal;
 }
 
 /**

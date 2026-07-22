@@ -161,6 +161,17 @@ export class SettingControlComponent implements ControlValueAccessor {
     return true;
   });
 
+  readonly hasObscurableValue = computed(() => {
+    const ctrl = this.control();
+    this.controlValueVersion(); // track reactive updates
+    if (!ctrl) return false;
+    const val = ctrl.value;
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'string') return val.trim().length > 0;
+    if (Array.isArray(val)) return val.length > 0 && val.some(v => String(v).trim().length > 0);
+    return Boolean(val);
+  });
+
   readonly displayDefault = computed(() => {
     const val = this.uiDefaultValue();
     if (val === null || val === undefined || val === '') {
@@ -800,9 +811,11 @@ export class SettingControlComponent implements ControlValueAccessor {
     event.stopPropagation();
     event.preventDefault();
     const ctrl = this.control();
-    if (!ctrl || !ctrl.value) return;
+    if (!ctrl || !this.hasObscurableValue()) return;
 
-    const val = ctrl.value.toString().trim();
+    const rawVal = ctrl.value;
+    const strVal = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal);
+    const val = strVal.trim();
     if (!val) return;
 
     this.isObscuring.set(true);
