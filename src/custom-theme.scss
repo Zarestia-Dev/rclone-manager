@@ -601,11 +601,11 @@ $dark-theme: (
   --bg-hover: var(--hover-bg-color);
   --bg-selected: var(--selected-bg-color);
 
-  --ring-border: 0 0 0 1px var(--border-color);
-  --ring-accent: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
-  --ring-warn: 0 0 0 1px var(--warn-color);
-  --focus-ring-accent: 0 0 0 2px rgba(var(--accent-color-rgb), 0.4);
-  --focus-ring-warn: 0 0 0 2px rgba(var(--warn-color-rgb), 0.4);
+  --ring-border: inset 0 0 0 1px var(--border-color);
+  --ring-accent: inset 0 0 0 1px rgba(var(--accent-color-rgb), 0.4);
+  --ring-warn: inset 0 0 0 1px var(--warn-color);
+  --focus-ring-accent: inset 0 0 0 2px rgba(var(--accent-color-rgb), 0.4);
+  --focus-ring-warn: inset 0 0 0 2px rgba(var(--warn-color-rgb), 0.4);
 
   // Icon Size Scale (Grid-Perfect multiples of 24px)
   --icon-size-xxs: 8px; // 1/3x
@@ -989,13 +989,6 @@ button {
   &.orange {
     color: white !important;
     background: var(--orange) !important;
-  }
-
-  &:disabled {
-    background: color-mix(in srgb, var(--dim-color) 30%, transparent) !important;
-    color: color-mix(in srgb, var(--window-fg-color) 50%, transparent) !important;
-    transform: none !important;
-    box-shadow: none !important;
   }
 }
 

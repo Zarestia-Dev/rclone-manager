@@ -25,7 +25,7 @@
         [expanded]="cronPanelExpanded()"
         (opened)="cronPanelExpanded.set(true)"
         (closed)="cronPanelExpanded.set(false)"
-        class="mac-panel"
+        class="cron-panel"
       >
         <mat-expansion-panel-header>
           <mat-panel-title>
@@ -46,7 +46,11 @@
           <mat-panel-description>
             @if (cronExpression()) {
               <code class="cron-tag">{{ cronExpression() }}</code>
-              <button matIconButton (click)="clearSchedule($event)" type="button">
+              <button
+                class="action-button"
+                (click)="clearSchedule(); $event.stopPropagation()"
+                type="button"
+              >
                 <mat-icon svgIcon="circle-xmark"></mat-icon>
               </button>
             } @else {
@@ -76,7 +80,6 @@
         (opened)="watchPanelExpanded.set(true)"
         (closed)="watchPanelExpanded.set(false)"
         [disabled]="!isWatchPossible()"
-        class="mac-panel"
         [class.unavailable]="!isWatchPossible()"
       >
         <mat-expansion-panel-header

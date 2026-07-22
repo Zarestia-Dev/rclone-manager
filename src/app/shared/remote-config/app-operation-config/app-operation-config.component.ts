@@ -557,8 +557,7 @@ export class OperationConfigComponent {
     this.opFormGroup().get('cronValidation')?.setValue(result, { emitEvent: false });
   }
 
-  clearSchedule(event: Event): void {
-    event.stopPropagation();
+  clearSchedule(): void {
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
   }

@@ -314,9 +314,18 @@
         }
         @case ('string') {
           @if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-            />
+            @if (isMultiselectOption()) {
+              <ng-container
+                *ngTemplateOutlet="
+                  multiSelect;
+                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+                "
+              />
+            } @else {
+              <ng-container
+                *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+              />
+            }
           } @else {
             <ng-container
               *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"
@@ -364,19 +373,55 @@
           />
         }
         @case ('SpaceSepList') {
-          <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          @if (mergedOption()?.Examples?.length) {
+            <ng-container
+              *ngTemplateOutlet="
+                multiSelect;
+                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+              "
+            />
+          } @else {
+            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          }
         }
         @case ('stringArray') {
-          <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          @if (mergedOption()?.Examples?.length) {
+            <ng-container
+              *ngTemplateOutlet="
+                multiSelect;
+                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+              "
+            />
+          } @else {
+            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          }
         }
         @case ('CommaSepList') {
-          <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          @if (mergedOption()?.Examples?.length) {
+            <ng-container
+              *ngTemplateOutlet="
+                multiSelect;
+                context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+              "
+            />
+          } @else {
+            <ng-container *ngTemplateOutlet="arrayInput; context: { $implicit: mergedOption() }" />
+          }
         }
         @default {
           @if (mergedOption()?.Examples?.length) {
-            <ng-container
-              *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
-            />
+            @if (isMultiselectOption()) {
+              <ng-container
+                *ngTemplateOutlet="
+                  multiSelect;
+                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+                "
+              />
+            } @else {
+              <ng-container
+                *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
+              />
+            }
           } @else {
             <ng-container
               *ngTemplateOutlet="standardInput; context: { $implicit: mergedOption() }"

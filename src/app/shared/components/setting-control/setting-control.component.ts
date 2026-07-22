@@ -41,7 +41,7 @@ import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-m
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { ValidatorRegistryService } from 'src/app/services/ui/validation/validator-registry.service';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
-import { isCommaArrayType, isConvertibleType, isMultiselectType } from 'src/app/shared/utils';
+import { isConvertibleType, isMultiselectType } from 'src/app/shared/utils';
 
 @Component({
   selector: 'app-setting-control',
@@ -233,6 +233,13 @@ export class SettingControlComponent implements ControlValueAccessor {
     }
   );
 
+  readonly isMultiselectOption = computed(() => {
+    const opt = this.mergedOption();
+    if (!opt) return false;
+    if (opt.Exclusive === false) return true;
+    return isMultiselectType(opt.Type);
+  });
+
   readonly uiDefaultValue = computed(() => {
     const opt = this.mergedOption();
     return opt ? this.calculateDefaultValue(opt) : '';
@@ -334,6 +341,10 @@ export class SettingControlComponent implements ControlValueAccessor {
   // Core logic
 
   private calculateDefaultValue(option: RcConfigOption): unknown {
+    if (this.isMultiselectOption()) {
+      const delimiter = option.Type === 'SpaceSepList' ? /\s+/ : ',';
+      return this.splitToArray(option.DefaultStr, delimiter);
+    }
     switch (option.Type) {
       case 'bool':
         return option.Default === true || String(option.Default).toLowerCase() === 'true';
@@ -375,7 +386,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       return current === defaultVal;
     }
 
-    if (optType && isMultiselectType(optType)) {
+    if (this.isMultiselectOption()) {
       const toArray = (v: unknown): string[] => {
         if (Array.isArray(v)) return v.map(String);
         if (typeof v === 'string') {
@@ -481,7 +492,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         : value || opt.ValueStr || opt.DefaultStr || '';
     }
 
-    if (isCommaArrayType(opt.Type)) {
+    if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
@@ -489,20 +500,13 @@ export class SettingControlComponent implements ControlValueAccessor {
         if (typeof value === 'number') return opt.ValueStr || opt.DefaultStr || '';
         return typeof value === 'string' ? value : opt.ValueStr || opt.DefaultStr || '';
       }
-      // rclone may return an integer bitmask — use ValueStr (always human-readable).
       if (typeof value === 'number') {
-        return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', ',');
+        const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
+        return this.splitToArray(opt.ValueStr || opt.DefaultStr || '', delimiter);
       }
+      const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
       return typeof value === 'string'
-        ? this.splitToArray(value, ',')
-        : Array.isArray(value)
-          ? value
-          : [];
-    }
-
-    if (opt.Type === 'SpaceSepList') {
-      return typeof value === 'string'
-        ? this.splitToArray(value, /\s+/)
+        ? this.splitToArray(value, delimiter)
         : Array.isArray(value)
           ? value
           : [];
@@ -539,7 +543,8 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (!opt) return;
 
     const validators = this.getValidators(opt);
-    const isArray = ['stringArray', 'CommaSepList', 'SpaceSepList'].includes(opt.Type);
+    const isArray =
+      !opt.Examples?.length && ['stringArray', 'CommaSepList', 'SpaceSepList'].includes(opt.Type);
 
     if (isArray) {
       const initial = this.getInitialArrayValue(opt);
@@ -586,7 +591,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Type === 'bool')
       return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
 
-    if (opt.Type === 'Encoding' || opt.Type === 'Bits' || opt.Type === 'DumpFlags') {
+    if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
         return opt.ValueStr || opt.DefaultStr || '';
       }
@@ -595,11 +600,16 @@ export class SettingControlComponent implements ControlValueAccessor {
           ? opt.ValueStr || opt.DefaultStr || ''
           : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
       }
-      const str =
+      const raw =
         typeof opt.Value === 'number'
           ? opt.ValueStr || opt.DefaultStr || ''
-          : (opt.Value || opt.ValueStr || opt.DefaultStr || '').toString();
-      return this.splitToArray(str, ',');
+          : opt.Value !== undefined && opt.Value !== null && opt.Value !== ''
+            ? opt.Value
+            : opt.ValueStr || opt.DefaultStr || '';
+
+      if (Array.isArray(raw)) return raw.map(String);
+      const delimiter = opt.Type === 'SpaceSepList' ? /\s+/ : ',';
+      return this.splitToArray(String(raw), delimiter);
     }
 
     if (isConvertibleType(opt.Type)) {
@@ -719,6 +729,11 @@ export class SettingControlComponent implements ControlValueAccessor {
     const opt = this.mergedOption();
     if (!opt) return value;
 
+    if (Array.isArray(value)) {
+      const delimiter = opt.Type === 'SpaceSepList' ? ' ' : ',';
+      return value.join(delimiter);
+    }
+
     return this.valueMapper.humanToMachine(value, opt.Type);
   }
   // Array controls
@@ -773,7 +788,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
 
-    const isMultiSelect = isMultiselectType(opt.Type);
+    const isMultiSelect = this.isMultiselectOption();
     if (opt.Examples && !isMultiSelect) {
       validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }

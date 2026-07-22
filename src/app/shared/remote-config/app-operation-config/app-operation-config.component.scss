@@ -1,12 +1,11 @@
 // ── Auto Start Panel ─────────────────────────────────────────────────────────
 .auto-start-panel {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 72px;
+  flex-direction: column;
+  gap: var(--space-xs);
   background: var(--view-bg-color);
   border-radius: var(--radius-md);
-  padding: 0 var(--space-xl);
+  padding: var(--space-sm) var(--space-md);
   box-shadow: var(--shadow-gnome);
   margin-bottom: var(--space-md);
 
@@ -15,11 +14,33 @@
     font-size: var(--font-size-md);
     font-weight: 500;
   }
+}
 
-  @media (max-width: 540px) {
-    padding: 0 var(--space-md);
-    min-height: 64px;
-    margin-bottom: var(--space-sm);
+// ── Automation accordion mobile ─────────────────────────────────────────────
+.automation-accordion {
+  .cron-panel {
+    ::ng-deep {
+      .mat-expansion-panel-body {
+        padding: 0 !important;
+      }
+    }
+  }
+  ::ng-deep {
+    .mat-expansion-panel-header {
+      height: auto !important;
+      min-height: unset !important;
+      padding: var(--space-sm) var(--space-md) !important;
+
+      .mat-content {
+        flex-wrap: wrap;
+        row-gap: var(--space-xxs);
+      }
+    }
+
+    .mat-expansion-panel-header-title {
+      flex: 1 0 100%;
+      margin-right: 0;
+    }
   }
 }
 
@@ -58,7 +79,7 @@ app-alert-banner {
 .helper-text {
   color: var(--dim-color);
   font-size: var(--font-size-md);
-  margin: 0 0 var(--space-md);
+  margin: 0 var(--space-md);
 }
 
 // ── Paths container ──────────────────────────────────────────────────────────
