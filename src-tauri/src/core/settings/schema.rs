@@ -9,7 +9,7 @@ use serde_json::Value;
 
 // List of supported BCP-47 language tags
 // When adding a new language, add its BCP-47 code here and create the translation file
-const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN", "fr-FR", "uk-UA"];
+const SUPPORTED_LANGUAGES: &[&str] = &["en-US", "tr-TR", "es-ES", "zh-CN", "fr-FR", "uk-UA", "ru-RU"];
 
 // Struct Definitions with Derive Macro
 
@@ -26,7 +26,8 @@ pub struct GeneralSettings {
             ("es-ES", "Español (España)"),
             ("zh-CN", "中文 (简体)"),
             ("fr-FR", "Français (France)"),
-            ("uk-UA", "Українська (Україна)")
+            ("uk-UA", "Українська (Україна)"),
+            ("ru-RU", "Русский (Россия)")
         )
     )]
     pub language: String,
