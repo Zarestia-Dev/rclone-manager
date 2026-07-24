@@ -1,13 +1,9 @@
 .modal-description {
   margin: 0;
+  padding: var(--space-sm);
   font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--border-color);
   color: var(--dim-color);
-}
-
-.action-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
 }
 
 .action-item {
@@ -89,37 +85,57 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-width: 0;
 
   .action-icon {
     width: 20px;
     height: 20px;
     color: var(--dim-color);
+    flex-shrink: 0;
 
     .is-starred & {
       color: var(--primary-color);
     }
   }
 
-  .action-label {
-    font-size: var(--font-size-md);
-    color: var(--window-fg-color);
-    font-weight: 500;
+  .label-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    overflow: hidden;
+
+    .action-label {
+      font-size: var(--font-size-md);
+      color: var(--window-fg-color);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .action-sublabel {
+      font-size: var(--font-size-xs);
+      color: var(--dim-color);
+      white-space: nowrap;
+    }
   }
 }
 
-// ─── Star button ─────────────────────────────────────────────────────────────
-
-.star-button {
+.toggle-button {
   color: var(--dim-color);
 
   &.starred {
     color: var(--yellow);
   }
+
+  &.visible {
+    color: var(--primary-color);
+  }
 }
 
 .drag-placeholder {
   display: flex;
-  min-height: 52px;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   color: var(--primary-color);
@@ -130,6 +146,10 @@
 
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.footer-spacer {
+  flex: 1;
 }
 
 .action-list.cdk-drop-list-dragging .action-item:not(.cdk-drag-placeholder) {

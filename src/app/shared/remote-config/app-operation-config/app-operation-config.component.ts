@@ -47,9 +47,12 @@ import {
   PathGroup,
   PathInspectionStatus,
 } from 'src/app/services/infrastructure/platform/path.service';
+import { toString as cronstrue } from 'cronstrue';
+import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -82,6 +85,7 @@ interface PathItem {
     MatTooltipModule,
     TranslatePipe,
     AlertBannerComponent,
+    CdkOverlayAutoposDirective,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrl: './app-operation-config.component.scss',
@@ -116,6 +120,16 @@ export class OperationConfigComponent {
   readonly cronExpression = computed(() => {
     this.formVersion();
     return this.opFormGroup().get('cronExpression')?.value;
+  });
+  readonly cronHumanDescription = computed(() => {
+    const cron = this.cronExpression();
+    if (!cron) return null;
+    try {
+      const locale = getCronstrueLocale(this.translate.currentLang() ?? 'en-US');
+      return cronstrue(cron, { locale });
+    } catch {
+      return cron;
+    }
   });
   readonly isWatchEnabled = computed(() => {
     this.formVersion();
@@ -557,8 +571,7 @@ export class OperationConfigComponent {
     this.opFormGroup().get('cronValidation')?.setValue(result, { emitEvent: false });
   }
 
-  clearSchedule(event: Event): void {
-    event.stopPropagation();
+  clearSchedule(): void {
     this.opFormGroup().get('cronExpression')?.setValue(null);
     this.opFormGroup().get('cronValidation')?.setValue({ isValid: false }, { emitEvent: false });
   }

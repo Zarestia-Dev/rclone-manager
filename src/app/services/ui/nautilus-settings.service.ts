@@ -20,6 +20,9 @@ export class NautilusSettingsService {
   readonly savedGridIconSize = signal<number | null>(null);
   readonly savedListIconSize = signal<number | null>(null);
 
+  readonly sidebarDriveOrder = signal<string[]>([]);
+  readonly sidebarHiddenDrives = signal<Set<string>>(new Set());
+
   private readonly _sortColumn = signal<'name' | 'size' | 'modified'>('name');
   private readonly _sortAscending = signal(true);
 
@@ -130,6 +133,13 @@ export class NautilusSettingsService {
     this.localStorage.set('nautilus.split_divider_pos', Math.round(pos));
   }
 
+  saveSidebarConfig(order: string[], hidden: string[]): void {
+    this.sidebarDriveOrder.set(order);
+    this.sidebarHiddenDrives.set(new Set(hidden));
+    this.localStorage.set('nautilus.sidebar_drive_order', order);
+    this.localStorage.set('nautilus.sidebar_hidden_drives', hidden);
+  }
+
   // ── Private ─────────────────────────────────────────────────────────────────
 
   private _loadFromLocalStorage(): void {
@@ -138,12 +148,17 @@ export class NautilusSettingsService {
     const showHidden = this.localStorage.get<boolean>('nautilus.show_hidden_items', false);
     const gridIconSize = this.localStorage.get<number | null>('nautilus.grid_icon_size', null);
     const listIconSize = this.localStorage.get<number | null>('nautilus.list_icon_size', null);
+    const sidebarOrder = this.localStorage.get<string[]>('nautilus.sidebar_drive_order', []);
+    const sidebarHidden = this.localStorage.get<string[]>('nautilus.sidebar_hidden_drives', []);
 
     this.layout.set(layout);
     this.applySort(sortKey);
     this.showHidden.set(showHidden);
     if (gridIconSize) this.savedGridIconSize.set(gridIconSize);
     if (listIconSize) this.savedListIconSize.set(listIconSize);
+
+    this.sidebarDriveOrder.set(sidebarOrder ?? []);
+    this.sidebarHiddenDrives.set(new Set(sidebarHidden ?? []));
 
     // Restore icon size for the current layout.
     const savedSize = layout === 'grid' ? gridIconSize : listIconSize;

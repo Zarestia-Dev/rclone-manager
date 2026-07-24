@@ -27,6 +27,8 @@ import {
 } from 'src/app/services/remote/utils/remote-config.utils';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+
 @Component({
   selector: 'app-flag-config-step',
   imports: [
@@ -49,6 +51,7 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
   readonly state = inject(RemoteConfigStateService);
+  private readonly uiStateService = inject(UiStateService);
 
   readonly form = input.required<FormGroup>();
   readonly flagType = input.required<FlagType>();
@@ -61,7 +64,7 @@ export class FlagConfigStepComponent {
   readonly highlightedFields = input<Set<string>>(new Set());
 
   readonly serveTypeChange = output<string>();
-  readonly showJsonMode = signal(false);
+  readonly showJsonMode = this.uiStateService.showJsonMode;
 
   readonly configGroup = computed(() => this.form().get(`${this.flagType()}Config`) as FormGroup);
   readonly optionsGroup = computed(() => this.configGroup()?.get('options') as FormGroup);
@@ -135,6 +138,6 @@ export class FlagConfigStepComponent {
   }
 
   toggleJsonMode(): void {
-    this.showJsonMode.update(v => !v);
+    this.uiStateService.toggleShowJsonMode();
   }
 }

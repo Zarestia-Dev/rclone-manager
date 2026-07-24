@@ -81,10 +81,10 @@
       }
 
       <!-- Local Drives -->
-      @if (localDrives().length > 0) {
+      @if (displayLocalDrives().length > 0) {
         <hr class="sidebar-rule" />
         <div class="sidebar-section-header">{{ 'nautilus.titles.local' | translate }}</div>
-        @for (drive of localDrives(); track drive.name) {
+        @for (drive of displayLocalDrives(); track drive.name) {
           <ng-container
             [ngTemplateOutlet]="remoteItem"
             [ngTemplateOutletContext]="{
@@ -98,10 +98,10 @@
       }
 
       <!-- Cloud Remotes -->
-      @if (cloudRemotes().length > 0) {
+      @if (displayCloudRemotes().length > 0) {
         <hr class="sidebar-rule" />
         <div class="sidebar-section-header">{{ 'nautilus.titles.cloud' | translate }}</div>
-        @for (remote of cloudRemotes(); track remote.name) {
+        @for (remote of displayCloudRemotes(); track remote.name) {
           <ng-container
             [ngTemplateOutlet]="remoteItem"
             [ngTemplateOutletContext]="{
@@ -168,6 +168,10 @@
 
 <ng-template #sidebarMainMenu>
   <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="onConfigureSidebar()">
+      <span class="item-label">{{ 'nautilus.sidebar.configureTitle' | translate }}</span>
+    </button>
+    <mat-divider></mat-divider>
     <button class="menu-item" cdkMenuItem (click)="requestShortcuts.emit()">
       <span class="item-label">{{ 'shortcuts.title' | translate }}</span>
     </button>

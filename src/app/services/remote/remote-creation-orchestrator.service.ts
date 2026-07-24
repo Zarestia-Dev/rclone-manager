@@ -53,12 +53,19 @@ export class RemoteCreationOrchestrator {
 
   readonly isInteractiveContinueDisabled = computed(() => {
     const s = this.interactiveFlowState();
-    return (
-      s.isProcessing ||
-      (s.question?.Option?.Type !== 'password' &&
-        (s.answer == null || String(s.answer).trim() === '')) ||
-      (this.authStateService.isAuthCancelled?.() ?? false)
-    );
+    if (s.isProcessing || (this.authStateService.isAuthCancelled?.() ?? false)) {
+      return true;
+    }
+    if (s.question?.Error) {
+      return true;
+    }
+    const opt = s.question?.Option;
+    if (opt?.Required) {
+      if (s.answer == null || String(s.answer).trim() === '') {
+        return true;
+      }
+    }
+    return false;
   });
 
   private pendingConfig: {
@@ -114,8 +121,8 @@ export class RemoteCreationOrchestrator {
       const { name, ...paramRest } = this.pendingConfig.remoteData;
       const processedAnswer: unknown =
         state.question?.Option?.Type === 'bool'
-          ? convertBoolAnswerToString(String(answer))
-          : answer;
+          ? convertBoolAnswerToString(answer)
+          : (answer ?? '');
 
       const resp = await this.remoteManagementService.continueRemoteConfigInteractive(
         name,

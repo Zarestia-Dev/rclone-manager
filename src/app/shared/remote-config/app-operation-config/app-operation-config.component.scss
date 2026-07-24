@@ -1,25 +1,42 @@
-// ── Auto Start Panel ─────────────────────────────────────────────────────────
-.auto-start-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 72px;
-  background: var(--view-bg-color);
-  border-radius: var(--radius-md);
-  padding: 0 var(--space-xl);
-  box-shadow: var(--shadow-gnome);
-  margin-bottom: var(--space-md);
-
-  .description {
-    color: var(--dim-color);
-    font-size: var(--font-size-md);
-    font-weight: 500;
+// ── Automation accordion mobile ─────────────────────────────────────────────
+.automation-accordion {
+  .cron-panel {
+    ::ng-deep {
+      .mat-expansion-panel-body {
+        padding: 0 !important;
+      }
+    }
   }
+  ::ng-deep {
+    .mat-expansion-panel-header {
+      height: auto !important;
+      min-height: 64px !important;
+      padding: var(--space-sm) var(--space-md) !important;
 
-  @media (max-width: 540px) {
-    padding: 0 var(--space-md);
-    min-height: 64px;
-    margin-bottom: var(--space-sm);
+      .mat-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xxs);
+        margin-right: 0;
+      }
+
+      .mat-expansion-panel-header-title {
+        font-weight: 600;
+      }
+
+      .schedule-summary {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
+
+        .human-cron {
+          font-weight: 600;
+          color: var(--window-fg-color);
+          font-size: var(--font-size-md);
+        }
+      }
+    }
   }
 }
 
@@ -40,7 +57,7 @@ app-alert-banner {
   cursor: not-allowed;
 }
 
-.not-configured {
+.description {
   font-style: italic;
   opacity: 0.6;
 }
@@ -58,7 +75,7 @@ app-alert-banner {
 .helper-text {
   color: var(--dim-color);
   font-size: var(--font-size-md);
-  margin: 0 0 var(--space-md);
+  margin: 0 var(--space-md);
 }
 
 // ── Paths container ──────────────────────────────────────────────────────────

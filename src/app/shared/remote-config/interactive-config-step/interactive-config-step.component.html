@@ -19,147 +19,197 @@
     role="region"
     [attr.aria-label]="'wizards.remoteConfig.additionalConfig' | translate"
   >
+    <!-- Error Alert Banner -->
+    @if (hasError()) {
+      <app-alert-banner severity="error" [title]="errorMessage()"></app-alert-banner>
+    }
+
     <!-- Question Card -->
-    <div class="question-card">
-      <div class="question-header">
-        <mat-icon class="question-icon" svgIcon="question"></mat-icon>
-        <div class="question-title-section">
-          <h4 class="question-title">
-            {{ question()?.Option?.Name || ('wizards.remoteConfig.configRequired' | translate) }}
-            @if (isFieldRequired()) {
-              <span class="required-badge">{{
-                'wizards.remoteConfig.requiredBadge' | translate
-              }}</span>
-            }
-          </h4>
+    @if (question()?.Option; as opt) {
+      <div class="question-card">
+        <div class="question-header">
+          <mat-icon class="question-icon" svgIcon="question"></mat-icon>
+          <div class="question-title-section">
+            <h4 class="question-title">
+              {{ opt.Name || ('wizards.remoteConfig.configRequired' | translate) }}
+              @if (isFieldRequired()) {
+                <span class="required-badge">{{
+                  'wizards.remoteConfig.requiredBadge' | translate
+                }}</span>
+              }
+            </h4>
+          </div>
+        </div>
+        <div class="question-text">
+          <p
+            class="help-text"
+            [innerHTML]="
+              (opt.Help | linebreaks) || ('wizards.remoteConfig.nextQuestionHelp' | translate)
+            "
+          ></p>
+          @if (opt.DefaultStr) {
+            <div class="default-info">
+              <mat-icon class="info-icon" svgIcon="circle-info"></mat-icon>
+              <span>
+                {{ 'wizards.remoteConfig.defaultValue' | translate }}
+                <strong>{{ opt.DefaultStr }}</strong>
+              </span>
+            </div>
+          }
         </div>
       </div>
-      <div class="question-text">
-        <p
-          class="help-text"
-          [innerHTML]="
-            (question()?.Option?.Help | linebreaks) ||
-            ('wizards.remoteConfig.nextQuestionHelp' | translate)
-          "
-        ></p>
-        @if (question()?.Option?.DefaultStr) {
-          <div class="default-info">
-            <mat-icon class="info-icon" svgIcon="circle-info"></mat-icon>
-            <span>
-              {{ 'wizards.remoteConfig.defaultValue' | translate }}
-              <strong>{{ question()?.Option?.DefaultStr }}</strong>
-            </span>
-          </div>
-        }
-      </div>
-    </div>
+    }
 
     <!-- Input Section -->
     @if (question(); as q) {
-      <div class="input-section">
-        @switch (q.Option?.Type) {
-          @case ('bool') {
-            <div class="input-card bool-input">
-              <div class="toggle-container">
-                <mat-slide-toggle
-                  [ngModel]="answer()"
-                  (ngModelChange)="onAnswerChange($event)"
-                  [disabled]="canceling()"
-                  class="toggle-input primary"
-                  [attr.aria-label]="q.Option.Name || 'Toggle option'"
-                >
-                  <span class="toggle-label">{{
-                    answer()
-                      ? ('wizards.remoteConfig.yes' | translate)
-                      : ('wizards.remoteConfig.no' | translate)
-                  }}</span>
-                </mat-slide-toggle>
-              </div>
-            </div>
-          }
-          @default {
-            @if (q.Option?.Examples?.length) {
-              <div class="example-inputs">
-                <div class="input-card select-input">
-                  <mat-form-field appearance="fill">
-                    <mat-label>{{
-                      q.Option.Name || ('wizards.remoteConfig.chooseOption' | translate)
-                    }}</mat-label>
-                    <mat-select
-                      [ngModel]="selectedIndex()"
-                      (ngModelChange)="onSelectionChange($event)"
-                      [disabled]="canceling()"
-                      [attr.aria-label]="
-                        q.Option.Name || ('wizards.remoteConfig.selectOption' | translate)
-                      "
-                    >
-                      <mat-select-trigger>
-                        {{
-                          selectedDisplayValue() ||
-                            ('wizards.remoteConfig.selectOption' | translate)
-                        }}
-                      </mat-select-trigger>
-                      @for (ex of q.Option.Examples; track $index; let index = $index) {
-                        <mat-option [value]="index">
-                          <div class="option-content">
-                            <span class="option-label">{{ ex.Help || ex.Value }}</span>
-                            @if (ex.Help && ex.Help !== ex.Value) {
-                              <span class="option-secondary">{{ ex.Value }}</span>
-                            }
-                          </div>
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-
-                @if (allowsCustomValue()) {
-                  <div class="input-card custom-input">
-                    <mat-form-field appearance="fill">
-                      <mat-label>{{
-                        q.Option.Name || ('wizards.remoteConfig.enterValue' | translate)
-                      }}</mat-label>
-                      <input
-                        matInput
-                        [type]="isPassword() ? 'password' : 'text'"
-                        [ngModel]="answer()"
-                        (ngModelChange)="onAnswerChange($event)"
-                        [disabled]="canceling()"
-                        [placeholder]="inputPlaceholder()"
-                        [attr.aria-label]="
-                          q.Option.Name || ('wizards.remoteConfig.inputField' | translate)
-                        "
-                      />
-                    </mat-form-field>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="input-card text-input">
-                <mat-form-field appearance="fill">
-                  <mat-label>{{
-                    q.Option?.Name || ('wizards.remoteConfig.enterValue' | translate)
-                  }}</mat-label>
-                  <input
-                    matInput
-                    [type]="isPassword() ? 'password' : 'text'"
+      @if (q.Option; as opt) {
+        <div class="input-section">
+          @switch (opt.Type) {
+            @case ('bool') {
+              <div class="input-card bool-input">
+                <div class="toggle-container">
+                  <mat-slide-toggle
                     [ngModel]="answer()"
                     (ngModelChange)="onAnswerChange($event)"
                     [disabled]="canceling()"
-                    [placeholder]="inputPlaceholder()"
-                    [attr.aria-label]="
-                      q.Option?.Name || ('wizards.remoteConfig.inputField' | translate)
-                    "
-                  />
-                  @if (isFieldRequired() && !answer()) {
-                    <mat-error>{{ 'wizards.remoteConfig.fieldRequired' | translate }}</mat-error>
-                  }
-                </mat-form-field>
+                    class="toggle-input primary"
+                    [attr.aria-label]="opt.Name || 'Toggle option'"
+                  >
+                    <span class="toggle-label">{{
+                      answer()
+                        ? ('wizards.remoteConfig.yes' | translate)
+                        : ('wizards.remoteConfig.no' | translate)
+                    }}</span>
+                  </mat-slide-toggle>
+                </div>
               </div>
             }
+            @default {
+              @if (opt.Examples?.length) {
+                <div class="example-inputs">
+                  <div class="input-card select-input">
+                    <mat-form-field appearance="fill">
+                      <mat-label>{{
+                        opt.Name || ('wizards.remoteConfig.chooseOption' | translate)
+                      }}</mat-label>
+                      <mat-select
+                        [ngModel]="selectedIndex()"
+                        (ngModelChange)="onSelectionChange($event)"
+                        [disabled]="canceling()"
+                        [attr.aria-label]="
+                          opt.Name || ('wizards.remoteConfig.selectOption' | translate)
+                        "
+                      >
+                        <mat-select-trigger>
+                          @if (selectedIndex() !== null) {
+                            {{ selectedDisplayValue() }}
+                          } @else if (answer()) {
+                            <span class="custom-value-trigger">
+                              {{ 'wizards.remoteConfig.customValueActive' | translate }}:
+                              {{ answer() }}
+                            </span>
+                          } @else {
+                            {{ 'wizards.remoteConfig.selectOption' | translate }}
+                          }
+                        </mat-select-trigger>
+                        @for (ex of opt.Examples; track $index; let index = $index) {
+                          <mat-option [value]="index">
+                            <div class="option-content">
+                              <span class="option-label">{{ ex.Help || ex.Value }}</span>
+                              @if (ex.Help && ex.Help !== ex.Value) {
+                                <span class="option-secondary">{{ ex.Value }}</span>
+                              }
+                            </div>
+                          </mat-option>
+                        }
+                      </mat-select>
+                      @if (allowsCustomValue() && selectedIndex() !== null) {
+                        <mat-hint>
+                          {{ 'wizards.remoteConfig.selectedFromListHint' | translate }}
+                        </mat-hint>
+                      }
+                    </mat-form-field>
+                  </div>
+
+                  @if (allowsCustomValue()) {
+                    <div class="divider">
+                      <span>{{ 'wizards.remoteConfig.orEnterCustom' | translate }}</span>
+                    </div>
+
+                    <div class="input-card custom-input">
+                      <mat-form-field appearance="fill">
+                        <mat-label>{{
+                          opt.Name || ('wizards.remoteConfig.enterValue' | translate)
+                        }}</mat-label>
+                        <input
+                          matInput
+                          [type]="isPassword() && !showPassword() ? 'password' : 'text'"
+                          [ngModel]="answer()"
+                          (ngModelChange)="onAnswerChange($event)"
+                          [disabled]="canceling()"
+                          [placeholder]="inputPlaceholder()"
+                          [attr.aria-label]="
+                            opt.Name || ('wizards.remoteConfig.inputField' | translate)
+                          "
+                        />
+                        @if (isPassword()) {
+                          <button
+                            mat-icon-button
+                            matSuffix
+                            type="button"
+                            (click)="togglePasswordVisibility()"
+                            [attr.aria-label]="'Toggle password visibility'"
+                          >
+                            <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                          </button>
+                        }
+                        @if (selectedIndex() === null && answer()) {
+                          <mat-hint>
+                            {{ 'wizards.remoteConfig.customValueHint' | translate }}
+                          </mat-hint>
+                        }
+                      </mat-form-field>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="input-card text-input">
+                  <mat-form-field appearance="fill">
+                    <mat-label>{{
+                      opt.Name || ('wizards.remoteConfig.enterValue' | translate)
+                    }}</mat-label>
+                    <input
+                      matInput
+                      [type]="isPassword() && !showPassword() ? 'password' : 'text'"
+                      [ngModel]="answer()"
+                      (ngModelChange)="onAnswerChange($event)"
+                      [disabled]="canceling()"
+                      [placeholder]="inputPlaceholder()"
+                      [attr.aria-label]="
+                        opt.Name || ('wizards.remoteConfig.inputField' | translate)
+                      "
+                    />
+                    @if (isPassword()) {
+                      <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        (click)="togglePasswordVisibility()"
+                        [attr.aria-label]="'Toggle password visibility'"
+                      >
+                        <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+                      </button>
+                    }
+                    @if (isFieldRequired() && !answer()) {
+                      <mat-error>{{ 'wizards.remoteConfig.fieldRequired' | translate }}</mat-error>
+                    }
+                  </mat-form-field>
+                </div>
+              }
+            }
           }
-        }
-      </div>
+        </div>
+      }
     }
 
     @if (isFieldRequired()) {

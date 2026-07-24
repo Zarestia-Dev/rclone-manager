@@ -21,6 +21,7 @@
     "copyFailed": "Panoya kopyalanamadı",
     "required": "Bu alan zorunludur.",
     "clear": "Temizle",
+    "reset": "Sıfırla",
     "name": "Ad",
     "status": "Durum",
     "time": "Zaman",
@@ -828,8 +829,7 @@
     "actions": {
       "hide": "Gizle",
       "show": "Göster",
-      "open": "Aç",
-      "reset": "Sıfırla"
+      "open": "Aç"
     },
     "overviewHeader": {
       "manageBackends": "Arka Uçları Yönet",
@@ -1087,6 +1087,10 @@
       "chooseOption": "Bir seçenek belirleyin",
       "selectOption": "Seçenek belirleyin",
       "enterValue": "Değer girin",
+      "orEnterCustom": "Veya özel bir değer girin",
+      "customValueActive": "Özel Değer Aktif",
+      "customValueHint": "Metin kutusuna girdiğiniz özel değer kullanılıyor",
+      "selectedFromListHint": "Listeden seçilen önerilen değer kullanılıyor",
       "inputField": "Giriş alanı",
       "fieldRequired": "Bu alan zorunludur",
       "readyToContinue": "Devam etmeye hazır",
@@ -1143,7 +1147,7 @@
       "watchMixedSourcesNote": "Sadece yerel kaynak dizinleri gerçek zamanlı olarak izlenecektir. Uzak kaynaklardaki değişiklikler senkronizasyonu otomatik olarak tetiklemez.",
       "watchFilterNote": "Dosya izleyici Filtre Profilinize uyar. Hariç tutulan dosyalar veya dizinlerdeki (örneğin örüntü, boyut veya yaşa göre) değişiklikler senkronizasyonu tetiklemez.",
       "scheduleDescription": "Etkinleştirildiğinde, bu işlem aşağıdaki cron zamanlamasına göre <strong>tekrarlı</strong> olarak çalışır.",
-      "notConfigured": "Yapılandırılmadı",
+      "scheduleSubtitle": "Bu işlemi belirli aralıklarla otomatik olarak çalışacak şekilde zamanlayın.",
       "sourcePaths": "Kaynak Yolları",
       "destinationPath": "Hedef Yolu",
       "localPath": "Yerel Yol",
@@ -1655,13 +1659,15 @@
     "actionSelection": {
       "title": "Hızlı Eylemleri Yapılandır",
       "description": "{{name}} için uzak sunucu panelinde düğme olarak gösterilecek eylemleri seçin. En fazla {{max}} eylemi yıldızlayabilir ve sıralarını sürükleyerek değiştirebilirsiniz.",
-      "removeStar": "Hızlı eylemlerden kaldır",
-      "addStar": "Hızlı eylemlere ekle",
-      "cancel": "İptal",
-      "save": "Değişiklikleri Kaydet",
       "moreButton": "Daha Fazla",
       "moreButtonTooltip": "Diğer İşlemler",
       "configureTooltip": "Hızlı Eylemleri Yapılandır"
+    },
+    "itemOrderVisibility": {
+      "addStar": "Hızlı eylemlere ekle",
+      "removeStar": "Hızlı eylemlerden kaldır",
+      "showItem": "Öğeyi göster",
+      "hideItem": "Öğeyi gizle"
     },
     "jobDetail": {
       "title": "İş Detayları #{{id}}",
@@ -2242,6 +2248,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "Kenar Çubuğu Öğelerini Yapılandır",
+      "configureDescription": "Sıralarını değiştirmek için öğeleri sürükleyin veya kenar çubuğunda diskleri ve bulut sunucularını gizlemek/göstermek için göz simgesini kullanın."
+    },
     "shortcuts": {
       "title": "Nautilus Klavye Kısayolları"
     },

@@ -22,6 +22,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RcloneBackendOptionsService } from 'src/app/services/settings/rclone-backend-options.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import {
   matchesConfigSearch,
   stripCliPrefix,
@@ -221,6 +222,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
+  private readonly uiStateService = inject(UiStateService);
   private readonly fb = inject(FormBuilder);
   readonly translate = inject(TranslateService);
 
@@ -232,7 +234,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   readonly isLoading = signal(true);
   readonly searchQuery = signal('');
   readonly isSearchVisible = signal(false);
-  readonly showJsonMode = signal(false);
+  readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly savingOptions = signal(new Set<string>());
   readonly isResetting = signal(false);
 
@@ -583,7 +585,7 @@ export class RcloneFlagsModalComponent implements OnInit {
   }
 
   toggleJsonMode(): void {
-    this.showJsonMode.update(v => !v);
+    this.uiStateService.toggleShowJsonMode();
   }
 
   // ── Service panel state ────────────────────────────────────────────────────

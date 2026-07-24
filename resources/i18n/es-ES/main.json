@@ -21,6 +21,7 @@
     "copyFailed": "Error al copiar al portapapeles",
     "required": "Este campo es requerido.",
     "clear": "Limpiar",
+    "reset": "Restablecer",
     "name": "Nombre",
     "status": "Estado",
     "time": "Hora",
@@ -828,8 +829,7 @@
     "actions": {
       "hide": "Ocultar",
       "show": "Mostrar",
-      "open": "Abrir",
-      "reset": "Restablecer"
+      "open": "Abrir"
     },
     "overviewHeader": {
       "manageBackends": "Gestionar backends",
@@ -1087,6 +1087,10 @@
       "chooseOption": "Elige una opción",
       "selectOption": "Seleccionar opción",
       "enterValue": "Introducir valor",
+      "orEnterCustom": "O introduce un valor personalizado",
+      "customValueActive": "Valor personalizado activo",
+      "customValueHint": "Usando el valor personalizado introducido en el campo",
+      "selectedFromListHint": "Usando el valor sugerido seleccionado de la lista",
       "inputField": "Campo de entrada",
       "fieldRequired": "Este campo es obligatorio",
       "readyToContinue": "Listo para continuar",
@@ -1143,7 +1147,7 @@
       "watchMixedSourcesNote": "Solo los directorios de origen locales se monitorearán en tiempo real. Los cambios en los orígenes remotos no activarán la sincronización automáticamente.",
       "watchFilterNote": "El Perfil de filtro se aplica al monitor de archivos. Los cambios en archivos o directorios excluidos (por patrón, tamaño o antigüedad) no iniciarán la sincronización.",
       "scheduleDescription": "Cuando está habilitada, esta operación se ejecutará de forma <strong>recurrente</strong> según la programación de cron a continuación.",
-      "notConfigured": "No configurado",
+      "scheduleSubtitle": "Ejecute esta operación automáticamente con una programación periódica.",
       "sourcePaths": "Rutas de origen",
       "destinationPath": "Ruta de destino",
       "localPath": "Ruta local",
@@ -1655,13 +1659,15 @@
     "actionSelection": {
       "title": "Configurar acciones rápidas",
       "description": "Elija qué acciones mostrar como botones en el panel remoto para {{name}}. Marque con una estrella hasta {{max}} acciones y arrástrelas para cambiar su orden.",
-      "removeStar": "Quitar de acciones rápidas",
-      "addStar": "Añadir a acciones rápidas",
-      "cancel": "Cancelar",
-      "save": "Guardar cambios",
       "moreButton": "Más",
       "moreButtonTooltip": "Más operaciones",
       "configureTooltip": "Configurar acciones rápidas"
+    },
+    "itemOrderVisibility": {
+      "addStar": "Añadir a acciones rápidas",
+      "removeStar": "Quitar de acciones rápidas",
+      "showItem": "Mostrar elemento",
+      "hideItem": "Ocultar elemento"
     },
     "jobDetail": {
       "title": "Detalles del trabajo #{{id}}",
@@ -2242,6 +2248,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "Configurar elementos de la barra lateral",
+      "configureDescription": "Arrastre elementos para reordenarlos o use el icono de ojo para ocultar o mostrar discos y remotos en la barra lateral."
+    },
     "shortcuts": {
       "title": "Atajos de Teclado de Nautilus"
     },

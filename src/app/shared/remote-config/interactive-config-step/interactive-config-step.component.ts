@@ -6,17 +6,20 @@ import {
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LineBreaksPipe } from '@app/pipes';
 import { RcConfigExample, RcConfigQuestionResponse } from '@app/types';
 import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remote-config.utils';
+import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 
 @Component({
   selector: 'app-interactive-config-step',
@@ -26,9 +29,11 @@ import { getDefaultAnswerFromQuestion } from 'src/app/services/remote/utils/remo
     MatSelectModule,
     MatSlideToggleModule,
     MatInputModule,
+    MatButtonModule,
     MatIconModule,
     LineBreaksPipe,
     TranslatePipe,
+    AlertBannerComponent,
   ],
   templateUrl: './interactive-config-step.component.html',
   styleUrls: ['./interactive-config-step.component.scss'],
@@ -43,10 +48,16 @@ export class InteractiveConfigStepComponent {
 
   readonly answerChange = output<string | number | boolean | null>();
 
+  readonly showPassword = signal(false);
+
   readonly answer = linkedSignal(() => {
     const q = this.question();
     return q ? getDefaultAnswerFromQuestion(q) : null;
   });
+
+  readonly hasError = computed(() => !!this.question()?.Error);
+
+  readonly errorMessage = computed(() => this.question()?.Error || '');
 
   readonly hasExamples = computed(() => !!this.question()?.Option?.Examples?.length);
 
@@ -60,8 +71,23 @@ export class InteractiveConfigStepComponent {
     const examples = q.Option?.Examples;
     if (!examples?.length) return null;
     const current = this.answer();
-    const idx = examples.findIndex(ex => ex.Value === current);
-    return idx >= 0 ? idx : null;
+    if (current === null || current === undefined) return null;
+
+    // 1. Direct value match
+    let idx = examples.findIndex(ex => ex.Value === current);
+    if (idx >= 0) return idx;
+
+    // 2. Loose stringified match
+    idx = examples.findIndex(ex => String(ex.Value) === String(current));
+    if (idx >= 0) return idx;
+
+    // 3. 1-based numeric index fallback
+    const num = parseInt(String(current), 10);
+    if (!isNaN(num) && num >= 1 && num <= examples.length) {
+      return num - 1;
+    }
+
+    return null;
   });
 
   readonly selectedDisplayValue = computed(() =>
@@ -70,9 +96,12 @@ export class InteractiveConfigStepComponent {
 
   readonly isFieldRequired = computed(() => !!this.question()?.Option?.Required);
 
-  readonly isPassword = computed(() => !!this.question()?.Option?.IsPassword);
+  readonly isPassword = computed(
+    () => !!this.question()?.Option?.IsPassword || this.question()?.Option?.Type === 'password'
+  );
 
   readonly isValidAnswer = computed(() => {
+    if (this.hasError()) return false;
     if (!this.isFieldRequired()) return true;
     const current = this.answer();
     if (current === null || current === undefined) return false;
@@ -91,6 +120,10 @@ export class InteractiveConfigStepComponent {
     }
     return fallback;
   });
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update(v => !v);
+  }
 
   onAnswerChange(val: string | number | boolean | null): void {
     if (this.answer() === val) return;

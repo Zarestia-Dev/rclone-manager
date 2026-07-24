@@ -21,6 +21,7 @@
     "copyFailed": "复制到剪贴板失败",
     "required": "此字段为必填项",
     "clear": "清除",
+    "reset": "重置",
     "name": "名称",
     "status": "状态",
     "time": "时间",
@@ -828,8 +829,7 @@
     "actions": {
       "hide": "隐藏",
       "show": "显示",
-      "open": "打开",
-      "reset": "重置"
+      "open": "打开"
     },
     "overviewHeader": {
       "manageBackends": "管理后端",
@@ -1087,6 +1087,10 @@
       "chooseOption": "选择一个选项",
       "selectOption": "选择选项",
       "enterValue": "输入值",
+      "orEnterCustom": "或输入自定义值",
+      "customValueActive": "自定义值已激活",
+      "customValueHint": "正在使用输入框中输入的自定义值",
+      "selectedFromListHint": "正在使用列表中选择的建议值",
       "inputField": "输入框",
       "fieldRequired": "此字段为必填项",
       "readyToContinue": "可继续",
@@ -1143,7 +1147,7 @@
       "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
       "watchFilterNote": "文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
       "scheduleDescription": "启用后，此操作将根据下方的 cron 计划<strong>定期</strong>运行",
-      "notConfigured": "未配置",
+      "scheduleSubtitle": "按定期计划自动运行此操作。",
       "sourcePaths": "源路径列表",
       "destinationPath": "目标路径",
       "localPath": "本地路径",
@@ -1655,13 +1659,15 @@
     "actionSelection": {
       "title": "配置快捷操作",
       "description": "选择要显示在远程仪表板的按钮操作 {{name}}。最多可为 {{max}} 个操作添加星标，并通过拖拽更改它们的顺序。",
-      "removeStar": "从快捷操作中移除",
-      "addStar": "添加到快捷操作",
-      "cancel": "取消",
-      "save": "保存更改",
       "moreButton": "更多",
       "moreButtonTooltip": "更多操作",
       "configureTooltip": "配置快捷操作"
+    },
+    "itemOrderVisibility": {
+      "addStar": "添加到快捷操作",
+      "removeStar": "从快捷操作中移除",
+      "showItem": "显示项目",
+      "hideItem": "隐藏项目"
     },
     "jobDetail": {
       "title": "任务详情 #{{id}}",
@@ -2242,6 +2248,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "配置侧边栏项目",
+      "configureDescription": "拖动项目以重新排序，或使用眼睛图标隐藏或显示侧边栏中的磁盘和远程连接。"
+    },
     "shortcuts": {
       "title": "Nautilus 键盘快捷键"
     },

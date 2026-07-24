@@ -39,7 +39,11 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
-import { ActionSelectionModalComponent } from 'src/app/features/modals/action-selection-modal/action-selection-modal.component';
+import {
+  ItemOrderVisibilityModalComponent,
+  ItemOrderVisibilityResult,
+  buildActionOrderItems,
+} from 'src/app/features/modals/item-order-visibility-modal/item-order-visibility-modal.component';
 
 @Component({
   selector: 'app-general-detail',
@@ -218,25 +222,37 @@ export class GeneralDetailComponent {
     const remote = this.selectedRemote();
     if (!remote) return;
 
+    const currentPrimary = remote.primaryActions?.length
+      ? remote.primaryActions
+      : (MODE_DEFAULTS.general as PrimaryActionType[]);
+    const items = buildActionOrderItems(currentPrimary);
+    const defaultItems = buildActionOrderItems(MODE_DEFAULTS.general as PrimaryActionType[]);
+
     this.dialog
-      .open(ActionSelectionModalComponent, {
+      .open(ItemOrderVisibilityModalComponent, {
         ...STANDARD_MODAL_SIZE,
         disableClose: true,
         data: {
-          remoteName: remote.name,
-          primaryActions: remote.primaryActions ?? [],
+          title: 'modals.actionSelection.title',
+          description: 'modals.actionSelection.description',
+          descriptionParams: { name: remote.name, max: 3 },
+          mode: 'star',
+          maxVisible: 3,
+          items,
+          defaultItems,
         },
         panelClass: 'mobile-sheet-dialog',
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(async (result: PrimaryActionType[] | undefined) => {
-        if (result !== undefined) {
-          try {
-            await this.remoteFacade.updateRemoteSettings(remote.name, { primaryActions: result });
-          } catch (error) {
-            console.error('Failed to update primary actions:', error);
-          }
+      .subscribe(async (result: ItemOrderVisibilityResult<PrimaryActionType> | undefined) => {
+        if (!result) return;
+        try {
+          await this.remoteFacade.updateRemoteSettings(remote.name, {
+            primaryActions: result.isReset ? [] : (result.orderedVisibleIds as PrimaryActionType[]),
+          });
+        } catch (error) {
+          console.error('Failed to update primary actions:', error);
         }
       });
   }

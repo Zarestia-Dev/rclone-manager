@@ -39,6 +39,8 @@ import {
 } from 'src/app/services/remote/utils/command-options.util';
 import { findUniqueName } from 'src/app/services/remote/utils/unique-name.util';
 
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+
 @Component({
   selector: 'app-remote-config-step',
   imports: [
@@ -62,6 +64,7 @@ import { findUniqueName } from 'src/app/services/remote/utils/unique-name.util';
 export class RemoteConfigStepComponent {
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly iconService = inject(IconService);
+  private readonly uiStateService = inject(UiStateService);
 
   // ── Inputs ─────────────────
 
@@ -70,6 +73,7 @@ export class RemoteConfigStepComponent {
   readonly isLoading = input<boolean>(false);
   readonly existingRemotes = input<string[]>([]);
   readonly isTypeLocked = input(false);
+  readonly isNameLocked = input(false);
   readonly remoteTypes = input<RemoteType[]>([]);
   readonly visibility = input<RemoteConfigStepVisibility>({});
   readonly showAdvancedOptions = input<boolean>(false);
@@ -108,7 +112,7 @@ export class RemoteConfigStepComponent {
   // ── Signals ───────────────────────────────────────────────────────────────
 
   readonly selectedProvider = signal<string | undefined>(undefined);
-  readonly showJsonMode = signal(false);
+  readonly showJsonMode = this.uiStateService.showJsonMode;
   readonly showCommandOptions = signal(false);
   readonly commandOptions = signal<CommandOption[]>(INITIAL_COMMAND_OPTIONS);
   readonly newOptionKey = signal('');
@@ -277,7 +281,7 @@ export class RemoteConfigStepComponent {
       const nameControl = this.form().get('name');
       if (!nameControl) return;
 
-      if (this.isTypeLocked()) {
+      if (this.isNameLocked()) {
         nameControl.disable(opts);
       } else {
         nameControl.enable(opts);
@@ -436,7 +440,7 @@ export class RemoteConfigStepComponent {
   }
 
   toggleJsonMode(): void {
-    this.showJsonMode.update(v => !v);
+    this.uiStateService.toggleShowJsonMode();
   }
 
   toggleAdvancedOptions(): void {

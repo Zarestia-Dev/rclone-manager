@@ -6,10 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Nautilus Sidebar Drives & Remotes Customization**: Added the ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated sidebar configuration modal. #233
+
 ### Changed
+- **Generalized Item Order & Visibility Modal**: Renamed and refactored `ActionSelectionModalComponent` into a generic `ItemOrderVisibilityModalComponent` supporting both starred quick action button configuration and item visibility/ordering management across the application.
+- **Universal Interactive Remote Configuration**: Enhanced `interactive-config-step` and the remote creation orchestrator to generically support all rclone interactive configuration steps across any remote type (OneDrive, Google Drive, SFTP, Box, S3, Crypt, Mega, etc.). #243
 - UI improvements. #251 #252 #253 
+- **Remote Disk Usage Loader Optimization**: Optimized remote disk usage checking by eliminating redundant pre-flight `getFeatures()` RPC requests. Disk usage (`rclone about`) is now requested directly, dynamically mapping unsupported responses (such as `"doesn't support about"`) directly to the unsupported state in the UI. #259
 
 ### Fixed
+- **Multi-Select Remote Configuration Options**: Fixed an issue where non-exclusive string options with predefined example lists (such as the `Scope` setting in Google Drive) were rendered as single-select dropdowns, preventing users from selecting multiple items.
 - **Rclone Auth Error Detection**: Fixed an HTTP status code formatting bug where formatting the `StatusCode` display string (e.g., `"401 Unauthorized"`) prevented parsing the status code numerically in the error classifier. This resulted in auth failures (HTTP 401) being misclassified as generic startup/connection failures, preventing the engine from triggering the Auth Required repair sheet in the UI.
 - **Linux Window Resize Handles**: Added custom HTML/CSS resize handle borders in the frontend shell layout to restore cursor and drag-to-resize functionality on undecorated Linux windows. #236
 - **Remote Configuration Flags Loading**: Fixed a bug where flag configs sometimes failed to load and cached failed/empty results in the `MemoizedLoader` until a UI reload. Also resolved a race condition during modal initialization by sequencing metadata and dependent flag fields loading.

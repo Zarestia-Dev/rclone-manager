@@ -869,8 +869,20 @@ export class RemoteConfigStateService {
       this.remoteForm.disable(opts);
       this.remoteConfigForm.disable(opts);
     } else {
-      if (!(this.editTarget() && this.editTarget() !== 'remote')) this.remoteForm.enable(opts);
-      else this.remoteForm.disable(opts);
+      const isRemoteEdit = this.editTarget() === 'remote';
+      const isOtherEdit = this.editTarget() && !isRemoteEdit;
+
+      if (isOtherEdit) {
+        this.remoteForm.disable(opts);
+      } else {
+        this.remoteForm.enable(opts);
+        if (isRemoteEdit) {
+          this.remoteForm.get('type')?.disable(opts);
+          if (!this.cloneTarget()) {
+            this.remoteForm.get('name')?.disable(opts);
+          }
+        }
+      }
       this.remoteConfigForm.enable(opts);
     }
   }

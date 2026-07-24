@@ -1,31 +1,36 @@
 <ng-container [formGroup]="opFormGroup()">
-  @if (showAutoStart()) {
-    <div class="auto-start-panel">
-      <mat-slide-toggle formControlName="autoStart">
-        {{
-          'wizards.appOperation.enableAutoStart'
-            | translate
-              : {
-                  type:
-                    ('modals.remoteConfig.steps.' +
-                      (operationType() === 'remote' ? 'remoteConfig' : operationType())
-                    | translate),
-                }
-        }}
-      </mat-slide-toggle>
-      @if (description()) {
-        <span class="description">{{ description() }}</span>
-      }
-    </div>
-  }
-
   <mat-accordion class="automation-accordion" multi="true">
+    @if (showAutoStart()) {
+      <mat-expansion-panel [expanded]="false" disabled class="cron-panel">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-slide-toggle formControlName="autoStart">
+              {{
+                'wizards.appOperation.enableAutoStart'
+                  | translate
+                    : {
+                        type:
+                          ('modals.remoteConfig.steps.' +
+                            (operationType() === 'remote' ? 'remoteConfig' : operationType())
+                          | translate),
+                      }
+              }}
+            </mat-slide-toggle>
+          </mat-panel-title>
+          @if (description()) {
+            <mat-panel-description>
+              <span class="description">{{ description() }}</span>
+            </mat-panel-description>
+          }
+        </mat-expansion-panel-header>
+      </mat-expansion-panel>
+    }
     @if (!isMount() && !isServe() && showCronSection()) {
       <mat-expansion-panel
         [expanded]="cronPanelExpanded()"
         (opened)="cronPanelExpanded.set(true)"
         (closed)="cronPanelExpanded.set(false)"
-        class="mac-panel"
+        class="cron-panel"
       >
         <mat-expansion-panel-header>
           <mat-panel-title>
@@ -45,13 +50,20 @@
 
           <mat-panel-description>
             @if (cronExpression()) {
-              <code class="cron-tag">{{ cronExpression() }}</code>
-              <button matIconButton (click)="clearSchedule($event)" type="button">
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
-              </button>
+              <div class="schedule-summary">
+                <span class="human-cron">{{ cronHumanDescription() }}</span>
+                <code class="cron-tag">{{ cronExpression() }}</code>
+                <button
+                  class="action-button"
+                  (click)="clearSchedule(); $event.stopPropagation()"
+                  type="button"
+                >
+                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+              </div>
             } @else {
-              <span class="not-configured">{{
-                'wizards.appOperation.notConfigured' | translate
+              <span class="description">{{
+                'wizards.appOperation.scheduleSubtitle' | translate
               }}</span>
             }
           </mat-panel-description>
@@ -76,7 +88,6 @@
         (opened)="watchPanelExpanded.set(true)"
         (closed)="watchPanelExpanded.set(false)"
         [disabled]="!isWatchPossible()"
-        class="mac-panel"
         [class.unavailable]="!isWatchPossible()"
       >
         <mat-expansion-panel-header
@@ -99,7 +110,7 @@
               {{ 'wizards.appOperation.watchDelay' | translate }}:
               <strong>{{ opFormGroup().get('watchDelay')?.value || 1 }}s</strong>
             } @else {
-              <span class="not-configured">{{
+              <span class="description">{{
                 'wizards.appOperation.watchDescription' | translate
               }}</span>
             }
@@ -281,7 +292,7 @@
           </button>
 
           <ng-template #typeMenu>
-            <div class="material-context-menu" cdkMenu>
+            <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
               <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="setType(item, 'local')">
                 <mat-icon svgIcon="folder" class="purple"></mat-icon>
                 <span class="item-label">{{ 'wizards.appOperation.localPath' | translate }}</span>
@@ -385,7 +396,7 @@
 
 <ng-template #autocompleteMenu let-item="item">
   @if (pathStates.get(item.group + '-' + item.index)?.(); as state) {
-    <div class="material-context-menu" cdkMenu>
+    <div class="material-context-menu limited" cdkMenu appCdkOverlayAutopos>
       @if (state.isLoading) {
         <div class="menu-item disabled">
           <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
