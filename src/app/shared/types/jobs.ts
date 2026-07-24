@@ -1,9 +1,38 @@
 import { JobActionType } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 import { Origin } from './origin';
-import type { CompletedTransfer } from './components';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
+
+export interface ResolveState {
+  status: string;
+  percentage: number;
+  isPreparing: boolean;
+  bytes: number;
+  size: number;
+  speed: number;
+  speedClass: string;
+  eta: number;
+  error?: string;
+}
+
+export interface CompletedTransfer {
+  name: string;
+  size: number;
+  bytes: number;
+  checked: boolean;
+  error: string;
+  jobid: number;
+  startedAt?: string;
+  completedAt?: string;
+  srcFs?: string;
+  dstFs?: string;
+  group?: string;
+  status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
+  uniqueId?: string;
+  resolveJobId?: number;
+  resolveState?: ResolveState;
+}
 
 export interface TransferFile {
   bytes: number;
@@ -130,7 +159,6 @@ export const JOB_STATUS_BADGE_MAP: Readonly<Record<string, string>> = Object.fre
 
 export const JOB_ICON_MAP: Readonly<Record<string, string>> = Object.freeze({
   ...Object.fromEntries(OPERATION_REGISTRY.map(op => [op.key, op.icon])),
-  copyurl: 'link',
   rename: 'pen',
   cleanup: 'broom',
   rmdirs: 'broom',

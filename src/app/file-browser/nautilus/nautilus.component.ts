@@ -587,6 +587,12 @@ export class NautilusComponent implements OnInit {
     this.updatePath(this.tabSvc.currentPath() ? `${currentPath}/${normalized}` : normalized);
   }
 
+  protected onPopOutToWindow(): void {
+    const remote = this.tabSvc.activeRemote()?.name ?? null;
+    const path = this.tabSvc.activePath() ?? null;
+    void this.nautilusService.newNautilusWindow(remote, path, true);
+  }
+
   protected navigateTo(item: FileBrowserItem, isNewTab = false): void {
     const idx = this.tabSvc.activeTabIndex();
     const tab = this.tabSvc.tabs()[idx];

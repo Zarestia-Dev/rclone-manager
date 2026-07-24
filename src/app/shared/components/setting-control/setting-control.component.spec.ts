@@ -26,7 +26,7 @@ describe('SettingControlComponent', () => {
     Name: 'scope',
     FieldName: '',
     Help: 'Comma separated list of scopes that rclone should use when requesting access from drive.',
-    Type: 'string',
+    Type: 'CommaSepList',
     Exclusive: false,
     DefaultStr: '',
     Examples: [
@@ -59,7 +59,7 @@ describe('SettingControlComponent', () => {
     host = fixture.componentInstance;
   });
 
-  it('should render a multi-select dropdown when option is non-exclusive (Exclusive: false) with Examples', () => {
+  it('should render a multi-select dropdown when option is a multiselect type (CommaSepList)', () => {
     host.option.set(mockScopeOption);
     fixture.detectChanges();
 
@@ -112,5 +112,35 @@ describe('SettingControlComponent', () => {
     const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
 
     expect(settingControlComp.isMultiselectOption()).toBeTrue();
+  });
+
+  it('should NOT treat boolean options with Exclusive: false as multiselect and should reset to default boolean value', () => {
+    const mockBoolOption: RcConfigOption = {
+      Name: 'shared_files',
+      FieldName: '',
+      Help: 'Instructs rclone to work on individual shared files.',
+      Type: 'bool',
+      Exclusive: false,
+      Default: false,
+      DefaultStr: 'false',
+    };
+
+    host.option.set(mockBoolOption);
+    fixture.detectChanges();
+
+    const settingControlEl = fixture.debugElement.query(By.directive(SettingControlComponent));
+    const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
+
+    expect(settingControlComp.isMultiselectOption()).toBeFalse();
+    expect(settingControlComp.control()?.value).toBeFalse();
+
+    settingControlComp.control()?.setValue(true);
+    fixture.detectChanges();
+    expect(settingControlComp.isValueChanged()).toBeTrue();
+
+    settingControlComp.resetToDefault();
+    fixture.detectChanges();
+    expect(settingControlComp.control()?.value).toBeFalse();
+    expect(settingControlComp.isValueChanged()).toBeFalse();
   });
 });

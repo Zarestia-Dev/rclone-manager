@@ -1,12 +1,10 @@
 //! Custom upload commands for streaming and batch processing to rclone remotes.
 
-use std::sync::{Arc, Mutex};
-
-use base64::Engine;
 use futures::StreamExt;
 use log::debug;
 use serde::Deserialize;
 use serde_json::json;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::{BackendManager, TransportKind};
@@ -197,15 +195,29 @@ pub async fn execute_upload_batch(
 
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
+    let transport = crate::rclone::commands::common::transport(&app);
     let client = app.state::<RcloneState>().client.clone();
     let job_cache = &backend_manager.job_cache;
 
     let file_entries = discover_upload_entries(local_paths.clone(), path.clone()).await?;
     if file_entries.is_empty() {
+        for raw in &local_paths {
+            let p = std::path::PathBuf::from(raw);
+            if p.is_dir() {
+                let folder_name = p.file_name().unwrap_or_default().to_string_lossy();
+                let remote_dir = if path.is_empty() || path == "/" {
+                    folder_name.to_string()
+                } else {
+                    format!("{}/{}", path.trim_end_matches('/'), folder_name)
+                };
+                let payload = json!({ "fs": &remote, "remote": &remote_dir });
+                let _ = transport.rpc("operations/mkdir", Some(&payload)).await;
+            }
+        }
         if let Some(dir) = cleanup_dir {
             let _ = tokio::fs::remove_dir_all(dir).await;
         }
-        return Err("No valid files found to upload".to_string());
+        return Ok("0".to_string());
     }
 
     let total_files = file_entries.len();
@@ -255,6 +267,7 @@ pub async fn execute_upload_batch(
 
     let mut stream = futures::stream::iter(file_entries)
         .map(|(file_path, remote_dir, rel_name)| {
+            let transport = transport.clone();
             let backend = backend.clone();
             let client = client.clone();
             let remote = remote.clone();
@@ -325,60 +338,86 @@ pub async fn execute_upload_batch(
                     .to_string_lossy()
                     .to_string();
 
-                let part_res = reqwest::multipart::Part::stream(reqwest::Body::from(file))
-                    .file_name(base_filename)
-                    .mime_str("application/octet-stream");
+                let result = if matches!(transport.kind(), TransportKind::Librclone) {
+                    let dst_remote = if remote_dir.is_empty() {
+                        base_filename.clone()
+                    } else if remote_dir.ends_with('/') {
+                        format!("{remote_dir}{base_filename}")
+                    } else {
+                        format!("{remote_dir}/{base_filename}")
+                    };
+                    let dst_fs_arg = if remote.ends_with(':') {
+                        remote.clone()
+                    } else {
+                        format!("{remote}:")
+                    };
+                    let payload = json!({
+                        "srcFs": src_fs,
+                        "srcRemote": base_filename,
+                        "dstFs": dst_fs_arg,
+                        "dstRemote": dst_remote,
+                    });
 
-                let part = match part_res {
-                    Ok(p) => p,
-                    Err(e) => {
-                        // Build JSON outside the lock to minimize contention.
-                        let err_msg = format!("Multipart error for {filename}: {e}");
-                        let completed_entry = json!({
-                            "name": filename,
-                            "size": size,
-                            "bytes": 0,
-                            "checked": false,
-                            "error": err_msg,
-                            "started_at": started_at,
-                            "completed_at": chrono::Utc::now(),
-                            "srcFs": src_fs,
-                            "dstFs": dst_fs,
-                            "group": group_name,
-                        });
-                        let stats = {
-                            let mut state = progress.lock().unwrap();
-                            state.remove_transferring(&filename);
-                            state.errors.push(err_msg);
-                            state.completed.push(completed_entry);
-                            state.build_stats(total_bytes, total_files)
-                        };
-                        let _ = job_cache.update_job_stats(jobid, stats).await;
-                        return;
+                    match transport.rpc(operations::COPYFILE, Some(&payload)).await {
+                        Ok(_) => Ok(size),
+                        Err(e) => Err(format!("Upload failed for {filename}: {e}")),
                     }
-                };
+                } else {
+                    let part_res = reqwest::multipart::Part::stream(reqwest::Body::from(file))
+                        .file_name(base_filename)
+                        .mime_str("application/octet-stream");
 
-                let resp = backend
-                    .inject_auth(
-                        client
-                            .post(backend.url_for(operations::UPLOADFILE))
-                            .query(&[("fs", &remote), ("remote", &remote_dir)]),
-                    )
-                    .multipart(reqwest::multipart::Form::new().part("file", part))
-                    .send()
-                    .await;
+                    let part = match part_res {
+                        Ok(p) => p,
+                        Err(e) => {
+                            // Build JSON outside the lock to minimize contention.
+                            let err_msg = format!("Multipart error for {filename}: {e}");
+                            let completed_entry = json!({
+                                "name": filename,
+                                "size": size,
+                                "bytes": 0,
+                                "checked": false,
+                                "error": err_msg,
+                                "started_at": started_at,
+                                "completed_at": chrono::Utc::now(),
+                                "srcFs": src_fs,
+                                "dstFs": dst_fs,
+                                "group": group_name,
+                            });
+                            let stats = {
+                                let mut state = progress.lock().unwrap();
+                                state.remove_transferring(&filename);
+                                state.errors.push(err_msg);
+                                state.completed.push(completed_entry);
+                                state.build_stats(total_bytes, total_files)
+                            };
+                            let _ = job_cache.update_job_stats(jobid, stats).await;
+                            return;
+                        }
+                    };
 
-                let result = match resp {
-                    Ok(r) if r.status().is_success() => Ok(size),
-                    Ok(r) => {
-                        let status = r.status();
-                        let err_text = r.text().await.unwrap_or_default();
-                        let err_msg = parse_rclone_error(&err_text);
-                        Err(format!(
-                            "Upload failed for {filename}: {status} - {err_msg}"
-                        ))
+                    let resp = backend
+                        .inject_auth(
+                            client
+                                .post(backend.url_for(operations::UPLOADFILE))
+                                .query(&[("fs", &remote), ("remote", &remote_dir)]),
+                        )
+                        .multipart(reqwest::multipart::Form::new().part("file", part))
+                        .send()
+                        .await;
+
+                    match resp {
+                        Ok(r) if r.status().is_success() => Ok(size),
+                        Ok(r) => {
+                            let status = r.status();
+                            let err_text = r.text().await.unwrap_or_default();
+                            let err_msg = parse_rclone_error(&err_text);
+                            Err(format!(
+                                "Upload failed for {filename}: {status} - {err_msg}"
+                            ))
+                        }
+                        Err(e) => Err(format!("Network error for {filename}: {e}")),
                     }
-                    Err(e) => Err(format!("Network error for {filename}: {e}")),
                 };
 
                 {
@@ -541,55 +580,59 @@ pub async fn upload_file(
                 Err(e) => Err(format!("Network error: {e}")),
             }
         }
-        // Mobile (librclone): the rc protocol doesn't accept multipart bodies.
+        // Mobile (librclone): the rc protocol doesn't accept multipart bodies via JSON RPC.
         // Write the bytes to a temp file, then use operations/copyfile to copy
         // from the local temp file to the destination remote.
         TransportKind::Librclone => {
-            // For small files (< 16 MB), base64-encode into the JSON body of
-            // operations/uploadfile directly. This avoids the temp-file dance.
-            // For larger files, fall back to temp file + operations/copyfile.
-            const BASE64_THRESHOLD: usize = 16 * 1024 * 1024;
-
             let dst_remote = if remote_dir.is_empty() {
                 name.clone()
             } else {
                 format!("{remote_dir}{name}")
             };
 
-            if content.len() < BASE64_THRESHOLD {
-                let b64 = base64::engine::general_purpose::STANDARD.encode(&content);
-                let payload = json!({
-                    "fs": &remote,
-                    "remote": &dst_remote,
-                    "file": b64,
-                });
-                transport
-                    .rpc(operations::UPLOADFILE, Some(&payload))
-                    .await
-                    .map_err(|e| format!("Upload failed: {e}"))?;
-                Ok("File uploaded successfully".to_string())
+            let tmp = tempfile::Builder::new()
+                .prefix("rclone_upload_")
+                .tempfile()
+                .map_err(|e| format!("Failed to create temp file: {e}"))?;
+
+            tokio::fs::write(tmp.path(), &content)
+                .await
+                .map_err(|e| format!("Failed to write temp file: {e}"))?;
+
+            let tmp_parent = tmp
+                .path()
+                .parent()
+                .ok_or_else(|| "Invalid temp file parent directory".to_string())?;
+
+            let tmp_filename = tmp
+                .path()
+                .file_name()
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| "Invalid temp filename".to_string())?;
+
+            let src_fs = tmp_parent.to_string_lossy().to_string();
+            let dst_fs = if remote.is_empty() || remote == ":" {
+                "".to_string()
+            } else if remote.ends_with(':') {
+                remote.clone()
             } else {
-                // Temp-file path: copyfile from ":file:<tmp>" to "<remote>:<dst>".
-                let tmp = tempfile::NamedTempFile::new()
-                    .map_err(|e| format!("Failed to create temp file: {e}"))?;
-                tokio::fs::write(tmp.path(), &content)
-                    .await
-                    .map_err(|e| format!("Failed to write temp file: {e}"))?;
-                let src_fs = format!(":file:{}", tmp.path().display());
-                let dst_fs = format!("{remote}:");
-                let payload = json!({
-                    "srcFs": src_fs,
-                    "srcRemote": tmp.path().file_name().and_then(|n| n.to_str()).unwrap_or("tmp"),
-                    "dstFs": dst_fs,
-                    "dstRemote": &dst_remote,
-                });
-                transport
-                    .rpc(operations::COPYFILE, Some(&payload))
-                    .await
-                    .map_err(|e| format!("Upload (copyfile) failed: {e}"))?;
-                // Temp file is auto-cleaned when `tmp` drops.
-                Ok("File uploaded successfully".to_string())
-            }
+                format!("{remote}:")
+            };
+
+            let payload = json!({
+                "srcFs": src_fs,
+                "srcRemote": tmp_filename,
+                "dstFs": dst_fs,
+                "dstRemote": &dst_remote,
+            });
+
+            transport
+                .rpc(operations::COPYFILE, Some(&payload))
+                .await
+                .map_err(|e| format!("Upload failed: {e}"))?;
+
+            // Temp file is auto-cleaned when `tmp` drops.
+            Ok("File uploaded successfully".to_string())
         }
     }
 }

@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusActionsService } from './nautilus-actions.service';
 import { NautilusTabService } from './nautilus-tab.service';
-import { FileBrowserItem, Entry } from '@app/types';
+import { FileBrowserItem, Entry, fileBrowserItemKey } from '@app/types';
 
 @Injectable()
 export class NautilusSelectionService {
@@ -30,8 +30,7 @@ export class NautilusSelectionService {
   }
 
   getItemKey(item: FileBrowserItem | null): string {
-    if (!item) return '';
-    return `${item.meta.remote}:${item.entry.Path}`;
+    return fileBrowserItemKey(item);
   }
 
   getSelectedItemsList(currentFiles: FileBrowserItem[]): FileBrowserItem[] {

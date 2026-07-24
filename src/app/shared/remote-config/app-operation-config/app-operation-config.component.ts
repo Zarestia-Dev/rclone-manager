@@ -47,12 +47,11 @@ import {
   PathGroup,
   PathInspectionStatus,
 } from 'src/app/services/infrastructure/platform/path.service';
-import { toString as cronstrue } from 'cronstrue';
-import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 import { CronInputComponent } from 'src/app/shared/remote-config/cron-input/cron-input.component';
 import { NumberInputComponent } from 'src/app/shared/components/number-input/number-input.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { CdkOverlayAutoposDirective } from 'src/app/shared/directives/cdk-overlay-autopos.directive';
+import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathDirection = 'source' | 'dest';
@@ -124,12 +123,7 @@ export class OperationConfigComponent {
   readonly cronHumanDescription = computed(() => {
     const cron = this.cronExpression();
     if (!cron) return null;
-    try {
-      const locale = getCronstrueLocale(this.translate.currentLang() ?? 'en-US');
-      return cronstrue(cron, { locale });
-    } catch {
-      return cron;
-    }
+    return formatCronHumanReadable(cron, this.translate.currentLang());
   });
   readonly isWatchEnabled = computed(() => {
     this.formVersion();

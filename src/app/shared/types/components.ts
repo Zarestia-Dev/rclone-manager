@@ -1,4 +1,4 @@
-import type { JobInfo, TransferFile } from './jobs';
+import type { JobInfo, TransferFile, CompletedTransfer } from './jobs';
 import type { PrimaryActionType, RemoteAction } from './operations';
 import { OPERATION_REGISTRY } from './operation-registry';
 
@@ -103,37 +103,7 @@ export interface OperationControlConfig {
   profileName?: string;
 }
 
-export interface ResolveState {
-  status: string;
-  percentage: number;
-  isPreparing: boolean;
-  bytes: number;
-  size: number;
-  speed: number;
-  speedClass: string;
-  eta: number;
-  error?: string;
-}
-
 // ── Transfer Activity Panel ─────────────────────────────────────────────────
-export interface CompletedTransfer {
-  name: string;
-  size: number;
-  bytes: number;
-  checked: boolean;
-  error: string;
-  jobid: number;
-  startedAt?: string;
-  completedAt?: string;
-  srcFs?: string;
-  dstFs?: string;
-  group?: string;
-  status: 'completed' | 'checked' | 'failed' | 'partial' | 'missing_dst' | 'missing_src';
-  uniqueId?: string;
-  resolveJobId?: number;
-  resolveState?: ResolveState;
-}
-
 export interface TransferActivityPanelConfig {
   activeTransfers: TransferFile[];
   completedTransfers: CompletedTransfer[];

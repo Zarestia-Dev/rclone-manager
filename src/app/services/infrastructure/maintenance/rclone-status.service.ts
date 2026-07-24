@@ -15,6 +15,7 @@ import {
   RcloneInfo,
   SystemStatusPayload,
 } from '@app/types';
+import { deepEqual } from 'src/app/shared/utils';
 
 @Injectable({ providedIn: 'root' })
 export class RcloneStatusService {
@@ -24,13 +25,13 @@ export class RcloneStatusService {
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
-  readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: this.objectsEqual });
+  readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: deepEqual });
   readonly bandwidthLimit = signal<BandwidthLimitResponse | null>(null, {
-    equal: this.objectsEqual,
+    equal: deepEqual,
   });
   readonly rcloneStatus = signal<RcloneStatus>('inactive');
   readonly rclonePID = signal<number | null>(null);
-  readonly jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
+  readonly jobStats = signal<GlobalStats>(structuredClone(DEFAULT_JOB_STATS));
   readonly memoryUsage = signal<MemoryStats | null>(null);
   readonly isLoading = signal(true);
   readonly uptime = computed(() => this.jobStats().elapsedTime || 0);
@@ -166,7 +167,7 @@ export class RcloneStatusService {
         bytesPerSecondTx: -1,
         rate: 'off',
         loading: false,
-        error: `Failed: ${error}`,
+        error: `Failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -176,11 +177,5 @@ export class RcloneStatusService {
   }
   resumePolling(): void {
     this.isManuallyPaused.set(false);
-  }
-
-  private objectsEqual<T>(a: T, b: T): boolean {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    return JSON.stringify(a) === JSON.stringify(b);
   }
 }

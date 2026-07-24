@@ -82,7 +82,7 @@ export class OperationsPanelComponent {
   });
 
   constructor() {
-    this.jobManagementService.refreshJobs();
+    void this.jobManagementService.refreshJobs();
   }
 
   private toJobViewModel(job: JobInfo): JobViewModel {
@@ -115,15 +115,6 @@ export class OperationsPanelComponent {
     return Math.round((job.stats.bytes / job.stats.totalBytes) * 100);
   }
 
-  resolveSourceString(source: string | string[]): string {
-    if (Array.isArray(source)) {
-      if (source.length === 0) return '';
-      if (source.length === 1) return source[0];
-      return 'multiple items';
-    }
-    return source || '';
-  }
-
   getFormattedSource(source: string | string[]): string {
     if (Array.isArray(source)) {
       return source.join(', ');
@@ -132,10 +123,12 @@ export class OperationsPanelComponent {
   }
 
   getActualFileName(job: JobInfo): string {
-    const resolvedSource = this.resolveSourceString(job.source);
-    if (resolvedSource === 'multiple items' && job.stats && job.stats.totalTransfers > 0) {
+    const isMultiSource = Array.isArray(job.source) && job.source.length > 1;
+    if (isMultiSource && job.stats && job.stats.totalTransfers > 0) {
       return `${job.stats.totalTransfers} files`;
     }
+
+    const resolvedSource = Array.isArray(job.source) ? (job.source[0] ?? '') : job.source || '';
     const path = job.destination || resolvedSource || '';
     return this.uiStateService.extractFilename(path) || resolvedSource || job.destination || '';
   }
@@ -193,7 +186,6 @@ export class OperationsPanelComponent {
   async stopJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.stopJob(job.jobid, job.remote_name);
-      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to stop job:', err);
     }
@@ -202,7 +194,6 @@ export class OperationsPanelComponent {
   async deleteJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.deleteJob(job.jobid);
-      // Removed manual refreshJobs() - the service should update the signal stream reactively
     } catch (err) {
       console.error('Failed to delete job:', err);
     }

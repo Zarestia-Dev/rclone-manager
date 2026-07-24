@@ -5,7 +5,7 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
-import { ExplorerRoot, FileBrowserItem, RemoteFeatures } from '@app/types';
+import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey, RemoteFeatures } from '@app/types';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
@@ -365,7 +365,7 @@ export class NautilusActionsService {
   }
 
   private _itemKey(item: FileBrowserItem): string {
-    return `${item.meta.remote}:${item.entry.Path}`;
+    return fileBrowserItemKey(item);
   }
 
   private _resolveBookmarkRemote(bookmark: FileBrowserItem): ExplorerRoot | null {

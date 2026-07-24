@@ -124,6 +124,12 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     }
 
     app_handle
+        .emit(crate::utils::types::events::REMOTE_CACHE_CHANGED, ())
+        .ok();
+    app_handle
+        .emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ())
+        .ok();
+    app_handle
         .emit(
             SYSTEM_SETTINGS_CHANGED,
             crate::utils::types::events::SettingsChangeEvent {

@@ -1,4 +1,4 @@
-<ng-template #fileMenuTemplate let-item>
+<ng-template #fileMenuTemplate>
   <div
     class="material-context-menu sliding-container nautilus-sliding-container"
     cdkMenu
@@ -8,7 +8,7 @@
       <!-- Main Page -->
       <div class="menu-page" [class.active-page]="menuCtrl.currentMenuView() === 'main'">
         @if (!tabSvc.errorState()) {
-          @if (item) {
+          @if (actions.contextMenuItem()) {
             <!-- Multiple Selection Mode -->
             @if (activeSelectionCount() > 1) {
               <button class="menu-item" cdkMenuItem (click)="copyItems()">
@@ -59,7 +59,7 @@
               </button>
             } @else {
               <!-- Single Selection Mode -->
-              @if (item.entry.IsDir) {
+              @if (actions.contextMenuItem()?.entry?.IsDir) {
                 <button
                   class="menu-item space-between"
                   (click)="menuCtrl.openSubmenu(); $event.stopPropagation()"
@@ -74,7 +74,7 @@
                 </button>
               }
 
-              @if (item.entry.IsDir) {
+              @if (actions.contextMenuItem()?.entry?.IsDir) {
                 <button class="menu-item" cdkMenuItem (click)="actions.removeEmptyDirs()">
                   <span class="item-label">{{
                     'nautilus.contextMenu.removeEmptyDirs' | translate
@@ -82,7 +82,11 @@
                 </button>
               }
 
-              <button class="menu-item" cdkMenuItem [appCopyToClipboard]="getFormattedPath(item)">
+              <button
+                class="menu-item"
+                cdkMenuItem
+                [appCopyToClipboard]="getFormattedPath(actions.contextMenuItem())"
+              >
                 <span class="item-label">{{ 'nautilus.contextMenu.copyPath' | translate }}</span>
               </button>
 
@@ -131,7 +135,7 @@
               </button>
             }
           }
-          @if (!item) {
+          @if (!actions.contextMenuItem()) {
             <button
               class="menu-item"
               cdkMenuItem
@@ -142,7 +146,7 @@
             </button>
           }
 
-          @if (!item && !tabSvc.activeStarredMode()) {
+          @if (!actions.contextMenuItem() && !tabSvc.activeStarredMode()) {
             <button class="menu-item" cdkMenuItem (click)="actions.openNewFolder()">
               <span class="item-label">{{ 'nautilus.contextMenu.newFolder' | translate }}</span>
               <span class="shortcut">Ctrl+Shift+N</span>

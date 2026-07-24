@@ -253,7 +253,8 @@ pub fn run() {
         builder = builder
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_os::init())
-            .plugin(tauri_plugin_clipboard_manager::init());
+            .plugin(tauri_plugin_clipboard_manager::init())
+            .plugin(tauri_plugin_opener::init());
     }
 
     #[cfg(not(feature = "mobile"))]
@@ -265,9 +266,7 @@ pub fn run() {
 
     #[cfg(all(desktop, feature = "tray"))]
     {
-        builder = builder
-            .plugin(tauri_plugin_opener::init())
-            .on_menu_event(|app, event| handle_tray_menu_event(app, &event));
+        builder = builder.on_menu_event(|app, event| handle_tray_menu_event(app, &event));
     }
 
     #[cfg(not(feature = "web-server"))]

@@ -19,7 +19,6 @@ import { NautilusFileOperationsService } from 'src/app/services/ui/nautilus-file
 import { NautilusSettingsService } from 'src/app/services/ui/nautilus-settings.service';
 import { NautilusSelectionService } from 'src/app/services/ui/nautilus-selection.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
-import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { CopyToClipboardDirective } from '../../../shared/directives/copy-to-clipboard.directive';
 import { SlideMenuController } from '../slide-menu';
 import { FileBrowserItem, FilePickerConfig, DEFAULT_PICKER_OPTIONS } from '@app/types';
@@ -45,7 +44,6 @@ export class NautilusContextMenuComponent {
   public readonly settings = inject(NautilusSettingsService);
   protected readonly selectionSvc = inject(NautilusSelectionService);
   protected readonly pathService = inject(PathService);
-  private readonly remoteFacadeSvc = inject(RemoteFacadeService);
 
   // Inputs
   readonly files = input<FileBrowserItem[]>([]);
@@ -76,17 +74,7 @@ export class NautilusContextMenuComponent {
       : this.tabSvc.selectedItemsRight().size;
   });
 
-  protected readonly supportsPublicLink = computed(() => {
-    const item = this.actions.contextMenuItem();
-    const remote = this.tabSvc.activeRemote();
-    const activeRemoteName = item?.meta.remote ?? remote?.name;
-    if (!activeRemoteName) return false;
-    const isLocal = item?.meta.isLocal ?? remote?.isLocal ?? true;
-    if (isLocal) return false;
-    const baseName = this.pathService.normalizeRemoteName(activeRemoteName);
-    const features = this.remoteFacadeSvc.featuresSignal(baseName)();
-    return !!features?.PublicLink;
-  });
+  protected readonly supportsPublicLink = this.actions.supportsPublicLink;
 
   protected readonly fullPathInput = computed(() => {
     if (this.tabSvc.activeStarredMode()) return '';

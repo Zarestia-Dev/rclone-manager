@@ -27,6 +27,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
@@ -51,6 +52,7 @@ import { isConvertibleType, isMultiselectType } from 'src/app/shared/utils';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatSlideToggleModule,
     MatIconModule,
     MatTooltipModule,
@@ -247,8 +249,11 @@ export class SettingControlComponent implements ControlValueAccessor {
   readonly isMultiselectOption = computed(() => {
     const opt = this.mergedOption();
     if (!opt) return false;
-    if (opt.Exclusive === false) return true;
-    return isMultiselectType(opt.Type);
+    if (isMultiselectType(opt.Type)) return true;
+    return (
+      (opt.Name === 'scope' || opt.Help?.toLowerCase().includes('comma separated list')) &&
+      !!opt.Examples?.length
+    );
   });
 
   readonly uiDefaultValue = computed(() => {
@@ -294,13 +299,13 @@ export class SettingControlComponent implements ControlValueAccessor {
       value = rawValue;
     }
 
-    if (value === null || value === undefined || value === '') return '';
+    if (value === null || value === undefined) return '';
 
     const examples = this.resolveExamplesList(opt);
     for (const e of examples) {
       const eObj =
         typeof e === 'object' && e !== null ? (e as { Value?: unknown; Help?: string }) : null;
-      const eValue = eObj?.Value ?? e;
+      const eValue = eObj ? (eObj.Value ?? '') : e;
       if (eValue === value) {
         if (eObj) {
           return eObj.Help || (typeof eObj.Value === 'string' ? eObj.Value : String(value));
@@ -308,7 +313,7 @@ export class SettingControlComponent implements ControlValueAccessor {
         return String(e);
       }
     }
-    return String(value);
+    return value === '' ? '' : String(value);
   });
 
   private resolveExamplesList(opt: RcConfigOption): ({ Value?: string; Help?: string } | string)[] {
@@ -357,10 +362,12 @@ export class SettingControlComponent implements ControlValueAccessor {
       return this.splitToArray(option.DefaultStr, delimiter);
     }
     switch (option.Type) {
-      case 'bool':
-        return option.Default === true || String(option.Default).toLowerCase() === 'true';
+      case 'bool': {
+        const def = option.Default ?? option.DefaultStr;
+        return def === true || String(def).toLowerCase() === 'true';
+      }
       case 'Tristate':
-        return this.valueMapper.parseTristate(option.Default);
+        return this.valueMapper.parseTristate(option.Default ?? option.DefaultStr);
       case 'Bits':
         if (this.isBitsWithCombos(option)) return option.DefaultStr ?? '';
         if (!option.Examples?.length) return option.DefaultStr ?? '';
@@ -383,11 +390,11 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private splitToArray(str: string | undefined, delimiter: string | RegExp): string[] {
-    if (!str) return [];
+    if (!str || str === '[]' || str === 'null') return [];
     return str
       .split(delimiter)
       .map(v => v.trim())
-      .filter(Boolean);
+      .filter(v => Boolean(v) && v !== '[]' && v !== 'null');
   }
 
   private valuesEqual(current: unknown, defaultVal: unknown): boolean {
@@ -397,18 +404,24 @@ export class SettingControlComponent implements ControlValueAccessor {
       return current === defaultVal;
     }
 
-    if (this.isMultiselectOption()) {
+    if (
+      this.isMultiselectOption() ||
+      optType === 'stringArray' ||
+      optType === 'CommaSepList' ||
+      optType === 'SpaceSepList'
+    ) {
       const toArray = (v: unknown): string[] => {
-        if (Array.isArray(v)) return v.map(String);
+        if (Array.isArray(v))
+          return v
+            .map(String)
+            .map(s => s.trim())
+            .filter(s => Boolean(s) && s !== '[]');
         if (typeof v === 'string') {
           const delimiter = optType === 'SpaceSepList' ? /\s+/ : ',';
-          return v
-            .split(delimiter)
-            .map(s => s.trim())
-            .filter(Boolean);
+          return this.splitToArray(v, delimiter);
         }
         if (v === null || v === undefined) return [];
-        return [String(v)];
+        return [String(v)].filter(s => Boolean(s) && s !== '[]');
       };
 
       const currArr = toArray(current);
@@ -599,8 +612,10 @@ export class SettingControlComponent implements ControlValueAccessor {
   }
 
   private getInitialValue(opt: RcConfigOption): unknown {
-    if (opt.Type === 'bool')
-      return opt.Value === true || String(opt.Value).toLowerCase() === 'true';
+    if (opt.Type === 'bool') {
+      const val = opt.Value ?? opt.Default ?? opt.DefaultStr;
+      return val === true || String(val).toLowerCase() === 'true';
+    }
 
     if (this.isMultiselectOption()) {
       if (this.isBitsWithCombos(opt)) {
@@ -800,7 +815,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
 
     const isMultiSelect = this.isMultiselectOption();
-    if (opt.Examples && !isMultiSelect) {
+    if (opt.Examples && !isMultiSelect && opt.Exclusive !== false) {
       validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
     }
 

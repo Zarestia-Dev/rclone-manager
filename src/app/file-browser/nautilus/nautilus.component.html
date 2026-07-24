@@ -73,6 +73,7 @@
       (navigateToPath)="navigateToPath($event)"
       (layoutChange)="settings.setLayout($event)"
       (closeOverlay)="closeOverlay.emit(null)"
+      (popOutToWindow)="onPopOutToWindow()"
       (copyUrl)="actions.openCopyUrlDialog()"
       (searchFilterChange)="searchFilter.set($event)"
       (isSearchModeChange)="isSearchMode.set($event)"

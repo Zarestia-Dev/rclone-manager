@@ -193,7 +193,16 @@ pub fn fs_value_with_runtime_overrides(
 
     match remote_override {
         Some(opts) if !opts.is_empty() => {
-            let mut fs_obj = opts.clone();
+            let mut fs_obj = serde_json::Map::new();
+            for (k, v) in opts {
+                let stringified_v = match v {
+                    Value::String(s) => Value::String(s.clone()),
+                    Value::Bool(b) => Value::String(b.to_string()),
+                    Value::Number(n) => Value::String(n.to_string()),
+                    _ => v.clone(),
+                };
+                fs_obj.insert(k.clone(), stringified_v);
+            }
             if base.starts_with(':') {
                 fs_obj.insert("type".to_string(), json!(base.trim_matches(':')));
             } else {
@@ -470,7 +479,7 @@ mod tests {
         let obj2 = overridden2.as_object().unwrap();
         assert_eq!(obj2.get("_name").unwrap(), "s3_backend");
         assert_eq!(obj2.get("_root").unwrap(), "bucket");
-        assert_eq!(obj2.get("env_auth").unwrap(), &json!(true));
+        assert_eq!(obj2.get("env_auth").unwrap(), &json!("true"));
 
         // No match in overrides
         assert_eq!(

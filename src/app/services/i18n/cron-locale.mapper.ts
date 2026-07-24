@@ -4,6 +4,7 @@ import 'cronstrue/locales/zh_CN';
 import 'cronstrue/locales/zh_TW';
 import 'cronstrue/locales/fr';
 import 'cronstrue/locales/ru';
+import { toString as cronstrue } from 'cronstrue';
 
 /**
  * Maps an app locale (e.g. 'en-US', 'tr-TR') to a cronstrue locale (e.g. 'en', 'tr').
@@ -19,4 +20,14 @@ export function getCronstrueLocale(appLocale: string): string {
   }
 
   return lang;
+}
+
+export function formatCronHumanReadable(cron: string, lang: string | null | undefined): string {
+  if (!cron) return '';
+  try {
+    const locale = getCronstrueLocale(lang ?? 'en-US');
+    return cronstrue(cron, { locale });
+  } catch {
+    return cron;
+  }
 }

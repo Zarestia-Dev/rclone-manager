@@ -113,6 +113,15 @@
   @if (nautilusService.isStandaloneWindow()) {
     <app-window-controls></app-window-controls>
   } @else {
+    @if (!isMobile()) {
+      <button
+        class="nav-button"
+        [title]="'nautilus.contextMenu.openNewWindow' | translate"
+        (click)="popOutToWindow.emit()"
+      >
+        <mat-icon svgIcon="open-link"></mat-icon>
+      </button>
+    }
     <button class="nav-button" (click)="closeOverlay.emit()">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>

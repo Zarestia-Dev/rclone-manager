@@ -12,11 +12,11 @@ mat-toolbar {
   gap: var(--space-sm);
 
   .banner-message {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
   }
 
   .banner-subtitle {
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     opacity: 0.8;
   }
 

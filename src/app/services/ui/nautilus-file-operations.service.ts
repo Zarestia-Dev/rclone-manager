@@ -6,7 +6,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
-import { ApiClientService } from 'src/app/services/infrastructure/platform/api-client.service';
+import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
 
 export interface UndoEntry {
@@ -30,7 +30,7 @@ export class NautilusFileOperationsService {
   private readonly remoteOps = inject(RemoteFileOperationsService);
   private readonly notifications = inject(NotificationService);
   private readonly pathService = inject(PathService);
-  private readonly apiClient = inject(ApiClientService);
+  private readonly fileSystem = inject(FileSystemService);
 
   readonly clipboardItems = signal<
     { remote: string; path: string; name: string; isDir: boolean }[]
@@ -371,13 +371,13 @@ export class NautilusFileOperationsService {
 
   async uploadExternalFiles(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
-      const paths = await this.apiClient.invoke<string[] | null>('get_files_location');
-      if (paths && paths.length > 0) {
+      const paths = await this.fileSystem.selectFilesForUpload();
+      if (paths.length > 0) {
         return this._handleDesktopUpload(remote, currentPath, paths);
       }
       return false;
     } catch (err) {
-      console.error('Failed to get files location', err);
+      console.error('Failed to select files', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
       return false;
     }
@@ -385,15 +385,13 @@ export class NautilusFileOperationsService {
 
   async uploadExternalFolder(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     try {
-      const folderPath = await this.apiClient.invoke<string | null>('get_folder_location', {
-        requireEmpty: false,
-      });
+      const folderPath = await this.fileSystem.selectFolder();
       if (folderPath) {
         return this._handleDesktopUpload(remote, currentPath, [folderPath]);
       }
       return false;
     } catch (err) {
-      console.error('Failed to get folder location', err);
+      console.error('Failed to select folder', err);
       this.notifications.showError(this.translate.instant('nautilus.errors.externalDropFailed'));
       return false;
     }

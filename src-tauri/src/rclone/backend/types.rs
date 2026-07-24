@@ -426,15 +426,21 @@ impl Backend {
         count: Option<i64>,
         os: Option<String>,
     ) -> Result<Vec<u8>, String> {
-        let full_path = if remote.is_empty() || remote == ":" {
-            path.to_string()
+        let (fs_name, remote_path) = if remote.is_empty() || remote == ":" {
+            ("".to_string(), path.to_string())
         } else {
             let r_name = if remote.ends_with(':') {
                 remote.to_string()
             } else {
                 format!("{remote}:")
             };
-            crate::utils::json_helpers::build_full_path(&r_name, path)
+            (r_name, path.to_string())
+        };
+
+        let full_path = if fs_name.is_empty() {
+            remote_path
+        } else {
+            crate::utils::json_helpers::build_full_path(&fs_name, &remote_path)
         };
 
         let mut args = vec![full_path];

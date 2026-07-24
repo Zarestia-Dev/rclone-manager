@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   AppConfig,
+  BATCH_OP_LABELS,
   CommandOption,
   InteractiveFlowState,
   JobMap,
@@ -203,17 +204,7 @@ export class RemoteCreationOrchestrator {
         const hasSource = rcloneCfg.srcFs || rcloneCfg.path1;
         const hasDest = rcloneCfg.dstFs || rcloneCfg.path2;
         if (appCfg.autoStart && hasSource && hasDest) {
-          const batchType = (jobType.charAt(0).toUpperCase() + jobType.slice(1)) as
-            | 'Copy'
-            | 'Sync'
-            | 'Bisync'
-            | 'Move'
-            | 'Check'
-            | 'Delete'
-            | 'Copyurl'
-            | 'Archivecreate'
-            | 'Cryptcheck';
-          void this.jobManagementService.startProfileBatch(batchType, {
+          void this.jobManagementService.startProfileBatch(BATCH_OP_LABELS[jobType], {
             remoteName,
             profileName,
           });

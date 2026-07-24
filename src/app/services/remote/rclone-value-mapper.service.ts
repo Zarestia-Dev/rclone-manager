@@ -77,7 +77,7 @@ export class RcloneValueMapperService {
     for (const u of units) {
       if (bytes >= u.v) {
         const val = bytes / u.v;
-        return `${bytes % u.v === 0 ? val : Math.round(val * 100) / 100}${u.s}`;
+        return `${bytes % u.v === 0 ? val : Math.round(val * 1000) / 1000}${u.s}`;
       }
     }
     return `${bytes}B`;

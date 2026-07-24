@@ -160,6 +160,11 @@ export interface FileBrowserItem {
   };
 }
 
+export function fileBrowserItemKey(item: FileBrowserItem | null | undefined): string {
+  if (!item) return '';
+  return `${item.meta.remote}:${item.entry.Path}`;
+}
+
 export type CollectionType = 'starred' | 'bookmarks';
 
 export type FilePickerMode = 'local' | 'remote' | 'both';

@@ -33,10 +33,9 @@ import {
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AutomationService } from 'src/app/services/operations/automation.service';
 import { CronValidationResponse } from '@app/types';
-import { toString as cronstrue } from 'cronstrue';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { getCronstrueLocale } from 'src/app/services/i18n/cron-locale.mapper';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
+import { formatCronHumanReadable } from 'src/app/services/i18n/cron-locale.mapper';
 
 export type PresetKey =
   'daily-9am' | 'daily-6pm' | 'weekday-9am' | 'weekly-monday' | 'every-6-hours' | 'monthly-1st';
@@ -144,12 +143,7 @@ export class CronInputComponent {
   readonly humanReadableSchedule = computed(() => {
     const cron = this.cronValue()?.trim();
     if (!cron) return '';
-    try {
-      const locale = getCronstrueLocale(this.translate.getCurrentLang() ?? 'en-US');
-      return cronstrue(cron, { locale });
-    } catch {
-      return cron;
-    }
+    return formatCronHumanReadable(cron, this.translate.currentLang());
   });
 
   readonly userTimezone = this.getUserTimezoneFormatted();

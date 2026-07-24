@@ -8,7 +8,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { Observable, Subject, merge } from 'rxjs';
+import { Subject, merge } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
@@ -30,7 +30,8 @@ import {
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 import { UiStateService } from './state/ui-state.service';
-import { isMobile } from '../infrastructure/platform/api-client.service';
+import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
+import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
 
 @Injectable({
   providedIn: 'root',
@@ -84,10 +85,10 @@ export class NautilusService extends TauriBaseService {
   });
 
   private pickerOverlayRef: OverlayRef | null = null;
-  private pickerComponentRef: ComponentRef<any> | null = null;
+  private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
 
   private browserOverlayRef: OverlayRef | null = null;
-  private browserComponentRef: ComponentRef<any> | null = null;
+  private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
 
   private readonly collectionConfig: Record<
     CollectionType,
@@ -221,7 +222,21 @@ export class NautilusService extends TauriBaseService {
     return `nautilus-${slug}`;
   }
 
-  async newNautilusWindow(remote: string | null, path: string | null): Promise<void> {
+  private get isStandaloneEnabled(): boolean {
+    const opts = this.appSettingsService.options() as Record<string, any> | null;
+    return !isHeadlessMode() && !isMobile() && opts?.['general.standalone_dialogs']?.value === true;
+  }
+
+  async newNautilusWindow(
+    remote: string | null,
+    path: string | null,
+    forceStandalone = false
+  ): Promise<void> {
+    if (!forceStandalone && !this.isStandaloneEnabled) {
+      await this.openBrowserOverlay(remote, path);
+      return;
+    }
+
     const url = this.getNautilusUrl(remote, path);
     if (this.isTauri) {
       if (isMobile()) {
@@ -240,6 +255,7 @@ export class NautilusService extends TauriBaseService {
             height: 768,
           },
         });
+        this.closeBrowserOverlay();
       } catch (err) {
         console.warn(
           '[NautilusService] new_window command failed/unavailable, falling back to overlay:',
@@ -249,6 +265,7 @@ export class NautilusService extends TauriBaseService {
       }
     } else {
       window.open(url, '_blank');
+      this.closeBrowserOverlay();
     }
   }
 
@@ -305,7 +322,7 @@ export class NautilusService extends TauriBaseService {
       items,
       paths: items.map(i => {
         return this.pathService.getFullDisplayPath(
-          { name: i.meta.remote, isLocal: i.meta.isLocal } as any,
+          { name: i.meta.remote, isLocal: i.meta.isLocal, label: i.meta.remote, type: '' },
           i.entry.Path
         );
       }),
@@ -466,18 +483,16 @@ export class NautilusService extends TauriBaseService {
   }
 
   private createNautilusOverlay(
-    componentClass: any,
+    componentClass: typeof NautilusComponent,
     onClose: () => void,
     showAnimation = true
-  ): { overlayRef: OverlayRef; componentRef: ComponentRef<any> } {
+  ): { overlayRef: OverlayRef; componentRef: ComponentRef<NautilusComponent> } {
     const overlayRef = this.overlay.create({
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
-    const componentRef = overlayRef.attach(
-      new ComponentPortal(componentClass)
-    ) as ComponentRef<any>;
+    const componentRef = overlayRef.attach(new ComponentPortal(componentClass));
 
     if (showAnimation) {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
@@ -497,14 +512,12 @@ export class NautilusService extends TauriBaseService {
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
-    const componentRef = overlayRef.attach(
-      new ComponentPortal(NautilusComponent)
-    ) as ComponentRef<any>;
+    const componentRef = overlayRef.attach(new ComponentPortal(NautilusComponent));
 
     componentRef.location.nativeElement.classList.add('slide-overlay-enter');
 
     // When the picker confirms a selection, it emits the chosen items via closeOverlay
-    (outputToObservable(componentRef.instance.closeOverlay) as Observable<FileBrowserItem[] | null>)
+    outputToObservable(componentRef.instance.closeOverlay)
       .pipe(take(1))
       .subscribe(items => this.closeFilePicker(items ?? null));
 

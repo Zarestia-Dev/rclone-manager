@@ -1,29 +1,112 @@
 :host {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xs);
-  padding: var(--space-xxs) var(--title-bar-padding);
 
+  // Shared button defaults
+  .tab-btn {
+    cursor: pointer;
+    color: var(--window-fg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  // Desktop View (≥600px): Centered in titlebar
   @media (min-width: 600px) {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+    gap: var(--space-xs);
+    padding: var(--space-xxs) var(--title-bar-padding);
+
+    .tab-btn {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: var(--button-border-radius);
+      transition: background-color 150ms ease;
+
+      .tab-label {
+        display: none;
+      }
+
+      &:hover,
+      &.selected {
+        background-color: var(--hover-bg-color);
+      }
+
+      &:active,
+      &:focus-visible {
+        outline: none;
+        background-color: var(--selected-bg-color);
+      }
+    }
   }
-}
 
-.mat-mdc-icon-button {
-  color: var(--window-fg-color);
+  // Mobile View (<600px): Modern Android Material 3 Floating Navigation Bar
+  @media (max-width: 599.98px) {
+    position: fixed;
+    bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+    left: var(--space-md);
+    right: var(--space-md);
+    z-index: 100;
+    max-width: 440px;
+    margin: 0 auto;
+    justify-content: space-around;
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--headerbar-bg-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
 
-  &.selected {
-    outline: none !important;
-    background-color: var(--hover-bg-color) !important;
-  }
+    .tab-btn {
+      flex-direction: column;
+      gap: 3px;
+      padding: var(--space-xxs) var(--space-xs);
+      opacity: 0.65;
+      transition:
+        opacity 200ms ease,
+        transform 200ms ease;
 
-  &:active,
-  &:focus-visible {
-    outline: none !important;
-    background-color: var(--selected-bg-color) !important;
+      .icon-wrapper {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        transition:
+          background-color 200ms ease,
+          color 200ms ease,
+          transform 200ms ease;
+      }
+
+      .tab-label {
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        letter-spacing: 0.1px;
+        transition: font-weight 200ms ease;
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      &.selected {
+        opacity: 1;
+
+        .icon-wrapper {
+          background-color: var(--accent-bg-color);
+          color: var(--accent-fg-color);
+        }
+
+        .tab-label {
+          font-weight: 600;
+        }
+      }
+    }
   }
 }

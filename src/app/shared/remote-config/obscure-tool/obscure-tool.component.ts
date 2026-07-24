@@ -68,9 +68,9 @@ export class ObscureToolComponent {
     try {
       const res = await this.remoteService.obscureValue(raw);
       this.obscuredText.set(res);
-    } catch (e: any) {
+    } catch (e) {
       console.error('Failed to obscure string:', e);
-      this.error.set(e.message || 'Failed to obscure value');
+      this.error.set(e instanceof Error ? e.message : 'Failed to obscure value');
       this.obscuredText.set('');
     } finally {
       this.isProcessing.set(false);
