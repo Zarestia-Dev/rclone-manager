@@ -1,11 +1,13 @@
 pub mod audio;
 pub mod notification;
 pub mod platform;
-pub mod send_to;
 pub mod ui;
 
 #[cfg(desktop)]
 pub mod builder;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod send_to;
 
 #[cfg(feature = "updater")]
 pub mod updater;

@@ -238,27 +238,98 @@ fn build_librclone(target: &str, out_a_path: &str) -> Result<(), String> {
     let mut staged_cleaner = PatchCleaner { paths: Vec::new() };
     let mut go_build_args = vec!["./librclone/librclone.go".to_string()];
 
-    if patches_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&patches_dir) {
-            let mut patch_entries: Vec<_> = entries.flatten().collect();
-            patch_entries.sort_by_key(|e| e.file_name());
+    if patches_dir.exists()
+        && let Ok(entries) = std::fs::read_dir(&patches_dir)
+    {
+        let mut patch_entries: Vec<_> = entries.flatten().collect();
+        patch_entries.sort_by_key(|e| e.file_name());
 
-            for entry in patch_entries {
-                let path = entry.path();
-                if path.is_file() {
-                    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-                    if file_name.ends_with(".go") && !file_name.ends_with("_test.go") {
-                        let staged_name = format!("patch_{file_name}");
-                        let dest_path = librclone_dir.join(&staged_name);
-                        if let Err(e) = std::fs::copy(&path, &dest_path) {
-                            return Err(format!(
-                                "Failed to copy patch file {} to {}: {e}",
-                                path.display(),
-                                dest_path.display()
-                            ));
+        for entry in patch_entries {
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                if file_name.ends_with(".go") && !file_name.ends_with("_test.go") {
+                    let staged_name = format!("patch_{file_name}");
+                    let dest_path = librclone_dir.join(&staged_name);
+                    if let Err(e) = std::fs::copy(&path, &dest_path) {
+                        return Err(format!(
+                            "Failed to copy patch file {} to {}: {e}",
+                            path.display(),
+                            dest_path.display()
+                        ));
+                    }
+                    staged_cleaner.paths.push(dest_path);
+                    go_build_args.push(format!("./librclone/{staged_name}"));
+                }
+            }
+        }
+    }
+
+    // Apply .patch files to rclone source (reversed after build via PatchReverser)
+    struct PatchReverser {
+        rclone_dir: std::path::PathBuf,
+        patches: Vec<std::path::PathBuf>,
+    }
+    impl Drop for PatchReverser {
+        fn drop(&mut self) {
+            for patch in &self.patches {
+                let _ = std::process::Command::new("git")
+                    .args(["apply", "--reverse"])
+                    .arg(patch)
+                    .current_dir(&self.rclone_dir)
+                    .output();
+            }
+        }
+    }
+    let mut patch_reverser = PatchReverser {
+        rclone_dir: rclone_src_path.to_path_buf(),
+        patches: Vec::new(),
+    };
+
+    if patches_dir.exists()
+        && let Ok(entries) = std::fs::read_dir(&patches_dir)
+    {
+        let mut patch_entries: Vec<_> = entries.flatten().collect();
+        patch_entries.sort_by_key(|e| e.file_name());
+
+        for entry in patch_entries {
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                if file_name.ends_with(".patch") {
+                    // Check if already applied
+                    let check = std::process::Command::new("git")
+                        .args(["apply", "--check", "--reverse"])
+                        .arg(&path)
+                        .current_dir(rclone_src_path)
+                        .output();
+                    let already_applied = check.map(|o| o.status.success()).unwrap_or(false);
+
+                    if !already_applied {
+                        let apply = std::process::Command::new("git")
+                            .args(["apply"])
+                            .arg(&path)
+                            .current_dir(rclone_src_path)
+                            .output();
+                        match apply {
+                            Ok(output) if output.status.success() => {
+                                println!("cargo:warning=Applied rclone patch: {file_name}");
+                                patch_reverser.patches.push(path.clone());
+                            }
+                            Ok(output) => {
+                                let stderr = String::from_utf8_lossy(&output.stderr);
+                                return Err(format!(
+                                    "Failed to apply rclone patch {file_name}: {stderr}"
+                                ));
+                            }
+                            Err(e) => {
+                                return Err(format!(
+                                    "Failed to run git apply for {file_name}: {e}"
+                                ));
+                            }
                         }
-                        staged_cleaner.paths.push(dest_path);
-                        go_build_args.push(format!("./librclone/{staged_name}"));
+                    } else {
+                        println!("cargo:warning=Rclone patch already applied: {file_name}");
                     }
                 }
             }

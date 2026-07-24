@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Nautilus Sidebar Drives & Remotes Customization**: Added the ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated sidebar configuration modal. #233
 - **New Russian Translations**: Added support for Russian language and translations. Thanks to @korsun009!
+- **Nautilus File Viewer Open in System Default Viewer**: Added the ability to open files in the system default viewer. First download if its remote file.
 
 ### Changed
 - **Nautilus Detached Dialogs & Multi-Tasking Integration**: Wired Nautilus file browser window creation to the `general.standalone_dialogs` ("Detached Dialogs") setting. Opening a remote or path now displays as an in-app modal overlay when detached dialogs are disabled, while spawning standalone OS windows when enabled. Added a dedicated "Open in New Window" (pop-out) action to the overlay toolbar for seamless multitasking.

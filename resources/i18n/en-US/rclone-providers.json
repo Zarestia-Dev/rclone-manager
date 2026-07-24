@@ -1890,6 +1890,14 @@
       "zero_size_links": {
         "title": "Zero Size Links",
         "help": "Assume the Stat size of links is zero (and read them instead) (deprecated).\n\nRclone used to use the Stat size of links as the link size, but this fails in quite a few places:\n\n- Windows\n- On some virtual filesystems (such ash LucidLink)\n- Android\n\nSo rclone now always reads the link.\n"
+      },
+      "metadata_restore_special_bits": {
+        "title": "Metadata Restore Special Bits",
+        "help": "Restore the setuid, setgid and sticky bits from metadata.\n\nWhen restoring metadata with --metadata rclone applies the \"mode\" from\nthe source. By default rclone applies only the permission bits and\nstrips the setuid, setgid and sticky bits.\n\nThe \"mode\" comes from the source remote which may not be trusted.\nRestoring a setuid or setgid bit onto freshly written,\nsource-controlled content can plant a setuid binary, which is dangerous\nin particular when restoring from an untrusted source while running as\nroot. For this reason these bits are not restored by default.\n\nIf you trust the source and want the setuid, setgid and sticky bits\nrestored - for example when restoring a system backup made by rclone -\nset this flag."
+      },
+      "fatal_if_no_space": {
+        "title": "Fatal If No Space",
+        "help": "Make out-of-space errors fatal during transfers.\n\nWhen enabled, an ENOSPC error during a write returns a fatal error so\nthat rclone aborts rather than retrying the operation. Useful for\nbackup scripts that should halt loudly on a full disk rather than spin\nretrying."
       }
     },
     "mailru": {

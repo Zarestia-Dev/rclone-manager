@@ -221,6 +221,11 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
                 {
                     p.push('\\');
                 }
+                if p == "/sdcard" {
+                    p = "/storage/emulated/0".to_string();
+                } else if let Some(suffix) = p.strip_prefix("/sdcard/") {
+                    p = format!("/storage/emulated/0/{suffix}");
+                }
                 p
             };
 
@@ -334,6 +339,8 @@ pub async fn get_disk_usage(
         }
     } else if let Some(colon_idx) = remote.find(':') {
         remote[..=colon_idx].to_string()
+    } else if remote.contains('/') || remote.contains('\\') {
+        remote.clone()
     } else {
         format!("{remote}:")
     };

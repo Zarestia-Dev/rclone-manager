@@ -1504,7 +1504,11 @@
       "extract": "解压",
       "extracting": "正在解压 \"{{name}}\"...",
       "errorExtract": "解压归档失败",
-      "errorListArchive": "列出归档内容失败"
+      "errorListArchive": "列出归档内容失败",
+      "openNative": "在外部应用中打开",
+      "openNativeTooltip": "在默认外部应用中打开",
+      "openingNative": "正在外部应用中打开 {{name}}...",
+      "errorOpenNative": "在外部应用中打开文件失败"
     }
   },
   "dashboard": {
@@ -2373,10 +2377,12 @@
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
       "archiveCreateFailed": "创建归档失败: {{error}}",
       "externalDropFailed": "处理外部文件拖放失败。",
-      "sendToFailed": "更新文件管理器右键菜单失败：{{error}}"
+      "sendToFailed": "更新文件管理器右键菜单失败：{{error}}",
+      "noRemoteSelected": "请先导航至一个远程存储。"
     },
     "contextMenu": {
       "open": "打开",
+      "share": "分享",
       "openNewTab": "在新标签页打开",
       "copyPath": "复制路径",
       "newFolder": "新建文件夹",
@@ -2441,6 +2447,10 @@
       "archiveCreateStarted": "已开始创建归档操作...",
       "sendToAdded": "已将“{{remote}}{{path}}”添加至文件管理器右键菜单",
       "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除"
+    },
+    "androidShare": {
+      "uploadHere": "将 {{count}} 个共享文件上传至此文件夹",
+      "confirm": "上传至此处"
     }
   },
   "home": {

@@ -1503,8 +1503,12 @@
       "shortcutTargets": "Cibles des raccourcis",
       "extract": "Extraire",
       "extracting": "Extraction de {{name}}...",
-      "errorExtract": "Échec de l'extraction de l'archive",
-      "errorListArchive": "Impossible de lister le contenu de l'archive"
+      "errorExtract": "Impossible d'extraire l'archive",
+      "errorListArchive": "Impossible de lister le contenu des archives",
+      "openNative": "Ouvrir avec une application externe",
+      "openNativeTooltip": "Ouvrir dans l'application externe par défaut",
+      "openingNative": "Ouverture de {{name}} dans l'application externe...",
+      "errorOpenNative": "Échec de l'ouverture du fichier dans l'application externe"
     }
   },
   "dashboard": {
@@ -2373,10 +2377,12 @@
       "copyUrlFailed": "Impossible de télécharger depuis l'URL : {{error}}",
       "archiveCreateFailed": "Impossible de créer l'archive : {{error}}",
       "externalDropFailed": "Échec du traitement du dépôt de fichier externe.",
-      "sendToFailed": "Échec de la mise à jour du menu du gestionnaire de fichiers : {{error}}"
+      "sendToFailed": "Échec de la mise à jour du menu du gestionnaire de fichiers : {{error}}",
+      "noRemoteSelected": "Veuillez d’abord naviguer vers un espace distant."
     },
     "contextMenu": {
       "open": "Ouvrir",
+      "share": "Partager",
       "openNewTab": "Ouvrir dans un nouvel onglet",
       "copyPath": "Copier le chemin",
       "newFolder": "Nouveau dossier",
@@ -2441,6 +2447,10 @@
       "archiveCreateStarted": "Création de l'archive démarrée...",
       "sendToAdded": "'{{remote}}{{path}}' ajouté au menu du gestionnaire de fichiers",
       "sendToRemoved": "'{{remote}}{{path}}' retiré du menu du gestionnaire de fichiers"
+    },
+    "androidShare": {
+      "uploadHere": "Téléverser {{count}} fichier(s) partagé(s) dans ce dossier",
+      "confirm": "Téléverser ici"
     }
   },
   "home": {

@@ -162,7 +162,8 @@ export interface FileBrowserItem {
 
 export function fileBrowserItemKey(item: FileBrowserItem | null | undefined): string {
   if (!item) return '';
-  return `${item.meta.remote}:${item.entry.Path}`;
+  const base = `${item.meta.remote}:${item.entry.Path}`;
+  return item.entry.ID ? `${base}:${item.entry.ID}` : base;
 }
 
 export type CollectionType = 'starred' | 'bookmarks';

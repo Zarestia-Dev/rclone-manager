@@ -72,6 +72,17 @@
                   <span class="item-label">{{ 'nautilus.contextMenu.open' | translate }}</span>
                   <span class="shortcut">Return</span>
                 </button>
+
+                @if (!isHeadless()) {
+                  <button class="menu-item" cdkMenuItem (click)="actions.openNativeContextItem()">
+                    <span class="item-label">{{
+                      'fileBrowser.fileViewer.openNative' | translate
+                    }}</span>
+                  </button>
+                  <button class="menu-item" cdkMenuItem (click)="actions.shareContextItem()">
+                    <span class="item-label">{{ 'nautilus.contextMenu.share' | translate }}</span>
+                  </button>
+                }
               }
 
               @if (actions.contextMenuItem()?.entry?.IsDir) {

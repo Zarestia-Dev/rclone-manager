@@ -408,6 +408,26 @@
       max-width: 300px;
     }
 
+    &.mobile-pdf-card {
+      padding: var(--space-2xl) var(--space-xl);
+      max-width: 400px;
+      margin: auto;
+
+      .pdf-card-icon {
+        font-size: var(--icon-size-3xl);
+        width: var(--icon-size-3xl);
+        height: var(--icon-size-3xl);
+        color: var(--warn-color);
+      }
+
+      .pdf-card-title {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        word-break: break-word;
+      }
+    }
+
     &.error-state {
       .icon-wrapper.error {
         background: rgba(var(--warn-color-rgb), 0.1);

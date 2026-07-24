@@ -1504,7 +1504,11 @@
       "extract": "Çıkart",
       "extracting": "{{name}} çıkartılıyor...",
       "errorExtract": "Arşiv çıkartılamadı",
-      "errorListArchive": "Arşiv içeriği listelenemedi"
+      "errorListArchive": "Arşiv içeriği listelenemedi",
+      "openNative": "Harici Uygulamada Aç",
+      "openNativeTooltip": "Sistemin varsayılan harici uygulamasında aç",
+      "openingNative": "{{name}} harici uygulamada açılıyor...",
+      "errorOpenNative": "Dosya harici uygulamada açılamadı"
     }
   },
   "dashboard": {
@@ -2373,10 +2377,12 @@
       "copyUrlFailed": "URL'den indirme başarısız: {{error}}",
       "archiveCreateFailed": "Arşiv oluşturma başarısız: {{error}}",
       "externalDropFailed": "Harici dosya sürükle-bırak işlemi işlenemedi.",
-      "sendToFailed": "Dosya yöneticisi sağ tık menüsü güncellenemedi: {{error}}"
+      "sendToFailed": "Dosya yöneticisi sağ tık menüsü güncellenemedi: {{error}}",
+      "noRemoteSelected": "Lütfen önce bir uzak depoya gidin."
     },
     "contextMenu": {
       "open": "Aç",
+      "share": "Paylaş",
       "openNewTab": "Yeni Sekmede Aç",
       "copyPath": "Yolu Kopyala",
       "newFolder": "Yeni Klasör",
@@ -2441,6 +2447,10 @@
       "archiveCreateStarted": "Arşiv oluşturma başlatıldı...",
       "sendToAdded": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsüne eklendi",
       "sendToRemoved": "'{{remote}}{{path}}' dosya yöneticisi sağ tık menüsünden kaldırıldı"
+    },
+    "androidShare": {
+      "uploadHere": "{{count}} paylaşılan dosyayı bu klasöre yükle",
+      "confirm": "Buraya yükle"
     }
   },
   "home": {

@@ -1504,7 +1504,11 @@
       "extract": "Extract",
       "extracting": "Extracting {{name}}...",
       "errorExtract": "Failed to extract archive",
-      "errorListArchive": "Failed to list archive contents"
+      "errorListArchive": "Failed to list archive contents",
+      "openNative": "Open in External App",
+      "openNativeTooltip": "Open in default external application",
+      "openingNative": "Opening {{name}} in external viewer...",
+      "errorOpenNative": "Failed to open file in external app"
     }
   },
   "dashboard": {
@@ -2373,10 +2377,12 @@
       "copyUrlFailed": "Failed to download from URL: {{error}}",
       "archiveCreateFailed": "Failed to create archive: {{error}}",
       "externalDropFailed": "Failed to process external file drop.",
-      "sendToFailed": "Failed to update File Manager menu: {{error}}"
+      "sendToFailed": "Failed to update File Manager menu: {{error}}",
+      "noRemoteSelected": "Please navigate to a remote first."
     },
     "contextMenu": {
       "open": "Open",
+      "share": "Share",
       "openNewTab": "Open in New Tab",
       "copyPath": "Copy Path",
       "newFolder": "New Folder",
@@ -2441,6 +2447,10 @@
       "archiveCreateStarted": "Archive creation started...",
       "sendToAdded": "Added '{{remote}}{{path}}' to File Manager menu",
       "sendToRemoved": "Removed '{{remote}}{{path}}' from File Manager menu"
+    },
+    "androidShare": {
+      "uploadHere": "Upload {{count}} shared file(s) to this folder",
+      "confirm": "Upload here"
     }
   },
   "home": {

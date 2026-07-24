@@ -45,7 +45,10 @@ import { Entry, FilePickerResult } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
 import { MatTooltip } from '@angular/material/tooltip';
-import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
+import {
+  isHeadlessMode,
+  isMobile,
+} from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-file-viewer-modal',
@@ -105,6 +108,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   fileCategory = computed(() => this.iconService.getFileTypeCategory(this.currentItem()));
   currentFileType = signal<string>('text');
   isHeadless = computed(() => isHeadlessMode());
+  isMobile = computed(() => isMobile());
   isDownloadVisible = computed(() => {
     return (
       this.isHeadless() || !this.data.isLocal || this.backendService.activeBackend() !== 'Local'
@@ -113,6 +117,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
 
   isLoading = signal(true);
   isDownloading = signal(false);
+  isOpeningNative = signal(false);
   isLoadingCover = signal(false);
   parsedArchiveItems = signal<
     { size: number; date: string; time: string; path: string; isDir: boolean }[]
@@ -851,6 +856,30 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       );
     } finally {
       this.isExtracting.set(false);
+    }
+  }
+
+  /**
+   * Open the current file natively using Android / system default application intent
+   */
+  async openNativePdf(): Promise<void> {
+    if (this.isOpeningNative()) return;
+    this.isOpeningNative.set(true);
+    try {
+      const fsName = this.data.isLocal
+        ? this.data.remoteName
+        : this.pathService.normalizeRemoteForRclone(this.data.remoteName);
+
+      await this.downloadService.openFileNatively(
+        fsName,
+        this.currentItem().Path,
+        this.fileName(),
+        this.data.isLocal
+      );
+    } catch (err) {
+      console.error('Failed to open file natively:', err);
+    } finally {
+      this.isOpeningNative.set(false);
     }
   }
 }

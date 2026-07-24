@@ -613,6 +613,15 @@ pub mod job {
 /// File operation endpoints
 pub mod operations {
 
+    /// Perform archive create, extract, or list operations cleanly in process.
+    pub const ARCHIVE: &str = "operations/archive";
+
+    /// Perform cryptcheck on encrypted remotes directly in process.
+    pub const CRYPTCHECK: &str = "operations/cryptcheck";
+
+    /// Read file content directly in process.
+    pub const CAT: &str = "operations/cat";
+
     /// Return the space used on the remote
     ///
     /// This takes the following parameters:

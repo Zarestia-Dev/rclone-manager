@@ -346,11 +346,12 @@ pub async fn execute_upload_batch(
                     } else {
                         format!("{remote_dir}/{base_filename}")
                     };
-                    let dst_fs_arg = if remote.ends_with(':') {
-                        remote.clone()
-                    } else {
-                        format!("{remote}:")
-                    };
+                    let dst_fs_arg =
+                        if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
+                            remote.clone()
+                        } else {
+                            format!("{remote}:")
+                        };
                     let payload = json!({
                         "srcFs": src_fs,
                         "srcRemote": base_filename,
@@ -613,7 +614,7 @@ pub async fn upload_file(
             let src_fs = tmp_parent.to_string_lossy().to_string();
             let dst_fs = if remote.is_empty() || remote == ":" {
                 "".to_string()
-            } else if remote.ends_with(':') {
+            } else if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
                 remote.clone()
             } else {
                 format!("{remote}:")

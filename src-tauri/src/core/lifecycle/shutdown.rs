@@ -125,6 +125,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         debug!("Cleared RCLONE_CONFIG_PASS from SafeEnvironmentManager");
     }
 
+    // Clear temporary file preview/viewer cache files
+    #[cfg(not(feature = "web-server"))]
+    crate::utils::io::file_helper::cleanup_temp_views(&app_handle);
+
     #[cfg(any(feature = "updater", not(feature = "librclone")))]
     apply_pending_updates(&app_handle).await;
 }

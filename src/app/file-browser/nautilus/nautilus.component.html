@@ -184,6 +184,25 @@
         <span class="selection-info">{{ selectionSummary() }}</span>
       </div>
     }
+
+    @if (pendingSharedPaths().length > 0) {
+      <div class="android-share-banner">
+        <mat-icon svgIcon="upload" class="share-icon"></mat-icon>
+        <span class="share-label">
+          {{
+            'nautilus.androidShare.uploadHere' | translate: { count: pendingSharedPaths().length }
+          }}
+        </span>
+        <div class="share-actions">
+          <button matButton (click)="cancelSharedFiles()" class="share-cancel-btn">
+            {{ 'shared.actions.cancel' | translate }}
+          </button>
+          <button matButton="filled" class="accent share-confirm-btn" (click)="uploadSharedFiles()">
+            {{ 'nautilus.androidShare.confirm' | translate }}
+          </button>
+        </div>
+      </div>
+    }
   </mat-sidenav-content>
 </mat-sidenav-container>
 

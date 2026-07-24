@@ -1,6 +1,7 @@
 use super::rclone::RcloneCoreVersion;
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[derive(Clone, Serialize)]
 pub struct NetworkStatusPayload {
     #[serde(rename = "isMetered")]

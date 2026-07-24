@@ -186,3 +186,43 @@
     padding-bottom: var(--space-sm);
   }
 }
+
+/* ==========================================================================
+   7. Android Share Banner
+   ========================================================================== */
+
+.android-share-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--accent-color) 15%, var(--card-bg-color));
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+
+  .share-icon {
+    color: var(--accent-color);
+  }
+
+  .share-label {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--window-fg-color);
+    font-weight: 500;
+  }
+
+  .share-actions {
+    display: flex;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+  }
+
+  .share-cancel-btn {
+    font-size: var(--font-size-sm);
+  }
+
+  .share-confirm-btn {
+    font-size: var(--font-size-sm);
+  }
+}

@@ -85,9 +85,17 @@ jobs:
           npx eslint "**/*.{ts,html}"
           npx prettier --check "**/*.{ts,html,scss,json}"
 
-      # 7. Check if Rust backend compiles (Checks ALL features & target-specific code per OS)
-      - name: Run Clippy (Rust)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      # 7. Check if Rust backend compiles (Desktop, Web Server, Mobile feature targets)
+      - name: Run Clippy (Desktop)
+        run: cargo clippy --features desktop --no-default-features -- -D warnings
+        working-directory: src-tauri
+
+      - name: Run Clippy (Web Server)
+        run: TAURI_CONFIG=$(cat ./tauri.conf.headless.json) cargo clippy --features web-server --no-default-features -- -D warnings
+        working-directory: src-tauri
+
+      - name: Run Clippy (Mobile)
+        run: cargo clippy --features mobile --no-default-features -- -D warnings
         working-directory: src-tauri
 
       # 8. Check Rust Formatting (Only on Linux to avoid CRLF differences)

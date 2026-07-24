@@ -126,6 +126,12 @@ impl Backend {
             name
         }
     }
+
+    /// Check if this backend uses in-process librclone (local backend + librclone feature enabled)
+    #[must_use]
+    pub fn is_librclone_local(&self) -> bool {
+        cfg!(feature = "librclone") && self.is_local
+    }
 }
 
 impl Backend {
@@ -368,7 +374,7 @@ impl Backend {
 
     /// Build the URL used to fetch a remote file over the rclone serve endpoint.
     fn build_file_url(&self, remote: &str, path: &str) -> String {
-        let r_name = if remote.contains(':') {
+        let r_name = if remote.contains(':') || remote.contains('/') || remote.contains('\\') {
             remote.to_string()
         } else {
             format!("{remote}:")
@@ -424,12 +430,12 @@ impl Backend {
         path: &str,
         offset: Option<i64>,
         count: Option<i64>,
-        os: Option<String>,
+        _os: Option<String>,
     ) -> Result<Vec<u8>, String> {
         let (fs_name, remote_path) = if remote.is_empty() || remote == ":" {
             ("".to_string(), path.to_string())
         } else {
-            let r_name = if remote.ends_with(':') {
+            let r_name = if remote.ends_with(':') || remote.contains('/') || remote.contains('\\') {
                 remote.to_string()
             } else {
                 format!("{remote}:")
@@ -443,17 +449,33 @@ impl Backend {
             crate::utils::json_helpers::build_full_path(&fs_name, &remote_path)
         };
 
-        let mut args = vec![full_path];
-        if let Some(o) = offset {
-            args.push(format!("--offset={o}"));
-        }
-        if let Some(c) = count {
-            args.push(format!("--count={c}"));
-        }
+        let (endpoint, payload) = if self.is_librclone_local() {
+            let mut p = serde_json::json!({
+                "path": full_path,
+            });
+            if let Some(o) = offset {
+                p["offset"] = serde_json::json!(o);
+            }
+            if let Some(c) = count {
+                p["count"] = serde_json::json!(c);
+            }
+            (crate::utils::rclone::endpoints::operations::CAT, p)
+        } else {
+            let mut args = vec![full_path];
+            if let Some(o) = offset {
+                args.push(format!("--offset={o}"));
+            }
+            if let Some(c) = count {
+                args.push(format!("--count={c}"));
+            }
+            (
+                core::COMMAND,
+                self.build_core_command_payload("cat", args, false, _os),
+            )
+        };
 
-        let payload = self.build_core_command_payload("cat", args, false, os);
         let response = transport
-            .rpc(core::COMMAND, Some(&payload))
+            .rpc(endpoint, Some(&payload))
             .await
             .map_err(|e| e.to_string())?;
 

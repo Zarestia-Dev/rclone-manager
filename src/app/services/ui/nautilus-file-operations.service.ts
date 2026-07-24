@@ -607,6 +607,20 @@ export class NautilusFileOperationsService {
     }
   }
 
+  /**
+   * Uploads local file paths (shared from another Android app) to the given remote/path.
+   * Called by NautilusComponent after the user navigates to the destination folder
+   * and confirms the Android share-intent upload.
+   */
+  async uploadSharedPaths(
+    remote: ExplorerRoot,
+    currentPath: string,
+    paths: string[]
+  ): Promise<boolean> {
+    if (!paths.length) return false;
+    return this._handleDesktopUpload(remote, currentPath, paths);
+  }
+
   private _normalizeRemote(remote: ExplorerRoot): string {
     return remote.isLocal ? remote.name : this.pathService.normalizeRemoteForRclone(remote.name);
   }
