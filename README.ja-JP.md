@@ -64,7 +64,7 @@
     <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
-  <i>📖 より詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
+  <i>📖 さらに詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
 </p>
 
 ---
