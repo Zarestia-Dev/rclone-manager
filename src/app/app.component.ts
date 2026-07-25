@@ -22,6 +22,7 @@ import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/a
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
+import { AndroidShareService } from './services/ui/android-share.service';
 
 @Component({
   selector: 'app-root',
@@ -59,6 +60,9 @@ export class AppComponent implements OnInit {
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();
+
+    // Start listening for Android share intents (no-op on desktop/web).
+    inject(AndroidShareService).initialize();
   }
 
   ngOnInit(): void {

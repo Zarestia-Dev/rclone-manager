@@ -144,6 +144,54 @@ async fn restore_rcman_backup(
     // System refresh will be called at the very end of the process
 
     let mut remote_restore_count = 0;
+
+    // Handle external rclone.conf restore to mobile device's active config path
+    #[cfg(feature = "librclone")]
+    if let Ok(config_data) = manager
+        .backup()
+        .get_external_config_from_backup(backup_path, "rclone.conf", password)
+        .or_else(|_| {
+            manager
+                .backup()
+                .get_external_config_from_backup(backup_path, "rclone_config", password)
+        })
+    {
+        info!("Attempting to restore rclone.conf to mobile device config path");
+        let target_path =
+            match crate::rclone::queries::get_rclone_config_file(app_handle.clone()).await {
+                Ok(path) => path,
+                Err(_) => {
+                    let paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
+                    paths.config_dir.join("rclone.conf")
+                }
+            };
+
+        if let Some(parent) = target_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        match std::fs::write(&target_path, &config_data) {
+            Ok(_) => {
+                use crate::utils::rclone::endpoints::config;
+                remote_restore_count += 1;
+                info!(
+                    "Successfully restored rclone.conf to {}",
+                    target_path.display()
+                );
+                let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
+                    "_path": config::SETPATH,
+                    "path": target_path.to_string_lossy()
+                }));
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to write restored rclone.conf to {}: {e}",
+                    target_path.display()
+                );
+            }
+        }
+    }
+
     for item in &result.external_pending {
         if item.starts_with("remote:") {
             let remote_name = item.trim_start_matches("remote:");

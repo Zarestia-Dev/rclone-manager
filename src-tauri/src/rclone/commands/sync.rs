@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use futures::future::join_all;
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::utils::{
-    rclone::endpoints::{core, operations},
+    rclone::endpoints::operations,
     types::{
         jobs::JobType,
-        remotes::{DEST_KEYS, OperationType, ProfileParams, SOURCE_KEYS},
+        remotes::{OperationType, ProfileParams},
     },
 };
 
@@ -213,23 +213,6 @@ fn has_archive_extension(path: &str) -> bool {
         || lower.ends_with(".tar.lz4")
 }
 
-fn to_kebab_case(s: &str) -> String {
-    let mut kebab = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c == '_' {
-            kebab.push('-');
-        } else if c.is_uppercase() {
-            if i > 0 && !kebab.ends_with('-') {
-                kebab.push('-');
-            }
-            kebab.push(c.to_ascii_lowercase());
-        } else {
-            kebab.push(c);
-        }
-    }
-    kebab
-}
-
 #[tauri::command]
 pub async fn start_profile_batch(
     app: AppHandle,
@@ -333,13 +316,7 @@ pub async fn start_profile_batch(
         {
             let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
             let backend = backend_manager.get_active().await;
-            let os = backend_manager.get_runtime_os(&backend.name).await;
 
-            let cmd_name = if transfer_type == OperationType::Archivecreate {
-                "archive"
-            } else {
-                "cryptcheck"
-            };
             let mut dest_val = dest.clone();
             if transfer_type == OperationType::Archivecreate && !has_archive_extension(&dest_val) {
                 let format = if let Value::Object(map) = &common.rclone_config {
@@ -361,49 +338,84 @@ pub async fn start_profile_batch(
                 }
             }
 
-            let mut args = if transfer_type == OperationType::Archivecreate {
-                vec!["create".to_string(), source.clone(), dest_val.clone()]
-            } else {
-                vec![source.clone(), dest_val.clone()]
-            };
-
-            if let Value::Object(map) = &common.rclone_config {
-                for (key, val) in map {
-                    if SOURCE_KEYS.contains(&key.as_str()) || DEST_KEYS.contains(&key.as_str()) {
-                        continue;
+            let (endpoint, payload) = if backend.is_librclone_local() {
+                if transfer_type == OperationType::Archivecreate {
+                    let mut p = json!({
+                        "action": "create",
+                        "src": source,
+                        "dst": dest_val,
+                        "_async": true,
+                    });
+                    if let Value::Object(map) = &common.rclone_config {
+                        if let Some(f) = map.get("format").and_then(|v| v.as_str()) {
+                            p["format"] = json!(f);
+                        } else {
+                            p["format"] = json!("zip");
+                        }
+                        if let Some(pr) = map.get("prefix").and_then(|v| v.as_str()) {
+                            p["prefix"] = json!(pr);
+                        }
+                        if let Some(inc) = map.get("include") {
+                            p["include"] = inc.clone();
+                        }
+                    } else {
+                        p["format"] = json!("zip");
                     }
-                    let flag_name = format!("--{}", to_kebab_case(key));
-                    match val {
-                        Value::Bool(b) => {
-                            if *b {
-                                args.push(flag_name);
+                    (operations::ARCHIVE, p)
+                } else {
+                    (
+                        operations::CRYPTCHECK,
+                        json!({
+                            "src": source,
+                            "dst": dest_val,
+                            "_async": true,
+                        }),
+                    )
+                }
+            } else {
+                let cmd_name = if transfer_type == OperationType::Archivecreate {
+                    "archive"
+                } else {
+                    "cryptcheck"
+                };
+                let mut args = if transfer_type == OperationType::Archivecreate {
+                    vec!["create".to_string(), source.clone(), dest_val.clone()]
+                } else {
+                    vec![source.clone(), dest_val.clone()]
+                };
+
+                if transfer_type == OperationType::Archivecreate
+                    && let Value::Object(map) = &common.rclone_config
+                {
+                    if let Some(f) = map.get("format").and_then(|v| v.as_str()) {
+                        args.push(format!("--format={f}"));
+                    }
+                    if let Some(pr) = map.get("prefix").and_then(|v| v.as_str()) {
+                        args.push(format!("--prefix={pr}"));
+                    }
+                    if map
+                        .get("full_path")
+                        .or_else(|| map.get("full-path"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                    {
+                        args.push("--full-path".to_string());
+                    }
+                    if let Some(Value::Array(arr)) = map.get("include") {
+                        for item in arr {
+                            if let Some(s) = item.as_str() {
+                                args.push(format!("--include={s}"));
                             }
                         }
-                        Value::String(s) => {
-                            if !s.is_empty() {
-                                args.push(flag_name);
-                                args.push(s.clone());
-                            }
-                        }
-                        Value::Number(n) => {
-                            args.push(flag_name);
-                            args.push(n.to_string());
-                        }
-                        Value::Array(arr) => {
-                            for item in arr {
-                                if let Some(s) = item.as_str() {
-                                    args.push(flag_name.clone());
-                                    args.push(s.to_string());
-                                }
-                            }
-                        }
-                        _ => {}
                     }
                 }
-            }
 
-            // Note: async_job = true, because we are calling core/command directly, which supports _async: true
-            let payload = backend.build_core_command_payload(cmd_name, args, true, os);
+                let os = backend_manager.get_runtime_os(&backend.name).await;
+                (
+                    crate::utils::rclone::endpoints::core::COMMAND,
+                    backend.build_core_command_payload(cmd_name, args, true, os),
+                )
+            };
 
             let metadata = JobMetadata {
                 remote_name: params.remote_name.clone(),
@@ -420,7 +432,7 @@ pub async fn start_profile_batch(
 
             let (jobid, _, _) = submit_job_with_options(
                 app.clone(),
-                core::COMMAND,
+                endpoint,
                 payload,
                 metadata,
                 SubmitJobOptions {

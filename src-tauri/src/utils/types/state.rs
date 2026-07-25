@@ -147,21 +147,12 @@ impl std::fmt::Display for EnginePhase {
     }
 }
 
+#[cfg_attr(feature = "librclone", derive(Default))]
 pub struct RcApiEngine {
     pub phase: EnginePhase,
     pub process: Option<Child>,
     #[cfg(not(feature = "librclone"))]
     pub current_api_port: u16,
-}
-
-#[cfg(feature = "librclone")]
-impl Default for RcApiEngine {
-    fn default() -> Self {
-        Self {
-            phase: EnginePhase::default(),
-            process: None,
-        }
-    }
 }
 
 /// Thread-safe, async-friendly managed state for the engine

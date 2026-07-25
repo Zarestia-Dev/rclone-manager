@@ -46,7 +46,7 @@ export interface StartJobEvent {
 }
 
 export interface StopJobEvent {
-  type: PrimaryActionType;
+  type: JobActionType;
   remoteName: string;
   serveId?: string;
   profileName?: string;
@@ -104,7 +104,11 @@ export const BATCH_OP_LABELS = Object.freeze(
   Object.fromEntries(
     OPERATION_REGISTRY.filter(op => op.isSyncType).map(op => [op.key, op.apiLabel])
   )
-) as Readonly<Record<SyncOperationType, string>>;
+) as Readonly<Record<SyncOperationType, BatchApiLabel>>;
+export type BatchApiLabel = Extract<
+  (typeof OPERATION_REGISTRY)[number],
+  { isSyncType: true }
+>['apiLabel'];
 
 /**
  * Set of primary operation-type keys for efficient lookup.

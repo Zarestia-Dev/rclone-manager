@@ -89,9 +89,9 @@ describe('RcloneValueMapperService', () => {
       expect(service.bytesToSize(1125899906842624)).toBe('1Pi');
     });
 
-    it('should round decimal parts to 2 decimal places', () => {
+    it('should round decimal parts to 3 decimal places', () => {
       expect(service.bytesToSize(1536)).toBe('1.5Ki');
-      expect(service.bytesToSize(1200)).toBe('1.17Ki');
+      expect(service.bytesToSize(1200)).toBe('1.172Ki');
     });
   });
 

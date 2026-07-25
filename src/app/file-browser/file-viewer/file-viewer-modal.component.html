@@ -79,6 +79,23 @@
       </button>
     }
 
+    @if (!isHeadless()) {
+      <button
+        matIconButton
+        matTooltip="{{ 'fileBrowser.fileViewer.openNativeTooltip' | translate }}"
+        class="header-button"
+        [disabled]="isOpeningNative()"
+        (click)="openNativePdf(); $event.stopPropagation()"
+        [attr.aria-label]="'fileBrowser.fileViewer.openNative' | translate"
+      >
+        @if (isOpeningNative()) {
+          <mat-icon svgIcon="spinner"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="open-link"></mat-icon>
+        }
+      </button>
+    }
+
     @if (isDownloadVisible()) {
       <button
         matIconButton
@@ -165,7 +182,32 @@
       </div>
     }
     @case ('pdf') {
-      @if (safePdfUrl()) {
+      @if (isMobile()) {
+        <div class="unsupported-container mobile-pdf-card">
+          <mat-icon
+            [svgIcon]="iconService.getIconForFileType('pdf')"
+            class="pdf-card-icon"
+            aria-hidden="true"
+          ></mat-icon>
+          <h3 class="pdf-card-title">{{ fileName() }}</h3>
+          @if (fileSize()) {
+            <p class="unsupported-subtext">{{ fileSize() | formatFileSize }}</p>
+          }
+          <button
+            mat-flat-button
+            class="accent"
+            [disabled]="isOpeningNative()"
+            (click)="openNativePdf()"
+          >
+            @if (isOpeningNative()) {
+              <mat-icon svgIcon="spinner"></mat-icon>
+            } @else {
+              <mat-icon svgIcon="open-link"></mat-icon>
+            }
+            <span>{{ 'fileBrowser.fileViewer.openNative' | translate }}</span>
+          </button>
+        </div>
+      } @else if (safePdfUrl()) {
         <object
           [data]="safePdfUrl()"
           type="application/pdf"
@@ -176,6 +218,19 @@
           <div class="unsupported-container">
             <p>{{ 'fileBrowser.fileViewer.previewNotAvailable' | translate }}</p>
             <p class="unsupported-subtext">{{ fileName() }}</p>
+            <button
+              mat-stroked-button
+              class="accent"
+              [disabled]="isOpeningNative()"
+              (click)="openNativePdf()"
+            >
+              @if (isOpeningNative()) {
+                <mat-icon svgIcon="spinner"></mat-icon>
+              } @else {
+                <mat-icon svgIcon="open-link"></mat-icon>
+              }
+              <span>{{ 'fileBrowser.fileViewer.openNative' | translate }}</span>
+            </button>
           </div>
         </object>
       }

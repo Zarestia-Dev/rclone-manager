@@ -1890,6 +1890,14 @@
       "zero_size_links": {
         "title": "Sıfır Boyutlu Bağlantılar",
         "help": "Bağlantıların Stat boyutunun sıfır olduğunu varsayalım (ve bunun yerine onları okuyalım) (artık kullanılmıyor).\n\nrclone eskiden bağlantıların Stat boyutunu bağlantı boyutu olarak kullanırdı, ancak bu birkaç yerde başarısız olur:\n\n- Windows\n- Bazı sanal dosya sistemlerinde (ash LucidLink gibi)\n- Android\n\nBu yüzden rclone artık her zaman bağlantıyı okur.\n"
+      },
+      "metadata_restore_special_bits": {
+        "title": "Özel İzin Bitlerini Geri Yükle (Setuid/Setgid/Sticky)",
+        "help": "Metadatlardan setuid, setgid ve sticky izin bitlerini geri yükler.\n\n--metadata ile metadataları geri yüklerken rclone kaynaktaki \"mode\" değerini uygular. Varsayılan olarak rclone yalnızca izin bitlerini uygular ve setuid, setgid ile sticky bitlerini temizler.\n\n\"mode\" güvenilmeyen bir kaynak depodan gelebilir. Taze yazılmış dosyalara setuid veya setgid biti koymak zararlı bir ikili dosya yerleştirebilir (özellikle root olarak çalışırken güvenilmeyen bir kaynaktan geri yükleme yapıyorsanız tehlikelidir). Bu nedenle bu bitler varsayılan olarak geri yüklenmez.\n\nKaynağa güveniyorsanız ve bu özel bitlerin geri yüklenmesini istiyorsanız bu seçeneği etkinleştirin."
+      },
+      "fatal_if_no_space": {
+        "title": "Yetersiz Alanı Kritik Hata Say",
+        "help": "Aktarım sırasında alan tükenmesi hatalarını ölümcül/kritik hata sayar.\n\nEtkinleştirildiğinde, yazma sırasındaki ENOSPC (alansızlık) hatası rclone'un işlemi tekrar tekrar denemek yerine hemen pes edip durdurmasını sağlar. Dolu bir diskte sürekli tekrar denemek yerine net şekilde durması gereken yedekleme komut dosyaları için kullanışlıdır."
       }
     },
     "mailru": {

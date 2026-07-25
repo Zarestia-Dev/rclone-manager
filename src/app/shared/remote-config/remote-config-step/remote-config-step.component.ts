@@ -168,9 +168,7 @@ export class RemoteConfigStepComponent {
     () => !!this.remoteTypeValue() && (!this.providerField() || !!this.selectedProvider())
   );
 
-  readonly jsonExcludeKeys = computed(() => {
-    return ['name', 'type'];
-  });
+  readonly jsonExcludeKeys = ['name', 'type'];
 
   readonly availablePredefinedOptions = computed(() => {
     const active = new Set(this.commandOptions().map(o => o.key));

@@ -12,11 +12,21 @@ mat-sidenav-container {
 
 mat-sidenav {
   width: var(--sidebar-width);
+
+  @media (max-width: 599.98px) {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
 }
 
 mat-sidenav-content {
   flex: 1;
   height: 100%;
+
+  @media (max-width: 599.98px) {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
 }
 
 .sidebar-button {

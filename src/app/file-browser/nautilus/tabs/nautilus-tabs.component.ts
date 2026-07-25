@@ -9,6 +9,7 @@ import {
   signal,
   computed,
   inject,
+  OnDestroy,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -41,7 +42,7 @@ interface TabViewModel {
   styleUrl: './nautilus-tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NautilusTabsComponent {
+export class NautilusTabsComponent implements OnDestroy {
   // --- Services ---
   private readonly translate = inject(TranslateService);
   private readonly nautilusService = inject(NautilusService);
@@ -90,6 +91,10 @@ export class NautilusTabsComponent {
       this.tabs();
       this.scrollToActiveTab(activeIndex);
     });
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('dragover', this.onGlobalDragOver);
   }
 
   // ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status
 import {
   Remote,
   JobInfo,
+  JobActionType,
   MountedRemote,
   ServeListItem,
   RemoteSettings,
@@ -554,20 +555,17 @@ export class RemoteFacadeService extends TauriBaseService {
     const label = BATCH_OP_LABELS[opType];
     if (!label) throw new Error(`Unsupported operation: ${opType}`);
 
-    return this.jobService.startProfileBatch(
-      label as Parameters<typeof this.jobService.startProfileBatch>[0],
-      {
-        remoteName,
-        profileName: profile,
-        source,
-        noCache,
-      }
-    );
+    return this.jobService.startProfileBatch(label, {
+      remoteName,
+      profileName: profile,
+      source,
+      noCache,
+    });
   }
 
   async stopJob(
     remoteName: string,
-    type: SyncOperationType | 'mount' | 'serve',
+    type: JobActionType,
     serveId: string | undefined,
     profileName: string | undefined
   ): Promise<void> {
@@ -576,18 +574,19 @@ export class RemoteFacadeService extends TauriBaseService {
         `Cannot stop ${type} on ${remoteName}: no profile specified. Pick a profile first.`
       );
     }
+    const trackerOpType = OPERATION_TYPE_KEYS.has(type) ? (type as PrimaryActionType) : undefined;
     await this.executeAction(
       remoteName,
       'stop',
       () => this.dispatchJobStop(remoteName, type, serveId, profileName),
       profileName,
-      type
+      trackerOpType
     );
   }
 
   private async dispatchJobStop(
     remoteName: string,
-    type: SyncOperationType | 'mount' | 'serve',
+    type: JobActionType,
     serveId?: string,
     profileName?: string
   ): Promise<void> {

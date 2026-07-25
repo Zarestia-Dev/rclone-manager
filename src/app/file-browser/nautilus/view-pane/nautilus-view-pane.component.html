@@ -19,6 +19,7 @@
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
+      (scroll)="onGridScroll($event)"
     >
       @if (lassoActive()) {
         <div
@@ -30,7 +31,7 @@
         ></div>
       }
       <div class="grid" [style.gridTemplateColumns]="gridColumns()">
-        @for (item of files(); track getItemKey(item)) {
+        @for (item of gridFiles(); track getItemKey(item)) {
           @let key = getItemKey(item);
           @let isCut = cutItemPaths().has(key);
           <div
@@ -78,6 +79,11 @@
           </div>
         }
       </div>
+      @if (gridHasMore()) {
+        <div class="progressive-render-indicator">
+          Showing {{ gridFiles().length }} of {{ files().length }}
+        </div>
+      }
     </div>
   } @else {
     <div
@@ -92,6 +98,7 @@
       (cdkContextMenuOpened)="setContextItem.emit(null)"
       (dragover)="$event.preventDefault()"
       (drop)="dropToCurrentDirectory.emit({ event: $event, paneIndex: paneIndex() })"
+      (scroll)="onGridScroll($event)"
     >
       @if (lassoActive()) {
         <div
@@ -102,7 +109,7 @@
           [style.height.px]="lassoRect().height"
         ></div>
       }
-      <table mat-table [dataSource]="files()" class="nautilus-table">
+      <table mat-table [dataSource]="listFiles()" class="nautilus-table">
         <ng-container matColumnDef="name">
           <th
             mat-header-cell
@@ -223,6 +230,11 @@
           "
         ></tr>
       </table>
+      @if (listHasMore()) {
+        <div class="progressive-render-indicator">
+          Showing {{ listFiles().length }} of {{ files().length }}
+        </div>
+      }
     </div>
   }
 

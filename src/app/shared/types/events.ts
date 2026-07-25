@@ -1,7 +1,6 @@
 import { GlobalStats, JobStatus } from './jobs';
 import { MemoryStats, RcloneInfo, RcloneStatus } from './system';
 
-// Event constants
 export const RCLONE_ENGINE_STATUS_CHANGED = 'rclone_engine_status_changed' as const;
 export const RCLONE_PASSWORD_STORED = 'rclone_password_stored' as const;
 export const BACKEND_SWITCHED = 'backend_switched' as const;

@@ -43,6 +43,10 @@ export class ApiClientService {
       throw new Error('Native file manager is not available in web mode.');
     }
 
+    if (command === 'open_file_natively') {
+      throw new Error('Native external application launcher is not available in web mode.');
+    }
+
     if (command === 'auth_session') {
       await firstValueFrom(
         this.http.post(`${this.apiBase}/auth/session`, {}, { withCredentials: true })

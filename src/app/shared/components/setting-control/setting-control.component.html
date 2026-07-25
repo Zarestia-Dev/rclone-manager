@@ -164,17 +164,66 @@
                 }
               }
             </mat-select-trigger>
-            @for (item of optionsList; track item.Value || item) {
-              <mat-option [value]="item.Value || item" class="multi-line-option">
+            @for (item of optionsList; track item.Value ?? item) {
+              <mat-option [value]="item.Value ?? item" class="multi-line-option">
                 <div class="option-content">
-                  <span class="option-label">{{ item.Help || item.Value || item }}</span>
-                  @if (item.Help && item.Help !== (item.Value || item)) {
-                    <small class="option-value-badge">{{ item.Value || item }}</small>
+                  <span class="option-label">{{ item.Help || (item.Value ?? item) }}</span>
+                  @if (item.Help && item.Help !== (item.Value ?? item)) {
+                    <small class="option-value-badge">{{ item.Value ?? item }}</small>
                   }
                 </div>
               </mat-option>
             }
           </mat-select>
+          @if (control()?.invalid && control()?.touched) {
+            <mat-error>{{ controlError() }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #autocompleteInput let-opt let-optionsList="optionsList">
+    <div class="setting-full-width">
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }" />
+      <div class="setting-control">
+        <mat-form-field class="input-field" appearance="fill">
+          <input
+            matInput
+            #autoTrigger="matAutocompleteTrigger"
+            [type]="isSensitiveField() ? 'password' : 'text'"
+            [formControl]="$any(control())"
+            [matAutocomplete]="auto"
+            [attr.aria-label]="opt.Name"
+            [placeholder]="opt.DefaultStr || ''"
+            (blur)="commitValue()"
+          />
+          <button
+            matSuffix
+            type="button"
+            matIconButton
+            class="dropdown-arrow-btn"
+            (click)="$event.stopPropagation(); autoTrigger.openPanel()"
+            tabindex="-1"
+          >
+            <mat-icon svgIcon="chevron-down" />
+          </button>
+          <mat-autocomplete
+            #auto="matAutocomplete"
+            (optionSelected)="commitValue()"
+            panelClass="settings-select-panel"
+          >
+            @for (item of optionsList || opt.Examples; track item.Value ?? item) {
+              <mat-option [value]="item.Value ?? item" class="multi-line-option">
+                <div class="option-content">
+                  <span class="option-label">{{ item.Help || (item.Value ?? item) }}</span>
+                  @if (item.Help && item.Help !== (item.Value ?? item)) {
+                    <small class="option-value-badge">{{ item.Value ?? item }}</small>
+                  }
+                </div>
+              </mat-option>
+            }
+          </mat-autocomplete>
           @if (control()?.invalid && control()?.touched) {
             <mat-error>{{ controlError() }}</mat-error>
           }
@@ -323,6 +372,13 @@
                   context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
                 "
               />
+            } @else if (mergedOption()?.Exclusive === false) {
+              <ng-container
+                *ngTemplateOutlet="
+                  autocompleteInput;
+                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+                "
+              />
             } @else {
               <ng-container
                 *ngTemplateOutlet="standardSelect; context: { $implicit: mergedOption() }"
@@ -416,6 +472,13 @@
               <ng-container
                 *ngTemplateOutlet="
                   multiSelect;
+                  context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
+                "
+              />
+            } @else if (mergedOption()?.Exclusive === false) {
+              <ng-container
+                *ngTemplateOutlet="
+                  autocompleteInput;
                   context: { $implicit: mergedOption(), optionsList: mergedOption()?.Examples }
                 "
               />

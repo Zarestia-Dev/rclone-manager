@@ -351,3 +351,11 @@ tr.folder-drag-over {
   z-index: 1000;
   border-radius: var(--radius-xxs);
 }
+
+.progressive-render-indicator {
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  opacity: 0.7;
+}

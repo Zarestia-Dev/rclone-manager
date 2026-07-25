@@ -2,5 +2,6 @@
     <!-- Base application theme. -->
     <style name="Theme.rclone_manager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

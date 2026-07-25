@@ -1504,7 +1504,11 @@
       "extract": "Extraer",
       "extracting": "Extrayendo \"{{name}}\"...",
       "errorExtract": "Error al extraer el archivo",
-      "errorListArchive": "Error al listar el contenido del archivo"
+      "errorListArchive": "Error al listar el contenido del archivo",
+      "openNative": "Abrir con aplicación externa",
+      "openNativeTooltip": "Abrir en la aplicación externa predeterminada",
+      "openingNative": "Abriendo {{name}} en la aplicación externa...",
+      "errorOpenNative": "Error al abrir el archivo en la aplicación externa"
     }
   },
   "dashboard": {
@@ -2373,10 +2377,12 @@
       "copyUrlFailed": "Error al descargar desde URL: {{error}}",
       "archiveCreateFailed": "No se pudo crear el archivo: {{error}}",
       "externalDropFailed": "No se pudo procesar la caída de archivos externos.",
-      "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}"
+      "sendToFailed": "No se pudo actualizar el menú del administrador de archivos: {{error}}",
+      "noRemoteSelected": "Por favor, navega primero a un remoto."
     },
     "contextMenu": {
       "open": "Abrir",
+      "share": "Compartir",
       "openNewTab": "Abrir en nueva pestaña",
       "copyPath": "Copiar ruta",
       "newFolder": "Nueva carpeta",
@@ -2441,6 +2447,10 @@
       "archiveCreateStarted": "Creación de archivo iniciada...",
       "sendToAdded": "Se agregó '{{remote}}{{path}}' al menú del administrador de archivos",
       "sendToRemoved": "Se quitó '{{remote}}{{path}}' del menú del administrador de archivos"
+    },
+    "androidShare": {
+      "uploadHere": "Subir {{count}} archivo(s) compartido(s) a esta carpeta",
+      "confirm": "Subir aquí"
     }
   },
   "home": {

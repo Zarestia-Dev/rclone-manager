@@ -10,6 +10,7 @@ import {
   ElementRef,
   OnDestroy,
   ChangeDetectionStrategy,
+  effect,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,7 +22,7 @@ import { FormatFileSizePipe, FormatRelativeDatePipe } from '@app/pipes';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusDragDropService } from 'src/app/services/ui/nautilus-drag-drop.service';
-import { Entry, FileBrowserItem } from '@app/types';
+import { Entry, FileBrowserItem, fileBrowserItemKey } from '@app/types';
 
 @Component({
   selector: 'app-nautilus-view-pane',
@@ -96,11 +97,33 @@ export class NautilusViewPaneComponent implements OnDestroy {
   private _autoScrollRafId: number | null = null;
   private _lassoRafId: number | null = null;
 
+  private readonly _gridRenderLimit = signal(200);
+  private static readonly GRID_RENDER_BATCH = 200;
+
   // --- Computeds ---
   protected readonly gridColumns = computed(() => `repeat(auto-fill, ${this.iconSize() + 40}px)`);
   protected readonly displayedColumns = computed((): string[] =>
     this.starredMode() ? ['name', 'size', 'modified', 'star'] : ['name', 'size', 'modified']
   );
+
+  /** Grid items to actually render (progressive: slice of `files()`). */
+  protected readonly gridFiles = computed(() => this.files().slice(0, this._gridRenderLimit()));
+
+  /** True when the grid has more items to render than currently shown. */
+  protected readonly gridHasMore = computed(() => this._gridRenderLimit() < this.files().length);
+
+  /** List items to actually render (progressive: slice of `files()`). */
+  protected readonly listFiles = computed(() => this.files().slice(0, this._gridRenderLimit()));
+
+  /** True when the list has more items to render than currently shown. */
+  protected readonly listHasMore = computed(() => this._gridRenderLimit() < this.files().length);
+
+  constructor() {
+    effect(() => {
+      this.files();
+      this._gridRenderLimit.set(NautilusViewPaneComponent.GRID_RENDER_BATCH);
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Drag — ghost + self-hover fix
@@ -258,7 +281,7 @@ export class NautilusViewPaneComponent implements OnDestroy {
   }
 
   protected getItemKey(item: FileBrowserItem): string {
-    return `${item.meta.remote}:${item.entry.Path}`;
+    return fileBrowserItemKey(item);
   }
 
   // ---------------------------------------------------------------------------
@@ -456,5 +479,13 @@ export class NautilusViewPaneComponent implements OnDestroy {
       cancelAnimationFrame(this._lassoRafId);
     }
     this._removePointerListeners();
+  }
+
+  protected onGridScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
+    if (nearBottom && this.gridHasMore()) {
+      this._gridRenderLimit.update(v => v + NautilusViewPaneComponent.GRID_RENDER_BATCH);
+    }
   }
 }

@@ -1,9 +1,12 @@
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, command};
+use tauri::command;
 
-use crate::utils::types::events::NETWORK_STATUS_CHANGED;
-use crate::utils::types::monitoring::NetworkStatusPayload;
 use crate::utils::types::rclone::CheckResult;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use crate::utils::types::events::NETWORK_STATUS_CHANGED;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use crate::utils::types::monitoring::NetworkStatusPayload;
 
 #[command]
 pub async fn check_links(
@@ -148,7 +151,7 @@ pub fn is_metered() -> bool {
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(all(target_os = "linux", not(feature = "container")))]
-pub async fn monitor_network_changes(app_handle: AppHandle) {
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
@@ -181,7 +184,7 @@ pub async fn monitor_network_changes(app_handle: AppHandle) {
             is_metered: is_metered(),
         };
 
-        if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
+        if let Err(e) = tauri::Emitter::emit(&app_handle, NETWORK_STATUS_CHANGED, payload) {
             log::error!("Failed to emit network status change event: {e}");
         }
     }
@@ -197,7 +200,8 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(any(target_os = "macos", all(target_os = "linux", feature = "container")))]
-pub async fn monitor_network_changes(app_handle: AppHandle) {
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use tauri::Emitter;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
         log::error!("Failed to emit network status change event: {e}");
@@ -233,7 +237,8 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-pub async fn monitor_network_changes(app_handle: AppHandle) {
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use tauri::Emitter;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {

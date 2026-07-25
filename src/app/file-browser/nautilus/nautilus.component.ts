@@ -52,6 +52,7 @@ import { NautilusToolbarComponent } from './toolbar/nautilus-toolbar.component';
 import { NautilusTabsComponent } from './tabs/nautilus-tabs.component';
 import { NautilusViewPaneComponent } from './view-pane/nautilus-view-pane.component';
 import { NautilusBottomBarComponent } from './bottom-bar/nautilus-bottom-bar.component';
+import { AndroidShareService } from 'src/app/services/ui/android-share.service';
 import { NautilusContextMenuComponent } from './context-menu/nautilus-context-menu.component';
 
 @Component({
@@ -102,6 +103,10 @@ export class NautilusComponent implements OnInit {
   protected readonly actions = inject(NautilusActionsService);
   protected readonly selectionSvc = inject(NautilusSelectionService);
   protected readonly fileViewerSvc = inject(FileViewerService);
+  protected readonly androidShare = inject(AndroidShareService);
+
+  /** Paths shared into the app from another Android app (empty on desktop). */
+  protected readonly pendingSharedPaths = this.androidShare.pendingSharedPaths;
 
   // ── Outputs & ViewChild ──────────────────────────────────────────────────────
   readonly closeOverlay = output<FileBrowserItem[] | null>();
@@ -587,6 +592,12 @@ export class NautilusComponent implements OnInit {
     this.updatePath(this.tabSvc.currentPath() ? `${currentPath}/${normalized}` : normalized);
   }
 
+  protected onPopOutToWindow(): void {
+    const remote = this.tabSvc.activeRemote()?.name ?? null;
+    const path = this.tabSvc.activePath() ?? null;
+    void this.nautilusService.newNautilusWindow(remote, path, true);
+  }
+
   protected navigateTo(item: FileBrowserItem, isNewTab = false): void {
     const idx = this.tabSvc.activeTabIndex();
     const tab = this.tabSvc.tabs()[idx];
@@ -784,6 +795,30 @@ export class NautilusComponent implements OnInit {
     if (!remote) return;
     const success = await this.fileOps.uploadExternalFolder(remote, this.tabSvc.activePath());
     if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+  }
+
+  /**
+   * Triggered when the user taps "Upload here" in the Android share banner.
+   * Uses the paths stored in AndroidShareService and uploads them to the
+   * current remote/folder.
+   */
+  async uploadSharedFiles(): Promise<void> {
+    const remote = this.tabSvc.activeRemote();
+    if (!remote) {
+      this.notificationService.showError(
+        this.translate.instant('nautilus.errors.noRemoteSelected')
+      );
+      return;
+    }
+    const paths = this.androidShare.consumePendingPaths();
+    if (!paths.length) return;
+    const success = await this.fileOps.uploadSharedPaths(remote, this.tabSvc.activePath(), paths);
+    if (success) this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+  }
+
+  /** Cancel the pending Android share without uploading. */
+  cancelSharedFiles(): void {
+    this.androidShare.cancelPendingShare();
   }
 
   /** Handler for the hidden file <input> — headless mode only. */

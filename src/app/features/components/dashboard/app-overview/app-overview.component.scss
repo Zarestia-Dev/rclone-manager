@@ -122,8 +122,8 @@
 // RESPONSIVE ADJUSTMENTS
 // =============================================
 
-@media (max-width: 599px) {
+@media (max-width: 599.98px) {
   .layout-actions-blossom {
-    bottom: 56px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   }
 }

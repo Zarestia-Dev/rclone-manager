@@ -24,6 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   OperationTab,
   PrimaryActionType,
+  JobActionType,
   Remote,
   RemoteSettings,
   SyncOperationType,
@@ -169,7 +170,7 @@ export class HomeComponent {
   }
 
   async stopJob(
-    type: PrimaryActionType,
+    type: JobActionType,
     remoteName: string,
     serveId: string | undefined,
     profileName: string | undefined

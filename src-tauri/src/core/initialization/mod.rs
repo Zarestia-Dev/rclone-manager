@@ -124,6 +124,12 @@ pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     }
 
     app_handle
+        .emit(crate::utils::types::events::REMOTE_CACHE_CHANGED, ())
+        .ok();
+    app_handle
+        .emit(crate::utils::types::events::REMOTE_SETTINGS_CHANGED, ())
+        .ok();
+    app_handle
         .emit(
             SYSTEM_SETTINGS_CHANGED,
             crate::utils::types::events::SettingsChangeEvent {
@@ -217,10 +223,7 @@ async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
     let app_paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
     let rcman_manager = app_handle.state::<AppSettingsManager>();
 
-    #[cfg(desktop)]
-    {
-        crate::core::settings::migration::migrate_keyring_credentials(rcman_manager.inner());
-    }
+    crate::core::settings::migration::migrate_keyring_credentials(rcman_manager.inner());
 
     let settings = rcman_manager
         .get_all()

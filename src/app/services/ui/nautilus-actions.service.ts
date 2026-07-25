@@ -5,7 +5,7 @@ import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { ModalService } from 'src/app/services/ui/modal.service';
-import { ExplorerRoot, FileBrowserItem, RemoteFeatures } from '@app/types';
+import { ExplorerRoot, FileBrowserItem, fileBrowserItemKey, RemoteFeatures } from '@app/types';
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
 import { NautilusFileOperationsService } from './nautilus-file-operations.service';
 import { NautilusTabService } from './nautilus-tab.service';
@@ -14,6 +14,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { MultiRenameModalComponent } from 'src/app/shared/modals/multi-rename-modal/multi-rename-modal.component';
 import { FileViewerService } from './file-viewer.service';
+import { DownloadService } from 'src/app/services/operations/download.service';
 
 @Injectable()
 export class NautilusActionsService {
@@ -27,10 +28,57 @@ export class NautilusActionsService {
   private readonly fileViewerSvc = inject(FileViewerService);
   private readonly nautilusService = inject(NautilusService);
   private readonly modalService = inject(ModalService);
+  private readonly downloadService = inject(DownloadService);
   private readonly clipboard = inject(Clipboard);
   private readonly dialog = inject(MatDialog);
 
   readonly contextMenuItem = signal<FileBrowserItem | null>(null);
+
+  async shareContextItem(itemOverride?: FileBrowserItem): Promise<void> {
+    const item = itemOverride ?? this.contextMenuItem();
+    if (!item || item.entry.IsDir) return;
+
+    const activeRemote = this.tabSvc.activeRemote();
+    const isLocal = item.meta.isLocal ?? activeRemote?.isLocal ?? true;
+    let remoteName = item.meta.remote ?? activeRemote?.name ?? '';
+    if (remoteName && !isLocal) {
+      remoteName = this.pathSvc.normalizeRemoteForRclone(remoteName);
+    }
+
+    try {
+      await this.downloadService.shareFileNatively(
+        remoteName,
+        item.entry.Path,
+        item.entry.Name,
+        isLocal
+      );
+    } catch (err) {
+      console.error('Failed to share context menu item:', err);
+    }
+  }
+
+  async openNativeContextItem(itemOverride?: FileBrowserItem): Promise<void> {
+    const item = itemOverride ?? this.contextMenuItem();
+    if (!item || item.entry.IsDir) return;
+
+    const activeRemote = this.tabSvc.activeRemote();
+    const isLocal = item.meta.isLocal ?? activeRemote?.isLocal ?? true;
+    let remoteName = item.meta.remote ?? activeRemote?.name ?? '';
+    if (remoteName && !isLocal) {
+      remoteName = this.pathSvc.normalizeRemoteForRclone(remoteName);
+    }
+
+    try {
+      await this.downloadService.openFileNatively(
+        remoteName,
+        item.entry.Path,
+        item.entry.Name,
+        isLocal
+      );
+    } catch (err) {
+      console.error('Failed to open native context menu item:', err);
+    }
+  }
 
   openPropertiesDialog(source: 'contextMenu' | 'bookmark', itemOverride?: FileBrowserItem): void {
     const activeRemote = this.tabSvc.activeRemote();
@@ -365,7 +413,7 @@ export class NautilusActionsService {
   }
 
   private _itemKey(item: FileBrowserItem): string {
-    return `${item.meta.remote}:${item.entry.Path}`;
+    return fileBrowserItemKey(item);
   }
 
   private _resolveBookmarkRemote(bookmark: FileBrowserItem): ExplorerRoot | null {

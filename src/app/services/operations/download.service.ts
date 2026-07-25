@@ -94,4 +94,80 @@ export class DownloadService {
       }
     }
   }
+
+  /**
+   * Opens a remote or local file in the system default native application (e.g. PDF viewer).
+   */
+  async openFileNatively(
+    remote: string,
+    path: string,
+    fileName: string,
+    isLocal: boolean
+  ): Promise<void> {
+    return this.executeNativeAction('open', remote, path, fileName, isLocal);
+  }
+
+  /**
+   * Opens the Android native share sheet for a remote or local file.
+   */
+  async shareFileNatively(
+    remote: string,
+    path: string,
+    fileName: string,
+    isLocal: boolean
+  ): Promise<void> {
+    return this.executeNativeAction('share', remote, path, fileName, isLocal);
+  }
+
+  /**
+   * Unified helper for native file actions ('open' | 'share').
+   * Resolves the local path (or streams remote file to cache), then triggers
+   * the appropriate native action (FileProvider intent on Android or open_path on Desktop).
+   */
+  private async executeNativeAction(
+    action: 'open' | 'share',
+    remote: string,
+    path: string,
+    fileName: string,
+    isLocal: boolean
+  ): Promise<void> {
+    try {
+      this.notificationService.showInfo(
+        this.translate.instant('fileBrowser.fileViewer.openingNative', { name: fileName })
+      );
+
+      // Rust resolves the local path (or streams remote file to app cache) and returns the absolute path.
+      const localPath = await this.apiClient.invoke<string>('open_file_natively', {
+        remote,
+        path,
+        fileName,
+        isLocal,
+      });
+
+      // On Android, trigger the Kotlin bridge (FileProvider ACTION_VIEW or ACTION_SEND).
+      const bridge = (
+        window as Window & {
+          __rclone__?: {
+            openLocalFile?: (p: string) => void;
+            shareFile?: (p: string) => void;
+          };
+        }
+      ).__rclone__;
+
+      if (action === 'open' && bridge?.openLocalFile) {
+        bridge.openLocalFile(localPath);
+      } else if (action === 'share' && bridge?.shareFile) {
+        bridge.shareFile(localPath);
+      }
+      // On desktop, Rust handles opening directly when action === 'open'.
+    } catch (err) {
+      console.error(`Failed to execute native ${action} action:`, err);
+      this.notificationService.showError(
+        this.translate.instant('fileBrowser.fileViewer.errorOpenNative') +
+          ': ' +
+          (err instanceof Error ? err.message : String(err))
+      );
+      throw err;
+    }
+  }
 }

@@ -15,7 +15,22 @@ impl RcloneLibBackend {
     pub fn new(app: AppHandle) -> Self {
         rclone_ffi::initialize();
         log::info!("RcloneLibBackend created");
-        Self { app }
+        let backend = Self { app };
+        backend.ensure_default_config_path();
+        backend
+    }
+
+    fn ensure_default_config_path(&self) {
+        if let Ok(paths) = crate::core::paths::AppPaths::from_app_handle(&self.app) {
+            use crate::utils::rclone::endpoints::config;
+            let conf_path = paths.config_dir.join("rclone.conf");
+            let path_str = conf_path.to_string_lossy().to_string();
+            let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
+                "_path": config::SETPATH,
+                "path": path_str
+            }));
+            log::info!("Set librclone config path to {}", conf_path.display());
+        }
     }
 }
 

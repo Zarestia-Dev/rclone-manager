@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::debug;
 use tauri::{AppHandle, Emitter, Window, command};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
@@ -58,13 +58,13 @@ pub async fn get_folder_location(
                 }
                 Ok(_) => (), // Folder is empty
                 Err(e) => {
-                    error!("Error reading directory: {e}");
+                    log::error!("Error reading directory: {e}");
                     return Err(format!("Error checking folder: {e}"));
                 }
             },
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (), // Folder doesn't exist
             Err(e) => {
-                error!("Error accessing folder: {e}");
+                log::error!("Error accessing folder: {e}");
                 return Err(format!("Error accessing folder: {e}"));
             }
         }
@@ -109,6 +109,117 @@ pub async fn open_in_files(
             "backendErrors.file.failedToOpen",
             "error" => e.to_string()
         )),
+    }
+}
+
+#[command]
+pub async fn open_file_natively(
+    app: AppHandle,
+    remote: String,
+    path: String,
+    file_name: String,
+    is_local: bool,
+) -> Result<String, String> {
+    use tauri::Manager;
+
+    let clean_file_name = std::path::Path::new(&file_name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("document.pdf");
+
+    if is_local {
+        let mut full_path = std::path::PathBuf::from(&remote);
+        full_path.push(&path);
+
+        if !full_path.exists() {
+            return Err(crate::localized_error!(
+                "backendErrors.file.notFound",
+                "path" => full_path.display().to_string()
+            ));
+        }
+
+        let path_str = full_path
+            .to_str()
+            .ok_or_else(|| format!("Invalid path: {}", full_path.display()))?
+            .to_string();
+
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        {
+            app.opener()
+                .open_path(&path_str, None::<String>)
+                .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
+        }
+
+        return Ok(path_str);
+    }
+
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("Failed to get cache directory: {e}"))?
+        .join("temp_views");
+
+    tokio::fs::create_dir_all(&cache_dir)
+        .await
+        .map_err(|e| format!("Failed to create temp_views directory: {e}"))?;
+
+    let dest_path = cache_dir.join(clean_file_name);
+    let dest_str = dest_path
+        .to_str()
+        .ok_or_else(|| format!("Invalid target path: {}", dest_path.display()))?
+        .to_string();
+
+    let transport = crate::rclone::commands::common::transport(&app);
+
+    let mut reader = transport
+        .read_file(&remote, &path, None)
+        .await
+        .map_err(|e| format!("Failed to read remote file: {e}"))?;
+
+    let mut file = tokio::fs::File::create(&dest_path)
+        .await
+        .map_err(|e| format!("Failed to create temporary file: {e}"))?;
+
+    let mut buffer = vec![0; 65536];
+    loop {
+        let n = reader
+            .read(&mut buffer)
+            .await
+            .map_err(|e| format!("Error reading remote file stream: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])
+            .await
+            .map_err(|e| format!("Error writing temporary file: {e}"))?;
+    }
+    file.flush()
+        .await
+        .map_err(|e| format!("Error flushing temporary file: {e}"))?;
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        app.opener()
+            .open_path(&dest_str, None::<String>)
+            .map_err(|e| crate::localized_error!("backendErrors.file.failedToOpen", "error" => e.to_string()))?;
+    }
+
+    Ok(dest_str)
+}
+
+/// Removes all temporary preview/viewer files cached in `app_cache_dir()/temp_views`.
+/// Called during app startup and shutdown.
+pub fn cleanup_temp_views(app: &AppHandle) {
+    use tauri::Manager;
+    if let Ok(cache_dir) = app.path().app_cache_dir() {
+        let temp_views_dir = cache_dir.join("temp_views");
+        if temp_views_dir.exists() {
+            if let Err(e) = std::fs::remove_dir_all(&temp_views_dir) {
+                log::warn!("Failed to clean up temp_views directory: {e}");
+            } else {
+                debug!("Successfully cleaned up temp_views directory");
+            }
+        }
     }
 }
 

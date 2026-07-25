@@ -130,6 +130,7 @@ impl RcApiEngine {
 }
 
 /// Why [`RcApiEngine::wait_until_ready`] gave up.
+#[cfg(not(feature = "librclone"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WaitReadyError {
     RcAuthFailed,
@@ -137,6 +138,7 @@ pub enum WaitReadyError {
     Timeout,
 }
 
+#[cfg(not(feature = "librclone"))]
 impl std::fmt::Display for WaitReadyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -147,6 +149,7 @@ impl std::fmt::Display for WaitReadyError {
     }
 }
 
+#[cfg(not(feature = "librclone"))]
 impl std::error::Error for WaitReadyError {}
 
 #[cfg(all(test, not(feature = "librclone")))]

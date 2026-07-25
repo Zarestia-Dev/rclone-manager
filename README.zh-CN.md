@@ -11,6 +11,7 @@
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
+  <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="CONTRIBUTING.md#adding-translations">帮助翻译</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
@@ -88,7 +89,7 @@
 
 | 来源         | 版本                                                                                                                                                                                                        | 安装命令 / 下载                                                              |
 | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
-| **Homebrew** | [![Homebrew 版本](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`       |
+| **Homebrew** | [![Homebrew 版本](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager`       |
 | **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                     | [DMG 安装包](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **指南:** [Wiki: 安装 - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)（macFUSE 与 Gatekeeper 修复）

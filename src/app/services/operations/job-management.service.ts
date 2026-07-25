@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core'
 import { interval, merge } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { JobInfo, Origin } from '@app/types';
+import { BatchApiLabel, JobInfo, Origin } from '@app/types';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
 import { groupBy } from '../remote/utils/remote-config.utils';
 
@@ -28,9 +28,9 @@ export class JobManagementService extends TauriBaseService {
     super();
     this.initializeEventListeners();
     this.initializePolling();
-    this.refreshJobs().catch(() => {
-      /* empty */
-    });
+    this.refreshJobs().catch(err =>
+      console.error('[JobManagementService] initial job load failed:', err)
+    );
   }
 
   private initializePolling(): void {
@@ -87,21 +87,11 @@ export class JobManagementService extends TauriBaseService {
   async refreshJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_jobs');
     this._jobs.set(jobs);
-    console.log(jobs);
     return jobs;
   }
 
   async startProfileBatch(
-    transferType:
-      | 'Sync'
-      | 'Copy'
-      | 'Move'
-      | 'Bisync'
-      | 'Check'
-      | 'Delete'
-      | 'Copyurl'
-      | 'Archivecreate'
-      | 'Cryptcheck',
+    transferType: BatchApiLabel,
     params: {
       remoteName: string;
       profileName: string;
@@ -109,7 +99,7 @@ export class JobManagementService extends TauriBaseService {
       noCache?: boolean;
     }
   ): Promise<number> {
-    const lowercaseType = transferType.toLowerCase() as unknown;
+    const lowercaseType = transferType.toLowerCase();
     return this.invokeWithNotification<number>(
       'start_profile_batch',
       { transferType: lowercaseType, params },

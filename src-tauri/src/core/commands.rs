@@ -16,6 +16,8 @@ macro_rules! MASTER_COMMAND_LIST {
             // File Picker / System Interaction
             #[cfg(not(feature = "web-server"))]
             (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
+            #[cfg(not(feature = "web-server"))]
+            (open_file_natively, $crate::utils::io::file_helper::open_file_natively, [remote: String, path: String, file_name: String, is_local: bool]);
             #[cfg(all(desktop, not(feature = "web-server")))]
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
             #[cfg(not(feature = "web-server"))]
@@ -41,8 +43,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
+
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (register_send_to, $crate::utils::app::send_to::register_send_to, [remote: String, path: Option<String>], [no_app]);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (unregister_send_to, $crate::utils::app::send_to::unregister_send_to, [remote: String, path: Option<String>], [no_app]);
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             (is_send_to_registered, $crate::utils::app::send_to::is_send_to_registered, [remote: String, path: Option<String>], [no_app]);
 
             // RCLONE OPERATIONS

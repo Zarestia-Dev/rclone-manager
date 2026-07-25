@@ -1,11 +1,14 @@
 @for (tab of tabs; track tab.id) {
   <button
-    matIconButton
+    class="tab-btn"
+    [class.selected]="currentTab() === tab.id"
     [matTooltip]="tab.label | translate"
     (click)="setTab(tab.id)"
-    [class.selected]="currentTab() === tab.id"
     data-tauri-drag-region="false"
   >
-    <mat-icon [svgIcon]="tab.icon"></mat-icon>
+    <div class="icon-wrapper">
+      <mat-icon [svgIcon]="tab.icon"></mat-icon>
+    </div>
+    <span class="tab-label">{{ tab.label | translate }}</span>
   </button>
 }

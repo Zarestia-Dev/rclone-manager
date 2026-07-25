@@ -11,6 +11,7 @@
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
+  <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="CONTRIBUTING.md#adding-translations">Ayuda a traducir</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
@@ -88,7 +89,7 @@ Instala RClone Manager usando tu gestor de paquetes preferido, o descarga los bi
 
 | Origen               | Versión                                                                                                                                                                                                           | Comando de instalación / Descarga                                                |
 | :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------- |
-| **Homebrew**         | [![Versión de Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew install --cask rclone-manager`           |
+| **Homebrew**         | [![Versión de Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager`           |
 | **Descarga directa** | [![Última versión](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [Instalador DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guía:** [Wiki: Instalación - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (soluciones para macFUSE y Gatekeeper)

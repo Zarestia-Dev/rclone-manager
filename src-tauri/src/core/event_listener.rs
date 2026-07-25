@@ -15,8 +15,8 @@ use crate::{
         logging::log::update_log_level,
         types::{
             events::{
-                JOB_CACHE_CHANGED, JobChangeEvent, RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED,
-                SYSTEM_SETTINGS_CHANGED, SettingsChangeEvent,
+                RCLONE_PASSWORD_STORED, REMOTE_CACHE_CHANGED, SYSTEM_SETTINGS_CHANGED,
+                SettingsChangeEvent,
             },
             state::EngineState,
         },
@@ -27,8 +27,8 @@ use crate::{
 use crate::utils::app::platform::manage_flatpak_background_portal;
 #[cfg(feature = "tray")]
 use crate::utils::types::events::{
-    BACKEND_SWITCHED, MOUNT_STATE_CHANGED, REMOTE_SETTINGS_CHANGED, SERVE_STATE_CHANGED,
-    UPDATE_TRAY_MENU,
+    BACKEND_SWITCHED, JOB_CACHE_CHANGED, JobChangeEvent, MOUNT_STATE_CHANGED,
+    REMOTE_SETTINGS_CHANGED, SERVE_STATE_CHANGED, UPDATE_TRAY_MENU,
 };
 
 #[cfg(feature = "tray")]
@@ -279,6 +279,7 @@ fn handle_rclone_flags_change(app: &AppHandle, flags: &[Value]) {
     info!("Engine restarting due to additional flags change");
 }
 
+#[cfg(feature = "tray")]
 fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(JOB_CACHE_CHANGED, move |event| {
@@ -294,7 +295,6 @@ fn handle_job_cache_changed(app: &AppHandle) {
                 return;
             }
 
-            #[cfg(feature = "tray")]
             trigger_tray_update(app);
         });
     });
@@ -341,6 +341,7 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_rclone_password_stored(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
+    #[cfg(feature = "tray")]
     handle_job_cache_changed(app);
     debug!("Event listeners set up");
 }

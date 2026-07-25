@@ -70,6 +70,7 @@ export class NautilusToolbarComponent {
   public readonly navigateToPath = output<string>();
   public readonly layoutChange = output<'grid' | 'list'>();
   public readonly closeOverlay = output<void>();
+  public readonly popOutToWindow = output<void>();
   public readonly copyUrl = output<void>();
   public readonly searchFilterChange = output<string>();
   public readonly isSearchModeChange = output<boolean>();

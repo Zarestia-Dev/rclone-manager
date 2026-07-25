@@ -126,6 +126,30 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
+   * Select multiple local files for uploading.
+   * On mobile/headless: uses Nautilus in local-only mode.
+   * On desktop: uses native multi-file dialog.
+   */
+  async selectFilesForUpload(): Promise<string[]> {
+    if (this.isInternalBrowserPreferred()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'files',
+        multi: true,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled) return [];
+      return result.paths;
+    }
+    try {
+      const paths = await this.invokeCommand<string[] | null>('get_files_location');
+      return paths ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {

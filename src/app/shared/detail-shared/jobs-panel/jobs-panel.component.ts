@@ -6,11 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { timer } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   JobInfo,
   JobsPanelConfig,
-  PrimaryActionType,
   StopJobEvent,
   JOB_STATUS_BADGE_MAP,
   JOB_ICON_MAP,
@@ -166,16 +166,18 @@ export class JobsPanelComponent {
   private readonly modalService = inject(ModalService);
   private readonly translate = inject(TranslateService);
   private readonly lang = toSignal(this.translate.onLangChange, { initialValue: null });
+  private readonly nowTick = toSignal(timer(0, 1000), { initialValue: 0 });
 
   protected readonly enrichedJobs = computed(() => {
     this.lang(); // Track locale context changes inside Zoneless Architecture
-
+    this.nowTick();
+    const now = Date.now();
     return this.config().jobs.map(job => {
       const statusLower = job.status.toLowerCase();
       const hasProgress = job.job_type !== 'mount' && !!job.stats && job.stats.totalBytes > 0;
-      const relativeTime = job.start_time ? this.getRelativeTime(job.start_time) : '';
+      const relativeTime = job.start_time ? this.getRelativeTime(job.start_time, now) : '';
       const durationSeconds = job.start_time
-        ? this.getJobDurationSeconds(job.start_time, job.end_time)
+        ? this.getJobDurationSeconds(job.start_time, job.end_time, now)
         : 0;
       const errorText = job.error || job.stats?.lastError || '';
 
@@ -195,15 +197,19 @@ export class JobsPanelComponent {
     });
   });
 
-  private getJobDurationSeconds(startTime: string, endTime?: string): number {
+  private getJobDurationSeconds(
+    startTime: string,
+    endTime?: string,
+    now: number = Date.now()
+  ): number {
     const start = Date.parse(startTime);
     if (isNaN(start)) return 0;
-    const end = endTime ? Date.parse(endTime) : Date.now();
+    const end = endTime ? Date.parse(endTime) : now;
     return Math.max(0, Math.floor((end - start) / 1000));
   }
 
-  private getRelativeTime(timestamp: string): string {
-    const diff = Date.now() - Date.parse(timestamp);
+  private getRelativeTime(timestamp: string, now: number = Date.now()): string {
+    const diff = now - Date.parse(timestamp);
     const minutes = Math.floor(diff / 60000);
     if (minutes <= 0) return this.translate.instant('shared.transferActivity.time.justNow');
     const hours = Math.floor(minutes / 60);
@@ -217,7 +223,7 @@ export class JobsPanelComponent {
 
   onStopJob(job: JobInfo): void {
     this.stopJob.emit({
-      type: job.job_type as PrimaryActionType,
+      type: job.job_type,
       remoteName: job.remote_name,
       profileName: job.profile,
     });

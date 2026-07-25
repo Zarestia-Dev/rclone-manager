@@ -50,7 +50,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
       @if (processedItems().length > 0) {
-        @for (item of slicedItems(); track item.uniqueId) {
+        @for (item of slicedItems(); track item.uniqueId + '-' + $index) {
           <div [class]="'card-row-item completed-item check-item ' + item.rowClass">
             <div class="card-header">
               <div class="card-info-left">

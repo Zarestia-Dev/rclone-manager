@@ -108,11 +108,11 @@ web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "up
 # Container
 container = ["web-server"]
 
-shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-shell", "tauri-plugin-os"]
+shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-shell", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
-desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri", "tauri-plugin-opener"]
-tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
+desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri"]
+tray = ["tauri/tray-icon", "tauri/image-png"]
 default = ["desktop", "tray"]
 
 # Managed by package managers or not compatible with updater

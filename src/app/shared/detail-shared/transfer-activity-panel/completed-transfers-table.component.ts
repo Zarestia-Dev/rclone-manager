@@ -46,7 +46,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
   template: `
     <div class="card-list-container" (scroll)="onScroll($event)">
       @if (processedItems().length > 0) {
-        @for (transfer of slicedItems(); track transfer.uniqueId) {
+        @for (transfer of slicedItems(); track transfer.uniqueId + '-' + $index) {
           <div class="card-row-item completed-item" [class]="transfer.status">
             <div class="card-header">
               <div class="card-info-left">

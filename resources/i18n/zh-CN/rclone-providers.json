@@ -1890,6 +1890,14 @@
       "zero_size_links": {
         "title": "零大小链接",
         "help": "假设链接的 stat 大小为 0（并实际读取）（已废弃）。\n\nrclone 曾经使用链接的 stat 大小作为链接大小，但在很多场景下会出错：\n\n- Windows\n- 某些虚拟文件系统（如 LucidLink）\n- Android\n\n因此现在 rclone 始终会读取链接实际内容。"
+      },
+      "metadata_restore_special_bits": {
+        "title": "恢复元数据特殊权限位",
+        "help": "从元数据恢复 setuid、setgid 和 sticky 权限位。\n\n使用 --metadata 恢复元数据时，rclone 会应用源端的 \"mode\" 属性。默认情况下，rclone 仅应用基础权限位，并剥离 setuid、setgid 和 sticky 位。\n\n\"mode\" 来自源端远程存储，可能不可信。将 setuid 或 setgid 位恢复到新写入的文件上可能会植入特权可执行文件，尤其是在以 root 身份从不可信源恢复时非常危险。因此，默认情况下不会恢复这些权限位。\n\n如果您信任源端并希望恢复 setuid、setgid 和 sticky 位（例如恢复 rclone 创建的系统备份时），请启用此选项。"
+      },
+      "fatal_if_no_space": {
+        "title": "无空间时终止",
+        "help": "传输过程中空间不足时强制判定为致命错误。\n\n启用后，写入期间发生的 ENOSPC（无剩余空间）错误将返回致命错误，使 rclone 直接中止而不是反复重试。适用于在磁盘满了时需要立即报错中止的备份脚本。"
       }
     },
     "mailru": {

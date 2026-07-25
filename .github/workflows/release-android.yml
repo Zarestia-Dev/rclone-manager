@@ -56,7 +56,7 @@ jobs:
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
         run: |
-          npm run tauri -- android build --debug --apk --split-per-abi --features librclone -- --no-default-features
+          npm run tauri android build -- --debug --features mobile -- --no-default-features
 
       - name: Upload Debug APK Artifacts
         uses: actions/upload-artifact@v4
@@ -86,8 +86,8 @@ jobs:
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: android-v${{ steps.get_version.outputs.VERSION }}
-          name: 'RClone Manager Android v${{ steps.get_version.outputs.VERSION }}'
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: 'RClone Manager v${{ steps.get_version.outputs.VERSION }}'
           draft: true
           prerelease: false
           files: |

@@ -1890,6 +1890,14 @@
       "zero_size_links": {
         "title": "Liens de taille zéro",
         "help": "Supposer que la taille Stat des liens est nulle (et les lire à la place) (obsolète).\n\nRclone utilisait auparavant la taille Stat des liens comme taille du lien, mais cela échoue dans plusieurs cas :\n\n- Windows\n- Sur certains systèmes de fichiers virtuels (tels que LucidLink)\n- Android\n\nRclone lit donc désormais toujours le lien.\n"
+      },
+      "metadata_restore_special_bits": {
+        "title": "Restaurer les bits spéciaux de métadonnées",
+        "help": "Restaure les bits setuid, setgid et sticky à partir des métadonnées.\n\nLors de la restauration des métadonnées avec --metadata, rclone applique le \"mode\" de la source. Par défaut, rclone n'applique que les bits de permission et supprime les bits setuid, setgid et sticky.\n\nLe \"mode\" provient de la source distante qui peut ne pas être fiable. La restauration d'un bit setuid ou setgid peut être dangereuse, en particulier lors de l'exécution en tant que root à partir d'une source non fiable. Pour cette raison, ces bits ne sont pas restaurés par défaut.\n\nSi vous faites confiance à la source et souhaitez restaurer ces bits spéciaux, activez cette option."
+      },
+      "fatal_if_no_space": {
+        "title": "Erreur fatale si espace insuffisant",
+        "help": "Rend les erreurs d'espace insuffisant fatales pendant les transferts.\n\nLorsqu'elle est activée, une erreur ENOSPC lors d'une écriture renvoie une erreur fatale afin que rclone s'arrête plutôt que de réessayer l'opération. Utile pour les scripts de sauvegarde qui doivent s'arrêter immédiatement en cas de disque plein."
       }
     },
     "mailru": {
