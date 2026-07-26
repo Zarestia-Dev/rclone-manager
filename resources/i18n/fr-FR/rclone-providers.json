@@ -1173,7 +1173,7 @@
       },
       "concurrency": {
         "title": "Concurrence",
-        "help": "Nombre maximum de connexions FTP simultanées, 0 pour illimité.\n\nÀ noter que la définition de ce paramètre est très susceptible de provoquer des blocages et doit donc être utilisée avec précaution.\n\nSi vous effectuez une synchronisation ou une copie, assurez-vous que la simultanéité est supérieure d'une unité à la somme de --transfers et --checkers.\n\nSi vous utilisez --check-first, il suffit qu'elle soit supérieure d'une unité au maximum entre --checkers et --transfers.\n\nAinsi pour concurrency 3, vous utiliseriez --checkers 2 --transfers 2 --check-first ou --checkers 1 --transfers 1.\n\n"
+        "help": "Nombre maximum de connexions FTP simultanées, 0 pour illimité.\n\nÀ noter que la définition de ce paramètre est très susceptible de provoquer des blocages et doit donc être utilisée avec précaution.\n\nSi vous effectuez une synchronisation ou une copie, assurez-vous que la simultanéité est supérieure d'une unité à la somme de --transfers et --checkers.\n\nSi vous utilisez --check-first, il suffit qu'elle soit supérieure d'une unité au maximum entre --checkers et --transfers.\n\nAinsi pour concurrency 3, vous utiliseriez --checkers 2 --transfers 2 --check-first ou --checkers 1 --transfers 1\n\n"
       },
       "description": {
         "title": "Description",
@@ -1973,7 +1973,7 @@
     "mega": {
       "2fa": {
         "title": "2FA",
-        "help": "Le code 2FA de votre compte MEGA si le compte en est équipé"
+        "help": "Le code 2FA de votre compte MEGA si le compte en est équipé."
       },
       "debug": {
         "title": "Débogage",
@@ -2033,7 +2033,7 @@
       },
       "host": {
         "title": "Hôte",
-        "help": "Domaine+chemin de l'hôte NetStorage auquel se connecter"
+        "help": "Domaine+chemin de l'hôte NetStorage auquel se connecter."
       },
       "protocol": {
         "title": "Protocole",
@@ -2215,7 +2215,7 @@
       },
       "copy_timeout": {
         "title": "Délai d'expiration de la copie",
-        "help": "Délai d'expiration pour la copie.\n\nCopy est une opération asynchrone, spécifiez un délai d’attente (timeout) pour attendre que la copie réussisse"
+        "help": "Délai d'expiration pour la copie."
       },
       "description": {
         "title": "Description",
@@ -2267,7 +2267,7 @@
       },
       "sse_customer_key_file": {
         "title": "Fichier de clé SSE-C",
-        "help": "Pour utiliser SSE-C, un fichier contenant la chaîne encodée en base64 de la clé de chiffrement AES-256 associée à l'objet. Veuillez noter qu'une seule des options sse_customer_key_file|sse_customer_key|sse_kms_key_id est nécessaire"
+        "help": "Pour utiliser SSE-C, un fichier contenant la chaîne encodée en base64 de la clé de chiffrement AES-256 associée à l'objet. Veuillez noter qu'une seule des options sse_customer_key_file|sse_customer_key|sse_kms_key_id est nécessaire."
       },
       "sse_customer_key_sha256": {
         "title": "SHA256 de la clé SSE-C",
@@ -2387,7 +2387,7 @@
       },
       "use_trash": {
         "title": "Utiliser la corbeille",
-        "help": "Envoyer les fichiers dans la corbeille plutôt que de les supprimer définitivement.\n\nPar défaut à true, c'est-à-dire que les fichiers sont envoyés dans la corbeille. Utiliser --pikpak-use-trash=false pour supprimer les fichiers définitivement."
+        "help": "Envoyer les fichiers dans la corbeille plutôt que de les supprimer définitivement.\n\nPar défaut à true, c'est-à-dire que les fichiers sont envoyés dans la corbeille. Utiliser --pikpak-use-trash=false pour supprimer les fichiers définitivement"
       },
       "user": {
         "title": "Utilisateur",
@@ -2497,7 +2497,7 @@
       },
       "original_file_size": {
         "title": "Taille du fichier original",
-        "help": "Renvoyer la taille du fichier avant chiffrement\n\nLa taille du fichier chiffré sera différente (plus grande) de la taille du fichier d'origine. Sauf s'il y a une raison de renvoyer la taille du fichier après chiffrement, définir cette option à true, car les fonctionnalités telles que Open() qui nécessitent la taille du contenu d'origine échoueront à fonctionner correctement"
+        "help": "Renvoyer la taille du fichier avant chiffrement\n\nLa taille du fichier chiffré sera différente (plus grande) de la taille du fichier d'origine. Sauf s'il y a une raison de renvoyer la taille du fichier après chiffrement, définir cette option à true, car les fonctionnalités telles que Open() qui nécessitent la taille du contenu d'origine échoueront à fonctionner correctement."
       },
       "otp_secret_key": {
         "title": "Clé secrète OTP",
@@ -2513,7 +2513,7 @@
       },
       "username": {
         "title": "Nom d'utilisateur",
-        "help": "Le nom d'utilisateur de votre compte Proton"
+        "help": "Le nom d'utilisateur de votre compte Proton."
       }
     },
     "putio": {
@@ -2573,7 +2573,7 @@
       },
       "endpoint": {
         "title": "Point de terminaison",
-        "help": "Entrez une URL de point de terminaison pour vous connecter à l'API QingStor.\n\nLaisser vide utilisera la valeur par défaut « https://qingstor.com:443 »."
+        "help": "Entrez une URL de point de terminaison pour vous connecter à l'API QingStor.\n\nLaisser vide utilisera la valeur par défaut « https://qingstor.com:443 »"
       },
       "env_auth": {
         "title": "Authentification par environnement",
@@ -2933,7 +2933,7 @@
       },
       "bypass_governance_retention": {
         "title": "Contourner la rétention de gouvernance",
-        "help": "Autoriser la suppression ou la modification d'objets verrouillés avec le mode GOVERNANCE."
+        "help": "Autoriser la suppression ou la modification d'objets verrouillés avec le mode GOVERNANCE"
       },
       "bucket_object_lock_enabled": {
         "title": "Verrouillage d'objet du compartiment activé",
@@ -2955,7 +2955,7 @@
       },
       "auth_token": {
         "title": "Jeton d'authentification",
-        "help": "Jeton d'authentification."
+        "help": "Jeton d'authentification"
       },
       "create_library": {
         "title": "Créer la bibliothèque",
@@ -3013,7 +3013,7 @@
       },
       "connections": {
         "title": "Connexions",
-        "help": "Nombre maximum de connexions SFTP simultanées, 0 pour illimité. \n\nÀ noter que la définition de ce paramètre est très susceptible de provoquer des blocages et doit donc être utilisée avec précaution.\n\nSi vous effectuez une synchronisation ou une copie, assurez-vous que le nombre de connexions est supérieur d'une unité à la somme de --transfers et --checkers.\n\nSi vous utilisez --check-first, il suffit qu'il soit supérieur d'une unité au maximum entre --checkers et --transfers.\n\nAinsi pour connections 3, vous utiliseriez --checkers 2 --transfers 2 --check-first ou --checkers 1 --transfers 1.\n\n"
+        "help": "Nombre maximum de connexions SFTP simultanées, 0 pour illimité. \n\nÀ noter que la définition de ce paramètre est très susceptible de provoquer des blocages et doit donc être utilisée avec précaution.\n\nSi vous effectuez une synchronisation ou une copie, assurez-vous que le nombre de connexions est supérieur d'une unité à la somme de --transfers et --checkers.\n\nSi vous utilisez --check-first, il suffit qu'il soit supérieur d'une unité au maximum entre --checkers et --transfers.\n\nAinsi pour connections 3, vous utiliseriez --checkers 2 --transfers 2 --check-first ou --checkers 1 --transfers 1\n\n"
       },
       "copy_is_hardlink": {
         "title": "La copie est un lien physique",
@@ -3065,7 +3065,7 @@
       },
       "key_file": {
         "title": "Fichier-clé",
-        "help": "Chemin vers le fichier de clé privée encodée en PEM.\n\nLaisser vide ou définir key-use-agent pour utiliser ssh-agent.\n\nLe caractère ~ initial sera développé (interprété comme le répertoire home), tout comme les variables d’environnement telles que ${RCLONE_CONFIG_DIR}."
+        "help": "Chemin vers le fichier de clé privée encodée en PEM.\n\nLaisser vide ou définir key-use-agent pour utiliser ssh-agent.\n\nLe caractère ~ en début de chemin sera développé dans le nom du fichier, de même que les variables d'environnement."
       },
       "key_file_pass": {
         "title": "Mot de passe du fichier clé",
@@ -3229,7 +3229,7 @@
       },
       "api_url": {
         "title": "URL de l'API",
-        "help": "URL de l'API démon de Sia, comme http://sia.daemon.host:9980.\n\nNotez que siad doit s'exécuter avec --disable-api-security pour ouvrir le port de l'API pour les autres hôtes (non recommandé).\nGarder la valeur par défaut si le démon Sia s'exécute sur localhost."
+        "help": "URL de l'API démon de Sia, comme http://sia.daemon.host:9980.\n\nNotez que siad doit exécuter avec --disable-api-security pour ouvrir le port de l'API pour les autres hôtes (non recommandé).\nGarder la valeur par défaut si le démon Sia fonctionne sur localhost."
       },
       "description": {
         "title": "Description",
