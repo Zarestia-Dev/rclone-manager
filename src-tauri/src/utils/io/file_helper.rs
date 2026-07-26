@@ -74,7 +74,7 @@ pub async fn get_folder_location(
         if path.exists() {
             debug!("Removing existing empty folder on Windows");
             if let Err(e) = tokio::fs::remove_dir_all(path).await {
-                error!("Failed to remove folder: {}", e);
+                log::error!("Failed to remove folder: {}", e);
                 return Err(format!("Failed to prepare folder: {}", e));
             }
         }

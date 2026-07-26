@@ -25,6 +25,7 @@ pub async fn stream_upload_handler(
     let (mut remote, mut path) = (String::new(), String::new());
     let (mut origin, mut job_id) = (None, None);
     let (mut raw_batch_id, mut raw_file_index, mut raw_total_files) = (None, None, None);
+    let mut raw_mtime: Option<i64> = None;
 
     while let Some(field) = multipart
         .next_field()
@@ -40,6 +41,7 @@ pub async fn stream_upload_handler(
             "jobId" => job_id = field.text().await.unwrap_or_default().parse().ok(),
             "fileIndex" => raw_file_index = field.text().await.unwrap_or_default().parse().ok(),
             "totalFiles" => raw_total_files = field.text().await.unwrap_or_default().parse().ok(),
+            "mtime" => raw_mtime = field.text().await.unwrap_or_default().parse().ok(),
             "file" => {
                 let filename = field.file_name().unwrap_or("unnamed").replace('\\', "/");
                 let batch = build_batch_meta(raw_batch_id, raw_file_index, raw_total_files);
@@ -47,7 +49,7 @@ pub async fn stream_upload_handler(
                 let temp_dir = std::env::temp_dir();
                 let (batch_dir, temp_path) = resolve_temp_path(&temp_dir, &filename, &batch).await;
 
-                write_field_to_file(field, &temp_path).await?;
+                write_field_to_file(field, &temp_path, raw_mtime).await?;
 
                 if let Some(ref b) = batch {
                     return finalize_batch_upload(
@@ -114,6 +116,7 @@ async fn resolve_temp_path(
 async fn write_field_to_file(
     field: axum::extract::multipart::Field<'_>,
     temp_path: &Path,
+    mtime: Option<i64>,
 ) -> Result<(), AppError> {
     let mut file = tokio::fs::File::create(temp_path)
         .await
@@ -126,6 +129,15 @@ async fn write_field_to_file(
             .map_err(|e| AppError::InternalServerError(anyhow::Error::msg(e)))?;
     }
     drop(file);
+
+    if let Some(mtime_ms) = mtime {
+        let system_time = std::time::UNIX_EPOCH + std::time::Duration::from_millis(mtime_ms as u64);
+        let times = std::fs::FileTimes::new().set_modified(system_time);
+        if let Ok(file) = std::fs::File::options().write(true).open(temp_path) {
+            let _ = file.set_times(times);
+        }
+    }
+
     Ok(())
 }
 

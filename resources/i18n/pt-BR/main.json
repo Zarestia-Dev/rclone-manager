@@ -1464,6 +1464,12 @@
       "cancelled": "Cancelado",
       "cancelJob": "Cancelar",
       "removeJob": "Remover",
+      "progress": "Progresso",
+      "files": "Arquivos",
+      "speed": "Velocidade",
+      "eta": "Tempo Restante",
+      "currentFile": "Arquivo Atual",
+      "currentFiles": "Arquivos Atuais",
       "details": {
         "source": "Origem",
         "destination": "Destino",

@@ -248,13 +248,17 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_notification::init());
     }
 
+    #[cfg(feature = "tauri-plugin-opener")]
+    {
+        builder = builder.plugin(tauri_plugin_opener::init());
+    }
+
     #[cfg(not(feature = "web-server"))]
     {
         builder = builder
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_os::init())
-            .plugin(tauri_plugin_clipboard_manager::init())
-            .plugin(tauri_plugin_opener::init());
+            .plugin(tauri_plugin_clipboard_manager::init());
     }
 
     #[cfg(not(any(feature = "mobile", feature = "web-server")))]
@@ -328,6 +332,39 @@ fn setup_app(
     // Clean up temporary file preview/viewer cache from previous sessions
     #[cfg(not(feature = "web-server"))]
     crate::utils::io::file_helper::cleanup_temp_views(app_handle);
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        log::debug!("Creating main window on mobile");
+        let window =
+            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
+                .build()
+                .expect("Failed to build mobile main window");
+
+        #[cfg(target_os = "android")]
+        {
+            let _ = window.with_webview(|webview| {
+                webview.jni_handle().exec(|env, context, _webview| {
+                    if let Ok(vm) = env.get_java_vm() {
+                        let vm_ptr = vm.get_java_vm_pointer() as *mut std::ffi::c_void;
+                        let context_ptr = context.as_raw() as *mut std::ffi::c_void;
+                        unsafe {
+                            ndk_context::initialize_android_context(vm_ptr, context_ptr);
+                        }
+                    }
+                    unsafe {
+                        let raw_env = env.get_raw() as *mut jni::sys::JNIEnv;
+                        let raw_ctx = context.as_raw() as jni::sys::jobject;
+                        let mut unowned_env = jni::EnvUnowned::from_raw(raw_env);
+                        let _ = unowned_env.with_env(|rustls_env| {
+                            let rustls_ctx = jni::objects::JObject::from_raw(rustls_env, raw_ctx);
+                            rustls_platform_verifier::android::init_with_env(rustls_env, rustls_ctx)
+                        });
+                    }
+                });
+            });
+        }
+    }
 
     let rcman_manager =
         crate::core::settings::manager::create_settings_manager(&app_paths.config_dir)?;
@@ -453,15 +490,6 @@ fn setup_app(
     if !cli_args.general.tray && cli_args.general.send_to_remote.is_none() {
         log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
-    }
-
-    #[cfg(any(target_os = "android", target_os = "ios"))]
-    {
-        log::debug!("Creating main window on mobile");
-        let _window =
-            tauri::WebviewWindowBuilder::new(app.handle(), "main", tauri::WebviewUrl::default())
-                .build()
-                .expect("Failed to build mobile main window");
     }
 
     if cli_args.general.send_to_remote.is_some() {

@@ -1464,6 +1464,12 @@
       "cancelled": "Cancelled",
       "cancelJob": "Cancel",
       "removeJob": "Remove",
+      "progress": "Progress",
+      "files": "Files",
+      "speed": "Speed",
+      "eta": "ETA",
+      "currentFile": "Current File",
+      "currentFiles": "Current Files",
       "details": {
         "source": "Source",
         "destination": "Destination",

@@ -1464,6 +1464,12 @@
       "cancelled": "İptal Edildi",
       "cancelJob": "İptal Et",
       "removeJob": "Kaldır",
+      "progress": "İlerleme",
+      "files": "Dosyalar",
+      "speed": "Hız",
+      "eta": "Kalan Süre",
+      "currentFile": "Mevcut Dosya",
+      "currentFiles": "Mevcut Dosyalar",
       "details": {
         "source": "Kaynak",
         "destination": "Hedef",

@@ -10,6 +10,8 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import java.io.File
 import java.io.FileOutputStream
 
@@ -20,6 +22,11 @@ class MainActivity : TauriActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
+    val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+    windowInsetsController.isAppearanceLightStatusBars = !isNightMode
+    windowInsetsController.isAppearanceLightNavigationBars = !isNightMode
+
     requestStoragePermission()
 
     // Copy bundled assets to cache directory so Rust std::fs can access them
@@ -149,6 +156,19 @@ class MainActivity : TauriActivity() {
   // ---------------------------------------------------------------------------
   // JS Bridge — called from Angular as window.__rclone__.<method>()
   // ---------------------------------------------------------------------------
+
+  /**
+   * Sets the status bar and navigation bar icon appearance (light vs dark icons).
+   * @param isDark true if the app is currently displaying a dark theme, false for light theme.
+   */
+  @JavascriptInterface
+  fun setSystemTheme(isDark: Boolean) {
+    runOnUiThread {
+      val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+      windowInsetsController.isAppearanceLightStatusBars = !isDark
+      windowInsetsController.isAppearanceLightNavigationBars = !isDark
+    }
+  }
 
   /**
    * Opens a local file in its default handler using a FileProvider content:// URI.

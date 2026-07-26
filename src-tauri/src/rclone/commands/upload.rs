@@ -97,15 +97,22 @@ impl UploadProgress {
     }
 }
 
-/// Discovers files within folders recursively.
+struct UploadDiscoveryResult {
+    file_entries: Vec<(std::path::PathBuf, String, String)>,
+    empty_dir_remotes: Vec<String>,
+}
+
+/// Discovers files and empty directories within folders recursively.
 /// Runs in a blocking thread to prevent UI freezes on large directories.
 async fn discover_upload_entries(
     local_paths: Vec<String>,
     remote_path: String,
-) -> Result<Vec<(std::path::PathBuf, String, String)>, String> {
+) -> Result<UploadDiscoveryResult, String> {
     tokio::task::spawn_blocking(move || {
         let remote_path = if remote_path == "/" { "" } else { &remote_path };
-        let mut entries = Vec::new();
+        let mut file_entries = Vec::new();
+        let mut empty_dirs = Vec::new();
+
         for raw in &local_paths {
             let p = std::path::PathBuf::from(raw);
             if !p.exists() {
@@ -125,44 +132,87 @@ async fn discover_upload_entries(
                     .unwrap_or(&p)
                     .to_string_lossy()
                     .to_string();
-                entries.push((p, remote_path.to_string(), rel_name));
+                file_entries.push((p, remote_path.to_string(), rel_name));
             } else if p.is_dir() {
+                let mut all_dirs: std::collections::HashSet<std::path::PathBuf> =
+                    std::collections::HashSet::new();
+                let mut dirs_with_files: std::collections::HashSet<std::path::PathBuf> =
+                    std::collections::HashSet::new();
+
+                all_dirs.insert(p.clone());
+
                 for entry in walkdir::WalkDir::new(&p)
                     .min_depth(1)
                     .into_iter()
                     .filter_map(std::result::Result::ok)
-                    .filter(|e| e.file_type().is_file())
                 {
-                    let file_path = entry.path();
-                    let rel_name = file_path
-                        .strip_prefix(parent)
-                        .unwrap_or(file_path)
-                        .to_string_lossy()
-                        .to_string()
-                        .replace('\\', "/");
+                    let file_path = entry.path().to_path_buf();
+                    if entry.file_type().is_dir() {
+                        all_dirs.insert(file_path);
+                    } else if entry.file_type().is_file() {
+                        let mut curr = file_path.parent();
+                        while let Some(dir) = curr {
+                            dirs_with_files.insert(dir.to_path_buf());
+                            if dir == p {
+                                break;
+                            }
+                            curr = dir.parent();
+                        }
 
-                    let rel = file_path
-                        .strip_prefix(&p)
-                        .unwrap_or(file_path)
-                        .parent()
-                        .unwrap_or(std::path::Path::new(""))
-                        .to_string_lossy()
-                        .to_string();
-                    let base = if remote_path.is_empty() {
-                        top_name.clone()
-                    } else {
-                        format!("{}/{}", remote_path.trim_end_matches('/'), top_name)
-                    };
-                    let remote_dir = if rel.is_empty() {
-                        base
-                    } else {
-                        format!("{}/{}", base, rel.replace('\\', "/"))
-                    };
-                    entries.push((file_path.to_path_buf(), remote_dir, rel_name));
+                        let rel_name = file_path
+                            .strip_prefix(parent)
+                            .unwrap_or(&file_path)
+                            .to_string_lossy()
+                            .to_string()
+                            .replace('\\', "/");
+
+                        let rel = file_path
+                            .strip_prefix(&p)
+                            .unwrap_or(&file_path)
+                            .parent()
+                            .unwrap_or(std::path::Path::new(""))
+                            .to_string_lossy()
+                            .to_string();
+                        let base = if remote_path.is_empty() {
+                            top_name.clone()
+                        } else {
+                            format!("{}/{}", remote_path.trim_end_matches('/'), top_name)
+                        };
+                        let remote_dir = if rel.is_empty() {
+                            base
+                        } else {
+                            format!("{}/{}", base, rel.replace('\\', "/"))
+                        };
+                        file_entries.push((file_path, remote_dir, rel_name));
+                    }
+                }
+
+                for dir in all_dirs {
+                    if !dirs_with_files.contains(&dir) {
+                        let rel = dir
+                            .strip_prefix(&p)
+                            .unwrap_or(&dir)
+                            .to_string_lossy()
+                            .to_string();
+                        let base = if remote_path.is_empty() {
+                            top_name.clone()
+                        } else {
+                            format!("{}/{}", remote_path.trim_end_matches('/'), top_name)
+                        };
+                        let remote_dir = if rel.is_empty() {
+                            base
+                        } else {
+                            format!("{}/{}", base, rel.replace('\\', "/"))
+                        };
+                        empty_dirs.push(remote_dir);
+                    }
                 }
             }
         }
-        Ok(entries)
+        Ok(UploadDiscoveryResult {
+            file_entries,
+            empty_dir_remotes: empty_dirs,
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -199,21 +249,15 @@ pub async fn execute_upload_batch(
     let client = app.state::<RcloneState>().client.clone();
     let job_cache = &backend_manager.job_cache;
 
-    let file_entries = discover_upload_entries(local_paths.clone(), path.clone()).await?;
+    let discovery = discover_upload_entries(local_paths.clone(), path.clone()).await?;
+
+    for remote_dir in &discovery.empty_dir_remotes {
+        let payload = json!({ "fs": &remote, "remote": remote_dir });
+        let _ = transport.rpc("operations/mkdir", Some(&payload)).await;
+    }
+
+    let file_entries = discovery.file_entries;
     if file_entries.is_empty() {
-        for raw in &local_paths {
-            let p = std::path::PathBuf::from(raw);
-            if p.is_dir() {
-                let folder_name = p.file_name().unwrap_or_default().to_string_lossy();
-                let remote_dir = if path.is_empty() || path == "/" {
-                    folder_name.to_string()
-                } else {
-                    format!("{}/{}", path.trim_end_matches('/'), folder_name)
-                };
-                let payload = json!({ "fs": &remote, "remote": &remote_dir });
-                let _ = transport.rpc("operations/mkdir", Some(&payload)).await;
-            }
-        }
         if let Some(dir) = cleanup_dir {
             let _ = tokio::fs::remove_dir_all(dir).await;
         }
@@ -338,7 +382,9 @@ pub async fn execute_upload_batch(
                     .to_string_lossy()
                     .to_string();
 
-                let result = if matches!(transport.kind(), TransportKind::Librclone) {
+                let result = if backend.is_local
+                    || matches!(transport.kind(), TransportKind::Librclone)
+                {
                     let dst_remote = if remote_dir.is_empty() {
                         base_filename.clone()
                     } else if remote_dir.ends_with('/') {

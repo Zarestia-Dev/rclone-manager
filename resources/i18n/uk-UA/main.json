@@ -1464,6 +1464,12 @@
       "cancelled": "Скасовано",
       "cancelJob": "Скасувати",
       "removeJob": "Вилучити",
+      "progress": "Прогрес",
+      "files": "Файли",
+      "speed": "Швидкість",
+      "eta": "Зал. час",
+      "currentFile": "Поточний файл",
+      "currentFiles": "Поточні файли",
       "details": {
         "source": "Джерело",
         "destination": "Призначення",
