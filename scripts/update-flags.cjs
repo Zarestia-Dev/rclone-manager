@@ -79,93 +79,53 @@ function titleCase(s) {
 }
 
 /**
- * Formats a new key/value pair with the specific comment block.
- */
-function formatNewKeyBlock(key, value, indent = 2) {
-  const jsonStr = JSON.stringify({ [key]: value }, null, indent);
-  const lines = jsonStr.split('\n');
-  let content;
-  if (lines.length >= 3) {
-    content = lines.slice(1, -1).join('\n');
-  } else {
-    content = `"${key}": ${JSON.stringify(value)}`;
-  }
-
-  const spaces = ' '.repeat(indent);
-  return `\n${spaces}/////////////////////////////////////// New Key start\n${content},\n${spaces}////////////////////////////////////// New key end`;
-}
-
-/**
  * Updates a single rclone.json file.
  */
-function updateFile(filePath, flagsData) {
+function updateFile(filePath, flagsData, prune = false, isEnglish = false) {
   console.log(`Checking ${filePath}...`);
 
-  let content;
   let currentData;
   try {
-    content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, 'utf8');
     currentData = JSON.parse(content);
   } catch (e) {
     console.warn(`  Skipping invalid or missing file: ${filePath}`);
     return;
   }
 
-  const missingKeys = [];
+  let addedCount = 0;
+  let removedCount = 0;
+
+  // Add missing keys
   for (const [key, val] of Object.entries(flagsData)) {
     if (!(key in currentData)) {
-      missingKeys.push([key, val]);
+      currentData[key] = isEnglish
+        ? val
+        : { TODO: 'NEEDS_TRANSLATION', ...val };
+      addedCount++;
     }
   }
 
-  if (missingKeys.length === 0) {
-    console.log(`  No missing keys in ${filePath}`);
-    return;
-  }
-
-  console.log(`  Found ${missingKeys.length} missing keys in ${filePath}`);
-
-  const lastBraceIdx = content.lastIndexOf('}');
-  if (lastBraceIdx === -1) {
-    console.warn('  Could not find closing brace. Skipping.');
-    return;
-  }
-
-  let i = lastBraceIdx - 1;
-  let needsComma = false;
-  while (i >= 0) {
-    const char = content[i];
-    if (char.trim() === '') {
-      i--;
-      continue;
-    }
-    if (char === ',' || char === '{' || char === '[') {
-      needsComma = false;
+  // Check for unused/orphaned keys
+  const unusedKeys = Object.keys(currentData).filter(key => !(key in flagsData));
+  if (unusedKeys.length > 0) {
+    if (prune) {
+      for (const key of unusedKeys) {
+        delete currentData[key];
+        removedCount++;
+      }
+      console.log(`  [PRUNE] Removed ${removedCount} unused keys`);
     } else {
-      needsComma = true;
+      console.warn(`  [WARN] Found ${unusedKeys.length} unused keys (use --prune to remove)`);
     }
-    break;
   }
 
-  const newBlocks = missingKeys.map(([key, val]) => formatNewKeyBlock(key, val, 2));
-  const fullInsertion = newBlocks.join('');
-
-  let finalContent;
-  if (needsComma) {
-    finalContent =
-      content.slice(0, i + 1) +
-      ',' +
-      content.slice(i + 1, lastBraceIdx) +
-      fullInsertion +
-      '\n' +
-      content.slice(lastBraceIdx);
+  if (addedCount > 0 || removedCount > 0) {
+    fs.writeFileSync(filePath, JSON.stringify(currentData, null, 2) + '\n', 'utf8');
+    console.log(`  Updated ${filePath} (+${addedCount}, -${removedCount})`);
   } else {
-    finalContent =
-      content.slice(0, lastBraceIdx) + fullInsertion + '\n' + content.slice(lastBraceIdx);
+    console.log(`  No changes for ${filePath}`);
   }
-
-  fs.writeFileSync(filePath, finalContent, 'utf8');
-  console.log(`  Updated ${filePath}`);
 }
 
 /**
@@ -203,6 +163,8 @@ function getStaticFlags() {
 function main() {
   const args = process.argv.slice(2);
   let url = DEFAULT_RCLONE_URL;
+  const prune = args.includes('--prune');
+
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--url' && args[i + 1]) {
       url = args[i + 1];
@@ -236,7 +198,7 @@ function main() {
       const targetFile = path.join(langDir, 'rclone.json');
       if (fs.existsSync(targetFile)) {
         console.log(`Processing language: ${entry}`);
-        updateFile(targetFile, mergedFlags);
+        updateFile(targetFile, mergedFlags, prune, entry === 'en-US');
       }
     }
   }

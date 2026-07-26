@@ -30,7 +30,7 @@ pub struct GeneralSettings {
             ("fr-FR", "Français (France)"),
             ("uk-UA", "Українська (Україна)"),
             ("ru-RU", "Русский (Россия)"),
-            ("ja-JP", "日本語 (日本)")
+            ("ja-JP", "日本語 (日本)"),
             ("pt-BR", "Português (Brasil)")
         )
     )]

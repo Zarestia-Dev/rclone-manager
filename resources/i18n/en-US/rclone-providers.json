@@ -3570,24 +3570,6 @@
         "help": "List of space separated upstreams.\n\nCan be 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', etc."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Access Token",
-        "help": "Your access token.\n\nGet it from https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Description",
-        "help": "Description of the remote."
-      },
-      "encoding": {
-        "title": "Encoding",
-        "help": "The encoding for the backend.\n\nSee the [encoding section in the overview](/overview/#encoding) for more info."
-      },
-      "private": {
-        "title": "Private",
-        "help": "Set to make uploaded files private"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Auth Redirect",

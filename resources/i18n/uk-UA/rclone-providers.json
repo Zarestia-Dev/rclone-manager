@@ -3570,24 +3570,6 @@
         "help": "Список upstream через пробіл.\n\nМоже бути 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:' тощо."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Access Token",
-        "help": "Ваш токен доступу.\n\nОтримайте його з https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Опис",
-        "help": "Опис сховища."
-      },
-      "encoding": {
-        "title": "Кодування",
-        "help": "Кодування для бекенду.\n\nДокладніше див. [розділ про кодування в огляді](/overview/#encoding)."
-      },
-      "private": {
-        "title": "Приватні",
-        "help": "Задайте, щоб робити вивантажені файли приватними"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Автентифікація при переадресації",

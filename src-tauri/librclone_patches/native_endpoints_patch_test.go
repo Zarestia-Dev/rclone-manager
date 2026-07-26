@@ -108,4 +108,8 @@ func TestNativeCat(t *testing.T) {
 	if out != expected {
 		t.Errorf("expected %q, got %q", expected, out)
 	}
+	outB64, _ := res["result_base64"].(string)
+	if outB64 == "" {
+		t.Errorf("expected non-empty result_base64")
+	}
 }

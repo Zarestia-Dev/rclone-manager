@@ -4,11 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.3.1] - 2026-07-26
 
 ### Added
 - **Nautilus Sidebar Drives & Remotes Customization**: Added the ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated sidebar configuration modal. #233
-- **New Russian Translations**: Added support for Russian language and translations. Thanks to @korsun009!
+- **Nautilus Context Menu System Clipboard Integration**: Added support for pasting OS system clipboard file paths and URIs directly from the right-click context menu, with automatic paste button visibility based on clipboard contents.
+- **New Russian Translations**: Added support for Russian language and translations. Thanks to @korsun009! PR #266
+- **New Brazilian Portuguese Translations**: Added support for Brazilian Portuguese language and translations. Thanks to @eduardomozart! PR #269
+- **New Japanese Translations**: Added support for Japanese language and translations. Thanks to @fuannanyo! PR #270
 - **Nautilus File Viewer Open in System Default Viewer**: Added the ability to open files in the system default viewer. First download if its remote file.
 
 ### Changed
@@ -17,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Universal Interactive Remote Configuration**: Enhanced `interactive-config-step` and the remote creation orchestrator to generically support all rclone interactive configuration steps across any remote type (OneDrive, Google Drive, SFTP, Box, S3, Crypt, Mega, etc.). #243
 - UI improvements. #251 #252 #253 
 - **Remote Disk Usage Loader Optimization**: Optimized remote disk usage checking by eliminating redundant pre-flight `getFeatures()` RPC requests. Disk usage (`rclone about`) is now requested directly, dynamically mapping unsupported responses (such as `"doesn't support about"`) directly to the unsupported state in the UI. #259
+- **Uploaded files preserve the dates**: When uploading files to remote storages, the original file modification dates are now preserved. Only for local Rclone instances. #268
+- **Rclone Providers**: Remove the uptobox translation. 
 
 ### Fixed
 - **Remote Connection Payload Unmarshaling with Runtime Overrides**: Fixed an issue where operations (Mount, Sync, Copy, Serve, etc.) using boolean or numeric runtime remote overrides (e.g., `onedrive.av_override: true`) failed with a Go unmarshal error (`key "fs": Reshape failed to Unmarshal: json: cannot unmarshal bool into Go value of type string`). Boolean and numeric values in the `fs` connection payload are now automatically stringified before being sent to rclone. #265

@@ -3570,24 +3570,6 @@
         "help": "Boşlukla ayrılmış üst kaynakların listesi.\n\n'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', vb. olabilir."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Erişim Jetonu",
-        "help": "Erişim jetonunuz.\n\nhttps://uptobox.com/my_account adresinden alabilirsiniz."
-      },
-      "description": {
-        "title": "Açıklama",
-        "help": "Uzak bağlantı açıklaması."
-      },
-      "encoding": {
-        "title": "Kodlama",
-        "help": "Arka uç için kodlama.\n\nDaha fazla bilgi için [genel bakıştaki kodlama bölümüne](/overview/#encoding) bakın."
-      },
-      "private": {
-        "title": "Özel",
-        "help": "Yüklenen dosyaları özel yapmak için ayarlayın."
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Yönlendirmede Kimlik Doğrulamayı Koru",

@@ -3570,24 +3570,6 @@
         "help": "Список вышестоящих подключений, разделённых пробелами.\n\nПримеры: 'upstreama:test/dir upstreamb:',\n'\"upstreama:test/space:ro dir\" upstreamb:' и т. п."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Токен доступа",
-        "help": "Ваш токен доступа.\n\nПолучите его на странице https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Описание",
-        "help": "Описание подключения."
-      },
-      "encoding": {
-        "title": "Кодирование",
-        "help": "Кодирование для бэкенда.\n\nПодробнее см. в [разделе о кодировании в обзоре](/overview/#encoding)."
-      },
-      "private": {
-        "title": "Закрытый доступ",
-        "help": "Делать загружаемые файлы приватными."
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Сохранять аутентификацию при перенаправлении",

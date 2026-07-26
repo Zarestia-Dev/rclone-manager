@@ -3570,24 +3570,6 @@
         "help": "以空格分隔的上游存储列表。\n\n格式示例：'upstreama:test/dir upstreamb:'、'\"upstreama:test/space:ro dir\" upstreamb:' 等。"
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "访问令牌",
-        "help": "你的访问令牌。\n\n可从 https://uptobox.com/my_account 获取。"
-      },
-      "description": {
-        "title": "描述",
-        "help": "远程存储的描述信息。"
-      },
-      "encoding": {
-        "title": "编码方式",
-        "help": "后端存储使用的编码方式。\n\n更多信息请参阅概述中的【编码】章节（/overview/#encoding）。"
-      },
-      "private": {
-        "title": "私有模式",
-        "help": "设为 true 可使上传的文件设为私有。"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "认证重定向",

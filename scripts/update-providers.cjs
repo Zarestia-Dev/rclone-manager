@@ -46,32 +46,14 @@ function titleCase(s) {
 }
 
 /**
- * Formats a new key/value pair with the specific comment block.
- */
-function formatNewKeyBlock(key, value, indent = 4) {
-  const jsonStr = JSON.stringify({ [key]: value }, null, indent);
-  const lines = jsonStr.split('\n');
-  let content;
-  if (lines.length >= 3) {
-    content = lines.slice(1, -1).join('\n');
-  } else {
-    content = `"${key}": ${JSON.stringify(value)}`;
-  }
-
-  const spaces = ' '.repeat(indent);
-  return `\n${spaces}/////////////////////////////////////// New Key start\n${content},\n${spaces}////////////////////////////////////// New key end`;
-}
-
-/**
  * Updates a single rclone-providers.json file.
  */
-function updateFile(filePath, providersData) {
+function updateFile(filePath, providersData, prune = false, isEnglish = false) {
   console.log(`Checking ${filePath}...`);
 
-  let content;
   let currentData;
   try {
-    content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, 'utf8');
     currentData = JSON.parse(content);
   } catch (e) {
     console.warn(`  Skipping invalid or missing file: ${filePath}`);
@@ -86,111 +68,65 @@ function updateFile(filePath, providersData) {
   const fetchedProviders = providersData.providers || [];
   const providerMap = Object.fromEntries(fetchedProviders.map(p => [p.Name, p]));
 
-  let updatedContent = content;
+  let addedCount = 0;
+  let removedCount = 0;
 
-  // Process providers
+  // 1. Add missing providers and options
   for (const [pName, pDef] of Object.entries(providerMap)) {
-    if (currentData.providers[pName]) {
-      // Check options
-      const existingOptions = currentData.providers[pName];
-      const fetchedOptions = pDef.Options || [];
+    if (!currentData.providers[pName]) {
+      currentData.providers[pName] = {};
+      addedCount++;
+    }
 
-      const missingOptions = fetchedOptions.filter(opt => opt.Name && !existingOptions[opt.Name]);
+    const fetchedOptions = pDef.Options || [];
+    for (const opt of fetchedOptions) {
+      if (opt.Name && !currentData.providers[pName][opt.Name]) {
+        const val = {
+          title: titleCase(opt.Name),
+          help: opt.Help || '',
+        };
 
-      if (missingOptions.length > 0) {
-        console.log(`  [UPDATE] ${pName} missing ${missingOptions.length} options`);
-
-        // Find the location of provider in text
-        const pStartRegex = new RegExp(`"${pName}"\\s*:\\s*\\{`);
-        const pStartMatch = updatedContent.match(pStartRegex);
-        if (!pStartMatch) {
-          console.warn(`  Could not find start of provider ${pName} in text. Skipping.`);
-          continue;
-        }
-
-        const startIdx = pStartMatch.index;
-        let braceCount = 0;
-        let endIdx = -1;
-        let foundStart = false;
-
-        for (let i = startIdx; i < updatedContent.length; i++) {
-          const char = updatedContent[i];
-          if (char === '{') {
-            braceCount++;
-            foundStart = true;
-          } else if (char === '}') {
-            braceCount--;
-            if (foundStart && braceCount === 0) {
-              endIdx = i;
-              break;
-            }
-          }
-        }
-
-        if (endIdx !== -1) {
-          const linesToInsert = missingOptions.map(opt => {
-            const val = {
-              title: titleCase(opt.Name),
-              help: opt.Help || '',
-            };
-            return formatNewKeyBlock(opt.Name, val, 6);
-          });
-
-          const fullInsertion = linesToInsert.join('');
-          updatedContent =
-            updatedContent.slice(0, endIdx) +
-            fullInsertion +
-            '\n    ' +
-            updatedContent.slice(endIdx);
-        }
-      }
-    } else {
-      // New Provider entirely
-      console.log(`  [NEW] Missing provider ${pName}`);
-      // Find "providers": { ... } closing brace
-      // This is a bit more complex, we'll try to find the "providers" key block
-      const providersMatch = updatedContent.match(/"providers"\s*:\s*\{/);
-      if (providersMatch) {
-        let braceCount = 0;
-        let endIdx = -1;
-        let foundStart = false;
-        for (let i = providersMatch.index; i < updatedContent.length; i++) {
-          const char = updatedContent[i];
-          if (char === '{') {
-            braceCount++;
-            foundStart = true;
-          } else if (char === '}') {
-            braceCount--;
-            if (foundStart && braceCount === 0) {
-              endIdx = i;
-              break;
-            }
-          }
-        }
-
-        if (endIdx !== -1) {
-          const optData = {};
-          (pDef.Options || []).forEach(opt => {
-            if (opt.Name) {
-              optData[opt.Name] = {
-                title: titleCase(opt.Name),
-                help: opt.Help || '',
-              };
-            }
-          });
-
-          const block = formatNewKeyBlock(pName, optData, 4);
-          updatedContent =
-            updatedContent.slice(0, endIdx) + block + '\n  ' + updatedContent.slice(endIdx);
-        }
+        currentData.providers[pName][opt.Name] = isEnglish
+          ? val
+          : { TODO: 'NEEDS_TRANSLATION', ...val };
+        addedCount++;
       }
     }
   }
 
-  // Save
-  if (updatedContent !== content) {
-    fs.writeFileSync(filePath, updatedContent, 'utf8');
-    console.log(`  Updated ${filePath}`);
+  // 2. Handle unused providers and options
+  const unusedProviders = Object.keys(currentData.providers).filter(pName => !(pName in providerMap));
+  if (unusedProviders.length > 0) {
+    if (prune) {
+      for (const pName of unusedProviders) {
+        delete currentData.providers[pName];
+        removedCount++;
+      }
+    } else {
+      console.warn(`  [WARN] Found ${unusedProviders.length} unused providers (use --prune to remove)`);
+    }
+  }
+
+  for (const [pName, options] of Object.entries(currentData.providers)) {
+    if (!providerMap[pName]) continue;
+    const validOptionNames = new Set((providerMap[pName].Options || []).map(o => o.Name));
+    const unusedOptions = Object.keys(options).filter(optName => !validOptionNames.has(optName));
+
+    if (unusedOptions.length > 0) {
+      if (prune) {
+        for (const optName of unusedOptions) {
+          delete currentData.providers[pName][optName];
+          removedCount++;
+        }
+      } else {
+        console.warn(`  [WARN] Provider '${pName}' has ${unusedOptions.length} unused options (use --prune to remove)`);
+      }
+    }
+  }
+
+  if (addedCount > 0 || removedCount > 0) {
+    fs.writeFileSync(filePath, JSON.stringify(currentData, null, 2) + '\n', 'utf8');
+    console.log(`  Updated ${filePath} (+${addedCount}, -${removedCount})`);
   } else {
     console.log(`  No changes for ${filePath}`);
   }
@@ -202,6 +138,8 @@ function updateFile(filePath, providersData) {
 function main() {
   const args = process.argv.slice(2);
   let url = DEFAULT_RCLONE_URL;
+  const prune = args.includes('--prune');
+
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--url' && args[i + 1]) {
       url = args[i + 1];
@@ -224,7 +162,7 @@ function main() {
       const targetFile = path.join(langDir, 'rclone-providers.json');
       if (fs.existsSync(targetFile)) {
         console.log(`Processing language: ${entry}`);
-        updateFile(targetFile, providers);
+        updateFile(targetFile, providers, prune, entry === 'en-US');
       }
     }
   }

@@ -104,46 +104,39 @@ export class NautilusFileOperationsService {
     return false;
   }
 
-  async pasteSystemClipboard(dstRemote: ExplorerRoot | null, dstPath: string): Promise<boolean> {
+  async pasteSystemClipboard(
+    dstRemote: ExplorerRoot | null,
+    dstPath: string,
+    preparsedText?: string
+  ): Promise<boolean> {
     if (!dstRemote) return false;
-
-    let text = '';
-    try {
-      if (isHeadlessMode()) {
-        text = await navigator.clipboard.readText();
-      } else {
-        const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
-        text = await readText();
-      }
-    } catch (err) {
-      console.debug('[Nautilus] Could not read system clipboard:', err);
-    }
-
+    const text = preparsedText ?? (await this._readSystemClipboardText());
     const paths = this.parseClipboardPaths(text);
     if (paths.length > 0) {
       return this._handleDesktopUpload(dstRemote, dstPath, paths);
     }
-
     return false;
   }
 
   async checkSystemClipboard(): Promise<boolean> {
+    const text = await this._readSystemClipboardText();
+    const hasPaths = this.parseClipboardPaths(text).length > 0;
+    this.systemClipboardHasPaths.set(hasPaths);
+    return hasPaths;
+  }
+
+  private async _readSystemClipboardText(): Promise<string> {
     try {
-      let text = '';
       if (isHeadlessMode()) {
         if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
-          text = await navigator.clipboard.readText();
+          return await navigator.clipboard.readText();
         }
-      } else {
-        const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
-        text = await readText();
+        return '';
       }
-      const hasPaths = this.parseClipboardPaths(text).length > 0;
-      this.systemClipboardHasPaths.set(hasPaths);
-      return hasPaths;
+      const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+      return await readText();
     } catch {
-      this.systemClipboardHasPaths.set(false);
-      return false;
+      return '';
     }
   }
 
@@ -152,12 +145,10 @@ export class NautilusFileOperationsService {
     const lines = text
       .split(/\r?\n/)
       .map(l => l.trim())
-      .filter(Boolean);
+      .filter(l => Boolean(l) && l !== 'copy' && l !== 'cut');
     const paths: string[] = [];
 
     for (let line of lines) {
-      if (line === 'copy' || line === 'cut') continue;
-
       if (
         (line.startsWith('"') && line.endsWith('"')) ||
         (line.startsWith("'") && line.endsWith("'"))
@@ -172,20 +163,14 @@ export class NautilusFileOperationsService {
           if (/^\/[a-zA-Z]:/.test(pathname)) {
             pathname = pathname.slice(1);
           }
-          if (pathname) {
-            paths.push(pathname);
-          }
+          if (pathname) paths.push(pathname);
           continue;
         } catch {
-          line = line.replace(/^file:\/\//, '');
-          line = decodeURIComponent(line);
+          line = decodeURIComponent(line.replace(/^file:\/\/*/, '/'));
         }
       }
 
-      const isPosixPath = line.startsWith('/');
-      const isWinPath = /^[a-zA-Z]:[\\/]/.test(line);
-
-      if (isPosixPath || isWinPath) {
+      if (line.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(line)) {
         paths.push(line);
       }
     }

@@ -3570,24 +3570,6 @@
         "help": "Liste des espaces séparés en amont.\n\nPeut être 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', etc."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Jeton d'accès",
-        "help": "Votre jeton d'accès.\n\nObtenez-le sur https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Description",
-        "help": "Description du dépôt distant."
-      },
-      "encoding": {
-        "title": "Encodage",
-        "help": "L'encodage du backend.\n\nConsultez [la section encodage dans la vue d'ensemble](/overview/#encoding) pour plus d'informations."
-      },
-      "private": {
-        "title": "Privé",
-        "help": "À activer pour rendre les fichiers envoyés privés."
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Redirection d'authentification",

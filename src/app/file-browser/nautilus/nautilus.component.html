@@ -161,9 +161,7 @@
       (navigateTo)="navigateTo($event)"
       (uploadFiles)="uploadFiles()"
       (uploadFolder)="uploadFolder()"
-      (pasteItems)="
-        pasteItems(actions.contextMenuItem()?.entry?.IsDir ? actions.contextMenuItem()! : undefined)
-      "
+      (pasteItems)="pasteItems()"
       (selectAll)="selectAll()"
       (toggleSendTo)="toggleSendToRegistration()"
     />

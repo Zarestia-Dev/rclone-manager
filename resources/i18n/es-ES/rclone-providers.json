@@ -3570,24 +3570,6 @@
         "help": "Lista de servidores ascendentes separados por espacio.\n\nPuede ser 'upstreama:test/dir upstreamb:', '\"upstreama:test/space:ro dir\" upstreamb:', etc.."
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "Token de acceso",
-        "help": "Tu token de acceso.\n\nConsíguelo en https://uptobox.com/my_account."
-      },
-      "description": {
-        "title": "Descripción",
-        "help": "Descripción del control remoto."
-      },
-      "encoding": {
-        "title": "Codificación",
-        "help": "La codificación del servidor.\n\nVer [sección de codificación en ayuda] para mas informacion."
-      },
-      "private": {
-        "title": "Privado",
-        "help": "Configurar para que los archivos subidos sean privados"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "Redirección de autenticación",

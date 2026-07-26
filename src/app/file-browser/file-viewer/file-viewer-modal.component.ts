@@ -770,7 +770,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.isLoading.set(false);
   }
 
-  onLoadError(): void {
+  onLoadError(event?: Event): void {
     this.isLoading.set(false);
     this.currentFileType.set('error');
 
@@ -779,7 +779,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       this.translate.instant('fileBrowser.fileViewer.errorLoadFile', { name: this.fileName() })
     );
 
-    console.error('Failed to load file:', this.fileName());
+    const mediaError = (event?.target as HTMLMediaElement)?.error;
+    console.error(
+      'Failed to load file:',
+      this.fileName(),
+      'Event:',
+      event,
+      'MediaError:',
+      mediaError ? { code: mediaError.code, message: mediaError.message } : 'N/A'
+    );
   }
 
   async back(): Promise<void> {

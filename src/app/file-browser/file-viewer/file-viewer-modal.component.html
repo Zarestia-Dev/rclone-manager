@@ -176,7 +176,7 @@
           [src]="currentUrl()"
           controls
           (loadeddata)="onLoadComplete()"
-          (error)="onLoadError()"
+          (error)="onLoadError($event)"
           [attr.aria-label]="'fileBrowser.fileViewer.audioLabel' | translate: { name: fileName() }"
         ></audio>
       </div>

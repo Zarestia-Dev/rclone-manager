@@ -727,8 +727,10 @@ export class NautilusComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected async pasteItems(targetFolder?: FileBrowserItem): Promise<void> {
-    const dstPath = targetFolder?.entry?.IsDir
-      ? this.pathService.joinPath(this.tabSvc.activePath(), targetFolder.entry.Name)
+    const contextItem = this.actions.contextMenuItem();
+    const target = targetFolder ?? (contextItem?.entry?.IsDir ? contextItem : undefined);
+    const dstPath = target?.entry?.IsDir
+      ? this.pathService.joinPath(this.tabSvc.activePath(), target.entry.Name)
       : this.tabSvc.activePath();
 
     await this.fileOps.pasteItems(this.tabSvc.activeRemote(), dstPath, this.allRemotesLookup());

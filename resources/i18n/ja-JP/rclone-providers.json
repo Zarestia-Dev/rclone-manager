@@ -3570,24 +3570,6 @@
         "help": "スペース区切りのアップストリームのリスト。\n\n'upstreama:test/dir upstreamb:'、'\"upstreama:test/space:ro dir\" upstreamb:' のように指定できます。"
       }
     },
-    "uptobox": {
-      "access_token": {
-        "title": "アクセストークン",
-        "help": "アクセストークン。\n\nhttps://uptobox.com/my_account から取得してください。"
-      },
-      "description": {
-        "title": "説明",
-        "help": "リモートの説明。"
-      },
-      "encoding": {
-        "title": "エンコーディング",
-        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
-      },
-      "private": {
-        "title": "非公開",
-        "help": "アップロードしたファイルを非公開にする場合に設定します"
-      }
-    },
     "webdav": {
       "auth_redirect": {
         "title": "リダイレクト時の認証保持",

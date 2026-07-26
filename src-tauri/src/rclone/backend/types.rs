@@ -491,6 +491,13 @@ impl Backend {
             return Err(err_msg.to_string());
         }
 
+        if let Some(b64) = response.get("result_base64").and_then(|v| v.as_str()) {
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            return STANDARD
+                .decode(b64)
+                .map_err(|e| format!("Failed to decode base64 cat response: {e}"));
+        }
+
         let result = response
             .get("result")
             .and_then(|v| v.as_str())

@@ -377,7 +377,7 @@
       margin-bottom: var(--space-sm);
     }
 
-    mat-icon {
+    mat-icon:not(button mat-icon) {
       font-size: var(--icon-size-xl);
       width: var(--icon-size-xl);
       height: var(--icon-size-xl);

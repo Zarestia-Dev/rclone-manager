@@ -64,39 +64,78 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/desktop-ui.png</image>
       <caption>Dashboard with connected cloud remotes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/general-home.png</image>
       <caption>Overview of connected cloud services</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/general-remote.png</image>
       <caption>Add and configure cloud storage providers</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/serve-control.png</image>
       <caption>Serve storage over HTTP or WebDAV</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/job-watcher.png</image>
       <caption>Monitor active and scheduled operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/mount-control.png</image>
       <caption>Mount cloud storage as a local drive</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/nautilus.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/nautilus.png</image>
       <caption>Browse and manage remote files</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.2.9/assets/file-viewer.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.3.1/assets/file-viewer.png</image>
       <caption>Preview images, PDFs, and text files</caption>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.1" date="2026-07-26">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Nautilus Sidebar Drives &amp; Remotes Customization: Added ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated configuration modal.</li>
+          <li>Nautilus Context Menu System Clipboard Integration: Added support for pasting OS system clipboard file paths and URIs directly from the context menu, with automatic paste button visibility.</li>
+          <li>New Russian, Brazilian Portuguese and Japanese language translations.</li>
+          <li>System Default Viewer: Support for opening files directly in the OS system default viewer.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Nautilus Detached Dialogs &amp; Multi-Tasking: Configurable detached file browser windows and overlay modes.</li>
+          <li>Universal Interactive Remote Configuration: Enhanced remote creation wizard for all interactive rclone providers.</li>
+          <li>Preserve file modification dates on local rclone instance uploads.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Fixed remote connection payload unmarshaling with boolean/numeric runtime overrides.</li>
+          <li>Fixed multi-select string option inputs (e.g., Google Drive scope).</li>
+          <li>Fixed Rclone auth error detection and HTTP 401 classification.</li>
+          <li>Fixed undecorated window resize handles on Linux.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-07-14">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Bot-less Telegram &amp; WhatsApp Alerts: Direct Telegram alerts via CallMeBot API and WhatsApp alert notification channel.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Resolved Linux zbus D-Bus panics.</li>
+          <li>Fixed encryption detection in non-librclone mode.</li>
+          <li>Fixed task state and status refreshing for automated watchers and scheduled jobs.</li>
+          <li>Fixed desktop remote file downloads to local PC filesystem.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.9" date="2026-07-11">
       <description>
         <p>Added</p>

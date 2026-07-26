@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -323,7 +324,8 @@ func rcOperationsCat(ctx context.Context, in rc.Params) (out rc.Params, err erro
 	}
 
 	return rc.Params{
-		"result":  string(data),
-		"success": true,
+		"result":        string(data),
+		"result_base64": base64.StdEncoding.EncodeToString(data),
+		"success":       true,
 	}, nil
 }
