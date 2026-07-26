@@ -105,18 +105,18 @@
     "failedStart": "{{remote}} の {{type}} の開始に失敗しました: {{error}}"
   },
   "serve": {
-    "noActive": "実行中の公開はありません",
+    "noActive": "実行中の公開サーバーはありません",
     "serving": "公開中",
     "servingWithProfile": "公開中 ({{profile}}): {{addr}} 上の {{type}}",
-    "servingMultiple": "公開 ({{count}}): {{profiles}}",
+    "servingMultiple": "公開サーバー ({{count}}): {{profiles}}",
     "serveSummary": "公開中 ({{count}})",
     "profileInfo": "{{profile}} ({{type}})",
     "toggleAction": "クイックアクションとして公開を切り替え",
-    "successStart": "{{remote}} ({{profile}}) の {{addr}} での公開を開始しました",
-    "successStop": "公開 {{id}} を停止しました",
-    "failedStop": "公開 {{id}} の停止に失敗しました: {{error}}",
-    "successStopAll": "全ての公開を停止しました",
-    "failedStopAll": "全ての公開の停止に失敗しました: {{error}}"
+    "successStart": "{{remote}} ({{profile}}) の {{addr}} での公開サーバーを開始しました",
+    "successStop": "公開サーバー {{id}} を停止しました",
+    "failedStop": "公開サーバー {{id}} の停止に失敗しました: {{error}}",
+    "successStopAll": "全ての公開サーバーを停止しました",
+    "failedStopAll": "全ての公開サーバーの停止に失敗しました: {{error}}"
   },
   "automation": {
     "status": {
@@ -157,7 +157,7 @@
     "delete": "削除",
     "copyurl": "URLコピー",
     "archivecreate": "圧縮",
-    "serve": "公開",
+    "serve": "公開サーバー",
     "start": "開始",
     "stop": "停止"
   },
@@ -583,7 +583,7 @@
     "general": "一般",
     "mount": "マウント",
     "operations": "操作",
-    "serve": "公開"
+    "serve": "公開サーバー"
   },
   "titlebar": {
     "addRemoteMenu": "リモート追加メニュー",
@@ -864,7 +864,7 @@
     "serveCard": {
       "tooltips": {
         "copyUrl": "クリックしてURLをコピー",
-        "stop": "この公開を停止",
+        "stop": "この公開サーバーを停止",
         "copyId": "クリックしてIDをコピー"
       },
       "messages": {
@@ -1013,7 +1013,7 @@
       "profileName": "プロファイル名",
       "selectProfile": "プロファイルを選択",
       "applyToProfile": "プロファイルに適用",
-      "serveType": "公開タイプ",
+      "serveType": "公開サーバータイプ",
       "mountPoint": "マウントポイント",
       "remote": "リモート",
       "invalidCommand": "無効なrcloneコマンドです。サポートされている操作（sync, copy, mountなど）またはフラグを含むコマンドを指定してください。",
@@ -1058,7 +1058,7 @@
         "bisync": "双方向同期プロファイル: 'path1' と 'path2' のパスおよびプロファイルレベルのフィールドを設定し、全てのrcloneフラグを '_config' 内に配置します。",
         "check": "チェックプロファイル: 'srcFs' と 'dstFs' のパスおよびプロファイルレベルのフィールドを設定し、全てのチェックフラグを '_config' 内に配置します。",
         "mount": "マウントプロファイル: 'fs' と 'mountPoint' のパス、'mountType'、プロファイルレベルのフィールドを設定し、全てのマウントオプションを 'mountOpt' 内に配置します。",
-        "serve": "公開プロファイル: 'fs' パス、'serveType'、プロファイルレベルのフィールドを設定し、全ての公開オプションを '_config' 内に配置します。",
+        "serve": "公開サーバープロファイル: 'fs' パス、'serveType'、プロファイルレベルのフィールドを設定し、全ての公開オプションを '_config' 内に配置します。",
         "vfs": "VFSプロファイル: カスタム仮想ファイルシステムのキャッシュ、バッファリング、互換性オプションをキーと値のペアで設定します。",
         "filter": "フィルタープロファイル: Globパターン、包含/除外ルール、ファイルフィルターオプションをキーと値のペアで設定します。",
         "backend": "バックエンドプロファイル: 高度なプロトコルオプションとリモート固有の接続設定をキーと値のペアで設定します。",
@@ -1525,7 +1525,7 @@
       "selectedProfile": "選択中のプロファイル",
       "profilesCount": "{{count}} 個のプロファイル",
       "addProfile": "プロファイルを追加",
-      "activeServes": "実行中の公開",
+      "activeServes": "実行中の公開サーバー",
       "sharedSettings": "共有設定",
       "sharedSettingsDesc": "同期やマウントのモードに関わらず、全ての操作に適用されます。",
       "vfsOptions": "VFSオプション",
@@ -1535,9 +1535,9 @@
       "profilesLabel": "{{op}} プロファイル",
       "settingsLabel": "{{op}} 設定",
       "mountProfilesVfs": "マウントプロファイル & VFS",
-      "serveProfiles": "公開プロファイル",
+      "serveProfiles": "公開サーバープロファイル",
       "syncBehave": "{{op}} プロセスの動作を調整します。複数プロファイルに対応。",
-      "serveSettings": "公開設定",
+      "serveSettings": "公開サーバー設定",
       "mountSettings": "マウント設定",
       "copySettings": "コピー設定",
       "syncSettings": "同期設定",
@@ -1567,14 +1567,14 @@
       "archivecreate": "圧縮",
       "archivecreateDesc": "フォルダ/ファイルをZip, Tarなどに圧縮します",
       "default": "デフォルト",
-      "serveBehave": "サーバー公開プロトコル（HTTP, FTPなど）を設定します。複数プロファイルに対応。",
+      "serveBehave": "公開サーバープロトコル（HTTP, FTPなど）を設定します。複数プロファイルに対応。",
       "mountBehave": "マウント時の挙動および仮想ファイルシステム (VFS) の調整を設定します。",
       "starting": "{{op}} を開始中...",
       "start": "{{op}} を開始",
       "stopping": "{{op}} を停止中...",
       "stop": "{{op}} を停止",
       "notConfigured": "未設定",
-      "serving": "公開中",
+      "serving": "公開サーバー",
       "accessibleVia": "アクセス可能アドレス:",
       "mounting": "マウント中...",
       "mount": "マウント",
@@ -2089,7 +2089,7 @@
           "description": "コンテンツをローカルフォルダに移動します。"
         },
         "serve": {
-          "label": "公開",
+          "label": "公開サーバー",
           "description": "ファイルを共有するためのバックグラウンドサーバーを実行します。"
         }
       },
@@ -2116,7 +2116,7 @@
       "steps": {
         "remoteConfig": "リモート構成",
         "mount": "マウント",
-        "serve": "公開",
+        "serve": "公開サーバー",
         "sync": "同期",
         "bisync": "双方向同期",
         "move": "移動",
@@ -2498,7 +2498,7 @@
       "system": "システム情報",
       "jobs": "ジョブ情報",
       "automations": "自動化",
-      "serves": "実行中の公開"
+      "serves": "実行中の公開サーバー"
     },
     "layout": {
       "visible": "表示",
@@ -2567,21 +2567,21 @@
       "nextRun": "次回実行:"
     },
     "serves": {
-      "activeCount": "{{count}} 件の実行中の公開",
-      "noActive": "実行中の公開はありません",
-      "noRunning": "実行中の公開はありません。リモートの公開を開始すると、HTTP, WebDAV, FTP, SFTP などのネットワークプロトコル経由でアクセス可能になります。"
+      "activeCount": "{{count}} 件の実行中の公開サーバー",
+      "noActive": "実行中の公開サーバーはありません",
+      "noRunning": "実行中の公開サーバーはありません。リモートの公開を開始すると、HTTP, WebDAV, FTP, SFTP などのネットワークプロトコル経由でアクセス可能になります。"
     }
   },
   "appOverview": {
     "labels": {
       "mount": "マウント",
       "startOperations": "操作を開始",
-      "startServe": "公開を開始"
+      "startServe": "公開サーバーを開始"
     },
     "panelTitles": {
       "mountedRemotes": "マウント済みのリモート",
       "activeOperations": "実行中の操作",
-      "activeServes": "実行中の公開",
+      "activeServes": "実行中の公開サーバー",
       "unmountedRemotes": "未マウントのリモート",
       "inactiveRemotes": "非アクティブなリモート",
       "availableRemotes": "利用可能なリモート"
@@ -2728,8 +2728,8 @@
       "allUnmounted": "全てのリモートを正常にマウント解除しました"
     },
     "serve": {
-      "stopSuccess": "公開 {{serverId}} を正常に停止しました",
-      "stopped": "公開を停止しました"
+      "stopSuccess": "公開サーバー {{serverId}} を正常に停止しました",
+      "stopped": "公開サーバーを停止しました"
     },
     "remote": {
       "created": "リモート {{name}} を正常に作成しました",
@@ -2759,7 +2759,7 @@
     "headers": {
       "mount": "マウント概要",
       "operations": "操作概要",
-      "serve": "公開概要",
+      "serve": "公開サーバー概要",
       "general": "RClone Manager",
       "default": "リモート概要"
     },
@@ -2815,7 +2815,7 @@
     "openFileBrowser": "ファイルマネージャーを開く",
     "unmountAll": "全てマウント解除",
     "stopAllJobs": "全てのジョブを停止",
-    "stopAllServes": "全ての公開を停止",
+    "stopAllServes": "全てのサーバーを停止",
     "quit": "終了",
     "mount": "マウント",
     "unmount": "マウント解除",
@@ -2835,14 +2835,14 @@
     "deleteCount": "削除 [{{active}}/{{total}}]",
     "copyurlCount": "URLコピー [{{active}}/{{total}}]",
     "archivecreateCount": "圧縮 [{{active}}/{{total}}]",
-    "serveCount": "公開 [{{active}}/{{total}}]",
+    "serveCount": "公開サーバー [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "ジョブ 1件",
     "tooltipTasks": "ジョブ {{count}}件",
     "tooltipMount": "マウント 1件",
     "tooltipMounts": "マウント {{count}}件",
-    "tooltipServe": "公開 1件",
-    "tooltipServes": "公開 {{count}}件"
+    "tooltipServe": "公開サーバー 1件",
+    "tooltipServes": "公開サーバー {{count}}件"
   },
   "notification": {
     "title": {
@@ -2890,9 +2890,9 @@
       "jobCompleted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）で {{type}} が正常に完了しました。",
       "jobFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での {{type}} に失敗しました: {{error}}",
       "jobStopped": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での {{type}} を停止しました。",
-      "serveStarted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開を開始しました。",
-      "serveFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開の開始に失敗しました: {{error}}",
-      "serveStopped": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開を停止しました。",
+      "serveStarted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーを開始しました。",
+      "serveFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーの開始に失敗しました: {{error}}",
+      "serveStopped": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーを停止しました。",
       "allJobsStopped": "全ての実行中のジョブを正常に終了しました。",
       "allServesStopped": "全ての実行中のサーバーを正常に停止しました。",
       "allUnmounted": "全てのリモートマウントを正常に切断しました。",

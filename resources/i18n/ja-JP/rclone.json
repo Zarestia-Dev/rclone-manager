@@ -280,7 +280,7 @@
     "help": "I/O エラーが発生した場合でも削除処理を行います。"
   },
   "dry_run": {
-    "title": "テスト実行 (ドライラン)",
+    "title": "テスト実行 (dryRun)",
     "help": "実際の変更を行わずにシミュレーションを実行します。"
   },
   "interactive": {
@@ -1188,8 +1188,8 @@
     "help": "使用するマウントのタイプ"
   },
   "type": {
-    "title": "公開種別",
-    "help": "使用する公開（Serve）のタイプ"
+    "title": "公開サーバー種別",
+    "help": "使用する公開サーバー（Serve）のタイプ"
   },
   "mount_type_mount": {
     "title": "標準マウント",
@@ -1208,36 +1208,36 @@
     "help": "NFS プロトコルを使用したマウント"
   },
   "serve_type_http": {
-    "title": "HTTP 公開",
+    "title": "HTTP 公開サーバー",
     "help": "リモートを HTTP 経由で公開します。"
   },
   "serve_type_webdav": {
-    "title": "WebDAV 公開",
+    "title": "WebDAV 公開サーバー",
     "help": "リモートを WebDAV 経由で公開します。"
   },
   "serve_type_ftp": {
-    "title": "FTP 公開",
+    "title": "FTP 公開サーバー",
     "help": "リモートを FTP 経由で公開します。"
   },
   "serve_type_sftp": {
-    "title": "SFTP 公開",
+    "title": "SFTP 公開サーバー",
     "help": "リモートを SFTP 経由で公開します。"
   },
   "serve_type_nfs": {
-    "title": "NFS 公開",
+    "title": "NFS 公開サーバー",
     "help": "リモートを NFS 経由で公開します。"
   },
   "serve_type_dlna": {
-    "title": "DLNA メディアサーバー公開",
+    "title": "DLNA メディアサーバー公開サーバー",
     "help": "リモートを DLNA 経由で公開します。"
   },
   "serve_type_docker": {
     "title": "Docker ボリュームプラグイン",
-    "help": "リモートを Docker ボリュームプラグインとして公開します。"
+    "help": "リモートを Docker ボリュームプラグインとして公開サーバーします。"
   },
   "serve_type_restic": {
-    "title": "Restic REST サーバー公開",
-    "help": "リモートを Restic REST API 経由で公開します。"
+    "title": "Restic REST 公開サーバー",
+    "help": "リモートを Restic REST API 経由でします。"
   },
   "serve_type_s3": {
     "title": "Amazon S3 互換サーバー公開",
