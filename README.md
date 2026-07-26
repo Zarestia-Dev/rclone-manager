@@ -125,6 +125,7 @@ We welcome contributions of all forms!
 - 🌍 **Translations:** Join the [Crowdin Project](https://crowdin.com/project/rclone-manger) or read the [Translation Guide](CONTRIBUTING.md#adding-translations).
 - 🐛 **Bugs & Features:** Open an [issue](https://github.com/Zarestia-Dev/rclone-manager/issues) or check the [Project Board](https://github.com/users/Zarestia-Dev/projects/2).
 - 🔧 **Code changes:** Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a Pull Request.
+- 👥 **Contributors:** Check out [CONTRIBUTORS.md](CONTRIBUTORS.md) to see everyone who has helped build RClone Manager.
 
 ---
 

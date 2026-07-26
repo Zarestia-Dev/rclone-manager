@@ -74,29 +74,46 @@ jobs:
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           mkdir -p dist_apks
 
+          # Check if official release keystore secret is available
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Using official release keystore from GitHub Secrets..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+            KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+            KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
+            KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
+          else
+            echo "No repository keystore secret found. Generating temporary fallback keystore..."
+            keytool -genkeypair -v -keystore release.keystore -alias releasekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=ZarestiaDev, O=Zarestia, C=US"
+            KEYSTORE_PASS="android"
+            KEY_ALIAS="releasekey"
+            KEY_PASS="android"
+          fi
+
+          APKSIGNER=$(find $ANDROID_HOME/build-tools/ -name "apksigner" | head -n 1)
+
           TARGET_LIST=("aarch64:arm64-v8a" "armv7:armeabi-v7a" "x86_64:x86_64" "i686:x86")
 
           for item in "${TARGET_LIST[@]}"; do
             IFS=":" read -r target abi <<< "$item"
             echo "=========================================="
-            echo "Building Android APK for $target ($abi)..."
+            echo "Building & Signing Android APK for $target ($abi)..."
             echo "=========================================="
 
             rm -rf src-tauri/gen/android/app/build/outputs/apk/
-            npm run tauri android build -- --target "$target" --debug --features mobile -- --no-default-features
+            npm run tauri android build -- --target "$target" --features mobile -- --no-default-features
 
             apk_path=$(find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | head -n 1)
             if [ -f "$apk_path" ]; then
-              out_name="RClone Manager_${VERSION}_${abi}-debug.apk"
-              cp "$apk_path" "dist_apks/$out_name"
-              echo "Successfully packaged: dist_apks/$out_name"
+              out_name="RClone Manager_${VERSION}_${abi}.apk"
+              "$APKSIGNER" sign --ks release.keystore --ks-pass "pass:$KEYSTORE_PASS" --ks-key-alias "$KEY_ALIAS" --key-pass "pass:$KEY_PASS" --out "dist_apks/$out_name" "$apk_path"
+              echo "Successfully signed & packaged: dist_apks/$out_name"
             else
               echo "Error: No APK found for target $target ($abi)"
               exit 1
             fi
           done
 
-      - name: Upload Debug APK Artifacts
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rclone-manager-android-apks
