@@ -11,6 +11,7 @@
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
+  <a href="README.ja-JP.md">🇯🇵 日本語</a> •
   <a href="CONTRIBUTING.md#adding-translations">Помочь с переводом</a> •
   <a href="https://crowdin.com/project/rclone-manger">Crowdin</a>
 </p>
