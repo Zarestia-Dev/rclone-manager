@@ -329,6 +329,14 @@ fn setup_app(
 
     let app_paths = AppPaths::setup(app_handle)?;
 
+    #[cfg(target_os = "android")]
+    {
+        unsafe {
+            std::env::set_var("HOME", &app_paths.config_dir);
+            std::env::set_var("XDG_CONFIG_HOME", &app_paths.config_dir);
+        }
+    }
+
     // Clean up temporary file preview/viewer cache from previous sessions
     #[cfg(not(feature = "web-server"))]
     crate::utils::io::file_helper::cleanup_temp_views(app_handle);
@@ -343,8 +351,9 @@ fn setup_app(
 
         #[cfg(target_os = "android")]
         {
-            let _ = window.with_webview(|webview| {
-                webview.jni_handle().exec(|env, context, _webview| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let _ = window.with_webview(move |webview| {
+                webview.jni_handle().exec(move |env, context, _webview| {
                     if let Ok(vm) = env.get_java_vm() {
                         let vm_ptr = vm.get_java_vm_pointer() as *mut std::ffi::c_void;
                         let context_ptr = context.as_raw() as *mut std::ffi::c_void;
@@ -361,8 +370,10 @@ fn setup_app(
                             rustls_platform_verifier::android::init_with_env(rustls_env, rustls_ctx)
                         });
                     }
+                    let _ = tx.send(());
                 });
             });
+            let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
         }
     }
 

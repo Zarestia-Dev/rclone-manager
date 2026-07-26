@@ -48,7 +48,11 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
 
 /// Open `WebView` developer tools
 #[tauri::command]
-#[cfg(not(feature = "web-server"))]
+#[cfg(all(
+    not(feature = "web-server"),
+    not(target_os = "android"),
+    not(target_os = "ios")
+))]
 pub fn open_devtools(window: tauri::WebviewWindow) -> Result<String, String> {
     window.open_devtools();
     log::debug!("🔧 Opened DevTools for window: {}", window.label());

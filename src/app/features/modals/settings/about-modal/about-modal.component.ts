@@ -32,6 +32,10 @@ import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { DownloadStateStatus, ViewId, OverlayView } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
+import {
+  isHeadlessMode,
+  isMobile,
+} from 'src/app/services/infrastructure/platform/api-client.service';
 
 // Configure renderer once at module level
 const renderer = new Renderer();
@@ -138,6 +142,9 @@ export class AboutModalComponent implements OnInit {
 
   readonly restartingApp = signal(false);
   readonly restartingRcloneEngine = signal(false);
+
+  readonly isHeadless: boolean = isHeadlessMode();
+  readonly isMobile: boolean = isMobile();
 
   // ---------------------------------------------------------------------------
   // Rclone info

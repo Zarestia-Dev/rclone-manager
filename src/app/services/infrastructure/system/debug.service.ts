@@ -65,10 +65,6 @@ export class DebugService extends TauriBaseService {
   }
 
   async openDevTools(): Promise<void> {
-    if (isHeadlessMode()) {
-      this.notificationService.showSuccess(this.t('developerTools.openDevToolsHint'));
-      return;
-    }
     try {
       await this.invokeCommand<string>('open_devtools');
     } catch (err) {

@@ -442,10 +442,12 @@
             </div>
 
             <div class="debug-actions-section">
-              <button matButton="elevated" class="primary" (click)="openDevTools()">
-                <mat-icon svgIcon="terminal"></mat-icon>
-                <span>{{ 'modals.about.openDevTools' | translate }}</span>
-              </button>
+              @if (!isHeadless && !isMobile) {
+                <button matButton="elevated" class="primary" (click)="openDevTools()">
+                  <mat-icon svgIcon="terminal"> </mat-icon>
+                  <span>{{ 'modals.about.openDevTools' | translate }}</span>
+                </button>
+              }
               <button matButton="elevated" class="warn" (click)="restartApp()">
                 <mat-icon svgIcon="reset-wrench"></mat-icon>
                 <span>{{ 'modals.about.restartApp' | translate }}</span>
