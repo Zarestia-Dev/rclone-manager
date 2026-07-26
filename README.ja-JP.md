@@ -10,6 +10,7 @@
   <a href="README.zh-CN.md">🇨🇳 简体中文</a> •
   <a href="README.fr-FR.md">🇫🇷 Français</a> •
   <a href="README.es-ES.md">🇪🇸 Español</a> •
+  <a href="README.pt-BR.md">🇧🇷 Português-Brasil</a> •
   <a href="README.ru-RU.md">🇷🇺 Русский</a> •
   <a href="README.ja-JP.md">🇯🇵 日本語</a> •
   <a href="CONTRIBUTING.md#adding-translations">翻訳に参加する</a> •
@@ -65,7 +66,7 @@
     <img alt="RClone Manager Desktop UI" src="assets/desktop-ui.png" width="90%">
   </picture>
   <br>
-  <i>📖 さらに詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
+  <i>📖 より詳しい機能を見たい場合は、<b><a href="https://hakanismail.info/zarestia/rclone-manager/docs/gallery">Wiki ギャラリー</a></b> をご覧ください。</i>
 </p>
 
 ---
