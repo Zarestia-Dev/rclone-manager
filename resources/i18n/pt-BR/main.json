@@ -1510,7 +1510,11 @@
       "extract": "Extrair",
       "extracting": "Extração de {{name}}...",
       "errorExtract": "Falha ao extrair arquivo",
-      "errorListArchive": "Falha ao listar conteúdo do arquivo arquivado"
+      "errorListArchive": "Falha ao listar conteúdo do arquivo arquivado",
+      "openNative": "Abrir em aplicativo externo",
+      "openNativeTooltip": "Abrir no aplicativo externo padrão",
+      "openingNative": "Abrindo {{name}} no visualizador externo...",
+      "errorOpenNative": "Falha ao abrir o arquivo no aplicativo externo"
     }
   },
   "dashboard": {
@@ -2379,10 +2383,12 @@
       "copyUrlFailed": "Falha ao baixar do URL: {{error}}",
       "archiveCreateFailed": "Falha ao criar arquivo: {{error}}",
       "externalDropFailed": "Falha ao processar arquivo externo de exclusão.",
-      "sendToFailed": "Falha ao atualizar o menu do Gerenciador de Arquivos: {{error}}"
+      "sendToFailed": "Falha ao atualizar o menu do Gerenciador de Arquivos: {{error}}",
+      "noRemoteSelected": "Por favor, navegue até um remoto primeiro."
     },
     "contextMenu": {
       "open": "Abrir",
+      "share": "Compartilhar",
       "openNewTab": "Abrir em Nova Guia",
       "copyPath": "Caminho de Cópia",
       "newFolder": "Nova Pasta",
@@ -2447,6 +2453,10 @@
       "archiveCreateStarted": "A criação do arquivo começou...",
       "sendToAdded": "Adicionado '{{remote}}{{path}}' ao menu do Gerenciador de Arquivos",
       "sendToRemoved": "Removido '{{remote}}{{path}}' do menu do Gerenciador de Arquivos"
+    },
+    "androidShare": {
+      "uploadHere": "Enviar {{count}} arquivo(s) compartilhado(s) para esta pasta",
+      "confirm": "Enviar aqui"
     }
   },
   "home": {

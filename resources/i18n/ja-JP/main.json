@@ -1464,6 +1464,12 @@
       "cancelled": "キャンセル済み",
       "cancelJob": "キャンセル",
       "removeJob": "削除",
+      "progress": "進捗",
+      "files": "ファイル",
+      "speed": "速度",
+      "eta": "残り時間",
+      "currentFile": "現在のファイル",
+      "currentFiles": "現在のファイル",
       "details": {
         "source": "転送元",
         "destination": "転送先",

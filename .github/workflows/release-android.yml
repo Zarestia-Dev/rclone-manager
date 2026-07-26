@@ -52,18 +52,6 @@ jobs:
       - name: Install Frontend Dependencies
         run: npm install
 
-      - name: Build Android Debug APK
-        env:
-          NDK_HOME: ${{ env.NDK_HOME }}
-        run: |
-          npm run tauri android build -- --debug --features mobile -- --no-default-features
-
-      - name: Upload Debug APK Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: rclone-manager-android-apks
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
-
       - name: Get Version
         id: get_version
         shell: bash
@@ -71,17 +59,41 @@ jobs:
           VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Prepare Package (Android)
+      - name: Build & Package Android APKs (Per Architecture)
+        env:
+          NDK_HOME: ${{ env.NDK_HOME }}
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-          # Find all apk files recursively under build/outputs/apk/
-          find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | while read -r f; do
-              name=$(basename "$f")
-              new_name=$(echo "$name" | sed "s/^app-/RClone Manager_${VERSION}_/")
-              cp "$f" "$new_name"
-              echo "Prepared package: $new_name"
+          mkdir -p dist_apks
+
+          TARGET_LIST=("aarch64:arm64-v8a" "armv7:armeabi-v7a" "x86_64:x86_64" "i686:x86")
+
+          for item in "${TARGET_LIST[@]}"; do
+            IFS=":" read -r target abi <<< "$item"
+            echo "=========================================="
+            echo "Building Android APK for $target ($abi)..."
+            echo "=========================================="
+
+            rm -rf src-tauri/gen/android/app/build/outputs/apk/
+            npm run tauri android build -- --target "$target" --debug --features mobile -- --no-default-features
+
+            apk_path=$(find src-tauri/gen/android/app/build/outputs/apk/ -name "*.apk" | head -n 1)
+            if [ -f "$apk_path" ]; then
+              out_name="RClone Manager_${VERSION}_${abi}-debug.apk"
+              cp "$apk_path" "dist_apks/$out_name"
+              echo "Successfully packaged: dist_apks/$out_name"
+            else
+              echo "Error: No APK found for target $target ($abi)"
+              exit 1
+            fi
           done
+
+      - name: Upload Debug APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rclone-manager-android-apks
+          path: dist_apks/*.apk
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -91,6 +103,7 @@ jobs:
           draft: true
           prerelease: false
           files: |
-            RClone Manager_*.apk
+            dist_apks/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

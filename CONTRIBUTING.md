@@ -118,14 +118,31 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
    Translate all string values in the files under `resources/i18n/YOUR-LANG/`.
    - `main.json`: General UI strings.
    - `rclone.json`: Rclone flag names and help texts.
+   - `rclone-providers.json`: Rclone provider configuration options.
 
    Keep the JSON keys unchanged.
 
-5. **Test your translation**:
+5. **Portable Edition Readme Files (Important)**:
+
+   When adding support for a new language, please also create the language-specific portable README text files under `resources/portable/`:
+   - `README_YOUR-LANG.txt` (e.g., `resources/portable/README_pt-BR.txt`)
+   - `README_linux_YOUR-LANG.txt` (e.g., `resources/portable/README_linux_pt-BR.txt`)
+
+   You can copy `README_en-US.txt` and `README_linux_en-US.txt` as templates and translate their content into your target language.
+
+6. **Test your translation**:
+
    ```bash
    npm run tauri dev
    ```
+
    Then change the language in Settings → General → Language.
+
+7. **Audit i18n Keys**:
+   Run the i18n auditor to ensure no translation keys are missing or malformed across languages:
+   ```bash
+   npm run audit:i18n
+   ```
 
 #### Translation Guidelines
 
@@ -137,7 +154,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
 #### README Translation (Optional but Appreciated!)
 
-If you'd like to go the extra mile, you can also translate the README:
+If you'd like to go the extra mile, you can also translate the main README:
 
 1. Copy `README.md` to `README.YOUR-LANG.md` (e.g., `README.de-DE.md`)
 2. Translate the content (keep badges and links working)
@@ -153,60 +170,71 @@ If you'd like to go the extra mile, you can also translate the README:
 #### BCP-47 Language Codes
 
 Common language codes:
-| Code | Language |
-|------|----------|
-| `en-US` | English (US) |
-| `tr-TR` | Turkish (Turkey) |
-| `de-DE` | German (Germany) |
-| `fr-FR` | French (France) |
+
+| Code    | Language             |
+| ------- | -------------------- |
+| `en-US` | English (US)         |
+| `tr-TR` | Turkish (Turkey)     |
+| `de-DE` | German (Germany)     |
+| `fr-FR` | French (France)      |
+| `pt-BR` | Portuguese (Brazil)  |
 | `zh-CN` | Chinese (Simplified) |
 
 ### Cron Expressions
 
 The application uses `cronstrue` to display human-readable cron schedules. To support a new language:
 
-1.  **Register the Locale**: Import the locale in `src/app/core/i18n/cron-locale.mapper.ts`.
-    ```typescript
-    import 'cronstrue/locales/fr'; // Example for French
-    ```
-2.  **Verify Mapping**: Ensure `getCronstrueLocale` correctly maps your app locale (e.g., `fr-FR`) to the `cronstrue` locale (e.g., `fr`).
+1. **Register the Locale**: Import the locale in `src/app/core/i18n/cron-locale.mapper.ts`.
+   ```typescript
+   import 'cronstrue/locales/fr'; // Example for French
+   ```
+2. **Verify Mapping**: Ensure `getCronstrueLocale` correctly maps your app locale (e.g., `fr-FR`) to the `cronstrue` locale (e.g., `fr`).
 
 ---
 
-### Managing Rclone Flags
+### Managing Rclone Flags & Providers
 
-The Rclone flags (options) are stored in `resources/i18n/{lang}/rclone.json`. These are used to provide translated titles and help text for Rclone's various options.
+The Rclone flag and provider definitions are stored in:
 
-#### Updating Flag Definitions
+- `resources/i18n/{lang}/rclone.json` (rclone global flags)
+- `resources/i18n/{lang}/rclone-providers.json` (rclone provider configuration options)
 
-To update the flag definitions from a running Rclone instance:
+These files provide translated titles and help text for Rclone options across all supported languages.
 
-1. **Start the app in dev mode**:
+#### Updating Flag & Provider Definitions
 
-   ```bash
-   npm run tauri dev
-   ```
+Instead of manually fetching and editing definitions, use the built-in sync scripts:
 
-2. **Find the RC port**:
-   Check the console logs or `ps aux | grep rclone` for the `--rc-addr` port (e.g., `51900`).
-
-3. **Fetch new definitions**:
+1. **Start `rclone rcd` on Port `5572`** (or launch `npm run dev:headless` / `npm run tauri dev`).
 
    ```bash
-   curl -X POST http://127.0.0.1:PORT/options/info -d "{}" -o flags.json
+   rclone rcd --rc-no-auth --rc-addr :5572
    ```
 
-4. **Process and Update**:
-   Extract the `Name` and `Help` fields and update the `rclone.json` files. Maintain the flat structure:
-   ```json
-   {
-     "options": {
-       "flag_name": {
-         "title": "Title",
-         "help": "Description"
-       }
-     }
-   }
+2. **Sync Flag Definitions**:
+
+   ```bash
+   npm run sync:flags
+   ```
+
+   This fetches option info from rclone and appends missing flag keys to `resources/i18n/*/rclone.json`.
+
+3. **Sync Provider Definitions**:
+
+   ```bash
+   npm run sync:providers
+   ```
+
+   This fetches provider configuration schemas from rclone and appends missing options to `resources/i18n/*/rclone-providers.json`.
+
+4. **Translate New Keys**:
+   Newly added keys in non-English translation files will be tagged with `"TODO": "NEEDS_TRANSLATION"`. Translate the `title` and `help` values into the target language and remove the `"TODO"` marker.
+
+5. **Pruning Obsolete Keys (Optional)**:
+   To remove flags or provider options that have been deprecated/removed in newer rclone versions, pass `--prune`:
+   ```bash
+   npm run sync:flags -- --prune
+   npm run sync:providers -- --prune
    ```
 
 ---
@@ -328,49 +356,36 @@ rclone-manager/
 
 We use automated linting and formatting to maintain code quality. **All code must pass linting checks before being merged.**
 
-#### Frontend (TypeScript/Angular)
+#### Frontend (TypeScript/Angular/SCSS/JSON)
 
 - **Linting**: ESLint with Angular-specific rules
 - **Formatting**: Prettier
 
 ```bash
-# Run linter
+# Run ESLint and Clippy
 npm run lint
 
-# Fix linting issues automatically
-npm run lint:fix
-
-# Format code
+# Format code with Prettier (TS, HTML, SCSS, JSON) & Cargo fmt
 npm run format
 
-# Check formatting
-npm run format:check
+# Or run Prettier directly:
+npx prettier --check "**/*.{ts,html,scss,json}"
+npx prettier --write "**/*.{ts,html,scss,json}"
 ```
 
 #### Backend (Rust)
 
-- **Linting**: Clippy
-- **Formatting**: rustfmt
+- **Linting**: Clippy (`cd src-tauri && cargo clippy -- -D warnings`)
+- **Formatting**: rustfmt (`cd src-tauri && cargo fmt`)
+
+#### Run All Checks & Fixes
 
 ```bash
-# Run Rust linter
-npm run lint:rust
-
-# Format Rust code
-npm run format:rust
-
-# Check Rust formatting
-npm run format:rust:check
-```
-
-#### Run All Checks
-
-```bash
-# Check everything
-npm run lint:all
-
-# Fix everything automatically
+# Fix SVG IDs, Prettier formatting, and ESLint issues automatically
 npm run fix:all
+
+# Audit i18n translation keys
+npm run audit:i18n
 ```
 
 **Note**: We use [Husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/okonet/lint-staged) to automatically lint and format code on commit. See [LINTING.md](LINTING.md) for detailed information.
