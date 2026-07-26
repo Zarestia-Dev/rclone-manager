@@ -21,6 +21,7 @@
     "copyFailed": "复制到剪贴板失败",
     "required": "此字段为必填项",
     "clear": "清除",
+    "reset": "重置",
     "name": "名称",
     "status": "状态",
     "time": "时间",
@@ -28,7 +29,18 @@
     "all": "全部",
     "description": "描述",
     "password": "密码",
-    "username": "用户名"
+    "username": "用户名",
+    "selectAll": "全选",
+    "deselectAll": "取消全选"
+  },
+  "remoteConfig": {
+    "pathStatus": {
+      "clean": "干净且为空",
+      "nonEmpty": "目录包含文件",
+      "colliding": "已被 {{details}} 使用",
+      "willCreate": "创建远程存储后将创建文件夹。",
+      "checking": "正在检查路径..."
+    }
   },
   "validators": {
     "integer": "必须为有效的整数",
@@ -67,21 +79,28 @@
     "successUnmount": "{{remote}} 卸载成功",
     "failedUnmount": "{{remote}} 卸载失败：{{error}}"
   },
-  "sync": {
+  "operations": {
     "available": "可执行同步操作",
     "syncing": "同步中",
     "copying": "复制中",
     "moving": "移动中",
     "bisyncActive": "双向同步进行中",
+    "checkActive": "检查进行中",
+    "cryptcheckActive": "加密检查进行中",
+    "deleteActive": "删除进行中",
+    "copyurlActive": "复制 URL 进行中",
+    "archivecreateActive": "归档进行中",
+    "archivecreating": "归档中",
     "syncSummary": "同步中（{{count}}）",
-    "syncWithProfile": "同步：{{profiles}}",
-    "copyWithProfile": "复制：{{profiles}}",
-    "moveWithProfile": "移动：{{profiles}}",
-    "bisyncWithProfile": "双向同步：{{profiles}}",
     "toggleSync": "切换同步快捷操作",
     "toggleCopy": "切换复制快捷操作",
     "toggleMove": "切换移动快捷操作",
     "toggleBisync": "切换双向同步快捷操作",
+    "toggleCheck": "切换检查为快捷操作",
+    "toggleCryptcheck": "切换加密检查为快捷操作",
+    "toggleDelete": "切换删除为快捷操作",
+    "toggleCopyurl": "切换复制 URL 为快捷操作",
+    "toggleArchivecreate": "切换归档为快捷操作",
     "successStart": "成功为 {{remote}} ({{profile}}) 启动了 {{type}}",
     "failedStart": "无法为 {{remote}} 启动 {{type}}：{{error}}"
   },
@@ -134,6 +153,10 @@
     "copy": "复制",
     "move": "移动",
     "bisync": "双向同步",
+    "check": "检查",
+    "delete": "删除",
+    "copyurl": "复制 URL",
+    "archivecreate": "归档",
     "serve": "服务",
     "start": "启动",
     "stop": "停止"
@@ -190,14 +213,6 @@
     },
     "jobs": {
       "title": "任务",
-      "columns": {
-        "type": "类型",
-        "profile": "配置文件",
-        "status": "状态",
-        "progress": "进度",
-        "started": "开始时间",
-        "actions": "操作"
-      },
       "dryRun": "模拟运行 (Dry Run)",
       "status": {
         "running": "运行中",
@@ -218,7 +233,11 @@
       "noData": "无配置数据",
       "edit": "编辑设置",
       "restricted": "受限",
-      "invalidJson": "[无效 JSON]"
+      "invalidJson": "[无效 JSON]",
+      "categories": {
+        "app": "应用设置",
+        "rclone": "Rclone 选项"
+      }
     }
   },
   "rcloneUpdate": {
@@ -319,6 +338,7 @@
       "webhook": "Webhook (HTTP/S)",
       "script": "自定义脚本",
       "telegram": "Telegram",
+      "whatsapp": "WhatsApp",
       "mqtt": "MQTT",
       "email": "电子邮件",
       "placeholderName": "输入操作名称",
@@ -334,11 +354,23 @@
       "argsHint": "（以空格分隔）",
       "scriptContextHint": "作为环境变量注入",
       "os_toast_info": "操作系统原生通知不需要额外配置。它将使用标准的系统通知子系统。",
+      "mode": "模式",
+      "provider": "服务商",
+      "telegram_bot": "Bot API",
+      "telegram_botless": "无 Bot 模式 (CallMeBot)",
       "botToken": "机器人令牌 (Bot Token)",
       "chatId": "会话 ID (Chat ID)",
+      "usernameOrChatId": "用户名 / 会话 ID",
+      "phone": "电话号码",
+      "apiKey": "API 密钥",
+      "gatewayUrl": "网关 URL",
+      "customGateway": "自定义网关",
       "messageTemplate": "消息模板",
       "messageTemplateHint": "支持 Handlebars 变量",
       "telegram_info": "您可以从 @BotFather 获取机器人令牌，从 @userinfobot 获取您的会话 ID。",
+      "telegram_botless_info": "无 Bot 模式使用 CallMeBot (https://api.callmebot.com) 直接发送 Telegram 警报至您的用户名，无需创建机器人 Token。",
+      "whatsapp_callmebot_info": "通过 CallMeBot (https://api.callmebot.com) 发送 WhatsApp 警报。请输入您的电话号码（含国家/地区代码）和 CallMeBot API 密钥。",
+      "whatsapp_gateway_info": "通过自定义 HTTP 网关端点发送 WhatsApp 警报。",
       "host": "主机",
       "port": "端口",
       "useTls": "使用 TLS",
@@ -368,6 +400,8 @@
     "resetFailed": "将 {{key}} 恢复默认失败",
     "loadFailed": "加载应用设置失败",
     "remoteResetSuccess": "{{remote}} 的设置已重置成功",
+    "remoteSaved": "远程存储已成功保存",
+    "remoteSaveFailed": "保存远程存储失败：{{error}}",
     "general": {
       "tray_enabled": {
         "label": "启用托盘图标",
@@ -423,6 +457,10 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
+      },
+      "default_mount_directory": {
+        "label": "默认挂载目录",
+        "description": "用于挂载远程的默认本地路径模板。支持 {home} 和 {remote} 占位符（例如：{home}/rclone-manager/{remote}）。"
       }
     },
     "developer": {
@@ -544,7 +582,7 @@
   "tabs": {
     "general": "通用",
     "mount": "挂载",
-    "sync": "同步",
+    "operations": "操作",
     "serve": "服务"
   },
   "titlebar": {
@@ -714,12 +752,12 @@
     },
     "transferActivity": {
       "title": "传输活动",
-      "active": "进行中：",
-      "recent": "最近完成：",
+      "titleCheck": "校验活动",
       "resetStats": "重置统计",
       "tabs": {
         "active": "进行中（{{count}}）",
-        "recent": "最近完成（{{count}}）"
+        "recent": "最近完成（{{count}}）",
+        "recentCheck": "已校验（{{count}}）"
       },
       "table": {
         "size": "大小",
@@ -734,13 +772,39 @@
         "transferError": "传输错误",
         "transferCompleted": "传输完成",
         "preparing": "正在准备",
-        "finalizing": "正在完成..."
+        "finalizing": "正在完成...",
+        "missingDst": "目的地缺失",
+        "missingSrc": "源中缺失",
+        "differ": "文件内容存在差异",
+        "error": "错误"
+      },
+      "actions": {
+        "resolveToDst": "复制到目的地",
+        "resolveToSrc": "复制到源",
+        "resolveOverwrite": "解决文件冲突",
+        "resolveOverwriteTitle": "解决文件冲突",
+        "resolveOverwriteMessage": "文件“{{name}}”在源和目的地都存在但内容不同。您要用源文件覆盖目的地文件吗？",
+        "overwriteDst": "覆盖目的地",
+        "copyUrl": "复制 URL",
+        "download": "下载文件",
+        "successSync": "文件同步操作成功启动",
+        "failSync": "同步文件失败: {{error}}",
+        "successCopyUrl": "下载 URL 已复制到剪贴板",
+        "failCopyUrl": "生成下载 URL 失败",
+        "successDownload": "文件下载成功",
+        "failDownload": "下载文件失败"
+      },
+      "messages": {
+        "resolveStarted": "文件不匹配处理已开始",
+        "resolveFailed": "解决文件不匹配失败：{{error}}"
       },
       "empty": {
         "noActive": "无正在进行的传输",
         "activeHint": "操作开始后，传输项将显示在此处",
         "noRecent": "无最近完成的传输",
-        "recentHint": "任务完成后，已完成的传输将显示在此处"
+        "recentHint": "任务完成后，已完成的传输将显示在此处",
+        "noRecentCheck": "无被检查的文件",
+        "recentHintCheck": "任务完成后，被检查的文件将显示在这里"
       },
       "time": {
         "daysAgo": "{{count}} 天前",
@@ -765,8 +829,7 @@
     "actions": {
       "hide": "隐藏",
       "show": "显示",
-      "open": "打开",
-      "reset": "重置"
+      "open": "打开"
     },
     "overviewHeader": {
       "manageBackends": "管理后端",
@@ -775,6 +838,7 @@
     "settingControl": {
       "default": "默认值：{{value}}",
       "resetToDefault": "恢复默认",
+      "obscureValue": "使用 rclone 混淆密码",
       "enabled": "已启用",
       "disabled": "已禁用",
       "addItem": "添加项",
@@ -889,7 +953,7 @@
       },
       "actions": {
         "pollInterval": "轮询间隔",
-        "pollIntervalNotSupported": "不支持 ChangeNotify",
+        "pollIntervalNotSupported": "不支持轮询间隔",
         "updateInterval": "更新轮询间隔",
         "refreshMetadata": "刷新元数据",
         "clearCache": "清除元数据缓存",
@@ -942,7 +1006,6 @@
       "macroDetected": "检测到 Shell 宏",
       "macroDesc": "后端将在启动任务时于运行时解析这些值。支持的宏：date、date +FORMAT、hostname、user、os。",
       "unrecognizedFlags": "未识别的标志（已忽略）",
-      "wrongBlockGuidance": "该选项属于 '{{block}}' 配置块，在 {{verb}} 配置中不受支持。",
       "applyConfig": "应用到配置文件",
       "newProfile": "创建新配置文件",
       "overrideProfile": "覆盖现有配置文件",
@@ -957,7 +1020,21 @@
       "patchProfile": "修补当前活动配置文件",
       "patchInfo": "未指定操作（sync、serve 或 mount）。导入的参数将作为补丁直接应用到您当前活动的配置文件中。",
       "patchInfoRemoteStep": "未指定操作（sync、serve 或 mount）。要将这些参数作为补丁应用，请先导航到具体的配置步骤（例如“同步”、“挂载”或“服务”），而不是“远程连接”步骤。",
-      "applyPatch": "应用补丁"
+      "applyPatch": "应用补丁",
+      "importSourcePath": "导入源路径",
+      "importDestPath": "导入目标路径",
+      "importMountPoint": "导入挂载点"
+    },
+    "obscure": {
+      "title": "混淆密码",
+      "description": "使用 rclone 的标准混淆算法混淆明文字符串，以便安全地保存到配置文件或参数中。",
+      "clearPlaceholder": "明文密码/字符串",
+      "clearPlaceholderText": "输入明文密码",
+      "action": "混淆",
+      "resultTitle": "混淆后的值",
+      "resultHelp": "点击复制按钮并将该值粘贴到需要的地方。",
+      "applyToField": "应用混淆后的值到字段",
+      "apply": "应用到字段"
     },
     "remoteConfig": {
       "remoteName": "远程存储名称",
@@ -978,12 +1055,17 @@
       "jsonEditorInfo": {
         "sync": "同步/复制/移动配置文件：设置 'srcFs' 和 'dstFs' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
         "bisync": "双向同步 (Bisync) 配置文件：设置 'path1' 和 'path2' 路径及配置文件级字段，并将所有 rclone 标志放置在 '_config' 中。",
+        "check": "检查配置文件：设置 “srcFs” 和 “dstFs” 路径、配置文件级别的字段，并将所有检查参数放在 “_config” 内部。",
         "mount": "挂载 (Mount) 配置文件：设置 'fs' 和 'mountPoint' 路径、'mountType' 及配置文件级字段，并将所有挂载选项放置在 'mountOpt' 中。",
         "serve": "服务 (Serve) 配置文件：设置 'fs' 路径、'serveType' 及配置文件级字段，并将所有服务选项放置在 '_config' 中。",
         "vfs": "VFS 配置文件：以键值对形式设置自定义虚拟文件系统（VFS）缓存、缓冲和兼容性选项。",
         "filter": "过滤配置文件：以键值对形式设置通配符模式、包含/排除规则以及文件过滤选项。",
         "backend": "后端配置文件：以键值对形式配置高级协议选项和特定远程存储的连接设置。",
         "runtimeRemote": "运行时远程存储：以键值对形式设置动态连接覆盖及性能调整项。"
+      },
+      "runtimeRemoteWarning": {
+        "title": "运行时远程设置",
+        "description": "这些设置用于在运行时与该远程交互时动态覆盖连接属性或应用性能微调。它们不保存在持久的 rclone.conf 文件中。如果这些字段中有任何字段包含密码或 API 密钥等敏感值，则在保存之前必须使用 rclone 的 obscure 算法手动加密；rclone 不接受此类字段的明文值。"
       },
       "showAdvanced": "显示高级选项",
       "hideAdvanced": "隐藏高级选项",
@@ -1005,6 +1087,10 @@
       "chooseOption": "选择一个选项",
       "selectOption": "选择选项",
       "enterValue": "输入值",
+      "orEnterCustom": "或输入自定义值",
+      "customValueActive": "自定义值已激活",
+      "customValueHint": "正在使用输入框中输入的自定义值",
+      "selectedFromListHint": "正在使用列表中选择的建议值",
       "inputField": "输入框",
       "fieldRequired": "此字段为必填项",
       "readyToContinue": "可继续",
@@ -1012,6 +1098,11 @@
       "loadingServeOptions": "加载 {{type}} 选项...",
       "serveDescription": "选择要提供服务的远程路径，可选择整个远程或特定文件夹",
       "operationDescription": "为此操作配置源路径、目标路径和自动启动选项",
+      "allowOtherWarning": {
+        "title": "需要配置 FUSE",
+        "description": "启用 '--allow-other' 需要在主机系统上配置 /etc/fuse.conf 以避免挂载失败。请确保 /etc/fuse.conf 中的 'user_allow_other' 已取消注释/启用。",
+        "learnMore": "在 Rclone 论坛中搜索支持"
+      },
       "hideCommandOptions": "隐藏命令行选项",
       "showCommandOptions": "显示命令行选项",
       "quickAdd": "快速添加",
@@ -1045,6 +1136,7 @@
       }
     },
     "appOperation": {
+      "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
       "enableAutoStart": "开机自动{{type}}",
       "enableScheduled": "启用{{type}}计划任务",
       "enableWatch": "启用实时文件监控",
@@ -1055,7 +1147,7 @@
       "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
       "watchFilterNote": "文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
       "scheduleDescription": "启用后，此操作将根据下方的 cron 计划<strong>定期</strong>运行",
-      "notConfigured": "未配置",
+      "scheduleSubtitle": "按定期计划自动运行此操作。",
       "sourcePaths": "源路径列表",
       "destinationPath": "目标路径",
       "localPath": "本地路径",
@@ -1065,8 +1157,13 @@
       "enterSourcePath": "输入源路径...",
       "otherRemotes": "其他远程存储",
       "enterDestPath": "输入目标路径...",
+      "enterDownloadUrl": "输入下载链接（例如：https://example.com/file.zip）",
+      "copyUrlCustomFilenamePlaceholder": "自动文件名（可选）",
+      "copyUrlFileSettingsWarning": "自定义文件名是在上面的每个 URL 行中单独设置的。任何文件名为空的行都将使用自动确定的文件名。",
+      "urlLabel": "URL",
       "mountDestMustBeLocal": "挂载目标必须是本地文件夹",
       "completionNote": "远程路径补全功能在创建远程存储后可用",
+      "coreCommandNote": "此操作通过 rclone 作为 CLI命令运行，而不是使用原生的传输 API。它们的行为与原生 API 操作不同。可能会出现某些 bug、性能问题，以及缺少进度更新（如预估时间、传输速率）等情况。",
       "loading": "加载中...",
       "upFolder": "上一级文件夹",
       "noItemsFound": "此目录中无项目",
@@ -1249,7 +1346,6 @@
       "errors": {
         "passwordRequired": "必须输入密码",
         "passwordEmpty": "密码不能为空或空白字符",
-        "passwordLength": "密码长度至少 4 位",
         "wrongPassword": "密码错误，请重试",
         "integrityFailed": "备份文件已损坏或被篡改",
         "verificationFailed": "文件验证失败，备份可能已损坏",
@@ -1260,7 +1356,9 @@
     },
     "launchRestoreFailed": "启动恢复流程失败",
     "backupSuccess": "备份创建成功",
-    "restoreSuccess": "设置恢复成功"
+    "backupFailed": "创建备份失败: {{error}}",
+    "restoreSuccess": "备份恢复成功",
+    "restoreFailed": "恢复备份失败: {{error}}"
   },
   "updates": {
     "cancelFailed": "取消更新下载失败。",
@@ -1271,10 +1369,10 @@
     "availableNotification": "有可用更新：{{version}}，打开关于页面安装",
     "noUpdateAvailable": "暂无更新",
     "skipVersion": "将跳过更新 {{version}}",
-    "confirmInstall": {
-      "title": "安装更新",
-      "message": "是否下载并准备更新？完成后需要重启应用才能生效。",
-      "confirm": "安装",
+    "confirmApply": {
+      "title": "应用更新",
+      "message": "是否应用更新？应用将重新启动以使更改生效。",
+      "confirm": "应用",
       "cancel": "取消"
     },
     "restored": "已恢复版本 {{version}}",
@@ -1345,7 +1443,6 @@
       "close": "关闭",
       "directory": "文件夹",
       "file": "文件",
-      "copied": "已复制！",
       "copyToClipboard": "复制到剪贴板",
       "getLink": "获取链接",
       "removeLink": "移除链接",
@@ -1367,6 +1464,12 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "progress": "进度",
+      "files": "文件",
+      "speed": "速度",
+      "eta": "剩余时间",
+      "currentFile": "当前文件",
+      "currentFiles": "当前文件",
       "details": {
         "source": "源路径",
         "destination": "目标路径",
@@ -1407,7 +1510,11 @@
       "extract": "解压",
       "extracting": "正在解压 \"{{name}}\"...",
       "errorExtract": "解压归档失败",
-      "errorListArchive": "列出归档内容失败"
+      "errorListArchive": "列出归档内容失败",
+      "openNative": "在外部应用中打开",
+      "openNativeTooltip": "在默认外部应用中打开",
+      "openingNative": "正在外部应用中打开 {{name}}...",
+      "errorOpenNative": "在外部应用中打开文件失败"
     }
   },
   "dashboard": {
@@ -1440,6 +1547,11 @@
       "syncSettings": "同步设置",
       "moveSettings": "移动设置",
       "bisyncSettings": "双向同步设置",
+      "checkSettings": "检查设置",
+      "cryptcheckSettings": "加密检查设置",
+      "deleteSettings": "删除设置",
+      "copyUrlSettings": "复制 URL 设置",
+      "archivecreateSettings": "归档设置",
       "sync": "同步",
       "syncDesc": "单向同步",
       "bisync": "双向同步",
@@ -1448,6 +1560,16 @@
       "moveDesc": "移动文件（删除源）",
       "copy": "复制",
       "copyDesc": "复制文件（保留源）",
+      "check": "检查",
+      "checkDesc": "检查源和目的地是否匹配",
+      "cryptcheck": "加密检查",
+      "cryptcheckDesc": "验证加密远程连接的完整性",
+      "delete": "删除",
+      "deleteDesc": "永久删除符合过滤条件的文件",
+      "copyurl": "复制 URL",
+      "copyUrlDesc": "为文件生成公开下载 URL",
+      "archivecreate": "归档",
+      "archivecreateDesc": "将文件夹/文件压缩到归档文件（Zip、Tar 等）中",
       "default": "默认",
       "serveBehave": "配置服务协议（HTTP、FTP 等），支持多配置文件。",
       "mountBehave": "配置挂载行为与虚拟文件系统调优。",
@@ -1499,8 +1621,6 @@
       "nextAutomationTooltip": "下一个自动化",
       "remoteConfiguration": "远程存储配置",
       "editConfiguration": "编辑配置",
-      "toggleQuickAction": "将 {{label}} 设为快捷操作",
-      "quickActionSelected": "{{label}} 已设为快捷操作 {{position}}",
       "remoteActionQuickSelection": "远程操作快捷选择"
     }
   },
@@ -1546,6 +1666,19 @@
     }
   },
   "modals": {
+    "actionSelection": {
+      "title": "配置快捷操作",
+      "description": "选择要显示在远程仪表板的按钮操作 {{name}}。最多可为 {{max}} 个操作添加星标，并通过拖拽更改它们的顺序。",
+      "moreButton": "更多",
+      "moreButtonTooltip": "更多操作",
+      "configureTooltip": "配置快捷操作"
+    },
+    "itemOrderVisibility": {
+      "addStar": "添加到快捷操作",
+      "removeStar": "从快捷操作中移除",
+      "showItem": "显示项目",
+      "hideItem": "隐藏项目"
+    },
     "jobDetail": {
       "title": "任务详情 #{{id}}",
       "sections": {
@@ -1591,6 +1724,7 @@
       "aboutRclone": "关于 Rclone",
       "credits": "致谢",
       "legal": "法律信息",
+      "donate": "捐赠",
       "website": "官方网站",
       "wiki": "Wiki 页面",
       "reportIssues": "报告问题",
@@ -1810,13 +1944,49 @@
     },
     "backend": {
       "title": "后端管理",
+      "fields": {
+        "host": {
+          "label": "主机",
+          "placeholder": "例如 127.0.0.1 或 my-nas.local"
+        },
+        "port": {
+          "label": "端口",
+          "placeholder": "51900"
+        },
+        "username": {
+          "label": "用户名",
+          "placeholder": "留空表示不进行身份验证"
+        },
+        "password": {
+          "label": "密码",
+          "placeholder": "留空表示不进行身份验证"
+        },
+        "oauthHost": {
+          "label": "OAuth 主机",
+          "placeholder": "127.0.0.1",
+          "description": "用于 OAuth 回调的连接主机。必须是可路由的地址 — 绝对不能是像 0.0.0.0 这样的通配符。在 Docker 中，将其设置为容器可访问的主机名。"
+        },
+        "oauthPort": {
+          "label": "OAuth 端口"
+        },
+        "configPassword": {
+          "label": "配置密码",
+          "description": "加密配置文件的密码"
+        },
+        "configPath": {
+          "label": "配置路径",
+          "placeholder": "留空以使用默认路径",
+          "description": "rclone.conf 的特定路径（可选）"
+        }
+      },
       "addBackend": "添加后端",
       "editBackend": "编辑后端",
       "active": "已启用",
+      "connecting": "连接中...",
       "local": "本地",
       "name": "名称",
-      "enableAuth": "启用身份验证",
-      "oauthSettings": "OAuth 设置",
+      "enableAuth": "自定义身份验证",
+      "oauthSettings": "OAuth 设置 (未来将被移除)",
       "selectConfigFile": "选择配置文件",
       "activeConfigPath": "当前使用的配置路径",
       "connectionTab": "连接",
@@ -1955,6 +2125,11 @@
         "bisync": "双向同步",
         "move": "移动",
         "copy": "复制",
+        "check": "检查",
+        "delete": "删除",
+        "copyurl": "复制 URL",
+        "archivecreate": "归档",
+        "cryptcheck": "加密检查",
         "filter": "过滤",
         "vfs": "VFS",
         "backend": "后端",
@@ -1976,10 +2151,10 @@
         "new": "新配置文件名称",
         "save": "保存",
         "cancel": "取消",
+        "noProfiles": "未配置配置文件",
+        "placeholder": "选择配置文件",
         "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
         "disabledReason": {
-          "defaultProtected": "默认配置文件无法重命名或删除",
-          "lastProfile": "必须保留至少一个配置文件",
           "inUse": "配置文件正在被运行中的 {{operation}} 使用，请先停止它。"
         }
       },
@@ -2083,6 +2258,10 @@
     }
   },
   "nautilus": {
+    "sidebar": {
+      "configureTitle": "配置侧边栏项目",
+      "configureDescription": "拖动项目以重新排序，或使用眼睛图标隐藏或显示侧边栏中的磁盘和远程连接。"
+    },
     "shortcuts": {
       "title": "Nautilus 键盘快捷键"
     },
@@ -2163,12 +2342,27 @@
       "archiveCreate": {
         "title": "创建归档",
         "filenameLabel": "归档文件名",
-        "formatLabel": "归档格式",
-        "prefixLabel": "前缀路径",
-        "prefixHint": "如果设置，将覆盖完整路径",
-        "fullPathLabel": "包含完整源路径",
-        "fullPathHint": "保留从根目录开始的目录结构",
+        "filenameDesc": "输入要创建的压缩归档文件的名称",
         "compress": "压缩"
+      },
+      "multiRename": {
+        "title": "重命名 {{count}} 个文件",
+        "templateMode": "使用模板重命名",
+        "replaceMode": "查找和替换文本",
+        "templateInput": "模板",
+        "addPlaceholder": "添加",
+        "findLabel": "查找文本",
+        "replaceLabel": "替换为",
+        "caseSensitive": "区分大小写",
+        "counterStart": "计数器起始值",
+        "counterStep": "步长",
+        "counterPadding": "位数 (填充)",
+        "rename": "重命名",
+        "original": "原名称",
+        "newName": "新名称",
+        "counter": "计数器",
+        "date": "日期",
+        "extension": "扩展名"
       }
     },
     "errors": {
@@ -2188,10 +2382,13 @@
       "minSelection": "请至少选择 {{min}} 项。",
       "copyUrlFailed": "从 URL 下载失败: {{error}}",
       "archiveCreateFailed": "创建归档失败: {{error}}",
-      "externalDropFailed": "处理外部文件拖放失败。"
+      "externalDropFailed": "处理外部文件拖放失败。",
+      "sendToFailed": "更新文件管理器右键菜单失败：{{error}}",
+      "noRemoteSelected": "请先导航至一个远程存储。"
     },
     "contextMenu": {
       "open": "打开",
+      "share": "分享",
       "openNewTab": "在新标签页打开",
       "copyPath": "复制路径",
       "newFolder": "新建文件夹",
@@ -2200,6 +2397,8 @@
       "refresh": "刷新",
       "properties": "属性",
       "reload": "重新加载",
+      "addToSendTo": "添加至文件管理器右键菜单",
+      "removeFromSendTo": "从文件管理器右键菜单移除",
       "copyLocation": "复制位置",
       "selectAll": "全选",
       "removeBookmark": "移除书签",
@@ -2227,7 +2426,10 @@
       "nextTab": "下一个标签页",
       "previousTab": "上一个标签页",
       "toggleSplit": "切换分屏视图",
-      "switchPane": "切换窗格"
+      "switchPane": "切换窗格",
+      "copyPublicLink": "复制公共链接",
+      "createFolderWithItems": "用所选项目新建文件夹...",
+      "renameMultiple": "批量重命名..."
     },
     "view": {
       "iconSize": "图标大小",
@@ -2247,7 +2449,14 @@
       "undoComplete": "撤销成功",
       "redoComplete": "重做成功",
       "copyUrlStarted": "正在从 URL 下载...",
-      "archiveCreateStarted": "已开始创建归档操作"
+      "getPublicLinkStarted": "正在生成公共链接...",
+      "archiveCreateStarted": "已开始创建归档操作...",
+      "sendToAdded": "已将“{{remote}}{{path}}”添加至文件管理器右键菜单",
+      "sendToRemoved": "已将“{{remote}}{{path}}”从文件管理器右键菜单移除"
+    },
+    "androidShare": {
+      "uploadHere": "将 {{count}} 个共享文件上传至此文件夹",
+      "confirm": "上传至此处"
     }
   },
   "home": {
@@ -2278,8 +2487,6 @@
     },
     "errors": {
       "generic": "发生意外错误。请检查日志获取更多详细信息。",
-      "initialLoadFailed": "初始数据加载失败",
-      "updateActionsFailed": "更新快捷操作失败",
       "openFailed": "打开 {{name}} 失败",
       "resetSettingsFailed": "重置远程存储设置失败",
       "deleteRemoteFailed": "删除远程存储失败"
@@ -2360,10 +2567,6 @@
     "automations": {
       "activeCount": "活动 {{active}} / 总计 {{total}}",
       "noScheduled": "暂无自动化",
-      "loading": "正在加载自动化...",
-      "aria": {
-        "loading": "正在加载自动化"
-      },
       "noConfigured": "未配置任何自动化。可通过配置 Cron 表达式或实时文件监控来创建自动化。",
       "nextRun": "下次运行："
     },
@@ -2376,12 +2579,12 @@
   "appOverview": {
     "labels": {
       "mount": "挂载",
-      "startSync": "开始同步",
+      "startOperations": "开始操作",
       "startServe": "启动服务"
     },
     "panelTitles": {
       "mountedRemotes": "已挂载远程存储",
-      "activeSync": "活动同步任务",
+      "activeOperations": "活动操作",
       "activeServes": "活动服务",
       "unmountedRemotes": "未挂载远程存储",
       "inactiveRemotes": "未活动远程存储",
@@ -2394,7 +2597,7 @@
       "alreadyInUse": "挂载点 {{mountPoint}} 已被远程存储 {{remote}} 使用",
       "configIncomplete": "配置文件 '{{profile}}' 的挂载配置不完整"
     },
-    "sync": {
+    "operations": {
       "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
     },
     "serve": {
@@ -2417,6 +2620,8 @@
     "rclone": {
       "unsupportedPlatform": "不支持的平台",
       "downloadError": "下载 Rclone 时发生未知错误",
+      "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
+      "mountPluginVerificationFailed": "安装成功但验证失败。可能需要重新启动。",
       "configEncrypted": "配置已加密，未提供密码",
       "unsupportedOS": "不支持的操作系统。",
       "binaryNotFound": "未找到 Rclone 可执行文件。",
@@ -2436,7 +2641,8 @@
       "cacheRefreshFailed": "刷新 rclone 缓存失败: {{error}}",
       "invalidFlags": "检测到无效的 rclone 标志: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支持远程更新",
-      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}"
+      "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
+      "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -2493,8 +2699,7 @@
     "system": {
       "themeSetFailed": "设置应用主题失败: {{error}}",
       "unlockFailed": "解锁失败：{{error}}",
-      "killFailed": "结束进程失败：{{error}}",
-      "quitFailed": "退出 rclone 引擎失败：{{error}}"
+      "killFailed": "终止进程失败：{{error}}"
     },
     "remote": {
       "configFailed": "配置远程存储失败：{{error}}"
@@ -2539,7 +2744,8 @@
       "switched": "已切换到后端 {{name}}"
     },
     "rclone": {
-      "updated": "Rclone 更新成功（{{channel}} 通道）"
+      "updated": "Rclone 更新成功（{{channel}} 通道）",
+      "mountPluginInstalled": "挂载插件安装成功"
     },
     "job": {
       "stopped": "任务已停止",
@@ -2556,7 +2762,7 @@
   "overviews": {
     "headers": {
       "mount": "挂载概览",
-      "sync": "同步概览",
+      "operations": "操作概览",
       "serve": "服务概览",
       "general": "RClone Manager",
       "default": "远程存储概览"
@@ -2564,15 +2770,13 @@
     "status": {
       "titles": {
         "mount": "挂载状态",
-        "sync": "同步状态",
+        "operations": "操作状态",
         "serve": "服务状态",
         "general": "系统状态"
       },
       "labels": {
         "unmounted": "未挂载",
         "mounted": "已挂载",
-        "syncing": "同步中",
-        "offSync": "未同步",
         "active": "活动",
         "inactive": "未活动"
       }
@@ -2589,6 +2793,16 @@
         "stopMove": "停止移动",
         "startBisync": "开始双向同步",
         "stopBisync": "停止双向同步",
+        "startCheck": "开始检查",
+        "stopCheck": "停止检查",
+        "startCryptcheck": "开始加密检查",
+        "stopCryptcheck": "停止加密检查",
+        "startDelete": "开始删除",
+        "stopDelete": "停止删除",
+        "startCopyurl": "开始复制 URL",
+        "stopCopyurl": "停止复制 URL",
+        "startArchivecreate": "开始归档",
+        "stopArchivecreate": "停止归档",
         "startServe": "启动服务",
         "stopServe": "停止服务"
       },
@@ -2620,6 +2834,11 @@
     "copyCount": "复制 [{{active}}/{{total}}]",
     "moveCount": "移动 [{{active}}/{{total}}]",
     "bisyncCount": "双向同步 [{{active}}/{{total}}]",
+    "checkCount": "检查 [{{active}}/{{total}}]",
+    "cryptcheckCount": "加密检查 [{{active}}/{{total}}]",
+    "deleteCount": "删除 [{{active}}/{{total}}]",
+    "copyurlCount": "复制 URL [{{active}}/{{total}}]",
+    "archivecreateCount": "归档 [{{active}}/{{total}}]",
     "serveCount": "服务 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 个作业",
@@ -2664,7 +2883,8 @@
       "engineRestartFailed": "引擎重启失败",
       "engineConnectionFailed": "引擎连接错误",
       "engineBinaryNotFound": "未找到 Rclone",
-      "enginePasswordRequired": "需要密码"
+      "enginePasswordRequired": "需要密码",
+      "engineAuthFailed": "引擎身份验证失败"
     },
     "body": {
       "mountSucceeded": "已成功将 {{backend}} 的远程存储 {{remote}} 配置 '{{profile}}' 挂载到 {{mountPoint}}。",
@@ -2700,7 +2920,8 @@
       "engineRestartFailed": "重启引擎时发生错误：{{error}}",
       "engineConnectionFailed": "无法连接到 rclone 引擎：{{error}}",
       "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
-      "enginePasswordRequired": "访问配置文件需要密码。"
+      "enginePasswordRequired": "访问配置文件需要密码。",
+      "engineAuthFailed": "无法通过 rclone 引擎身份验证：{{error}}"
     }
   },
   "repairSheet": {
@@ -2722,7 +2943,8 @@
       "backendError": "后端错误",
       "passwordRequired": "需要密码",
       "systemIssue": "系统问题",
-      "versionTooOld": "Rclone 版本过旧"
+      "versionTooOld": "Rclone 版本过旧",
+      "authRequired": "需要身份验证"
     },
     "messages": {
       "missingRclone": "未找到 rclone 可执行文件，请安装后继续。",
@@ -2732,8 +2954,8 @@
       "passwordRequired": "rclone 配置已加密，请输入密码。",
       "versionTooOld": "您的 rclone 版本低于 {{required}}。请更新以继续。",
       "defaultParams": "系统组件运行异常。",
-      "mountPluginStatusChecked": "状态检查时间：{{time}}",
-      "mountPluginStatusError": "状态检查失败"
+      "mountPluginStatusError": "状态检查失败",
+      "authRequired": "由于身份验证失败，后端拒绝了连接。"
     },
     "progress": {
       "installingRclone": "正在安装 Rclone…",
@@ -2778,6 +3000,10 @@
       "rclonePassword": {
         "issue": "配置已加密",
         "action": "解锁"
+      },
+      "rcloneAuth": {
+        "issue": "身份验证被拒绝",
+        "action": "终止过时进程并重启引擎"
       }
     },
     "tooltips": {
