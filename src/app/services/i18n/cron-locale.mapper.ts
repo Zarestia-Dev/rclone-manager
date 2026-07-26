@@ -3,6 +3,7 @@ import 'cronstrue/locales/es';
 import 'cronstrue/locales/zh_CN';
 import 'cronstrue/locales/zh_TW';
 import 'cronstrue/locales/fr';
+import 'cronstrue/locales/pt_BR';
 import 'cronstrue/locales/ru';
 import { toString as cronstrue } from 'cronstrue';
 
