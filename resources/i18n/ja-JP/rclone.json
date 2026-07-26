@@ -1,0 +1,1338 @@
+{
+  "check_file_remote": {
+    "title": "チェック対象リモートファイル",
+    "help": "checkFileFs と checkFileRemote で指定したファイルをハッシュ値付きの SUM ファイルとして扱います"
+  },
+  "combined": {
+    "title": "統合レポート",
+    "help": "変更箇所の統合レポートを作成します。"
+  },
+  "missing_on_src": {
+    "title": "転送元に存在しないファイル",
+    "help": "転送元に存在しないすべてのファイルをレポートします。"
+  },
+  "missing_on_dst": {
+    "title": "転送先に存在しないファイル",
+    "help": "転送先に存在しないすべてのファイルをレポートします。"
+  },
+  "match": {
+    "title": "一致ファイル",
+    "help": "一致したすべてのファイルをレポートします。"
+  },
+  "differ": {
+    "title": "不一致ファイル",
+    "help": "一致しなかったすべてのファイルをレポートします。"
+  },
+  "error": {
+    "title": "エラーファイル",
+    "help": "エラー（ハッシュ計算や読み込み失敗など）が発生したすべてのファイルをレポートします"
+  },
+  "addr": {
+    "title": "バインド用アドレス",
+    "help": "サーバーをバインドする IPアドレス:ポート または :ポート"
+  },
+  "name": {
+    "title": "DLNA サーバー名",
+    "help": "DLNA サーバーの名前"
+  },
+  "log_trace": {
+    "title": "トレースログ有効化",
+    "help": "SOAP 通信のトレースログを有効にします。"
+  },
+  "interface": {
+    "title": "ネットワークインターフェース",
+    "help": "SSDP で使用するインターフェース（必要に応じて複数指定可能）"
+  },
+  "announce_interval": {
+    "title": "通知間隔",
+    "help": "SSDP アナウンス（通知）の間隔"
+  },
+  "delete_excluded": {
+    "title": "除外ファイルの削除",
+    "help": "同期対象から除外されたファイルを転送先から削除します。"
+  },
+  "exclude_if_present": {
+    "title": "特定ファイル存在時に除外",
+    "help": "指定したファイル名が存在するディレクトリを除外します。"
+  },
+  "files_from": {
+    "title": "ファイルリスト読み込み",
+    "help": "転送元ファイル名のリストをファイルから読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "files_from_raw": {
+    "title": "ファイルリスト読み込み (未加工)",
+    "help": "各行の加工を行わずに、転送元ファイル名のリストをファイルから読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "min_age": {
+    "title": "最小経過時間 (Min Age)",
+    "help": "これより古いファイルのみを転送します（単位: 秒、または ms|s|m|h|d|w|M|y の接尾辞）"
+  },
+  "max_age": {
+    "title": "最大経過時間 (Max Age)",
+    "help": "これより新しいファイルのみを転送します（単位: 秒、または ms|s|m|h|d|w|M|y の接尾辞）"
+  },
+  "min_size": {
+    "title": "最小ファイルサイズ",
+    "help": "これより大きいファイルのみを転送します（単位: KiB、または B|K|M|G|T|P の接尾辞）"
+  },
+  "max_size": {
+    "title": "最大ファイルサイズ",
+    "help": "これより小さいファイルのみを転送します（単位: KiB、または B|K|M|G|T|P の接尾辞）"
+  },
+  "ignore_case": {
+    "title": "大文字小文字を無視",
+    "help": "フィルタ適用時に大文字と小文字を区別しません。"
+  },
+  "hash_filter": {
+    "title": "ハッシュフィルタ",
+    "help": "ハッシュ k/n またはランダム @/n によってファイル名を分割・フィルタリングします。"
+  },
+  "filter": {
+    "title": "フィルタ規則追加",
+    "help": "ファイルのフィルタルールを追加します。"
+  },
+  "filter_from": {
+    "title": "フィルタ規則ファイル指定",
+    "help": "ファイルからフィルタルールを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "exclude": {
+    "title": "除外パターン",
+    "help": "パターンに一致するファイルを除外します。"
+  },
+  "exclude_from": {
+    "title": "除外パターンファイル指定",
+    "help": "ファイルから除外パターンを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "include": {
+    "title": "対象パターン",
+    "help": "パターンに一致するファイルを含めます。"
+  },
+  "include_from": {
+    "title": "対象パターンファイル指定",
+    "help": "ファイルから対象パターンを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "metadata_filter": {
+    "title": "メタデータフィルタ規則追加",
+    "help": "メタデータのフィルタルールを追加します。"
+  },
+  "metadata_filter_from": {
+    "title": "メタデータフィルタ規則ファイル指定",
+    "help": "ファイルからメタデータフィルタルールを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "metadata_exclude": {
+    "title": "メタデータ除外パターン",
+    "help": "パターンに一致するメタデータを除外します。"
+  },
+  "metadata_exclude_from": {
+    "title": "メタデータ除外パターンファイル指定",
+    "help": "ファイルからメタデータ除外パターンを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "metadata_include": {
+    "title": "メタデータ対象パターン",
+    "help": "パターンに一致するメタデータを含めます。"
+  },
+  "metadata_include_from": {
+    "title": "メタデータ対象パターンファイル指定",
+    "help": "ファイルからメタデータ対象パターンを読み込みます（標準入力から読み込む場合は - を使用）"
+  },
+  "public_ip": {
+    "title": "パブリック IP",
+    "help": "パッシブ接続用に通知するパブリック IP アドレス"
+  },
+  "passive_port": {
+    "title": "パッシブポート範囲",
+    "help": "使用するパッシブポートの範囲"
+  },
+  "user": {
+    "title": "ユーザー名",
+    "help": "認証用ユーザー名"
+  },
+  "pass": {
+    "title": "パスワード",
+    "help": "認証用パスワード"
+  },
+  "cert": {
+    "title": "証明書",
+    "help": "TLS PEM 鍵（証明書と CA 証明書を結合したもの）"
+  },
+  "key": {
+    "title": "秘密鍵",
+    "help": "TLS PEM 秘密鍵"
+  },
+  "server_read_timeout": {
+    "title": "サーバー読み込みタイムアウト",
+    "help": "サーバーのデータ読み込みタイムアウト時間"
+  },
+  "server_write_timeout": {
+    "title": "サーバー書き込みタイムアウト",
+    "help": "サーバーのデータ書き込みタイムアウト時間"
+  },
+  "max_header_bytes": {
+    "title": "最大ヘッダーバイト数",
+    "help": "リクエストヘッダーの最大サイズ"
+  },
+  "client_ca": {
+    "title": "クライアント CA 証明書",
+    "help": "クライアントを検証するためのクライアント認証局 (CA)"
+  },
+  "baseurl": {
+    "title": "ベース URL",
+    "help": "URL のプレフィックス（ルートの場合は空欄のまま）"
+  },
+  "min_tls_version": {
+    "title": "最小 TLS バージョン",
+    "help": "許容される最小の TLS バージョン"
+  },
+  "allow_origin": {
+    "title": "オリジン許可 (CORS)",
+    "help": "クロスドメインリクエスト (CORS) を許可するオリジン"
+  },
+  "htpasswd": {
+    "title": "htpasswd ファイル",
+    "help": "htpasswd ファイル（指定しない場合は認証が行われません）"
+  },
+  "realm": {
+    "title": "レルム (Realm)",
+    "help": "認証用レルム"
+  },
+  "salt": {
+    "title": "ソルト (Salt)",
+    "help": "パスワードハッシュ用のソルト"
+  },
+  "user_from_header": {
+    "title": "ヘッダー指定ユーザー名",
+    "help": "指定した HTTP ヘッダーから取得するユーザー名"
+  },
+  "template": {
+    "title": "テンプレート",
+    "help": "ユーザー指定テンプレート"
+  },
+  "log_file": {
+    "title": "ログファイル",
+    "help": "すべてのログをこのファイルに出力します。"
+  },
+  "log_file_max_size": {
+    "title": "ログファイル最大サイズ",
+    "help": "ローテーションされるまでのログファイルの最大サイズ（例: \"10M\"）"
+  },
+  "log_file_max_backups": {
+    "title": "ログファイル最大保持数",
+    "help": "保持する古いログファイルの最大数"
+  },
+  "log_file_max_age": {
+    "title": "ログファイル最大保持期間",
+    "help": "古いログファイルを保持する最大期間（例: \"7d\"）"
+  },
+  "log_file_compress": {
+    "title": "ログファイル圧縮",
+    "help": "有効にすると、ローテーションされたログファイルを gzip で圧縮します。"
+  },
+  "log_format": {
+    "title": "ログフォーマット",
+    "help": "カンマ区切りのログフォーマットオプション一覧"
+  },
+  "syslog": {
+    "title": "Syslog 利用",
+    "help": "ロギングに Syslog を使用します。"
+  },
+  "syslog_facility": {
+    "title": "Syslog ファシリティ",
+    "help": "Syslog のファシリティ（例: KERN, USER）"
+  },
+  "log_systemd": {
+    "title": "Systemd ログ連携",
+    "help": "ロガーの systemd 連携を有効にします。"
+  },
+  "windows_event_log_level": {
+    "title": "Windows イベントログレベル",
+    "help": "Windows イベントログのレベル（DEBUG|INFO|NOTICE|ERROR|OFF）"
+  },
+  "modify_window": {
+    "title": "更新日時許容誤差",
+    "help": "同一ファイルとみなすタイムスタンプの最大差分"
+  },
+  "checkers": {
+    "title": "並列チェック数",
+    "help": "並列で実行するチェッカーの数"
+  },
+  "transfers": {
+    "title": "並列転送数",
+    "help": "並列で実行するファイル転送の数"
+  },
+  "checksum": {
+    "title": "チェックサム確認",
+    "help": "サイズおよびチェックサムで変更を確認します（利用不可の場合はサイズのみで判定）"
+  },
+  "size_only": {
+    "title": "サイズのみで判定",
+    "help": "更新日時やチェックサムは使用せず、ファイルサイズのみに基づいてスキップします。"
+  },
+  "ignore_times": {
+    "title": "タイムスタンプ無視",
+    "help": "サイズと日時が一致する項目もスキップせず、条件なしで全転送します。"
+  },
+  "ignore_existing": {
+    "title": "既存ファイルをスキップ",
+    "help": "転送先にすでに存在するすべてのファイルをスキップします。"
+  },
+  "ignore_errors": {
+    "title": "エラー無視で削除",
+    "help": "I/O エラーが発生した場合でも削除処理を行います。"
+  },
+  "dry_run": {
+    "title": "テスト実行 (dryRun)",
+    "help": "実際の変更を行わずにシミュレーションを実行します。"
+  },
+  "interactive": {
+    "title": "対話モード",
+    "help": "対話型モードを有効にします。"
+  },
+  "links": {
+    "title": "シンボリックリンク変換",
+    "help": "シンボリックリンクを '.rclonelink' 拡張子を持つ通常ファイルに相互変換します。"
+  },
+  "contimeout": {
+    "title": "接続タイムアウト",
+    "help": "ネットワーク接続のタイムアウト時間"
+  },
+  "timeout": {
+    "title": "I/O タイムアウト",
+    "help": "I/O アイドル時のタイムアウト時間"
+  },
+  "expect_continue_timeout": {
+    "title": "Expect-Continue タイムアウト",
+    "help": "HTTP で expect / 100-continue を使用する際のタイムアウト時間"
+  },
+  "no_check_certificate": {
+    "title": "証明書検証を無効化",
+    "help": "サーバーの SSL 証明書を検証しません（非推奨・危険）"
+  },
+  "ask_password": {
+    "title": "パスワード確認ダイアログ",
+    "help": "暗号化された設定に対してパスワードの入力を求めることを許可します。"
+  },
+  "password_command": {
+    "title": "パスワード取得コマンド",
+    "help": "暗号化された設定用にパスワードを提供するコマンド"
+  },
+  "max_delete": {
+    "title": "最大削除ファイル数",
+    "help": "同期実行時、削除するファイル数の上限を設定します。"
+  },
+  "max_delete_size": {
+    "title": "最大削除サイズ",
+    "help": "同期実行時、削除する総容量の上限を設定します。"
+  },
+  "track_renames": {
+    "title": "リネーム追跡",
+    "help": "同期実行時、ファイル名の変更を追跡し、可能であればサーバー側で移動処理を行います。"
+  },
+  "track_renames_strategy": {
+    "title": "リネーム追跡戦略",
+    "help": "track-renames 使用時の判定基準（hash|modtime|leaf）"
+  },
+  "retries": {
+    "title": "再試行回数",
+    "help": "処理が失敗した場合に再試行する回数"
+  },
+  "retries_sleep": {
+    "title": "再試行インターバル",
+    "help": "処理失敗時の再試行待ち時間（例: 500ms, 60s, 5m。0 で無効化）"
+  },
+  "low_level_retries": {
+    "title": "低レベル再試行回数",
+    "help": "低レベル（ネットワーク層など）で実行する再試行回数"
+  },
+  "update": {
+    "title": "上書き防止 (Update)",
+    "help": "転送先の方が新しいファイルである場合はスキップします。"
+  },
+  "use_server_modtime": {
+    "title": "サーバー更新日時を使用",
+    "help": "オブジェクトのメタデータではなく、サーバー側の更新日時を使用します。"
+  },
+  "no_gzip_encoding": {
+    "title": "Gzip 圧縮要求の無効化",
+    "help": "Accept-Encoding: gzip ヘッダーを設定しません。"
+  },
+  "max_depth": {
+    "title": "最大階層深さ",
+    "help": "設定した場合、ディレクトリを再帰検索する深さを制限します。"
+  },
+  "ignore_size": {
+    "title": "サイズを無視",
+    "help": "スキップ判定時にサイズを無視し、更新日時またはチェックサムを使用します。"
+  },
+  "ignore_checksum": {
+    "title": "コピー後チェックサム無視",
+    "help": "コピー完了後のチェックサム検証をスキップします。"
+  },
+  "ignore_case_sync": {
+    "title": "同期時の大文字小文字無視",
+    "help": "同期処理において大文字と小文字を区別しません。"
+  },
+  "fix_case": {
+    "title": "大文字小文字の修復",
+    "help": "大文字小文字を区別しない転送先のファイル名を、転送元に合わせて強制変更します。"
+  },
+  "no_traverse": {
+    "title": "転送先スキャン回避 (No Traverse)",
+    "help": "コピー時に転送先のファイルシステム全体をスキャン・巡回しません。"
+  },
+  "check_first": {
+    "title": "事前チェック一括実行",
+    "help": "ファイルの転送を開始する前に、すべてのチェック作業を完了させます。"
+  },
+  "no_check_dest": {
+    "title": "転送先チェックなし",
+    "help": "転送先を確認せず、強制的にコピーします。"
+  },
+  "no_unicode_normalization": {
+    "title": "Unicode 正規化を無効化",
+    "help": "ファイル名の中の Unicode 文字を正規化しません。"
+  },
+  "no_update_modtime": {
+    "title": "同一ファイルの更新日時維持",
+    "help": "内容が同一である場合、転送先の更新日時を更新しません。"
+  },
+  "no_update_dir_modtime": {
+    "title": "フォルダ更新日時維持",
+    "help": "ディレクトリの更新日時を更新しません。"
+  },
+  "compare_dest": {
+    "title": "比較用パス指定",
+    "help": "比較時に、サーバー側の追加パスを含めます。"
+  },
+  "copy_dest": {
+    "title": "比較・コピー用パス指定",
+    "help": "--compare-dest の機能に加え、指定パスからも転送先へファイルをコピーします。"
+  },
+  "backup_dir": {
+    "title": "バックアップ用ディレクトリ",
+    "help": "指定したディレクトリ内に階層構造を保ってバックアップを作成します。"
+  },
+  "suffix": {
+    "title": "バックアップ接尾辞 (Suffix)",
+    "help": "変更・上書きされたファイルに付加する接尾辞"
+  },
+  "suffix_keep_extension": {
+    "title": "接尾辞付加時に拡張子を維持",
+    "help": "--suffix 使用時に元の拡張子を保持します。"
+  },
+  "fast_list": {
+    "title": "高速リスト取得 (Fast List)",
+    "help": "利用可能な場合、再帰的リスト取得を使用します。メモリ消費は増えますが通信回数を削減します。"
+  },
+  "list_cutoff": {
+    "title": "リスト並べ替え閾値",
+    "help": "メモリ節約のため、この閾値を超えるディレクトリリストはディスク上でソートします。"
+  },
+  "tpslimit": {
+    "title": "TPS 制限 (秒間リクエスト数)",
+    "help": "1秒あたりの HTTP トランザクション数を制限します。"
+  },
+  "tpslimit_burst": {
+    "title": "TPS バースト上限",
+    "help": "--tpslimit のバースト（瞬間最大）トランザクション数"
+  },
+  "user_agent": {
+    "title": "ユーザーエージェント",
+    "help": "User-Agent 文字列を指定したものに設定します。"
+  },
+  "immutable": {
+    "title": "変更不可モード (Immutable)",
+    "help": "ファイルを変更しません。既存のファイルが変更されていた場合はエラーとします。"
+  },
+  "auto_confirm": {
+    "title": "自動確認",
+    "help": "有効にすると、コンソールでの対話的な確認要求を行いません。"
+  },
+  "stats_unit": {
+    "title": "統計単位",
+    "help": "転送速度の表示単位を指定します（'bits' または 'bytes' / 秒）"
+  },
+  "stats_file_name_length": {
+    "title": "統計ファイル名表示長",
+    "help": "統計情報に表示するファイル名の最大長（0 で無制限）"
+  },
+  "log_level": {
+    "title": "ログレベル",
+    "help": "ログ出力レベル（DEBUG|INFO|NOTICE|ERROR）"
+  },
+  "stats_log_level": {
+    "title": "統計ログレベル",
+    "help": "--stats の出力のログレベル（DEBUG|INFO|NOTICE|ERROR）"
+  },
+  "bwlimit": {
+    "title": "帯域幅制限",
+    "help": "帯域幅の制限（KiB/s、または B|K|M|G|T|P 単位、あるいは時間帯別スケジュール指定）"
+  },
+  "bwlimit_file": {
+    "title": "ファイル別帯域幅制限",
+    "help": "ファイルごとの帯域幅の制限（KiB/s、または B|K|M|G|T|P 単位、あるいは時間帯別スケジュール指定）"
+  },
+  "buffer_size": {
+    "title": "バッファーサイズ",
+    "help": "各転送（--transfer）でファイルを読み込む際のメモリバッファーサイズ"
+  },
+  "streaming_upload_cutoff": {
+    "title": "ストリーミングアップロード切り替え値",
+    "help": "サイズ不明ファイルでチャンクアップロードへ切り替える閾値。閾値到達時またはファイル終了時に開始。"
+  },
+  "dump": {
+    "title": "デバッグダンプ出力",
+    "help": "ダンプする項目の指定（headers, bodies, requests, responses, auth, filters, goroutines, openfiles, mapper）"
+  },
+  "max_transfer": {
+    "title": "最大転送容量",
+    "help": "転送するデータの最大合計サイズ"
+  },
+  "max_duration": {
+    "title": "最大転送時間",
+    "help": "rclone が転送処理を行う最大の継続時間"
+  },
+  "cutoff_mode": {
+    "title": "転送中断モード",
+    "help": "最大転送容量に達した際の停止動作モード（HARD|SOFT|CAUTIOUS）"
+  },
+  "max_backlog": {
+    "title": "最大バックログ数",
+    "help": "同期またはチェック待ちキューに保持する最大オブジェクト数"
+  },
+  "max_stats_groups": {
+    "title": "最大統計グループ数",
+    "help": "メモリ内に保持する統計グループの最大数。上限到達時は最も古いものを廃棄。"
+  },
+  "stats_one_line": {
+    "title": "統計1行表示",
+    "help": "進捗・統計情報を1行に収めて表示します。"
+  },
+  "stats_one_line_date": {
+    "title": "統計1行表示 (日時付き)",
+    "help": "--stats-one-line を有効にし、先頭に現在日時を付与します。"
+  },
+  "stats_one_line_date_format": {
+    "title": "統計日時フォーマット",
+    "help": "カスタム日時フォーマットで --stats-one-line-date を有効化（ダブルクォートで囲んで指定。Go言語の時刻フォーマット仕様に準拠）"
+  },
+  "error_on_no_transfer": {
+    "title": "転送なし時エラー出力",
+    "help": "転送されたファイルがない場合に終了コード 9 を返します（スクリプト処理等で有用）"
+  },
+  "progress": {
+    "title": "進捗表示",
+    "help": "転送中にリアルタイム進捗を表示します。"
+  },
+  "progress_terminal_title": {
+    "title": "ターミナルタイトルへ進捗表示",
+    "help": "ターミナルのウィンドウタイトルに進捗を表示します（要 -P/--progress）"
+  },
+  "use_cookies": {
+    "title": "クッキー使用",
+    "help": "セッション用 cookiejar（クッキー保存機能）を有効にします。"
+  },
+  "use_mmap": {
+    "title": "mmap メモリアロケータ使用",
+    "help": "mmap メモリアロケータを使用します（詳細はドキュメント参照）"
+  },
+  "max_buffer_memory": {
+    "title": "最大バッファーメモリ",
+    "help": "設定した場合、バッファーとして指定した容量以上のメモリ割り当てを行いません。"
+  },
+  "ca_cert": {
+    "title": "CA 証明書",
+    "help": "サーバー検証に使用する CA 証明書"
+  },
+  "client_cert": {
+    "title": "クライアント証明書",
+    "help": "相互 TLS 認証用のクライアント SSL 証明書 (PEM)"
+  },
+  "client_key": {
+    "title": "クライアント秘密鍵",
+    "help": "相互 TLS 認証用のクライアント SSL 秘密鍵 (PEM)"
+  },
+  "client_pass": {
+    "title": "クライアント暗号化パスワード",
+    "help": "相互 TLS 認証用クライアント SSL 秘密鍵のパスワード (難読化済み)"
+  },
+  "multi_thread_cutoff": {
+    "title": "マルチスレッド切り替えサイズ",
+    "help": "このサイズを超えるファイルに対してマルチスレッドダウンロードを使用します。"
+  },
+  "multi_thread_streams": {
+    "title": "マルチスレッドストリーム数",
+    "help": "マルチスレッドダウンロードで使用する並行ストリーム数"
+  },
+  "multi_thread_write_buffer_size": {
+    "title": "マルチスレッド書き込みバッファーサイズ",
+    "help": "マルチスレッドモード時の書き込み用メモリバッファーサイズ"
+  },
+  "multi_thread_chunk_size": {
+    "title": "マルチスレッドチャンクサイズ",
+    "help": "ファイルシステムで未設定の場合に使用する、マルチスレッド転送時のチャンクサイズ"
+  },
+  "use_json_log": {
+    "title": "JSON 形式ログ",
+    "help": "ログのフォーマットに JSON を使用します。"
+  },
+  "order_by": {
+    "title": "転送順序指定",
+    "help": "転送順序の並べ替え指示（例: 'size,descending'）"
+  },
+  "refresh_times": {
+    "title": "更新日時リフレッシュ",
+    "help": "リモートファイルの更新日時（modtime）を再取得・更新します。"
+  },
+  "no_console": {
+    "title": "コンソール非表示",
+    "help": "コンソールウィンドウを非表示にします（Windows のみ対応）"
+  },
+  "fs_cache_expire_duration": {
+    "title": "ファイルシステムキャッシュ有効期間",
+    "help": "リモートをキャッシュする期間（0 でキャッシュ無効化）"
+  },
+  "fs_cache_expire_interval": {
+    "title": "ファイルシステムキャッシュ期限切れチェック間隔",
+    "help": "期限切れとなったリモートのチェック間隔"
+  },
+  "disable_http2": {
+    "title": "HTTP/2 無効化",
+    "help": "グローバル転送での HTTP/2 を無効にします。"
+  },
+  "human_readable": {
+    "title": "読みやすい単位表記",
+    "help": "数値を人間が読みやすい形式（Ki|Mi|Gi|Ti|Pi 等の単位付き）で出力します。"
+  },
+  "kv_lock_time": {
+    "title": "KV データベースロック保持時間",
+    "help": "プロセスがキー・バリューデータベースのロックを保持する最大時間"
+  },
+  "disable_http_keep_alives": {
+    "title": "HTTP Keep-Alive 無効化",
+    "help": "HTTP Keep-Alive を無効にし、接続を毎回使い捨てにします。"
+  },
+  "metadata": {
+    "title": "メタデータ保持",
+    "help": "設定した場合、オブジェクトコピー時にメタデータも保持します。"
+  },
+  "server_side_across_configs": {
+    "title": "設定間サーバーサイド操作許可",
+    "help": "異なる設定間でのサーバーサイド操作（コピー等）を許可します。"
+  },
+  "color": {
+    "title": "カラー表示",
+    "help": "カラー表示（ANSI コード）の適用条件（AUTO|NEVER|ALWAYS）"
+  },
+  "default_time": {
+    "title": "デフォルト日時",
+    "help": "ファイルやディレクトリの更新日時が不明な場合に表示する日時"
+  },
+  "inplace": {
+    "title": "直接上書きダウンロード (Inplace)",
+    "help": "一時ファイルへのダウンロードとリネーム（アトミック処理）を行わず、目的のファイルへ直接ダウンロードします。"
+  },
+  "metadata_mapper": {
+    "title": "メタデータ変換プログラム",
+    "help": "アップロード前にメタデータを変換するために実行するプログラム"
+  },
+  "partial_suffix": {
+    "title": "一時ファイル用接尾辞",
+    "help": "--inplace を使用しない場合に一時ファイル名へ付与する接尾辞"
+  },
+  "max_connections": {
+    "title": "最大同時接続数",
+    "help": "バックエンド API への同時接続数の上限（0 で無制限）"
+  },
+  "name_transform": {
+    "title": "パス変換ルール",
+    "help": "コピー処理中にファイルパスを変換します。"
+  },
+  "http_proxy": {
+    "title": "HTTP プロキシ",
+    "help": "HTTP プロキシの URL"
+  },
+  "debug_fuse": {
+    "title": "FUSE デバッグ",
+    "help": "FUSE の内部動作をデバッグ出力します（-v が必要）"
+  },
+  "attr_timeout": {
+    "title": "属性キャッシュ時間",
+    "help": "ファイル/ディレクトリ属性をキャッシュする時間"
+  },
+  "option": {
+    "title": "FUSE オプション",
+    "help": "libfuse/WinFsp 用のオプション（必要に応じて複数指定可能）"
+  },
+  "fuse_flag": {
+    "title": "FUSE フラグ",
+    "help": "libfuse/WinFsp に直接渡すフラグまたは引数（必要に応じて複数指定可能）"
+  },
+  "daemon": {
+    "title": "デーモン実行 (バックグラウンド)",
+    "help": "マウントをバックグラウンドで実行し親プロセスを終了します（Windows 非対応）"
+  },
+  "daemon_timeout": {
+    "title": "デーモン応答タイムアウト",
+    "help": "rclone がカーネルへ応答する制限時間（Windows 非対応）"
+  },
+  "default_permissions": {
+    "title": "標準パーミッション強制",
+    "help": "ファイルモードに基づくアクセス制御をカーネルに強制させます（Windows 非対応）"
+  },
+  "allow_non_empty": {
+    "title": "空でないディレクトリへのマウント許可",
+    "help": "空でないディレクトリ上へのマウントを許可します（Windows 非対応）"
+  },
+  "allow_root": {
+    "title": "Root ユーザーアクセス許可",
+    "help": "root ユーザーからのアクセスを許可します（Windows 非対応）"
+  },
+  "allow_other": {
+    "title": "他ユーザーアクセス許可",
+    "help": "他のユーザーからのアクセスを許可します（Windows 非対応）"
+  },
+  "async_read": {
+    "title": "非同期読み込み",
+    "help": "非同期読み込みを使用します（Windows 非対応）"
+  },
+  "max_read_ahead": {
+    "title": "最大先読みサイズ",
+    "help": "シーケンシャル読み込み時にプリフェッチ（先読み）するバイト数（Windows 非対応）"
+  },
+  "write_back_cache": {
+    "title": "ライトバックキャッシュ",
+    "help": "rclone へ送信する前にカーネル側で書き込みをバッファーします（Windows 非対応）"
+  },
+  "devname": {
+    "title": "デバイス名",
+    "help": "デバイス名を設定します（デフォルト: remote:path）"
+  },
+  "mount_case_insensitive": {
+    "title": "マウント時大文字小文字区別設定",
+    "help": "OS に対しマウント先が区別あり(false)/なし(true)かを明示設定します。"
+  },
+  "direct_io": {
+    "title": "ダイレクト I/O",
+    "help": "Direct IO を使用し、データのキャッシュを無効にします。"
+  },
+  "volname": {
+    "title": "ボリューム名",
+    "help": "ボリューム名を設定します（Windows および macOS のみ対応）"
+  },
+  "noappledouble": {
+    "title": "Apple Double ファイル無視",
+    "help": "Apple Double (._) および .DS_Store ファイルを無視します（macOS のみ対応）"
+  },
+  "noapplexattr": {
+    "title": "Apple 拡張属性無視",
+    "help": "すべての \"com.apple.*\" 拡張属性を無視します（macOS のみ対応）"
+  },
+  "network_mode": {
+    "title": "ネットワークドライブモード",
+    "help": "固定ディスクではなく、リモートネットワークドライブとしてマウントします（Windows のみ対応）"
+  },
+  "daemon_wait": {
+    "title": "デーモン準備完了待ち時間",
+    "help": "デーモンからのマウント準備完了応答を待機する時間（Windows 非対応）"
+  },
+  "nfs_cache_handle_limit": {
+    "title": "NFS キャッシュハンドル上限",
+    "help": "同時にキャッシュする NFS ハンドルの最大数（最小 5）"
+  },
+  "nfs_cache_type": {
+    "title": "NFS キャッシュタイプ",
+    "help": "使用する NFS ハンドルキャッシュの種類"
+  },
+  "nfs_cache_dir": {
+    "title": "NFS キャッシュディレクトリ",
+    "help": "NFS ハンドルキャッシュが使用するディレクトリ"
+  },
+  "auth_proxy": {
+    "title": "認証プロキシプログラム",
+    "help": "認証からバックエンドを作成するために使用するプログラム"
+  },
+  "rc": {
+    "title": "リモートコントロール有効化",
+    "help": "リモートコントロール（RC）サーバーを有効にします。"
+  },
+  "rc_files": {
+    "title": "リモートコントロール静的ファイルパス",
+    "help": "HTTP サーバーで公開するローカルファイルのパス"
+  },
+  "rc_serve": {
+    "title": "リモートオブジェクト公開機能",
+    "help": "リモートオブジェクトの公開を有効にします。"
+  },
+  "rc_serve_no_modtime": {
+    "title": "リモートコントロール更新日時読み込みスキップ",
+    "help": "更新日時を読み込みません（処理速度が向上の可能性あり）"
+  },
+  "rc_no_auth": {
+    "title": "一部メソッドの認証免除",
+    "help": "特定メソッドに対する認証要求を免除します。"
+  },
+  "rc_web_gui": {
+    "title": "Web GUI 起動",
+    "help": "localhost で WebGUI を起動します。"
+  },
+  "rc_web_gui_update": {
+    "title": "Web GUI アップデート確認",
+    "help": "Web GUI の最新バージョンを確認し、アップデートします。"
+  },
+  "rc_web_gui_force_update": {
+    "title": "Web GUI 強制アップデート",
+    "help": "Web GUI を最新バージョンへ強制アップデートします。"
+  },
+  "rc_web_gui_no_open_browser": {
+    "title": "ブラウザ自動起動の無効化",
+    "help": "起動時にブラウザを自動で開かないようにします。"
+  },
+  "rc_web_fetch_url": {
+    "title": "Web GUI リリース取得 URL",
+    "help": "Web GUI のリリース情報を取得するための URL"
+  },
+  "rc_enable_metrics": {
+    "title": "Prometheus メトリクス有効化",
+    "help": "リモートコントロールサーバーで Prometheus メトリクスパスを有効にします。"
+  },
+  "rc_job_expire_duration": {
+    "title": "非同期ジョブ保持期間",
+    "help": "完了した非同期ジョブを破棄するまでの経過時間"
+  },
+  "rc_job_expire_interval": {
+    "title": "期限切れジョブのチェック間隔",
+    "help": "期限切れとなった非同期ジョブをチェックする周期"
+  },
+  "metrics_addr": {
+    "title": "メトリクスバインド用アドレス",
+    "help": "メトリクスサーバーをバインドする IPアドレス:ポート または :ポート"
+  },
+  "rc_addr": {
+    "title": "リモートコントロールバインド用アドレス",
+    "help": "リモートコントロールサーバーをバインドする IPアドレス:ポート または :ポート"
+  },
+  "rc_server_read_timeout": {
+    "title": "RC サーバー読み込みタイムアウト",
+    "help": "RC サーバーのデータ読み込みタイムアウト時間"
+  },
+  "rc_server_write_timeout": {
+    "title": "RC サーバー書き込みタイムアウト",
+    "help": "RC サーバーのデータ書き込みタイムアウト時間"
+  },
+  "rc_max_header_bytes": {
+    "title": "RC 最大ヘッダーバイト数",
+    "help": "RC リクエストヘッダーの最大サイズ"
+  },
+  "rc_cert": {
+    "title": "RC 証明書",
+    "help": "RC 用 TLS PEM 鍵（証明書と CA 証明書を結合したもの）"
+  },
+  "rc_key": {
+    "title": "RC 秘密鍵",
+    "help": "RC 用 TLS PEM 秘密鍵"
+  },
+  "rc_client_ca": {
+    "title": "RC クライアント CA 証明書",
+    "help": "RC クライアントを検証するための CA 証明書"
+  },
+  "rc_baseurl": {
+    "title": "RC ベース URL",
+    "help": "RC URL のプレフィックス（ルートの場合は空欄のまま）"
+  },
+  "rc_min_tls_version": {
+    "title": "RC 最小 TLS バージョン",
+    "help": "RC で許容される最小の TLS バージョン"
+  },
+  "rc_allow_origin": {
+    "title": "RC オリジン許可 (CORS)",
+    "help": "RC に対するクロスドメインリクエスト (CORS) を許可するオリジン"
+  },
+  "rc_htpasswd": {
+    "title": "RC htpasswd ファイル",
+    "help": "RC 用 htpasswd ファイル（指定しない場合は認証なし）"
+  },
+  "rc_realm": {
+    "title": "RC レルム",
+    "help": "RC 認証用レルム"
+  },
+  "rc_user": {
+    "title": "RC ユーザー名",
+    "help": "RC 認証用ユーザー名"
+  },
+  "rc_pass": {
+    "title": "RC パスワード",
+    "help": "RC 認証用パスワード"
+  },
+  "rc_salt": {
+    "title": "RC ソルト",
+    "help": "RC パスワードハッシュ用のソルト"
+  },
+  "rc_user_from_header": {
+    "title": "RC ヘッダー指定ユーザー名",
+    "help": "指定した HTTP ヘッダーから取得する RC ユーザー名"
+  },
+  "rc_template": {
+    "title": "RC テンプレート",
+    "help": "RC ユーザー指定テンプレート"
+  },
+  "metrics_server_read_timeout": {
+    "title": "メトリクスサーバー読み込みタイムアウト",
+    "help": "メトリクスサーバーのデータ読み込みタイムアウト時間"
+  },
+  "metrics_server_write_timeout": {
+    "title": "メトリクスサーバー書き込みタイムアウト",
+    "help": "メトリクスサーバーのデータ書き込みタイムアウト時間"
+  },
+  "metrics_max_header_bytes": {
+    "title": "メトリクス最大ヘッダーバイト数",
+    "help": "メトリクスリクエストヘッダーの最大サイズ"
+  },
+  "metrics_cert": {
+    "title": "メトリクス証明書",
+    "help": "メトリクス用 TLS PEM 鍵（証明書と CA 証明書を結合したもの）"
+  },
+  "metrics_key": {
+    "title": "メトリクス秘密鍵",
+    "help": "メトリクス用 TLS PEM 秘密鍵"
+  },
+  "metrics_client_ca": {
+    "title": "メトリクス・クライアント CA 証明書",
+    "help": "メトリクスクライアントを検証するための CA 証明書"
+  },
+  "metrics_baseurl": {
+    "title": "メトリクス・ベース URL",
+    "help": "メトリクス URL のプレフィックス（ルートの場合は空欄のまま）"
+  },
+  "metrics_min_tls_version": {
+    "title": "メトリクス最小 TLS バージョン",
+    "help": "メトリクスで許容される最小の TLS バージョン"
+  },
+  "metrics_allow_origin": {
+    "title": "メトリクス・オリジン許可 (CORS)",
+    "help": "メトリクスに対するクロスドメインリクエスト (CORS) を許可するオリジン"
+  },
+  "metrics_htpasswd": {
+    "title": "メトリクス htpasswd ファイル",
+    "help": "メトリクス用 htpasswd ファイル（指定しない場合は認証なし）"
+  },
+  "metrics_realm": {
+    "title": "メトリクス・レルム",
+    "help": "メトリクス認証用レルム"
+  },
+  "metrics_user": {
+    "title": "メトリクス・ユーザー名",
+    "help": "メトリクス認証用ユーザー名"
+  },
+  "metrics_pass": {
+    "title": "メトリクス・パスワード",
+    "help": "メトリクス認証用パスワード"
+  },
+  "metrics_salt": {
+    "title": "メトリクス・ソルト",
+    "help": "メトリクスパスワードハッシュ用のソルト"
+  },
+  "metrics_user_from_header": {
+    "title": "メトリクス・ヘッダー指定ユーザー名",
+    "help": "指定した HTTP ヘッダーから取得するメトリクスユーザー名"
+  },
+  "metrics_template": {
+    "title": "メトリクス・テンプレート",
+    "help": "メトリクスユーザー指定テンプレート"
+  },
+  "stdio": {
+    "title": "標準入出力 SFTP (Stdio)",
+    "help": "標準入力/標準出力上で SFTP サーバーを実行します。"
+  },
+  "append_only": {
+    "title": "追記専用モード (Append Only)",
+    "help": "リポジトリデータの削除を禁止します。"
+  },
+  "private_repos": {
+    "title": "プライベートリポジトリ限定",
+    "help": "ユーザーが自身のプライベートリポジトリにのみアクセスできるようにします。"
+  },
+  "cache_objects": {
+    "title": "オブジェクトのキャッシュ",
+    "help": "一覧取得したオブジェクトをキャッシュします。"
+  },
+  "force_path_style": {
+    "title": "パススタイル強制 (Force Path Style)",
+    "help": "有効な場合はパススタイルアクセスを使用し、無効な場合はバーチャルホストスタイルを使用します。"
+  },
+  "etag_hash": {
+    "title": "ETag ハッシュ種別",
+    "help": "ETag に使用するハッシュ形式（auto 指定、または空欄で無効化）"
+  },
+  "auth_key": {
+    "title": "認証キーペア",
+    "help": "V4 認可用のキーペアを設定（access_key_id,secret_access_key）"
+  },
+  "no_cleanup": {
+    "title": "空フォルダ自動クリーンアップ無効化",
+    "help": "オブジェクト削除後に空のフォルダをクリーンアップしません。"
+  },
+  "authorized_keys": {
+    "title": "認証済みキーファイル (Authorized Keys)",
+    "help": "SSH 認証済みキーファイル"
+  },
+  "no_auth": {
+    "title": "認証なし接続許可",
+    "help": "有効にすると認証なしでの接続を許可します。"
+  },
+  "no_modtime": {
+    "title": "更新日時の読み書きスキップ",
+    "help": "更新日時の読み取りおよび書き込みを行いません（高速化の可能性あり）"
+  },
+  "no_checksum": {
+    "title": "チェックサム比較の省略",
+    "help": "アップロード/ダウンロード時にチェックサムの比較を行いません。"
+  },
+  "no_seek": {
+    "title": "シーク機能の無効化",
+    "help": "ファイル内のシーク操作を許可しません。"
+  },
+  "dir_cache_time": {
+    "title": "ディレクトリキャッシュ保持時間",
+    "help": "ディレクトリ情報をキャッシュ保持する時間"
+  },
+  "vfs_refresh": {
+    "title": "起動時 VFS リフレッシュ",
+    "help": "起動時にバックグラウンドでディレクトリキャッシュを再帰的に更新します。"
+  },
+  "poll_interval": {
+    "title": "変更監視ポーリング間隔",
+    "help": "変更検知のためのポーリング間隔。dir-cache-time より小さく、対応リモートのみで有効（0 で無効化）"
+  },
+  "read_only": {
+    "title": "読み取り専用",
+    "help": "読み取り専用アクセスのみを許可します。"
+  },
+  "vfs_links": {
+    "title": "VFS シンボリックリンク変換",
+    "help": "VFS 用にシンボリックリンクと '.rclonelink' 拡張子付きの通常ファイルを相互変換します。"
+  },
+  "vfs_cache_mode": {
+    "title": "VFS キャッシュモード",
+    "help": "キャッシュモードの選択（off|minimal|writes|full）"
+  },
+  "vfs_cache_poll_interval": {
+    "title": "VFS キャッシュクリアポーリング間隔",
+    "help": "使用されていないキャッシュオブジェクトを特定するためのチェック間隔"
+  },
+  "vfs_cache_max_age": {
+    "title": "VFS キャッシュ最大保持期間",
+    "help": "キャッシュ内のオブジェクトに最後にアクセスしてからの最大経過時間"
+  },
+  "vfs_cache_max_size": {
+    "title": "VFS キャッシュ最大サイズ",
+    "help": "キャッシュ内のオブジェクトの最大合計サイズ"
+  },
+  "vfs_cache_min_free_space": {
+    "title": "VFS キャッシュディスク最小空き容量",
+    "help": "キャッシュを保存するディスク上で確保すべき最小空き容量"
+  },
+  "vfs_read_chunk_size": {
+    "title": "VFS 読み込みチャンクサイズ",
+    "help": "転送元オブジェクトを分割して読み込む際のチャンクサイズ"
+  },
+  "vfs_read_chunk_size_limit": {
+    "title": "VFS 読み込みチャンクサイズ上限",
+    "help": "--vfs-read-chunk-size より大きい場合、上限に達するまで読み込み毎にチャンクサイズを倍増させます ('off' で無制限)"
+  },
+  "vfs_read_chunk_streams": {
+    "title": "VFS 読み込みストリーム数",
+    "help": "同時に読み込む並行ストリームの数"
+  },
+  "dir_perms": {
+    "title": "ディレクトリパーミッション",
+    "help": "ディレクトリのアクセス権限"
+  },
+  "file_perms": {
+    "title": "ファイルパーミッション",
+    "help": "ファイルのアクセス権限"
+  },
+  "link_perms": {
+    "title": "リンクパーミッション",
+    "help": "シンボリックリンクのアクセス権限"
+  },
+  "vfs_case_insensitive": {
+    "title": "VFS 大文字・小文字を区別しない",
+    "help": "指定したファイル名が見つからない場合、大文字小文字を無視して検索します。"
+  },
+  "vfs_block_norm_dupes": {
+    "title": "VFS 重複名ブロック (正規化後)",
+    "help": "正規化後に同一ディレクトリ内で重複ファイル名が存在する場合、エラーを記録して非表示にします（パフォーマンスに影響する場合があります）"
+  },
+  "vfs_write_wait": {
+    "title": "VFS 順次書き込み待機時間",
+    "help": "シーケンシャル書き込みが到達するまでの待機時間（超過時はエラー）"
+  },
+  "vfs_read_wait": {
+    "title": "VFS 順次読み込み待機時間",
+    "help": "シークを行う前に順次読み込みを待機する時間"
+  },
+  "vfs_write_back": {
+    "title": "VFS ライトバック遅延",
+    "help": "キャッシュ使用時、最後の利用からファイルへ書き戻すまでの待機時間"
+  },
+  "vfs_read_ahead": {
+    "title": "VFS 先読みサイズ",
+    "help": "cache-mode full 使用時、--buffer-size に加えてさらに先読みする容量"
+  },
+  "vfs_used_is_size": {
+    "title": "VFS 使用量算出 (rclone size アルゴリズム)",
+    "help": "使用量の算出に `rclone size` の計算アルゴリズムを使用します。"
+  },
+  "vfs_fast_fingerprint": {
+    "title": "VFS 高速フィンガープリント",
+    "help": "変更検知に高速（精度はやや低い）フィンガープリントを使用します。"
+  },
+  "vfs_disk_space_total_size": {
+    "title": "VFS ディスク全容量明示",
+    "help": "仮想ディスクの総容量を指定します。"
+  },
+  "umask": {
+    "title": "Umask (ファイル作成マスク)",
+    "help": "ファイルシステムによって設定されたパーミッションを上書きします（Windows 非対応）"
+  },
+  "uid": {
+    "title": "UID (ユーザー ID)",
+    "help": "ファイルシステムによって設定された UID を上書きします（Windows 非対応）"
+  },
+  "gid": {
+    "title": "GID (グループ ID)",
+    "help": "ファイルシステムによって設定された GID を上書きします（Windows 非対応）"
+  },
+  "vfs_metadata_extension": {
+    "title": "VFS メタデータ拡張子",
+    "help": "メタデータを読み込むための拡張子を指定します。"
+  },
+  "disable_dir_list": {
+    "title": "ディレクトリ HTML 一覧無効化",
+    "help": "ディレクトリへの GET リクエスト時の HTML 一覧表示を無効にします。"
+  },
+  "create_empty_src_dirs": {
+    "title": "移動時の空ディレクトリ作成",
+    "help": "移動完了後、転送先に空のソースディレクトリを作成します。"
+  },
+  "delete_empty_src_dirs": {
+    "title": "移動後の空ディレクトリ削除",
+    "help": "移動完了後、空になったソースディレクトリを削除します。"
+  },
+  "dryRun": {
+    "title": "テスト実行 (dryRun)",
+    "help": "テスト実行（dryRun）を行います。"
+  },
+  "resync": {
+    "title": "再同期 (Resync)",
+    "help": "再同期処理（Resync）を実行します。"
+  },
+  "checkAccess": {
+    "title": "アクセスチェック",
+    "help": "両方のファイルシステムで RCLONE_TEST ファイルが見つからない場合に中断します。"
+  },
+  "checkFilename": {
+    "title": "アクセスチェック用ファイル名",
+    "help": "--check-access で使用する検証用ファイル名"
+  },
+  "maxDelete": {
+    "title": "最大削除割合上限",
+    "help": "削除ファイルの割合がこの閾値を超えた場合に同期を中断します。"
+  },
+  "force": {
+    "title": "強制実行 (Force)",
+    "help": "--max-delete の安全確認をバイパスして同期を実行します。"
+  },
+  "checkSync": {
+    "title": "最終リスト比較チェック",
+    "help": "処理完了後の最終リスト比較を制御します。"
+  },
+  "remove_empty_dirs": {
+    "title": "クリーンアップ時の空ディレクトリ削除",
+    "help": "最終クリーンアップ工程で空のディレクトリを削除します。"
+  },
+  "filters_file": {
+    "title": "フィルタ規則ファイル",
+    "help": "ファイルからフィルタルールを読み込みます。"
+  },
+  "ignore_listing_checksum": {
+    "title": "一覧取得時チェックサム無視",
+    "help": "一覧の取得・表示時にチェックサムを使用しません。"
+  },
+  "resilient": {
+    "title": "自動復旧試行モード",
+    "help": "軽微なエラーが発生した場合、次回以降の実行で自動再試行することを許可します。"
+  },
+  "work_dir": {
+    "title": "作業ディレクトリ",
+    "help": "履歴ファイルを保存するサーバー上のディレクトリ"
+  },
+  "backup_dir1": {
+    "title": "パス1 用バックアップディレクトリ",
+    "help": "パス1 (Path1) 用の --backup-dir"
+  },
+  "backup_dir2": {
+    "title": "パス2 用バックアップディレクトリ",
+    "help": "パス2 (Path2) 用の --backup-dir"
+  },
+  "disable_zip": {
+    "title": "ZIP 一括ダウンロード無効化",
+    "help": "ディレクトリの ZIP 形式での一括ダウンロードを無効にします。"
+  },
+  "vfs_handle_caching": {
+    "title": "VFS ハンドルキャッシュ維持時間",
+    "help": "ファイルを閉じた後、ファイルハンドルおよびダウンローダーを保持する時間"
+  },
+  "mountType": {
+    "title": "マウント種別",
+    "help": "使用するマウントのタイプ"
+  },
+  "type": {
+    "title": "公開サーバー種別",
+    "help": "使用する公開サーバー（Serve）のタイプ"
+  },
+  "mount_type_mount": {
+    "title": "標準マウント",
+    "help": "標準の FUSE マウント"
+  },
+  "mount_type_cmount": {
+    "title": "Windows/macOS FUSE マウント",
+    "help": "cgofuse を使用した FUSE マウント（Windows/macOS でのデフォルト）"
+  },
+  "mount_type_mount2": {
+    "title": "Go ネイティブマウント",
+    "help": "go-fuse を使用した Go ネイティブ FUSE マウント"
+  },
+  "mount_type_nfsmount": {
+    "title": "NFS マウント",
+    "help": "NFS プロトコルを使用したマウント"
+  },
+  "serve_type_http": {
+    "title": "HTTP 公開サーバー",
+    "help": "リモートを HTTP 経由で公開します。"
+  },
+  "serve_type_webdav": {
+    "title": "WebDAV 公開サーバー",
+    "help": "リモートを WebDAV 経由で公開します。"
+  },
+  "serve_type_ftp": {
+    "title": "FTP 公開サーバー",
+    "help": "リモートを FTP 経由で公開します。"
+  },
+  "serve_type_sftp": {
+    "title": "SFTP 公開サーバー",
+    "help": "リモートを SFTP 経由で公開します。"
+  },
+  "serve_type_nfs": {
+    "title": "NFS 公開サーバー",
+    "help": "リモートを NFS 経由で公開します。"
+  },
+  "serve_type_dlna": {
+    "title": "DLNA メディアサーバー公開サーバー",
+    "help": "リモートを DLNA 経由で公開します。"
+  },
+  "serve_type_docker": {
+    "title": "Docker ボリュームプラグイン",
+    "help": "リモートを Docker ボリュームプラグインとして公開サーバーします。"
+  },
+  "serve_type_restic": {
+    "title": "Restic REST 公開サーバー",
+    "help": "リモートを Restic REST API 経由でします。"
+  },
+  "serve_type_s3": {
+    "title": "Amazon S3 互換サーバー公開",
+    "help": "リモートを Amazon S3 API 互換で公開します。"
+  },
+  "check_file_hash": {
+    "title": "ハッシュ指定チェックファイル",
+    "help": "checkFileFs と checkFileRemote で指定したファイルを、指定した種類のハッシュ値付き SUM ファイルとして扱います"
+  },
+  "check_file_fs": {
+    "title": "チェックファイル FS",
+    "help": "checkFileFs と checkFileRemote で指定したファイルをハッシュ値付きの SUM ファイルとして扱います"
+  },
+  "one_way": {
+    "title": "片方向チェック (One Way)",
+    "help": "転送元に存在して転送先に存在しないファイルのみを片方向検索します。"
+  },
+  "auto_filename": {
+    "title": "自動ファイル名取得",
+    "help": "転送先がディレクトリの場合、URL またはヘッダーからファイル名を取得します。"
+  },
+  "rmdirs": {
+    "title": "削除後の空ディレクトリ除去",
+    "help": "ファイルの削除完了後、空になったディレクトリを削除します。"
+  },
+  "format": {
+    "title": "圧縮形式",
+    "help": "圧縮ファイルのフォーマット（zip, tar, tgz, tbz, txz など）"
+  },
+  "prefix": {
+    "title": "圧縮内プレフィックスパス",
+    "help": "圧縮ファイル内にプレフィックス（最上位階層）ディレクトリを追加します。"
+  },
+  "full_path": {
+    "title": "フルパス保持",
+    "help": "圧縮ファイル内でファイルのフルパスをそのまま保持・使用します。"
+  },
+  "download": {
+    "title": "ダウンロード検証",
+    "help": "整合性チェック / ハッシュ比較のためファイルをダウンロードして確認します。"
+  },
+  "resync_mode": {
+    "title": "再同期優先モード",
+    "help": "再同期時、優先するバージョンを指定します: path1, path2, newer（新しい方）, older（古い方）, larger（大きい方）, smaller（小さい方）"
+  },
+  "compare": {
+    "title": "Bisync 比較項目",
+    "help": "Bisync 固有の比較オプション（カンマ区切り。例: 'size,modtime,checksum'）"
+  },
+  "download_hash": {
+    "title": "ダウンロード時ハッシュ計算",
+    "help": "他にハッシュ取得手段がない場合、ダウンロードして計算します（※低速化やデータ通信量増大の可能性があります）"
+  },
+  "max_lock": {
+    "title": "ロックファイル最大有効期間",
+    "help": "これより古いロックファイルを期限切れとみなします（デフォルト: 0 (無期限)、最小: 2m）"
+  },
+  "no_slow_hash": {
+    "title": "低速ハッシュの無視",
+    "help": "ハッシュ計算が低速なバックエンドにおいてのみ、一覧取得時のチェックサムを無視します。"
+  },
+  "slow_hash_sync_only": {
+    "title": "同期時のみ低速ハッシュ使用",
+    "help": "一覧取得や差分確認時には低速なチェックサムを無視し、実際の同期処理時のみ考慮します。"
+  },
+  "recover": {
+    "title": "中断からの自動復旧",
+    "help": "--resync を要求することなく、処理の中断から自動的に復旧します。"
+  },
+  "workdir": {
+    "title": "作業ディレクトリ",
+    "help": "カスタムの作業ディレクトリを使用します（テスト時に有用）"
+  },
+  "check_access": {
+    "title": "アクセス検証",
+    "help": "両方のファイルシステム上で RCLONE_TEST ファイルが見つからない場合は中断します。"
+  },
+  "check_filename": {
+    "title": "検証用ファイル名",
+    "help": "--check-access で使用する検証用ファイル名"
+  },
+  "check_sync": {
+    "title": "最終同期検証",
+    "help": "処理完了後の最終リスト比較を制御します。"
+  },
+  "conflict_loser": {
+    "title": "競合不採用ファイルの処理方針",
+    "help": "同期競合が発生した際、不採用となったファイル（または優先指定がない場合は両方）に対する動作: num（連番付与）, pathname（パス名付与）, delete（削除） (デフォルト: num)"
+  },
+  "conflict_resolve": {
+    "title": "競合の自動解決基準",
+    "help": "自動的に競合を解決する際、優先ファイルとして採用する基準: none（なし）, path1, path2, newer（新しい方）, older（古い方）, larger（大きい方）, smaller（小さい方） (デフォルト: none)"
+  },
+  "conflict_suffix": {
+    "title": "競合ファイルのサフィックス",
+    "help": "--conflict-loser によるリネーム時に使用するサフィックス。単一文字列、または Path1/Path2 別にカンマ区切りで2つ指定可能 (デフォルト: 'conflict')"
+  }
+}
