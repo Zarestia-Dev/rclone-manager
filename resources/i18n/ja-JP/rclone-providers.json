@@ -576,7 +576,7 @@
         "help": "リモートの説明。"
       },
       "fail_hard": {
-        "title": "Fail Hard",
+        "title": "即時失敗 (Fail Hard)",
         "help": "チャンクが欠落または不正なファイルを chunker がどのように扱うかを選択します。"
       },
       "hash_type": {
@@ -1431,7 +1431,7 @@
       },
       "proxy": {
         "title": "プロキシ",
-        "help": "フル解像度画像のダウンロードに gphotosdl プロキシを使用します\n\nGoogle API はフル解像度ではない画像や動画、または EXIF データが欠落したものを配信することがあります。\n\nしかし gphotosdl プロキシを使用すると、変更されていないオリジナル画像をダウンロードできます。\n\nこれはバックグラウンドでヘッドレスブラウザーを実行します。\n\nソフトウェアは [gphotosdl](https://github.com/rclone/gphotosdl) からダウンロードしてください\n\nまず以下を実行します\n\n    gphotosdl -login\n\ngoogle photos にログインしたらブラウザーウィンドウを閉じ、以下を実行します\n\n    gphotosdl\n\nその後、パラメーター `--gphotos-proxy \"http://localhost:8282\"` を指定すると rclone がこのプロキシを使用するようになります。\n"
+        "help": "フル解像度画像のダウンロードに gphotosdl プロキシを使用します\n\nGoogle API はフル解像度ではない画像や動画、または EXIF データが欠落したものを配信することがあります。\n\nしかし gphotosdl プロキシを使用すると、変更されていないオリジナル画像をダウンロードできます。\n\nこれはバックグラウンドでヘッドレスブラウザを実行します。\n\nソフトウェアは [gphotosdl](https://github.com/rclone/gphotosdl) からダウンロードしてください\n\nまず以下を実行します\n\n    gphotosdl -login\n\ngoogle photos にログインしたらブラウザウィンドウを閉じ、以下を実行します\n\n    gphotosdl\n\nその後、パラメーター `--gphotos-proxy \"http://localhost:8282\"` を指定すると rclone がこのプロキシを使用するようになります。\n"
       },
       "read_only": {
         "title": "読み取り専用",
@@ -3719,7 +3719,7 @@
       },
       "region": {
         "title": "リージョン",
-        "help": "接続先の Zoho リージョン。\n\n所属組織が登録されているリージョンを使用する必要があります。不明な場合は、ブラウザーで接続する際と同じトップレベルドメインを使用してください。"
+        "help": "接続先の Zoho リージョン。\n\n所属組織が登録されているリージョンを使用する必要があります。不明な場合は、ブラウザで接続する際と同じトップレベルドメインを使用してください。"
       },
       "token": {
         "title": "トークン",

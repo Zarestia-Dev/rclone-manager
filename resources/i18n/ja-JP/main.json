@@ -298,18 +298,18 @@
       "internal": "内部"
     },
     "rule": {
-      "filters": "フィルター",
+      "filters": "フィルタ",
       "placeholderName": "ルール名を入力",
       "severityMin": "最小重大度",
       "cooldown": "クールダウン（秒）",
-      "eventFilter": "イベントタイプフィルター",
+      "eventFilter": "イベントタイプフィルタ",
       "eventFilterHint": "全てのイベントタイプに一致させるには空欄にします。",
-      "remoteFilter": "リモートフィルター",
+      "remoteFilter": "リモートフィルタ",
       "remoteFilterHint": "全てのリモートに一致させるには空欄にします。",
       "originFilterHint": "任意のソースに一致させるには空欄にします。",
-      "backendFilter": "バックエンドフィルター",
+      "backendFilter": "バックエンドフィルタ",
       "backendFilterHint": "特定バックエンドのイベントのみを監視します。",
-      "profileFilter": "プロファイルフィルター",
+      "profileFilter": "プロファイルフィルタ",
       "profileFilterHint": "特定プロファイルのイベントのみを監視します。",
       "autoAcknowledge": "自動確認",
       "autoAcknowledgeHint": "アラートを自動的に確認済みにします。すでにシステム通知を発行するアラートに最適です。",
@@ -317,7 +317,7 @@
       "actionRequired": "少なくとも1つのアクションが必要です。",
       "noActionsHint": "ルールに割り当てる前に、まずアラートアクションを作成する必要があります。",
       "filtersEmptyHint": "全てのイベントに一致させるには空欄にします。",
-      "scopeFilters": "スコープフィルター"
+      "scopeFilters": "スコープフィルタ"
     },
     "events": {
       "job": "ジョブ＆ファイル操作",
@@ -538,7 +538,7 @@
     "nautilus": {
       "starred": {
         "label": "スター付きアイテム",
-        "description": "ファイルブラウザーでスターが付いたファイルおよびフォルダのリスト。"
+        "description": "ファイルブラウザでスターが付いたファイルおよびフォルダのリスト。"
       },
       "bookmarks": {
         "label": "ブックマーク",
@@ -613,7 +613,7 @@
       "export": "エクスポート",
       "preferences": "環境設定",
       "flags": "Rcloneフラグ",
-      "fileBrowser": "ファイルブラウザー",
+      "fileBrowser": "ファイルブラウザ",
       "shortcuts": "キーボードショートカット",
       "about": "RClone Manager について",
       "quickRemote": "クイックリモート作成",
@@ -783,7 +783,7 @@
         "resolveToSrc": "転送元へコピー",
         "resolveOverwrite": "ファイルの不一致を解決",
         "resolveOverwriteTitle": "ファイルの不一致を解決",
-        "resolveOverwriteMessage": "ファイル '{{name}}' は転送元と転送先の両方に存在しますが、内容が異なります。転送先のファイルを転送元のファイルで上書きしますか?",
+        "resolveOverwriteMessage": "ファイル 「{{name}}」 は転送元と転送先の両方に存在しますが、内容が異なります。転送先のファイルを転送元のファイルで上書きしますか?",
         "overwriteDst": "転送先を上書き",
         "copyUrl": "URLをコピー",
         "download": "ファイルをダウンロード",
@@ -845,8 +845,8 @@
       "increase": "増やす",
       "decrease": "減らす",
       "autoUnset": "自動 (未設定)",
-      "true": "True",
-      "false": "False",
+      "true": "有効",
+      "false": "無効",
       "none": "なし",
       "date": "日付",
       "time": "時刻",
@@ -937,7 +937,7 @@
       "advancedConfig": {
         "title": "高度な設定",
         "search": "オプションを検索",
-        "searchPlaceholder": "オプション名または値でフィルター...",
+        "searchPlaceholder": "オプション名または値でフィルタ...",
         "clearSearch": "検索をクリア",
         "noResults": "検索に一致するオプションはありません",
         "categories": {
@@ -959,10 +959,10 @@
         "clearCache": "メタデータキャッシュのクリア",
         "refreshAll": "全てのデータを更新",
         "messages": {
-          "prioritized": "'{{name}}' の優先度を上げました",
+          "prioritized": "「{{name}}」 の優先度を上げました",
           "delayedSeconds": "{{seconds}}秒遅延されました",
           "actionFailed": "アクションに失敗しました: {{error}}",
-          "removed": "'{{path}}' を削除しました",
+          "removed": "「{{path}}」 を削除しました",
           "removeFailed": "ファイルを削除できません",
           "cleared": "{{count}} 個の項目を消去しました",
           "directoryRefreshed": "ディレクトリを更新しました",
@@ -975,12 +975,12 @@
     "jsonEditor": {
       "noFields": "JSONモードで表示するフィールドはありません",
       "parseError": "無効なJSON構文です。フォーマットを確認してください。",
-      "cliArgumentWithSuggestion": "CLI形式の引数 ('{{key}}' など) はrclone RCでサポートされていません。もしかして: '{{suggestion}}'",
-      "camelCaseSuggestionWarning": "オプション '{{key}}' はこの形式では無効です。もしかして: '{{suggestion}}'",
-      "fixSuggestion": "'{{suggestion}}' に変更",
-      "wrongBlockWarning": "オプション {{keys}} は '{{block}}' 設定ブロックに属しているため、ここでは動作しない可能性があります。",
+      "cliArgumentWithSuggestion": "CLI形式の引数 (「{{key}}」 など) はrclone RCでサポートされていません。もしかして: 「{{suggestion}}」",
+      "camelCaseSuggestionWarning": "オプション 「{{key}}」 はこの形式では無効です。もしかして: 「{{suggestion}}」",
+      "fixSuggestion": "「{{suggestion}}」 に変更",
+      "wrongBlockWarning": "オプション {{keys}} は 「{{block}}」 設定ブロックに属しているため、ここでは動作しない可能性があります。",
       "unknownWarning": "不明なオプション: {{keys}}。これらはrcloneによって無視される可能性があります。",
-      "invalidArrayPath": "プロパティ '{{key}}' は複数パスをサポートしていません。単一の文字列パスを指定してください。"
+      "invalidArrayPath": "プロパティ 「{{key}}」 は複数パスをサポートしていません。単一の文字列パスを指定してください。"
     },
     "passwordManager": {
       "placeholder": "rclone設定のパスワードを入力",
@@ -1006,7 +1006,6 @@
       "macroDetected": "シェルマクロが検出されました",
       "macroDesc": "ジョブ開始時にバックグラウンドでこれらの値が実行時に解決されます。サポートされているマクロ: date, date +FORMAT, hostname, user, os。",
       "unrecognizedFlags": "認識できないフラグ (無視されます)",
-      "wrongBlockGuidance": "オプションは '{{block}}' 設定ブロックに属しており、{{verb}} プロファイルではサポートされていません。",
       "applyConfig": "プロファイルに適用",
       "newProfile": "新規プロファイルを作成",
       "overrideProfile": "既存プロファイルを上書き",
@@ -1052,7 +1051,7 @@
       "fields": "フィールド",
       "switchToForm": "フォームモードに切り替え",
       "switchToJson": "JSONモードに切り替え",
-      "unknownTopLevelProperty": "警告: '{{key}}' はこのプロファイルの標準トップレベルプロパティではないため、無視される可能性があります。",
+      "unknownTopLevelProperty": "警告: 「{{key}}」 はこのプロファイルの標準トップレベルプロパティではないため、無視される可能性があります。",
       "jsonEditorInfo": {
         "sync": "同期/コピー/移動プロファイル: 'srcFs' と 'dstFs' のパスおよびプロファイルレベルのフィールドを設定し、全てのrcloneフラグを '_config' 内に配置します。",
         "bisync": "双方向同期プロファイル: 'path1' と 'path2' のパスおよびプロファイルレベルのフィールドを設定し、全てのrcloneフラグを '_config' 内に配置します。",
@@ -1060,7 +1059,7 @@
         "mount": "マウントプロファイル: 'fs' と 'mountPoint' のパス、'mountType'、プロファイルレベルのフィールドを設定し、全てのマウントオプションを 'mountOpt' 内に配置します。",
         "serve": "公開サーバープロファイル: 'fs' パス、'serveType'、プロファイルレベルのフィールドを設定し、全ての公開オプションを '_config' 内に配置します。",
         "vfs": "VFSプロファイル: カスタム仮想ファイルシステムのキャッシュ、バッファリング、互換性オプションをキーと値のペアで設定します。",
-        "filter": "フィルタープロファイル: Globパターン、包含/除外ルール、ファイルフィルターオプションをキーと値のペアで設定します。",
+        "filter": "フィルタプロファイル: Globパターン、包含/除外ルール、ファイルフィルタオプションをキーと値のペアで設定します。",
         "backend": "バックエンドプロファイル: 高度なプロトコルオプションとリモート固有の接続設定をキーと値のペアで設定します。",
         "runtimeRemote": "実行時リモート: 動的な接続オーバーライドやパフォーマンス調整をキーと値のペアで設定します。"
       },
@@ -1146,10 +1145,9 @@
       "watchRequiresLocalSource": "リアルタイム監視には少なくとも1つのローカル転送元ディレクトリが必要です。",
       "watchRequiresLocal": "リアルタイム監視には少なくとも1つのローカル転送元または転送先ディレクトリが必要です。",
       "watchMixedSourcesNote": "リアルタイムで監視されるのはローカルの転送元ディレクトリのみです。リモートソースでの変更によって自動的に同期が開始されることはありません。",
-      "watchFilterNote": "ファイル監視はフィルタープロファイルを尊重します。除外ルール（パターン、サイズ、期間など）に一致するファイルやディレクトリの変更は同期をトリガーしません。",
+      "watchFilterNote": "ファイル監視はフィルタプロファイルを尊重します。除外ルール（パターン、サイズ、期間など）に一致するファイルやディレクトリの変更は同期をトリガーしません。",
       "scheduleDescription": "有効にすると、以下のcronスケジュールに基づいてこの操作が<strong>定期的に実行</strong>されます。",
       "scheduleSubtitle": "スケジュールに従ってこの操作を自動で定期的に実行します。",
-      "notConfigured": "未設定",
       "sourcePaths": "転送元パス",
       "destinationPath": "転送先パス",
       "localPath": "ローカルパス",
@@ -1529,7 +1527,7 @@
       "sharedSettings": "共有設定",
       "sharedSettingsDesc": "同期やマウントのモードに関わらず、全ての操作に適用されます。",
       "vfsOptions": "VFSオプション",
-      "filterOptions": "フィルターオプション",
+      "filterOptions": "フィルタオプション",
       "backendConfig": "バックエンド構成",
       "runtimeRemoteOptions": "実行時リモート",
       "profilesLabel": "{{op}} プロファイル",
@@ -1561,7 +1559,7 @@
       "cryptcheck": "暗号チェック",
       "cryptcheckDesc": "暗号化リモートの整合性を確認します",
       "delete": "削除",
-      "deleteDesc": "フィルターに一致するファイルを永久削除します",
+      "deleteDesc": "フィルタに一致するファイルを永久削除します",
       "copyurl": "URLコピー",
       "copyUrlDesc": "ファイルの公開ダウンロードURLを生成します",
       "archivecreate": "圧縮",
@@ -1637,7 +1635,7 @@
       "newRemoteQuick": "新規リモート作成 (クイック)",
       "loadConfig": "設定を読み込み",
       "exportConfig": "設定をエクスポート",
-      "toggleBrowser": "ファイルブラウザーの切り替え",
+      "toggleBrowser": "ファイルブラウザの切り替え",
       "closeDialog": "ダイアログを閉じる / 操作をキャンセル"
     },
     "categories": {
@@ -1645,8 +1643,8 @@
       "application": "アプリケーション",
       "remoteManagement": "リモート管理",
       "fileOperations": "ファイル操作",
-      "fileBrowser": "ファイルブラウザー",
-      "fileBrowserNautilus": "ファイルブラウザー (Nautilus)",
+      "fileBrowser": "ファイルブラウザ",
+      "fileBrowserNautilus": "ファイルブラウザ (Nautilus)",
       "navigation": "ナビゲーション"
     },
     "quitError": "アプリの終了に失敗しました: {{error}}",
@@ -1832,7 +1830,7 @@
       },
       "remoteLogs": "リモートログ: {{ name }}",
       "noLogsFound": "ログが見つかりません",
-      "adjustFilters": "フィルター条件を調整してください",
+      "adjustFilters": "フィルタ条件を調整してください",
       "terminalOutput": "ターミナル出力",
       "logContext": "ログコンテキスト",
       "logLevel": "ログレベル",
@@ -2027,7 +2025,7 @@
       },
       "delete": {
         "title": "バックエンドの削除",
-        "message": "バックエンド \"{{name}}\" を削除してもよろしいですか?"
+        "message": "バックエンド 「{{name}}」 を削除してもよろしいですか?"
       },
       "security": {
         "encrypted": "暗号化済み",
@@ -2126,7 +2124,7 @@
         "copyurl": "URLコピー",
         "archivecreate": "圧縮",
         "cryptcheck": "暗号チェック",
-        "filter": "フィルター",
+        "filter": "フィルタ",
         "vfs": "VFS",
         "backend": "バックエンド",
         "runtimeRemote": "実行時リモート"
@@ -2135,7 +2133,7 @@
         "title": "高度なプロファイル",
         "linked": "{{count}} 個をリンク済み",
         "vfs": "VFS プロファイル",
-        "filter": "フィルター プロファイル",
+        "filter": "フィルタ プロファイル",
         "backend": "バックエンド プロファイル",
         "runtimeRemote": "実行時リモート プロファイル"
       },
@@ -2149,7 +2147,7 @@
         "cancel": "キャンセル",
         "noProfiles": "プロファイルが設定されていません",
         "placeholder": "プロファイルを選択",
-        "inUseWarning": "プロファイル \"{{name}}\" を削除できません - 実行中の {{count}} 個の {{type}} で使用されています",
+        "inUseWarning": "プロファイル 「{{name}}」 を削除できません - 実行中の {{count}} 個の {{type}} で使用されています",
         "disabledReason": {
           "inUse": "プロファイルは実行中の {{operation}} で使用されています。先に停止してください。"
         }
@@ -2217,7 +2215,7 @@
         },
         "fileSystemAndStorage": {
           "title": "ファイルシステム & ストレージ",
-          "description": "仮想ファイルシステム、マウント、フィルター、ストレージ関連のフラグ"
+          "description": "仮想ファイルシステム、マウント、フィルタ、ストレージ関連のフラグ"
         },
         "networkAndServers": {
           "title": "ネットワーク & サーバー",
@@ -2363,7 +2361,7 @@
     },
     "errors": {
       "connectionFailed": "接続に失敗しました",
-      "bookmarkRemoteNotFound": "ブックマークのリモート '{{remote}}' が見つかりません",
+      "bookmarkRemoteNotFound": "ブックマークのリモート 「{{remote}}」 が見つかりません",
       "loadFailed": "ディレクトリの読み込みに失敗しました",
       "deleteFailed": "{{count}} 個の項目の削除に失敗しました",
       "copyFailed": "{{count}} 個の項目のコピーに失敗しました",
@@ -2372,7 +2370,7 @@
       "redoFailed": "{{count}} 個の項目のやり直しに失敗しました",
       "rmdirsFailed": "「{{name}}」内の空フォルダの削除に失敗しました: {{error}}",
       "createFolderFailed": "フォルダ「{{name}}」の作成に失敗しました: {{error}}",
-      "renameFailed": "'{{name}}' の名前変更に失敗しました: {{error}}",
+      "renameFailed": "「{{name}}」 の名前変更に失敗しました: {{error}}",
       "emptyTrashFailed": "{{remote}} のゴミ箱を空にする処理に失敗しました: {{error}}",
       "openFileFailed": "ファイルを開けません: リモートサーバーコンテキストが見つかりません",
       "minSelection": "少なくとも {{min}} 個の項目を選択してください。",
@@ -2472,7 +2470,7 @@
     },
     "deleteRemote": {
       "title": "削除の確認",
-      "message": "'{{name}}' を削除してもよろしいですか? この操作は取り消せません。"
+      "message": "「{{name}}」 を削除してもよろしいですか? この操作は取り消せません。"
     },
     "resetRemote": {
       "title": "リモート設定のリセット",
@@ -2591,10 +2589,10 @@
     "mount": {
       "pointEmpty": "マウントポイントを空欄にすることはできません",
       "alreadyInUse": "マウントポイント {{mountPoint}} はリモート {{remote}} で既に使用されています",
-      "configIncomplete": "プロファイル '{{profile}}' のマウント設定が不完全です"
+      "configIncomplete": "プロファイル 「{{profile}}」 のマウント設定が不完全です"
     },
     "operations": {
-      "configIncomplete": "プロファイル '{{profile}}' の設定が不完全です"
+      "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
     },
     "serve": {
       "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
@@ -2669,7 +2667,7 @@
       "cannotRemoveLocal": "Local バックエンドを削除することはできません",
       "cannotRemoveActive": "アクティブなバックエンドを削除することはできません",
       "alreadyExists": "この名前のバックエンドは既に存在します",
-      "notFound": "バックエンド '{{name}}' が見つかりません"
+      "notFound": "バックエンド 「{{name}}」 が見つかりません"
     },
     "job": {
       "notFound": "JobInfoが見つかりません",
@@ -2718,7 +2716,7 @@
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
       "eventEmitFailed": "設定イベントの発行に失敗しました: {{error}}",
       "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
-      "notFound": "'{{name}}' の設定が見つかりません",
+      "notFound": "「{{name}}」 の設定が見つかりません",
       "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
     }
   },
@@ -2883,23 +2881,23 @@
       "engineAuthFailed": "エンジン認証失敗"
     },
     "body": {
-      "mountSucceeded": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）を {{mountPoint}} に正常にマウントしました。",
-      "mountFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）のマウントに失敗しました: {{error}}",
-      "unmountSucceeded": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）を切断しました。",
-      "jobStarted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）で {{type}} を開始しました。",
-      "jobCompleted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）で {{type}} が正常に完了しました。",
-      "jobFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での {{type}} に失敗しました: {{error}}",
-      "jobStopped": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での {{type}} を停止しました。",
-      "serveStarted": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーを開始しました。",
-      "serveFailed": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーの開始に失敗しました: {{error}}",
-      "serveStopped": "{{backend}} 上の {{remote}}（プロファイル '{{profile}}'）での公開サーバーを停止しました。",
+      "mountSucceeded": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）を {{mountPoint}} に正常にマウントしました。",
+      "mountFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）のマウントに失敗しました: {{error}}",
+      "unmountSucceeded": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）を切断しました。",
+      "jobStarted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）で {{type}} を開始しました。",
+      "jobCompleted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）で {{type}} が正常に完了しました。",
+      "jobFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での {{type}} に失敗しました: {{error}}",
+      "jobStopped": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での {{type}} を停止しました。",
+      "serveStarted": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーを開始しました。",
+      "serveFailed": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーの開始に失敗しました: {{error}}",
+      "serveStopped": "{{backend}} 上の {{remote}}（プロファイル 「{{profile}}」）での公開サーバーを停止しました。",
       "allJobsStopped": "全ての実行中のジョブを正常に終了しました。",
       "allServesStopped": "全ての実行中のサーバーを正常に停止しました。",
       "allUnmounted": "全てのリモートマウントを正常に切断しました。",
-      "automationStarted": "{{backend}} 上で {{type}} の自動化 '{{automation}}' を実行中です。",
-      "automationCompleted": "{{type}} の自動化 '{{automation}}' が正常に完了しました。",
-      "automationFailed": "{{type}} の自動化 '{{automation}}' でエラーが発生しました: {{error}}",
-      "automationStopped": "{{backend}} 上で {{type}} の自動化 '{{automation}}' を停止しました。",
+      "automationStarted": "{{backend}} 上で {{type}} の自動化 「{{automation}}」 を実行中です。",
+      "automationCompleted": "{{type}} の自動化 「{{automation}}」 が正常に完了しました。",
+      "automationFailed": "{{type}} の自動化 「{{automation}}」 でエラーが発生しました: {{error}}",
+      "automationStopped": "{{backend}} 上で {{type}} の自動化 「{{automation}}」 を停止しました。",
       "updateFound": "RClone Manager の新しいバージョン {{version}} が利用可能です。",
       "updateStarted": "バージョン {{version}} をダウンロードしてインストールしています...",
       "updateDownloaded": "RClone Manager の新しいバージョン {{version}} のダウンロードが完了し、インストールの準備が整いました。",
