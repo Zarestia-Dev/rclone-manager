@@ -66,7 +66,35 @@ export class NautilusKeyboardDirective {
     if (await this.handleFileOperationsShortcuts(event, isCtrl, isShift)) return;
   }
 
-  private isInputFocused(event: KeyboardEvent): boolean {
+  @HostListener('window:paste', ['$event'])
+  async handlePasteEvent(event: ClipboardEvent): Promise<void> {
+    if (this.dialog.openDialogs.length > 0 || !this.callbacks) return;
+    if (this.isInputFocused(event)) return;
+
+    const files = event.clipboardData?.files;
+    if (files && files.length > 0) {
+      event.preventDefault();
+      const activeRemote = this.tabSvc.activeRemote();
+      const activePath = this.tabSvc.activePath();
+      if (activeRemote) {
+        await this.fileOps.uploadWebFiles(activeRemote, activePath, files);
+        this.tabSvc.refresh(this.tabSvc.activePaneIndex());
+      }
+      return;
+    }
+
+    const textData =
+      event.clipboardData?.getData('text/uri-list') || event.clipboardData?.getData('text/plain');
+    if (textData) {
+      const paths = this.fileOps.parseClipboardPaths(textData);
+      if (paths.length > 0) {
+        event.preventDefault();
+        await this.callbacks.pasteItems();
+      }
+    }
+  }
+
+  private isInputFocused(event: Event): boolean {
     const target = event.target as HTMLElement;
     return (
       target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable

@@ -31,6 +31,7 @@ pub struct GeneralSettings {
             ("uk-UA", "Українська (Україна)"),
             ("ru-RU", "Русский (Россия)"),
             ("ja-JP", "日本語 (日本)")
+            ("pt-BR", "Português (Brasil)")
         )
     )]
     pub language: String,

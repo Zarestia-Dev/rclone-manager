@@ -191,10 +191,32 @@ export class WindowService extends TauriBaseService {
     try {
       let _theme: 'light' | 'dark' = theme as 'light' | 'dark';
       if (theme === 'system') {
-        _theme = await this.getSystemTheme();
+        try {
+          _theme = await this.getSystemTheme();
+        } catch {
+          _theme = this.systemThemeQuery.matches ? 'dark' : 'light';
+        }
+        // If systemThemeQuery disagrees (e.g. on Android where backend get_system_theme defaults to dark), use matchMedia
+        if (this.systemThemeQuery.matches !== (_theme === 'dark')) {
+          _theme = this.systemThemeQuery.matches ? 'dark' : 'light';
+        }
       }
 
       document.documentElement.setAttribute('class', _theme);
+
+      // On Android, notify native Kotlin bridge to sync status bar / navigation bar icon theme
+      const bridge = (
+        window as Window & {
+          __rclone__?: {
+            setSystemTheme?: (isDark: boolean) => void;
+          };
+        }
+      ).__rclone__;
+
+      if (bridge?.setSystemTheme) {
+        bridge.setSystemTheme(_theme === 'dark');
+      }
+
       await this.invokeCommand('set_theme', { theme: _theme });
     } catch (error) {
       console.error('Failed to apply theme:', error);

@@ -1464,6 +1464,12 @@
       "cancelled": "已取消",
       "cancelJob": "取消",
       "removeJob": "移除",
+      "progress": "进度",
+      "files": "文件",
+      "speed": "速度",
+      "eta": "剩余时间",
+      "currentFile": "当前文件",
+      "currentFiles": "当前文件",
       "details": {
         "source": "源路径",
         "destination": "目标路径",

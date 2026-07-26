@@ -119,6 +119,12 @@
                 <span class="item-label">{{ 'nautilus.contextMenu.cut' | translate }}</span>
                 <span class="shortcut">Ctrl+X</span>
               </button>
+
+              @if (actions.contextMenuItem()?.entry?.IsDir && fileOps.hasClipboard()) {
+                <button class="menu-item" cdkMenuItem (click)="pasteItems.emit()">
+                  <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
+                </button>
+              }
               <button class="menu-item" cdkMenuItem (click)="actions.openRename()">
                 <span class="item-label">{{ 'nautilus.contextMenu.rename' | translate }}</span>
                 <span class="shortcut">F2</span>
@@ -250,14 +256,11 @@
 
         <mat-divider></mat-divider>
 
-        <button
-          class="menu-item"
-          cdkMenuItem
-          (click)="pasteItems.emit()"
-          [disabled]="!fileOps.hasClipboard()"
-        >
-          <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
-        </button>
+        @if (fileOps.hasClipboard()) {
+          <button class="menu-item" cdkMenuItem (click)="pasteItems.emit()">
+            <span class="item-label">{{ 'nautilus.contextMenu.paste' | translate }}</span>
+          </button>
+        }
       }
     }
 

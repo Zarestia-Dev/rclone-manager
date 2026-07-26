@@ -91,7 +91,9 @@ jobs:
         working-directory: src-tauri
 
       - name: Run Clippy (Web Server)
-        run: TAURI_CONFIG=$(cat ./tauri.conf.headless.json) cargo clippy --features web-server --no-default-features -- -D warnings
+        run: |
+          mkdir -p ../dist/rclone-manager/browser
+          TAURI_CONFIG=$(cat ./tauri.conf.headless.json) cargo clippy --features web-server --no-default-features -- -D warnings
         working-directory: src-tauri
 
       - name: Run Clippy (Mobile)

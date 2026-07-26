@@ -726,12 +726,12 @@ export class NautilusComponent implements OnInit {
   // Clipboard & file ops (thin wrappers over NautilusFileOperationsService)
   // ---------------------------------------------------------------------------
 
-  protected async pasteItems(): Promise<void> {
-    await this.fileOps.pasteItems(
-      this.tabSvc.activeRemote(),
-      this.tabSvc.activePath(),
-      this.allRemotesLookup()
-    );
+  protected async pasteItems(targetFolder?: FileBrowserItem): Promise<void> {
+    const dstPath = targetFolder?.entry?.IsDir
+      ? this.pathService.joinPath(this.tabSvc.activePath(), targetFolder.entry.Name)
+      : this.tabSvc.activePath();
+
+    await this.fileOps.pasteItems(this.tabSvc.activeRemote(), dstPath, this.allRemotesLookup());
     this.tabSvc.refresh(this.tabSvc.activePaneIndex());
   }
 

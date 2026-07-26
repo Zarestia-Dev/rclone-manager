@@ -4,7 +4,7 @@ use tauri::AppHandle;
 pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
     let title = ctx.title.clone();
     let body = ctx.body.clone();
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", not(target_os = "android")))]
     {
         std::thread::spawn(move || {
             notify_rust::Notification::new()
@@ -26,6 +26,7 @@ pub fn dispatch(_app: &AppHandle, ctx: &TemplateContext) -> Result<(), String> {
             .builder()
             .title(&title)
             .body(&body)
+            .icon("ic_notification")
             .auto_cancel()
             .show()
             .map_err(|e| format!("OS toast failed: {e}"))

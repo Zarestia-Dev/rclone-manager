@@ -1464,6 +1464,12 @@
       "cancelled": "Отменено",
       "cancelJob": "Отменить",
       "removeJob": "Удалить",
+      "progress": "Прогресс",
+      "files": "Файлы",
+      "speed": "Скорость",
+      "eta": "Ост. время",
+      "currentFile": "Текущий файл",
+      "currentFiles": "Текущие файлы",
       "details": {
         "source": "Источник",
         "destination": "Назначение",

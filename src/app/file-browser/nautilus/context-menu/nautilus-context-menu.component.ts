@@ -93,6 +93,7 @@ export class NautilusContextMenuComponent {
 
   reset(): void {
     this.menuCtrl.reset();
+    this.fileOps.checkSystemClipboard();
   }
 
   protected copyItems(): void {

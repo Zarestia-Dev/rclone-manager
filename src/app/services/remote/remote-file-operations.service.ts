@@ -241,6 +241,7 @@ export class RemoteFileOperationsService extends TauriBaseService {
     if (jobId !== undefined) fd.append('jobId', jobId.toString());
     if (fileIndex !== undefined) fd.append('fileIndex', fileIndex.toString());
     if (totalFiles !== undefined) fd.append('totalFiles', totalFiles.toString());
+    if (file.lastModified) fd.append('mtime', file.lastModified.toString());
     fd.append('file', file, overrideName || file.name);
 
     const res = await firstValueFrom(

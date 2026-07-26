@@ -8,6 +8,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { ExplorerRoot, FileBrowserItem } from '@app/types';
+import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 
 export interface UndoEntry {
   mode: 'copy' | 'move';
@@ -36,7 +37,10 @@ export class NautilusFileOperationsService {
     { remote: string; path: string; name: string; isDir: boolean }[]
   >([]);
   readonly clipboardMode = signal<'copy' | 'cut' | null>(null);
-  readonly hasClipboard = computed(() => this.clipboardItems().length > 0);
+  readonly systemClipboardHasPaths = signal<boolean>(false);
+  readonly hasClipboard = computed(
+    () => this.clipboardItems().length > 0 || this.systemClipboardHasPaths()
+  );
   readonly cutItemPaths = computed(() => {
     if (this.clipboardMode() !== 'cut') return new Set<string>();
     return new Set(this.clipboardItems().map(i => `${i.remote}:${i.path}`));
@@ -67,31 +71,126 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const clipboardData = this.clipboardItems();
     const mode = this.clipboardMode();
-    if (clipboardData.length === 0 || !dstRemote || !mode) return false;
+    if (clipboardData.length > 0 && dstRemote && mode) {
+      const items: FileBrowserItem[] = clipboardData.map(item => {
+        const remoteInfo = allRemotes.find(r => r.name === item.remote);
+        return {
+          entry: {
+            Name: item.name,
+            Path: item.path,
+            IsDir: item.isDir,
+            ID: '',
+            Size: 0,
+            ModTime: '',
+            MimeType: '',
+          },
+          meta: {
+            remote: item.remote,
+            isLocal: remoteInfo?.isLocal ?? false,
+            remoteType: remoteInfo?.type,
+          },
+        };
+      });
 
-    const items: FileBrowserItem[] = clipboardData.map(item => {
-      const remoteInfo = allRemotes.find(r => r.name === item.remote);
-      return {
-        entry: {
-          Name: item.name,
-          Path: item.path,
-          IsDir: item.isDir,
-          ID: '',
-          Size: 0,
-          ModTime: '',
-          MimeType: '',
-        },
-        meta: {
-          remote: item.remote,
-          isLocal: remoteInfo?.isLocal ?? false,
-          remoteType: remoteInfo?.type,
-        },
-      };
-    });
+      await this.performFileOperations(items, dstRemote, dstPath, mode === 'cut' ? 'move' : 'copy');
+      if (mode === 'cut') this.clearClipboard();
+      return true;
+    }
 
-    await this.performFileOperations(items, dstRemote, dstPath, mode === 'cut' ? 'move' : 'copy');
-    if (mode === 'cut') this.clearClipboard();
-    return true;
+    if (dstRemote) {
+      return this.pasteSystemClipboard(dstRemote, dstPath);
+    }
+
+    return false;
+  }
+
+  async pasteSystemClipboard(dstRemote: ExplorerRoot | null, dstPath: string): Promise<boolean> {
+    if (!dstRemote) return false;
+
+    let text = '';
+    try {
+      if (isHeadlessMode()) {
+        text = await navigator.clipboard.readText();
+      } else {
+        const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+        text = await readText();
+      }
+    } catch (err) {
+      console.debug('[Nautilus] Could not read system clipboard:', err);
+    }
+
+    const paths = this.parseClipboardPaths(text);
+    if (paths.length > 0) {
+      return this._handleDesktopUpload(dstRemote, dstPath, paths);
+    }
+
+    return false;
+  }
+
+  async checkSystemClipboard(): Promise<boolean> {
+    try {
+      let text = '';
+      if (isHeadlessMode()) {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+          text = await navigator.clipboard.readText();
+        }
+      } else {
+        const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+        text = await readText();
+      }
+      const hasPaths = this.parseClipboardPaths(text).length > 0;
+      this.systemClipboardHasPaths.set(hasPaths);
+      return hasPaths;
+    } catch {
+      this.systemClipboardHasPaths.set(false);
+      return false;
+    }
+  }
+
+  parseClipboardPaths(text: string): string[] {
+    if (!text || typeof text !== 'string') return [];
+    const lines = text
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean);
+    const paths: string[] = [];
+
+    for (let line of lines) {
+      if (line === 'copy' || line === 'cut') continue;
+
+      if (
+        (line.startsWith('"') && line.endsWith('"')) ||
+        (line.startsWith("'") && line.endsWith("'"))
+      ) {
+        line = line.slice(1, -1).trim();
+      }
+
+      if (line.startsWith('file://')) {
+        try {
+          const url = new URL(line);
+          let pathname = decodeURIComponent(url.pathname);
+          if (/^\/[a-zA-Z]:/.test(pathname)) {
+            pathname = pathname.slice(1);
+          }
+          if (pathname) {
+            paths.push(pathname);
+          }
+          continue;
+        } catch {
+          line = line.replace(/^file:\/\//, '');
+          line = decodeURIComponent(line);
+        }
+      }
+
+      const isPosixPath = line.startsWith('/');
+      const isWinPath = /^[a-zA-Z]:[\\/]/.test(line);
+
+      if (isPosixPath || isWinPath) {
+        paths.push(line);
+      }
+    }
+
+    return Array.from(new Set(paths));
   }
 
   async performFileOperations(
