@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.3.1] - 2026-07-26
 
 ### Added
+- **Android Beta Release (APKs for arm64-v8a, armeabi-v7a, x86_64, x86)**: Introduced Android Beta support with architecture-separated APK builds (`arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`). Powered by an in-process Go engine (`librclone`) via FFI bindings. Tested on Samsung Galaxy S23 FE. iOS status is currently unverified due to lack of testing devices. For more details, see the [Android Documentation](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android).
 - **Nautilus Sidebar Drives & Remotes Customization**: Added the ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated sidebar configuration modal. #233
 - **Nautilus Context Menu System Clipboard Integration**: Added support for pasting OS system clipboard file paths and URIs directly from the right-click context menu, with automatic paste button visibility based on clipboard contents.
 - **New Russian Translations**: Added support for Russian language and translations. Thanks to @korsun009! PR #266

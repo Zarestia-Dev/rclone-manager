@@ -101,6 +101,7 @@
       <description>
         <p>Added</p>
         <ul>
+          <li>Android Beta Release: Added separated Android Beta APK builds (arm64-v8a, armeabi-v7a, x86_64, x86) powered by in-process librclone FFI bindings. Tested on Samsung Galaxy S23 FE. iOS status is currently unverified. See <a href="https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android">Android Documentation</a>.</li>
           <li>Nautilus Sidebar Drives &amp; Remotes Customization: Added ability to reorder and hide/show local disks and cloud remotes in the Nautilus sidebar via a dedicated configuration modal.</li>
           <li>Nautilus Context Menu System Clipboard Integration: Added support for pasting OS system clipboard file paths and URIs directly from the context menu, with automatic paste button visibility.</li>
           <li>New Russian, Brazilian Portuguese and Japanese language translations.</li>
