@@ -1,0 +1,3956 @@
+{
+  "providers": {
+    "alias": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "エイリアス先のリモートまたはパス。\n\n\"myremote:path/to/dir\"、\"myremote:bucket\"、\"myremote:\"、\"/local/path\" のいずれかを指定できます。"
+      }
+    },
+    "archive": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "アーカイブの読み込み元としてラップするリモート。\n\n通常は ':' とパスを含めます（例: \"myremote:path/to/dir\"、\"myremote:bucket\"、\"myremote:\"）。\n\n空欄のままにした場合、archive バックエンドはルートをリモートとして使用します。\n\nつまり :archive:remote:path のように指定すると、remote=\"remote:path\" を設定した場合と同等になります。\n"
+      }
+    },
+    "azureblob": {
+      "access_tier": {
+        "title": "アクセス階層",
+        "help": "blob のアクセス階層: hot、cool、cold、archive のいずれか。\n\nアーカイブされた blob は、アクセス階層を hot、cool、cold のいずれかに設定することで復元できます。既定のアクセス階層（アカウントレベルで設定されるもの）を使用する場合は空欄のままにしてください\n\n\"アクセス階層\" が指定されていない場合、rclone はどの階層も適用しません。オブジェクトが変更されていない場合、アップロード時に rclone は blob に対して \"Set Tier\" 操作を行いますが、\"アクセス階層\" を新しい値に指定しても効果はありません。blob がリモートで \"archive tier\" にある場合、リモートからのデータ転送操作を行うことはできません。ユーザーはまず blob を \"Hot\"、\"Cool\"、\"Cold\" のいずれかに階層変更して復元する必要があります。"
+      },
+      "account": {
+        "title": "アカウント",
+        "help": "Azure Storage アカウント名。\n\n使用する Azure Storage アカウント名を設定します。\n\nSAS URL またはエミュレーターを使用する場合は空欄のままにしてください。それ以外の場合は設定が必要です。\n\nこれが空欄で env_auth が設定されている場合、可能であれば環境変数 `AZURE_STORAGE_ACCOUNT_NAME` から読み込まれます。\n"
+      },
+      "archive_tier_delete": {
+        "title": "アーカイブ階層削除",
+        "help": "上書き前にアーカイブ階層の blob を削除します。\n\nアーカイブ階層の blob は更新できません。そのため、このフラグを設定しない状態でアーカイブ階層の blob を更新しようとすると、rclone は以下のエラーを出します:\n\n    can't update archive tier blob without --azureblob-archive-tier-delete\n\nこのフラグを設定すると、rclone はアーカイブ階層の blob を上書きしようとする前に、既存の blob を削除してから置き換えをアップロードします。これは（通常の blob の更新と異なり）アップロードが失敗した場合にデータ損失の可能性があり、また早期にアーカイブ階層の blob を削除すると課金される場合があるため、コストが増加する可能性もあります。\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\nこれはメモリに保存され、\"--transfers\" × \"--azureblob-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。"
+      },
+      "client_certificate_password": {
+        "title": "クライアント証明書パスワード",
+        "help": "証明書ファイルのパスワード（任意）。\n\n以下の場合に、証明書にパスワードがある場合は任意で設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "client_certificate_path": {
+        "title": "クライアント証明書パス",
+        "help": "秘密鍵を含む PEM または PKCS12 証明書ファイルへのパス。\n\n以下の場合に設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "使用するクライアントの ID。\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n- 証明書を使用するサービスプリンシパル\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "サービスプリンシパルのクライアントシークレットの 1 つ\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "証明書チェーン送信",
+        "help": "証明書認証を使用する際に証明書チェーンを送信します。\n\nサブジェクト名/発行者ベースの認証をサポートするため、認証リクエストに x5c ヘッダーを含めるかどうかを指定します。true に設定すると、認証リクエストに x5c ヘッダーが含まれます。\n\n以下の場合は任意で設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "copy_concurrency": {
+        "title": "コピー並列数",
+        "help": "マルチパートコピーの並列数。\n\n同一ファイルのチャンクを同時にコピーする数です。\n\nこれらのチャンクはメモリにバッファーされず、Microsoft は azcopy のドキュメントでこの値を 1000 より大きく設定することを推奨しています。\n\nhttps://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-optimize#increase-concurrency\n\nテストでは、コピー速度はコピー並列数にほぼ比例して向上します。"
+      },
+      "copy_cutoff": {
+        "title": "コピー切り替え値",
+        "help": "マルチパートコピーへ切り替える閾値。\n\nサーバーサイドコピーが必要なこれより大きいファイルは、put block list API を使用して chunk_size 単位のチャンクでコピーされます。\n\nこの上限より小さいファイルは Copy Blob API でコピーされます。"
+      },
+      "delete_snapshots": {
+        "title": "スナップショット削除",
+        "help": "blob 削除時にスナップショットをどう扱うかを指定する場合に設定します。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "directory_markers": {
+        "title": "ディレクトリマーカー",
+        "help": "新しいディレクトリが作成された際、末尾がスラッシュの空オブジェクトをアップロードします\n\nバケットベースのリモートでは空のフォルダがサポートされていないため、このオプションは \"/\" で終わる空のオブジェクトを作成し、フォルダを維持します。\n\nこのオブジェクトには Microsoft の標準に準拠するため \"hdi_isfolder = true\" というメタデータも付与されます。\n "
+      },
+      "disable_checksum": {
+        "title": "チェックサムを無効化",
+        "help": "オブジェクトのメタデータに MD5 チェックサムを保存しません。\n\n通常 rclone はアップロード前に入力の MD5 チェックサムを計算し、オブジェクトのメタデータに追加します。これはデータの整合性チェックには有効ですが、大きなファイルのアップロード開始が大幅に遅れる場合があります。"
+      },
+      "disable_instance_discovery": {
+        "title": "インスタンス検出無効化",
+        "help": "Microsoft Entra インスタンスメタデータのリクエストをスキップします\n\nこれは、切断されたクラウドや Azure Stack などのプライベートクラウドで認証を行うアプリケーションでのみ true に設定すべきです。\n\nこれは、rclone が認証前に `https://login.microsoft.com/` から Microsoft Entra インスタンスメタデータをリクエストするかどうかを決定します。\n\nこれを true に設定するとこのリクエストがスキップされ、設定した認証局が有効で信頼できることを自身で保証する責任が生じます。\n"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "サービスのエンドポイント。\n\n通常は空欄のままにしてください。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイム（環境変数、CLI、MSI）からクレデンシャルを読み込みます。\n\n詳細は [認証に関するドキュメント](/azureblob#authentication) を参照してください。"
+      },
+      "key": {
+        "title": "キー",
+        "help": "ストレージアカウントの共有キー。\n\nSAS URL またはエミュレーターを使用する場合は空欄のままにしてください。"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "blob 一覧のサイズ。\n\nこれは各一覧取得チャンクでリクエストされる blob の数を設定します。既定値は最大値の 5000 です。\"List blobs\" リクエストは 1 メガバイトあたり 2 分の完了時間が許容されています。操作が平均で 1 メガバイトあたり 2 分より長くかかっている場合、タイムアウトします（[出典](https://docs.microsoft.com/en-us/rest/api/storageservices/setting-timeouts-for-blob-service-operations#exceptions-to-default-timeout-interval)）。これは、タイムアウトを回避するために返される blob 項目の数を制限するために使用できます。"
+      },
+      "memory_pool_flush_time": {
+        "title": "メモリプールフラッシュ時間",
+        "help": "内部メモリバッファープールをフラッシュする頻度。（現在は使用されていません）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "メモリプールでの mmap 使用",
+        "help": "内部メモリプールで mmap バッファーを使用するかどうか。（現在は使用されていません）"
+      },
+      "msi_client_id": {
+        "title": "MSI クライアント ID",
+        "help": "使用するユーザー割り当て MSI のオブジェクト ID（ある場合）。\n\nmsi_object_id または msi_mi_res_id を指定した場合は空欄のままにしてください。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI MI リソース ID",
+        "help": "使用するユーザー割り当て MSI の Azure リソース ID（ある場合）。\n\nmsi_client_id または msi_object_id を指定した場合は空欄のままにしてください。"
+      },
+      "msi_object_id": {
+        "title": "MSI オブジェクト ID",
+        "help": "使用するユーザー割り当て MSI のオブジェクト ID（ある場合）。\n\nmsi_client_id または msi_mi_res_id を指定した場合は空欄のままにしてください。"
+      },
+      "no_check_container": {
+        "title": "コンテナー確認なし",
+        "help": "設定すると、コンテナーが存在するかの確認や作成を試みません。\n\nコンテナーが既に存在することがわかっている場合に、rclone が行うトランザクション数を最小限に抑えたい場合に便利です。\n"
+      },
+      "no_head_object": {
+        "title": "HEAD オブジェクトなし",
+        "help": "設定すると、オブジェクト取得時に GET の前に HEAD を行いません。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "ユーザーのパスワード\n\n以下の場合に設定してください\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "public_access": {
+        "title": "公開アクセス",
+        "help": "コンテナーの公開アクセスレベル: blob または container。"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "コンテナーレベルアクセス専用の SAS URL。\n\nアカウント/キーまたはエミュレーターを使用する場合は空欄のままにしてください。"
+      },
+      "service_principal_file": {
+        "title": "サービスプリンシパルファイル",
+        "help": "サービスプリンシパルで使用するクレデンシャルを含むファイルへのパス。\n\n通常は空欄のままにしてください。対話的ログインの代わりにサービスプリンシパルを使用したい場合にのみ必要です。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Blob Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n詳細は [\"Create an Azure service principal\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli) および [\"Assign an Azure role for access to blob data\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli) のページを参照してください。\n\n`service_principal_file` を設定する代わりに、rclone の設定ファイルの `client_id`、`tenant`、`client_secret` の各キーに直接クレデンシャルを設定する方が便利な場合があります。\n"
+      },
+      "tenant": {
+        "title": "テナント",
+        "help": "サービスプリンシパルのテナントの ID。ディレクトリ ID とも呼ばれます。\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n- 証明書を使用するサービスプリンシパル\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。\n\nテストでは、アップロード速度はアップロード並列数にほぼ比例して向上します。例えばギガビット回線を活用するにはこれを 64 まで上げる必要がある場合があります。これによりメモリ使用量が増加する点に注意してください。\n\nチャンクはメモリに保存され、\"--transfers\" × \"--azureblob-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値（256 MiB 以下）（非推奨）。"
+      },
+      "use_az": {
+        "title": "az を使用",
+        "help": "認証に Azure CLI ツール az を使用します\n\n[Azure CLI ツール az](https://learn.microsoft.com/en-us/cli/azure/) を唯一の認証手段として使用する場合に設定します。\n\n使用したくないシステム割り当てマネージド ID を持つホストで az CLI を使用したい場合に便利です。\n\nenv_auth と同時に設定しないでください。\n"
+      },
+      "use_copy_blob": {
+        "title": "Copy Blob を使用",
+        "help": "同じストレージアカウントへのコピー時に Copy Blob API を使用するかどうか。\n\ntrue（既定）の場合、rclone は copy_cutoff を超えるサイズであっても、同じストレージアカウントへのコピーには Copy Blob API を使用します。\n\nrclone は同じストレージアカウントは同じ設定であるとみなし、異なる設定間で同じストレージアカウントかどうかは確認しません。\n\nこの値を変更する必要は通常ありません。\n"
+      },
+      "use_emulator": {
+        "title": "エミュレーターを使用",
+        "help": "'true' を指定するとローカルストレージエミュレーターを使用します。\n\n実際の azure ストレージエンドポイントを使用する場合は空欄のままにしてください。"
+      },
+      "use_msi": {
+        "title": "MSI を使用",
+        "help": "マネージドサービス ID を使用して認証します（Azure でのみ動作します）。\n\ntrue にすると、SAS トークンやアカウントキーの代わりに [マネージドサービス ID](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/) を使用して Azure Storage を認証します。\n\nこのプログラムを実行している VM(SS) にシステム割り当て ID がある場合、既定でそれが使用されます。システム割り当て ID がなく、ユーザー割り当て ID が 1 つだけある場合、既定でそのユーザー割り当て ID が使用されます。リソースに複数のユーザー割り当て ID がある場合、msi_object_id、msi_client_id、msi_mi_res_id のいずれか 1 つを使用して明示的に使用する ID を指定する必要があります。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "ユーザー名（通常はメールアドレス）\n\n以下の場合に設定してください\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "connection_string": {
+        "title": "接続文字列",
+        "help": "ストレージの接続文字列。\n\nストレージ用の接続文字列。他の認証方式を使用する場合は空欄のままにしてください。\n"
+      },
+      "copy_total_concurrency": {
+        "title": "コピー総並列数",
+        "help": "マルチパートコピーチャンクのグローバル並列数上限。\n\nこれは、すべてのファイルにわたって同時に実行されるマルチパートコピーチャンクの総数を制限します。\n\nこの制限を無効化するには 0 に設定してください。"
+      },
+      "decompress": {
+        "title": "解凍",
+        "help": "設定すると gzip エンコードされたオブジェクトを解凍します。\n\nAzure Blob Storage には \"Content-Encoding: gzip\" を設定した状態でオブジェクトをアップロードできます。通常 rclone はこれらのファイルを圧縮されたオブジェクトとしてダウンロードします。\n\nこのフラグを設定すると、rclone は受信時に \"Content-Encoding: gzip\" のこれらのファイルを解凍します。これにより rclone はサイズとハッシュをチェックできなくなりますが、ファイル内容は解凍された状態になります。\n"
+      }
+    },
+    "azurefiles": {
+      "account": {
+        "title": "アカウント",
+        "help": "Azure Storage アカウント名。\n\n使用する Azure Storage アカウント名を設定します。\n\nSAS URL または接続文字列を使用する場合は空欄のままにしてください。それ以外の場合は設定が必要です。\n\nこれが空欄で env_auth が設定されている場合、可能であれば環境変数 `AZURE_STORAGE_ACCOUNT_NAME` から読み込まれます。\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\nこれはメモリに保存され、\"--transfers\" × \"--azurefile-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。"
+      },
+      "client_certificate_password": {
+        "title": "クライアント証明書パスワード",
+        "help": "証明書ファイルのパスワード（任意）。\n\n以下の場合に、証明書にパスワードがある場合は任意で設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "client_certificate_path": {
+        "title": "クライアント証明書パス",
+        "help": "秘密鍵を含む PEM または PKCS12 証明書ファイルへのパス。\n\n以下の場合に設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "使用するクライアントの ID。\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n- 証明書を使用するサービスプリンシパル\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "サービスプリンシパルのクライアントシークレットの 1 つ\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n"
+      },
+      "client_send_certificate_chain": {
+        "title": "証明書チェーン送信",
+        "help": "証明書認証を使用する際に証明書チェーンを送信します。\n\nサブジェクト名/発行者ベースの認証をサポートするため、認証リクエストに x5c ヘッダーを含めるかどうかを指定します。true に設定すると、認証リクエストに x5c ヘッダーが含まれます。\n\n以下の場合は任意で設定してください\n- 証明書を使用するサービスプリンシパル\n"
+      },
+      "connection_string": {
+        "title": "接続文字列",
+        "help": "Azure Files の接続文字列。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_instance_discovery": {
+        "title": "インスタンス検出無効化",
+        "help": "Microsoft Entra インスタンスメタデータのリクエストをスキップします\nこれは、切断されたクラウドや Azure Stack などのプライベートクラウドで認証を行うアプリケーションでのみ true に設定すべきです。\nこれは、rclone が認証前に `https://login.microsoft.com/` から Microsoft Entra インスタンスメタデータをリクエストするかどうかを決定します。\nこれを true に設定するとこのリクエストがスキップされ、設定した認証局が有効で信頼できることを自身で保証する責任が生じます。\n"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "サービスのエンドポイント。\n\n通常は空欄のままにしてください。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイム（環境変数、CLI、MSI）からクレデンシャルを読み込みます。\n\n詳細は [認証に関するドキュメント](/azurefiles#authentication) を参照してください。"
+      },
+      "key": {
+        "title": "キー",
+        "help": "ストレージアカウントの共有キー。\n\nSAS URL または接続文字列を使用する場合は空欄のままにしてください。"
+      },
+      "max_stream_size": {
+        "title": "最大ストリームサイズ",
+        "help": "ストリームファイルの最大サイズ。\n\nAzure Files はファイルのサイズを事前に把握する必要があります。rclone がサイズを把握できない場合、この値が代わりに使用されます。\n\nこれは rclone がデータをストリーミングする際に使用され、主な用途は以下のとおりです:\n\n- `rclone mount` で `--vfs-cache-mode off` を使用したファイルのアップロード\n- `rclone rcat` の使用\n- 長さ不明のファイルのコピー\n\nファイルは一時的にこのサイズになるため、共有内にこれだけの空き容量が必要です。\n"
+      },
+      "msi_client_id": {
+        "title": "MSI クライアント ID",
+        "help": "使用するユーザー割り当て MSI のオブジェクト ID（ある場合）。\n\nmsi_object_id または msi_mi_res_id を指定した場合は空欄のままにしてください。"
+      },
+      "msi_mi_res_id": {
+        "title": "MSI MI リソース ID",
+        "help": "使用するユーザー割り当て MSI の Azure リソース ID（ある場合）。\n\nmsi_client_id または msi_object_id を指定した場合は空欄のままにしてください。"
+      },
+      "msi_object_id": {
+        "title": "MSI オブジェクト ID",
+        "help": "使用するユーザー割り当て MSI のオブジェクト ID（ある場合）。\n\nmsi_client_id または msi_mi_res_id を指定した場合は空欄のままにしてください。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "ユーザーのパスワード\n\n以下の場合に設定してください\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "sas_url": {
+        "title": "SAS URL",
+        "help": "SAS URL。\n\nアカウント/キーまたは接続文字列を使用する場合は空欄のままにしてください。"
+      },
+      "service_principal_file": {
+        "title": "サービスプリンシパルファイル",
+        "help": "サービスプリンシパルで使用するクレデンシャルを含むファイルへのパス。\n\n通常は空欄のままにしてください。対話的ログインの代わりにサービスプリンシパルを使用したい場合にのみ必要です。\n\n    $ az ad sp create-for-rbac --name \"<name>\" \\\n      --role \"Storage Files Data Owner\" \\\n      --scopes \"/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>/blobServices/default/containers/<container>\" \\\n      > azure-principal.json\n\n詳細は [\"Create an Azure service principal\"](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli) および [\"Assign an Azure role for access to files data\"](https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-rbac-cli) のページを参照してください。\n\n**注** このセクションは Azure Files 向けに更新が必要です。プルリクエストを歓迎します！\n\n`service_principal_file` を設定する代わりに、rclone の設定ファイルの `client_id`、`tenant`、`client_secret` の各キーに直接クレデンシャルを設定する方が便利な場合があります。\n"
+      },
+      "share_name": {
+        "title": "共有名",
+        "help": "Azure Files の共有名。\n\nこれは必須で、アクセスする共有の名前です。\n"
+      },
+      "tenant": {
+        "title": "テナント",
+        "help": "サービスプリンシパルのテナントの ID。ディレクトリ ID とも呼ばれます。\n\n以下の場合に設定してください\n- クライアントシークレットを使用するサービスプリンシパル\n- 証明書を使用するサービスプリンシパル\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。\n\nチャンクはメモリに保存され、\"--transfers\" × \"--azurefile-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。"
+      },
+      "use_az": {
+        "title": "az を使用",
+        "help": "認証に Azure CLI ツール az を使用します\n[Azure CLI ツール az](https://learn.microsoft.com/en-us/cli/azure/) を唯一の認証手段として使用する場合に設定します。\n使用したくないシステム割り当てマネージド ID を持つホストで az CLI を使用したい場合に便利です。\nenv_auth と同時に設定しないでください。\n"
+      },
+      "use_msi": {
+        "title": "MSI を使用",
+        "help": "マネージドサービス ID を使用して認証します（Azure でのみ動作します）。\n\ntrue にすると、SAS トークンやアカウントキーの代わりに [マネージドサービス ID](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/) を使用して Azure Storage を認証します。\n\nこのプログラムを実行している VM(SS) にシステム割り当て ID がある場合、既定でそれが使用されます。システム割り当て ID がなく、ユーザー割り当て ID が 1 つだけある場合、既定でそのユーザー割り当て ID が使用されます。リソースに複数のユーザー割り当て ID がある場合、msi_object_id、msi_client_id、msi_mi_res_id のいずれか 1 つを使用して明示的に使用する ID を指定する必要があります。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "ユーザー名（通常はメールアドレス）\n\n以下の場合に設定してください\n- ユーザー名とパスワードを使用するユーザー\n"
+      },
+      "use_emulator": {
+        "title": "エミュレーターを使用",
+        "help": "'true' を指定するとローカルストレージエミュレーターを使用します。\n\n実際の azure ストレージエンドポイントを使用する場合は空欄のままにしてください。"
+      }
+    },
+    "b2": {
+      "account": {
+        "title": "アカウント",
+        "help": "アカウント ID またはアプリケーションキー ID。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\n大きなファイルをアップロードする際は、このサイズでファイルを分割します。\n\nメモリに収まる必要があります。これらのチャンクはメモリにバッファーされ、\"--transfers\" 個分のチャンクが同時に処理される場合があります。\n\n最小サイズは 5,000,000 バイトです。"
+      },
+      "copy_cutoff": {
+        "title": "コピー切り替え値",
+        "help": "マルチパートコピーへ切り替える閾値。\n\nサーバーサイドコピーが必要なこれより大きいファイルは、このサイズのチャンクでコピーされます。\n\n最小は 0、最大は 4.6 GiB です。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_checksum": {
+        "title": "チェックサムを無効化",
+        "help": "大きなファイル（アップロード切り替え値を超えるもの）のチェックサムを無効化します。\n\n通常 rclone はアップロード前に入力の SHA1 チェックサムを計算し、オブジェクトのメタデータに追加します。これはデータの整合性チェックには有効ですが、大きなファイルのアップロード開始が大幅に遅れる場合があります。"
+      },
+      "download_auth_duration": {
+        "title": "ダウンロード認証有効期間",
+        "help": "公開リンクの認証トークンが失効するまでの時間（秒、または ms|s|m|h|d の接尾辞）。\n\n\"rclone link\" と組み合わせてファイルを公開する際に使用し、ダウンロード認証トークンが失効するまでの期間を設定します。\n\n最小値は 1 秒、最大値は 1 週間です。"
+      },
+      "download_url": {
+        "title": "ダウンロード URL",
+        "help": "ダウンロード用のカスタムエンドポイント。\n\nBackblaze は Cloudflare ネットワーク経由でダウンロードされたデータの送信を無料で提供しているため、通常は Cloudflare CDN の URL を設定します。\nRclone は \"Authorization\" ヘッダーを送信することでプライベートバケットにも対応しています。\nCloudflare Workers などでカスタムエンドポイントが認証用にリクエストを書き換える場合は、このヘッダーを適切に処理する必要があります。\nBackblaze が提供するエンドポイントを使用する場合は空欄のままにしてください。\n\nここで指定する URL にはプロトコルを含める必要があり、末尾のスラッシュや /file/bucket サブパスは指定しないでください。rclone は \"{download_url}/file/{bucket_name}/{path}\" の形式でファイルをリクエストします。\n\n例:\n> https://mysubdomain.mydomain.tld\n（末尾に \"/\"、\"file\"、\"bucket\" を付けない）"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "サービスのエンドポイント。\n\n通常は空欄のままにしてください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "リモートから削除する際にファイルを完全に削除します。設定しない場合はファイルを非表示にします。"
+      },
+      "key": {
+        "title": "キー",
+        "help": "アプリケーションキー。"
+      },
+      "lifecycle": {
+        "title": "ライフサイクル",
+        "help": "バケット作成時に削除済みファイルを保持する日数を設定します。\n\nバケット作成時、このパラメーターはバケット全体に対するライフサイクルルールの作成に使用されます。\n\nlifecycle が 0（既定）の場合、ライフサイクルルールは作成されず、既定の B2 の動作が適用されます。これは削除・上書き時にファイルのバージョンを作成し、無期限に保持するというものです。\n\nlifecycle が 0 より大きい場合、削除または上書きされたファイルが完全に削除されるまでの日数を設定する単一のルールが作成されます。これは b2 のドキュメントで daysFromHidingToDeleting と呼ばれています。\n\nこのパラメーターの最小値は 1 日です。\n\n設定で hard_delete も有効にすることができ、その場合削除ではバージョンが作成されなくなりますが、上書きでは引き続きバージョンが作成されます。\n\nバケット作成後にライフサイクルを設定する方法は [rclone backend lifecycle](#lifecycle) を参照してください。\n"
+      },
+      "memory_pool_flush_time": {
+        "title": "メモリプールフラッシュ時間",
+        "help": "内部メモリバッファープールをフラッシュする頻度。（現在は使用されていません）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "メモリプールでの mmap 使用",
+        "help": "内部メモリプールで mmap バッファーを使用するかどうか。（現在は使用されていません）"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE カスタマーアルゴリズム",
+        "help": "SSE-C を使用する場合、B2 にこのオブジェクトを保存する際に使用するサーバーサイド暗号化アルゴリズム。"
+      },
+      "sse_customer_key": {
+        "title": "SSE カスタマーキー",
+        "help": "SSE-C を使用する場合、データの暗号化/復号に使用する秘密鍵を UTF-8 互換の文字列として指定できます\n\n代わりに --sse-customer-key-base64 を指定することもできます。"
+      },
+      "sse_customer_key_base64": {
+        "title": "SSE カスタマーキー (Base64)",
+        "help": "SSE-C を使用する場合、データの暗号化/復号に使用する秘密鍵を Base64 形式で指定できます\n\n代わりに --sse-customer-key を指定することもできます。"
+      },
+      "sse_customer_key_md5": {
+        "title": "SSE カスタマーキー MD5",
+        "help": "SSE-C を使用する場合、秘密鍵の MD5 チェックサムを指定できます（任意）。\n\n空欄のままにすると、指定された sse_customer_key から自動的に計算されます。\n"
+      },
+      "test_mode": {
+        "title": "テストモード",
+        "help": "デバッグ用の X-Bz-Test-Mode ヘッダーのフラグ文字列。\n\nこれはデバッグ目的専用です。以下のいずれかの文字列を設定すると、b2 は特定のエラーを返すようになります:\n\n  * \"fail_some_uploads\"\n  * \"expire_some_account_authorization_tokens\"\n  * \"force_cap_exceeded\"\n\nこれらは \"X-Bz-Test-Mode\" ヘッダーに設定され、詳細は [b2 integrations checklist](https://www.backblaze.com/docs/cloud-storage-integration-checklist) に記載されています。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\nチャンクはメモリに保存され、\"--transfers\" × \"--b2-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは \"--b2-chunk-size\" 単位のチャンクでアップロードされます。\n\nこの値は 4.657 GiB（= 5 GB）以下に設定してください。"
+      },
+      "version_at": {
+        "title": "指定時点のバージョン",
+        "help": "指定した時点でのファイルバージョンを表示します。\n\nこれを使用する場合、ファイルの書き込み操作は一切許可されないため、ファイルのアップロードや削除はできません。"
+      },
+      "versions": {
+        "title": "バージョン",
+        "help": "ディレクトリ一覧に旧バージョンを含めます。\n\nこれを使用する場合、ファイルの書き込み操作は一切許可されないため、ファイルのアップロードや削除はできません。"
+      }
+    },
+    "box": {
+      "access_token": {
+        "title": "アクセストークン",
+        "help": "Box アプリのプライマリアクセストークン\n\n通常は空欄のままにしてください。"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "box_config_file": {
+        "title": "Box 設定ファイル",
+        "help": "Box アプリの config.json の場所\n\n通常は空欄のままにしてください。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "box_sub_type": {
+        "title": "Box サブタイプ",
+        "help": ""
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "commit_retries": {
+        "title": "コミットリトライ回数",
+        "help": "マルチパートファイルのコミットを試行する最大回数。"
+      },
+      "config_credentials": {
+        "title": "設定クレデンシャル",
+        "help": "Box アプリの config.json の内容。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "impersonate": {
+        "title": "偽装ユーザー",
+        "help": "サービスアカウント使用時に、このユーザー ID になりすまします。\n\nこのフラグを設定すると、JWT サービスアカウントを使用している場合に、as-user ヘッダーを設定することで rclone が他のユーザーに代わって操作できるようになります。\n\nユーザー ID はユーザーに対する Box の識別子です。ユーザー ID は、管理者のみが利用できる GET /users エンドポイント、または認証済みユーザーセッションで GET /users/me エンドポイントを呼び出すことで確認できます。\n\n参照: https://developer.box.com/guides/authentication/jwt/as-user/\n"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "一覧取得チャンクのサイズ。1〜1000。"
+      },
+      "owned_by": {
+        "title": "所有者",
+        "help": "指定したログイン（メールアドレス）が所有する項目のみを表示します。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "rclone にルート以外のフォルダを起点として使用させる場合に入力します。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "マルチパートアップロードへ切り替える閾値（50 MiB 以上）。"
+      }
+    },
+    "cache": {
+      "chunk_clean_interval": {
+        "title": "チャンククリーンアップ間隔",
+        "help": "チャンクストレージのクリーンアップを実行する頻度。\n\n既定値でほとんどの場合問題ありません。キャッシュが \"cache-chunk-total-size\" を頻繁に超える場合は、この値を小さくしてクリーンアップをより頻繁に実行させてみてください。"
+      },
+      "chunk_no_memory": {
+        "title": "チャンクのメモリキャッシュ無効化",
+        "help": "ストリーミング中のチャンク保存用インメモリキャッシュを無効化します。\n\n既定では、キャッシュはストリーミング中のファイルデータを RAM にも保持し、読み込み側にできるだけ高速に提供します。\n\nこの一時データは読み込まれ次第破棄され、保持されるチャンク数はワーカー数を超えません。ただし \"cache-chunk-size\" や \"cache-workers\" などの他の設定によっては、並行ストリーム（複数ファイルの同時読み込み）がある場合にこのメモリ使用量が増加することがあります。\n\nハードウェアが許す場合は、この機能を使用してストリーミング全体のパフォーマンスを向上させることができますが、ローカルマシンで RAM に余裕がない場合は無効化することもできます。"
+      },
+      "chunk_path": {
+        "title": "チャンクパス",
+        "help": "チャンクファイルをキャッシュするディレクトリ。\n\n部分的なファイルデータ（チャンク）がローカルに保存されるパスです。最終的なパスにはリモート名が追加されます。\n\nこの設定は \"--cache-db-path\" に従います。\"--cache-db-path\" にカスタムの場所を指定し、\"--cache-chunk-path\" を指定しない場合、\"--cache-chunk-path\" は \"--cache-db-path\" と同じパスを使用します。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "チャンク（部分的なファイルデータ）のサイズ。\n\n低速な接続では小さい値を使用してください。チャンクサイズを変更すると、ダウンロード済みのチャンクは無効になり、cache-chunk-path をクリアしないと予期しない EOF エラーが発生します。"
+      },
+      "chunk_total_size": {
+        "title": "チャンク合計サイズ",
+        "help": "ローカルディスク上でチャンクが占有できる合計サイズ。\n\nキャッシュがこの値を超えると、この値を下回るまで最も古いチャンクから順に削除されます。"
+      },
+      "db_path": {
+        "title": "DB パス",
+        "help": "ファイル構造のメタデータ DB を保存するディレクトリ。\n\nDB ファイル名としてリモート名が使用されます。"
+      },
+      "db_purge": {
+        "title": "DB パージ",
+        "help": "起動時にこのリモートのキャッシュデータをすべて消去します。"
+      },
+      "db_wait_time": {
+        "title": "DB 待機時間",
+        "help": "DB が利用可能になるまで待機する時間。0 は無制限。\n\nDB は同時に 1 つのプロセスからしか開けないため、rclone はこの時間だけ DB が利用可能になるのを待ってからエラーを出します。\n\n0 に設定すると無期限に待機します。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "info_age": {
+        "title": "情報保持期間",
+        "help": "ファイル構造情報（ディレクトリ一覧、ファイルサイズ、日時など）をキャッシュする期間。\nすべての書き込み操作がキャッシュ経由で行われる場合、キャッシュストアもリアルタイムで更新されるため、この値を非常に大きくしても問題ありません。"
+      },
+      "plex_insecure": {
+        "title": "Plex 証明書検証省略",
+        "help": "Plex サーバーへの接続時にすべての証明書検証を省略します。"
+      },
+      "plex_password": {
+        "title": "Plex パスワード",
+        "help": "Plex ユーザーのパスワード。"
+      },
+      "plex_token": {
+        "title": "Plex トークン",
+        "help": "認証用の plex トークン。通常は自動設定されます。"
+      },
+      "plex_url": {
+        "title": "Plex URL",
+        "help": "Plex サーバーの URL。"
+      },
+      "plex_username": {
+        "title": "Plex ユーザー名",
+        "help": "Plex ユーザーのユーザー名。"
+      },
+      "read_retries": {
+        "title": "読み込みリトライ回数",
+        "help": "キャッシュストレージからの読み込みをリトライする回数。\n\nキャッシュストリームからの読み込みはファイルデータのダウンロードとは独立しているため、読み込み側がキャッシュ内にデータがなくなる状態に達することがあります。ほとんどの場合、これはキャッシュがファイルデータを提供できなくなった際の接続の問題を示しています。\n\n非常に低速な接続の場合は、ストリームがデータを提供できる程度までこの値を増やしてください。ただし体感速度はかなりぎこちなくなります。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "キャッシュ対象のリモート。\n\n通常は ':' とパスを含めます（例: \"myremote:path/to/dir\"、\"myremote:bucket\"、または \"myremote:\"（非推奨））。"
+      },
+      "rps": {
+        "title": "RPS（秒間リクエスト数）",
+        "help": "転送元ファイルシステムへの秒あたりリクエスト数を制限します（-1 で無効化）。\n\nこの設定は、キャッシュがクラウドプロバイダーのリモートに対して行う秒あたりリクエスト数の上限を設定し、読み込みの間に待機を挟むことでその値を守ろうとします。\n\nキャッシュ経由でクラウドプロバイダーから制限やバンを受けており、秒あたりのリクエスト数を減らせば作業できることがわかっている場合に、この設定を使用してください。\n\n他の設定がうまくバランスされていれば通常この設定は不要ですが、より特殊なケース向けに用意されています。\n\n**注**: これはストリーム中のリクエスト数のみを制限します。ディレクトリ一覧取得などクラウドプロバイダーへの他の API 呼び出しは制限されません。"
+      },
+      "tmp_upload_path": {
+        "title": "一時アップロードパス",
+        "help": "アップロードされるまでファイルを保持する一時ディレクトリ。\n\nクラウドプロバイダーへアップロードが必要な新規ファイルの一時保存場所として、キャッシュがこのパスを使用します。\n\n値を指定するとこの機能が有効になります。指定しない場合は完全に無効となり、ファイルは直接クラウドプロバイダーへアップロードされます"
+      },
+      "tmp_wait_time": {
+        "title": "一時待機時間",
+        "help": "アップロードされるまでファイルをローカルキャッシュに保存しておく時間。\n\nこれは、ファイルがアップロード対象として選択されるまで一時保存場所 _cache-tmp-upload-path_ で待機する時間です。\n\n一度にアップロードされるファイルは 1 つのみのため、この目的でキューが形成されている場合はアップロード開始までさらに時間がかかることがある点に注意してください。"
+      },
+      "workers": {
+        "title": "ワーカー数",
+        "help": "チャンクのダウンロードを並列実行するワーカーの数。\n\n値を大きくすると並列処理が増加し（より高性能な CPU が必要）、クラウドプロバイダーへの同時リクエストも増加します。これはクラウドプロバイダーの API 制限や、rclone を実行しているハードウェアへの負荷など複数の面に影響しますが、一方でストリームがより滑らかになり、読み込み側へのデータ提供が高速になります。\n\n**注**: オプションの Plex 連携が有効な場合、この設定は読み込みの種類に応じて調整され、ここで指定した値は使用するワーカーの最大数として扱われます。"
+      },
+      "writes": {
+        "title": "書き込み時キャッシュ",
+        "help": "ファイルシステム経由の書き込み時にファイルデータをキャッシュします。\n\nキャッシュ経由でアップロードした直後にファイルを読み込む必要がある場合は、このフラグを有効にすることで、アップロード中にデータを同時にキャッシュストアへ保存できます。"
+      }
+    },
+    "chunker": {
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "チャンクサイズより大きいファイルはチャンクに分割されます。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "fail_hard": {
+        "title": "即時失敗 (Fail Hard)",
+        "help": "チャンクが欠落または不正なファイルを chunker がどのように扱うかを選択します。"
+      },
+      "hash_type": {
+        "title": "ハッシュタイプ",
+        "help": "chunker がハッシュサムをどのように扱うかを選択します。\n\n\"none\" 以外のすべてのモードでメタデータが必要です。"
+      },
+      "meta_format": {
+        "title": "メタデータ形式",
+        "help": "メタデータオブジェクトの形式、または \"none\"。\n\n既定値は \"simplejson\" です。\nメタデータは、合成ファイルにちなんだ名前の小さな JSON ファイルです。"
+      },
+      "name_format": {
+        "title": "名前形式",
+        "help": "チャンクファイル名の文字列形式。\n\n2 つのプレースホルダーがあります: ベースファイル名 (*) とチャンク番号 (#...)。\nアスタリスクは必ず 1 つだけ、ハッシュ記号は 1 つ以上連続して指定する必要があります。\nチャンク番号の桁数がハッシュ記号の数より少ない場合は、先頭を 0 で埋めます。\n桁数が多い場合はそのまま使用されます。\n名前が指定した形式に一致しないチャンクファイルは無視されます。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "チャンク化/チャンク結合の対象リモート。\n\n通常は ':' とパスを含めます（例: \"myremote:path/to/dir\"、\"myremote:bucket\"、または \"myremote:\"（非推奨））。"
+      },
+      "start_from": {
+        "title": "開始番号",
+        "help": "有効なチャンク番号の最小値。通常は 0 または 1。\n\n既定ではチャンク番号は 1 から始まります。"
+      },
+      "transactions": {
+        "title": "トランザクション",
+        "help": "トランザクション中の一時ファイルを chunker がどのように扱うかを選択します。"
+      }
+    },
+    "cloudinary": {
+      "adjust_media_files_extensions": {
+        "title": "メディアファイル拡張子を調整",
+        "help": "Cloudinary はメディア形式をファイルの属性として扱い、名前から取り除きます。これは他の多くのファイルシステムと異なる点です"
+      },
+      "api_key": {
+        "title": "API キー",
+        "help": "Cloudinary の API キー"
+      },
+      "api_secret": {
+        "title": "API シークレット",
+        "help": "Cloudinary の API シークレット"
+      },
+      "cloud_name": {
+        "title": "クラウド名",
+        "help": "Cloudinary の環境名"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "eventually_consistent_delay": {
+        "title": "結果整合性の遅延",
+        "help": "バックエンドの操作をサポートするデータベースの結果整合性を待つ秒数"
+      },
+      "media_extensions": {
+        "title": "メディア拡張子",
+        "help": "Cloudinary がサポートするメディア拡張子"
+      },
+      "upload_prefix": {
+        "title": "アップロードプレフィックス",
+        "help": "米国以外の環境向けの API エンドポイントを指定します"
+      },
+      "upload_preset": {
+        "title": "アップロードプリセット",
+        "help": "アップロード時のアセット加工を選択するアップロードプリセット"
+      }
+    },
+    "combine": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "upstreams": {
+        "title": "アップストリーム",
+        "help": "結合対象のアップストリーム\n\n以下の形式で指定します\n\n    dir=remote:path dir2=remote2:path\n\n= の前にルートディレクトリを指定し、後ろにそこへ配置するリモートを指定します。\n\nスペースを含める場合は引用符を使用できます\n\n    \"dir=remote:path with space\" \"dir2=remote2:path with space\"\n\n"
+      }
+    },
+    "compress": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "level": {
+        "title": "レベル",
+        "help": "GZIP（レベル -2 〜 9）:\n- -2 — ハフマン符号化のみ。用途を理解している場合のみ使用してください。\n- -1（既定）— 推奨値。レベル 5 と同等。\n- 0 — 圧縮を無効化します。\n- 1〜9 — 速度と引き換えに圧縮率を高めます。6 を超えても効果はほとんどありません。\n \nZSTD（レベル 0 〜 4）:\n- 0 — 圧縮を完全に無効化します。\n- 1 — 最速だが圧縮率は最も低くなります。\n- 2（既定）— 速度と圧縮率のバランスが良好。\n- 3 — 圧縮率は向上しますが、既定より CPU を約 2〜3 倍使用します。\n- 4 — 最高の圧縮率（CPU コストも最大）。\n \n注記:\n- 幅広い互換性が必要な場合は GZIP、速度と圧縮率のバランスを重視する場合は ZSTD を選択してください。\n- gzip の負のレベル: -2 = ハフマンのみ、-1 = 既定（レベル 5 相当）。"
+      },
+      "mode": {
+        "title": "モード",
+        "help": "圧縮モード。"
+      },
+      "ram_cache_limit": {
+        "title": "RAM キャッシュ上限",
+        "help": "一部のリモートはサイズ不明のファイルのアップロードを許可していません。\nこの場合、圧縮後のファイルサイズを確定するためにキャッシュが必要です。\n\nこの上限より小さいファイルは RAM にキャッシュされ、上限より大きいファイルはディスクにキャッシュされます。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "圧縮対象のリモート。"
+      }
+    },
+    "crypt": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "directory_name_encryption": {
+        "title": "ディレクトリ名の暗号化",
+        "help": "ディレクトリ名を暗号化するか、そのままにするかを選択します。\n\n注: filename_encryption が \"off\" の場合、このオプションは何も行いません。"
+      },
+      "filename_encoding": {
+        "title": "ファイル名エンコーディング",
+        "help": "暗号化したファイル名をテキスト文字列にエンコードする方法。\n\nこのオプションは暗号化後のファイル名を短くするのに役立ちます。適切な選択は、リモート側のファイル名長のカウント方法や大文字小文字の区別の有無によって異なります。"
+      },
+      "filename_encryption": {
+        "title": "ファイル名の暗号化",
+        "help": "ファイル名の暗号化方法。"
+      },
+      "no_data_encryption": {
+        "title": "データ暗号化なし",
+        "help": "ファイルデータを暗号化するか、暗号化せずそのままにするかを選択します。"
+      },
+      "pass_bad_blocks": {
+        "title": "不良ブロックを通過",
+        "help": "設定すると、不良ブロックをすべて 0 として通過させます。\n\n通常の運用ではこれを設定すべきではありません。エラーのある暗号化ファイルをできる限り復旧したい場合にのみ設定してください。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "暗号化用のパスワードまたはパスフレーズ。"
+      },
+      "password2": {
+        "title": "パスワード 2",
+        "help": "ソルト用のパスワードまたはパスフレーズ。\n\n任意ですが設定を推奨します。\n1 つ目のパスワードとは異なる値にしてください。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "暗号化/復号の対象リモート。\n\n通常は ':' とパスを含めます（例: \"myremote:path/to/dir\"、\"myremote:bucket\"、または \"myremote:\"（非推奨））。"
+      },
+      "server_side_across_configs": {
+        "title": "設定間でのサーバーサイド操作",
+        "help": "非推奨: 代わりに --server-side-across-configs を使用してください。\n\nサーバーサイド操作（コピーなど）を異なる crypt 設定間で機能させます。\n\n通常このオプションは望ましいものではありませんが、同じバックエンドを指す 2 つの crypt がある場合に使用できます。\n\n例えば、すべてのデータを再アップロードすることなくファイル名の暗号化方式を変更する場合に使用できます。変更するパラメーターだけが異なる 2 つの異なるディレクトリを指す 2 つの crypt バックエンドを作成し、rclone move でそれらの crypt リモート間でファイルを移動してください。"
+      },
+      "show_mapping": {
+        "title": "マッピングを表示",
+        "help": "一覧取得したすべてのファイルについて、名前がどのように暗号化されるかを表示します。\n\nこのフラグを設定すると、リモートに一覧取得を依頼した各ファイルについて、復号後のファイル名と暗号化後のファイル名を記載した行を（INFO レベルで）ログに出力します。\n\nこれにより、暗号化されたファイル名を扱う必要がある場合やデバッグ目的で、どの暗号化名がどの復号名に対応するかを把握できます。"
+      },
+      "strict_names": {
+        "title": "厳密な名前チェック",
+        "help": "設定すると、crypt が復号できないファイル名に遭遇した際にエラーを発生させます。\n\n（既定では rclone は NOTICE レベルでログを出力し、通常どおり処理を続行します。）これは、暗号化されたファイルと暗号化されていないファイルが同じディレクトリに保存されている場合（非推奨）に発生することがあります。また、調査が必要なより深刻な問題を示している場合もあります。"
+      },
+      "suffix": {
+        "title": "サフィックス",
+        "help": "設定すると、既定のサフィックス \".bin\" を上書きします。\n\nサフィックスを \"none\" に設定すると空のサフィックスになります。パスの長さが重要な場合に便利です。"
+      }
+    },
+    "doi": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "doi": {
+        "title": "DOI",
+        "help": "DOI または doi.org の URL。"
+      },
+      "doi_resolver_api_url": {
+        "title": "DOI リゾルバー API URL",
+        "help": "使用する DOI リゾルバー API の URL。\n\nテスト用、または標準の DOI リゾルバー API が使用できない場合に、DOI リゾルバーを設定できます。\n\n既定値は \"https://doi.org/api\" です。"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "DOI プロバイダー。\n\nrclone が対応する DOI プロバイダーを自動認識できない場合に、DOI プロバイダーを設定できます。"
+      }
+    },
+    "drive": {
+      "acknowledge_abuse": {
+        "title": "不正利用の承認",
+        "help": "cannotDownloadAbusiveFile を返すファイルのダウンロードを許可する場合に設定します。\n\nファイルのダウンロード時に \"This file has been identified as malware or spam and cannot be downloaded\" というエラーがエラーコード \"cannotDownloadAbusiveFile\" とともに返される場合、このフラグを rclone に指定すると、ファイルダウンロードのリスクを承知した上で rclone がとにかくダウンロードします。\n\nサービスアカウントを使用している場合、このフラグが機能するには Manager 権限（Content Manager ではなく）が必要な点に注意してください。SA に適切な権限がない場合、Google はこのフラグを単に無視します。"
+      },
+      "allow_import_name_change": {
+        "title": "インポート名変更を許可",
+        "help": "Google ドキュメントのアップロード時にファイルタイプの変更を許可します。\n\n例: file.doc を file.docx に。これは同期を混乱させ、毎回再アップロードを引き起こします。"
+      },
+      "alternate_export": {
+        "title": "代替エクスポート",
+        "help": "非推奨: 現在は不要です。"
+      },
+      "auth_owner_only": {
+        "title": "所有者のみ認証",
+        "help": "認証済みユーザーが所有するファイルのみを対象とします。"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\n256k 以上の 2 のべき乗である必要があります。\n\n大きくするとパフォーマンスが向上しますが、転送ごとに各チャンクがメモリにバッファーされる点に注意してください。\n\n小さくするとメモリ使用量は減りますが、パフォーマンスは低下します。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "Google アプリケーションクライアント ID\n独自の ID を設定することを推奨します。\n作成方法は https://rclone.org/drive/#making-your-own-client-id を参照してください。\n空欄のままにすると、パフォーマンスの低い内部キーが使用されます。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "copy_shortcut_content": {
+        "title": "ショートカットの内容をコピー",
+        "help": "サーバーサイドコピー時にショートカット自体ではなく、その内容をコピーします。\n\nサーバーサイドコピーを行う際、通常 rclone はショートカットをショートカットとしてコピーします。\n\nこのフラグを使用すると、サーバーサイドコピー時に rclone はショートカット自体ではなく、その内容をコピーします。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_http2": {
+        "title": "HTTP/2 無効化",
+        "help": "drive での http2 使用を無効化します。\n\n現在、google drive バックエンドと HTTP/2 に関して未解決の問題があります。そのため drive バックエンドでは既定で HTTP/2 が無効化されていますが、ここで再度有効にすることができます。問題が解決すればこのフラグは削除されます。\n\n参照: https://github.com/rclone/rclone/issues/3631\n\n"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイム（環境変数、環境変数がない場合はインスタンスのメタデータ）から IAM クレデンシャルを取得します。\n\nservice_account_file と service_account_credentials が空欄の場合のみ適用されます。"
+      },
+      "export_formats": {
+        "title": "エクスポート形式",
+        "help": "Google ドキュメントのダウンロードに使用する優先形式のカンマ区切りリスト。"
+      },
+      "fast_list_bug_fix": {
+        "title": "高速リストのバグ回避",
+        "help": "Google Drive の一覧取得のバグを回避します。\n\n通常 rclone は --fast-list（ListR）使用時に Google Drive のバグを回避します。このバグでは、検索 \"(A in parents) or (B in parents)\" が何も返さないことがあります。#3114、#4289、https://issuetracker.google.com/issues/149522397 を参照してください\n\nrclone は、一覧取得時に複数のディレクトリで項目が見つからない場合にこれを検出し、それぞれのディレクトリを個別に一覧取得するリトライを行います。\n\nこれは、空のディレクトリが多数ある場合、rclone がそれらをすべて個別に一覧取得することになり、API 呼び出しが大幅に増える可能性があることを意味します。\n\nこのフラグでこの回避策を無効化できます。これは通常の使用では推奨**されません**。多数の空のディレクトリがあるなど、特定の問題がある場合にのみ使用してください。\n"
+      },
+      "formats": {
+        "title": "形式",
+        "help": "非推奨: export_formats を参照してください。"
+      },
+      "impersonate": {
+        "title": "偽装ユーザー",
+        "help": "サービスアカウント使用時に、このユーザーになりすまします。"
+      },
+      "import_formats": {
+        "title": "インポート形式",
+        "help": "Google ドキュメントのアップロードに使用する優先形式のカンマ区切りリスト。"
+      },
+      "keep_revision_forever": {
+        "title": "リビジョンを永久保持",
+        "help": "各ファイルの新しい最新リビジョンを永久に保持します。"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "一覧取得チャンクのサイズ。100〜1000、0 で無効化。"
+      },
+      "metadata_labels": {
+        "title": "メタデータラベル",
+        "help": "メタデータでラベルを読み込み・書き込みするかどうかを制御します。\n\nファイルからラベルメタデータを読み込むには追加の API トランザクションが必要で、一覧取得が遅くなります。メタデータからラベルを設定することが常に望ましいとは限りません。\n\nラベルの形式は drive API のドキュメント https://developers.google.com/drive/api/reference/rest/v3/Label に記載されています。rclone はこの形式の JSON ダンプを提供するだけです。\n\nラベルを設定する際、ラベルとフィールドは既に存在している必要があります。rclone がそれらを作成することはありません。つまり、2 つの異なるアカウント間でラベルを転送する場合、事前にラベルを作成し、メタデータマッパーを使用して両アカウント間の ID を変換する必要があります。\n"
+      },
+      "metadata_owner": {
+        "title": "メタデータ所有者",
+        "help": "メタデータで所有者を読み込み・書き込みするかどうかを制御します。\n\n所有者はファイルメタデータの標準的な部分のため、簡単に読み込めます。ただし、メタデータから所有者を設定することが常に望ましいとは限りません。\n\n共有ドライブでは所有者を設定できず、所有権を設定すると新しい所有者にメールが送信される（これは無効化できません）点、また組織外の人物へは所有権を移転できない点に注意してください。\n"
+      },
+      "metadata_permissions": {
+        "title": "メタデータの権限",
+        "help": "メタデータで権限を読み込み・書き込みするかどうかを制御します。\n\nファイルから権限メタデータを読み込むことは高速に行えますが、メタデータから権限を設定することが常に望ましいとは限りません。\n\nrclone は共有ドライブでの継承された権限、およびマイドライブでの所有者権限（これらは所有者メタデータに重複するため）を破棄する点に注意してください。\n"
+      },
+      "pacer_burst": {
+        "title": "ペーサーバースト数",
+        "help": "スリープなしで許可する API 呼び出しの回数。"
+      },
+      "pacer_min_sleep": {
+        "title": "ペーサー最小スリープ時間",
+        "help": "API 呼び出しの間隔の最小待機時間。"
+      },
+      "resource_key": {
+        "title": "リソースキー",
+        "help": "リンク共有されたファイルへアクセスするためのリソースキー。\n\n以下のようなリンクで共有されたファイルにアクセスする必要がある場合\n\n    https://drive.google.com/drive/folders/XXX?resourcekey=YYY&usp=sharing\n\n最初の部分 \"XXX\" を \"root_folder_id\" として、2 番目の部分 \"YYY\" を \"resource_key\" として使用する必要があります。そうしないと、ディレクトリへのアクセス時に 404 not found エラーが発生します。\n\n参照: https://developers.google.com/drive/api/guides/resource-keys\n\nこのリソースキーの要件は、一部の古いファイルにのみ適用されます。\n\nまた、（rclone を認証したユーザーで）Web インターフェースで一度フォルダを開くだけで、リソースキーが不要になるようです。\n"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n通常は空欄のままにしてください。\n\n\"Computers\" フォルダにアクセスする場合（ドキュメント参照）、または rclone にルート以外のフォルダを起点として使用させる場合に入力してください。\n"
+      },
+      "scope": {
+        "title": "スコープ",
+        "help": "drive にアクセスを要求する際に rclone が使用するスコープのカンマ区切りリスト。"
+      },
+      "server_side_across_configs": {
+        "title": "設定間でのサーバーサイド操作",
+        "help": "非推奨: 代わりに --server-side-across-configs を使用してください。\n\nサーバーサイド操作（コピーなど）を異なる drive 設定間で機能させます。\n\n2 つの異なる Google ドライブ間でサーバーサイドコピーを行いたい場合に便利です。任意の 2 つの設定間で機能するかを判断しやすくないため、既定では有効になっていない点に注意してください。"
+      },
+      "service_account_credentials": {
+        "title": "サービスアカウントクレデンシャル",
+        "help": "サービスアカウントクレデンシャルの JSON データ。\n\n通常は空欄のままにしてください。\n対話的ログインの代わりにサービスアカウントを使用したい場合にのみ必要です。"
+      },
+      "service_account_file": {
+        "title": "サービスアカウントファイル",
+        "help": "サービスアカウントクレデンシャルの JSON ファイルパス。\n\n通常は空欄のままにしてください。\n対話的ログインの代わりにサービスアカウントを使用したい場合にのみ必要です。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "shared_with_me": {
+        "title": "自分と共有中",
+        "help": "自分と共有されているファイルのみを表示します。\n\nrclone に \"共有アイテム\" フォルダ（Google Drive で他のユーザーが共有したファイルやフォルダにアクセスできる場所）を対象に操作するよう指示します。\n\nこれは \"list\"（lsd、lsl など）コマンドと \"copy\" コマンド（copy、sync など）、および他のすべてのコマンドで機能します。"
+      },
+      "show_all_gdocs": {
+        "title": "すべての Google ドキュメントを表示",
+        "help": "エクスポートできないものも含め、すべての Google ドキュメントを一覧に表示します。\n\nこのフラグなしで Google フォームのサーバーサイドコピーを試みると、以下のエラーが発生します:\n\n    No export formats found for \"application/vnd.google-apps.form\"\n\nしかしこのフラグを追加すると、フォームをサーバーサイドコピーできるようになります。\n\nこのモードでは rclone は Google ドキュメントのファイル名に拡張子を追加しない点に注意してください。\n\nGoogle ドキュメントをダウンロードしようとする場合は、このフラグを使用しないでください。rclone はダウンロードに失敗します。\n"
+      },
+      "size_as_quota": {
+        "title": "サイズをクォータとして表示",
+        "help": "サイズを実際のサイズではなく、使用されているストレージクォータとして表示します。\n\nファイルのサイズを、使用されているストレージクォータとして表示します。これは現在のバージョンに加え、永久保持に設定された古いバージョンも含みます。\n\n**警告**: このフラグは予期しない結果を招く場合があります。\n\n設定ファイルでこのフラグを設定することは推奨されません。推奨される使用方法は、rclone ls/lsl/lsf/lsjson/etc 実行時のみに --drive-size-as-quota フラグを使用することです。\n\n同期にこのフラグを使用する場合（非推奨）、--ignore-size も使用する必要があります。"
+      },
+      "skip_checksum_gphotos": {
+        "title": "Google フォトのチェックサムをスキップ",
+        "help": "Google フォトと動画のチェックサムのみをスキップします。\n\nGoogle フォトや動画の転送時にチェックサムエラーが発生する場合に使用してください。\n\nこのフラグを設定すると、Google フォトと動画は空のチェックサムを返すようになります。\n\nGoogle フォトは \"photos\" スペースに属していることで識別されます。\n\nチェックサムの破損は、Google が画像/動画を変更してもチェックサムを更新しないことが原因です。"
+      },
+      "skip_dangling_shortcuts": {
+        "title": "無効なショートカットをスキップ",
+        "help": "設定すると無効なショートカットファイルをスキップします。\n\nこれを設定すると、rclone は一覧に無効なショートカットを表示しません。\n"
+      },
+      "skip_gdocs": {
+        "title": "Google ドキュメントをスキップ",
+        "help": "すべての一覧で Google ドキュメントをスキップします。\n\n指定すると、Google ドキュメントは事実上 rclone から見えなくなります。"
+      },
+      "skip_shortcuts": {
+        "title": "ショートカットをスキップ",
+        "help": "設定するとショートカットファイルをスキップします。\n\n通常 rclone はショートカットファイルを参照解決し、元のファイルであるかのように表示します（[ショートカットの章](#shortcuts)を参照）。このフラグを設定すると、rclone はショートカットファイルを完全に無視します。\n"
+      },
+      "starred_only": {
+        "title": "スター付きのみ",
+        "help": "スター付きのファイルのみを表示します。"
+      },
+      "stop_on_download_limit": {
+        "title": "ダウンロード上限で停止",
+        "help": "ダウンロード上限エラーを致命的エラーとして扱います。\n\n本稿執筆時点では、Google Drive から 1 日にダウンロードできるデータは 10 TiB までです（これは非公開の制限です）。この上限に達すると、Google Drive はやや異なるエラーメッセージを返します。このフラグを設定すると、これらのエラーを致命的エラーとして扱います。これにより進行中の同期が停止します。\n\nこの検出は Google が文書化していないエラーメッセージ文字列に依存しているため、将来的に動作しなくなる可能性がある点に注意してください。\n"
+      },
+      "stop_on_upload_limit": {
+        "title": "アップロード上限で停止",
+        "help": "アップロード上限エラーを致命的エラーとして扱います。\n\n本稿執筆時点では、Google Drive に 1 日にアップロードできるデータは 750 GiB までです（これは非公開の制限です）。この上限に達すると、Google Drive はやや異なるエラーメッセージを返します。このフラグを設定すると、これらのエラーを致命的エラーとして扱います。これにより進行中の同期が停止します。\n\nこの検出は Google が文書化していないエラーメッセージ文字列に依存しているため、将来的に動作しなくなる可能性がある点に注意してください。\n\n参照: https://github.com/rclone/rclone/issues/3857\n"
+      },
+      "team_drive": {
+        "title": "チームドライブ",
+        "help": "共有ドライブ（チームドライブ）の ID。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "trashed_only": {
+        "title": "ゴミ箱のみ表示",
+        "help": "ゴミ箱内のファイルのみを表示します。\n\n削除済みファイルを元のディレクトリ構造のまま表示します。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。"
+      },
+      "use_created_date": {
+        "title": "作成日時を使用",
+        "help": "更新日時の代わりにファイルの作成日時を使用します。\n\nデータをダウンロードする際、最終更新日時の代わりに作成日時を使用したい場合に便利です。\n\n**警告**: このフラグは予期しない結果を招く場合があります。\n\nドライブへのアップロード時、作成後に変更されていない限り、すべてのファイルが上書きされます。ダウンロード時にはその逆が発生します。この副作用は \"--checksum\" フラグを使用することで回避できます。\n\nこの機能は、Google フォトによって記録された写真の撮影日を保持するために実装されました。まず Google ドライブの設定で \"Google フォトフォルダを作成\" オプションを確認する必要があります。その後、写真をローカルにコピーまたは移動し、画像が撮影された（作成された）日付を更新日時として設定できます。"
+      },
+      "use_shared_date": {
+        "title": "共有日時を使用",
+        "help": "更新日時の代わりにファイルが共有された日付を使用します。\n\n\"--drive-use-created-date\" と同様、このフラグはファイルのアップロード/ダウンロード時に予期しない結果を招く場合がある点に注意してください。\n\nこのフラグと \"--drive-use-created-date\" の両方が設定されている場合、作成日時が使用されます。"
+      },
+      "use_trash": {
+        "title": "ゴミ箱を使用",
+        "help": "完全に削除する代わりにファイルをゴミ箱へ送ります。\n\n既定値は true、つまりファイルをゴミ箱へ送ります。\n完全に削除する場合は `--drive-use-trash=false` を使用してください。"
+      },
+      "v2_download_min_size": {
+        "title": "V2 ダウンロード最小サイズ",
+        "help": "オブジェクトがこれより大きい場合、ダウンロードに drive v2 API を使用します。"
+      },
+      "metadata_enforce_expansive_access": {
+        "title": "メタデータ拡張アクセス強制",
+        "help": "リクエストで拡張アクセスルールを強制するかどうか。\n\n2026 年 2 月からこのフラグは既定で設定されるため、それまではこのフラグをテストに使用できます。\n\n参照: https://developers.google.com/workspace/drive/api/guides/limited-expansive-access\n"
+      }
+    },
+    "dropbox": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "batch_commit_timeout": {
+        "title": "バッチコミットタイムアウト",
+        "help": "バッチのコミット完了を待つ最大時間。（現在は使用されていません）"
+      },
+      "batch_mode": {
+        "title": "バッチモード",
+        "help": "ファイルアップロードのバッチ処理 sync|async|off。\n\nこれは rclone が使用するバッチモードを設定します。\n\n詳細は [公式ドキュメント](https://rclone.org/dropbox/#batch-mode) を参照してください\n\n以下の 3 つの値を指定できます\n\n- off - バッチ処理なし\n- sync - バッチアップロードし完了を確認（既定）\n- async - バッチアップロードするが完了は確認しない\n\nrclone は終了時に未完了のバッチをすべて閉じるため、終了時に遅延が発生する場合があります。\n"
+      },
+      "batch_size": {
+        "title": "バッチサイズ",
+        "help": "アップロードバッチ内のファイルの最大数。\n\nアップロードするファイルのバッチサイズを設定します。1000 未満である必要があります。\n\n既定値は 0 で、その場合 rclone は batch_mode の設定に応じてバッチサイズを自動計算します。\n\n- batch_mode: async - 既定の batch_size は 100\n- batch_mode: sync - 既定の batch_size は --transfers と同じ\n- batch_mode: off - 使用されません\n\nrclone は終了時に未完了のバッチをすべて閉じるため、終了時に遅延が発生する場合があります。\n\n小さなファイルを大量にアップロードする場合、この設定を行うと処理が大幅に高速化されるためおすすめです。スループットを最大化するには --transfers 32 を使用できます。\n"
+      },
+      "batch_timeout": {
+        "title": "バッチタイムアウト",
+        "help": "アイドル状態のアップロードバッチをアップロードするまでの最大待機時間。\n\nアップロードバッチがこれより長くアイドル状態になると、アップロードされます。\n\n既定値は 0 で、その場合 rclone は使用中の batch_mode に応じて適切な既定値を選択します。\n\n- batch_mode: async - 既定の batch_timeout は 10s\n- batch_mode: sync - 既定の batch_timeout は 500ms\n- batch_mode: off - 使用されません\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ（150Mi 未満）。\n\nこれより大きいファイルはこのサイズのチャンクでアップロードされます。\n\nチャンクはリトライに対応するためメモリに（一度に 1 つずつ）バッファーされる点に注意してください。この値を大きくすると速度がわずかに向上します（テストでは 128 MiB で最大約 10%）が、メモリ使用量が増加します。メモリに余裕がない場合は小さく設定できます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "export_formats": {
+        "title": "エクスポート形式",
+        "help": "ファイルのエクスポートに使用する優先形式のカンマ区切りリスト\n\n一部の Dropbox ファイル（Dropbox Paper ドキュメントなど）は、別の形式にエクスポートすることでのみアクセスできます。\n\nこのようなファイルごとに、rclone はこのリストの中で Dropbox が有効と判断する最初の形式を選択します。有効な形式がない場合は、Dropbox の既定形式が選択されます。\n\n既知の形式には \"html\"、\"md\"（markdown）などがあります"
+      },
+      "impersonate": {
+        "title": "偽装ユーザー",
+        "help": "ビジネスアカウント使用時に、このユーザーになりすまします。\n\nこのオプションを使用する場合は、\"rclone config\" 実行時にこのフラグを設定してください。これにより rclone は通常は要求しない \"members.read\" スコープを要求するようになります。これは、メンバーのメールアドレスを、dropbox が API で使用する内部 ID に変換するために必要です。\n\n\"members.read\" スコープを使用するには、OAuth フロー中に Dropbox のチーム管理者による承認が必要です。\n\n現在 rclone の既定の権限セットには \"members.read\" が含まれていないため、このオプションを使用するには独自のアプリ（独自の client_id と client_secret を設定）を使用する必要があります。これは v1.55 以降がどこでも使用されるようになれば追加される可能性があります。\n"
+      },
+      "pacer_min_sleep": {
+        "title": "ペーサー最小スリープ時間",
+        "help": "API 呼び出しの間隔の最小待機時間。"
+      },
+      "root_namespace": {
+        "title": "ルート名前空間",
+        "help": "すべてのパスのルートとして使用する Dropbox の名前空間 ID を別途指定します。"
+      },
+      "shared_files": {
+        "title": "共有ファイル",
+        "help": "rclone を個別の共有ファイルに対して操作させます。\n\nこのモードでは rclone の機能は大幅に制限され、一覧取得（ls、lsl など）操作とダウンロードなどの読み込み操作のみがサポートされます。他のすべての操作は無効になります。"
+      },
+      "shared_folders": {
+        "title": "共有フォルダ",
+        "help": "rclone を共有フォルダに対して操作させます。\n\t\t\t\nこのフラグをパスを指定せずに使用した場合、List 操作のみがサポートされ、利用可能なすべての共有フォルダが一覧表示されます。パスを指定した場合、最初の部分は共有フォルダ名として解釈されます。rclone はこの共有フォルダをルート名前空間にマウントしようとします。マウントに成功すると rclone は通常どおり処理を続行します。共有フォルダはこの時点でほぼ通常のフォルダとなり、すべての通常操作がサポートされます。\n\n処理後に共有フォルダをアンマウントすることはないため、特定の共有フォルダを一度使用した後は --dropbox-shared-folders を省略できます。\n\n共有フォルダを扱う別の方法として --dropbox-root-namespace も参照してください。"
+      },
+      "show_all_exports": {
+        "title": "すべてのエクスポートを表示",
+        "help": "一覧にエクスポート可能なすべてのファイルを表示します。\n\nこのフラグを追加すると、エクスポート可能なすべてのファイルをサーバーサイドでコピーできるようになります。このモードでは、rclone はエクスポート可能なファイル名に拡張子を追加しない点に注意してください。\n\nエクスポート可能なファイルをダウンロードしようとする場合は、このフラグを使用しないでください。rclone はダウンロードに失敗します。\n"
+      },
+      "skip_exports": {
+        "title": "エクスポートをスキップ",
+        "help": "すべての一覧でエクスポート可能なファイルをスキップします。\n\n指定すると、エクスポート可能なファイルは事実上 rclone から見えなくなります。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      }
+    },
+    "fichier": {
+      "api_key": {
+        "title": "API キー",
+        "help": "API キー。https://1fichier.com/console/params.pl から取得してください。"
+      },
+      "cdn": {
+        "title": "CDN",
+        "help": "CDN ダウンロードリンクを使用する場合に設定します。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "file_password": {
+        "title": "ファイルパスワード",
+        "help": "パスワード保護された共有ファイルをダウンロードする場合は、このパラメーターを追加してください。"
+      },
+      "folder_password": {
+        "title": "フォルダパスワード",
+        "help": "パスワード保護された共有フォルダ内のファイル一覧を取得する場合は、このパラメーターを追加してください。"
+      },
+      "shared_folder": {
+        "title": "共有フォルダ",
+        "help": "共有フォルダをダウンロードする場合は、このパラメーターを追加してください。"
+      }
+    },
+    "filefabric": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "permanent_token": {
+        "title": "永続トークン",
+        "help": "永続認証トークン。\n\n永続認証トークンは Enterprise File Fabric のユーザーダッシュボードの Security 内、\"My Authentication Tokens\" という項目から作成できます。Manage ボタンをクリックして作成してください。\n\nこれらのトークンは通常数年間有効です。\n\n詳細は https://docs.storagemadeeasy.com/organisationcloud/api-tokens を参照してください\n"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n\n通常は空欄のままにしてください。\n\n指定した ID のディレクトリを起点として rclone を開始したい場合に入力してください。\n"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "セッショントークン。\n\nこれは rclone が設定ファイルにキャッシュするセッショントークンです。通常 1 時間有効です。\n\nこの値は設定しないでください。rclone が自動的に設定します。\n"
+      },
+      "token_expiry": {
+        "title": "トークン有効期限",
+        "help": "トークンの有効期限。\n\nこの値は設定しないでください。rclone が自動的に設定します。\n"
+      },
+      "url": {
+        "title": "URL",
+        "help": "接続先の Enterprise File Fabric の URL。"
+      },
+      "version": {
+        "title": "バージョン",
+        "help": "file fabric から読み取ったバージョン。\n\nこの値は設定しないでください。rclone が自動的に設定します。\n"
+      }
+    },
+    "filelu": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "key": {
+        "title": "キー",
+        "help": "マイアカウントから取得した FileLu の Rclone キー"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。これより大きいファイルは chunk_size 単位のチャンクでアップロードされます。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。マルチパートアップロードで使用されます。"
+      }
+    },
+    "filescom": {
+      "api_key": {
+        "title": "API キー",
+        "help": "Files.com への認証に使用する API キー。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "Files.com への認証に使用するパスワード。"
+      },
+      "site": {
+        "title": "サイト",
+        "help": "サイトのサブドメイン（例: mysite）またはカスタムドメイン（例: myfiles.customdomain.com）。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "Files.com への認証に使用するユーザー名。"
+      }
+    },
+    "ftp": {
+      "allow_insecure_tls_ciphers": {
+        "title": "安全性の低い TLS 暗号を許可",
+        "help": "安全性の低い TLS 暗号を許可します\n\nこのフラグを設定すると、安全な既定の暗号に加えて、以下の TLS 暗号の使用が許可されます:\n\n- TLS_RSA_WITH_AES_128_GCM_SHA256\n"
+      },
+      "ask_password": {
+        "title": "パスワード入力を許可",
+        "help": "必要な場合に FTP パスワードの入力を求めることを許可します。\n\nこれを設定し、パスワードが指定されていない場合、rclone はパスワードの入力を求めます\n"
+      },
+      "close_timeout": {
+        "title": "クローズタイムアウト",
+        "help": "クローズの応答を待つ最大時間。"
+      },
+      "concurrency": {
+        "title": "並列数",
+        "help": "FTP の同時接続数の最大値。0 で無制限。\n\nこれを設定するとデッドロックが発生しやすくなるため、注意して使用する必要があります。\n\n同期またはコピーを行う場合は、並列数を `--transfers` と `--checkers` の合計より 1 大きくしてください。\n\n`--check-first` を使用する場合は、`--checkers` と `--transfers` の最大値より 1 大きいだけで済みます。\n\nしたがって `concurrency 3` の場合、`--checkers 2 --transfers 2 --check-first` または `--checkers 1 --transfers 1` を使用します。\n\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_epsv": {
+        "title": "EPSV 無効化",
+        "help": "サーバーがサポートを通知していても EPSV の使用を無効化します。"
+      },
+      "disable_mlsd": {
+        "title": "MLSD 無効化",
+        "help": "サーバーがサポートを通知していても MLSD の使用を無効化します。"
+      },
+      "disable_tls13": {
+        "title": "TLS 1.3 無効化",
+        "help": "TLS 1.3 を無効化します（バグのある TLS 実装を持つ FTP サーバー向けの回避策）"
+      },
+      "disable_utf8": {
+        "title": "UTF-8 無効化",
+        "help": "サーバーがサポートを通知していても UTF-8 の使用を無効化します。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "explicit_tls": {
+        "title": "明示的 TLS",
+        "help": "明示的 FTPS（FTP over TLS）を使用します。\n\n明示的 FTP over TLS を使用する場合、クライアントはプレーンテキスト接続を暗号化接続にアップグレードするため、サーバーに明示的にセキュリティを要求します。暗黙的 FTPS と併用することはできません。"
+      },
+      "force_list_hidden": {
+        "title": "隠しファイル強制表示",
+        "help": "LIST -a を使用して隠しファイルおよびフォルダの一覧取得を強制します。これにより MLSD の使用は無効化されます。"
+      },
+      "host": {
+        "title": "ホスト",
+        "help": "接続先の FTP ホスト。\n\n例: \"ftp.example.com\"。"
+      },
+      "http_proxy": {
+        "title": "HTTP プロキシ",
+        "help": "HTTP CONNECT プロキシの URL\n\nHTTP CONNECT メソッドをサポートする HTTP プロキシの URL を設定してください。\n"
+      },
+      "idle_timeout": {
+        "title": "アイドルタイムアウト",
+        "help": "アイドル接続を閉じるまでの最大時間。\n\n指定した時間内に接続プールに接続が返却されない場合、rclone は接続プールを空にします。\n\n0 に設定すると接続を無期限に保持します。\n"
+      },
+      "no_check_certificate": {
+        "title": "証明書検証なし",
+        "help": "サーバーの TLS 証明書を検証しません。"
+      },
+      "no_check_upload": {
+        "title": "アップロード確認なし",
+        "help": "アップロードが正常に完了したかを確認しません\n\n通常 rclone はファイルをアップロードした後、サイズと更新日時が期待どおりであることを確認するため、アップロードの存在確認を試みます。\n\nこのフラグを設定するとこの確認が無効になります。これにより、書き込み専用のフォルダへのアップロードが可能になります。\n\n書き込み専用フォルダへアップロードする場合は、--inplace フラグも必要になる可能性が高いです。\n"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "FTP パスワード。"
+      },
+      "port": {
+        "title": "ポート",
+        "help": "FTP ポート番号。"
+      },
+      "shut_timeout": {
+        "title": "シャットダウンタイムアウト",
+        "help": "データ接続のクローズステータスを待つ最大時間。"
+      },
+      "socks_proxy": {
+        "title": "SOCKS プロキシ",
+        "help": "SOCKS 5 プロキシホスト。\n\t\t\nuser:pass@host:port、user@host:port、host:port の形式をサポートします。\n\t\t\n例:\n\t\t\n    myUser:myPass@localhost:9005\n"
+      },
+      "tls": {
+        "title": "TLS",
+        "help": "暗黙的 FTPS（FTP over TLS）を使用します。\n\n暗黙的 FTP over TLS を使用する場合、クライアントは最初から TLS で接続するため、TLS 非対応のサーバーとの互換性が失われます。通常ポート 21 ではなくポート 990 で提供されます。明示的 FTPS と併用することはできません。"
+      },
+      "tls_cache_size": {
+        "title": "TLS キャッシュサイズ",
+        "help": "すべての制御接続とデータ接続に対する TLS セッションキャッシュのサイズ。\n\nTLS キャッシュにより、TLS セッションを再開し、接続間で PSK を再利用できます。既定のサイズで不十分な場合、TLS 再開エラーが発生することがあるため、その場合は値を増やしてください。既定で有効です。無効にするには 0 を使用してください。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "FTP ユーザー名。"
+      },
+      "writing_mdtm": {
+        "title": "MDTM での書き込み",
+        "help": "更新日時の設定に MDTM を使用します（VsFtpd の癖への対応）"
+      }
+    },
+    "gofile": {
+      "access_token": {
+        "title": "アクセストークン",
+        "help": "API アクセストークン\n\nWeb 管理画面から取得できます。"
+      },
+      "account_id": {
+        "title": "アカウント ID",
+        "help": "アカウント ID\n\n通常は空欄のままにしてください。rclone が自動的に入力します。\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "list_chunk": {
+        "title": "リストチャンク数",
+        "help": "1 回の呼び出しで一覧取得する項目数"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID\n\n通常は空欄のままにしてください。rclone が自動的に入力します。\n\nrclone を特定のフォルダに限定したい場合は入力してください。詳細はドキュメントを参照してください。\n"
+      }
+    },
+    "google cloud storage": {
+      "access_token": {
+        "title": "アクセストークン",
+        "help": "短期アクセストークン。\n\n通常は空欄のままにしてください。\n対話的ログインの代わりに短期アクセストークンを使用したい場合にのみ必要です。"
+      },
+      "anonymous": {
+        "title": "匿名アクセス",
+        "help": "クレデンシャルなしで公開バケットおよびオブジェクトにアクセスします。\n\nファイルのダウンロードのみを行い、クレデンシャルを設定しない場合は 'true' に設定してください。"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "bucket_acl": {
+        "title": "バケット ACL",
+        "help": "新規バケット用のアクセス制御リスト。"
+      },
+      "bucket_policy_only": {
+        "title": "バケットポリシーのみ",
+        "help": "アクセスチェックにバケットレベルの IAM ポリシーを使用します。\n\nBucket Policy Only が設定されたバケットにオブジェクトをアップロードしたい場合は、これを設定する必要があります。\n\n設定すると、rclone は以下のようになります:\n\n- バケットに設定された ACL を無視します\n- オブジェクトに設定された ACL を無視します\n- Bucket Policy Only を設定した状態でバケットを作成します\n\nドキュメント: https://cloud.google.com/storage/docs/bucket-policy-only\n"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "decompress": {
+        "title": "解凍",
+        "help": "設定すると gzip エンコードされたオブジェクトを解凍します。\n\nGCS には \"Content-Encoding: gzip\" を設定した状態でオブジェクトをアップロードできます。通常 rclone はこれらのファイルを圧縮されたオブジェクトとしてダウンロードします。\n\nこのフラグを設定すると、rclone は受信時に \"Content-Encoding: gzip\" のこれらのファイルを解凍します。これにより rclone はサイズとハッシュをチェックできなくなりますが、ファイル内容は解凍された状態になります。\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "directory_markers": {
+        "title": "ディレクトリマーカー",
+        "help": "新しいディレクトリが作成された際、末尾がスラッシュの空オブジェクトをアップロードします\n\nバケットベースのリモートでは空のフォルダがサポートされていないため、このオプションは \"/\" で終わる空のオブジェクトを作成し、フォルダを維持します。\n"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "ストレージ API のカスタムエンドポイント。プロバイダーの既定値を使用する場合は空欄のままにしてください。\n\nサブパスを含むカスタムエンドポイント（例: example.org/custom/endpoint）を使用する場合、基盤となる Google API Go クライアントライブラリの制限により、アップロード操作時にサブパスは無視されます。\nダウンロードおよび一覧取得の操作は完全なエンドポイントパスで正しく動作します。\nアップロードでサブパスのサポートが必要な場合は、カスタムエンドポイント設定でサブパスを使用しないでください。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイム（環境変数、環境変数がない場合はインスタンスのメタデータ）から GCP IAM クレデンシャルを取得します。\n\nservice_account_file と service_account_credentials が空欄の場合のみ適用されます。"
+      },
+      "location": {
+        "title": "ロケーション",
+        "help": "新しく作成するバケットのロケーション。"
+      },
+      "no_check_bucket": {
+        "title": "バケット確認なし",
+        "help": "設定すると、バケットが存在するかの確認や作成を試みません。\n\nバケットが既に存在することがわかっている場合に、rclone が行うトランザクション数を最小限に抑えたい場合に便利です。\n"
+      },
+      "object_acl": {
+        "title": "オブジェクト ACL",
+        "help": "新規オブジェクト用のアクセス制御リスト。"
+      },
+      "project_number": {
+        "title": "プロジェクト番号",
+        "help": "プロジェクト番号。\n\n任意 - バケットの一覧取得/作成/削除にのみ必要です。開発者コンソールで確認してください。"
+      },
+      "service_account_credentials": {
+        "title": "サービスアカウントクレデンシャル",
+        "help": "サービスアカウントクレデンシャルの JSON データ。\n\n通常は空欄のままにしてください。\n対話的ログインの代わりにサービスアカウントを使用したい場合にのみ必要です。"
+      },
+      "service_account_file": {
+        "title": "サービスアカウントファイル",
+        "help": "サービスアカウントクレデンシャルの JSON ファイルパス。\n\n通常は空欄のままにしてください。\n対話的ログインの代わりにサービスアカウントを使用したい場合にのみ必要です。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "storage_class": {
+        "title": "ストレージクラス",
+        "help": "Google Cloud Storage にオブジェクトを保存する際に使用するストレージクラス。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "user_project": {
+        "title": "ユーザープロジェクト",
+        "help": "ユーザープロジェクト。\n\n任意 - リクエスター負担（requester pays）の場合にのみ必要です。"
+      }
+    },
+    "google photos": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "batch_commit_timeout": {
+        "title": "バッチコミットタイムアウト",
+        "help": "バッチのコミット完了を待つ最大時間。（現在は使用されていません）"
+      },
+      "batch_mode": {
+        "title": "バッチモード",
+        "help": "ファイルアップロードのバッチ処理 sync|async|off。\n\nこれは rclone が使用するバッチモードを設定します。\n\n以下の 3 つの値を指定できます\n\n- off - バッチ処理なし\n- sync - バッチアップロードし完了を確認（既定）\n- async - バッチアップロードするが完了は確認しない\n\nrclone は終了時に未完了のバッチをすべて閉じるため、終了時に遅延が発生する場合があります。\n"
+      },
+      "batch_size": {
+        "title": "バッチサイズ",
+        "help": "アップロードバッチ内のファイルの最大数。\n\nアップロードするファイルのバッチサイズを設定します。50 未満である必要があります。\n\n既定値は 0 で、その場合 rclone は batch_mode の設定に応じてバッチサイズを自動計算します。\n\n- batch_mode: async - 既定の batch_size は 50\n- batch_mode: sync - 既定の batch_size は --transfers と同じ\n- batch_mode: off - 使用されません\n\nrclone は終了時に未完了のバッチをすべて閉じるため、終了時に遅延が発生する場合があります。\n\n小さなファイルを大量にアップロードする場合、この設定を行うと処理が大幅に高速化されるためおすすめです。スループットを最大化するには --transfers 32 を使用できます。\n"
+      },
+      "batch_timeout": {
+        "title": "バッチタイムアウト",
+        "help": "アイドル状態のアップロードバッチをアップロードするまでの最大待機時間。\n\nアップロードバッチがこれより長くアイドル状態になると、アップロードされます。\n\n既定値は 0 で、その場合 rclone は使用中の batch_mode に応じて適切な既定値を選択します。\n\n- batch_mode: async - 既定の batch_timeout は 10s\n- batch_mode: sync - 既定の batch_timeout は 1s\n- batch_mode: off - 使用されません\n"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "include_archived": {
+        "title": "アーカイブ済みを含める",
+        "help": "アーカイブ済みのメディアも表示・ダウンロードします。\n\n既定では rclone はアーカイブ済みのメディアをリクエストしません。そのため、同期時にアーカイブ済みメディアはディレクトリ一覧に表示されず、転送もされません。\n\nアルバム内のメディアは、アーカイブ状態にかかわらず常に表示・同期される点に注意してください。\n\nこのフラグを設定すると、アーカイブ済みメディアも常にディレクトリ一覧に表示され、転送されます。\n\nこのフラグを設定しない場合、アーカイブ済みメディアはディレクトリ一覧に表示されず、転送もされません。"
+      },
+      "proxy": {
+        "title": "プロキシ",
+        "help": "フル解像度画像のダウンロードに gphotosdl プロキシを使用します\n\nGoogle API はフル解像度ではない画像や動画、または EXIF データが欠落したものを配信することがあります。\n\nしかし gphotosdl プロキシを使用すると、変更されていないオリジナル画像をダウンロードできます。\n\nこれはバックグラウンドでヘッドレスブラウザを実行します。\n\nソフトウェアは [gphotosdl](https://github.com/rclone/gphotosdl) からダウンロードしてください\n\nまず以下を実行します\n\n    gphotosdl -login\n\ngoogle photos にログインしたらブラウザウィンドウを閉じ、以下を実行します\n\n    gphotosdl\n\nその後、パラメーター `--gphotos-proxy \"http://localhost:8282\"` を指定すると rclone がこのプロキシを使用するようになります。\n"
+      },
+      "read_only": {
+        "title": "読み取り専用",
+        "help": "Google Photos バックエンドを読み取り専用にする場合に設定します。\n\n読み取り専用を選択した場合、rclone は写真への読み取り専用アクセスのみをリクエストします。それ以外の場合は完全アクセスをリクエストします。"
+      },
+      "read_size": {
+        "title": "サイズ読み込み",
+        "help": "メディア項目のサイズを読み込む場合に設定します。\n\n通常 rclone はメディア項目のサイズを読み込みません。これには追加のトランザクションが必要になるためです。同期にはこれは不要です。ただし rclone mount ではファイルを読み込む前にサイズを把握しておく必要があるため、メディアを読み込みたい場合は rclone mount 使用時にこのフラグを設定することをおすすめします。"
+      },
+      "start_year": {
+        "title": "開始年",
+        "help": "指定した年より後にアップロードされた写真のみをダウンロード対象とします。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      }
+    },
+    "hasher": {
+      "auto_size": {
+        "title": "自動更新サイズ",
+        "help": "このサイズより小さいファイルはチェックサムを自動更新します（既定では無効）。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "hashes": {
+        "title": "ハッシュ",
+        "help": "サポートするチェックサムの種類をカンマ区切りで指定します。"
+      },
+      "max_age": {
+        "title": "最大保持期間",
+        "help": "チェックサムをキャッシュに保持する最大時間（0 = キャッシュ無効、off = 無期限にキャッシュ）。"
+      },
+      "remote": {
+        "title": "リモート",
+        "help": "チェックサムをキャッシュする対象のリモート（例: myRemote:path）。"
+      }
+    },
+    "hdfs": {
+      "data_transfer_protection": {
+        "title": "データ転送保護",
+        "help": "Kerberos データ転送保護: authentication|integrity|privacy。\n\nデータノードとの通信時に、認証、データ署名の整合性チェック、通信の暗号化を必要とするかどうかを指定します。指定可能な値は 'authentication'、'integrity'、'privacy' です。KERBEROS が有効な場合のみ使用されます。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "namenode": {
+        "title": "ネームノード",
+        "help": "Hadoop のネームノードとポート。\n\n例: ポート 8020 のホストネームノードに接続する場合は \"namenode-1:8020,namenode-2:8020,...\"。"
+      },
+      "service_principal_name": {
+        "title": "サービスプリンシパル名",
+        "help": "ネームノードの Kerberos サービスプリンシパル名。\n\nKERBEROS 認証を有効にします。ネームノードのサービスプリンシパル名 (SERVICE/FQDN) を指定します。例: FQDN が 'namenode.hadoop.docker' でサービス 'hdfs' として動作するネームノードの場合は \"hdfs/namenode.hadoop.docker\"。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "Hadoop のユーザー名。"
+      }
+    },
+    "hidrive": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "チャンクアップロードのチャンクサイズ。\n\n設定した切り替え値より大きいファイル（またはサイズ不明のファイル）は、このサイズのチャンクでアップロードされます。\n\nこの値の上限は 2147483647 バイト（約 2.000Gi）です。これは 1 回のアップロード操作でサポートされる最大バイト数です。\nこれを上限より大きい値や負の値に設定するとアップロードが失敗します。\n\nこの値を大きくするとアップロード速度が向上する可能性がありますが、メモリ使用量も増加します。\nメモリを節約したい場合は小さい値に設定できます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_fetching_member_count": {
+        "title": "メンバー数取得の無効化",
+        "help": "絶対に必要な場合を除き、ディレクトリ内のオブジェクト数を取得しません。\n\nサブディレクトリ内のオブジェクト数を取得しないことで、リクエストが高速化される場合があります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "サービスのエンドポイント。\n\nこれは API 呼び出しが行われる URL です。"
+      },
+      "root_prefix": {
+        "title": "ルートプレフィックス",
+        "help": "すべてのパスのルート/親フォルダ。\n\n入力すると、リモートに指定されたすべてのパスの親として指定したフォルダが使用されます。\nこれにより rclone は任意のフォルダを起点として使用できます。"
+      },
+      "scope_access": {
+        "title": "スコープアクセス",
+        "help": "HiDrive にアクセスを要求する際に rclone が使用するアクセス権限。"
+      },
+      "scope_role": {
+        "title": "スコープロール",
+        "help": "HiDrive にアクセスを要求する際に rclone が使用するユーザーレベル。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "チャンクアップロードの並列数。\n\n同一ファイルに対して同時に実行される転送数の上限です。\n1 未満の値に設定すると、アップロードがデッドロックします。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードの切り替え値/閾値。\n\nこれより大きいファイルは設定されたチャンクサイズでアップロードされます。\n\nこの値の上限は 2147483647 バイト（約 2.000Gi）です。これは 1 回のアップロード操作でサポートされる最大バイト数です。\nこれを上限より大きい値に設定するとアップロードが失敗します。"
+      }
+    },
+    "http": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "headers": {
+        "title": "ヘッダー",
+        "help": "すべての通信に設定する HTTP ヘッダー。\n\nすべての通信に追加の HTTP ヘッダーを設定する場合に使用します。\n\n入力形式はキーと値のペアをカンマ区切りにしたリストです。標準の\n[CSV エンコーディング](https://godoc.org/encoding/csv) を使用できます。\n\n例えば、Cookie を設定するには 'Cookie,name=value'、または '\"Cookie\",\"name=value\"' のように指定します。\n\n複数のヘッダーを設定することもできます。例: '\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。"
+      },
+      "no_escape": {
+        "title": "URL エスケープなし",
+        "help": "パス名内の URL メタ文字をエスケープしません。"
+      },
+      "no_head": {
+        "title": "HEAD リクエストなし",
+        "help": "HEAD リクエストを使用しません。\n\nHEAD リクエストは主にディレクトリ一覧でファイルサイズを取得するために使用されます。\nサイトの読み込みが非常に遅い場合はこのオプションを試してください。\n通常 rclone は、ディレクトリ一覧内の各ファイルの可能性があるものに対し、以下を確認するために HEAD リクエストを行います:\n\n- サイズの取得\n- 実際に存在するかの確認\n- ディレクトリかどうかの確認\n\nこのオプションを設定すると、rclone は HEAD リクエストを行いません。これによりディレクトリ一覧の取得は大幅に高速化されますが、rclone はファイルの日時やサイズを取得できず、存在しないファイルが一覧に含まれる場合があります。"
+      },
+      "no_slash": {
+        "title": "末尾スラッシュなし",
+        "help": "サイトがディレクトリの末尾に / を付けない場合に設定します。\n\n対象の Web サイトがディレクトリの末尾に / を使用しない場合に使用します。\n\nrclone は通常、パスの末尾の / によってファイルとディレクトリを区別します。このフラグを設定すると、rclone は Content-Type: text/html のすべてのファイルをディレクトリとして扱い、ダウンロードする代わりにそこから URL を読み取ります。\n\nこの設定により、rclone が本物の HTML ファイルをディレクトリと誤認する場合がある点に注意してください。"
+      },
+      "url": {
+        "title": "URL",
+        "help": "接続先の HTTP ホストの URL。\n\n例: \"https://example.com\"、ユーザー名とパスワードを使用する場合は \"https://user:pass@example.com\"。"
+      }
+    },
+    "iclouddrive": {
+      "apple_id": {
+        "title": "Apple ID",
+        "help": "Apple ID。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "クライアント ID"
+      },
+      "cookies": {
+        "title": "Cookie",
+        "help": "Cookie（内部使用のみ）"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "trust_token": {
+        "title": "トラストトークン",
+        "help": "トラストトークン（内部使用）"
+      },
+      "service": {
+        "title": "サービス",
+        "help": "使用する iCloud サービス。"
+      }
+    },
+    "imagekit": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "ImageKit.io の URL エンドポイントは [ダッシュボード](https://imagekit.io/dashboard/developer/api-keys) で確認できます"
+      },
+      "only_signed": {
+        "title": "署名付きのみ",
+        "help": "ダッシュボード設定で `未署名の画像 URL を制限する` を設定している場合は true にしてください。"
+      },
+      "private_key": {
+        "title": "秘密鍵",
+        "help": "ImageKit.io の秘密鍵は [ダッシュボード](https://imagekit.io/dashboard/developer/api-keys) で確認できます"
+      },
+      "public_key": {
+        "title": "公開鍵",
+        "help": "ImageKit.io の公開鍵は [ダッシュボード](https://imagekit.io/dashboard/developer/api-keys) で確認できます"
+      },
+      "upload_tags": {
+        "title": "アップロードタグ",
+        "help": "アップロードしたファイルに追加するタグ（例: \"tag1,tag2\"）。"
+      },
+      "versions": {
+        "title": "バージョン",
+        "help": "ディレクトリ一覧に旧バージョンを含めます。"
+      }
+    },
+    "internetarchive": {
+      "access_key_id": {
+        "title": "アクセスキー ID",
+        "help": "IAS3 アクセスキー。\n\n匿名アクセスの場合は空欄のままにしてください。\n以下から取得できます: https://archive.org/account/s3.php"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_checksum": {
+        "title": "チェックサムを無効化",
+        "help": "rclone が計算した MD5 チェックサムをサーバーに検証させません。\n通常 rclone はアップロード前に入力の MD5 チェックサムを計算し、サーバーにそのチェックサムに対する検証を依頼します。\nこれはデータの整合性チェックには有効ですが、大きなファイルのアップロード開始が大幅に遅れる場合があります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "IAS3 エンドポイント。\n\n既定値を使用する場合は空欄のままにしてください。"
+      },
+      "front_endpoint": {
+        "title": "フロントエンドポイント",
+        "help": "InternetArchive フロントエンドのホスト。\n\n既定値を使用する場合は空欄のままにしてください。"
+      },
+      "item_derive": {
+        "title": "アイテム派生",
+        "help": "IA アイテムに対して derive をトリガーするかどうか。false に設定すると、アップロード時に IA によってアイテムが派生生成されません。\nderive 処理は、アップロードされたファイルから Web 上で利用しやすくするための複数の二次ファイルを生成します。\nすでに IA が表示可能な形式のファイルをアップロードする場合や、IA のインフラ負荷を軽減したい場合は、false に設定すると便利です。"
+      },
+      "item_metadata": {
+        "title": "アイテムメタデータ",
+        "help": "IA アイテムに設定するメタデータで、--metadata-set で設定できるファイルレベルのメタデータとは異なります。\n形式は key=value で、'x-archive-meta-' というプレフィックスが自動的に追加されます。"
+      },
+      "secret_access_key": {
+        "title": "シークレットアクセスキー",
+        "help": "IAS3 シークレットキー（パスワード）。\n\n匿名アクセスの場合は空欄のままにしてください。"
+      },
+      "wait_archive": {
+        "title": "アーカイブ待機",
+        "help": "サーバーの処理タスク（具体的には archive と book_op）の完了を待つタイムアウト時間。\n書き込み操作後の反映を確実に保証する必要がある場合のみ有効にしてください。\n0 で待機を無効化します。タイムアウトが発生してもエラーにはなりません。"
+      }
+    },
+    "jottacloud": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "ファイルをゴミ箱に移動せず完全に削除します。"
+      },
+      "md5_memory_limit": {
+        "title": "MD5 メモリ上限",
+        "help": "これより大きいファイルは、必要に応じて MD5 を計算するためディスクにキャッシュされます。"
+      },
+      "no_versions": {
+        "title": "バージョン管理なし",
+        "help": "上書きの代わりにファイルを削除・再作成することで、サーバーサイドのバージョン管理を回避します。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "trashed_only": {
+        "title": "ゴミ箱のみ表示",
+        "help": "ゴミ箱内のファイルのみを表示します。\n\n削除済みファイルを元のディレクトリ構造のまま表示します。"
+      },
+      "upload_resume_limit": {
+        "title": "アップロード再開しきい値",
+        "help": "これより大きいファイルは、アップロードが失敗した場合に再開できます。"
+      }
+    },
+    "koofr": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "使用する Koofr API エンドポイント。"
+      },
+      "mountid": {
+        "title": "マウント ID",
+        "help": "使用するマウントのマウント ID。\n\n省略した場合はプライマリマウントが使用されます。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "rclone 用パスワード。https://app.koofr.net/app/admin/preferences/password で生成してください。"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "ストレージプロバイダーを選択してください。"
+      },
+      "setmtime": {
+        "title": "更新日時の設定",
+        "help": "バックエンドが更新日時の設定をサポートしているかどうか。\n\nDropbox または Amazon Drive バックエンドを指すマウント ID を使用している場合は false に設定してください。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ユーザー名。"
+      }
+    },
+    "linkbox": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "https://www.linkbox.to/admin/account から取得したトークン"
+      },
+      "email": {
+        "title": "メールアドレス",
+        "help": "ログイン用メールアドレス"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "ログイン用パスワード"
+      },
+      "web_token": {
+        "title": "Web トークン",
+        "help": "Web API ログイントークン（自動設定されます）。"
+      }
+    },
+    "local": {
+      "case_insensitive": {
+        "title": "大文字小文字を区別しない",
+        "help": "ファイルシステムに大文字小文字を区別しないと報告させます。\n\n通常 local バックエンドは Windows/macOS では大文字小文字を区別しない、それ以外では区別すると宣言します。このフラグを使用すると既定の選択を上書きできます。"
+      },
+      "case_sensitive": {
+        "title": "大文字小文字を区別する",
+        "help": "ファイルシステムに大文字小文字を区別すると報告させます。\n\n通常 local バックエンドは Windows/macOS では大文字小文字を区別しない、それ以外では区別すると宣言します。このフラグを使用すると既定の選択を上書きできます。"
+      },
+      "copy_links": {
+        "title": "シンボリックリンクを追跡",
+        "help": "シンボリックリンクを追跡し、リンク先の項目をコピーします。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hashes": {
+        "title": "ハッシュ",
+        "help": "サポートするチェックサムの種類をカンマ区切りで指定します。"
+      },
+      "links": {
+        "title": "リンク",
+        "help": "local バックエンドにおいて、シンボリックリンクを '.rclonelink' 拡張子を持つ通常のファイルとの間で相互変換します。"
+      },
+      "no_check_updated": {
+        "title": "更新チェックなし",
+        "help": "アップロード中にファイルが変更されていないかのチェックを行いません。\n\n通常 rclone はアップロード中のファイルのサイズと更新日時をチェックし、アップロード中にファイルが変更されると \"can't copy - source file is being updated\" で始まるメッセージとともに中止します。\n\nただし一部のファイルシステムではこの更新日時チェックが失敗することがあるため（例: [Glusterfs #2206](https://github.com/rclone/rclone/issues/2206)）、このフラグでこのチェックを無効化できます。\n\nこのフラグを設定すると、rclone は更新中のファイルの転送を最善を尽くして試みます。ファイルに追記のみが行われている場合（ログなど）、rclone は最初に確認した時点のサイズでログファイルを転送します。\n\nファイル全体が変更されている場合（追記のみでない場合）、転送はハッシュチェックの失敗で失敗する可能性があります。\n\n詳細には、ファイルに対して最初に stat() が呼び出された後、rclone は以下を行います:\n\n- stat が返したサイズのみを転送\n- stat が返したサイズのみでチェックサムを計算\n- ファイルの stat 情報を更新しない\n\n**注** Windows のボリュームシャドウ (VSS) ではこのフラグを使用しないでください。原因不明ですが、VSS 内のファイルはディレクトリ一覧（Windows で最初の stat 値の取得元）と直接 stat を呼び出した場合とでサイズが異なることがあります。他のコピーツールは常に直接の stat 値を使用するため、このフラグを設定するとその動作が無効になります。\n"
+      },
+      "no_clone": {
+        "title": "クローン無効化",
+        "help": "サーバーサイドコピーでの reflink クローンを無効化します。\n\n通常、ローカル間の転送では、可能な場合 rclone はファイルを「クローン」し、クローンがサポートされていない場合のみ「コピー」にフォールバックします。\n\nクローンはシャローコピー（「reflink」）を作成し、最初は元のファイルとブロックを共有します。「ハードリンク」とは異なり、2 つのファイルは独立しており、片方を変更してももう片方には影響しません。\n\nクローンは通常コピーより高速で、既定で重複排除される（同一ファイルが 2 つあっても 1 つの場合より多くのストレージを消費しない）ため、コピーより望ましいとされます。ただし、データの冗長性が望ましいユースケースでは、--local-no-clone を使用してクローンを無効化し「ディープ」コピーを強制できます。\n\n現在、クローンは macOS で APFS を使用している場合のみサポートされています（他のプラットフォームへの対応は今後追加される可能性があります）。"
+      },
+      "no_preallocate": {
+        "title": "事前割り当てなし",
+        "help": "転送されるファイルのディスク領域の事前割り当てを無効化します。\n\nディスク領域の事前割り当ては、ファイルシステムの断片化を防ぐのに役立ちます。ただし、一部の仮想ファイルシステムレイヤー（Google Drive File Stream など）では、実際のファイルサイズが事前割り当てされた領域と等しく設定されてしまい、チェックサムやファイルサイズのチェックが失敗することがあります。このフラグを使用して事前割り当てを無効化してください。"
+      },
+      "no_set_modtime": {
+        "title": "更新日時設定なし",
+        "help": "更新日時の設定を無効化します。\n\n通常 rclone はアップロード完了後にファイルの更新日時を更新します。これは、他のユーザーが所有する CIFS マウントへのコピーなど、rclone を実行しているユーザーがアップロードされたファイルを所有していない場合に、Linux プラットフォームで権限の問題を引き起こすことがあります。このオプションを有効にすると、rclone はファイルのコピー後に更新日時を更新しなくなります。"
+      },
+      "no_sparse": {
+        "title": "スパースファイル無効化",
+        "help": "マルチスレッドダウンロードでのスパースファイルを無効化します。\n\nWindows プラットフォームでは、rclone はマルチスレッドダウンロード時にスパースファイルを作成します。これにより、大きなファイルで OS がファイルをゼロ埋めする際の長い待ち時間を回避できます。ただし、スパースファイルはディスクの断片化を引き起こし、扱いが遅くなることがあるため望ましくない場合があります。"
+      },
+      "nounc": {
+        "title": "UNC 無効化",
+        "help": "Windows での UNC（長いパス名）変換を無効化します。"
+      },
+      "one_file_system": {
+        "title": "単一ファイルシステム",
+        "help": "ファイルシステムの境界を越えません（unix/macOS のみ）。"
+      },
+      "skip_links": {
+        "title": "リンクをスキップ",
+        "help": "スキップされたシンボリックリンクについて警告しません。\n\nこのフラグは、スキップされたシンボリックリンクやジャンクションポイントに関する警告メッセージを無効化します。これらをスキップすべきであると明示的に了承したことになります。"
+      },
+      "skip_specials": {
+        "title": "特殊ファイルをスキップ",
+        "help": "スキップされたパイプ、ソケット、デバイスオブジェクトについて警告しません。\n\nこのフラグは、スキップされたパイプ、ソケット、デバイスオブジェクトに関する警告メッセージを無効化します。これらをスキップすべきであると明示的に了承したことになります。"
+      },
+      "time_type": {
+        "title": "時刻タイプ",
+        "help": "返される時刻の種類を設定します。\n\n通常 rclone はすべての操作を mtime（更新日時）で行います。\n\nこのフラグを設定すると、rclone はここで指定した値を更新日時として返します。例えば \"rclone lsl --local-time-type ctime\" を使用すると、一覧に ctime が表示されます。\n\nOS が指定した time_type を返すことをサポートしていない場合、rclone は自動的にすべての OS がサポートする更新日時に置き換えます。\n\n- mtime はすべての OS でサポートされています\n- atime は plan9、js を除くすべての OS でサポートされています\n- btime は Windows、macOS、freebsd、netbsd でのみサポートされています\n- ctime は Windows、plan9、js を除くすべての OS でサポートされています\n\n時刻を設定しても更新日時は引き続き設定されるため、これは読み取り専用の目的でのみ有用です。\n"
+      },
+      "unicode_normalization": {
+        "title": "Unicode 正規化",
+        "help": "パスとファイル名に unicode NFC 正規化を適用します。\n\nこのフラグは、ローカルファイルシステムから読み込んだファイル名を unicode NFC 形式に正規化するために使用できます。\n\nrclone は通常、ファイルシステムから読み込んだファイル名のエンコーディングをそのまま扱います。\n\nこれは macOS を使用する場合に有用です。macOS は通常、分解形式（NFD）の unicode を提供しており、一部の言語（韓国語など）では一部の OS で正しく表示されないことがあります。\n\nrclone の同期処理ではファイル名を unicode 正規化して比較するため、通常このフラグは使用する必要がない点に注意してください。"
+      },
+      "zero_size_links": {
+        "title": "リンクをゼロサイズとして扱う",
+        "help": "リンクの Stat サイズをゼロとして扱います（代わりにリンクを読み込みます）（非推奨）。\n\nrclone は以前、リンクの Stat サイズをリンクサイズとして使用していましたが、以下のような多くの場所で問題が発生していました:\n\n- Windows\n- 一部の仮想ファイルシステム（LucidLink など）\n- Android\n\nそのため、rclone は現在常にリンクを読み込みます。\n"
+      },
+      "metadata_restore_special_bits": {
+        "title": "メタデータの特殊ビット復元",
+        "help": "メタデータから setuid、setgid、sticky ビットを復元します。\n\n--metadata でメタデータを復元する際、rclone は転送元の \"mode\" を適用します。既定では rclone はパーミッションビットのみを適用し、setuid、setgid、sticky ビットは取り除きます。\n\n\"mode\" は信頼できるとは限らない転送元リモートから取得されます。信頼できない転送元から復元する際、特に root として実行している場合に、新しく書き込まれたファイルに setuid や setgid ビットを復元すると、setuid バイナリが仕込まれる危険があります。このため、これらのビットは既定では復元されません。\n\n転送元を信頼しており、setuid、setgid、sticky ビットを復元したい場合（例えば rclone で作成したシステムバックアップを復元する場合）は、このフラグを設定してください。"
+      },
+      "fatal_if_no_space": {
+        "title": "容量不足時に致命的エラー",
+        "help": "転送中の容量不足エラーを致命的エラーとして扱います。\n\n有効にすると、書き込み中の ENOSPC エラーは致命的エラーとして返され、rclone は操作をリトライせず中止します。ディスクが満杯になった際に、リトライを繰り返すのではなく明確に停止すべきバックアップスクリプトに便利です。"
+      }
+    },
+    "mailru": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "check_hash": {
+        "title": "ハッシュチェック",
+        "help": "ファイルのチェックサムが一致しない、または無効な場合に copy がどう動作するか。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "パスワード。\n\nアプリパスワードである必要があります。rclone は通常のパスワードでは動作しません。\nアプリパスワードの作成方法についてはドキュメントの Configuration の章を参照してください。\n"
+      },
+      "quirks": {
+        "title": "内部調整フラグ",
+        "help": "内部メンテナンスフラグのカンマ区切りリスト。\n\nこのオプションは一般ユーザーが使用すべきものではありません。バックエンドの問題を遠隔で調査する目的でのみ用意されています。フラグの正確な意味は文書化されておらず、バージョン間で維持される保証もありません。\nバックエンドが安定すれば quirks は削除されます。\nサポートされている quirks: atomicmkdir binlist unknowndirs"
+      },
+      "speedup_enable": {
+        "title": "スピードアップを有効化",
+        "help": "同じデータハッシュのファイルが既に存在する場合はフルアップロードをスキップします。\n\nこの機能は「スピードアップ」または「ハッシュによる配置」と呼ばれます。人気の書籍や動画・音声クリップなど一般に広く出回っているファイルの場合に特に効果的です。これは、すべての mailru ユーザーの全アカウントを対象にハッシュでファイルが検索されるためです。転送元ファイルが固有のものであったり暗号化されている場合は、意味がなく効果もありません。\n事前にコンテンツハッシュを計算してフルアップロードが必要かどうかを判断するために、rclone がローカルのメモリやディスク容量を必要とする場合がある点に注意してください。\nまた、rclone が事前にファイルサイズを把握できない場合（ストリーミングや部分アップロードなど）は、この最適化は試みられません。"
+      },
+      "speedup_file_patterns": {
+        "title": "スピードアップ対象ファイルパターン",
+        "help": "スピードアップ（ハッシュによる配置）の対象となるファイル名パターンのカンマ区切りリスト。\n\nパターンは大文字小文字を区別せず、メタ文字 '*' や '?' を含めることができます。"
+      },
+      "speedup_max_disk": {
+        "title": "スピードアップ最大ディスク",
+        "help": "このオプションにより、大きなファイルに対するスピードアップ（ハッシュによる配置）を無効化できます。\n\n事前のハッシュ計算により RAM やディスク容量が枯渇する可能性があるためです。"
+      },
+      "speedup_max_memory": {
+        "title": "スピードアップ最大メモリ",
+        "help": "以下で指定するサイズより大きいファイルは常にディスク上でハッシュ計算されます。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ユーザー名（通常はメールアドレス）。"
+      },
+      "user_agent": {
+        "title": "ユーザーエージェント",
+        "help": "クライアントが内部的に使用する HTTP ユーザーエージェント。\n\n既定値は \"rclone/VERSION\"、またはコマンドラインで指定された \"--user-agent\" です。"
+      }
+    },
+    "mega": {
+      "2fa": {
+        "title": "2 要素認証",
+        "help": "MEGA アカウントで 2FA が設定されている場合の 2FA コード"
+      },
+      "debug": {
+        "title": "デバッグ",
+        "help": "Mega からのデバッグ出力を増やします。\n\nこのフラグを設定すると（-vv と併用）、mega バックエンドからの追加のデバッグ情報が出力されます。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "ファイルをゴミ箱に移動せず完全に削除します。\n\n通常、mega バックエンドは削除をすべてゴミ箱に移動し、完全には削除しません。これを指定すると、rclone はオブジェクトを完全に削除します。"
+      },
+      "master_key": {
+        "title": "マスターキー",
+        "help": "マスターキー（内部使用のみ）"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "session_id": {
+        "title": "セッション ID",
+        "help": "セッション（内部使用のみ）"
+      },
+      "use_https": {
+        "title": "HTTPS を使用",
+        "help": "転送に HTTPS を使用します。\n\nMEGA は既定でプレーンテキストの HTTP 接続を使用します。\n一部の ISP は HTTP 接続を制限しており、これにより転送が非常に遅くなることがあります。\nこれを有効にすると、MEGA はすべての転送で HTTPS を使用するようになります。\nデータはいずれにせよ既に暗号化されているため、通常 HTTPS は必須ではありません。\n有効にすると CPU 使用率が上がり、ネットワークのオーバーヘッドが増加します。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ユーザー名。"
+      }
+    },
+    "memory": {
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "discard": {
+        "title": "破棄",
+        "help": "設定するとすべての書き込みが破棄され、読み込みはエラーを返します\n\n有効にすると、ファイルのアップロード時に内容が保存されなくなります。ファイルはアップロードされたように見えますが、読み込み時にエラーになります。アップロード時に MD5 サムが計算されるため（CPU 時間はほとんどかかりません）、転送の検証は可能です。\n\nパフォーマンステストに利用すると便利です。\n\n接続文字列構文を使うのが最も簡単です:\n\n    :memory,discard:bucket\n\n"
+      }
+    },
+    "netstorage": {
+      "account": {
+        "title": "アカウント",
+        "help": "NetStorage のアカウント名を設定します"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "host": {
+        "title": "ホスト",
+        "help": "接続先の NetStorage ホストのドメイン+パス。\n\n形式は `<domain>/<internal folders>` です"
+      },
+      "protocol": {
+        "title": "プロトコル",
+        "help": "HTTP または HTTPS プロトコルを選択します。\n\n通常は既定値の HTTPS を選択してください。\nHTTP は主にデバッグ用途で提供されています。"
+      },
+      "secret": {
+        "title": "シークレット",
+        "help": "認証用の NetStorage アカウントシークレット/G2O キーを設定します。\n\n独自のパスワードを設定するには 'y' オプションを選択し、シークレットを入力してください。"
+      }
+    },
+    "onedrive": {
+      "access_scopes": {
+        "title": "アクセススコープ",
+        "help": "rclone がリクエストするスコープを設定します。\n\nrclone がリクエストすべきすべてのスコープを、選択するか、スペース区切りのカスタムリストを手動で入力してください。\n"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "av_override": {
+        "title": "ウイルス検出無視",
+        "help": "サーバーがウイルスがあると判断したファイルのダウンロードを許可します。\n\nonedrive/sharepoint サーバーはアップロードされたファイルをアンチウイルスチェッカーで確認する場合があります。潜在的なウイルスやマルウェアを検出すると、ファイルのダウンロードをブロックします。\n\nこの場合、以下のようなメッセージが表示されます\n\n    server reports this file is infected with a virus - use --onedrive-av-override to download anyway: Infected (name of virus): 403 Forbidden: \n\nこのファイルを確実にダウンロードしたい場合は、--onedrive-av-override フラグ、または設定ファイルの av_override = true を使用してください。\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "ファイルのアップロードに使用するチャンクサイズ - 320k（327,680 バイト）の倍数である必要があります。\n\nこのサイズを超えるファイルはチャンク化されます - 320k（327,680 バイト）の倍数で、250M（262,144,000 バイト）を超えないようにしてください。超えると \\\"Microsoft.SharePoint.Client.InvalidClientQueryException: The request message is too big.\\\" が発生する場合があります。\nチャンクはメモリにバッファーされる点に注意してください。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "delta": {
+        "title": "デルタ",
+        "help": "設定すると rclone は再帰的な一覧取得の実装にデルタ一覧を使用します。\n\nこのフラグを設定すると、onedrive バックエンドは再帰的一覧取得の `ListR` サポートを通知します。\n\nこのフラグを設定すると、以下の処理が大幅に高速化されます:\n\n    rclone lsf -R onedrive:\n    rclone size onedrive:\n    rclone rc vfs/refresh recursive=true\n\n**ただし** デルタ一覧 API はドライブのルートでのみ動作します。ルート以外で使用すると、ルートから再帰し、リクエストしたディレクトリ配下にないデータはすべて破棄されます。そのため正確ではありますが、効率的でない場合があります。\n\nこのため、このフラグは既定では設定されていません。\n\n目安として、データのほぼすべてが rclone のルートディレクトリ（`onedrive:root/directory` の `root/directory`）配下にある場合、このフラグを使用すると大きなパフォーマンス向上が得られます。データのほとんどがルート配下にない場合、このフラグを使用すると大きなパフォーマンス低下につながります。\n\nonedrive をルート（または crypt 使用時にルート付近）にマウントし、rclone `rc vfs/refresh` を使用する場合に推奨されます。\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_site_permission": {
+        "title": "サイト権限の無効化",
+        "help": "Sites.Read.All 権限のリクエストを無効化します。\n\ntrue に設定すると、rclone は Sites.Read.All 権限をリクエストしなくなるため、ドライブ ID を設定する際に SharePoint サイトを検索できなくなります。組織がアプリケーションに Sites.Read.All 権限を割り当てておらず、ユーザーが自分でアプリの権限リクエストに同意することを許可していない場合に true に設定してください。"
+      },
+      "drive_id": {
+        "title": "ドライブ ID",
+        "help": "使用するドライブの ID。"
+      },
+      "drive_type": {
+        "title": "ドライブタイプ",
+        "help": "ドライブの種類（personal | business | documentLibrary）。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "expose_onenote_files": {
+        "title": "OneNote ファイルを表示",
+        "help": "OneNote ファイルをディレクトリ一覧に表示する場合に設定します。\n\n既定では、rclone は \"Open\" や \"Update\" などの操作が動作しないため、OneNote ファイルをディレクトリ一覧で非表示にします。しかしこの動作により削除もできなくなる場合があります。OneNote ファイルを削除したい場合や、ディレクトリ一覧に表示させたい場合は、このオプションを設定してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "削除時にファイルを完全に削除します。\n\n通常、削除されたファイルはごみ箱に送られます。このフラグを設定すると完全に削除されます。使用には注意してください。\n\nOneDrive 個人アカウントは permanentDelete API をサポートしておらず、OneDrive for Business と SharePoint ドキュメントライブラリにのみ適用されます。\n"
+      },
+      "hash_type": {
+        "title": "ハッシュタイプ",
+        "help": "バックエンドで使用するハッシュを指定します。\n\nこれは使用するハッシュタイプを指定します。\"auto\" に設定すると、既定のハッシュである QuickXorHash が使用されます。\n\nrclone 1.62 より前は、Onedrive Personal では既定で SHA1 ハッシュが使用されていました。1.62 以降は、すべての onedrive タイプで既定で QuickXorHash が使用されます。SHA1 ハッシュを使用したい場合は、このオプションをそれに応じて設定してください。\n\n2023 年 7 月以降、OneDrive for Business と OneDrive Personal の両方で使用可能な唯一のハッシュは QuickXorHash になります。\n\n\"none\" に設定するとハッシュを一切使用しません。\n\nリクエストされたハッシュがオブジェクトに存在しない場合、空文字列として返され、rclone はこれをハッシュ欠落として扱います。\n"
+      },
+      "link_password": {
+        "title": "リンクパスワード",
+        "help": "link コマンドで作成されるリンクのパスワードを設定します。\n\n現時点ではこれは OneDrive Personal の有料アカウントでのみ動作します。\n"
+      },
+      "link_scope": {
+        "title": "リンクスコープ",
+        "help": "link コマンドで作成されるリンクのスコープを設定します。"
+      },
+      "link_type": {
+        "title": "リンクタイプ",
+        "help": "link コマンドで作成されるリンクの種類を設定します。"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "一覧取得チャンクのサイズ。"
+      },
+      "metadata_permissions": {
+        "title": "メタデータの権限",
+        "help": "メタデータで権限を読み込み・書き込みするかどうかを制御します。\n\nファイルから権限メタデータを読み込むことは高速に行えますが、メタデータから権限を設定することが常に望ましいとは限りません。\n"
+      },
+      "no_versions": {
+        "title": "バージョンなし",
+        "help": "変更操作時にすべてのバージョンを削除します。\n\nOnedrive for Business は、rclone が既存のファイルを上書きして新しいファイルをアップロードした際や、更新日時を設定した際にバージョンを作成します。\n\nこれらのバージョンはクォータの容量を消費します。\n\nこのフラグを設定すると、ファイルのアップロードと更新日時の設定後にバージョンを確認し、最新のバージョン以外をすべて削除します。\n\n**注** Onedrive Personal は現在バージョンを削除できないため、このフラグは使用しないでください。\n"
+      },
+      "region": {
+        "title": "リージョン",
+        "help": "OneDrive の国別クラウドリージョンを選択します。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n\n通常は不要ですが、特殊な事情でアクセスしたいフォルダの ID がわかっているものの、パスをたどってそこに到達できない場合に使用します。\n"
+      },
+      "server_side_across_configs": {
+        "title": "設定間でのサーバーサイド操作",
+        "help": "非推奨: 代わりに --server-side-across-configs を使用してください。\n\nサーバーサイド操作（コピーなど）を異なる onedrive 設定間で機能させます。\n\nこれは、2 つの OneDrive *Personal* ドライブ間でコピーを行い、コピー対象のファイルがそれらの間で既に共有されている場合に動作します。また、同じ*テナント*内で OneDrive for *business* と *SharePoint* の間、および同じ*テナント*内で *SharePoint* と別の *SharePoint* の間にアクセス権限を持つユーザーにも機能する可能性があります。それ以外の場合、rclone は通常のコピーにフォールバックします（若干遅くなります）。"
+      },
+      "tenant": {
+        "title": "テナント",
+        "help": "サービスプリンシパルのテナントの ID。ディレクトリ ID とも呼ばれます。\n\n以下の場合に設定してください\n- クライアントクレデンシャルフロー\n"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n\n単一パートアップロードを使用すると、rclone がアップロード後に更新日時を設定する際に Onedrive が新しいバージョンを作成するため、Onedrive Business では 2 倍のストレージを使用することになるため、既定では無効になっています。\n\n参照: https://github.com/rclone/rclone/issues/1716\n"
+      }
+    },
+    "opendrive": {
+      "access": {
+        "title": "アクセス",
+        "help": "ファイルとフォルダはこのアクセス権限でアップロードされます（既定は非公開）"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "ファイルはこのサイズのチャンクでアップロードされます。\n\nこれらのチャンクはメモリ上にバッファーされるため、値を大きくするとメモリ使用量が増加する点に注意してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "ユーザー名。"
+      }
+    },
+    "oracleobjectstorage": {
+      "attempt_resume_upload": {
+        "title": "アップロード再開を試行",
+        "help": "true にすると、以前開始したオブジェクトのマルチパートアップロードの再開を試みます。\n過去のセッションからアップロードを再開することで、マルチパート転送を高速化するのに役立ちます。\n\n警告: 再開するセッションのチャンクサイズが過去の未完了セッションと異なる場合、再開されたマルチパートアップロードは中止され、新しいチャンクサイズで新しいマルチパートアップロードが開始されます。\n\n既にアップロード済みのパートをスキップして最適化しつつ再開するには、leave_parts_on_error フラグを true にする必要があります。\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。\n\nupload_cutoff より大きいファイル、またはサイズ不明のファイル（例: \"rclone rcat\" や \"rclone mount\" からのアップロード）をアップロードする場合、このチャンクサイズでマルチパートアップロードされます。\n\n転送ごとに \"upload_concurrency\" 個分のこのサイズのチャンクがメモリにバッファーされる点に注意してください。\n\n高速回線で大きなファイルを転送していてメモリに余裕がある場合、この値を増やすと転送速度が向上します。\n\nサイズが既知の大きなファイルをアップロードする際、10,000 チャンクの上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n\nサイズ不明のファイルは設定された chunk_size でアップロードされます。既定のチャンクサイズは 5 MiB で、チャンク数は最大 10,000 個のため、既定ではストリームアップロードできるファイルの最大サイズは 48 GiB になります。より大きなファイルをストリームアップロードしたい場合は chunk_size を増やす必要があります。\n\nチャンクサイズを大きくすると、\"-P\" フラグで表示される進捗統計の精度が下がります。\n"
+      },
+      "compartment": {
+        "title": "コンパートメント",
+        "help": "バケットの一覧取得が必要な場合は、コンパートメント OCID を指定してください。\n\nオブジェクトの一覧取得はコンパートメント OCID なしでも動作します。"
+      },
+      "config_file": {
+        "title": "設定ファイル",
+        "help": "OCI 設定ファイルへのパス"
+      },
+      "config_profile": {
+        "title": "設定プロファイル",
+        "help": "oci 設定ファイル内のプロファイル名"
+      },
+      "copy_cutoff": {
+        "title": "コピー切り替え値",
+        "help": "マルチパートコピーへ切り替える閾値。\n\nサーバーサイドコピーが必要なこれより大きいファイルは、このサイズのチャンクでコピーされます。\n\n最小は 0、最大は 5 GiB です。"
+      },
+      "copy_timeout": {
+        "title": "コピータイムアウト",
+        "help": "コピーのタイムアウト。\n\nコピーは非同期操作のため、コピーの成功を待つタイムアウトを指定してください\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_checksum": {
+        "title": "チェックサムを無効化",
+        "help": "オブジェクトのメタデータに MD5 チェックサムを保存しません。\n\n通常 rclone はアップロード前に入力の MD5 チェックサムを計算し、オブジェクトのメタデータに追加します。これはデータの整合性チェックには有効ですが、大きなファイルのアップロード開始が大幅に遅れる場合があります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "Object Storage API のエンドポイント。\n\n空欄のままにするとリージョンの既定のエンドポイントが使用されます。"
+      },
+      "leave_parts_on_error": {
+        "title": "エラー時にパートを残す",
+        "help": "true にすると、失敗時にアップロードの中止呼び出しを行わず、手動での復旧のために正常にアップロードされたすべてのパートを残します。\n\n異なるセッション間でアップロードを再開する場合は true に設定してください。\n\n警告: 未完了のマルチパートアップロードのパートを保存しておくと、オブジェクトストレージの容量使用にカウントされ、クリーンアップしないと追加のコストが発生します。\n"
+      },
+      "max_upload_parts": {
+        "title": "アップロード最大パート数",
+        "help": "マルチパートアップロードにおけるパートの最大数。\n\nこのオプションは、マルチパートアップロード時に使用するマルチパートチャンクの最大数を定義します。\n\nOCI にはパート数の上限が 10,000 チャンクあります。\n\nサイズが既知の大きなファイルをアップロードする際、このチャンク数の上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n"
+      },
+      "namespace": {
+        "title": "名前空間",
+        "help": "オブジェクトストレージの名前空間"
+      },
+      "no_check_bucket": {
+        "title": "バケット確認なし",
+        "help": "設定すると、バケットが存在するかの確認や作成を試みません。\n\nバケットが既に存在することがわかっている場合に、rclone が行うトランザクション数を最小限に抑えたい場合に便利です。\n\n使用しているユーザーにバケット作成権限がない場合にも必要になることがあります。\n"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "認証プロバイダーを選択してください"
+      },
+      "region": {
+        "title": "リージョン",
+        "help": "オブジェクトストレージのリージョン"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE カスタマーアルゴリズム",
+        "help": "SSE-C を使用する場合、暗号化アルゴリズムとして \"AES256\" を指定する任意のヘッダー。\nObject Storage は暗号化アルゴリズムとして \"AES256\" をサポートしています。詳細は\nUsing Your Own Keys for Server-Side Encryption (https://docs.cloud.oracle.com/Content/Object/Tasks/usingyourencryptionkeys.htm) を参照してください。"
+      },
+      "sse_customer_key": {
+        "title": "SSE カスタマーキー",
+        "help": "SSE-C を使用する場合、データの暗号化/復号に使用する base64 エンコードされた 256 ビット暗号化キーを指定する任意のヘッダー。sse_customer_key_file|sse_customer_key|sse_kms_key_id のいずれか 1 つのみが必要な点に注意してください。詳細は Using Your Own Keys for Server-Side Encryption\n(https://docs.cloud.oracle.com/Content/Object/Tasks/usingyourencryptionkeys.htm) を参照してください"
+      },
+      "sse_customer_key_file": {
+        "title": "SSE カスタマーキーファイル",
+        "help": "SSE-C を使用する場合、オブジェクトに関連付けられた base64 エンコードされた AES-256 暗号化キー文字列を含むファイル。sse_customer_key_file|sse_customer_key|sse_kms_key_id のいずれか 1 つのみが必要な点に注意してください。"
+      },
+      "sse_customer_key_sha256": {
+        "title": "SSE カスタマーキー SHA256",
+        "help": "SSE-C を使用する場合、暗号化キーの base64 エンコードされた SHA256 ハッシュを指定する任意のヘッダー。この値は暗号化キーの整合性チェックに使用されます。詳細は Using Your Own Keys for\nServer-Side Encryption (https://docs.cloud.oracle.com/Content/Object/Tasks/usingyourencryptionkeys.htm) を参照してください。"
+      },
+      "sse_kms_key_id": {
+        "title": "SSE KMS キー ID",
+        "help": "vault 内の独自のマスターキーを使用する場合、このヘッダーは、データ暗号化キーの生成やデータ暗号化キーの暗号化/復号のために Key Management サービスを呼び出す際に使用するマスター暗号化キーの OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) を指定します。\nsse_customer_key_file|sse_customer_key|sse_kms_key_id のいずれか 1 つのみが必要な点に注意してください。"
+      },
+      "storage_tier": {
+        "title": "ストレージ階層",
+        "help": "新規オブジェクトをストレージに保存する際に使用するストレージクラス。https://docs.oracle.com/en-us/iaas/Content/Object/Concepts/understandingstoragetiers.htm"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 0、最大は 5 GiB です。"
+      }
+    },
+    "pcloud": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hostname": {
+        "title": "ホスト名",
+        "help": "接続先のホスト名。\n\n通常は rclone が最初に oauth 接続を行う際に設定されますが、rclone authorize によるリモート設定を使用している場合は手動で設定する必要があります。\n"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "pcloud のパスワード。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "rclone にルート以外のフォルダを起点として使用させる場合に入力します。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "pcloud のユーザー名。\n\t\t\t\nこれは cleanup コマンドを使用する場合にのみ必要です。pcloud API のバグにより、必要な API が OAuth 認証をサポートしていないため、ユーザー名・パスワードによる認証に頼る必要があります。"
+      }
+    },
+    "pikpak": {
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "マルチパートアップロードのチャンクサイズ。\n\t\n大きなファイルはこのサイズのチャンクでアップロードされます。\n\nこれはメモリに保存され、\"--transfers\" × \"--pikpak-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。\n\n高速回線で大きなファイルを転送していてメモリに余裕がある場合、この値を増やすと転送速度が向上します。\n\nサイズが既知の大きなファイルをアップロードする際、10,000 チャンクの上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n\nチャンクサイズを大きくすると、\"-P\" フラグで表示される進捗統計の精度が下がります。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "device_id": {
+        "title": "デバイス ID",
+        "help": "認可に使用するデバイス ID。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hash_memory_limit": {
+        "title": "ハッシュメモリ上限",
+        "help": "これより大きいファイルは、必要に応じてハッシュ計算のためディスクにキャッシュされます。"
+      },
+      "no_media_link": {
+        "title": "メディアリンクなし",
+        "help": "メディアリンクの代わりに元のファイルリンクを使用します。\n\nこれにより無効なメディアリンクによる問題を回避できますが、ダウンロード速度が低下する場合があります。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "Pikpak のパスワード。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n通常は空欄のままにしてください。\n\nrclone にルート以外のフォルダを起点として使用させる場合に入力します。\n"
+      },
+      "trashed_only": {
+        "title": "ゴミ箱のみ表示",
+        "help": "ゴミ箱内のファイルのみを表示します。\n\n削除済みファイルを元のディレクトリ構造のまま表示します。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\nマルチパートアップロードで同一ファイルのチャンクを同時にアップロードする数です。\n\nチャンクはメモリに保存され、\"--transfers\" × \"--pikpak-upload-concurrency\" 個分のチャンクが同時にメモリに保持される場合がある点に注意してください。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 0、最大は 5 GiB です。"
+      },
+      "use_trash": {
+        "title": "ゴミ箱を使用",
+        "help": "完全に削除する代わりにファイルをゴミ箱へ送ります。\n\n既定値は true、つまりファイルをゴミ箱へ送ります。\n完全に削除する場合は `--pikpak-use-trash=false` を使用してください。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "Pikpak のユーザー名。"
+      },
+      "user_agent": {
+        "title": "ユーザーエージェント",
+        "help": "pikpak の HTTP ユーザーエージェント。\n\n既定値は \"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0\"、またはコマンドラインで指定された \"--pikpak-user-agent\" です。"
+      }
+    },
+    "pixeldrain": {
+      "api_key": {
+        "title": "API キー",
+        "help": "pixeldrain アカウントの API キー。\nhttps://pixeldrain.com/user/api_keys から取得できます。"
+      },
+      "api_url": {
+        "title": "API URL",
+        "help": "接続先の API エンドポイント。ほとんどの場合、既定値のままで問題ありません。テスト目的でのみ変更を想定しています。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "使用するファイルシステムのルート。\n\n個人用ファイルシステムを使用する場合は 'me' を指定します。共有ディレクトリを使用する場合は共有ディレクトリ ID を指定します。"
+      }
+    },
+    "premiumizeme": {
+      "api_key": {
+        "title": "API キー",
+        "help": "API キー。\n\n通常は使用しません。代わりに OAuth を使用してください。\n"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      }
+    },
+    "protondrive": {
+      "2fa": {
+        "title": "2 要素認証",
+        "help": "2FA コード\n\n値は --protondrive-2fa=000000 でも指定できます\n\n2 要素認証が設定されている場合の proton drive アカウントの 2FA コード"
+      },
+      "app_version": {
+        "title": "アプリバージョン",
+        "help": "アプリバージョン文字列\n\nこのアプリバージョン文字列は、現在 API リクエストを行っているクライアントを示します。この情報は必須で、すべての API リクエストに送信されます。"
+      },
+      "client_access_token": {
+        "title": "クライアントアクセストークン",
+        "help": "クライアントアクセストークンキー（内部使用のみ）"
+      },
+      "client_refresh_token": {
+        "title": "クライアントリフレッシュトークン",
+        "help": "クライアントリフレッシュトークンキー（内部使用のみ）"
+      },
+      "client_salted_key_pass": {
+        "title": "クライアントソルト済みキーパス",
+        "help": "クライアントソルト済みキーパスキー（内部使用のみ）"
+      },
+      "client_uid": {
+        "title": "クライアント UID",
+        "help": "クライアント UID キー（内部使用のみ）"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "enable_caching": {
+        "title": "キャッシュを有効化",
+        "help": "ファイルとフォルダのメタデータをキャッシュし、API 呼び出しを削減します\n\n注意: ProtonDrive を VFS としてマウントする場合は、この機能を無効化してください。現在の実装では、外部からの変更があった場合にキャッシュが更新・消去されません。\n\nProtonDrive 上のファイルとフォルダはキーリング付きのリンクとして表現されており、これをキャッシュすることでパフォーマンスを向上させ、API サーバーへの負荷を抑えることができます。\n\n現在のキャッシュは、rclone がマウントポイントに対して操作を行う唯一のインスタンスであることを前提に構築されています。ドライブ上の変更内容を通知する proton の API のイベントシステムはまだ実装されていないため、他のクライアントからの更新はキャッシュに反映されません。そのため、同じマウントポイントに複数のクライアントが同時にアクセスしている場合、古いデータがキャッシュされる問題が発生する可能性があります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "mailbox_password": {
+        "title": "メールボックスパスワード",
+        "help": "2 パスワード方式の proton アカウントのメールボックスパスワード。\n\nメールボックスパスワードについての詳細は、以下の公式ナレッジベース記事を確認してください:\nhttps://proton.me/support/the-difference-between-the-mailbox-password-and-login-password\n"
+      },
+      "original_file_size": {
+        "title": "元のファイルサイズ",
+        "help": "暗号化前のファイルサイズを返します\n\t\t\t\n暗号化されたファイルのサイズは元のファイルサイズと異なります（大きくなります）。暗号化後のファイルサイズを返す理由がない限り、このオプションを true に設定してください。設定しない場合、Open() など元のコンテンツサイズを必要とする機能が正しく動作しません"
+      },
+      "otp_secret_key": {
+        "title": "OTP シークレットキー",
+        "help": "OTP シークレットキー\n\n値は --protondrive-otp-secret-key=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567 でも指定できます\n\n2 要素認証が設定されている場合の proton drive アカウントの OTP シークレットキー"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "proton アカウントのパスワード。"
+      },
+      "replace_existing_draft": {
+        "title": "既存ドラフトを置き換え",
+        "help": "ファイル名の競合が検出された場合に新しいリビジョンを作成します\n\nファイルのアップロードが完了前にキャンセルまたは失敗すると、ドラフトが作成され、同じ場所への同じファイルの後続アップロードは競合として報告されます。\n\nこの値は --protondrive-replace-existing-draft=true でも設定できます\n\nこのオプションを true に設定すると、ドラフトが置き換えられてからアップロード操作が再開されます。同じファイル位置に他のクライアントが同時にアップロードしている場合の動作は現時点では不明です。統合テストでは true に設定する必要があります。\nこのオプションを false に設定した場合、\"a draft exist - usually this means a file is being uploaded at another client, or, there was a failed upload attempt\" というエラーが返され、アップロードは行われません。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "proton アカウントのユーザー名"
+      }
+    },
+    "putio": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      }
+    },
+    "qingstor": {
+      "access_key_id": {
+        "title": "アクセスキー ID",
+        "help": "QingStor のアクセスキー ID。\n\n匿名アクセスまたはランタイムクレデンシャルを使用する場合は空欄のままにしてください。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。\n\nupload_cutoff より大きいファイルをアップロードする場合、このチャンクサイズでマルチパートアップロードされます。\n\n転送ごとに \"--qingstor-upload-concurrency\" 個分のこのサイズのチャンクがメモリにバッファーされる点に注意してください。\n\n高速回線で大きなファイルを転送していてメモリに余裕がある場合、この値を増やすと転送速度が向上します。"
+      },
+      "connection_retries": {
+        "title": "接続リトライ回数",
+        "help": "接続リトライの回数。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "QingStor API への接続用エンドポイント URL を入力してください。\n\n空欄のままにすると既定値 \"https://qingstor.com:443\" が使用されます。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイムから QingStor のクレデンシャルを取得します。\n\naccess_key_id と secret_access_key が空欄の場合のみ適用されます。"
+      },
+      "secret_access_key": {
+        "title": "シークレットアクセスキー",
+        "help": "QingStor のシークレットアクセスキー（パスワード）。\n\n匿名アクセスまたはランタイムクレデンシャルを使用する場合は空欄のままにしてください。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\n注: これを 1 より大きい値に設定すると、マルチパートアップロードのチェックサムが破損します（アップロード自体は破損しません）。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 0、最大は 5 GiB です。"
+      },
+      "zone": {
+        "title": "ゾーン",
+        "help": "接続先のゾーン。\n\n既定値は \"pek3a\" です。"
+      }
+    },
+    "quatrix": {
+      "api_key": {
+        "title": "API キー",
+        "help": "Quatrix アカウントへのアクセス用 API キー"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "effective_upload_time": {
+        "title": "実効アップロード時間",
+        "help": "1 チャンクあたりの目標アップロード時間"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "ファイルをゴミ箱に移動せず完全に削除します"
+      },
+      "host": {
+        "title": "ホスト",
+        "help": "Quatrix アカウントのホスト名"
+      },
+      "maximal_summary_chunk_size": {
+        "title": "最大合計チャンクサイズ",
+        "help": "全チャンクの合計最大サイズ。'transfers' × 'minimal_chunk_size' 未満にはできません"
+      },
+      "minimal_chunk_size": {
+        "title": "最小チャンクサイズ",
+        "help": "1 チャンクあたりの最小サイズ"
+      },
+      "skip_project_folders": {
+        "title": "プロジェクトフォルダをスキップ",
+        "help": "操作対象からプロジェクトフォルダを除外します"
+      }
+    },
+    "s3": {
+      "access_key_id": {
+        "title": "アクセスキー ID",
+        "help": "AWS アクセスキー ID。\n\n匿名アクセスまたはランタイムクレデンシャルを使用する場合は空欄のままにしてください。"
+      },
+      "acl": {
+        "title": "ACL",
+        "help": "バケット作成時、およびオブジェクトの保存・コピー時に使用する既定 ACL。\n\nこの ACL はオブジェクトの作成に使用され、bucket_acl が設定されていない場合はバケットの作成にも使用されます。\n\n詳細は https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl を参照してください\n\nS3 はサーバーサイドコピー時に転送元の ACL をコピーせず、新しい ACL を書き込むため、この ACL はサーバーサイドコピー時に適用される点に注意してください。\n\nacl が空文字列の場合、X-Amz-Acl: ヘッダーは追加されず、既定値（private）が使用されます。\n"
+      },
+      "bucket_acl": {
+        "title": "バケット ACL",
+        "help": "バケット作成時に使用する既定 ACL。\n\n詳細は https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl を参照してください\n\nこの ACL はバケット作成時のみ適用されます。設定されていない場合は代わりに \"acl\" が使用されます。\n\n\"acl\" と \"bucket_acl\" が両方とも空文字列の場合、X-Amz-Acl: ヘッダーは追加されず、既定値（private）が使用されます。\n"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。\n\nupload_cutoff より大きいファイル、またはサイズ不明のファイル（例: \"rclone rcat\" や \"rclone mount\"、google photos、google docs からのアップロード）をアップロードする場合、このチャンクサイズでマルチパートアップロードされます。\n\n転送ごとに \"--s3-upload-concurrency\" 個分のこのサイズのチャンクがメモリにバッファーされる点に注意してください。\n\n高速回線で大きなファイルを転送していてメモリに余裕がある場合、この値を増やすと転送速度が向上します。\n\nサイズが既知の大きなファイルをアップロードする際、10,000 チャンクの上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n\nサイズ不明のファイルは設定された chunk_size でアップロードされます。既定のチャンクサイズは 5 MiB で、チャンク数は最大 10,000 個のため、既定ではストリームアップロードできるファイルの最大サイズは 48 GiB になります。より大きなファイルをストリームアップロードしたい場合は chunk_size を増やす必要があります。\n\nチャンクサイズを大きくすると、\"-P\" フラグで表示される進捗統計の精度が下がります。rclone は AWS SDK にバッファーされた時点でチャンクを送信済みとして扱いますが、実際にはまだアップロード中の場合があります。チャンクサイズが大きいほど AWS SDK のバッファーも大きくなり、進捗表示の実態からのずれも大きくなります。\n"
+      },
+      "copy_cutoff": {
+        "title": "コピー切り替え値",
+        "help": "マルチパートコピーへ切り替える閾値。\n\nサーバーサイドコピーが必要なこれより大きいファイルは、このサイズのチャンクでコピーされます。\n\n最小は 0、最大は 5 GiB です。"
+      },
+      "decompress": {
+        "title": "解凍",
+        "help": "設定すると gzip エンコードされたオブジェクトを解凍します。\n\nS3 には \"Content-Encoding: gzip\" を設定した状態でオブジェクトをアップロードできます。通常 rclone はこれらのファイルを圧縮されたオブジェクトとしてダウンロードします。\n\nこのフラグを設定すると、rclone は受信時に \"Content-Encoding: gzip\" のこれらのファイルを解凍します。これにより rclone はサイズとハッシュをチェックできなくなりますが、ファイル内容は解凍された状態になります。\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "directory_bucket": {
+        "title": "ディレクトリバケット",
+        "help": "AWS Directory Buckets を使用する場合に設定します\n\nAWS Directory Bucket を使用している場合は、このフラグを設定してください。\n\nこれにより `Content-Md5` ヘッダーが送信されないようにし、`ETag` ヘッダーが MD5 サムとして解釈されないようにします。単一パート・マルチパートいずれのアップロードでも、すべてのオブジェクトに `X-Amz-Meta-Md5chksum` が設定されます。\n\nこれは `no_check_bucket = true` も設定します。\n\nDirectory Buckets は以下をサポートしていない点に注意してください:\n\n- バージョニング\n- `Content-Encoding: gzip`\n\nDirectory Buckets に関する rclone の制限:\n\n- rclone は `rclone mkdir` での Directory Bucket の作成をサポートしていません\n- ...また `rclone rmdir` での削除もまだサポートしていません\n- Directory Buckets は最上位で `rclone lsf` を実行した際に表示されません。\n- rclone は自動作成されたディレクトリをまだ削除できません。理論上は `directory_markers = true` で動作するはずですが、実際には動作しません。\n- ディレクトリは再帰的な（ListR）一覧には表示されないようです。\n"
+      },
+      "directory_markers": {
+        "title": "ディレクトリマーカー",
+        "help": "新しいディレクトリが作成された際、末尾がスラッシュの空オブジェクトをアップロードします\n\nバケットベースのリモートでは空のフォルダがサポートされていないため、このオプションは \"/\" で終わる空のオブジェクトを作成し、フォルダを維持します。\n"
+      },
+      "disable_checksum": {
+        "title": "チェックサムを無効化",
+        "help": "オブジェクトのメタデータに MD5 チェックサムを保存しません。\n\n通常 rclone はアップロード前に入力の MD5 チェックサムを計算し、オブジェクトのメタデータに追加します。これはデータの整合性チェックには有効ですが、大きなファイルのアップロード開始が大幅に遅れる場合があります。"
+      },
+      "disable_http2": {
+        "title": "HTTP/2 無効化",
+        "help": "S3 バックエンドでの http2 の使用を無効化します。\n\n現在、s3（特に minio）バックエンドと HTTP/2 に関して未解決の問題があります。s3 バックエンドでは既定で HTTP/2 が有効になっていますが、ここで無効化できます。問題が解決すればこのフラグは削除されます。\n\n参照: https://github.com/rclone/rclone/issues/4673, https://github.com/rclone/rclone/issues/3631\n\n"
+      },
+      "download_url": {
+        "title": "ダウンロード URL",
+        "help": "ダウンロード用のカスタムエンドポイント。\nAWS S3 は CloudFront ネットワーク経由でダウンロードされたデータの送信をより安価に提供しているため、通常は CloudFront CDN の URL を設定します。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "S3 API のエンドポイント。\n\nS3 互換サービスを使用する場合は必須です。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "ランタイム（環境変数、環境変数がない場合は EC2/ECS のメタデータ）から AWS クレデンシャルを取得します。\n\naccess_key_id と secret_access_key が空欄の場合のみ適用されます。"
+      },
+      "force_path_style": {
+        "title": "パス形式を強制",
+        "help": "true の場合はパス形式アクセスを、false の場合は仮想ホスト形式を使用します。\n\ntrue（既定）の場合、rclone はパス形式アクセスを使用し、false の場合は仮想パス形式を使用します。詳細は [AWS S3 のドキュメント](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro) を参照してください。\n\n一部のプロバイダー（AWS、Aliyun OSS、Netease COS、Tencent COS など）はこれを false に設定する必要があります。rclone はプロバイダー設定に基づいて自動的にこれを行います。\n\nバケットが有効な DNS 名でない場合（'.' や '_' を含む場合）、これを true に設定する必要がある点に注意してください。\n"
+      },
+      "ibm_api_key": {
+        "title": "IBM API キー",
+        "help": "IAM トークンの取得に使用する IBM API キー"
+      },
+      "ibm_resource_instance_id": {
+        "title": "IBM リソースインスタンス ID",
+        "help": "IBM サービスインスタンス ID"
+      },
+      "leave_parts_on_error": {
+        "title": "エラー時にパートを残す",
+        "help": "true にすると、失敗時にアップロードの中止呼び出しを行わず、手動での復旧のために正常にアップロードされたすべてのパートを S3 に残します。\n\n異なるセッション間でアップロードを再開する場合は true に設定してください。\n\n警告: 未完了のマルチパートアップロードのパートを保存しておくと、S3 の容量使用にカウントされ、クリーンアップしないと追加のコストが発生します。\n"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "一覧取得チャンクのサイズ（各 ListObject S3 リクエストに対するレスポンス一覧）。\n\nこのオプションは AWS S3 の仕様では \"MaxKeys\"、\"max-items\"、\"page-size\" とも呼ばれます。ほとんどのサービスでは、それ以上をリクエストしてもレスポンス一覧は 1000 オブジェクトに切り詰められます。AWS S3 ではこれはグローバルな上限であり変更できません（[AWS S3](https://docs.aws.amazon.com/cli/latest/reference/s3/ls.html) 参照）。Ceph では \"rgw list buckets max chunk\" オプションで増やすことができます。\n"
+      },
+      "list_url_encode": {
+        "title": "リスト URL エンコード",
+        "help": "一覧を URL エンコードするかどうか: true/false/unset\n\n一部のプロバイダーは一覧の URL エンコードをサポートしており、利用可能な場合、ファイル名に制御文字を使用する際により信頼性が高くなります。unset（既定）に設定すると、rclone はプロバイダー設定に応じて適用する内容を選択しますが、ここで rclone の選択を上書きできます。\n"
+      },
+      "list_version": {
+        "title": "リストバージョン",
+        "help": "使用する ListObjects のバージョン: 1、2、または自動の場合は 0。\n\nS3 は当初、バケット内のオブジェクトを列挙する ListObjects 呼び出しのみを提供していました。\n\nしかし 2016 年 5 月に ListObjectsV2 呼び出しが導入されました。これは非常に高性能であり、可能な限り使用すべきです。\n\n既定値の 0 の場合、rclone はプロバイダー設定に応じてどちらの一覧取得メソッドを呼び出すか推測します。推測が誤っている場合は、ここで手動で設定できます。\n"
+      },
+      "location_constraint": {
+        "title": "ロケーション制約",
+        "help": "ロケーション制約 - リージョンと一致するように設定する必要があります。\n\n不明な場合は空欄のままにしてください。バケット作成時のみ使用されます。"
+      },
+      "max_upload_parts": {
+        "title": "アップロード最大パート数",
+        "help": "マルチパートアップロードにおけるパートの最大数。\n\nこのオプションは、マルチパートアップロード時に使用するマルチパートチャンクの最大数を定義します。\n\nサービスが AWS S3 の仕様である 10,000 チャンクをサポートしていない場合に便利です。\n\nサイズが既知の大きなファイルをアップロードする際、このチャンク数の上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n"
+      },
+      "memory_pool_flush_time": {
+        "title": "メモリプールフラッシュ時間",
+        "help": "内部メモリバッファープールをフラッシュする頻度。（現在は使用されていません）"
+      },
+      "memory_pool_use_mmap": {
+        "title": "メモリプールでの mmap 使用",
+        "help": "内部メモリプールで mmap バッファーを使用するかどうか。（現在は使用されていません）"
+      },
+      "might_gzip": {
+        "title": "gzip の可能性",
+        "help": "バックエンドがオブジェクトを gzip 圧縮する可能性がある場合に設定します。\n\n通常、プロバイダーはダウンロード時にオブジェクトを変更しません。オブジェクトが `Content-Encoding: gzip` でアップロードされていない場合、ダウンロード時にもそれは設定されません。\n\nただし一部のプロバイダー（Cloudflare など）は、`Content-Encoding: gzip` でアップロードされていなくてもオブジェクトを gzip 圧縮する場合があります。\n\nこの症状として、以下のようなエラーが発生することがあります\n\n    ERROR corrupted on transfer: sizes differ NNN vs MMM\n\nこのフラグを設定し、rclone が Content-Encoding: gzip が設定されチャンク転送エンコーディングされたオブジェクトをダウンロードした場合、rclone はオブジェクトをその場で解凍します。\n\nunset（既定）に設定すると、rclone はプロバイダー設定に応じて適用する内容を選択しますが、ここで rclone の選択を上書きできます。\n"
+      },
+      "no_check_bucket": {
+        "title": "バケット確認なし",
+        "help": "設定すると、バケットが存在するかの確認や作成を試みません。\n\nバケットが既に存在することがわかっている場合に、rclone が行うトランザクション数を最小限に抑えたい場合に便利です。\n\n使用しているユーザーにバケット作成権限がない場合にも必要になることがあります。v1.52.0 より前ではバグにより黙って通過していました。\n"
+      },
+      "no_head": {
+        "title": "HEAD なし",
+        "help": "設定すると、アップロードしたオブジェクトの整合性確認のための HEAD を行いません。\n\nrclone が行うトランザクション数を最小限に抑えたい場合に便利です。\n\nこれを設定すると、PUT でオブジェクトをアップロードした後に 200 OK メッセージを受け取った場合、rclone は正しくアップロードされたとみなします。\n\n具体的には以下を前提とします:\n\n- メタデータ（更新日時、ストレージクラス、コンテンツタイプを含む）はアップロードどおりである\n- サイズはアップロードどおりである\n\n単一パート PUT のレスポンスからは以下の項目を読み取ります:\n\n- MD5SUM\n- アップロード日時\n\nマルチパートアップロードの場合、これらの項目は読み取られません。\n\nサイズ不明の転送元オブジェクトがアップロードされた場合、rclone は**必ず** HEAD リクエストを行います。\n\nこのフラグを設定すると、特にサイズの誤りなど、検出されないアップロード失敗の可能性が高まるため、通常の運用では推奨されません。実際にはこのフラグを設定していても、検出されないアップロード失敗の可能性は非常に低いです。\n"
+      },
+      "no_head_object": {
+        "title": "HEAD オブジェクトなし",
+        "help": "設定すると、オブジェクト取得時に GET の前に HEAD を行いません。"
+      },
+      "no_system_metadata": {
+        "title": "システムメタデータなし",
+        "help": "システムメタデータの設定と読み込みを抑制します"
+      },
+      "profile": {
+        "title": "プロファイル",
+        "help": "共有クレデンシャルファイル内で使用するプロファイル。\n\nenv_auth = true の場合、rclone は共有クレデンシャルファイルを使用できます。この変数はそのファイル内でどのプロファイルを使用するかを制御します。\n\n空欄の場合、既定で環境変数 \"AWS_PROFILE\"、その環境変数も設定されていない場合は \"default\" が使用されます。\n"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "S3 プロバイダーを選択してください。"
+      },
+      "region": {
+        "title": "リージョン",
+        "help": "接続先のリージョン。\n\nS3 互換サービスを使用していてリージョンがない場合は空欄のままにしてください。"
+      },
+      "requester_pays": {
+        "title": "リクエスター負担",
+        "help": "S3 バケットとのやり取りでリクエスター負担オプションを有効にします。"
+      },
+      "sdk_log_mode": {
+        "title": "SDK ログモード",
+        "help": "SDK をデバッグする場合に設定します\n\n以下の関数のカンマ区切りリストを設定できます:\n\n- `Signing`\n- `Retries`\n- `Request`\n- `RequestWithBody`\n- `Response`\n- `ResponseWithBody`\n- `DeprecatedUsage`\n- `RequestEventMessage`\n- `ResponseEventMessage`\n\n無効化するには `Off`、すべてのログレベルを設定するには `All` を使用してください。デバッグレベルのログを表示するには `-vv` が必要です。\n"
+      },
+      "secret_access_key": {
+        "title": "シークレットアクセスキー",
+        "help": "AWS シークレットアクセスキー（パスワード）。\n\n匿名アクセスまたはランタイムクレデンシャルを使用する場合は空欄のままにしてください。"
+      },
+      "server_side_encryption": {
+        "title": "サーバーサイド暗号化",
+        "help": "このオブジェクトを S3 に保存する際に使用するサーバーサイド暗号化アルゴリズム。"
+      },
+      "session_token": {
+        "title": "セッショントークン",
+        "help": "AWS セッショントークン。"
+      },
+      "shared_credentials_file": {
+        "title": "共有クレデンシャルファイル",
+        "help": "共有クレデンシャルファイルへのパス。\n\nenv_auth = true の場合、rclone は共有クレデンシャルファイルを使用できます。\n\nこの変数が空欄の場合、rclone は \"AWS_SHARED_CREDENTIALS_FILE\" 環境変数を探します。その環境変数の値も空の場合、現在のユーザーのホームディレクトリが既定値として使用されます。\n\n    Linux/OSX: \"$HOME/.aws/credentials\"\n    Windows:   \"%USERPROFILE%\\.aws\\credentials\"\n"
+      },
+      "sign_accept_encoding": {
+        "title": "Accept-Encoding を署名",
+        "help": "rclone が署名の一部に Accept-Encoding を含めるかどうかを設定します。\n\nrclone が署名に Accept-Encoding を含めるのを止めたい場合に変更できます。\n\n通常の運用ではこれは不要なはずです。\n\nこれは rclone が把握しているすべてのプロバイダーで自動的に正しく設定されるはずです。そうでない場合はバグ報告をお願いします。\n"
+      },
+      "sse_customer_algorithm": {
+        "title": "SSE カスタマーアルゴリズム",
+        "help": "SSE-C を使用する場合、S3 にこのオブジェクトを保存する際に使用するサーバーサイド暗号化アルゴリズム。"
+      },
+      "sse_customer_key": {
+        "title": "SSE カスタマーキー",
+        "help": "SSE-C を使用する場合、データの暗号化/復号に使用する秘密鍵を指定できます。\n\n代わりに --sse-customer-key-base64 を指定することもできます。"
+      },
+      "sse_customer_key_base64": {
+        "title": "SSE カスタマーキー (Base64)",
+        "help": "SSE-C を使用する場合、データの暗号化/復号に使用する秘密鍵を base64 形式でエンコードして指定する必要があります。\n\n代わりに --sse-customer-key を指定することもできます。"
+      },
+      "sse_customer_key_md5": {
+        "title": "SSE カスタマーキー MD5",
+        "help": "SSE-C を使用する場合、秘密鍵の MD5 チェックサムを指定できます（任意）。\n\n空欄のままにすると、指定された sse_customer_key から自動的に計算されます。\n"
+      },
+      "sse_kms_key_id": {
+        "title": "SSE KMS キー ID",
+        "help": "KMS ID を使用する場合、キーの ARN を指定する必要があります。"
+      },
+      "storage_class": {
+        "title": "ストレージクラス",
+        "help": "S3 に新規オブジェクトを保存する際に使用するストレージクラス。"
+      },
+      "sts_endpoint": {
+        "title": "STS エンドポイント",
+        "help": "STS 用エンドポイント（非推奨）。\n\nAWS を使用している場合はリージョンの既定のエンドポイントを使用するため空欄のままにしてください。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードおよびコピーの並列数。\n\nマルチパートアップロードおよびコピーで同一ファイルのチャンクを同時にアップロードする数です。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 0、最大は 5 GiB です。"
+      },
+      "use_accelerate_endpoint": {
+        "title": "アクセラレートエンドポイント使用",
+        "help": "true にすると AWS S3 の高速化エンドポイントを使用します。\n\n参照: [AWS S3 Transfer acceleration](https://docs.aws.amazon.com/AmazonS3/latest/dev/transfer-acceleration-examples.html)"
+      },
+      "use_accept_encoding_gzip": {
+        "title": "Accept-Encoding: gzip 使用",
+        "help": "`Accept-Encoding: gzip` ヘッダーを送信するかどうか。\n\n既定では、rclone は可能な限り圧縮されたオブジェクトをダウンロードするため、リクエストに `Accept-Encoding: gzip` を追加します。\n\nただし Google Cloud Storage など一部のプロバイダーは HTTP ヘッダーを変更し、リクエストの署名を壊す場合があります。\n\nこの症状として、以下のようなエラーが発生することがあります\n\n\tSignatureDoesNotMatch: The request signature we calculated does not match the signature you provided.\n\nこの場合、このオプションを無効化してみてください。\n"
+      },
+      "use_already_exists": {
+        "title": "既存判定を使用",
+        "help": "rclone がバケット作成時に BucketAlreadyExists エラーを報告すべきかどうかを設定します。\n\nS3 プロトコルの進化のどこかの時点で、AWS はユーザーが既に所有しているバケットを作成しようとした際、`BucketAlreadyExists` エラーではなく `AlreadyOwnedByYou` エラーを返すようになりました。\n\n残念ながら、s3 クローンでの実装は少し一貫性がなく、`AlreadyOwnedByYou` を返すものもあれば `BucketAlreadyExists` を返すもの、まったくエラーを返さないものもあります。\n\nこれは rclone にとって重要です。多くの操作（`--s3-no-check-bucket` を使用しない限り）で、rclone はバケットを作成することでその存在を保証しているためです。\n\nrclone がプロバイダーが `AlreadyOwnedByYou` を返す、またはエラーを返さないと把握している場合、ユーザーが所有していないバケットを作成しようとした際に `BucketAlreadyExists` エラーを報告できます。それ以外の場合、rclone は `BucketAlreadyExists` エラーを無視し、混乱を招くことがあります。\n\nこれは rclone が把握しているすべてのプロバイダーで自動的に正しく設定されるはずです。そうでない場合はバグ報告をお願いします。\n"
+      },
+      "use_arn_region": {
+        "title": "ARN リージョン使用",
+        "help": "true の場合、サービスの ARN リージョンサポートを有効にします。"
+      },
+      "use_data_integrity_protections": {
+        "title": "データ整合性保護を使用",
+        "help": "true の場合、AWS S3 のデータ整合性保護を使用します。\n\n参照: [AWS Docs on Data Integrity Protections](https://docs.aws.amazon.com/sdkref/latest/guide/feature-dataintegrity.html)"
+      },
+      "use_dual_stack": {
+        "title": "デュアルスタック使用",
+        "help": "true の場合、AWS S3 のデュアルスタックエンドポイント（IPv6 サポート）を使用します。\n\n参照: [AWS Docs on Dualstack Endpoints](https://docs.aws.amazon.com/AmazonS3/latest/userguide/dual-stack-endpoints.html)"
+      },
+      "use_multipart_etag": {
+        "title": "マルチパート ETag 使用",
+        "help": "マルチパートアップロードの検証に ETag を使用するかどうか\n\ntrue、false、またはプロバイダーの既定値を使用する場合は未設定にしてください。\n"
+      },
+      "use_multipart_uploads": {
+        "title": "マルチパートアップロード使用",
+        "help": "rclone がマルチパートアップロードを使用すべきかどうかを設定します。\n\nマルチパートアップロードの使用を無効化したい場合に変更できます。\n通常の運用ではこれは不要なはずです。\n\nこれは rclone が把握しているすべてのプロバイダーで自動的に正しく設定されるはずです。そうでない場合はバグ報告をお願いします。\n"
+      },
+      "use_presigned_request": {
+        "title": "署名付きリクエスト使用",
+        "help": "単一パートアップロードに署名付きリクエストと PutObject のどちらを使用するか\n\nfalse の場合、rclone は AWS SDK の PutObject を使用してオブジェクトをアップロードします。\n\nrclone 1.59 より前のバージョンでは、単一パートオブジェクトのアップロードに署名付きリクエストを使用しており、このフラグを true に設定するとその機能が再度有効になります。特別な事情やテスト以外では通常不要です。\n"
+      },
+      "use_unsigned_payload": {
+        "title": "未署名ペイロード使用",
+        "help": "PutObject で未署名ペイロードを使用するかどうか\n\nrclone は PutObject 呼び出し時に AWS SDK がボディをシークしないようにする必要があります。AWS プロバイダーはトレーラーにチェックサムを追加することでシークを回避できますが、他のプロバイダーはできません。\n\ntrue、false、またはプロバイダーの既定値を使用する場合は未設定にしてください。\n"
+      },
+      "use_x_id": {
+        "title": "x-id 使用",
+        "help": "rclone が x-id URL パラメーターを追加すべきかどうかを設定します。\n\nAWS SDK が x-id URL パラメーターを追加するのを無効化したい場合に変更できます。\n\n通常の運用ではこれは不要なはずです。\n\nこれは rclone が把握しているすべてのプロバイダーで自動的に正しく設定されるはずです。そうでない場合はバグ報告をお願いします。\n"
+      },
+      "v2_auth": {
+        "title": "V2 認証",
+        "help": "true の場合 v2 認証を使用します。\n\nfalse（既定）の場合、rclone は v4 認証を使用します。設定すると rclone は v2 認証を使用します。\n\nv4 署名が動作しない場合（Jewel/v10 以前の CEPH など）にのみ使用してください。"
+      },
+      "version_at": {
+        "title": "指定時点のバージョン",
+        "help": "指定した時点でのファイルバージョンを表示します。\n\nパラメーターは日付 \"2006-01-02\"、日時 \"2006-01-02 15:04:05\"、またはそれだけ前を示す期間（例: \"100d\"、\"1h\"）を指定します。\n\nこれを使用する場合、ファイルの書き込み操作は一切許可されないため、ファイルのアップロードや削除はできません。\n\n有効な形式は [時間オプションのドキュメント](/docs/#time-options) を参照してください。\n"
+      },
+      "version_deleted": {
+        "title": "削除済みバージョン表示",
+        "help": "バージョン使用時に削除済みファイルのマーカーを表示します。\n\nバージョン使用時、一覧に削除済みファイルのマーカーを表示します。これらはサイズ 0 のファイルとして表示されます。これらに対して行える操作は削除のみです。\n\n削除マーカーを削除すると、以前のバージョンが表示されるようになります。\n\n削除済みファイルは常にタイムスタンプ付きで表示されます。\n"
+      },
+      "versions": {
+        "title": "バージョン",
+        "help": "ディレクトリ一覧に旧バージョンを含めます。"
+      },
+      "role_arn": {
+        "title": "ロール ARN",
+        "help": "引き受ける IAM ロールの ARN。\n\t\t\t\nロールの引き受けを使用しない場合は空欄のままにしてください。"
+      },
+      "role_session_name": {
+        "title": "ロールセッション名",
+        "help": "引き受けたロールのセッション名。\n\t\t\t\n空欄の場合、セッション名は自動的に生成されます。"
+      },
+      "role_session_duration": {
+        "title": "ロールセッション期間",
+        "help": "引き受けたロールのセッション期間。\n\t\t\t\n空欄の場合、既定のセッション期間が使用されます。"
+      },
+      "role_external_id": {
+        "title": "ロール外部 ID",
+        "help": "引き受けたロールの外部 ID。\n\t\t\t\n外部 ID を使用しない場合は空欄のままにしてください。"
+      },
+      "list_versions_oldest_first": {
+        "title": "バージョンを古い順にリスト",
+        "help": "バックエンドがオブジェクトのバージョンを古い順に返す場合に設定します。\n\nS3 の標準ではオブジェクトのバージョンは新しい順に返されます。一部のバックエンド（Hitachi HCP など）は代わりに古い順に返します。\n\n--s3-version-at または --s3-versions がお使いのバックエンドで不正な結果を返す場合は、この癖を設定してください。\n\nこれは rclone が把握しているすべてのプロバイダーで自動的に正しく設定されるはずです。そうでない場合はバグ報告をお願いします。\n"
+      },
+      "ibm_iam_endpoint": {
+        "title": "IBM IAM エンドポイント",
+        "help": "認証に使用する IBM IAM エンドポイント。\n\n既定の公開エンドポイントを使用する場合は空欄のままにしてください。"
+      },
+      "object_lock_mode": {
+        "title": "オブジェクトロックモード",
+        "help": "オブジェクトのアップロードまたはコピー時に適用するオブジェクトロックモード。\n\nオブジェクトにオブジェクトロック保持モードを適用する場合に設定します。\n設定しない場合、オブジェクトロックモードは適用されません（--metadata を使用していても）。\n\n注: オブジェクトロック保持を有効にするには、object_lock_mode と object_lock_retain_until_date の両方を設定する必要があります。片方のみの設定では効果がありません。\n\n- GOVERNANCE: オブジェクトロックモードを GOVERNANCE に設定\n- COMPLIANCE: オブジェクトロックモードを COMPLIANCE に設定\n- copy: 転送元オブジェクトからモードをコピー（--metadata が必要）\n\n参照: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_retain_until_date": {
+        "title": "オブジェクトロック保持期限",
+        "help": "オブジェクトのアップロードまたはコピー時に適用するオブジェクトロックの保持期限。\n\nオブジェクトにオブジェクトロックの保持期限を適用する場合に設定します。\n設定しない場合、保持期限は適用されません（--metadata を使用していても）。\n\n注: オブジェクトロック保持を有効にするには、object_lock_mode と object_lock_retain_until_date の両方を設定する必要があります。片方のみの設定では効果がありません。\n\n以下を受け付けます:\n- RFC 3339 形式: 2030-01-02T15:04:05Z\n- 現在からの期間: 365d、1y、6M（日、年、月）\n- copy: 転送元オブジェクトから日付をコピー（--metadata が必要）\n\n参照: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "object_lock_legal_hold_status": {
+        "title": "オブジェクトロック法的保持状態",
+        "help": "オブジェクトのアップロードまたはコピー時に適用するオブジェクトロックの法的保持状態。\n\nオブジェクトにオブジェクトロックの法的保持を適用する場合に設定します。\n設定しない場合、法的保持は適用されません（--metadata を使用していても）。\n\n注: 法的保持は保持とは独立しており、個別に設定できます。\n\n- ON: 法的保持を有効化\n- OFF: 法的保持を無効化\n- copy: 転送元オブジェクトから法的保持状態をコピー（--metadata が必要）\n\n参照: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      },
+      "bypass_governance_retention": {
+        "title": "ガバナンス保持のバイパス",
+        "help": "GOVERNANCE モードでロックされたオブジェクトの削除・変更を許可します。"
+      },
+      "bucket_object_lock_enabled": {
+        "title": "バケットのオブジェクトロック有効化",
+        "help": "新規バケット作成時にオブジェクトロックを有効にします。"
+      },
+      "object_lock_set_after_upload": {
+        "title": "アップロード後にオブジェクトロック設定",
+        "help": "アップロード後に個別の API 呼び出しでオブジェクトロックを設定します。\n\nPUT 操作時にオブジェクトロックヘッダーの設定をサポートしない S3 互換プロバイダー向けに使用します。有効にすると、アップロード完了後に個別の PutObjectRetention および PutObjectLegalHold API 呼び出しでオブジェクトロックが設定されます。\n\nこれによりオブジェクトごとに追加の API 呼び出しが発生するため、プロバイダーがこれを必要とする場合にのみ有効にしてください。"
+      },
+      "object_lock_supported": {
+        "title": "オブジェクトロックサポート",
+        "help": "プロバイダーが S3 オブジェクトロックをサポートしているかどうか。\n\ntrue、false、またはプロバイダーの既定値を使用する場合は未設定にしてください。\n\nS3 オブジェクトロック API を完全にはサポートしていないプロバイダー（例えば、ガバナンス保持のバイパスに非標準のヘッダーを使用し、S3 API 経由での法的保持を実装していない GCS）には false を設定してください。\n"
+      }
+    },
+    "seafile": {
+      "2fa": {
+        "title": "2 要素認証",
+        "help": "2 要素認証（アカウントで 2FA が有効な場合は 'true'）。"
+      },
+      "auth_token": {
+        "title": "認証トークン",
+        "help": "認証トークン。"
+      },
+      "create_library": {
+        "title": "ライブラリを作成",
+        "help": "ライブラリが存在しない場合に rclone が作成するかどうか。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "library": {
+        "title": "ライブラリ",
+        "help": "ライブラリの名前。\n\n暗号化されていないすべてのライブラリにアクセスする場合は空欄のままにしてください。"
+      },
+      "library_key": {
+        "title": "ライブラリキー",
+        "help": "ライブラリのパスワード（暗号化されたライブラリのみ）。\n\nコマンドラインで指定する場合は空欄のままにしてください。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "url": {
+        "title": "URL",
+        "help": "接続先の seafile ホストの URL。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ユーザー名（通常はメールアドレス）。"
+      }
+    },
+    "sftp": {
+      "ask_password": {
+        "title": "パスワード入力を許可",
+        "help": "必要な場合に SFTP パスワードの入力を求めることを許可します。\n\nこれを設定し、パスワードが指定されていない場合、rclone は以下を行います:\n- パスワードの入力を求める\n- ssh-agent には問い合わせない\n"
+      },
+      "blake3sum_command": {
+        "title": "BLAKE3Sum コマンド",
+        "help": "BLAKE3 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードおよびダウンロードのチャンクサイズ。\n\nこれは SFTP プロトコルのパケット内のペイロードの最大サイズを制御します。RFC ではこれを 32768 バイト（32k）に制限しており、これが既定値です。ただし、多くのサーバーはより大きいサイズをサポートしており、通常はパケット合計サイズの上限 256k までとなっています。これを大きく設定すると、高遅延回線での転送速度が大幅に向上します。これには OpenSSH も含まれ、例えば 255k を使用するとオーバーヘッドの余地を残しつつ 256k のパケット合計サイズに収まり、うまく機能します。\n\n32k より大きい値を使用する前に十分にテストし、常に同じサーバーに接続する場合、または十分に広範なテストを行った後にのみ使用してください。大きなファイルをコピーする際に \"failed to send packet payload: EOF\" や多数の \"connection lost\"、\"corrupted on transfer\" のようなエラーが発生する場合は、値を下げてみてください。[rclone serve sftp](/commands/rclone_serve_sftp) が実行するサーバーは標準の 32k 最大ペイロードでパケットを送信するため、ファイルのダウンロード時には異なる chunk_size を設定してはいけませんが、256k の合計サイズまでのパケットは受け付けるため、アップロードの chunk_size は上記の OpenSSH の例のように設定できます。\n"
+      },
+      "ciphers": {
+        "title": "暗号方式",
+        "help": "セッション暗号化に使用する暗号方式のスペース区切りリスト。優先順に指定します。\n\nサーバー設定と少なくとも 1 つ一致する必要があります。これは例えば ssh -Q cipher で確認できます。\n\nuse_insecure_cipher が true の場合、これを設定してはいけません。\n\n例:\n\n    aes128-ctr aes192-ctr aes256-ctr aes128-gcm@openssh.com aes256-gcm@openssh.com\n"
+      },
+      "concurrency": {
+        "title": "並列数",
+        "help": "1 ファイルあたりの未処理リクエストの最大数\n\nこれは 1 ファイルあたりの未処理リクエストの最大数を制御します。\n増やすと高遅延回線でのスループットが向上しますが、メモリ使用量も増加します。\n"
+      },
+      "connections": {
+        "title": "接続数",
+        "help": "SFTP の同時接続数の最大値。0 で無制限。\n\nこれを設定するとデッドロックが発生しやすくなるため、注意して使用する必要があります。\n\n同期またはコピーを行う場合は、接続数を `--transfers` と `--checkers` の合計より 1 大きくしてください。\n\n`--check-first` を使用する場合は、`--checkers` と `--transfers` の最大値より 1 大きいだけで済みます。\n\nしたがって `connections 3` の場合、`--checkers 2 --transfers 2 --check-first` または `--checkers 1 --transfers 1` を使用します。\n\n"
+      },
+      "copy_is_hardlink": {
+        "title": "コピーをハードリンクとして扱う",
+        "help": "ハードリンクを使用したサーバーサイドコピーを有効にする場合に設定します。\n\nSFTP プロトコルはコピーコマンドを定義していないため、通常 sftp バックエンドではサーバーサイドコピーは許可されません。\n\nただし SFTP プロトコルはハードリンクをサポートしており、このフラグを有効にすると sftp バックエンドはサーバーサイドコピーをサポートするようになります。これらは転送元から転送先へのハードリンクによって実装されます。\n\nすべての sftp サーバーがこれをサポートしているわけではありません。\n\n2 つのファイルをハードリンクすると、転送元と転送先が同じファイルになるため、追加の容量は使用されません。\n\nこの機能は --copy-dest で作成されたバックアップに便利な場合があります。"
+      },
+      "crc32sum_command": {
+        "title": "CRC32Sum コマンド",
+        "help": "CRC-32 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "disable_concurrent_reads": {
+        "title": "並列読み込み無効化",
+        "help": "設定すると並列読み込みを使用しません。\n\n通常、並列読み込みは安全に使用でき、使用しないとパフォーマンスが低下するため、このオプションは既定で無効になっています。\n\n一部のサーバーはファイルをダウンロードできる回数を制限しています。並列読み込みを使用するとこの制限に達することがあるため、以下のようなエラーを返すサーバーを使用している場合は\n\n    Failed to copy: file does not exist\n\nこのフラグを有効にする必要があるかもしれません。\n\n並列読み込みが無効の場合、use_fstat オプションは無視されます。\n"
+      },
+      "disable_concurrent_writes": {
+        "title": "並列書き込み無効化",
+        "help": "設定すると並列書き込みを使用しません。\n\n通常 rclone はファイルのアップロードに並列書き込みを使用します。これによりパフォーマンス、特に遠隔サーバーとの通信が大幅に向上します。\n\nこのオプションは必要な場合に並列書き込みを無効化します。\n"
+      },
+      "disable_hashcheck": {
+        "title": "ハッシュチェック無効化",
+        "help": "リモートのファイルハッシュが利用可能かを判定するための SSH コマンドの実行を無効化します。\n\n空欄または false のままにするとハッシュ計算が有効になります（推奨）。true にするとハッシュ計算を無効化します。"
+      },
+      "hashes": {
+        "title": "ハッシュ",
+        "help": "サポートするチェックサムの種類をカンマ区切りで指定します。"
+      },
+      "host": {
+        "title": "ホスト",
+        "help": "接続先の SSH ホスト。\n\n例: \"example.com\"。"
+      },
+      "host_key_algorithms": {
+        "title": "ホストキーアルゴリズム",
+        "help": "ホストキーアルゴリズムのスペース区切りリスト。優先順に指定します。\n\nサーバー設定と少なくとも 1 つ一致する必要があります。これは例えば ssh -Q HostKeyAlgorithms で確認できます。\n\n注: サーバーのホストキー検証が有効でない場合でも、これはサーバーとの鍵交換の結果に影響を与えることがあります。\n\n例:\n\n    ssh-ed25519 ssh-rsa ssh-dss\n"
+      },
+      "http_proxy": {
+        "title": "HTTP プロキシ",
+        "help": "HTTP CONNECT プロキシの URL\n\nHTTP CONNECT メソッドをサポートする HTTP プロキシの URL を設定してください。\n"
+      },
+      "idle_timeout": {
+        "title": "アイドルタイムアウト",
+        "help": "アイドル接続を閉じるまでの最大時間。\n\n指定した時間内に接続プールに接続が返却されない場合、rclone は接続プールを空にします。\n\n0 に設定すると接続を無期限に保持します。\n"
+      },
+      "key_exchange": {
+        "title": "鍵交換アルゴリズム",
+        "help": "鍵交換アルゴリズムのスペース区切りリスト。優先順に指定します。\n\nサーバー設定と少なくとも 1 つ一致する必要があります。これは例えば ssh -Q kex で確認できます。\n\nuse_insecure_cipher が true の場合、これを設定してはいけません。\n\n例:\n\n    sntrup761x25519-sha512@openssh.com curve25519-sha256 curve25519-sha256@libssh.org ecdh-sha2-nistp256\n"
+      },
+      "key_file": {
+        "title": "鍵ファイル",
+        "help": "PEM エンコードされた秘密鍵ファイルへのパス。\n\nssh-agent を使用する場合は空欄のままにするか、key-use-agent を設定してください。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "key_file_pass": {
+        "title": "鍵ファイルパスフレーズ",
+        "help": "PEM エンコードされた秘密鍵ファイルを復号するパスフレーズ。\n\nPEM 暗号化された鍵ファイル（古い OpenSSH 形式）のみがサポートされます。新しい OpenSSH 形式で暗号化された鍵は使用できません。"
+      },
+      "key_pem": {
+        "title": "PEM 秘密鍵",
+        "help": "生の PEM エンコードされた秘密鍵。\n\nこれは改行を '\\n' に置き換えた 1 行にする必要がある点に注意してください。例:\n\n    key_pem = -----BEGIN RSA PRIVATE KEY-----\\nMaMbaIXtE\\n0gAMbMbaSsd\\nMbaass\\n-----END RSA PRIVATE KEY-----\n\n以下のコマンドで正しく 1 行にできます:\n\n    awk '{printf \"%s\\\\n\", $0}' < ~/.ssh/id_rsa\n\n指定すると key_file パラメーターより優先されます。"
+      },
+      "key_use_agent": {
+        "title": "ssh-agent 使用",
+        "help": "設定すると ssh-agent の使用を強制します。\n\nkey-file も設定されている場合、指定した key-file の \".pub\" ファイルが読み込まれ、その関連する鍵のみが ssh-agent にリクエストされます。これにより、ssh-agent に多数の鍵が含まれている場合の `Too many authentication failures for *username*` エラーを回避できます。"
+      },
+      "known_hosts_file": {
+        "title": "known_hosts ファイル",
+        "help": "known_hosts ファイルへの任意のパス。\n\nこの値を設定するとサーバーのホストキー検証が有効になります。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "macs": {
+        "title": "MAC",
+        "help": "MAC（メッセージ認証コード）アルゴリズムのスペース区切りリスト。優先順に指定します。\n\nサーバー設定と少なくとも 1 つ一致する必要があります。これは例えば ssh -Q mac で確認できます。\n\n例:\n\n    umac-64-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-256-etm@openssh.com\n"
+      },
+      "md5sum_command": {
+        "title": "MD5Sum コマンド",
+        "help": "MD5 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "SSH パスワード。ssh-agent を使用する場合は空欄のままにしてください。"
+      },
+      "path_override": {
+        "title": "パスオーバーライド",
+        "help": "SSH シェルコマンドで使用するパスを上書きします。\n\nこれにより、SFTP パスと SSH パスが異なる場合にチェックサム計算が可能になります。この問題は Synology NAS ボックスなどに影響します。\n\n例えば、共有フォルダがボリュームを表すディレクトリ内にある場合:\n\n    rclone sync /home/local/directory remote:/directory --sftp-path-override /volume2/directory\n\n例えば、ホームディレクトリが \"home\" という共有フォルダ内にある場合:\n\n    rclone sync /home/local/directory remote:/home/directory --sftp-path-override /volume1/homes/USER/directory\n\t\nSFTP リモートのルートへのパスのみを指定し、相対的なサブパスは rclone が自動的に追加するようにしたい場合（必要に応じてリモートのアンラップ/復号も含む）は、パスの先頭に '@' 文字を追加してください。\n\n例えば、上記の最初の例は以下のように書き換えられます:\n\n\trclone sync /home/local/directory remote:/directory --sftp-path-override @/volume2\n\t\nSynology の \"home\" フォルダでこの方法を使用する場合、\"/home\" ではなく完全な \"/homes/USER\" パスを指定する必要がある点に注意してください。\n\n例えば、上記の 2 つ目の例は以下のように書き換える必要があります:\n\n\trclone sync /home/local/directory remote:/homes/USER/directory --sftp-path-override @/volume1"
+      },
+      "port": {
+        "title": "ポート",
+        "help": "SSH ポート番号。"
+      },
+      "pubkey": {
+        "title": "公開証明書",
+        "help": "公開証明書ベースの認証用の SSH 公開証明書。\n認証に使用したい署名済み証明書がある場合に設定してください。\n指定すると pubkey_file より優先されます。"
+      },
+      "pubkey_file": {
+        "title": "公開鍵ファイル",
+        "help": "公開鍵ファイルへの任意のパス。\n\n認証に使用したい署名済み証明書がある場合に設定してください。\n\nファイル名の先頭の `~` や `${RCLONE_CONFIG_DIR}` のような環境変数は展開されます。"
+      },
+      "server_command": {
+        "title": "サーバーコマンド",
+        "help": "リモートホストで sftp サーバーを実行するパスまたはコマンドを指定します。\n\nserver_command が定義されている場合、subsystem オプションは無視されます。\n\n設定ファイルに server_command を追加する場合、rclone が失敗するため引用符で囲まないよう注意してください。\n\n動作する設定例:\n\n    [remote_name]\n    type = sftp\n    server_command = sudo /usr/libexec/openssh/sftp-server"
+      },
+      "set_env": {
+        "title": "環境変数の設定",
+        "help": "sftp とコマンドに渡す環境変数\n\n以下の形式で環境変数を設定します:\n\n    VAR=value\n\nこれは sftp クライアントおよび実行されるコマンド（md5sum など）に渡されます。\n\n複数の変数はスペース区切りで指定します。例:\n\n    VAR1=value VAR2=value\n\nスペースを含む変数は引用符で囲んで指定します。例:\n\n    \"VAR3=value with space\" \"VAR4=value with space\" VAR5=nospacehere\n\n"
+      },
+      "set_modtime": {
+        "title": "更新日時の設定",
+        "help": "設定するとリモートで更新日時を設定します。"
+      },
+      "sha1sum_command": {
+        "title": "SHA1Sum コマンド",
+        "help": "SHA-1 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "sha256sum_command": {
+        "title": "SHA256Sum コマンド",
+        "help": "SHA-256 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "shell_type": {
+        "title": "シェルタイプ",
+        "help": "リモートサーバーの SSH シェルの種類（ある場合）。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "skip_links": {
+        "title": "リンクをスキップ",
+        "help": "シンボリックリンクおよびその他の通常でないファイルをスキップする場合に設定します。"
+      },
+      "socks_proxy": {
+        "title": "SOCKS プロキシ",
+        "help": "SOCKS 5 プロキシホスト。\n\t\nuser:pass@host:port、user@host:port、host:port の形式をサポートします。\n\n例:\n\n\tmyUser:myPass@localhost:9005\n\t"
+      },
+      "ssh": {
+        "title": "SSH",
+        "help": "外部 ssh バイナリへのパスと引数。\n\n通常 rclone は内部の ssh ライブラリを使用して SFTP サーバーに接続します。ただし、すべての ssh オプションを実装しているわけではないため、外部の ssh バイナリを使用したい場合があります。\n\nこのオプションを使用すると、rclone は内部設定をすべて無視するため、user/host/port やその他必要なオプションで ssh バイナリを設定する必要があります。\n\n**重要** ssh コマンドはパスワードを求めずにログインできる必要があるため、鍵または証明書で設定する必要があります。\n\nrclone は指定されたコマンドを、SFTP サブシステムへのアクセスには追加の引数 \"-s sftp\" を付けて、チェックサムの読み取りには \"md5sum /path/to/file\" のようなコマンドを付けて実行します。\n\nスペースを含む引数は \"二重引用符\" で囲んでください。\n\n設定例:\n\n    ssh -o ServerAliveInterval=20 user@example.com\n\n外部 ssh バイナリを使用する場合、rclone はハッシュを計算するたびに新しい ssh 接続を作成する点に注意してください。\n"
+      },
+      "subsystem": {
+        "title": "サブシステム",
+        "help": "リモートホストの SSH2 サブシステムを指定します。"
+      },
+      "use_fstat": {
+        "title": "Fstat を使用",
+        "help": "設定すると stat の代わりに fstat を使用します。\n\n一部のサーバーは開いているファイルの数を制限しており、ファイルを開いた後に Stat を呼び出すとサーバーからエラーが返されます。このフラグを設定すると、既に開いているファイルハンドルに対して呼び出される Fstat が Stat の代わりに使用されます。\n\nこれは「extractability」レベルが 1 に設定されている（同時に開けるファイルが 1 つのみ）IBM Sterling SFTP サーバーで役立つことが確認されています。\n"
+      },
+      "use_insecure_cipher": {
+        "title": "安全性の低い暗号を使用",
+        "help": "安全性の低い暗号と鍵交換方式の使用を有効にします。\n\nこれにより以下の安全性の低い暗号および鍵交換方式の使用が有効になります:\n\n- aes128-cbc\n- aes192-cbc\n- aes256-cbc\n- 3des-cbc\n- diffie-hellman-group-exchange-sha256\n- diffie-hellman-group-exchange-sha1\n\nこれらのアルゴリズムは安全性が低く、攻撃者によって平文データが復元される可能性があります。\n\nciphers または key_exchange の高度なオプションを使用する場合、これは false にする必要があります。\n"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "SSH ユーザー名。"
+      },
+      "xxh128sum_command": {
+        "title": "XXH128Sum コマンド",
+        "help": "XXH128 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      },
+      "xxh3sum_command": {
+        "title": "XXH3Sum コマンド",
+        "help": "XXH3 ハッシュの読み取りに使用するコマンド。\n\n自動検出する場合は空欄のままにしてください。"
+      }
+    },
+    "sharefile": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\n256k 以上の 2 のべき乗である必要があります。\n\n大きくするとパフォーマンスが向上しますが、転送ごとに各チャンクがメモリにバッファーされる点に注意してください。\n\n小さくするとメモリ使用量は減りますが、パフォーマンスは低下します。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "API 呼び出し用のエンドポイント。\n\n通常は oauth 処理の一部として自動検出されますが、https://XXX.sharefile.com のように手動で設定することもできます。\n"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n\n\"Personal Folders\" にアクセスする場合は空欄のままにしてください。標準の値、または任意のフォルダ ID（長い 16 進数の ID）を使用できます。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "マルチパートアップロードへ切り替える閾値。"
+      }
+    },
+    "sia": {
+      "api_password": {
+        "title": "API パスワード",
+        "help": "Sia デーモンの API パスワード。\n\nHOME/.sia/ またはデーモンディレクトリ内の apipassword ファイルにあります。"
+      },
+      "api_url": {
+        "title": "API URL",
+        "help": "Sia デーモンの API URL（例: http://sia.daemon.host:9980）。\n\n他のホストに API ポートを開放するには siad を --disable-api-security で起動する必要があります（非推奨）。\nSia デーモンが localhost で動作している場合は既定値のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "user_agent": {
+        "title": "ユーザーエージェント",
+        "help": "siad のユーザーエージェント\n\nSia デーモンはセキュリティ上の理由から、既定で 'Sia-Agent' というユーザーエージェントを要求します"
+      }
+    },
+    "smb": {
+      "case_insensitive": {
+        "title": "大文字小文字を区別しない",
+        "help": "サーバーが大文字小文字を区別しないよう設定されているかどうか。\n\nWindows 共有では常に true です。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "domain": {
+        "title": "ドメイン",
+        "help": "NTLM 認証用のドメイン名。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hide_special_share": {
+        "title": "特殊共有を非表示",
+        "help": "ユーザーがアクセスすべきでない特殊共有（print$ など）を非表示にします。"
+      },
+      "host": {
+        "title": "ホスト",
+        "help": "接続先の SMB サーバーのホスト名。\n\n例: \"example.com\"。"
+      },
+      "idle_timeout": {
+        "title": "アイドルタイムアウト",
+        "help": "アイドル接続を閉じるまでの最大時間。\n\n指定した時間内に接続プールに接続が返却されない場合、rclone は接続プールを空にします。\n\n0 に設定すると接続を無期限に保持します。\n"
+      },
+      "kerberos_ccache": {
+        "title": "Kerberos 認証情報キャッシュ",
+        "help": "Kerberos 認証情報キャッシュ（krb5cc）へのパス。\n\n既定の KRB5CCNAME 環境変数を上書きし、この SMB バックエンドのインスタンスが別の Kerberos キャッシュファイルを使用できるようにします。異なるクレデンシャルで複数の SMB をマウントする場合や、マルチユーザー環境で実行する場合に便利です。\n\nサポートされる形式:\n  - FILE:/path/to/ccache   – 指定したファイルを使用します。\n  - DIR:/path/to/ccachedir – 指定したディレクトリ内のプライマリファイルを使用します。\n  - /path/to/ccache        – ファイルパスとして解釈されます。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "SMB パスワード。"
+      },
+      "port": {
+        "title": "ポート",
+        "help": "SMB ポート番号。"
+      },
+      "spn": {
+        "title": "サービスプリンシパル名",
+        "help": "サービスプリンシパル名。\n\nrclone はこの名前をサーバーに提示します。一部のサーバーはこれを追加の認証として使用しており、クラスターでは設定が必要になることがよくあります。例:\n\n    cifs/remotehost:1020\n\n不明な場合は空欄のままにしてください。\n"
+      },
+      "use_kerberos": {
+        "title": "Kerberos を使用",
+        "help": "Kerberos 認証を使用します。\n\n設定すると、rclone は NTLM の代わりに Kerberos 認証を使用します。これには、既定の場所、または KRB5_CONFIG と KRB5CCNAME 環境変数で指定された場所に、有効な Kerberos 設定とクレデンシャルキャッシュが必要です。\n"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "SMB ユーザー名。"
+      }
+    },
+    "storj": {
+      "access_grant": {
+        "title": "アクセスグラント",
+        "help": "アクセスグラント。"
+      },
+      "api_key": {
+        "title": "API キー",
+        "help": "API キー。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "passphrase": {
+        "title": "パスフレーズ",
+        "help": "暗号化用パスフレーズ。\n\n既存のオブジェクトにアクセスするには、アップロード時に使用したパスフレーズを入力してください。"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "認証方式を選択してください。"
+      },
+      "satellite_address": {
+        "title": "サテライトアドレス",
+        "help": "サテライトアドレス。\n\nカスタムサテライトアドレスは `<nodeid>@<address>:<port>` の形式に従う必要があります。"
+      }
+    },
+    "sugarsync": {
+      "access_key_id": {
+        "title": "アクセスキー ID",
+        "help": "Sugarsync のアクセスキー ID。\n\nrclone のものを使用する場合は空欄のままにしてください。"
+      },
+      "app_id": {
+        "title": "アプリ ID",
+        "help": "Sugarsync のアプリ ID。\n\nrclone のものを使用する場合は空欄のままにしてください。"
+      },
+      "authorization": {
+        "title": "認可",
+        "help": "Sugarsync の認可。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      },
+      "authorization_expiry": {
+        "title": "認可有効期限",
+        "help": "Sugarsync の認可有効期限。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      },
+      "deleted_id": {
+        "title": "削除済みフォルダ ID",
+        "help": "Sugarsync の削除済みフォルダ ID。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "true にするとファイルを完全に削除し、\nそうでない場合は削除済みファイルに移動します。"
+      },
+      "private_access_key": {
+        "title": "プライベートアクセスキー",
+        "help": "Sugarsync のプライベートアクセスキー。\n\nrclone のものを使用する場合は空欄のままにしてください。"
+      },
+      "refresh_token": {
+        "title": "リフレッシュトークン",
+        "help": "Sugarsync のリフレッシュトークン。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      },
+      "root_id": {
+        "title": "ルート ID",
+        "help": "Sugarsync のルート ID。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "Sugarsync のユーザー。\n\n通常は空欄のままにしてください。rclone が自動的に設定します。"
+      }
+    },
+    "swift": {
+      "application_credential_id": {
+        "title": "アプリケーションクレデンシャル ID",
+        "help": "アプリケーションクレデンシャル ID（OS_APPLICATION_CREDENTIAL_ID）。"
+      },
+      "application_credential_name": {
+        "title": "アプリケーションクレデンシャル名",
+        "help": "アプリケーションクレデンシャル名（OS_APPLICATION_CREDENTIAL_NAME）。"
+      },
+      "application_credential_secret": {
+        "title": "アプリケーションクレデンシャルシークレット",
+        "help": "アプリケーションクレデンシャルシークレット（OS_APPLICATION_CREDENTIAL_SECRET）。"
+      },
+      "auth": {
+        "title": "認証",
+        "help": "サーバーの認証 URL（OS_AUTH_URL）。"
+      },
+      "auth_token": {
+        "title": "認証トークン",
+        "help": "代替認証による認証トークン - 任意（OS_AUTH_TOKEN）。"
+      },
+      "auth_version": {
+        "title": "認証バージョン",
+        "help": "認証バージョン - 任意 - 認証 URL にバージョンが含まれない場合に (1,2,3) を設定します（ST_AUTH_VERSION）。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "このサイズを超えるファイルはチャンク化されます。\n\nこのサイズを超えるファイルは `_segments` コンテナまたは `.file-segments` ディレクトリにチャンク化されます（詳細は `use_segments_container` オプションを参照）。既定値は最大値の 5 GiB で、これより大きいファイルのみがチャンク化されることを意味します。\n\nrclone はチャンク化されたファイルを動的大容量オブジェクト（DLO）としてアップロードします。\n"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "domain": {
+        "title": "ドメイン",
+        "help": "ユーザードメイン - 任意（v3 認証）（OS_USER_DOMAIN_NAME）"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "endpoint_type": {
+        "title": "エンドポイントタイプ",
+        "help": "サービスカタログから選択するエンドポイントタイプ（OS_ENDPOINT_TYPE）。"
+      },
+      "env_auth": {
+        "title": "環境認証",
+        "help": "標準の OpenStack 形式の環境変数から swift のクレデンシャルを取得します。"
+      },
+      "fetch_until_empty_page": {
+        "title": "空ページまで取得",
+        "help": "ページネーション時、空のページを受け取るまで常に取得します。\n\nrclone の一覧が期待より少ないオブジェクトを表示する場合や、同期を繰り返すたびに変更のないオブジェクトがコピーされる場合はこのオプションの使用を検討してください。\n\nこれを有効にしても安全ですが、rclone が必要以上に API 呼び出しを行う可能性があります。\n\nこれは、期待どおりにページネーションを実装していない Swift API の実装に対応するための 2 つの回避策のうちの 1 つです。\"partial_page_fetch_threshold\" も参照してください。"
+      },
+      "key": {
+        "title": "キー",
+        "help": "API キーまたはパスワード（OS_PASSWORD）。"
+      },
+      "leave_parts_on_error": {
+        "title": "エラー時にパートを残す",
+        "help": "true にすると、失敗時にアップロードの中止呼び出しを行わないようにします。\n\n異なるセッション間でアップロードを再開する場合は true に設定してください。"
+      },
+      "no_chunk": {
+        "title": "チャンクなし",
+        "help": "ストリーミングアップロード中にファイルをチャンク化しません。\n\nストリーミングアップロード（例: `rcat` の使用、または `--vfs-cache-mode off` での `mount`）を行う際、このフラグを設定すると swift バックエンドはチャンク化されたファイルをアップロードしなくなります。\n\nこれによりストリームアップロードの最大サイズは 5 GiB に制限されます。チャンク化されていないファイルは扱いやすく MD5SUM を持てるため、これは有用です。\n\n通常のコピー操作を行う場合、rclone は引き続き `chunk_size` より大きいファイルをチャンク化します。"
+      },
+      "no_large_objects": {
+        "title": "大容量オブジェクトなし",
+        "help": "静的および動的な大容量オブジェクトのサポートを無効化します\n\nSwift は 5 GiB を超えるファイルを透過的に保存できません。大きなファイルをチャンク化する方式には静的大容量オブジェクト（SLO）と動的大容量オブジェクト（DLO）の 2 種類があり、API はオブジェクトに HEAD を実行しない限り、rclone がそれが静的か動的かを判別する手段を提供していません。これらは異なる扱いが必要なため、rclone はチェックサムの読み込みなどでオブジェクトに対して HEAD リクエストを発行する必要があります。\n\n`no_large_objects` を設定すると、rclone は静的・動的な大容量オブジェクトが保存されていないと仮定します。これにより追加の HEAD 呼び出しを行わなくなり、特に `--checksum` を設定した swift 間転送でパフォーマンスが大幅に向上します。\n\nこのオプションを設定すると `no_chunk` も暗黙的に有効になり、チャンクによるアップロードが行われなくなるため、5 GiB を超えるファイルはアップロード時に単に失敗します。\n\nこのオプションを設定した状態で実際に静的・動的な大容量オブジェクトが**存在する**場合、それらのハッシュは不正な値になります。ダウンロードは成功しますが、削除やコピーなどの他の操作は失敗します。\n"
+      },
+      "partial_page_fetch_threshold": {
+        "title": "部分ページ取得しきい値",
+        "help": "ページネーション時、現在のページが上限に対しこの割合以内であれば取得します。\n\nrclone の一覧が期待より少ないオブジェクトを表示する場合や、同期を繰り返すたびに変更のないオブジェクトがコピーされる場合はこのオプションの使用を検討してください。\n\nこれを有効にしても安全ですが、rclone が必要以上に API 呼び出しを行う可能性があります。\n\nこれは、期待どおりにページネーションを実装していない Swift API の実装に対応するための 2 つの回避策のうちの 1 つです。\"fetch_until_empty_page\" も参照してください。"
+      },
+      "region": {
+        "title": "リージョン",
+        "help": "リージョン名 - 任意（OS_REGION_NAME）。"
+      },
+      "storage_policy": {
+        "title": "ストレージポリシー",
+        "help": "新しいコンテナ作成時に使用するストレージポリシー。\n\n新しいコンテナ作成時に指定したストレージポリシーが適用されます。ポリシーは作成後に変更できません。設定可能な値とその意味は、使用している Swift ストレージプロバイダーによって異なります。"
+      },
+      "storage_url": {
+        "title": "ストレージ URL",
+        "help": "ストレージ URL - 任意（OS_STORAGE_URL）。"
+      },
+      "tenant": {
+        "title": "テナント",
+        "help": "テナント名 - v1 認証では任意、それ以外の場合はこれか tenant_id が必要です（OS_TENANT_NAME または OS_PROJECT_NAME）。"
+      },
+      "tenant_domain": {
+        "title": "テナントドメイン",
+        "help": "テナントドメイン - 任意（v3 認証）（OS_PROJECT_DOMAIN_NAME）。"
+      },
+      "tenant_id": {
+        "title": "テナント ID",
+        "help": "テナント ID - v1 認証では任意、それ以外の場合はこれか tenant が必要です（OS_TENANT_ID）。"
+      },
+      "use_segments_container": {
+        "title": "セグメントコンテナを使用",
+        "help": "大容量オブジェクトのセグメントの保存先を選択します\n\nSwift は 5 GiB を超えるファイルを透過的に保存できないため、rclone は `chunk_size`（既定 5 GiB）より大きいファイルをアップロードするためにチャンク化します。\n\nこの値が `true` の場合、チャンクは転送先コンテナと同じ名前に `_segments` を付加した追加のコンテナに保存されます。これにより元のコンテナ内にデータが重複することはありませんが、別のコンテナを持つことが許容されない場合もあります。\n\nこの値が `false` の場合、チャンクはコンテナのルート内の `.file-segments` ディレクトリに保存されます。このディレクトリはコンテナの一覧取得時には表示されません。一部のプロバイダー（Blomp など）は追加のコンテナ作成が許可されていないため、このモードが必須です。ルートに `.file-segments` ディレクトリを表示したい場合は、このフラグを `true` に設定する必要があります。\n\nこの値が `unset`（既定）の場合、rclone が使用する値を選択します。rclone が `true` にする必要があると判断した `auth_url` を検出しない限り `false` になります。この場合 DEBUG ログにメッセージが表示されます。\n"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ログインするユーザー名（OS_USERNAME）。"
+      },
+      "user_id": {
+        "title": "ユーザー ID",
+        "help": "ログインするユーザー ID - 任意 - ほとんどの swift システムでは user を使用しこれは空欄のままにします（v3 認証）（OS_USER_ID）。"
+      }
+    },
+    "tardigrade": {
+      "access_grant": {
+        "title": "アクセスグラント",
+        "help": "アクセスグラント。"
+      },
+      "api_key": {
+        "title": "API キー",
+        "help": "API キー。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "passphrase": {
+        "title": "パスフレーズ",
+        "help": "暗号化用パスフレーズ。\n\n既存のオブジェクトにアクセスするには、アップロード時に使用したパスフレーズを入力してください。"
+      },
+      "provider": {
+        "title": "プロバイダー",
+        "help": "認証方式を選択してください。"
+      },
+      "satellite_address": {
+        "title": "サテライトアドレス",
+        "help": "サテライトアドレス。\n\nカスタムサテライトアドレスは `<nodeid>@<address>:<port>` の形式に従う必要があります。"
+      }
+    },
+    "ulozto": {
+      "app_token": {
+        "title": "アプリトークン",
+        "help": "アプリを識別するアプリケーショントークン。アプリの API キーは API ドキュメント https://uloz.to/upload-resumable-api-beta で確認するか、カスタマーサービスから入手できます。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "list_page_size": {
+        "title": "リストページサイズ",
+        "help": "list コマンドの 1 ページあたりのサイズ。1〜500"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "ユーザーのパスワード。"
+      },
+      "root_folder_slug": {
+        "title": "ルートフォルダスラッグ",
+        "help": "設定すると、rclone はこのフォルダをすべての操作のルートフォルダとして使用します。例えば、スラッグが 'foo/bar/' を指す場合、'ulozto:baz' はルートスラッグを設定していない場合の 'ulozto:foo/bar/baz' と同等になります。"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "help": "操作を行うプリンシパルのユーザー名。"
+      }
+    },
+    "union": {
+      "action_policy": {
+        "title": "アクションポリシー",
+        "help": "ACTION カテゴリーでアップストリームを選択するポリシー。"
+      },
+      "cache_time": {
+        "title": "キャッシュ時間",
+        "help": "使用量および空き容量のキャッシュ時間（秒）。\n\nこのオプションはパスを維持するポリシーを使用する場合のみ有効です。"
+      },
+      "create_policy": {
+        "title": "作成ポリシー",
+        "help": "CREATE カテゴリーでアップストリームを選択するポリシー。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "min_free_space": {
+        "title": "最小空き容量",
+        "help": "lfs/eplfs ポリシーで有効とみなす最小空き容量。\n\nリモートの空き容量がこれより少ない場合、lfs または eplfs ポリシーの選択対象になりません。"
+      },
+      "search_policy": {
+        "title": "検索ポリシー",
+        "help": "SEARCH カテゴリーでアップストリームを選択するポリシー。"
+      },
+      "upstreams": {
+        "title": "アップストリーム",
+        "help": "スペース区切りのアップストリームのリスト。\n\n'upstreama:test/dir upstreamb:'、'\"upstreama:test/space:ro dir\" upstreamb:' のように指定できます。"
+      }
+    },
+    "uptobox": {
+      "access_token": {
+        "title": "アクセストークン",
+        "help": "アクセストークン。\n\nhttps://uptobox.com/my_account から取得してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "private": {
+        "title": "非公開",
+        "help": "アップロードしたファイルを非公開にする場合に設定します"
+      }
+    },
+    "webdav": {
+      "auth_redirect": {
+        "title": "リダイレクト時の認証保持",
+        "help": "リダイレクト時に認証情報を保持します。\n\nファイルを読み込もうとする際にサーバーが rclone を別のドメインへリダイレクトすると、通常 rclone はリクエストから Authorization: ヘッダーを削除します。\n\nこれは、資格情報を未知の Web サーバーに送信しないための標準的なセキュリティ対策です。\n\nただし、これが望ましい場合もあります。rclone が webdav サーバーからファイルを読み込もうとする際に \"401 Unauthorized\" のようなエラーが発生する場合は、このオプションを試してください。\n"
+      },
+      "bearer_token": {
+        "title": "ベアラートークン",
+        "help": "ユーザー/パスワードの代わりに使用するベアラートークン（例: Macaroon）。"
+      },
+      "bearer_token_command": {
+        "title": "ベアラートークンコマンド",
+        "help": "ベアラートークンを取得するために実行するコマンド。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。\n\n既定のエンコーディングは sharepoint-ntlm の場合は Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,Hash,Percent,BackSlash,Del,Ctl,LeftSpace,LeftTilde,RightSpace,RightPeriod,InvalidUtf8、それ以外の場合は identity です。"
+      },
+      "headers": {
+        "title": "ヘッダー",
+        "help": "すべての通信に設定する HTTP ヘッダー。\n\nすべての通信に追加の HTTP ヘッダーを設定する場合に使用します\n\n入力形式はキーと値のペアをカンマ区切りにしたリストです。標準の [CSV エンコーディング](https://godoc.org/encoding/csv) を使用できます。\n\n例えば、Cookie を設定するには 'Cookie,name=value'、または '\"Cookie\",\"name=value\"' のように指定します。\n\n複数のヘッダーを設定することもできます。例: '\"Cookie\",\"name=value\",\"Authorization\",\"xxx\"'。\n"
+      },
+      "nextcloud_chunk_size": {
+        "title": "Nextcloud チャンクサイズ",
+        "help": "Nextcloud のアップロードチャンクサイズ。\n\nアップロードパフォーマンスを向上させるため、NextCloud インスタンスの最大チャンクサイズを 1 GB に増やす設定をおすすめします。\nhttps://docs.nextcloud.com/server/latest/admin_manual/configuration_files/big_file_upload_configuration.html#adjust-chunk-size-on-nextcloud-side を参照してください\n\n0 に設定するとチャンクアップロードを無効化します。\n"
+      },
+      "owncloud_exclude_mounts": {
+        "title": "ownCloud マウントを除外",
+        "help": "ownCloud のマウントされたストレージを除外します"
+      },
+      "owncloud_exclude_shares": {
+        "title": "ownCloud 共有を除外",
+        "help": "ownCloud の共有を除外します"
+      },
+      "pacer_min_sleep": {
+        "title": "ペーサー最小スリープ時間",
+        "help": "API 呼び出しの間隔の最小待機時間。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "unix_socket": {
+        "title": "UNIX ソケット",
+        "help": "TCP 接続を直接開く代わりに接続する UNIX ドメインソケットへのパス"
+      },
+      "url": {
+        "title": "URL",
+        "help": "接続先の HTTP ホストの URL。\n\n例: https://example.com。"
+      },
+      "user": {
+        "title": "ユーザー",
+        "help": "ユーザー名。\n\nNTLM 認証を使用する場合、ユーザー名は 'Domain\\User' の形式にしてください。"
+      },
+      "vendor": {
+        "title": "ベンダー",
+        "help": "使用している WebDAV サイト/サービス/ソフトウェアの名前。"
+      }
+    },
+    "yandex": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "ファイルをゴミ箱に移動せず完全に削除します。"
+      },
+      "spoof_ua": {
+        "title": "ユーザーエージェント偽装",
+        "help": "公式版の yandex disk クライアントに一致するようユーザーエージェントを設定します。アップロード性能の改善に役立つ場合があります。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      }
+    },
+    "zoho": {
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "region": {
+        "title": "リージョン",
+        "help": "接続先の Zoho リージョン。\n\n所属組織が登録されているリージョンを使用する必要があります。不明な場合は、ブラウザで接続する際と同じトップレベルドメインを使用してください。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "大容量ファイルアップロード API へ切り替える閾値（10 MiB 以上）。"
+      }
+    },
+    "filen": {
+      "email": {
+        "title": "メールアドレス",
+        "help": "Filen アカウントのメールアドレス"
+      },
+      "password": {
+        "title": "パスワード",
+        "help": "Filen アカウントのパスワード"
+      },
+      "api_key": {
+        "title": "API キー",
+        "help": "Filen アカウントの API キー\n\nFilen CLI の export-api-key コマンドで取得できます。\nFilen CLI は https://github.com/FilenCloudDienste/filen-cli からダウンロードできます"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "チャンクアップロードの並列数。\n\n同一ファイルに対して同時に実行される転送数の上限です。\n1 未満の値に設定すると、アップロードがデッドロックします。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "master_keys": {
+        "title": "マスターキー",
+        "help": "マスターキー（内部使用のみ）"
+      },
+      "private_key": {
+        "title": "秘密鍵",
+        "help": "RSA 秘密鍵（内部使用のみ）"
+      },
+      "public_key": {
+        "title": "公開鍵",
+        "help": "RSA 公開鍵（内部使用のみ）"
+      },
+      "auth_version": {
+        "title": "認証バージョン",
+        "help": "認証バージョン（内部使用のみ）"
+      },
+      "base_folder_uuid": {
+        "title": "ベースフォルダ UUID",
+        "help": "アカウントのルートディレクトリの UUID（内部使用のみ）"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      }
+    },
+    "drime": {
+      "access_token": {
+        "title": "アクセストークン",
+        "help": "API アクセストークン\n\nWeb 管理画面から取得できます。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID\n\n通常は空欄のままにしてください。rclone が自動的に入力します。\n\nrclone を特定のフォルダに限定したい場合は入力してください。詳細はドキュメントを参照してください。\n"
+      },
+      "workspace_id": {
+        "title": "ワークスペース ID",
+        "help": "アカウント ID\n\nワークスペース ID を指定したい場合を除き、通常は空欄のままにしてください。\n"
+      },
+      "list_chunk": {
+        "title": "リストチャンク数",
+        "help": "1 回の呼び出しで一覧取得する項目数"
+      },
+      "hard_delete": {
+        "title": "完全削除",
+        "help": "ファイルをゴミ箱に移動せず完全に削除します。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "チャンクアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 0、最大は 5 GiB です。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。\n\nupload_cutoff より大きいファイル、またはサイズ不明のファイル（例: \"rclone rcat\" や \"rclone mount\"、google photos、google docs からのアップロード）をアップロードする場合、このチャンクサイズでマルチパートアップロードされます。\n\n転送ごとに \"--drime-upload-concurrency\" 個分のこのサイズのチャンクがメモリにバッファーされる点に注意してください。\n\n高速回線で大きなファイルを転送していてメモリに余裕がある場合、この値を増やすと転送速度が向上します。\n\nサイズが既知の大きなファイルをアップロードする際、10,000 チャンクの上限を超えないよう rclone が自動的にチャンクサイズを増加させます。\n\nサイズ不明のファイルは設定された chunk_size でアップロードされます。既定のチャンクサイズは 5 MiB で、チャンク数は最大 10,000 個のため、既定ではストリームアップロードできるファイルの最大サイズは 48 GiB になります。より大きなファイルをストリームアップロードしたい場合は chunk_size を増やす必要があります。\n"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードおよびコピーの並列数。\n\nマルチパートアップロードおよびコピーで同一ファイルのチャンクを同時にアップロードする数です。\n\n高速回線で少数の大きなファイルをアップロードしていて帯域幅を十分に活用できていない場合は、この値を増やすと転送速度の向上に役立つことがあります。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      }
+    },
+    "shade": {
+      "drive_id": {
+        "title": "ドライブ ID",
+        "help": "ドライブの ID。ドライブの設定で確認できます。rclone の設定はドライブごとに個別に作成する必要があります。"
+      },
+      "api_key": {
+        "title": "API キー",
+        "help": "アカウントの API キー。"
+      },
+      "endpoint": {
+        "title": "エンドポイント",
+        "help": "サービスのエンドポイント。\n\n通常は空欄のままにしてください。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードに使用するチャンクサイズ。\n\nこれより大きいファイルはこのサイズのチャンクでアップロードされます。\n\n転送ごとにメモリ上に保持される点に注意してください。値を大きくするとメモリ使用量が増加します。\n\n最小は 5MB、最大は 5GB です。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードおよびコピーの並列数。マルチパートアップロードおよびコピーで同一ファイルのチャンクを同時にアップロードする数です。"
+      },
+      "max_upload_parts": {
+        "title": "アップロード最大パート数",
+        "help": "マルチパートアップロードにおけるパートの最大数。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "Shade FS の操作を行うための JWT トークン。この値は設定しないでください。rclone が自動的に設定します"
+      },
+      "token_expiry": {
+        "title": "トークン有効期限",
+        "help": "JWT トークンの有効期限。この値は設定しないでください。rclone が自動的に設定します"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      }
+    },
+    "internxt": {
+      "email": {
+        "title": "メールアドレス",
+        "help": "Internxt アカウントのメールアドレス。"
+      },
+      "pass": {
+        "title": "パスワード",
+        "help": "パスワード。"
+      },
+      "mnemonic": {
+        "title": "ニーモニック",
+        "help": "ニーモニック（内部使用のみ）"
+      },
+      "skip_hash_validation": {
+        "title": "ハッシュ検証をスキップ",
+        "help": "ファイルのダウンロード時にハッシュ検証をスキップします。\n\n既定ではハッシュ検証は無効です。検証を有効にするには false に設定してください。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      },
+      "upload_concurrency": {
+        "title": "アップロード並列数",
+        "help": "マルチパートアップロードの並列数。\n\n同一ファイルのチャンクを同時にアップロードする数です。\n\n各チャンクはメモリにバッファーされる点に注意してください。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "マルチパートアップロードへ切り替える閾値。\n\nこれより大きいファイルは chunk_size 単位のチャンクでアップロードされます。\n最小は 100 MiB、最大は 5 GiB です。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "マルチパートアップロードのチャンクサイズ。\n\nupload_cutoff より大きいファイルはこのサイズのチャンクでアップロードされます。\n\nメモリ使用量はおおよそ chunk_size × upload_concurrency です。"
+      }
+    },
+    "huaweidrive": {
+      "client_id": {
+        "title": "クライアント ID",
+        "help": "OAuth クライアント ID。\n\n通常は空欄のままにしてください。"
+      },
+      "client_secret": {
+        "title": "クライアントシークレット",
+        "help": "OAuth クライアントシークレット。\n\n通常は空欄のままにしてください。"
+      },
+      "token": {
+        "title": "トークン",
+        "help": "JSON 形式の OAuth アクセストークン。"
+      },
+      "auth_url": {
+        "title": "認証サーバー URL",
+        "help": "認証サーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "token_url": {
+        "title": "トークンサーバー URL",
+        "help": "トークンサーバーの URL。\n\n空欄のままにするとプロバイダーの既定値が使用されます。"
+      },
+      "client_credentials": {
+        "title": "クライアントクレデンシャル",
+        "help": "クライアントクレデンシャル OAuth フローを使用します。\n\nRFC 6749 に記載されている OAuth2 のクライアントクレデンシャルフローを使用します。\n\nこのオプションはすべてのバックエンドでサポートされているわけではない点に注意してください。"
+      },
+      "root_folder_id": {
+        "title": "ルートフォルダ ID",
+        "help": "ルートフォルダの ID。\n\n通常は自動検出されますが、失敗した場合や起動を高速化したい場合は手動で設定できます。\n\n通常は空欄のままにしてください。"
+      },
+      "chunk_size": {
+        "title": "チャンクサイズ",
+        "help": "アップロードチャンクサイズ。\n\n256k 以上 64MB 以下の 2 のべき乗である必要があります。"
+      },
+      "list_chunk": {
+        "title": "リストチャンクサイズ",
+        "help": "一覧取得チャンクのサイズ。1〜1000。"
+      },
+      "upload_cutoff": {
+        "title": "アップロード切り替え値",
+        "help": "レジューム可能アップロードへ切り替える閾値。\n\nこれより大きいファイルはレジューム可能アップロードでアップロードされます。\n最小は 0、最大は 20 MiB（Huawei Drive API の単一リクエストアップロードの上限）です。"
+      },
+      "encoding": {
+        "title": "エンコーディング",
+        "help": "バックエンドのエンコーディング。\n\n詳細は [概要のエンコーディングの章](/overview/#encoding) を参照してください。"
+      },
+      "description": {
+        "title": "説明",
+        "help": "リモートの説明。"
+      }
+    }
+  }
+}
