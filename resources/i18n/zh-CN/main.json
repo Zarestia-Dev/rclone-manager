@@ -400,6 +400,8 @@
     "resetFailed": "将 {{key}} 恢复默认失败",
     "loadFailed": "加载应用设置失败",
     "remoteResetSuccess": "{{remote}} 的设置已重置成功",
+    "remoteSaved": "远程存储已成功保存",
+    "remoteSaveFailed": "保存远程存储失败：{{error}}",
     "general": {
       "tray_enabled": {
         "label": "启用托盘图标",
@@ -455,10 +457,6 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
-      },
-      "default_mount_directory": {
-        "label": "默认挂载目录",
-        "description": "用于挂载远程的默认本地路径模板。支持 {home} 和 {remote} 占位符（例如：{home}/rclone-manager/{remote}）。"
       }
     },
     "developer": {
@@ -542,9 +540,7 @@
         "label": "书签",
         "description": "快速访问的书签路径列表"
       }
-    },
-    "remoteSaved": "远程存储已成功保存",
-    "remoteSaveFailed": "保存远程存储失败：{{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -794,6 +790,10 @@
         "successDownload": "文件下载成功",
         "failDownload": "下载文件失败"
       },
+      "messages": {
+        "resolveStarted": "文件不匹配处理已开始",
+        "resolveFailed": "解决文件不匹配失败：{{error}}"
+      },
       "empty": {
         "noActive": "无正在进行的传输",
         "activeHint": "操作开始后，传输项将显示在此处",
@@ -813,10 +813,6 @@
           "seconds": "{{seconds}}秒",
           "lessThanSecond": "<1秒"
         }
-      },
-      "messages": {
-        "resolveFailed": "解决文件不匹配失败：{{error}}",
-        "resolveStarted": "文件不匹配处理已开始"
       }
     },
     "inputModal": {
