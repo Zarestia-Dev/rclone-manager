@@ -11,7 +11,6 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
@@ -37,7 +36,6 @@ import {
   imports: [
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     LoadingOverlayComponent,
     InstallationOptionsComponent,
     PasswordManagerComponent,

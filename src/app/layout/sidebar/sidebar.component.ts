@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
@@ -23,14 +22,7 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
 
 @Component({
   selector: 'app-sidebar',
-  imports: [
-    TitleCasePipe,
-    MatCardModule,
-    MatIconModule,
-    MatTooltipModule,
-    TranslatePipe,
-    SearchContainerComponent,
-  ],
+  imports: [TitleCasePipe, MatCardModule, MatIconModule, TranslatePipe, SearchContainerComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -204,7 +204,7 @@
           class="json-toggle-btn"
           [class.active]="showJsonMode()"
           (click)="toggleJsonMode()"
-          [matTooltip]="
+          [attr.title]="
             (showJsonMode()
               ? 'wizards.remoteConfig.switchToForm'
               : 'wizards.remoteConfig.switchToJson'

@@ -8,7 +8,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AlertService } from 'src/app/services/alerts/alert.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
@@ -28,7 +27,6 @@ import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-cli
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatTooltipModule,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

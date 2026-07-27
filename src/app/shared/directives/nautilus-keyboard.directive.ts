@@ -27,6 +27,7 @@ export interface KeyboardCallbacks {
   pathSegments: Signal<{ name: string; path: string }[]>;
   showHidden: Signal<boolean>;
   isPickerMode: Signal<boolean>;
+  isSearchMode?: Signal<boolean>;
   navigateToSegment: (index: number) => void;
 }
 
@@ -221,6 +222,10 @@ export class NautilusKeyboardDirective {
 
     if (event.key === 'Escape') {
       event.preventDefault();
+      if (this.callbacks.isSearchMode?.()) {
+        this.callbacks.toggleSearch();
+        return true;
+      }
       if (this.callbacks.isPickerMode()) {
         this.nautilusService.closeFilePicker(null);
         return true;

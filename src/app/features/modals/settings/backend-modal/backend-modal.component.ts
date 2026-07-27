@@ -15,7 +15,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import type { AddBackendArgs, BackendInfo, FilePickerConfig } from '@app/types';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -39,7 +38,6 @@ import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/ale
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatTooltipModule,
     MatCheckboxModule,
     MatTabsModule,
     BackendSecurityComponent,

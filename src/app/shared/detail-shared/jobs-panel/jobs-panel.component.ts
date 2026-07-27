@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { timer } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -27,7 +26,6 @@ import { ModalService } from 'src/app/services/ui/modal.service';
     MatIconModule,
     MatRipple,
     MatProgressBarModule,
-    MatTooltipModule,
     FormatFileSizePipe,
     FormatTimePipe,
     TranslatePipe,
@@ -67,7 +65,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
                 </span>
                 <span
                   class="job-id-label"
-                  [matTooltip]="
+                  [attr.title]="
                     job.execute_id
                       ? ('modals.jobDetail.fields.executeId' | translate) + ': ' + job.execute_id
                       : ''
@@ -84,7 +82,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
                   class="app-pill"
                   [class]="job.badgeClass"
                   [class.has-error]="job.statusLower === 'failed' && job.errorText"
-                  [matTooltip]="job.statusLower === 'failed' && job.errorText ? job.errorText : ''"
+                  [attr.title]="job.statusLower === 'failed' && job.errorText ? job.errorText : ''"
                 >
                   {{ 'detailShared.jobs.status.' + job.statusLower | translate }}
                 </span>
@@ -94,7 +92,7 @@ import { ModalService } from 'src/app/services/ui/modal.service';
                   class="action-button"
                   [class.stop-button]="job.statusLower === 'running'"
                   [class.delete-button]="job.statusLower !== 'running'"
-                  [matTooltip]="
+                  [attr.title]="
                     (job.statusLower === 'running'
                       ? 'detailShared.jobs.actions.stop'
                       : 'detailShared.jobs.actions.delete'

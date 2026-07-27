@@ -1,6 +1,5 @@
 import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -36,7 +35,6 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
   providers: [TransferOperationsService],
   imports: [
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
@@ -53,7 +51,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                 <mat-icon
                   svgIcon="file"
                   class="card-primary-icon file-icon"
-                  [matTooltip]="transfer.name"
+                  [attr.title]="transfer.name"
                 ></mat-icon>
                 <span class="card-title-text file-name" [title]="transfer.name">{{
                   transfer.name
@@ -64,7 +62,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                   <span
                     class="app-pill"
                     [class]="transfer.badgeClass"
-                    [matTooltip]="transfer.error"
+                    [attr.title]="transfer.error"
                   >
                     <mat-icon [svgIcon]="transfer.badgeIcon"></mat-icon>
                     {{ transfer.badgeText | translate }}
@@ -77,7 +75,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                     class="action-button resolve-btn"
                     (click)="onResolve(transfer)"
                     [disabled]="isResolving(transfer)"
-                    [matTooltip]="'shared.transferActivity.actions.resolveToDst' | translate"
+                    [attr.title]="'shared.transferActivity.actions.resolveToDst' | translate"
                   >
                     <mat-icon
                       [svgIcon]="isResolving(transfer) ? 'spinner' : 'right-arrow'"
@@ -111,7 +109,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                               $event.stopPropagation()
                             "
                             [disabled]="loading"
-                            [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                            [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
                               [svgIcon]="loading ? 'spinner' : 'link'"
@@ -127,7 +125,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                               $event.stopPropagation()
                             "
                             [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
-                            [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                            [attr.title]="'shared.transferActivity.actions.download' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
@@ -144,7 +142,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             class="small-action-btn delete-btn"
                             (click)="onDeleteSource(transfer); $event.stopPropagation()"
                             [disabled]="ops.deletingIds().has(transfer.uniqueId + '-src-del')"
-                            [matTooltip]="'common.delete' | translate"
+                            [attr.title]="'common.delete' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
@@ -184,7 +182,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                               ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
                             "
                             [disabled]="loading"
-                            [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                            [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                           >
                             <mat-icon
                               [svgIcon]="loading ? 'spinner' : 'link'"
@@ -199,7 +197,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                               ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
                             "
                             [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
-                            [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                            [attr.title]="'shared.transferActivity.actions.download' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
@@ -216,7 +214,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             class="small-action-btn delete-btn"
                             (click)="onDeleteDst(transfer); $event.stopPropagation()"
                             [disabled]="ops.deletingIds().has(transfer.uniqueId + '-dst-del')"
-                            [matTooltip]="'common.delete' | translate"
+                            [attr.title]="'common.delete' | translate"
                           >
                             <mat-icon
                               [svgIcon]="
@@ -254,7 +252,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             $event.stopPropagation()
                           "
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -270,7 +268,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                             $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -287,7 +285,7 @@ export interface EnrichedCompletedTransfer extends CompletedTransfer {
                           class="small-action-btn delete-btn"
                           (click)="onDeleteFallback(transfer); $event.stopPropagation()"
                           [disabled]="ops.deletingIds().has(transfer.uniqueId + '-fallback-del')"
-                          [matTooltip]="'common.delete' | translate"
+                          [attr.title]="'common.delete' | translate"
                         >
                           <mat-icon
                             [svgIcon]="

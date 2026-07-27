@@ -44,7 +44,6 @@ import { FormatFileSizePipe } from '@app/pipes';
 import { Entry, FilePickerResult } from '@app/types';
 
 import { FormsModule } from '@angular/forms';
-import { MatTooltip } from '@angular/material/tooltip';
 import {
   isHeadlessMode,
   isMobile,
@@ -53,14 +52,7 @@ import {
 @Component({
   selector: 'app-file-viewer-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatButtonModule,
-    MatIconModule,
-    FormatFileSizePipe,
-    TranslatePipe,
-    FormsModule,
-    MatTooltip,
-  ],
+  imports: [MatButtonModule, MatIconModule, FormatFileSizePipe, TranslatePipe, FormsModule],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })

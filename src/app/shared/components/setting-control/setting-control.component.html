@@ -39,7 +39,7 @@
           matIconButton
           class="reset-btn"
           (click)="resetToDefault()"
-          [matTooltip]="'shared.settingControl.resetToDefault' | translate"
+          [attr.title]="'shared.settingControl.resetToDefault' | translate"
           [attr.aria-label]="'shared.settingControl.resetToDefault' | translate"
         >
           <mat-icon svgIcon="refresh" />
@@ -73,7 +73,7 @@
               matIconButton
               [disabled]="!hasObscurableValue() || isObscuring()"
               (click)="obscureFieldValue($event)"
-              [matTooltip]="'shared.settingControl.obscureValue' | translate"
+              [attr.title]="'shared.settingControl.obscureValue' | translate"
               [attr.aria-label]="'shared.settingControl.obscureValue' | translate"
             >
               <mat-icon

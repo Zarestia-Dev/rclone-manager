@@ -10,7 +10,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
@@ -32,7 +31,6 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatTooltipModule,
     MatSlideToggleModule,
     MatExpansionModule,
     TranslatePipe,

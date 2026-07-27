@@ -2,7 +2,7 @@
   <button
     class="tab-btn"
     [class.selected]="currentTab() === tab.id"
-    [matTooltip]="tab.label | translate"
+    [attr.title]="tab.label | translate"
     (click)="setTab(tab.id)"
     data-tauri-drag-region="false"
   >

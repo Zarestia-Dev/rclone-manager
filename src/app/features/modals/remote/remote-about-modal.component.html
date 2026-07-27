@@ -82,8 +82,7 @@
                 matIconButton
                 (click)="fetchDiskUsage(true)"
                 [disabled]="usage.loading"
-                [matTooltip]="'fileBrowser.remoteAbout.reloadUsage' | translate"
-                matTooltipPosition="left"
+                [attr.title]="'fileBrowser.remoteAbout.reloadUsage' | translate"
               >
                 <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
               </button>
@@ -99,7 +98,7 @@
               </div>
               <div class="info-row">
                 <span class="info-label">{{ 'fileBrowser.remoteAbout.rootPath' | translate }}</span>
-                <span class="info-value code-font" [matTooltip]="root()">{{ root() }}</span>
+                <span class="info-value code-font" [attr.title]="root()">{{ root() }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">{{
@@ -150,13 +149,7 @@
                   class="feature-icon"
                   [svgIcon]="feat.value ? 'check-circle' : 'circle-xmark'"
                 ></mat-icon>
-                <span
-                  class="feature-name"
-                  [matTooltip]="feat.key"
-                  matTooltipPosition="above"
-                  matTooltipShowDelay="500"
-                  >{{ feat.key }}</span
-                >
+                <span class="feature-name" [attr.title]="feat.key">{{ feat.key }}</span>
               </div>
             }
           </div>

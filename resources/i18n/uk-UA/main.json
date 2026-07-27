@@ -455,10 +455,6 @@
       "completed_onboarding": {
         "label": "Початкове налаштування завершено",
         "description": "Чи завершив користувач процес початкового налаштування"
-      },
-      "default_mount_directory": {
-        "label": "Каталог монтування за замовчуванням",
-        "description": "Шаблон локального шляху за замовчуванням для монтування. Підтримує змінні {home} та {remote} (напр. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {

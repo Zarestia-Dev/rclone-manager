@@ -457,10 +457,6 @@
       "completed_onboarding": {
         "label": "Onboarding Concluído",
         "description": "Se o usuário completou o processo de onboarding"
-      },
-      "default_mount_directory": {
-        "label": "Diretório de Montagem Padrão",
-        "description": "Caminho de montagem local padrão para montar remotos. Suporta os espaços reservados {home} e {remote} (por exemplo: {home}/rclone/manager/{remote})."
       }
     },
     "developer": {

@@ -395,15 +395,11 @@ export class NautilusComponent implements OnInit {
       }
     });
     effect(() => {
-      if (this.isPickerMode()) return;
       const remote = this.tabSvc.activeRemote();
       const path = this.tabSvc.activePath();
-      const isStandalone = this.nautilusService.isStandaloneWindow();
       const activeFile = this.fileViewerSvc.activeFileName();
 
       untracked(() => {
-        if (!isStandalone) return;
-
         const displayPath = activeFile ? (path ? `${path}/${activeFile}` : activeFile) : path;
 
         const remoteName = remote?.name ?? null;
@@ -437,10 +433,15 @@ export class NautilusComponent implements OnInit {
     });
 
     this.pathNav.locationChanges$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(loc => {
-      if (this.isPickerMode()) return;
-      if (!this.nautilusService.isStandaloneWindow()) return;
       const remote = loc.remote;
-      if (!remote) return;
+      if (!remote) {
+        if (this.nautilusService.isBrowserOverlayOpen()) {
+          this.closeOverlay.emit(null);
+        } else if (this.isPickerMode()) {
+          this.nautilusService.closeFilePicker(null);
+        }
+        return;
+      }
 
       const remoteRoot =
         this.allRemotesLookup().find(
@@ -512,6 +513,7 @@ export class NautilusComponent implements OnInit {
       pathSegments: this.pathSegments,
       showHidden: this.settings.showHidden,
       isPickerMode: this.isPickerMode,
+      isSearchMode: this.isSearchMode,
       navigateToSegment: index => this.navigateToSegment(index),
     });
   }
@@ -751,9 +753,23 @@ export class NautilusComponent implements OnInit {
     void this.tabSvc.stopListReadGroup(this.tabSvc.listReadGroups[paneIndex]);
   }
 
+  handleGoBack(): void {
+    if (this.isSearchMode()) {
+      this.isSearchMode.set(false);
+      this.searchFilter.set('');
+    } else if (this.tabSvc.canGoBack()) {
+      this.tabSvc.goBack();
+    }
+  }
+
   toggleSearchMode(): void {
-    this.isSearchMode.update(v => !v);
-    this.searchFilter.set('');
+    this.isSearchMode.update(v => {
+      const next = !v;
+      if (!next) {
+        this.searchFilter.set('');
+      }
+      return next;
+    });
   }
 
   onSidebarSidenavAction(action: 'close' | 'toggle'): void {

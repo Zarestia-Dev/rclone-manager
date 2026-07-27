@@ -189,7 +189,7 @@
                             <button
                               matIconButton
                               (click)="prioritizeUpload(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 'shared.vfsControl.queue.tooltips.uploadNext' | translate
                               "
                             >
@@ -200,7 +200,7 @@
                             <button
                               matIconButton
                               (click)="delayUpload(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 'shared.vfsControl.queue.tooltips.delayLong' | translate
                               "
                             >
@@ -209,7 +209,7 @@
                             <button
                               matIconButton
                               (click)="toggleDelaySlider(item); $event.stopPropagation()"
-                              [matTooltip]="
+                              [attr.title]="
                                 showDelaySlider() === item.id
                                   ? ('shared.vfsControl.queue.tooltips.hideSlider' | translate)
                                   : ('shared.vfsControl.queue.tooltips.setDelay' | translate)
@@ -300,7 +300,7 @@
                       <button
                         matIconButton
                         (click)="openFolder(diskCache.path)"
-                        [matTooltip]="'shared.vfsControl.cacheInfo.openFolder' | translate"
+                        [attr.title]="'shared.vfsControl.cacheInfo.openFolder' | translate"
                         class="folder-button"
                       >
                         <mat-icon svgIcon="folder"></mat-icon>
@@ -318,7 +318,7 @@
                       <button
                         matIconButton
                         (click)="openFolder(diskCache.pathMeta)"
-                        [matTooltip]="'shared.vfsControl.cacheInfo.openMetaFolder' | translate"
+                        [attr.title]="'shared.vfsControl.cacheInfo.openMetaFolder' | translate"
                         class="folder-button"
                       >
                         <mat-icon svgIcon="folder"></mat-icon></button
@@ -377,7 +377,7 @@
                           matIconButton
                           matSuffix
                           (click)="configSearchTerm.set('')"
-                          [matTooltip]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
+                          [attr.title]="'shared.vfsControl.advancedConfig.clearSearch' | translate"
                         >
                           <mat-icon svgIcon="close"></mat-icon>
                         </button>
@@ -402,8 +402,8 @@
                         <div class="config-table">
                           @for (item of group.items; track item.key) {
                             <div class="config-row">
-                              <div class="config-key" [matTooltip]="item.key">{{ item.key }}</div>
-                              <div class="config-value" [matTooltip]="'Raw: ' + item.rawValue">
+                              <div class="config-key" [attr.title]="item.key">{{ item.key }}</div>
+                              <div class="config-value" [attr.title]="'Raw: ' + item.rawValue">
                                 {{ item.value }}
                               </div>
                             </div>
@@ -452,7 +452,7 @@
             matIconButton
             matSuffix
             (click)="updatePollInterval()"
-            [matTooltip]="'shared.vfsControl.actions.updateInterval' | translate"
+            [attr.title]="'shared.vfsControl.actions.updateInterval' | translate"
             [disabled]="!hasUsableVfs() || !pollIntervalInput().trim() || loading()"
           >
             <mat-icon svgIcon="bolt"></mat-icon>
@@ -462,7 +462,7 @@
       <button
         matIconButton
         (click)="refreshDirectory()"
-        [matTooltip]="'shared.vfsControl.actions.refreshMetadata' | translate"
+        [attr.title]="'shared.vfsControl.actions.refreshMetadata' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
         <mat-icon svgIcon="sync"></mat-icon>
@@ -472,7 +472,7 @@
         matIconButton
         class="warn"
         (click)="clearMetadataCache()"
-        [matTooltip]="'shared.vfsControl.actions.clearCache' | translate"
+        [attr.title]="'shared.vfsControl.actions.clearCache' | translate"
         [disabled]="!hasUsableVfs() || loading()"
       >
         <mat-icon svgIcon="trash"></mat-icon>
@@ -481,7 +481,7 @@
       <button
         matIconButton
         (click)="loadAll()"
-        [matTooltip]="'shared.vfsControl.actions.refreshAll' | translate"
+        [attr.title]="'shared.vfsControl.actions.refreshAll' | translate"
         [disabled]="loading()"
       >
         @if (loading()) {

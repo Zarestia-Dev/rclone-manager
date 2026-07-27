@@ -37,7 +37,7 @@
 
         <mat-slide-toggle
           formControlName="auto_acknowledge"
-          [matTooltip]="'alerts.rule.autoAcknowledgeHint' | translate"
+          [attr.title]="'alerts.rule.autoAcknowledgeHint' | translate"
         >
           {{ 'alerts.rule.autoAcknowledge' | translate }}
         </mat-slide-toggle>
@@ -130,7 +130,7 @@
           <mat-icon
             matPrefix
             svgIcon="circle-info"
-            [matTooltip]="'alerts.rule.eventFilterHint' | translate"
+            [attr.title]="'alerts.rule.eventFilterHint' | translate"
           ></mat-icon>
           <mat-select formControlName="event_filter" multiple>
             @for (e of eventKinds; track e) {
@@ -144,7 +144,7 @@
           <mat-icon
             matPrefix
             svgIcon="circle-info"
-            [matTooltip]="'alerts.rule.remoteFilterHint' | translate"
+            [attr.title]="'alerts.rule.remoteFilterHint' | translate"
           ></mat-icon>
           <mat-select formControlName="remote_filter" multiple>
             @for (r of remotes(); track r.name) {
@@ -160,7 +160,7 @@
           <mat-icon
             matPrefix
             svgIcon="circle-info"
-            [matTooltip]="'alerts.rule.backendFilterHint' | translate"
+            [attr.title]="'alerts.rule.backendFilterHint' | translate"
           ></mat-icon>
           <mat-select formControlName="backend_filter" multiple>
             @for (b of backends(); track b.name) {
@@ -174,7 +174,7 @@
           <mat-icon
             matPrefix
             svgIcon="circle-info"
-            [matTooltip]="'alerts.rule.profileFilterHint' | translate"
+            [attr.title]="'alerts.rule.profileFilterHint' | translate"
           ></mat-icon>
           <mat-select formControlName="profile_filter" multiple>
             @for (p of allProfiles(); track p) {
@@ -189,7 +189,7 @@
         <mat-icon
           matPrefix
           svgIcon="circle-info"
-          [matTooltip]="'alerts.rule.originFilterHint' | translate"
+          [attr.title]="'alerts.rule.originFilterHint' | translate"
         ></mat-icon>
         <mat-select formControlName="origin_filter" multiple>
           @for (o of origins; track o) {

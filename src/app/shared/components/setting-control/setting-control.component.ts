@@ -26,7 +26,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -55,7 +54,6 @@ import { isConvertibleType, isMultiselectType } from 'src/app/shared/utils';
     MatAutocompleteModule,
     MatSlideToggleModule,
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,

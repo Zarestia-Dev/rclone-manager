@@ -15,7 +15,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from '@app/pipes';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -57,7 +56,6 @@ renderer.link = ({ href, title, text }): string => {
     MatSelectModule,
     MatFormFieldModule,
     MatBadgeModule,
-    MatTooltipModule,
     MatProgressBarModule,
     FormatFileSizePipe,
     TranslatePipe,

@@ -4,7 +4,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
@@ -21,7 +20,6 @@ import { RcloneOptionTranslatePipe } from '@app/pipes';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatTooltipModule,
     MatSelectModule,
     TranslatePipe,
     RcloneOptionTranslatePipe,

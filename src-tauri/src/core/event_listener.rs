@@ -111,6 +111,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         handle_notifications_change(&app, enabled);
                     }
                 }
+                #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 ("general", "start_on_startup") => {
                     if let Some(startup) = change.value.as_bool() {
                         handle_autostart_change(&app, startup);
@@ -222,6 +223,7 @@ fn handle_notifications_change(app: &AppHandle, enabled: bool) {
     });
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     debug!("Autostart changed to: {enabled}");
 

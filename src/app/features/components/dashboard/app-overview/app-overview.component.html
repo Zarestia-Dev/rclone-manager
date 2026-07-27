@@ -88,13 +88,11 @@
       class="blossom-item accent"
       [style.transition-delay]="'70ms'"
       (click)="onCardDisplayModeToggle()"
-      [matTooltip]="
+      [attr.title]="
         cardDisplayMode() === 'compact'
           ? ('generalOverview.layout.showDetailed' | translate)
           : ('generalOverview.layout.showCompact' | translate)
       "
-      matTooltipPosition="left"
-      matTooltipShowDelay="500"
     >
       <mat-icon [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"></mat-icon>
     </button>
@@ -106,9 +104,7 @@
       [style.transition-delay]="'0ms'"
       [class]="isEditingLayout() ? 'primary' : 'accent'"
       (click)="toggleEditLayout()"
-      matTooltipShowDelay="500"
-      matTooltipPosition="left"
-      [matTooltip]="
+      [attr.title]="
         isEditingLayout()
           ? ('generalOverview.layout.save' | translate)
           : ('generalOverview.layout.edit' | translate)
@@ -122,9 +118,7 @@
   <button
     matFab
     class="blossom-trigger accent"
-    [matTooltip]="'generalOverview.layout.settings' | translate"
-    matTooltipPosition="left"
-    matTooltipShowDelay="500"
+    [attr.title]="'generalOverview.layout.settings' | translate"
     (click)="toggleBlossom($event)"
   >
     <mat-icon svgIcon="tune"></mat-icon>

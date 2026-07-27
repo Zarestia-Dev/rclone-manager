@@ -27,7 +27,7 @@ export const BASE_ICONS: Record<string, string> = {
   'circle-info': 'assets/icons/status/circle-info.svg',
   'circle-up': 'assets/icons/status/circle-up.svg',
   'circle-xmark': 'assets/icons/status/circle-xmark.svg',
-  warning: 'assets/icons/status/warning.svg',
+  'triangle-exclamation': 'assets/icons/status/triangle-exclamation.svg',
   error: 'assets/icons/status/circle-exclamation.svg',
   lock: 'assets/icons/status/lock.svg',
   'lock-open': 'assets/icons/status/lock-open.svg',

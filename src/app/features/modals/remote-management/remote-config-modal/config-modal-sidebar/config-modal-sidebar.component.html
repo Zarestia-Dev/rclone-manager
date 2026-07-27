@@ -21,8 +21,7 @@
             [attr.aria-selected]="isCurrent"
             (keydown.enter)="stepSelected.emit(stepNum)"
             (keydown.space)="stepSelected.emit(stepNum)"
-            [matTooltip]="config.label | translate"
-            matTooltipPosition="right"
+            [attr.title]="config.label | translate"
           >
             <mat-icon
               matListItemIcon
@@ -50,8 +49,7 @@
             <button
               mat-list-item
               (click)="sectionScrolled.emit(category.id)"
-              [matTooltip]="category.label | translate"
-              matTooltipPosition="right"
+              [attr.title]="category.label | translate"
             >
               <mat-icon matListItemIcon [svgIcon]="category.icon"></mat-icon>
               <span matListItemTitle>{{ category.label | translate }}</span>
@@ -79,8 +77,7 @@
             [disabled]="state.isActiveStepInvalid()"
             (click)="returnFromShared.emit()"
             [attr.aria-label]="translatedPrevTarget"
-            [matTooltip]="translatedPrevTarget"
-            matTooltipPosition="right"
+            [attr.title]="translatedPrevTarget"
           >
             <mat-icon matListItemIcon svgIcon="left-arrow"></mat-icon>
             <span matListItemTitle>{{ translatedPrevTarget }}</span>
@@ -105,8 +102,7 @@
               [disabled]="state.isActiveStepInvalid()"
               (click)="profileSelected.emit({ type: targetType, name: profile.name })"
               [attr.aria-selected]="isActive"
-              [matTooltip]="profile.name"
-              matTooltipPosition="right"
+              [attr.title]="profile.name"
             >
               <mat-icon
                 matListItemIcon
@@ -132,8 +128,7 @@
               [disabled]="state.isActiveStepInvalid()"
               (click)="sharedNavigated.emit(item.type)"
               [activated]="state.editTarget() === item.type"
-              [matTooltip]="item.label | translate"
-              matTooltipPosition="right"
+              [attr.title]="item.label | translate"
             >
               <mat-icon matListItemIcon [svgIcon]="item.icon"></mat-icon>
               <span matListItemTitle>{{ item.label | translate }}</span>
@@ -154,8 +149,7 @@
           mat-list-item
           [activated]="state.showCliImport()"
           (click)="cliImportToggled.emit()"
-          [matTooltip]="'wizards.cliImport.title' | translate"
-          matTooltipPosition="right"
+          [attr.title]="'wizards.cliImport.title' | translate"
         >
           <mat-icon matListItemIcon svgIcon="terminal"></mat-icon>
           <span matListItemTitle>{{ 'wizards.cliImport.title' | translate }}</span>
@@ -165,8 +159,7 @@
           mat-list-item
           [activated]="state.showObscureTool()"
           (click)="obscureToolToggled.emit()"
-          [matTooltip]="'wizards.obscure.title' | translate"
-          matTooltipPosition="right"
+          [attr.title]="'wizards.obscure.title' | translate"
         >
           <mat-icon matListItemIcon svgIcon="lock"></mat-icon>
           <span matListItemTitle>{{ 'wizards.obscure.title' | translate }}</span>

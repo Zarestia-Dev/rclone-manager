@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@a
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ACTION_CONFIGS, PrimaryActionType } from '@app/types';
@@ -75,7 +74,7 @@ export function buildActionOrderItems(
 
 @Component({
   selector: 'app-item-order-visibility-modal',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, DragDropModule, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, DragDropModule, TranslatePipe],
   templateUrl: './item-order-visibility-modal.component.html',
   styleUrls: ['./item-order-visibility-modal.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

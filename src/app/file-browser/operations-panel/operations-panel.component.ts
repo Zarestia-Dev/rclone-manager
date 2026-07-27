@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatDividerModule } from '@angular/material/divider';
@@ -40,7 +39,6 @@ interface JobViewModel {
     MatIconModule,
     MatButtonModule,
     MatProgressBarModule,
-    MatTooltipModule,
     MatExpansionModule,
     CdkMenuModule,
     MatDividerModule,

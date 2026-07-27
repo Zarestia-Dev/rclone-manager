@@ -23,8 +23,7 @@
         @if (serveUrl(); as url) {
           <span
             class="serve-url"
-            [matTooltip]="'shared.serveCard.tooltips.copyUrl' | translate"
-            [matTooltipShowDelay]="400"
+            [attr.title]="'shared.serveCard.tooltips.copyUrl' | translate"
             [appCopyToClipboard]="url"
             >{{ url }}</span
           >
@@ -42,8 +41,7 @@
       matIconButton
       class="stop-btn warn"
       (click)="onStopServe(); $event.stopPropagation()"
-      [matTooltip]="'shared.serveCard.tooltips.stop' | translate"
-      [matTooltipShowDelay]="400"
+      [attr.title]="'shared.serveCard.tooltips.stop' | translate"
     >
       <mat-icon svgIcon="stop"></mat-icon>
     </button>
@@ -56,8 +54,7 @@
       <span class="meta-label">{{ 'shared.serveCard.labels.id' | translate }}</span>
       <span
         class="meta-value"
-        [matTooltip]="'shared.serveCard.tooltips.copyId' | translate"
-        [matTooltipShowDelay]="400"
+        [attr.title]="'shared.serveCard.tooltips.copyId' | translate"
         [appCopyToClipboard]="serve().id"
         >{{ serve().id }}</span
       >
@@ -67,11 +64,7 @@
       <div class="meta-item">
         <mat-icon svgIcon="gear" class="meta-icon" aria-hidden="true"></mat-icon>
         <span class="meta-label">{{ 'shared.serveCard.labels.options' | translate }}</span>
-        <span
-          class="meta-value options-value"
-          [matTooltip]="optionsData().tooltip"
-          [matTooltipShowDelay]="300"
-        >
+        <span class="meta-value options-value" [attr.title]="optionsData().tooltip">
           {{ optionsData().keys.length }}&thinsp;{{ 'shared.serveCard.labels.active' | translate }}
         </span>
       </div>

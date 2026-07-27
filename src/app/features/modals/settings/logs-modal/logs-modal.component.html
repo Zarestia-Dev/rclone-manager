@@ -6,12 +6,7 @@
   <p data-tauri-drag-region>
     {{ 'modals.logs.remoteLogs' | translate: { name: data.remoteName } }}
   </p>
-  <button
-    (click)="close()"
-    matIconButton
-    matTooltipPosition="below"
-    [attr.aria-label]="'common.close' | translate"
-  >
+  <button (click)="close()" matIconButton [attr.aria-label]="'common.close' | translate">
     <mat-icon svgIcon="circle-xmark"></mat-icon>
   </button>
 </header>
@@ -49,7 +44,7 @@
     <button
       matIconButton
       (click)="clearLogs()"
-      [matTooltip]="'modals.logs.clearAll' | translate"
+      [attr.title]="'modals.logs.clearAll' | translate"
       class="warn-btn"
     >
       <mat-icon svgIcon="trash"></mat-icon>
@@ -57,7 +52,7 @@
     <button
       matIconButton
       (click)="loadLogs()"
-      [matTooltip]="'common.refresh' | translate"
+      [attr.title]="'common.refresh' | translate"
       [disabled]="loading()"
     >
       <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
@@ -65,14 +60,14 @@
     <button
       matIconButton
       (click)="scrollToTop()"
-      [matTooltip]="'modals.logs.scrollTop' | translate"
+      [attr.title]="'modals.logs.scrollTop' | translate"
     >
       <mat-icon svgIcon="circle-chevron-up"></mat-icon>
     </button>
     <button
       matIconButton
       (click)="scrollToBottom()"
-      [matTooltip]="'modals.logs.scrollBottom' | translate"
+      [attr.title]="'modals.logs.scrollBottom' | translate"
     >
       <mat-icon svgIcon="circle-chevron-down"></mat-icon>
     </button>

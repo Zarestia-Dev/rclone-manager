@@ -4,7 +4,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { MatDialog } from '@angular/material/dialog';
@@ -47,7 +46,6 @@ function sortAndFilterRoots(
     MatIconModule,
     MatToolbarModule,
     MatDividerModule,
-    MatTooltipModule,
     CdkMenuModule,
     OperationsPanelComponent,
   ],

@@ -8,7 +8,7 @@
       ></mat-icon>
     </div>
     <div class="remote-text-info">
-      <h2 class="remote-name" [matTooltip]="remote.name">{{ remote.name }}</h2>
+      <h2 class="remote-name" [attr.title]="remote.name">{{ remote.name }}</h2>
       <span class="remote-type">{{ remote.type | titlecase }}</span>
     </div>
   </div>
@@ -28,7 +28,7 @@
         tabindex="0"
         aria-pressed="true"
         [attr.aria-label]="vc.ariaLabel"
-        [matTooltip]="vc.tooltip | translate"
+        [attr.title]="vc.tooltip | translate"
         (click)="onChipClick(vc)"
         (keydown.enter)="onChipClick(vc)"
         (keydown.space)="$event.preventDefault(); onChipClick(vc)"
@@ -49,9 +49,7 @@
       matIconButton
       class="configure-toggle-btn"
       (click)="onConfigureActions()"
-      [matTooltip]="'modals.actionSelection.configureTooltip' | translate"
-      matTooltipPosition="after"
-      matTooltipShowDelay="600"
+      [attr.title]="'modals.actionSelection.configureTooltip' | translate"
     >
       <mat-icon svgIcon="settings"></mat-icon>
     </button>
@@ -96,7 +94,7 @@
                 class="indicator"
                 [class.active]="$index === currentAutomationCardIndex()"
                 (click)="goToAutomationCard($index)"
-                [matTooltip]="automation.profileName"
+                [attr.title]="automation.profileName"
                 role="button"
                 tabindex="0"
                 [attr.aria-label]="
@@ -122,7 +120,7 @@
               matIconButton
               (click)="previousAutomationCard()"
               [disabled]="currentAutomationCardIndex() === 0"
-              [matTooltip]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
+              [attr.title]="'dashboard.generalDetail.previousAutomationTooltip' | translate"
               class="nav-button"
             >
               <mat-icon svgIcon="left-arrow"></mat-icon>
@@ -131,7 +129,7 @@
               matIconButton
               (click)="nextAutomationCard()"
               [disabled]="currentAutomationCardIndex() === remoteAutomations().length - 1"
-              [matTooltip]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
+              [attr.title]="'dashboard.generalDetail.nextAutomationTooltip' | translate"
               class="nav-button"
             >
               <mat-icon svgIcon="right-arrow"></mat-icon>

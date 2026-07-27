@@ -455,10 +455,6 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
-      },
-      "default_mount_directory": {
-        "label": "Varsayılan Bağlama Klasörü",
-        "description": "Remotelar için varsayılan yerel yol şablonu. {home} ve {remote} değişkenlerini destekler (ör. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {

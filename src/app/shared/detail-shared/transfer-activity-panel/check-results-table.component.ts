@@ -1,6 +1,5 @@
 import { Component, input, inject, ChangeDetectionStrategy, computed, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -39,7 +38,6 @@ export interface EnrichedCheckResult extends CompletedTransfer {
   providers: [TransferOperationsService],
   imports: [
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     MatProgressBarModule,
     TranslatePipe,
@@ -57,12 +55,12 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                 <mat-icon
                   svgIcon="file"
                   class="card-primary-icon file-icon"
-                  [matTooltip]="item.name"
+                  [attr.title]="item.name"
                 ></mat-icon>
                 <span
                   class="card-title-text file-name"
                   [appCopyToClipboard]="item.name"
-                  [matTooltip]="'common.copy' | translate"
+                  [attr.title]="'common.copy' | translate"
                   >{{ item.name }}</span
                 >
               </div>
@@ -73,7 +71,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                     class="action-button"
                     (click)="onResolve(item)"
                     [disabled]="isResolving(item)"
-                    [matTooltip]="item.resolveTooltip | translate"
+                    [attr.title]="item.resolveTooltip | translate"
                   >
                     <mat-icon
                       [svgIcon]="isResolving(item) ? 'spinner' : item.resolveIcon"
@@ -102,7 +100,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn"
                           (click)="ops.copyUrlSource(item, item.uniqueId); $event.stopPropagation()"
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -117,7 +115,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                             ops.downloadSource(item, item.uniqueId); $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(item.uniqueId + '-src')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -134,7 +132,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn delete-btn"
                           (click)="onDeleteSource(item); $event.stopPropagation()"
                           [disabled]="ops.deletingIds().has(item.uniqueId + '-src-del')"
-                          [matTooltip]="'common.delete' | translate"
+                          [attr.title]="'common.delete' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -168,7 +166,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn"
                           (click)="ops.copyUrlDst(item, item.uniqueId); $event.stopPropagation()"
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -181,7 +179,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn"
                           (click)="ops.downloadDst(item, item.uniqueId); $event.stopPropagation()"
                           [disabled]="ops.downloadingIds().has(item.uniqueId + '-dst')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -198,7 +196,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn delete-btn"
                           (click)="onDeleteDst(item); $event.stopPropagation()"
                           [disabled]="ops.deletingIds().has(item.uniqueId + '-dst-del')"
-                          [matTooltip]="'common.delete' | translate"
+                          [attr.title]="'common.delete' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -240,7 +238,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                             $event.stopPropagation()
                           "
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -256,7 +254,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                             $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(item.uniqueId + '-fallback')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -273,7 +271,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                           class="small-action-btn delete-btn"
                           (click)="onDeleteFallback(item); $event.stopPropagation()"
                           [disabled]="ops.deletingIds().has(item.uniqueId + '-fallback-del')"
-                          [matTooltip]="'common.delete' | translate"
+                          [attr.title]="'common.delete' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -321,7 +319,7 @@ export interface EnrichedCheckResult extends CompletedTransfer {
                 </div>
               } @else {
                 <div class="card-footer-left">
-                  <span [class]="'app-pill ' + item.badgeClass" [matTooltip]="item.error || ''">
+                  <span [class]="'app-pill ' + item.badgeClass" [attr.title]="item.error || ''">
                     <mat-icon [svgIcon]="item.badgeIcon"></mat-icon>
                     {{ item.badgeText | translate }}
                   </span>

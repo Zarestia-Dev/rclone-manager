@@ -18,7 +18,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService } from 'src/app/services/infrastructure/platform/logging.service';
@@ -40,7 +39,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     FormsModule,
     MatSnackBarModule,
     MatButtonModule,
-    MatTooltipModule,
     AnsiToHtmlPipe,
     DatePipe,
     UpperCasePipe,

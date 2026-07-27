@@ -18,7 +18,7 @@
       [class.p-primary]="chip.isActive"
       [class.p-accent]="chip.isChanged"
       [class.p-dim]="!chip.isActive"
-      [matTooltip]="
+      [attr.title]="
         chip.field.Name
           | rcloneOptionTranslate
             : 'help'
@@ -26,8 +26,6 @@
             : provider() || chip.field.Provider
             : translateService.currentLang()
       "
-      matTooltipShowDelay="700"
-      matTooltipPosition="above"
       (click)="toggleChip(chip)"
       role="button"
       tabindex="0"

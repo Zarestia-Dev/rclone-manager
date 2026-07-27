@@ -455,10 +455,6 @@
       "completed_onboarding": {
         "label": "已完成引导",
         "description": "标记是否已完成初始化引导"
-      },
-      "default_mount_directory": {
-        "label": "默认挂载目录",
-        "description": "用于挂载远程的默认本地路径模板。支持 {home} 和 {remote} 占位符（例如：{home}/rclone-manager/{remote}）。"
       }
     },
     "developer": {

@@ -2,19 +2,21 @@ import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppTab } from '@app/types';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-tabs',
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
+  imports: [MatIconModule, MatButtonModule, TranslatePipe],
   templateUrl: './tabs-buttons.component.html',
   styleUrl: './tabs-buttons.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.mobile-hidden]': 'uiStateService.mobileSidebarOpen()',
+  },
 })
 export class TabsButtonsComponent {
-  private readonly uiStateService = inject(UiStateService);
+  protected readonly uiStateService = inject(UiStateService);
 
   readonly currentTab = this.uiStateService.currentTab;
 

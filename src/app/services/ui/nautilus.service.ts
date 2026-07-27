@@ -67,6 +67,9 @@ export class NautilusService extends TauriBaseService {
   private readonly _isStandaloneWindow = signal(false);
   readonly isStandaloneWindow = this._isStandaloneWindow.asReadonly();
 
+  private readonly _isBrowserOverlayOpen = signal(false);
+  readonly isBrowserOverlayOpen = this._isBrowserOverlayOpen.asReadonly();
+
   private readonly _localDrives = signal<ExplorerRoot[]>([]);
   readonly localDrives = this._localDrives.asReadonly();
 
@@ -272,6 +275,8 @@ export class NautilusService extends TauriBaseService {
   async openBrowserOverlay(remote: string | null, path: string | null): Promise<void> {
     if (this.browserOverlayRef) return;
 
+    this._isBrowserOverlayOpen.set(true);
+
     if (remote) {
       const remoteRoot = this.lookupRemote(remote);
       if (path && remoteRoot) {
@@ -290,6 +295,10 @@ export class NautilusService extends TauriBaseService {
   }
 
   closeBrowserOverlay(): void {
+    this._isBrowserOverlayOpen.set(false);
+    if (!this._isStandaloneWindow()) {
+      this.pathNav.replaceCurrent(null, null);
+    }
     this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
     this.browserComponentRef = null;
     this.browserOverlayRef = null;
@@ -330,6 +339,9 @@ export class NautilusService extends TauriBaseService {
     });
 
     this._filePickerState.set({ isOpen: false });
+    if (!this._isStandaloneWindow()) {
+      this.pathNav.replaceCurrent(null, null);
+    }
     this.animateAndDisposeOverlay(this.pickerComponentRef, this.pickerOverlayRef);
     this.pickerComponentRef = null;
     this.pickerOverlayRef = null;

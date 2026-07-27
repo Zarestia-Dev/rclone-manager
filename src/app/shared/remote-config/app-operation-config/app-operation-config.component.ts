@@ -19,7 +19,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -81,7 +80,6 @@ interface PathItem {
     CdkMenuModule,
     CronInputComponent,
     NumberInputComponent,
-    MatTooltipModule,
     TranslatePipe,
     AlertBannerComponent,
     CdkOverlayAutoposDirective,

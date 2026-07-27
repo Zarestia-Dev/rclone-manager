@@ -47,6 +47,7 @@ pub struct GeneralSettings {
         label = "settings.general.start_on_startup.label",
         description = "settings.general.start_on_startup.description"
     )]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub start_on_startup: bool,
 
     #[setting(
@@ -85,11 +86,12 @@ impl Default for GeneralSettings {
             tray_enabled: true,
             #[cfg(feature = "tauri-plugin-notification")]
             notifications: true,
-            language,
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             start_on_startup: false,
-            restrict: true,
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
+            language,
+            restrict: true,
         }
     }
 }
@@ -109,16 +111,11 @@ pub struct CoreSettings {
     pub max_tray_items: usize,
 
     #[setting(
-        label = "settings.core.connection_check_urls.label",
-        description = "settings.core.connection_check_urls.description"
-    )]
-    pub connection_check_urls: Vec<String>,
-
-    #[setting(
         label = "settings.core.rclone_binary.label",
         description = "settings.core.rclone_binary.description",
         engine_restart = true
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_binary: String,
 
     #[setting(
@@ -141,7 +138,22 @@ pub struct CoreSettings {
             "--log-file-max-backups",
         )
     )]
+    #[cfg(not(feature = "librclone"))]
     pub rclone_additional_flags: Vec<String>,
+
+    #[setting(
+        label = "settings.core.rclone_env_vars.label",
+        description = "settings.core.rclone_env_vars.description",
+        engine_restart = true
+    )]
+    #[cfg(not(feature = "librclone"))]
+    pub rclone_env_vars: Vec<String>,
+
+    #[setting(
+        label = "settings.core.connection_check_urls.label",
+        description = "settings.core.connection_check_urls.description"
+    )]
+    pub connection_check_urls: Vec<String>,
 
     #[setting(
         label = "settings.core.bandwidth_limit.label",
@@ -151,23 +163,10 @@ pub struct CoreSettings {
     pub bandwidth_limit: String,
 
     #[setting(
-        label = "settings.core.rclone_env_vars.label",
-        description = "settings.core.rclone_env_vars.description",
-        engine_restart = true
-    )]
-    pub rclone_env_vars: Vec<String>,
-
-    #[setting(
         label = "settings.core.completed_onboarding.label",
         description = "settings.core.completed_onboarding.description"
     )]
     pub completed_onboarding: bool,
-
-    #[setting(
-        label = "settings.core.default_mount_directory.label",
-        description = "settings.core.default_mount_directory.description"
-    )]
-    pub default_mount_directory: String,
 }
 
 impl Default for CoreSettings {
@@ -175,17 +174,19 @@ impl Default for CoreSettings {
         Self {
             #[cfg(feature = "tray")]
             max_tray_items: 5,
+            #[cfg(not(feature = "librclone"))]
+            rclone_binary: String::new(),
+            #[cfg(not(feature = "librclone"))]
+            rclone_additional_flags: vec![],
+            #[cfg(not(feature = "librclone"))]
+            rclone_env_vars: vec![],
             connection_check_urls: vec![
                 "https://www.google.com".to_string(),
                 "https://www.dropbox.com".to_string(),
                 "https://onedrive.live.com".to_string(),
             ],
             bandwidth_limit: String::new(),
-            rclone_binary: String::new(),
-            rclone_additional_flags: vec![],
-            rclone_env_vars: vec![],
             completed_onboarding: false,
-            default_mount_directory: "{home}/rclone-manager/{remote}".to_string(),
         }
     }
 }
@@ -210,7 +211,7 @@ pub struct DeveloperSettings {
         label = "settings.developer.destroy_window_on_close.label",
         description = "settings.developer.destroy_window_on_close.description"
     )]
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(all(not(feature = "web-server"), desktop))]
     pub destroy_window_on_close: bool,
 }
 
@@ -218,7 +219,7 @@ impl Default for DeveloperSettings {
     fn default() -> Self {
         Self {
             log_level: "info".to_string(),
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(all(not(feature = "web-server"), desktop))]
             destroy_window_on_close: true,
         }
     }

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.3.1] - 2026-07-26
+## [0.3.1] - 2026-07-27
 
 ### Added
 - **Android Beta Release (APKs for arm64-v8a, armeabi-v7a, x86_64, x86)**: Introduced Android Beta support with architecture-separated APK builds (`arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`). Powered by an in-process Go engine (`librclone`) via FFI bindings. Tested on Samsung Galaxy S23 FE. iOS status is currently unverified due to lack of testing devices. For more details, see the [Android Documentation](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android).
@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Nautilus File Viewer Open in System Default Viewer**: Added the ability to open files in the system default viewer. First download if its remote file.
 
 ### Changed
+- **Change the mattoltip to title attribute**: Changed the mattooltip to title attribute for better performance and visuals.
 - **Nautilus Detached Dialogs & Multi-Tasking Integration**: Wired Nautilus file browser window creation to the `general.standalone_dialogs` ("Detached Dialogs") setting. Opening a remote or path now displays as an in-app modal overlay when detached dialogs are disabled, while spawning standalone OS windows when enabled. Added a dedicated "Open in New Window" (pop-out) action to the overlay toolbar for seamless multitasking.
 - **Generalized Item Order & Visibility Modal**: Renamed and refactored `ActionSelectionModalComponent` into a generic `ItemOrderVisibilityModalComponent` supporting both starred quick action button configuration and item visibility/ordering management across the application.
 - **Universal Interactive Remote Configuration**: Enhanced `interactive-config-step` and the remote creation orchestrator to generically support all rclone interactive configuration steps across any remote type (OneDrive, Google Drive, SFTP, Box, S3, Crypt, Mega, etc.). #243

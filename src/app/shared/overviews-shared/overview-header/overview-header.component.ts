@@ -1,6 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, output, input, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AppTab, TITLE_MAP } from '@app/types';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
@@ -8,7 +7,7 @@ import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance
 
 @Component({
   selector: 'app-overview-header',
-  imports: [MatIconModule, MatTooltipModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe],
   templateUrl: './overview-header.component.html',
   styleUrl: './overview-header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

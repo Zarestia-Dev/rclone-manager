@@ -455,10 +455,6 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
-      },
-      "default_mount_directory": {
-        "label": "Directorio de montaje predeterminado",
-        "description": "Plantilla de ruta local predeterminada para montar remotos. Admite los marcadores {home} y {remote} (p. ej. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {

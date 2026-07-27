@@ -2,14 +2,13 @@ import { Component, ChangeDetectionStrategy, computed, input } from '@angular/co
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { StatsPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-stats-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatCardModule, MatIconModule, MatProgressBarModule, MatTooltipModule, TranslatePipe],
+  imports: [MatCardModule, MatIconModule, MatProgressBarModule, TranslatePipe],
   styleUrls: ['./stats-panel.component.scss'],
   template: `
     <mat-card>
@@ -28,8 +27,7 @@ import { StatsPanelConfig } from '@app/types';
                 class="stat-item"
                 [class.primary]="stat.isPrimary"
                 [class.has-error]="stat.hasError"
-                [matTooltip]="stat.tooltip ?? ''"
-                [matTooltipDisabled]="!stat.tooltip"
+                [attr.title]="stat.tooltip ?? ''"
               >
                 @if (stat.isPrimary) {
                   <div class="stat-header">

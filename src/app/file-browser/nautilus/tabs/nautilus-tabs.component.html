@@ -38,8 +38,7 @@
           (drop)="onNativeDrop($event, vm.index)"
           [cdkContextMenuTriggerFor]="tabContextMenu"
           [cdkContextMenuTriggerData]="{ $implicit: vm.index }"
-          [matTooltip]="vm.tooltip"
-          [matTooltipShowDelay]="800"
+          [attr.title]="vm.tooltip"
         >
           <span class="tab-title">{{ vm.tab.title }}</span>
           <button

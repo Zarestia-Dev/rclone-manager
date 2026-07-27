@@ -20,7 +20,7 @@
             matIconButton
             matSuffix
             (click)="stopAndClearType($event)"
-            [matTooltip]="'common.clear' | translate"
+            [attr.title]="'common.clear' | translate"
           >
             <mat-icon svgIcon="close" />
           </button>
@@ -76,7 +76,7 @@
             <button
               class="app-pill interactive reshuffle-btn"
               (click)="reshuffleSuggestions()"
-              [matTooltip]="'wizards.remoteConfig.shuffleSuggestions' | translate"
+              [attr.title]="'wizards.remoteConfig.shuffleSuggestions' | translate"
             >
               <mat-icon svgIcon="refresh"></mat-icon>
             </button>
@@ -189,7 +189,7 @@
               class="advanced-toggle-btn"
               [class.active]="showAdvOpts"
               (click)="toggleAdvancedOptions()"
-              [matTooltip]="advLabel"
+              [attr.title]="advLabel"
               [attr.aria-label]="advLabel"
               [attr.aria-pressed]="showAdvOpts"
             >
@@ -209,7 +209,7 @@
               class="cmd-options-btn"
               [class.active]="showCmdOpts"
               (click)="toggleCommandOptions()"
-              [matTooltip]="cmdLabel"
+              [attr.title]="cmdLabel"
               [attr.aria-label]="cmdLabel"
               [attr.aria-pressed]="showCmdOpts"
             >
@@ -226,7 +226,7 @@
             class="json-toggle-btn"
             [class.active]="showJson"
             (click)="toggleJsonMode()"
-            [matTooltip]="jsonLabel"
+            [attr.title]="jsonLabel"
             [attr.aria-label]="jsonLabel"
             [attr.aria-pressed]="showJson"
           >
@@ -257,8 +257,7 @@
                 <button
                   class="app-pill interactive"
                   (click)="addPredefinedOption(p)"
-                  [matTooltip]="p.description | translate"
-                  matTooltipPosition="above"
+                  [attr.title]="p.description | translate"
                 >
                   <mat-icon svgIcon="plus"></mat-icon>
                   <span>{{ p.label | translate }}</span>
@@ -273,7 +272,7 @@
             @for (opt of commandOptionsView(); track opt.key; let i = $index) {
               <div class="option-row" [style.--row-index]="i">
                 <div class="option-key-container">
-                  <span class="option-key" [matTooltip]="opt.description | translate">{{
+                  <span class="option-key" [attr.title]="opt.description | translate">{{
                     opt.key
                   }}</span>
                   <span class="option-type-badge" [attr.data-type]="opt.type">{{ opt.type }}</span>
@@ -343,7 +342,7 @@
                     matIconButton
                     class="remove-option-btn"
                     (click)="removeOption(opt.key)"
-                    [matTooltip]="'wizards.remoteConfig.removeOption' | translate"
+                    [attr.title]="'wizards.remoteConfig.removeOption' | translate"
                   >
                     <mat-icon svgIcon="trash" />
                   </button>

@@ -457,10 +457,6 @@
       "completed_onboarding": {
         "label": "Completed Onboarding",
         "description": "Whether the user has completed the onboarding process"
-      },
-      "default_mount_directory": {
-        "label": "Default Mount Directory",
-        "description": "Default local path template for mounting remotes. Supports {home} and {remote} placeholders (e.g. {home}/rclone/manager/{remote})."
       }
     },
     "developer": {

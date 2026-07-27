@@ -15,7 +15,6 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, FormArray } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith, map } from 'rxjs';
@@ -209,7 +208,7 @@ function buildRcloneCompletionSource(
 
 @Component({
   selector: 'app-json-editor',
-  imports: [MatIconModule, MatTooltipModule, TranslatePipe, RcloneOptionTranslatePipe],
+  imports: [MatIconModule, TranslatePipe, RcloneOptionTranslatePipe],
   templateUrl: './json-editor.component.html',
   styleUrl: './json-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

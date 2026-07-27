@@ -27,7 +27,7 @@
       (click)="connectionService.runInternetCheck()"
       [disabled]="connectionService.status() === 'checking'"
       [attr.aria-label]="'titlebar.internetStatus' | translate"
-      [matTooltip]="connectionService.getTooltip()"
+      [attr.title]="connectionService.getTooltip()"
       data-tauri-drag-region="false"
     >
       @if (connectionService.status() !== 'checking') {
@@ -56,7 +56,7 @@
     [matBadgeColor]="readyToRestart() || rcloneRestartRequired() ? 'warn' : 'primary'"
     matBadgePosition="below before"
     matBadgeSize="small"
-    [matTooltip]="updateTooltip()"
+    [attr.title]="updateTooltip()"
     data-tauri-drag-region="false"
   >
     <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
@@ -135,7 +135,7 @@
     <button
       cdkMenuItem
       class="menu-item"
-      [matTooltip]="updateTooltip()"
+      [attr.title]="updateTooltip()"
       (click)="openAboutModal()"
       [attr.aria-label]="'titlebar.menu.about' | translate"
     >

@@ -32,9 +32,7 @@
                       matIconButton
                       class="card-layout-toggle"
                       (click)="resetRemoteLayout()"
-                      [matTooltip]="'common.reset' | translate"
-                      matTooltipPosition="left"
-                      matTooltipShowDelay="500"
+                      [attr.title]="'common.reset' | translate"
                     >
                       <mat-icon svgIcon="rotate-right"></mat-icon>
                     </button>
@@ -42,13 +40,11 @@
                       matIconButton
                       class="card-layout-toggle"
                       (click)="toggleCardDisplayMode()"
-                      [matTooltip]="
+                      [attr.title]="
                         cardDisplayMode() === 'compact'
                           ? ('generalOverview.layout.showDetailed' | translate)
                           : ('generalOverview.layout.showCompact' | translate)
                       "
-                      matTooltipPosition="left"
-                      matTooltipShowDelay="500"
                     >
                       <mat-icon
                         [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"
@@ -157,7 +153,7 @@
                           <button
                             matIconButton
                             (click)="loadBandwidthLimit()"
-                            [matTooltip]="'generalOverview.bandwidth.retry' | translate"
+                            [attr.title]="'generalOverview.bandwidth.retry' | translate"
                             [aria-label]="'generalOverview.bandwidth.retry' | translate"
                           >
                             <mat-icon
@@ -368,7 +364,7 @@
                               <pre
                                 class="error-entry"
                                 [appCopyToClipboard]="stats.lastError"
-                                [matTooltip]="'common.copy' | translate"
+                                [attr.title]="'common.copy' | translate"
                               ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ stats.lastError }}</span></pre>
                             </section>
                           }
@@ -566,9 +562,7 @@
       <button
         matIconButton
         (click)="toggleEditLayout()"
-        matTooltipPosition="left"
-        matTooltipShowDelay="500"
-        [matTooltip]="
+        [attr.title]="
           isEditingLayout()
             ? ('generalOverview.layout.save' | translate)
             : ('generalOverview.layout.edit' | translate)
@@ -584,9 +578,7 @@
         <button
           matIconButton
           (click)="resetLayout()"
-          matTooltipPosition="left"
-          matTooltipShowDelay="500"
-          [matTooltip]="'generalOverview.layout.reset' | translate"
+          [attr.title]="'generalOverview.layout.reset' | translate"
           animate.enter="fade-in-out-enter"
           animate.leave="fade-in-out-leave"
         >

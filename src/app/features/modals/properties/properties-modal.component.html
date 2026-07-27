@@ -139,7 +139,7 @@
             <div
               class="hash-item"
               [appCopyToClipboard]="hash.value"
-              [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+              [attr.title]="'fileBrowser.properties.copyToClipboard' | translate"
             >
               <span class="hash-type">{{ hash.type }}</span>
               <code class="hash-value" [title]="hash.value">{{ hash.value }}</code>
@@ -185,7 +185,7 @@
                 class="bulk-textarea"
                 readonly
                 [appCopyToClipboard]="bulkHashResult()"
-                [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+                [attr.title]="'fileBrowser.properties.copyToClipboard' | translate"
                 >{{ bulkHashResult() }}
                 </textarea>
               <button matButton="outlined" (click)="bulkHashResult.set(null)">
@@ -247,7 +247,7 @@
             <div
               class="link-url-container"
               [appCopyToClipboard]="publicLinkUrl()"
-              [matTooltip]="'fileBrowser.properties.copyToClipboard' | translate"
+              [attr.title]="'fileBrowser.properties.copyToClipboard' | translate"
             >
               <span class="link-url" [title]="publicLinkUrl()">{{ publicLinkUrl() }}</span>
             </div>

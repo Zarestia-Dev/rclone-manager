@@ -234,8 +234,7 @@
           [attr.aria-label]="
             ('modals.preferences.resetToDefault' | translate) + ': ' + meta.metadata?.display_name
           "
-          [matTooltip]="'modals.preferences.resetToDefault' | translate"
-          matTooltipPosition="above"
+          [attr.title]="'modals.preferences.resetToDefault' | translate"
         >
           <mat-icon svgIcon="rotate-right"></mat-icon>
         </button>
@@ -427,11 +426,9 @@
   <button
     class="floating-pending-indicator"
     (click)="scrollToPendingChanges()"
-    [matTooltip]="
+    [attr.title]="
       'modals.preferences.pendingChangesTooltip' | translate: { count: pendingChangesCount() }
     "
-    matTooltipPosition="left"
-    matTooltipClass="pending-changes-tooltip"
     [attr.aria-label]="'modals.preferences.aria.scrollToPending' | translate"
   >
     <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>

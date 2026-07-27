@@ -157,7 +157,6 @@
   }
 
   &.segment-drag-over {
-    // border-radius is inherited from base — no need to restate it.
     background: rgba(var(--accent-color-rgb), 0.15);
     outline: 2px solid var(--accent-color);
     color: var(--accent-color);

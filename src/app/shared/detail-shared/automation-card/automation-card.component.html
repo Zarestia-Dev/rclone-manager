@@ -20,7 +20,7 @@
               ·
               <span
                 class="watcher-mini-badge"
-                [matTooltip]="'automation.monitoring.realtime' | translate"
+                [attr.title]="'automation.monitoring.realtime' | translate"
               >
                 <mat-icon svgIcon="eye" class="watcher-mini-icon"></mat-icon>
               </span>
@@ -38,7 +38,7 @@
           matIconButton
           class="automation-toggle-btn"
           (click)="onToggle($event)"
-          [matTooltip]="toggleState().tooltip | translate"
+          [attr.title]="toggleState().tooltip | translate"
           [disabled]="automation().status === 'stopping'"
         >
           <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
@@ -48,19 +48,19 @@
 
     <mat-card-footer class="automation-footer">
       <div class="automation-stats">
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.successful' | translate">
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.successful' | translate">
           <mat-icon svgIcon="check-circle" class="stat-icon primary"></mat-icon>
           <span class="stat-value">{{ automation().successCount }}</span>
         </div>
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.failedCount' | translate">
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.failedCount' | translate">
           <mat-icon svgIcon="circle-exclamation" class="stat-icon warn"></mat-icon>
           <span class="stat-value">{{ automation().failureCount }}</span>
         </div>
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.stoppedCount' | translate">
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.stoppedCount' | translate">
           <mat-icon svgIcon="stop" class="stat-icon orange"></mat-icon>
           <span class="stat-value">{{ automation().stoppedCount }}</span>
         </div>
-        <div class="stat-item" [matTooltip]="'dashboard.generalDetail.totalRuns' | translate">
+        <div class="stat-item" [attr.title]="'dashboard.generalDetail.totalRuns' | translate">
           <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
           <span class="stat-value">{{ automation().runCount }}</span>
         </div>
@@ -98,7 +98,7 @@
       <button
         matIconButton
         (click)="onToggle($event)"
-        [matTooltip]="toggleState().tooltip | translate"
+        [attr.title]="toggleState().tooltip | translate"
         [disabled]="automation().status === 'stopping'"
       >
         <mat-icon [svgIcon]="toggleState().icon"></mat-icon>
@@ -115,7 +115,7 @@
           @if (automation().cronExpression) {
             <div class="detail-item">
               <span class="label">{{ 'dashboard.generalDetail.cronExpression' | translate }}</span>
-              <code class="value cron-expression" [matTooltip]="cronDescription()">
+              <code class="value cron-expression" [attr.title]="cronDescription()">
                 {{ automation().cronExpression }}
               </code>
             </div>
@@ -192,7 +192,7 @@
               </div>
               <button
                 matIconButton
-                [matTooltip]="'shared.actions.open' | translate"
+                [attr.title]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(src.path, $event)"
               >
                 <mat-icon [svgIcon]="src.icon"></mat-icon>
@@ -213,7 +213,7 @@
               </div>
               <button
                 matIconButton
-                [matTooltip]="'shared.actions.open' | translate"
+                [attr.title]="'shared.actions.open' | translate"
                 (click)="onOpenInFiles(dest.path, $event)"
               >
                 <mat-icon [svgIcon]="dest.icon"></mat-icon>
@@ -232,7 +232,7 @@
           <pre
             class="error-entry"
             [appCopyToClipboard]="automation().lastError"
-            [matTooltip]="'common.copy' | translate"
+            [attr.title]="'common.copy' | translate"
           ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ automation().lastError }}</span></pre>
         </section>
       }

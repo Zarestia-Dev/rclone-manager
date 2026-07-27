@@ -3,7 +3,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
@@ -20,7 +19,6 @@ import { TransferActivityPanelConfig } from '@app/types';
     MatIconModule,
     MatTabsModule,
     MatButtonModule,
-    MatTooltipModule,
     TranslatePipe,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
@@ -51,7 +49,7 @@ import { TransferActivityPanelConfig } from '@app/types';
               matIconButton
               [class.search-open]="searchVisible()"
               (click)="toggleSearch()"
-              [matTooltip]="'shared.search.toggle' | translate"
+              [attr.title]="'shared.search.toggle' | translate"
             >
               <mat-icon svgIcon="search"></mat-icon>
             </button>
@@ -61,7 +59,7 @@ import { TransferActivityPanelConfig } from '@app/types';
             <button
               matIconButton
               (click)="isJobRunning() ? resetStats.emit() : deleteJob.emit()"
-              [matTooltip]="
+              [attr.title]="
                 (isJobRunning()
                   ? 'shared.transferActivity.resetStats'
                   : 'detailShared.jobs.actions.delete'

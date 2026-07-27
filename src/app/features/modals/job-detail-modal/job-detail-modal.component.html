@@ -70,7 +70,7 @@
       @if (identifiers().group) {
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.group' | translate }}</span>
-          <code class="value truncate" [matTooltip]="identifiers().group">{{
+          <code class="value truncate" [attr.title]="identifiers().group">{{
             identifiers().group
           }}</code>
         </div>
@@ -78,7 +78,7 @@
       @if (identifiers().executeId) {
         <div class="grid-item">
           <span class="label">{{ 'modals.jobDetail.fields.executeId' | translate }}</span>
-          <code class="value truncate" [matTooltip]="identifiers().executeId">{{
+          <code class="value truncate" [attr.title]="identifiers().executeId">{{
             identifiers().executeId
           }}</code>
         </div>
@@ -209,7 +209,7 @@
         <mat-icon svgIcon="circle-exclamation"></mat-icon>
         {{ 'modals.jobDetail.sections.errors' | translate }}
       </span>
-      <pre class="error-entry" [appCopyToClipboard]="err" [matTooltip]="'common.copy' | translate">
+      <pre class="error-entry" [appCopyToClipboard]="err" [attr.title]="'common.copy' | translate">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
         <span>{{ err }}</span>
       </pre>

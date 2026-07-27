@@ -2,7 +2,6 @@ import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/cor
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
@@ -19,7 +18,6 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatSlideToggleModule,
     TranslatePipe,
     SearchContainerComponent,
@@ -31,7 +29,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
         <button
           matIconButton
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
@@ -101,7 +99,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                 <mat-slide-toggle
                   [checked]="action.enabled"
                   (change)="toggleAction(action)"
-                  [matTooltip]="
+                  [attr.title]="
                     (action.enabled ? 'automation.status.enabled' : 'automation.status.disabled')
                       | translate
                   "
@@ -118,7 +116,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                   <button
                     matIconButton
                     (click)="testAction(action)"
-                    [matTooltip]="'alerts.testAction' | translate"
+                    [attr.title]="'alerts.testAction' | translate"
                     [disabled]="alerts.testingActionIds().has(action.id)"
                   >
                     @if (alerts.testingActionIds().has(action.id)) {
@@ -132,7 +130,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                   <button
                     matIconButton
                     (click)="editAction(action)"
-                    [matTooltip]="'common.edit' | translate"
+                    [attr.title]="'common.edit' | translate"
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
@@ -141,7 +139,7 @@ import { AlertActionEditorComponent } from './alert-action-editor/alert-action-e
                   <button
                     matIconButton
                     (click)="deleteAction(action)"
-                    [matTooltip]="'common.delete' | translate"
+                    [attr.title]="'common.delete' | translate"
                   >
                     <mat-icon svgIcon="trash"></mat-icon>
                   </button>

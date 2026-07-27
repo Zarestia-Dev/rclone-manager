@@ -112,12 +112,10 @@ export class PathNavigationService implements OnDestroy {
     path: string | null,
     pathStyle: PathStyle = 'posix'
   ): string {
-    let url = '/nautilus';
-    if (remote) {
-      url += `/${this.encodeRemote(remote)}`;
-      if (path) {
-        url += `/${this.encodePath(path, pathStyle)}`;
-      }
+    if (!remote) return '/';
+    let url = `/nautilus/${this.encodeRemote(remote)}`;
+    if (path) {
+      url += `/${this.encodePath(path, pathStyle)}`;
     }
     return url;
   }

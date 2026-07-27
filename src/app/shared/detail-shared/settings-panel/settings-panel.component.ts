@@ -13,7 +13,6 @@ import { map } from 'rxjs';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } from '@app/types';
@@ -21,7 +20,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
 @Component({
   selector: 'app-settings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule, TranslatePipe],
+  imports: [MatIconModule, MatButtonModule, MatExpansionModule, TranslatePipe],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     @let cfg = config();
@@ -51,8 +50,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
               type="button"
               matIconButton
               style="color: var(--mat-sys-primary);"
-              [matTooltip]="editButtonLabel() | translate"
-              matTooltipShowDelay="500"
+              [attr.title]="editButtonLabel() | translate"
               (click)="onEditSettings(); $event.stopPropagation()"
             >
               <mat-icon svgIcon="pen"></mat-icon>
@@ -73,16 +71,14 @@ import { SENSITIVE_KEYS, SettingsPanelConfig, SettingEntry, GroupedSettings } fr
                   <div
                     class="setting-chip"
                     [class.is-sensitive]="entry.isSensitive"
-                    [matTooltip]="entry.tooltip"
-                    matTooltipShowDelay="600"
+                    [attr.title]="entry.tooltip"
                   >
                     <span class="chip-key">
                       @if (entry.isSensitive) {
                         <mat-icon
                           svgIcon="lock"
                           class="sensitive-indicator"
-                          [matTooltip]="'detailShared.settings.restricted' | translate"
-                          matTooltipShowDelay="500"
+                          [attr.title]="'detailShared.settings.restricted' | translate"
                         ></mat-icon>
                       }
                       {{ entry.key }}

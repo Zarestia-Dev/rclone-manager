@@ -19,7 +19,6 @@ import {
 } from '@app/types';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
@@ -34,7 +33,6 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
   imports: [
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
     TranslatePipe,
     OverviewHeaderComponent,
     StatusOverviewPanelComponent,

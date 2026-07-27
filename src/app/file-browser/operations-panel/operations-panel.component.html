@@ -41,7 +41,7 @@
               <mat-icon class="job-type-icon" [svgIcon]="vm.typeIcon"></mat-icon>
               <div class="job-content">
                 <span class="job-name">{{ vm.typeLabel }}</span>
-                <span class="job-subname" [matTooltip]="vm.job.destination || vm.formattedSource">{{
+                <span class="job-subname" [attr.title]="vm.job.destination || vm.formattedSource">{{
                   vm.actualFileName
                 }}</span>
               </div>
@@ -51,13 +51,12 @@
                   vm.job.status === 'Running' ? stopJob(vm.job) : deleteJob(vm.job);
                   $event.stopPropagation()
                 "
-                [matTooltip]="
+                [attr.title]="
                   (vm.job.status === 'Running'
                     ? 'fileBrowser.operations.cancelJob'
                     : 'fileBrowser.operations.removeJob'
                   ) | translate
                 "
-                matTooltipShowDelay="500"
                 svgIcon="circle-xmark"
               >
               </mat-icon>
@@ -160,12 +159,10 @@
               <div
                 class="uploaded-file-entry"
                 [class.failed]="file.status === 'failed'"
-                [matTooltip]="file.error || null"
+                [attr.title]="file.error || null"
               >
                 <div class="file-info">
-                  <span class="file-name" [matTooltip]="file.name" matTooltipShowDelay="500">{{
-                    file.name
-                  }}</span>
+                  <span class="file-name" [attr.title]="file.name">{{ file.name }}</span>
                   @if (file.size > 0) {
                     <span class="file-size">{{ file.size | formatFileSize }}</span>
                   }
@@ -218,7 +215,7 @@
                 matIconButton
                 class="copy-error-btn"
                 [appCopyToClipboard]="vm.formattedError"
-                [matTooltip]="'common.copy' | translate"
+                [attr.title]="'common.copy' | translate"
               >
                 <mat-icon svgIcon="copy"></mat-icon>
               </button>

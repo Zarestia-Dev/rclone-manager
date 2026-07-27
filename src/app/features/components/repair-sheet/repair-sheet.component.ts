@@ -10,7 +10,6 @@ import {
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   InstallationOptionsData,
   RepairData,
@@ -33,7 +32,6 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
   imports: [
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
     TranslatePipe,

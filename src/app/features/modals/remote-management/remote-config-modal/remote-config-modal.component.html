@@ -4,7 +4,7 @@
   <button
     matIconButton
     (click)="toggleSearchVisibility()"
-    [matTooltip]="'shared.search.toggle' | translate"
+    [attr.title]="'shared.search.toggle' | translate"
     [attr.aria-label]="'shared.search.toggle' | translate"
     type="button"
   >
@@ -104,7 +104,7 @@
               [href]="oauthUrlValue"
               target="_blank"
               rel="noopener noreferrer"
-              [matTooltip]="'modals.oauth.openLink' | translate"
+              [attr.title]="'modals.oauth.openLink' | translate"
             >
               {{ oauthUrlValue }}
             </a>
@@ -113,7 +113,7 @@
               matIconButton
               [appCopyToClipboard]="oauthUrlValue"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
-              [matTooltip]="'modals.oauth.copyLink' | translate"
+              [attr.title]="'modals.oauth.copyLink' | translate"
             >
               <mat-icon svgIcon="copy" class="accent"></mat-icon>
             </button>

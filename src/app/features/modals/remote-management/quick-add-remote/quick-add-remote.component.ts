@@ -46,7 +46,6 @@ import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/int
 import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import { INITIAL_COMMAND_OPTIONS } from 'src/app/services/remote/utils/command-options.util';
 import { mapFormToConfigProfile } from '../../../../services/remote/utils/remote-config.utils';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -60,7 +59,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     RemoteConfigStepComponent,
     OperationConfigComponent,
     TranslatePipe,
-    MatTooltipModule,
     CopyToClipboardDirective,
   ],
   providers: [RemoteCreationOrchestrator],

@@ -16,7 +16,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -36,7 +35,6 @@ import { DiskUsage, FsInfo, RemoteAboutData } from '@app/types';
     MatButtonModule,
     MatTabsModule,
     MatExpansionModule,
-    MatTooltipModule,
     MatCardModule,
     FormatFileSizePipe,
     TranslatePipe,

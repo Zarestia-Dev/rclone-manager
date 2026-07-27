@@ -455,10 +455,6 @@
       "completed_onboarding": {
         "label": "Terminer l’onboarding",
         "description": "Si l'utilisateur a terminé le processus d'intégration"
-      },
-      "default_mount_directory": {
-        "label": "Dossier de montage par défaut",
-        "description": "Modèle de chemin local par défaut pour le montage. Prend en charge les variables {home} et {remote} (ex. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {

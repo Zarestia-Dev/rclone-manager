@@ -3,20 +3,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-password-manager',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatFormFieldModule,
-    MatInputModule,
-    MatIconModule,
-    MatCheckboxModule,
-    MatTooltipModule,
-    TranslatePipe,
-  ],
+  imports: [MatFormFieldModule, MatInputModule, MatIconModule, MatCheckboxModule, TranslatePipe],
   templateUrl: './password-manager.component.html',
   styleUrls: ['./password-manager.component.scss'],
 })
