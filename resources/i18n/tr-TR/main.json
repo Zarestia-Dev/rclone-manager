@@ -400,6 +400,8 @@
     "resetFailed": "{{key}} varsayılana sıfırlanamadı.",
     "loadFailed": "Uygulama ayarları yüklenemedi.",
     "remoteResetSuccess": "{{remote}} ayarları başarıyla sıfırlandı",
+    "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
+    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Tepsi Simgesini Etkinleştir",
@@ -455,10 +457,6 @@
       "completed_onboarding": {
         "label": "Tanıtım Tamamlandı",
         "description": "Tanıtım sürecinin tamamlanıp tamamlanmadığını belirtir."
-      },
-      "default_mount_directory": {
-        "label": "Varsayılan Bağlama Klasörü",
-        "description": "Remotelar için varsayılan yerel yol şablonu. {home} ve {remote} değişkenlerini destekler (ör. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -542,9 +540,7 @@
         "label": "Yer İmleri",
         "description": "Hızlı erişim için yer imlerine eklenen konumların listesi."
       }
-    },
-    "remoteSaved": "Uzak bağlantı başarıyla kaydedildi",
-    "remoteSaveFailed": "Uzak bağlantı kaydedilemedi: {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -794,6 +790,10 @@
         "successDownload": "Dosya başarıyla indirildi",
         "failDownload": "Dosya indirilemedi"
       },
+      "messages": {
+        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı",
+        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}"
+      },
       "empty": {
         "noActive": "Aktif transfer yok",
         "activeHint": "Transferler bir işlem başladığında burada görünecektir",
@@ -813,10 +813,6 @@
           "seconds": "{{seconds}}sn",
           "lessThanSecond": "<1sn"
         }
-      },
-      "messages": {
-        "resolveFailed": "Dosya uyuşmazlığı çözülemedi: {{error}}",
-        "resolveStarted": "Dosya uyuşmazlığını çözme işlemi başlatıldı"
       }
     },
     "inputModal": {
