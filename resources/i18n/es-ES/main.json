@@ -400,6 +400,8 @@
     "resetFailed": "Error al restablecer {{key}} a los valores predeterminados.",
     "loadFailed": "No se pudo cargar la configuración de la aplicación.",
     "remoteResetSuccess": "Configuración para {{remote}} restablecida correctamente",
+    "remoteSaved": "Remoto guardado correctamente",
+    "remoteSaveFailed": "Error al guardar el remoto: {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Habilitar icono de bandeja",
@@ -455,10 +457,6 @@
       "completed_onboarding": {
         "label": "Incorporación completada",
         "description": "Indica si el proceso de incorporación se ha completado."
-      },
-      "default_mount_directory": {
-        "label": "Directorio de montaje predeterminado",
-        "description": "Plantilla de ruta local predeterminada para montar remotos. Admite los marcadores {home} y {remote} (p. ej. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -542,9 +540,7 @@
         "label": "Marcadores",
         "description": "Lista de ubicaciones marcadas para un acceso rápido."
       }
-    },
-    "remoteSaved": "Remoto guardado correctamente",
-    "remoteSaveFailed": "Error al guardar el remoto: {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -794,6 +790,10 @@
         "successDownload": "Archivo descargado correctamente",
         "failDownload": "Error al descargar el archivo"
       },
+      "messages": {
+        "resolveStarted": "Se inició la resolución del conflicto de archivos",
+        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}"
+      },
       "empty": {
         "noActive": "No hay transferencias activas",
         "activeHint": "Las transferencias aparecerán aquí cuando comience una operación",
@@ -813,10 +813,6 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      },
-      "messages": {
-        "resolveFailed": "No se pudo resolver el conflicto de archivos: {{error}}",
-        "resolveStarted": "Se inició la resolución del conflicto de archivos"
       }
     },
     "inputModal": {
