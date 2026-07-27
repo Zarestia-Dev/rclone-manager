@@ -400,6 +400,8 @@
     "resetFailed": "Échec de la réinitialisation de {{key}} par défaut.",
     "loadFailed": "Impossible de charger les paramètres de l'application.",
     "remoteResetSuccess": "Les paramètres {{remote}} ont été réinitialisés avec succès",
+    "remoteSaved": "Remote enregistré avec succès",
+    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}",
     "general": {
       "tray_enabled": {
         "label": "Activer l'icône dans la zone de notification",
@@ -455,10 +457,6 @@
       "completed_onboarding": {
         "label": "Terminer l’onboarding",
         "description": "Si l'utilisateur a terminé le processus d'intégration"
-      },
-      "default_mount_directory": {
-        "label": "Dossier de montage par défaut",
-        "description": "Modèle de chemin local par défaut pour le montage. Prend en charge les variables {home} et {remote} (ex. {home}/rclone-manager/{remote})."
       }
     },
     "developer": {
@@ -542,9 +540,7 @@
         "label": "Signets",
         "description": "Liste des signets pour un accès rapide."
       }
-    },
-    "remoteSaved": "Remote enregistré avec succès",
-    "remoteSaveFailed": "Échec de l'enregistrement du remote : {{error}}"
+    }
   },
   "banners": {
     "development": {
@@ -794,6 +790,10 @@
         "successDownload": "Fichier téléchargé avec succès",
         "failDownload": "Échec du téléchargement du fichier"
       },
+      "messages": {
+        "resolveStarted": "La résolution du conflit de fichiers a commencé",
+        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}"
+      },
       "empty": {
         "noActive": "Aucun transfert actif",
         "activeHint": "Les transferts apparaîtront ici quand une opération commencera",
@@ -813,10 +813,6 @@
           "seconds": "{{seconds}}s",
           "lessThanSecond": "<1s"
         }
-      },
-      "messages": {
-        "resolveFailed": "Échec de la résolution du conflit de fichiers : {{error}}",
-        "resolveStarted": "La résolution du conflit de fichiers a commencé"
       }
     },
     "inputModal": {
