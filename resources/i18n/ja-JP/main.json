@@ -457,10 +457,6 @@
       "completed_onboarding": {
         "label": "オンボーディング完了フラグ",
         "description": "ユーザーがオンボーディングプロセスを完了したかどうか。"
-      },
-      "default_mount_directory": {
-        "label": "デフォルトのマウントフォルダ",
-        "description": "リモートマウント用のデフォルトローカルパステンプレート。{home} と {remote} プレースホルダーに対応しています（例: {home}/rclone/manager/{remote}）"
       }
     },
     "developer": {
