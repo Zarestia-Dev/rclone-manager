@@ -20,7 +20,7 @@
 
 <p align="center">
   <b>Une interface graphique puissante et multiplateforme pour gérer les remotes Rclone avec style et simplicité.</b><br>
-  <i>Conçu avec Angular 22 + Tauri · Support Linux • Windows • macOS • ARM</i>
+  <i>Conçu avec Angular 22 + Tauri · Support Linux • Windows • macOS • Android (Bêta) • ARM</i>
 </p>
 
 <p align="center">
@@ -89,10 +89,10 @@ Installez RClone Manager à l'aide de votre gestionnaire de paquets préféré, 
 
 ### macOS
 
-| Source                    | Version                                                                                                                                                                                                        | Commande d'installation / Téléchargement                                           |
-| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
-| **Homebrew**              | [![Version Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager`             |
-| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                      | [Installateur DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source                    | Version                                                                                                                                                                                                        | Commande d'installation / Téléchargement                                                                   |
+| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **Homebrew**              | [![Version Homebrew](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
+| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                      | [Installateur DMG](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                         |
 
 > 📚 **Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (correctifs macFUSE & Gatekeeper)
 
@@ -106,6 +106,14 @@ Installez RClone Manager à l'aide de votre gestionnaire de paquets préféré, 
 | **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                         | [Installateur / EXE Portable](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (conditions de montage WinFsp & SmartScreen)
+
+### Android (Bêta)
+
+| Source                    | Version                                                                                                                                                                                   | Commande d'installation / Téléchargement                                                                                    |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| **Téléchargement direct** | [![Dernière version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Téléchargements APK (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **Guide :** [Wiki : Support Android (Bêta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Détails du moteur Go / librclone et configuration)
 
 > 🛠️ **Configuration système requise:** Le montage de disques requiert WinFsp (Windows), macFUSE (macOS) ou FUSE3 (Linux). Rclone lui-même est téléchargé automatiquement s'il est manquant. Voir [Wiki: Configuration système requise](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

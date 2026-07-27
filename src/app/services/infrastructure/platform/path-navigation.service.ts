@@ -188,12 +188,12 @@ export class PathNavigationService implements OnDestroy {
       const result = fromSegments(
         pathName.slice(pathName.indexOf('/nautilus') + '/nautilus'.length)
       );
-      if (result.remote) return { ...result, isStandalone: true };
+      return { ...result, isStandalone: true };
     }
 
     if (hash.startsWith('#/nautilus')) {
       const result = fromSegments(hash.slice('#/nautilus'.length));
-      if (result.remote) return { ...result, isStandalone: true };
+      return { ...result, isStandalone: true };
     }
 
     const browseRemote = urlParams.get('browse');

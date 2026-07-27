@@ -19,7 +19,7 @@
 
 <p align="center">
   <b>一个强大且跨平台的 GUI，用于以时尚、轻松的方式管理 Rclone 远程连接。</b><br>
-  <i>使用 Angular 22 + Tauri 构建 · 支持 Linux • Windows • macOS • ARM</i>
+  <i>使用 Angular 22 + Tauri 构建 · 支持 Linux • Windows • macOS • Android (测试版) • ARM</i>
 </p>
 
 <p align="center">
@@ -88,10 +88,10 @@
 
 ### macOS
 
-| 来源         | 版本                                                                                                                                                                                                        | 安装命令 / 下载                                                              |
-| :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
-| **Homebrew** | [![Homebrew 版本](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager`       |
-| **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                     | [DMG 安装包](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| 来源         | 版本                                                                                                                                                                                                        | 安装命令 / 下载                                                                                            |
+| :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **Homebrew** | [![Homebrew 版本](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust Zarestia-Dev/zarestia && brew install --cask rclone-manager` |
+| **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                     | [DMG 安装包](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                               |
 
 > 📚 **指南:** [Wiki: 安装 - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos)（macFUSE 与 Gatekeeper 修复）
 
@@ -105,6 +105,14 @@
 | **直接下载**   | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                        | [安装包 / 便携式 EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **指南:** [Wiki: 安装 - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows)（WinFsp 挂载要求与 SmartScreen）
+
+### Android (测试版)
+
+| 来源         | 版本                                                                                                                                                                                    | 安装命令 / 下载                                                                                                  |
+| :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| **直接下载** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK 下载 (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **指南:** [Wiki: Android 支持 (测试版)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go 引擎 / librclone 详细信息及配置)
 
 > 🛠️ **系统要求:** 挂载驱动器需要 WinFsp (Windows)、macFUSE (macOS) 或 FUSE3 (Linux)。如果缺失，Rclone 本身会自动下载。参见 [Wiki: 系统要求](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies)。
 

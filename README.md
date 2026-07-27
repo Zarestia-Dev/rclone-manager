@@ -19,7 +19,7 @@
 
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
-  <i>Built with Angular 22 + Tauri · Linux • Windows • macOS • ARM Support</i>
+  <i>Built with Angular 22 + Tauri · Linux • Windows • macOS • Android (Beta) • ARM Support</i>
 </p>
 
 <p align="center">
@@ -105,6 +105,14 @@ Install RClone Manager using your preferred package manager, or download standal
 | **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [Installer / Portable EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Installation - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (WinFsp mounting requirements & SmartScreen)
+
+### Android (Beta)
+
+| Source              | Version                                                                                                                                                                                                           | Install Command / Download                                                                 |
+| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [APK Downloads (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **Guide:** [Wiki: Android Support (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go engine / librclone details & setup)
 
 > 🛠️ **System Requirements:** Mounting drives requires WinFsp (Windows), macFUSE (macOS), or FUSE3 (Linux). Rclone itself is downloaded automatically if missing. See [Wiki: System Requirements](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 
