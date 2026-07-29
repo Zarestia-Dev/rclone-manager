@@ -16,6 +16,8 @@ macro_rules! MASTER_COMMAND_LIST {
             // File Picker / System Interaction
             #[cfg(not(feature = "web-server"))]
             (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: std::path::PathBuf]);
+            #[cfg(all(target_os = "android", not(feature = "web-server")))]
+            (open_saf_remote, $crate::utils::io::file_helper::open_saf_remote, [remote: String]);
             #[cfg(not(feature = "web-server"))]
             (open_file_natively, $crate::utils::io::file_helper::open_file_natively, [remote: String, path: String, file_name: String, is_local: bool]);
             #[cfg(all(desktop, not(feature = "web-server")))]

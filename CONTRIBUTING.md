@@ -130,7 +130,20 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
    You can copy `README_en-US.txt` and `README_linux_en-US.txt` as templates and translate their content into your target language.
 
-6. **Test your translation**:
+6. **Android Native Strings (Mobile)**:
+
+   When translating native Android components (such as foreground services, SAF notifications, and channel descriptions), add or update the language `strings.xml` file under `src-tauri/gen/android/app/src/main/res/values-YOUR-LANG/strings.xml` (e.g., `values-tr`, `values-es`, `values-fr`, `values-ja`, `values-pt-rBR`, `values-ru`, `values-uk`, `values-zh-rCN`).
+
+   Example (`values-tr/strings.xml`):
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <resources>
+       <string name="saf_keepalive_title">Rclone SAF Depolama Servisi</string>
+       <string name="saf_keepalive_text">Aktif dosya akışı devam ediyor</string>
+   </resources>
+   ```
+
+7. **Test your translation**:
 
    ```bash
    npm run tauri dev
@@ -138,7 +151,7 @@ We use BCP-47 language tags (e.g., `en-US`, `tr-TR`, `de-DE`) for internationali
 
    Then change the language in Settings → General → Language.
 
-7. **Audit i18n Keys**:
+8. **Audit i18n Keys**:
    Run the i18n auditor to ensure no translation keys are missing or malformed across languages:
    ```bash
    npm run audit:i18n

@@ -150,9 +150,43 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
+   * Open a remote root directly in Android system files (SAF provider)
+   */
+  async openSafRemote(remoteName: string): Promise<void> {
+    try {
+      let cleanRemote = remoteName
+        .replace(/^saf:\/\//i, '')
+        .replace(/:$/, '')
+        .trim();
+      if (cleanRemote.includes('/')) {
+        cleanRemote = cleanRemote.split('/')[0].trim();
+      }
+      return await this.invokeCommand('open_saf_remote', { remote: cleanRemote });
+    } catch (error) {
+      const translatedError = this.backendTranslation.translateBackendMessage(error);
+      this.notificationService.showError(
+        this.translate.instant('home.errors.openFailed', { name: remoteName }) +
+          ': ' +
+          translatedError
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Open a path in the system file manager
    */
   async openInFiles(path: string): Promise<void> {
+    if (isMobile() && (this.pathService.isLocalPath(path) || path.startsWith('saf://'))) {
+      let targetRemote = path;
+      if (targetRemote.startsWith('saf://')) {
+        targetRemote = targetRemote.replace(/^saf:\/\//i, '');
+      } else {
+        const { remote } = this.pathService.splitLocalPath(path);
+        targetRemote = remote || 'local';
+      }
+      return this.openSafRemote(targetRemote);
+    }
     if (this.isInternalBrowserPreferred()) {
       const { remote, remainder } = this.pathService.splitLocalPath(path);
       return this.nautilusService.newNautilusWindow(remote, remainder);

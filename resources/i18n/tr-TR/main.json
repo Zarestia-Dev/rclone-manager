@@ -77,7 +77,8 @@
     "successMount": "{{remote}} ({{profile}}) başarıyla bağlandı",
     "failedMount": "{{remote}} bağlaması başarısız: {{error}}",
     "successUnmount": "{{remote}} başarıyla çıkarıldı",
-    "failedUnmount": "{{remote}} çıkarılamadı: {{error}}"
+    "failedUnmount": "{{remote}} çıkarılamadı: {{error}}",
+    "androidRootWarning": "SAF dışındaki bağlama türleri Android üzerinde Root (Superuser) yetkisi gerektirir."
   },
   "operations": {
     "available": "Senkronizasyon İşlemleri Mevcut",
@@ -1142,6 +1143,7 @@
       "watchRequiresLocal": "Gerçek zamanlı izleme en az bir yerel kaynak veya hedef dizini gerektirir.",
       "watchMixedSourcesNote": "Sadece yerel kaynak dizinleri gerçek zamanlı olarak izlenecektir. Uzak kaynaklardaki değişiklikler senkronizasyonu otomatik olarak tetiklemez.",
       "watchFilterNote": "Dosya izleyici Filtre Profilinize uyar. Hariç tutulan dosyalar veya dizinlerdeki (örneğin örüntü, boyut veya yaşa göre) değişiklikler senkronizasyonu tetiklemez.",
+      "mobileSafMountNote": "Android'de bağlama (mount) yapıldığında, bu uzaktan sunucu SAF (Depolama Erişim Çerçevesi) aracılığıyla sistem dosya seçicisinde ve diğer uygulamalarda kullanılabilir hale gelir.",
       "scheduleDescription": "Etkinleştirildiğinde, bu işlem aşağıdaki cron zamanlamasına göre <strong>tekrarlı</strong> olarak çalışır.",
       "scheduleSubtitle": "Bu işlemi belirli aralıklarla otomatik olarak çalışacak şekilde zamanlayın.",
       "sourcePaths": "Kaynak Yolları",

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Rclone SAF ストレージサービス</string>
+    <string name="saf_keepalive_text">バックグラウンドでファイルストリーミングが進行中</string>
+    <string name="saf_keepalive_channel_name">Rclone ストレージサービス</string>
+    <string name="saf_keepalive_channel_desc">外部SAFファイルストリーミング中にRcloneプロセスをアクティブに維持します</string>
+</resources>

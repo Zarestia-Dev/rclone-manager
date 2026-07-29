@@ -1207,6 +1207,10 @@
     "title": "NFS Bağlama",
     "help": "NFS protokolü kullanarak bağlama"
   },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Android yerel Depolama Erişimi Çerçevesi bağlaması"
+  },
   "serve_type_http": {
     "title": "HTTP Sunucusu",
     "help": "Uzak bağlantıyı HTTP üzerinden sunar"

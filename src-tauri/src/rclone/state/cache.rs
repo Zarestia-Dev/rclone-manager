@@ -114,6 +114,13 @@ impl RemoteCache {
 
         info!("📡 Mount cache changed");
         let _ = app_handle.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+
+        #[cfg(target_os = "android")]
+        {
+            let cache_read = self.mounted.read().await;
+            crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
+        }
+
         true
     }
 

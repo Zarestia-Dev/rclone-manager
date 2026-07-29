@@ -1,10 +1,13 @@
 package com.rclone.manager
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -27,6 +30,7 @@ class MainActivity : TauriActivity() {
     windowInsetsController.isAppearanceLightStatusBars = !isNightMode
     windowInsetsController.isAppearanceLightNavigationBars = !isNightMode
 
+    RcloneSafBridge.ensureInitialized(applicationContext)
     requestStoragePermission()
 
     // Copy bundled assets to cache directory so Rust std::fs can access them
@@ -40,8 +44,9 @@ class MainActivity : TauriActivity() {
 
     super.onCreate(savedInstanceState)
 
-    // Handle incoming share intent (Share Receiver) — app was cold-started via share
     handleShareIntent(intent)
+    handleOpenSystemFilesIntent(intent)
+    handleRouteIntent(intent)
   }
 
   override fun onDestroy() {
@@ -60,8 +65,34 @@ class MainActivity : TauriActivity() {
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
-    // App was already running; new share intent arrived
     handleShareIntent(intent)
+    handleOpenSystemFilesIntent(intent)
+    handleRouteIntent(intent)
+  }
+
+  private fun handleRouteIntent(intent: Intent?) {
+    if (intent == null) return
+    val route = intent.getStringExtra("route") ?: return
+    if (route.isNotEmpty()) {
+      notifyNavigateRoute(route)
+    }
+  }
+
+  private fun notifyNavigateRoute(route: String) {
+    val escaped = route.replace("\\", "\\\\").replace("\"", "\\\"")
+    val js = "window.dispatchEvent(new CustomEvent('android-navigate-route',{detail:{route:\"$escaped\"}}))"
+    appWebView?.post { appWebView?.evaluateJavascript(js, null) }
+  }
+
+  private fun handleOpenSystemFilesIntent(intent: Intent?) {
+    if (intent == null) return
+    if (intent.action == "com.rclone.manager.OPEN_SYSTEM_FILES") {
+      val remoteName = intent.getStringExtra("remote") ?: return
+      intent.action = null
+      openSystemFileBrowserWithCallback(remoteName) {
+        moveTaskToBack(true)
+      }
+    }
   }
 
   /**
@@ -170,6 +201,33 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  @JavascriptInterface
+  fun isBatteryOptimizationIgnored(): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+      return pm?.isIgnoringBatteryOptimizations(packageName) ?: true
+    }
+    return true
+  }
+
+  @JavascriptInterface
+  fun requestIgnoreBatteryOptimizations() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      try {
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+          val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          }
+          startActivity(intent)
+        }
+      } catch (e: Exception) {
+        Logger.error("requestIgnoreBatteryOptimizations failed: ${e.message}")
+      }
+    }
+  }
+
   /**
    * Opens a local file in its default handler using a FileProvider content:// URI.
    * Avoids FileUriExposedException (Android 7+) that `file://` URIs cause.
@@ -187,6 +245,34 @@ class MainActivity : TauriActivity() {
       Logger.error("openLocalFile failed: ${e.message}")
     }
   }
+
+  @JavascriptInterface
+  fun openSystemFileBrowser(remoteName: String) {
+    openSystemFileBrowserWithCallback(remoteName, null)
+  }
+
+  fun openSystemFileBrowserWithCallback(remoteName: String, onComplete: (() -> Unit)? = null) {
+    runOnUiThread {
+      try {
+        val authority = "$packageName.documents"
+        val rootUri = if (remoteName.isNotBlank()) {
+          DocumentsContract.buildRootUri(authority, remoteName)
+        } else {
+          DocumentsContract.buildRootsUri(authority)
+        }
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+          setDataAndType(rootUri, "vnd.android.document/root")
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+        onComplete?.invoke()
+      } catch (e: Exception) {
+        Logger.error("openSystemFileBrowser error: ${e.message}")
+      }
+    }
+  }
+
 
   /**
    * Opens the Android share sheet for a locally cached file.
@@ -260,7 +346,7 @@ class MainActivity : TauriActivity() {
       if (list.isEmpty()) {
         copyAssetFile(assetDirPath, File(destDir, assetDirPath))
       } else {
-        val dir = File(destDir, assetDirPath).also { if (!it.exists()) it.mkdirs() }
+        File(destDir, assetDirPath).also { if (!it.exists()) it.mkdirs() }
         for (asset in list) {
           copyAssetsDir(if (assetDirPath.isEmpty()) asset else "$assetDirPath/$asset", destDir)
         }

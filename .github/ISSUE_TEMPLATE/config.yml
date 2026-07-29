@@ -1,0 +1,10 @@
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/Zarestia-Dev/rclone-manager/discussions
+    about: Ask questions, seek support, or share ideas with the community.
+  - name: 📚 Documentation & Wiki
+    url: https://hakanismail.info/zarestia/rclone-manager/docs
+    about: Read guides for installation, mounting, and Android support.
+  - name: 🌐 Crowdin Translation
+    url: https://crowdin.com/project/rclone-manger
+    about: Help translate RClone Manager into your language.

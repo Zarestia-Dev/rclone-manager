@@ -147,6 +147,25 @@ export class ModalService {
 
   dialogInjector?: Injector;
 
+  constructor() {
+    window.addEventListener('popstate', () => {
+      if (this.dialog.openDialogs.length > 0) {
+        const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
+        topmostDialog.close();
+      }
+    });
+
+    this.dialog.afterOpened.subscribe(dialogRef => {
+      window.history.pushState({ dialogId: dialogRef.id }, '');
+
+      dialogRef.afterClosed().subscribe(() => {
+        if (window.history.state?.dialogId === dialogRef.id) {
+          window.history.back();
+        }
+      });
+    });
+  }
+
   private readonly loaders: Record<string, () => Promise<Type<any>>> = {
     'quick-add-remote': () =>
       import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(

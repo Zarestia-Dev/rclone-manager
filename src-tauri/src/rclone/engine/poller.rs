@@ -9,10 +9,9 @@ use tokio::time;
 use crate::rclone::backend::BackendManager;
 use crate::rclone::engine::lifecycle::{get_engine_status, start_engine_if_not_running};
 use crate::rclone::queries::parse_serves_response;
-use crate::utils::rclone::endpoints::{core, job, mount, serve};
+use crate::utils::rclone::endpoints::{core, job, serve};
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::{SystemStatus, SystemStatusPayload};
-use crate::utils::types::remotes::MountedRemote;
 use crate::utils::types::state::{EngineState, RcloneState};
 
 const BURST_TICK_COUNT: u32 = 5;
@@ -185,11 +184,21 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
 
+    #[cfg(not(target_os = "android"))]
     let batch_payload = json!({
         "inputs": [
             { "_path": core::STATS },
             { "_path": core::MEMSTATS },
-            { "_path": mount::LISTMOUNTS },
+            { "_path": crate::utils::rclone::endpoints::mount::LISTMOUNTS },
+            { "_path": serve::LIST },
+        ]
+    });
+
+    #[cfg(target_os = "android")]
+    let batch_payload = json!({
+        "inputs": [
+            { "_path": core::STATS },
+            { "_path": core::MEMSTATS },
             { "_path": serve::LIST },
         ]
     });
@@ -207,7 +216,12 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
         .as_array()
         .ok_or("Invalid batch response: missing results array")?;
 
-    if results.len() < 4 {
+    #[cfg(not(target_os = "android"))]
+    let min_results = 4;
+    #[cfg(target_os = "android")]
+    let min_results = 3;
+
+    if results.len() < min_results {
         return Err("Invalid batch response: insufficient results".to_string());
     }
 
@@ -217,9 +231,16 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
     let memory = get_batch_result(&results[1], "memstats")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+
+    #[cfg(not(target_os = "android"))]
     let mount_result = get_batch_result(&results[2], "mounts");
+    #[cfg(not(target_os = "android"))]
     let serve_result = get_batch_result(&results[3], "serves");
 
+    #[cfg(target_os = "android")]
+    let serve_result = get_batch_result(&results[2], "serves");
+
+    #[cfg(not(target_os = "android"))]
     if let Some(mount_result) = mount_result {
         update_mount_cache(app, mount_result).await;
     }
@@ -241,21 +262,21 @@ async fn perform_batch_poll(app: &AppHandle) -> Result<SystemStatusPayload, Stri
     })
 }
 
+#[cfg(not(target_os = "android"))]
 async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
-    let mounts: Vec<MountedRemote> =
-        result["mountPoints"]
-            .as_array()
-            .map_or_else(Vec::new, |arr| {
-                arr.iter()
-                    .filter_map(|mp| {
-                        Some(MountedRemote {
-                            fs: mp["Fs"].as_str()?.to_string(),
-                            mount_point: mp["MountPoint"].as_str()?.to_string(),
-                            profile: None,
-                        })
+    let mounts: Vec<crate::utils::types::remotes::MountedRemote> = result["mountPoints"]
+        .as_array()
+        .map_or_else(Vec::new, |arr| {
+            arr.iter()
+                .filter_map(|mp| {
+                    Some(crate::utils::types::remotes::MountedRemote {
+                        fs: mp["Fs"].as_str()?.to_string(),
+                        mount_point: mp["MountPoint"].as_str()?.to_string(),
+                        profile: None,
                     })
-                    .collect()
-            });
+                })
+                .collect()
+        });
 
     app.state::<BackendManager>()
         .remote_cache

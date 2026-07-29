@@ -1207,6 +1207,10 @@
     "title": "Монтування NFS",
     "help": "Монтування за протоколом NFS"
   },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Локальне монтування Android Storage Access Framework"
+  },
   "serve_type_http": {
     "title": "Сервер HTTP",
     "help": "Надавати доступ до сховища через HTTP"

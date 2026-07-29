@@ -34,6 +34,7 @@ import {
   MULTI_SOURCE_OPS,
   FILE_SOURCE_OPS,
 } from '@app/types';
+import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { FileSystemService } from 'src/app/services/operations/file-system.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
@@ -198,11 +199,31 @@ export class OperationConfigComponent {
       'filesystem',
     ])
   );
+  readonly isMobilePlatform = computed(() => isMobile());
+  readonly selectedMountType = computed(() => {
+    this.formVersion();
+    const fg = this.opFormGroup();
+    const val = fg.get('options.mountType')?.value ?? fg.get('mountType')?.value;
+    return val ? String(val).toLowerCase() : this.isMobilePlatform() ? 'saf' : 'mount';
+  });
+  readonly isLocalMobileSafMount = computed(
+    () =>
+      this.isMobilePlatform() &&
+      this.backendService.isLocalBackend() &&
+      this.selectedMountType() === 'saf'
+  );
+  readonly isLocalMobileNonSafMount = computed(
+    () =>
+      this.isMobilePlatform() &&
+      this.backendService.isLocalBackend() &&
+      this.selectedMountType() !== 'saf'
+  );
   readonly showWatchSection = computed(() => this.isWatchSupported() && this.showCronSection());
   readonly showSourcePath = computed(() => this.matchesSearch(['source', 'path', 'origin']));
   readonly showDestPath = computed(
     () =>
       !['serve', 'delete'].includes(this.operationType() as string) &&
+      !(this.isMount() && this.isLocalMobileSafMount()) &&
       this.matchesSearch(['dest', 'output', 'target'])
   );
 
@@ -232,6 +253,9 @@ export class OperationConfigComponent {
     if (this.isNewRemote()) {
       banners.push('wizards.appOperation.completionNote');
     }
+    if (this.isMount() && this.isLocalMobileNonSafMount()) {
+      banners.push('mount.androidRootWarning');
+    }
     if (this.showWatchSection() && !this.isWatchPossible()) {
       banners.push(
         this.operationType() === 'bisync'
@@ -244,6 +268,9 @@ export class OperationConfigComponent {
 
   readonly infoBanners = computed(() => {
     const banners: string[] = [];
+    if (this.isMount() && this.isLocalMobileSafMount()) {
+      banners.push('wizards.appOperation.mobileSafMountNote');
+    }
     if (this.isCoreCommandOp()) {
       banners.push('wizards.appOperation.coreCommandNote');
     }
@@ -269,6 +296,15 @@ export class OperationConfigComponent {
       const sub = form.valueChanges.subscribe(() => this.formVersion.update((v: number) => v + 1));
       onCleanup(() => sub.unsubscribe());
     });
+    effect(() => {
+      if (this.isMount() && this.isLocalMobileSafMount()) {
+        const dest = this.destItem();
+        if (dest && (!dest.pathControl.value || dest.pathControl.value === '')) {
+          dest.pathControl.setValue(`saf://${this.currentRemoteName()}`, { emitEvent: false });
+        }
+      }
+    });
+
     effect(() => {
       if (this.isNewRemote()) {
         this.clearAutocomplete();

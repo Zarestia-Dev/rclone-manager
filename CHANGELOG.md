@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Android Storage Access Framework (SAF) Integration**: Added comprehensive Storage Access Framework (SAF) support for Android devices. #273
+  - **SAF Remote & Tree Picker**: Allows selecting and authorizing local directories, SD cards, and USB OTG drives via native Android SAF tree picker intents (`ACTION_OPEN_DOCUMENT_TREE`).
+  - **Android DocumentsProvider**: Added `RcloneDocumentsProvider` to expose mounted Rclone remotes to external Android apps and system file pickers.
+  - **SAF VFS Mount Bridge**: Integrated a SAF VFS mount bridge enabling in-process virtual filesystem access for Android storage providers.
+  - **Android Background Keep-Alive & Boot Receiver**: Added `RcloneKeepAliveService` for persistent background mounts and `ResumeUploadsBootReceiver` for boot initialization on Android.
+
 ## [0.3.1] - 2026-07-27
 
 ### Added

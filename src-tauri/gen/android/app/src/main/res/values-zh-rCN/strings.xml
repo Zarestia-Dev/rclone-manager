@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Rclone SAF 存储服务</string>
+    <string name="saf_keepalive_text">后台文件流传输进行中</string>
+    <string name="saf_keepalive_channel_name">Rclone 存储服务</string>
+    <string name="saf_keepalive_channel_desc">在外部 SAF 文件传输期间保持 Rclone 进程活跃</string>
+</resources>

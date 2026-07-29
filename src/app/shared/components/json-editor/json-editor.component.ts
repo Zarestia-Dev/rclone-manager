@@ -311,7 +311,12 @@ export class JsonEditorComponent {
     const explicit = this.explicitKeys();
     const excluded = this.excludedSet();
 
-    const baseDefs = defs.filter(f => !excluded.has(prefix + getControlKey(f, type || undefined)));
+    const isSafMount = type === 'mount' && value['mountType'] === 'saf';
+    const baseDefs = defs.filter(f => {
+      const key = getControlKey(f, type || undefined);
+      if (isSafMount && key === 'mountPoint') return false;
+      return !excluded.has(prefix + key);
+    });
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
     return filteredDefs.map(field => {

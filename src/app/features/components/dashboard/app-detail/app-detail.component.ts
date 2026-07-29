@@ -891,15 +891,22 @@ export class AppDetailComponent {
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
-    const rclone = config.rclone || {};
-    const resolvedSource = rclone.srcFs ?? rclone.path1 ?? rclone.fs;
-    const resolvedDest = rclone.dstFs ?? rclone.path2 ?? rclone.mountPoint;
+    const rclone = (config.rclone || {}) as Record<string, unknown>;
+    const resolvedSource = (rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs']) as
+      string | undefined;
+    const isSafMount =
+      isMount &&
+      (rclone['mountType'] === 'saf' || String(rclone['mountPoint'] ?? '').startsWith('saf://'));
+    const rawDest = isSafMount
+      ? `saf://${this.selectedRemote().name}`
+      : ((rclone['dstFs'] ?? rclone['path2'] ?? rclone['mountPoint']) as string | undefined);
+    const resolvedDest = rawDest;
 
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((rclone.type as string) ?? 'http').toUpperCase()} at ${rclone.addr ?? t('dashboard.appDetail.default')}`,
+            destination: `${((rclone['type'] as string) ?? 'http').toUpperCase()} at ${(rclone['addr'] as string) ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,

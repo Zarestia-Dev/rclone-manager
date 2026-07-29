@@ -34,9 +34,11 @@ Closes #
 - [ ] Tested on Linux
 - [ ] Tested on macOS
 - [ ] Tested on Windows
+- [ ] Tested on Android
+- [ ] Tested in Headless / Web mode
 - [ ] Tested in development mode (`npm run tauri dev`)
 
-## Screenshots
+## Screenshots / Recordings
 
 <!-- If applicable, add screenshots to help explain your changes -->
 
