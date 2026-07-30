@@ -77,7 +77,8 @@
     "successMount": "Monté avec succès {{remote}} ({{profile}})",
     "failedMount": "Échec du montage de {{remote}}: {{error}}",
     "successUnmount": "Démonté avec succès {{remote}}",
-    "failedUnmount": "Échec de démontage de {{remote}}: {{error}}"
+    "failedUnmount": "Échec de démontage de {{remote}}: {{error}}",
+    "androidRootWarning": "Les types de montage non-SAF nécessitent des privilèges root (Super-utilisateur) sur Android."
   },
   "operations": {
     "available": "Opérations de synchronisation disponibles",
@@ -1142,6 +1143,7 @@
       "watchRequiresLocal": "La surveillance en temps réel nécessite au moins un répertoire local source ou destination.",
       "watchMixedSourcesNote": "Seuls les répertoires sources locaux seront surveillés en temps réel. Les changements sur les sources distantes ne déclencheront pas automatiquement la synchronisation.",
       "watchFilterNote": "Le surveillant de fichiers respecte votre profil de filtrage. Les modifications des fichiers ou dossiers exclus (selon un motif, une taille ou un âge) ne déclencheront pas de synchronisation.",
+      "mobileSafMountNote": "Sur Android, le montage rend ce distant disponible dans le sélecteur de fichiers du système et dans d'autres applications via SAF (Storage Access Framework).",
       "scheduleDescription": "Lorsqu'elle est activée, cette opération exécutera <strong>récurrente</strong> en fonction du calendrier cron ci-dessous.",
       "scheduleSubtitle": "Exécutez cette opération automatiquement selon une planification récurrente.",
       "sourcePaths": "Chemin de la source",

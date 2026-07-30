@@ -23,7 +23,7 @@
       <span
         class="platform-badge"
         [ngClass]="buildTypeVal"
-        [matTooltip]="getChannelLabel(buildTypeVal) | translate"
+        [attr.title]="getChannelLabel(buildTypeVal) | translate"
       >
         <mat-icon svgIcon="package"></mat-icon>
         {{ getChannelLabel(buildTypeVal) | translate }}
@@ -195,8 +195,7 @@
                     matIconButton
                     class="about-button"
                     (click)="navigateTo('debugging')"
-                    [matTooltip]="'modals.about.debugTools' | translate"
-                    matTooltipPosition="right"
+                    [attr.title]="'modals.about.debugTools' | translate"
                   >
                     <mat-icon svgIcon="bug" class="purple"></mat-icon>
                   </button>
@@ -299,8 +298,7 @@
                       <button
                         class="command-block"
                         [appCopyToClipboard]="instructions!.command!"
-                        [matTooltip]="'common.copy' | translate"
-                        matTooltipPosition="above"
+                        [attr.title]="'common.copy' | translate"
                       >
                         <code>{{ instructions!.command }}</code>
                         <mat-icon svgIcon="copy"></mat-icon>
@@ -411,8 +409,7 @@
                 matButton
                 class="about-item"
                 (click)="openFolder('logs')"
-                [matTooltip]="debug.logsDir"
-                matTooltipPosition="right"
+                [attr.title]="debug.logsDir"
               >
                 <span>{{ 'modals.about.logsFolder' | translate }}</span>
                 <mat-icon svgIcon="folder"></mat-icon>
@@ -422,8 +419,7 @@
                 matButton
                 class="about-item"
                 (click)="openFolder('config')"
-                [matTooltip]="debug.configDir"
-                matTooltipPosition="right"
+                [attr.title]="debug.configDir"
               >
                 <span>{{ 'modals.about.configFolder' | translate }}</span>
                 <mat-icon svgIcon="folder"></mat-icon>
@@ -433,8 +429,7 @@
                 matButton
                 class="about-item"
                 (click)="openFolder('cache')"
-                [matTooltip]="debug.cacheDir"
-                matTooltipPosition="right"
+                [attr.title]="debug.cacheDir"
               >
                 <span>{{ 'modals.about.cacheFolder' | translate }}</span>
                 <mat-icon svgIcon="folder"></mat-icon>
@@ -510,12 +505,11 @@
                       <button
                         matIconButton
                         class="about-button"
-                        [matTooltip]="
+                        [attr.title]="
                           backendService.activeBackend() === 'Local'
                             ? ('modals.about.killProcess' | translate)
                             : ('modals.about.quitRclone' | translate)
                         "
-                        matTooltipPosition="right"
                         (click)="quitRcloneEngine()"
                       >
                         <mat-icon
@@ -536,8 +530,7 @@
                       matIconButton
                       class="about-button"
                       (click)="showMemoryOverlay()"
-                      matTooltipPosition="right"
-                      [matTooltip]="'modals.about.viewMemoryStats' | translate"
+                      [attr.title]="'modals.about.viewMemoryStats' | translate"
                     >
                       <mat-icon svgIcon="memory" class="purple"></mat-icon>
                     </button>
@@ -553,8 +546,7 @@
                     class="about-button"
                     (click)="clearFsCache()"
                     [disabled]="clearingFsCache()"
-                    matTooltipPosition="right"
-                    [matTooltip]="'modals.about.clear' | translate"
+                    [attr.title]="'modals.about.clear' | translate"
                   >
                     @if (clearingFsCache()) {
                       <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
@@ -966,11 +958,7 @@
             [disabled]="disabled"
           >
             @for (ch of channels; track ch.value) {
-              <mat-option
-                [value]="ch.value"
-                [matTooltip]="ch.description | translate"
-                matTooltipPosition="left"
-              >
+              <mat-option [value]="ch.value" [attr.title]="ch.description | translate">
                 <div class="channel-option">
                   <span class="channel-name">{{ ch.label | translate }}</span>
                 </div>
@@ -992,7 +980,7 @@
         <button
           matIconButton
           (click)="isRclone ? unskipRcloneVersion(version) : unskipVersion(version)"
-          [matTooltip]="'modals.about.restoreUpdate' | translate"
+          [attr.title]="'modals.about.restoreUpdate' | translate"
           class="restore-button"
         >
           <mat-icon svgIcon="rotate-right"></mat-icon>

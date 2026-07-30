@@ -1207,6 +1207,10 @@
     "title": "Montage NFS",
     "help": "Montage utilisant le protocole NFS"
   },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Montage natif Android Storage Access Framework"
+  },
   "serve_type_http": {
     "title": "Serveur HTTP",
     "help": "Partager le dépôt distant via HTTP"

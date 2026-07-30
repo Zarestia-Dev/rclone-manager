@@ -24,7 +24,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_engine(app_handle).await?;
 
     // Monitor Network Changes (Background task)
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    #[cfg(not(target_os = "ios"))]
     {
         let handle = app_handle.clone();
         tauri::async_runtime::spawn(async move {

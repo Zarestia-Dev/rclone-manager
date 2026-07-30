@@ -128,9 +128,7 @@
       nautilusRemote()?.name === remote.name && !starredMode() && !anyBookmarkSelected()
     "
     [class.drag-over]="isDragging() && hoveredSidebarItem() === 'remote:' + remote.name"
-    [matTooltip]="driveTooltips().get(remote.name) ?? ''"
-    matTooltipShowDelay="600"
-    matTooltipPosition="right"
+    [attr.title]="driveTooltips().get(remote.name) ?? ''"
     (click)="onSelectRemote(remote)"
     (dragover)="$event.preventDefault()"
     (drop)="droppedToRemote.emit({ event: $event, target: remote })"

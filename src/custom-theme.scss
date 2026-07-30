@@ -1784,6 +1784,7 @@ mat-accordion {
   position: relative;
   overflow: hidden;
   padding: 0;
+  flex-shrink: 0;
   transition: var(--transition-fast);
   color: var(--dim-color);
 
@@ -2301,4 +2302,10 @@ mat-accordion {
       color: var(--window-fg-color) !important;
     }
   }
+}
+
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent !important;
 }

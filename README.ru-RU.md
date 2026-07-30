@@ -19,7 +19,7 @@
 
 <p align="center">
   <b>Мощный кроссплатформенный графический интерфейс для удобного управления удалёнными хранилищами Rclone.</b><br>
-  <i>Создан с использованием Angular 22 и Tauri · Linux • Windows • macOS • Поддержка ARM</i>
+  <i>Создан с использованием Angular 22 и Tauri · Linux • Windows • macOS • Android (бета) • Поддержка ARM</i>
 </p>
 
 <p align="center">
@@ -105,6 +105,14 @@
 | **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [Установщик или переносимый EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Руководство:** [Установка в Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) — требования WinFsp для монтирования и сведения о SmartScreen.
+
+### Android (Бета)
+
+| Источник            | Версия                                                                                                                                                                                 | Команда установки или загрузка                                                                                      |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| **Прямая загрузка** | [![Выпуск GitHub](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [Скачать APK (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **Руководство:** [Wiki: Поддержка Android (Бета)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Подробности движка Go / librclone и настройка)
 
 > 🛠️ **Системные требования:** для монтирования дисков необходимы WinFsp в Windows, macFUSE в macOS или FUSE3 в Linux. При отсутствии Rclone приложение загружает его автоматически. Подробности доступны в разделе [системных требований](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

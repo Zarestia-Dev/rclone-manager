@@ -170,9 +170,10 @@ pub fn run() {
             builder = builder.plugin(tauri_plugin_deep_link::init());
         }
 
-        builder = builder.on_window_event(|window, event| match event {
+        builder = builder.on_window_event(|_window, event| match event {
+            #[cfg(desktop)]
             WindowEvent::CloseRequested { api, .. } => {
-                let app_handle = window.app_handle();
+                let app_handle = _window.app_handle();
 
                 let destroy_on_close = app_handle
                     .try_state::<core::settings::AppSettingsManager>()
@@ -193,13 +194,12 @@ pub fn run() {
                 #[cfg(not(feature = "tray"))]
                 let tray_enabled = false;
 
-                if window.label() == "main" {
+                if _window.label() == "main" {
                     if tray_enabled {
                         if destroy_on_close {
                             log::debug!("Optimization Enabled: Destroying window to free RAM");
                         } else {
-                            #[cfg(desktop)]
-                            if let Err(e) = window.hide() {
+                            if let Err(e) = _window.hide() {
                                 log::error!("Failed to hide window: {e}");
                             }
                             api.prevent_close();
@@ -208,7 +208,7 @@ pub fn run() {
                         crate::utils::app::platform::update_macos_dock_visibility(app_handle);
                     } else {
                         api.prevent_close();
-                        let window_ = window.clone();
+                        let window_ = _window.clone();
                         tauri::async_runtime::spawn(async move {
                             window_
                                 .app_handle()
@@ -224,12 +224,12 @@ pub fn run() {
             }
             WindowEvent::Destroyed => {
                 #[cfg(target_os = "macos")]
-                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
+                crate::utils::app::platform::update_macos_dock_visibility(_window.app_handle());
             }
             #[cfg(desktop)]
             WindowEvent::Focused(true) => {
                 #[cfg(target_os = "macos")]
-                crate::utils::app::platform::update_macos_dock_visibility(window.app_handle());
+                crate::utils::app::platform::update_macos_dock_visibility(_window.app_handle());
             }
             _ => {}
         });

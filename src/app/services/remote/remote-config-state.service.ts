@@ -930,13 +930,18 @@ export class RemoteConfigStateService {
       if (selected) {
         const currentMount = this.profiles().mount[selected] || {};
         const rclone = currentMount.rclone || {};
+        const { mountType, ...otherMountOpts } = preset.mount;
         this.profiles.update(p => ({
           ...p,
           mount: {
             ...p.mount,
             [selected]: {
               ...currentMount,
-              rclone: { ...rclone, mountOpt: { ...rclone.mountOpt, ...preset.mount } },
+              rclone: {
+                ...rclone,
+                ...(mountType ? { mountType: mountType as string } : {}),
+                mountOpt: { ...rclone.mountOpt, ...otherMountOpts },
+              },
             },
           },
         }));
@@ -962,6 +967,16 @@ export class RemoteConfigStateService {
       this.remoteForm.patchValue(preset.remote, { emitEvent: false });
       for (const key of Object.keys(preset.remote)) {
         this.onRemoteFieldChanged(key, true);
+      }
+    }
+
+    // 5. Sync active profile forms with updated profile presets
+    for (const flagType of this.PROFILE_TYPES) {
+      const activeProfile = this.selectedProfileName()[flagType];
+      if (!activeProfile) continue;
+      const profileData = this.profiles()[flagType]?.[activeProfile];
+      if (profileData) {
+        void this.populateProfileForm(flagType, profileData);
       }
     }
   }

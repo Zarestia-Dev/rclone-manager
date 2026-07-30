@@ -11,6 +11,8 @@ pub mod types;
 pub mod librclone_transport;
 #[cfg(feature = "librclone")]
 pub mod rclone_ffi;
+#[cfg(target_os = "android")]
+pub mod saf_bridge;
 
 pub use manager::BackendManager;
 pub use transport::{BackendError, RcloneTransport, TransportKind};

@@ -1,7 +1,6 @@
 <header data-tauri-drag-region>
   <button
-    matTooltipPosition="right"
-    [matTooltip]="'alerts.action.' + form.controls.kind.value | translate"
+    [attr.title]="'alerts.action.' + form.controls.kind.value | translate"
     [attr.data-kind]="form.controls.kind.value"
   >
     <mat-icon [svgIcon]="selectedKindIcon"></mat-icon>
@@ -121,7 +120,7 @@
         <div class="sub-panel">
           <div class="sub-panel-header">
             <span class="mini-label">{{ 'alerts.action.headers' | translate }}</span>
-            <button matIconButton type="button" (click)="addHeader()" matTooltip="Add Header">
+            <button matIconButton type="button" (click)="addHeader()" title="Add Header">
               <mat-icon svgIcon="plus"></mat-icon>
             </button>
           </div>
@@ -180,7 +179,7 @@
               matIconButton
               type="button"
               (click)="browseScript()"
-              [matTooltip]="'common.browse' | translate"
+              [attr.title]="'common.browse' | translate"
             >
               <mat-icon svgIcon="folder"></mat-icon>
             </button>

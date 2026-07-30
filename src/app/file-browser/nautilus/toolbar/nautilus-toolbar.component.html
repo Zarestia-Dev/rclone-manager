@@ -1,5 +1,5 @@
 <div class="left-section" data-tauri-drag-region>
-  <button (click)="goBack.emit()" [disabled]="!canGoBack()" class="nav-button">
+  <button (click)="goBack.emit()" [disabled]="!effectiveCanGoBack()" class="nav-button">
     <mat-icon svgIcon="chevron-left"></mat-icon>
   </button>
   <button (click)="goForward.emit()" [disabled]="!canGoForward()" class="nav-button">

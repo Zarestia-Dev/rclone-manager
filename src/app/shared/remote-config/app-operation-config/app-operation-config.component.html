@@ -91,7 +91,7 @@
         [class.unavailable]="!isWatchPossible()"
       >
         <mat-expansion-panel-header
-          [matTooltip]="
+          [attr.title]="
             !isWatchPossible()
               ? ((operationType() === 'bisync'
                   ? 'wizards.appOperation.watchRequiresLocal'

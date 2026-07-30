@@ -3,7 +3,6 @@ import { DatePipe, NgClass } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -22,7 +21,6 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatSlideToggleModule,
     TranslatePipe,
     SearchContainerComponent,
@@ -34,7 +32,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
         <button
           matIconButton
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
@@ -155,7 +153,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
                     @if (alerts.actionsMap().get(actionId); as action) {
                       <mat-icon
                         [svgIcon]="alerts.getActionIcon(action.kind)"
-                        [matTooltip]="action.name"
+                        [attr.title]="action.name"
                         class="trigger-icon"
                       ></mat-icon>
                     }
@@ -176,7 +174,7 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
                 <mat-slide-toggle
                   [checked]="rule.enabled"
                   (change)="toggleRule(rule)"
-                  [matTooltip]="
+                  [attr.title]="
                     (rule.enabled ? 'automation.status.enabled' : 'automation.status.disabled')
                       | translate
                   "
@@ -192,14 +190,14 @@ import { AlertRuleEditorComponent } from './alert-rules-editor/alert-rule-editor
                   <button
                     matIconButton
                     (click)="editRule(rule)"
-                    [matTooltip]="'common.edit' | translate"
+                    [attr.title]="'common.edit' | translate"
                   >
                     <mat-icon svgIcon="pen"></mat-icon>
                   </button>
                   <button
                     matIconButton
                     (click)="deleteRule(rule)"
-                    [matTooltip]="'common.delete' | translate"
+                    [attr.title]="'common.delete' | translate"
                   >
                     <mat-icon svgIcon="trash"></mat-icon>
                   </button>

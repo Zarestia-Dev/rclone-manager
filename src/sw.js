@@ -5,39 +5,61 @@ if (workbox) {
   console.log('Workbox loaded successfully');
 
   const { registerRoute, setDefaultHandler, setCatchHandler } = workbox.routing;
-  const { CacheFirst, NetworkFirst, NetworkOnly } = workbox.strategies;
-  const { precacheAndRoute } = workbox.precaching;
+  const { NetworkFirst, NetworkOnly, StaleWhileRevalidate } = workbox.strategies;
+  const { precacheAndRoute, cleanupOutdatedCaches } = workbox.precaching;
 
   // 1. Immediate Activation (Skip waiting and claim clients)
   workbox.core.skipWaiting();
   workbox.core.clientsClaim();
 
-  // 2. Precaching the App Shell & Critical Assets
-  // Workbox automatically revisions and updates these files when they change
+  // Clean up outdated precaches from previous builds
+  cleanupOutdatedCaches();
+
+  // 2. Precaching Critical Offline Assets
+  // NOTE: Do NOT precache index.html with a static hardcoded revision string,
+  // as Angular produces hashed JS/CSS filenames on every build. Precaching index.html
+  // statically causes the browser to serve stale HTML pointing to deleted asset chunks.
   precacheAndRoute([
-    { url: '/', revision: 'v2' },
-    { url: '/index.html', revision: 'v2' },
-    { url: '/offline.html', revision: 'v2' },
-    { url: 'assets/icons/files/folder.svg', revision: 'v2' },
-    { url: 'assets/icons/files/file.svg', revision: 'v2' },
-    { url: 'assets/icons/devices/hard-drive.svg', revision: 'v2' },
-    { url: 'assets/icons/devices/server.svg', revision: 'v2' },
-    { url: 'assets/icons/devices/globe.svg', revision: 'v2' },
-    { url: 'assets/icons/general/gear.svg', revision: 'v2' },
-    { url: 'assets/icons/general/info.svg', revision: 'v2' },
-    { url: 'assets/icons/navigation/chevron-left.svg', revision: 'v2' },
-    { url: 'assets/icons/navigation/chevron-right.svg', revision: 'v2' },
-    { url: 'assets/icons/navigation/chevron-up.svg', revision: 'v2' },
-    { url: 'assets/icons/navigation/chevron-down.svg', revision: 'v2' },
-    { url: 'assets/icons/titlebar/search.svg', revision: 'v2' },
-    { url: 'assets/icons/actions/rotate.svg', revision: 'v2' },
-    { url: 'assets/icons/titlebar/close.svg', revision: 'v2' },
-    { url: 'assets/icons/titlebar/add.svg', revision: 'v2' },
-    { url: 'assets/icons/adwaita/places/folder.svg', revision: 'v2' },
-    { url: 'assets/icons/adwaita/mimetypes/text-x-generic.svg', revision: 'v2' },
+    { url: '/offline.html', revision: 'v3' },
+    { url: 'assets/icons/files/folder.svg', revision: 'v3' },
+    { url: 'assets/icons/files/file.svg', revision: 'v3' },
+    { url: 'assets/icons/devices/hard-drive.svg', revision: 'v3' },
+    { url: 'assets/icons/devices/server.svg', revision: 'v3' },
+    { url: 'assets/icons/devices/globe.svg', revision: 'v3' },
+    { url: 'assets/icons/general/gear.svg', revision: 'v3' },
+    { url: 'assets/icons/general/info.svg', revision: 'v3' },
+    { url: 'assets/icons/navigation/chevron-left.svg', revision: 'v3' },
+    { url: 'assets/icons/navigation/chevron-right.svg', revision: 'v3' },
+    { url: 'assets/icons/navigation/chevron-up.svg', revision: 'v3' },
+    { url: 'assets/icons/navigation/chevron-down.svg', revision: 'v3' },
+    { url: 'assets/icons/titlebar/search.svg', revision: 'v3' },
+    { url: 'assets/icons/actions/rotate.svg', revision: 'v3' },
+    { url: 'assets/icons/titlebar/close.svg', revision: 'v3' },
+    { url: 'assets/icons/titlebar/add.svg', revision: 'v3' },
+    { url: 'assets/icons/adwaita/places/folder.svg', revision: 'v3' },
+    { url: 'assets/icons/adwaita/mimetypes/text-x-generic.svg', revision: 'v3' },
   ]);
 
-  // 3. Exclusions (API, SSE Streams, Dev Server) -> Network Only
+  // 3. Navigation Routes (HTML pages like /, /index.html, /nautilus/*) -> Network First
+  // Guarantees the browser always gets the latest index.html referencing active bundle hashes.
+  registerRoute(
+    ({ request, url }) =>
+      request.mode === 'navigate' ||
+      url.pathname === '/' ||
+      url.pathname === '/index.html' ||
+      url.pathname.startsWith('/nautilus'),
+    new NetworkFirst({
+      cacheName: 'rcman-navigation-cache',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 10,
+          maxAgeSeconds: 24 * 60 * 60, // 24 Hours
+        }),
+      ],
+    })
+  );
+
+  // 4. Exclusions (API, SSE Streams, Dev Server) -> Network Only
   registerRoute(
     ({ url, request }) =>
       url.pathname.startsWith('/api/') ||
@@ -50,39 +72,36 @@ if (workbox) {
     new NetworkOnly()
   );
 
-  // 4. Static Assets (JS, CSS, Images, Fonts) -> Cache First
+  // 5. Static Assets (JS, CSS, Images, Fonts) -> Stale-While-Revalidate
   registerRoute(
     ({ url }) =>
       url.pathname.includes('/assets/') ||
       /\.(js|css|woff2?|ttf|png|jpe?g|gif|svg|ico|webmanifest)$/i.test(url.pathname),
-    new CacheFirst({
+    new StaleWhileRevalidate({
       cacheName: 'rcman-static-assets',
       plugins: [
         new workbox.expiration.ExpirationPlugin({
-          maxEntries: 60,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+          maxEntries: 100,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Days
         }),
       ],
     })
   );
 
-  // 5. Default Strategy -> Network First
-  // Handles navigation and regular page requests dynamically
+  // 6. Default Strategy -> Network First
   setDefaultHandler(
     new NetworkFirst({
       cacheName: 'rcman-dynamic-fallback',
     })
   );
 
-  // 6. Global Catch Handler -> Offline Page Fallback
-  // If a navigation request completely fails (no network, no cache), show offline.html
+  // 7. Global Catch Handler -> Offline Page Fallback
   setCatchHandler(({ event }) => {
     if (event.request.mode === 'navigate') {
       return workbox.precaching.matchPrecache('/offline.html');
     }
     return Response.error();
   });
-
 } else {
   console.error('Workbox failed to load!');
 }

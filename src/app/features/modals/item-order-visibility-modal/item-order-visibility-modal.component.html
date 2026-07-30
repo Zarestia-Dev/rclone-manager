@@ -62,7 +62,7 @@
         (click)="toggleVisibility(item.id)"
         [disabled]="!item.isVisible && !canShowMore()"
         [attr.aria-label]="toggleLabel"
-        [matTooltip]="toggleLabel"
+        [attr.title]="toggleLabel"
       >
         @if (mode === 'star') {
           <mat-icon [svgIcon]="item.isVisible ? 'star' : 'star-outline'"></mat-icon>
@@ -84,7 +84,7 @@
     class="warn"
     (click)="onReset()"
     [disabled]="!canReset()"
-    [matTooltip]="'common.reset' | translate"
+    [attr.title]="'common.reset' | translate"
   >
     <mat-icon svgIcon="refresh"></mat-icon>
   </button>

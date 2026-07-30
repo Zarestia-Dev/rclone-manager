@@ -97,7 +97,7 @@ const VENDOR_PRESETS: Record<string, Record<string, PresetValues>> = {
 };
 
 // OS-specific configuration overrides
-const OS_PRESETS: Record<'windows' | 'macos' | 'linux', PresetValues> = {
+const OS_PRESETS: Record<'windows' | 'macos' | 'linux' | 'android', PresetValues> = {
   windows: {
     mount: { NetworkMode: true },
   },
@@ -108,10 +108,26 @@ const OS_PRESETS: Record<'windows' | 'macos' | 'linux', PresetValues> = {
     },
   },
   linux: {},
+  android: {
+    vfs: {
+      CacheMode: 'full',
+      CacheMaxSize: '50G',
+      CacheMinFreeSpace: '2G',
+      CacheMaxAge: '24h',
+      WriteBack: '10s',
+    },
+    mount: {
+      mountType: 'saf',
+    },
+  },
 };
 
 // OS matching rules (ordered by priority to avoid 'darwin' matching 'win')
 const OS_PRESET_RULES: { matches: (os: string) => boolean; preset: PresetValues }[] = [
+  {
+    matches: (os: string) => os.includes('android'),
+    preset: OS_PRESETS.android,
+  },
   {
     matches: (os: string) => os.includes('darwin') || os.includes('mac') || os.includes('ios'),
     preset: OS_PRESETS.macos,

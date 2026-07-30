@@ -3,6 +3,8 @@
   <mat-sidenav
     #sidenav
     [opened]="isSidebarOpen()"
+    (openedStart)="setSidebarOpen(true)"
+    (closedStart)="setSidebarOpen(false)"
     (openedChange)="setSidebarOpen($event)"
     [mode]="sidebarMode()"
   >
@@ -31,9 +33,7 @@
         <button
           class="icon-container interactive"
           (click)="openBackendModal()"
-          [matTooltip]="'shared.overviewHeader.manageBackends' | translate"
-          matTooltipShowDelay="500"
-          matTooltipPosition="above"
+          [attr.title]="'shared.overviewHeader.manageBackends' | translate"
         >
           <img src="assets/rclone-manager.svg" alt="RClone Manager Logo" class="no-remotes-icon" />
           <span class="status-dot" [class]="backendStatusClass()"></span>

@@ -35,6 +35,13 @@ export class AndroidShareService {
       // newNautilusWindow() falls back to openBrowserOverlay() on mobile.
       void this.nautilusService.newNautilusWindow(null, null);
     });
+
+    window.addEventListener('android-navigate-route', (event: Event) => {
+      const detail = (event as CustomEvent<{ route: string }>).detail;
+      if (detail?.route === 'nautilus') {
+        void this.nautilusService.newNautilusWindow(null, null);
+      }
+    });
   }
 
   /** Called when the user confirms the upload destination. Clears the queue. */

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Служба хранения Rclone SAF</string>
+    <string name="saf_keepalive_text">Активен фоновый поток файлов</string>
+    <string name="saf_keepalive_channel_name">Служба хранения Rclone</string>
+    <string name="saf_keepalive_channel_desc">Поддерживает процесс Rclone активным во время потоковой передачи файлов SAF</string>
+</resources>

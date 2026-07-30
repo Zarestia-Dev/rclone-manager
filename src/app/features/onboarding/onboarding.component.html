@@ -97,7 +97,7 @@
             class="primary"
             (click)="installRclone()"
             [disabled]="!canInstall()"
-            [matTooltip]="
+            [attr.title]="
               !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
             "
           >
@@ -127,7 +127,7 @@
             class="primary"
             (click)="onConfigNext()"
             [disabled]="!configValid()"
-            [matTooltip]="!configValid() ? ('onboarding.validation.selectConfig' | translate) : ''"
+            [attr.title]="!configValid() ? ('onboarding.validation.selectConfig' | translate) : ''"
           >
             {{ 'onboarding.actions.next' | translate }}
             <mat-icon svgIcon="right-arrow"></mat-icon>

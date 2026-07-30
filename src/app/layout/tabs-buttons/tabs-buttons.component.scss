@@ -64,6 +64,9 @@
     background-color: var(--headerbar-bg-color);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-popover);
+    transition:
+      opacity 150ms ease,
+      transform 150ms ease;
 
     .tab-btn {
       flex-direction: column;
@@ -107,6 +110,15 @@
           font-weight: 600;
         }
       }
+    }
+  }
+
+  // Hide mobile floating bar when sidebar drawer is open
+  &.mobile-hidden {
+    @media (max-width: 599.98px) {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
     }
   }
 }

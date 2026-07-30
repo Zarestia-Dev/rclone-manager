@@ -77,7 +77,8 @@
     "successMount": "{{remote}} ({{profile}}) のマウントに成功しました",
     "failedMount": "{{remote}} のマウントに失敗しました: {{error}}",
     "successUnmount": "{{remote}} のマウント解除に成功しました",
-    "failedUnmount": "{{remote}} のマウント解除に失敗しました: {{error}}"
+    "failedUnmount": "{{remote}} のマウント解除に失敗しました: {{error}}",
+    "androidRootWarning": "SAF以外のマウントタイプはAndroidでRoot（スーパーユーザー）権限が必要です。"
   },
   "operations": {
     "available": "利用可能な同期操作",
@@ -1142,6 +1143,7 @@
       "watchRequiresLocal": "リアルタイム監視には少なくとも1つのローカル転送元または転送先ディレクトリが必要です。",
       "watchMixedSourcesNote": "リアルタイムで監視されるのはローカルの転送元ディレクトリのみです。リモートソースでの変更によって自動的に同期が開始されることはありません。",
       "watchFilterNote": "ファイル監視はフィルタプロファイルを尊重します。除外ルール（パターン、サイズ、期間など）に一致するファイルやディレクトリの変更は同期をトリガーしません。",
+      "mobileSafMountNote": "Androidでは、マウントすることでSAF（Storage Access Framework）を介してこのリモートがシステムファイルピッカーや他のアプリから利用可能になります。",
       "scheduleDescription": "有効にすると、以下のcronスケジュールに基づいてこの操作が<strong>定期的に実行</strong>されます。",
       "scheduleSubtitle": "スケジュールに従ってこの操作を自動で定期的に実行します。",
       "sourcePaths": "転送元パス",

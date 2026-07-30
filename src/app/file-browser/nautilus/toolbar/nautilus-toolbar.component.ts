@@ -86,6 +86,8 @@ export class NautilusToolbarComponent {
   protected readonly showLeft = signal(false);
   protected readonly showRight = signal(false);
 
+  protected readonly effectiveCanGoBack = computed(() => this.isSearchMode() || this.canGoBack());
+
   protected readonly toggledLayout = computed((): 'grid' | 'list' =>
     this.layout() === 'grid' ? 'list' : 'grid'
   );

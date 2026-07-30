@@ -19,7 +19,7 @@
 
 <p align="center">
   <b>Rclone uzak bağlantılarını stil ve kolaylıkla yönetmek için güçlü, çapraz platform bir GUI.</b><br>
-  <i>Angular 22 + Tauri ile yapıldı · Linux • Windows • macOS • ARM Desteği</i>
+  <i>Angular 22 + Tauri ile yapıldı · Linux • Windows • macOS • Android (Beta) • ARM Desteği</i>
 </p>
 
 <p align="center">
@@ -105,6 +105,14 @@ RClone Manager'ı tercih ettiğiniz paket yöneticisini kullanarak yükleyin vey
 | **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                               | [Yükleyici / Taşınabilir EXE](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Kılavuz:** [Wiki: Kurulum - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (WinFsp bağlama gereksinimleri & SmartScreen)
+
+### Android (Beta)
+
+| Kaynak               | Sürüm                                                                                                                                                                                                            | Kurulum Komutu / İndirme                                                                      |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Doğrudan İndirme** | [![Son Sürüm](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                               | [APK İndirmeleri (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **Kılavuz:** [Wiki: Android Desteği (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go motoru / librclone detayları & kurulum)
 
 > 🛠️ **Sistem Gereksinimleri:** Sürücüleri bağlamak WinFsp (Windows), macFUSE (macOS) veya FUSE3 (Linux) gerektirir. Rclone eksikse otomatik olarak indirilir. Bkz. [Wiki: Sistem Gereksinimleri](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 

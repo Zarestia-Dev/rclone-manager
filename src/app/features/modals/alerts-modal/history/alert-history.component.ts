@@ -2,7 +2,6 @@ import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@a
 import { DatePipe, NgClass } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -18,7 +17,6 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
     NgClass,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     MatTableModule,
     TranslatePipe,
     SearchContainerComponent,
@@ -58,7 +56,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           matIconButton
           [class.search-open]="searchVisible()"
           (click)="searchVisible.set(!searchVisible())"
-          [matTooltip]="'shared.search.toggle' | translate"
+          [attr.title]="'shared.search.toggle' | translate"
         >
           <mat-icon svgIcon="search"></mat-icon>
         </button>
@@ -67,7 +65,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           matIconButton
           (click)="acknowledgeAll()"
           [disabled]="alerts.unacknowledged() === 0"
-          [matTooltip]="'alerts.acknowledgeAll' | translate"
+          [attr.title]="'alerts.acknowledgeAll' | translate"
         >
           <mat-icon svgIcon="done-all"></mat-icon>
         </button>
@@ -76,7 +74,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
           matIconButton
           (click)="clearHistory()"
           [disabled]="alerts.history().length === 0"
-          [matTooltip]="'alerts.clearHistory' | translate"
+          [attr.title]="'alerts.clearHistory' | translate"
         >
           <mat-icon svgIcon="trash"></mat-icon>
         </button>
@@ -180,7 +178,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
             <ng-container matColumnDef="meta">
               <th mat-header-cell *matHeaderCellDef>{{ 'common.context' | translate }}</th>
               <td mat-cell *matCellDef="let alert">
-                <div class="meta-item" [matTooltip]="'alerts.ruleLabel' | translate">
+                <div class="meta-item" [attr.title]="'alerts.ruleLabel' | translate">
                   <mat-icon svgIcon="check-list"></mat-icon>
                   <span>{{ alert.rule_name }}</span>
                 </div>
@@ -220,7 +218,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                         <mat-icon
                           [svgIcon]="res.success ? 'check-circle' : 'circle-xmark'"
                           [class]="res.success ? 'primary' : 'warn'"
-                          [matTooltip]="res.action_name + (res.error ? ': ' + res.error : '')"
+                          [attr.title]="res.action_name + (res.error ? ': ' + res.error : '')"
                         ></mat-icon>
                       }
                     </div>
@@ -231,7 +229,7 @@ import { SearchContainerComponent } from 'src/app/shared/components/search-conta
                     [class.btn-acked]="alert.acknowledged"
                     [disabled]="alert.acknowledged"
                     (click)="acknowledge(alert.id)"
-                    [matTooltip]="'common.acknowledge' | translate"
+                    [attr.title]="'common.acknowledge' | translate"
                   >
                     <mat-icon svgIcon="check-circle"></mat-icon>
                   </button>

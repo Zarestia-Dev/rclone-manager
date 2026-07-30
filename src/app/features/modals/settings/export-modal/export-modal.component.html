@@ -97,7 +97,7 @@
             matSuffix
             (click)="selectFolder()"
             [disabled]="isExporting()"
-            [matTooltip]="'modals.export.browseFolder' | translate"
+            [attr.title]="'modals.export.browseFolder' | translate"
           >
             <mat-icon svgIcon="folder"></mat-icon>
           </button>

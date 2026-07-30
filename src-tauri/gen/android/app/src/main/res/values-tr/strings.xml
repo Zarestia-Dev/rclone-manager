@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RClone Manager</string>
+    <string name="main_activity_title">RClone Manager</string>
+    <string name="saf_keepalive_title">Rclone SAF Depolama Servisi</string>
+    <string name="saf_keepalive_text">Aktif dosya akışı devam ediyor</string>
+    <string name="saf_keepalive_channel_name">Rclone Depolama Servisi</string>
+    <string name="saf_keepalive_channel_desc">Harici dosya akışı sırasında Rclone sürecini aktif tutar</string>
+</resources>

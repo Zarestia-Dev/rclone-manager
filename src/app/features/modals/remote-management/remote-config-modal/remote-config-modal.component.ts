@@ -16,7 +16,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
@@ -63,7 +62,6 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
-    MatTooltipModule,
     MatExpansionModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,

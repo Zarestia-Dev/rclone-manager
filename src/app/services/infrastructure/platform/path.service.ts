@@ -488,7 +488,7 @@ export class PathService {
       return {
         state: 'colliding',
         details: `${c.remoteName} (${c.opType})`,
-        icon: 'triangle-exclamation',
+        icon: 'warning',
         badgeClass: 'colliding',
         labelKey: 'remoteConfig.pathStatus.colliding',
       };

@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { TitleCasePipe } from '@angular/common';
@@ -52,7 +51,6 @@ import {
     TitleCasePipe,
     MatCardModule,
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     SettingsPanelComponent,
     DiskUsagePanelComponent,

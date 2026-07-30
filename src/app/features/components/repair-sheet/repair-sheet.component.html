@@ -98,7 +98,7 @@
       [attr.aria-label]="
         (installing() ? 'repairSheet.repairingAria' : 'repairSheet.startRepairAria') | translate
       "
-      [matTooltip]="repairTooltip() ? (repairTooltip() | translate) : ''"
+      [attr.title]="repairTooltip() ? (repairTooltip() | translate) : ''"
     >
       {{ repairActionTextKey() | translate }}
       <mat-icon [svgIcon]="repairButtonIcon()"></mat-icon>

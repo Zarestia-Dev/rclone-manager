@@ -26,7 +26,7 @@
             matSuffix
             (click)="togglePasswordVisibility()"
             [attr.aria-label]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
-            [matTooltip]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
+            [attr.title]="(hidePassword() ? 'common.show' : 'common.hide') | translate"
             type="button"
           >
             <mat-icon [svgIcon]="hidePassword() ? 'eye' : 'eye-slash'"></mat-icon>
@@ -71,7 +71,7 @@
               matIconButton
               [appCopyToClipboard]="obscuredText()"
               [attr.aria-label]="'modals.oauth.copyLink' | translate"
-              [matTooltip]="'modals.oauth.copyLink' | translate"
+              [attr.title]="'modals.oauth.copyLink' | translate"
             >
               <mat-icon svgIcon="copy" class="accent"></mat-icon>
             </button>

@@ -53,7 +53,7 @@
               matIconButton
               (click)="selectCustomPath()"
               [disabled]="disabled()"
-              [matTooltip]="'shared.installationOptions.browse' | translate"
+              [attr.title]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon [svgIcon]="mode() === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
@@ -84,7 +84,7 @@
               matIconButton
               (click)="selectBinary()"
               [disabled]="disabled()"
-              [matTooltip]="'shared.installationOptions.browse' | translate"
+              [attr.title]="'shared.installationOptions.browse' | translate"
             >
               <mat-icon svgIcon="file"></mat-icon>
             </button>

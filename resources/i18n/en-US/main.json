@@ -77,7 +77,8 @@
     "successMount": "Successfully mounted {{remote}} ({{profile}})",
     "failedMount": "Failed to mount {{remote}}: {{error}}",
     "successUnmount": "Successfully unmounted {{remote}}",
-    "failedUnmount": "Failed to unmount {{remote}}: {{error}}"
+    "failedUnmount": "Failed to unmount {{remote}}: {{error}}",
+    "androidRootWarning": "Non-SAF mount types require root (Superuser) privileges on Android."
   },
   "operations": {
     "available": "Sync Operations Available",
@@ -1142,6 +1143,7 @@
       "watchRequiresLocal": "Real-time monitoring requires at least one local source or destination directory.",
       "watchMixedSourcesNote": "Only local source directories will be monitored in real-time. Changes on remote sources will not trigger sync automatically.",
       "watchFilterNote": "The file watcher respects your Filter Profile. Changes to files or directories that match your exclusions (e.g. by pattern, size, or age) will not trigger a sync.",
+      "mobileSafMountNote": "On Android, mounting makes this remote available in the system file picker and other apps via SAF (Storage Access Framework).",
       "scheduleDescription": "When enabled, this operation will run <strong>recurring</strong> based on the cron schedule below.",
       "scheduleSubtitle": "Run this operation automatically on a recurring schedule.",
       "sourcePaths": "Source Paths",

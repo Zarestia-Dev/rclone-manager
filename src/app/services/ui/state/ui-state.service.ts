@@ -44,6 +44,11 @@ export class UiStateService {
   // Selected remote state
   private readonly _selectedRemote = signal<Remote | null>(null);
   public readonly selectedRemote = this._selectedRemote.asReadonly();
+
+  // Mobile sidebar open state (used to hide bottom tabs when drawer is open)
+  private readonly _mobileSidebarOpen = signal<boolean>(false);
+  public readonly mobileSidebarOpen = this._mobileSidebarOpen.asReadonly();
+
   // Viewport settings configuration
   private viewportSettings = {
     maximized: {
@@ -105,6 +110,11 @@ export class UiStateService {
 
   resetSelectedRemote(): void {
     this._selectedRemote.set(null);
+  }
+
+  // === Mobile Sidebar ===
+  setMobileSidebarOpen(open: boolean): void {
+    this._mobileSidebarOpen.set(open);
   }
 
   extractFilename(path: string): string {

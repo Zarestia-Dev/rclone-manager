@@ -10,7 +10,7 @@
           class="preset-card"
           [class.selected]="selectedPreset() === preset.key"
           (click)="applyPreset(preset.key, preset.cron)"
-          [matTooltip]="preset.cron"
+          [attr.title]="preset.cron"
         >
           <div class="preset-title">
             {{ 'wizards.cronPresets.' + preset.key + '.title' | translate }}

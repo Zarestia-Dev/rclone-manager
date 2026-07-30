@@ -77,7 +77,8 @@
     "successMount": "{{remote}}（{{profile}}）挂载成功",
     "failedMount": "{{remote}} 挂载失败：{{error}}",
     "successUnmount": "{{remote}} 卸载成功",
-    "failedUnmount": "{{remote}} 卸载失败：{{error}}"
+    "failedUnmount": "{{remote}} 卸载失败：{{error}}",
+    "androidRootWarning": "非 SAF 挂载类型在 Android 上需要 Root（超级用户）权限。"
   },
   "operations": {
     "available": "可执行同步操作",
@@ -1142,6 +1143,7 @@
       "watchRequiresLocal": "实时监控需要至少一个本地源或目标目录。",
       "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
       "watchFilterNote": "文件监视器会遵守您的过滤配置。与排除项（例如按模式、大小或时间）匹配的文件或目录的更改不会触发同步。",
+      "mobileSafMountNote": "在 Android 上，挂载后此远程存储可通过 SAF（存储访问框架）在系统文件选择器和其他应用中使用。",
       "scheduleDescription": "启用后，此操作将根据下方的 cron 计划<strong>定期</strong>运行",
       "scheduleSubtitle": "按定期计划自动运行此操作。",
       "sourcePaths": "源路径列表",

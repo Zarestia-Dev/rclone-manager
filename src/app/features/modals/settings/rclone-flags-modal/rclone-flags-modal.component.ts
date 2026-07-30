@@ -45,7 +45,6 @@ import {
   type JsonEditorLookupTable,
 } from 'src/app/shared/components/json-editor/json-editor.component';
 import { TitleCasePipe } from '@angular/common';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 const SERVICE_CONFIG: Record<string, ServiceConfig> = {
   vfs: {
@@ -202,7 +201,6 @@ interface SearchResultViewModel {
     SearchContainerComponent,
     SettingControlComponent,
     JsonEditorComponent,
-    MatTooltipModule,
     TranslatePipe,
     RcloneOptionTranslatePipe,
   ],

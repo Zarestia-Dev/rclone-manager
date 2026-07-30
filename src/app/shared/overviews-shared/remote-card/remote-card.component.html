@@ -8,7 +8,7 @@
     <mat-icon svgIcon="drag-indicator" class="drag-handle"></mat-icon>
     <button
       class="hide-btn"
-      [matTooltip]="(isHidden() ? 'shared.actions.show' : 'shared.actions.hide') | translate"
+      [attr.title]="(isHidden() ? 'shared.actions.show' : 'shared.actions.hide') | translate"
       (click)="onToggleHidden($event)"
     >
       <mat-icon [svgIcon]="isHidden() ? 'eye' : 'eye-slash'"></mat-icon>
@@ -25,7 +25,7 @@
       ></mat-icon>
     </div>
     <div class="remote-details">
-      <h4 class="remote-name" [matTooltip]="remote().name" matTooltipShowDelay="500">
+      <h4 class="remote-name" [attr.title]="remote().name">
         {{ remote().name }}
       </h4>
       <span class="remote-type">{{ remote().type | titlecase }}</span>
@@ -40,8 +40,7 @@
           vm.meta.pillClass +
           (vm.meta.animateContainer ? ' ' + ACTION_ANIMATION_CLASS[vm.op] : '')
         "
-        [matTooltip]="vm.tooltip"
-        matTooltipShowDelay="500"
+        [attr.title]="vm.tooltip"
       >
         <mat-icon
           [svgIcon]="vm.meta.icon"
@@ -87,8 +86,7 @@
           matMiniFab
           [class]="pickerGroup.cssClass"
           [class.warn]="pickerGroup.isActive"
-          [matTooltip]="pickerGroup.triggerTooltip"
-          matTooltipShowDelay="500"
+          [attr.title]="pickerGroup.triggerTooltip"
           [cdkMenuTriggerFor]="profileMenu"
           [cdkMenuPosition]="[
             {
@@ -112,8 +110,7 @@
         <!-- Single-profile (or zero-profile) action: plain button. -->
         <button
           matMiniFab
-          [matTooltip]="button.tooltip"
-          matTooltipShowDelay="500"
+          [attr.title]="button.tooltip"
           [disabled]="button.isDisabled"
           [class]="button.cssClass || ''"
           (click)="onActionButtonClick({ id: button.id, event: $event })"
@@ -131,8 +128,7 @@
       <button
         matMiniFab
         [class]="openableFolders()[0].cssClass"
-        [matTooltip]="openableFolders()[0].tooltip"
-        matTooltipShowDelay="500"
+        [attr.title]="openableFolders()[0].tooltip"
         [disabled]="isFolderOpening()"
         (click)="onOpenFolderClick(openableFolders()[0], $event)"
       >
@@ -169,8 +165,7 @@
         matMiniFab
         [class]="folderBlossomStyle() ? 'mixed' : openableFolders()[0].cssClass || 'primary'"
         [style]="folderBlossomStyle()"
-        [matTooltip]="'overviews.remoteCard.browse' | translate"
-        matTooltipShowDelay="500"
+        [attr.title]="'overviews.remoteCard.browse' | translate"
         [disabled]="isFolderOpening()"
         [cdkMenuTriggerFor]="folderMenu"
         [cdkMenuPosition]="[
@@ -229,8 +224,7 @@
                     [class.p-warn]="profileVm.isActive"
                     [class.p-dim]="profileVm.isBusy"
                     [disabled]="profileVm.isBusy"
-                    [matTooltip]="profileVm.chipTooltip"
-                    matTooltipShowDelay="500"
+                    [attr.title]="profileVm.chipTooltip"
                     (click)="onProfileChipClick(opVm.operation, profileVm.name, $event)"
                   >
                     @if (profileVm.isBusy) {
@@ -250,8 +244,7 @@
                         type="button"
                         class="profile-open-btn"
                         [disabled]="isFolderOpeningFor(opVm.operation, profileVm.name)"
-                        [matTooltip]="pathVm.tooltip"
-                        matTooltipShowDelay="500"
+                        [attr.title]="pathVm.tooltip"
                         (click)="
                           onProfileOpenInFiles(opVm.operation, profileVm.name, pathVm.path, $event)
                         "

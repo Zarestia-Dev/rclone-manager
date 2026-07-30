@@ -1204,8 +1204,12 @@
     "help": "go-fuse を使用した Go ネイティブ FUSE マウント"
   },
   "mount_type_nfsmount": {
-    "title": "NFS マウント",
-    "help": "NFS プロトコルを使用したマウント"
+    "title": "NFS Mount",
+    "help": "Mount using NFS protocol"
+  },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Androidネイティブ Storage Access Framework マウント"
   },
   "serve_type_http": {
     "title": "HTTP 公開サーバー",

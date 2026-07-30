@@ -5,7 +5,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SharedProfileType } from '@app/types';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
@@ -19,7 +18,6 @@ import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-
     MatIconModule,
     MatInputModule,
     MatSelectModule,
-    MatTooltipModule,
     TranslatePipe,
   ],
   templateUrl: './profile-switcher.component.html',

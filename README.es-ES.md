@@ -19,7 +19,7 @@
 
 <p align="center">
   <b>Una interfaz gráfica potente y multiplataforma para gestionar remotos de Rclone con estilo y facilidad.</b><br>
-  <i>Creado con Angular 22 + Tauri · Soporte para Linux • Windows • macOS • ARM</i>
+  <i>Creado con Angular 22 + Tauri · Soporte para Linux • Windows • macOS • Android (Beta) • ARM</i>
 </p>
 
 <p align="center">
@@ -106,6 +106,15 @@ Instala RClone Manager usando tu gestor de paquetes preferido, o descarga los bi
 
 > 📚 **Guía:** [Wiki: Instalación - Windows](https://hakanismail.info/zarestia/rclone-manager/docs/installation-windows) (requisitos de montaje de WinFsp y SmartScreen)
 
+### Android (Beta)
+
+| Fuente               | Versión                                                                                                                                                                                                           | Comando de Instalación / Descarga                                                          |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| **Descarga Directa** | [![Última Versión](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [Descargas APK (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+
+> 📚 **Guía:** [Wiki: Soporte para Android (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Detalles del motor Go / librclone y configuración)
+
+> 🛠️ **Requisitos del sistema:** Montar unidades requiere WinFsp (Windows), macFUSE (macOS) o FUSE3 (Linux). Rclone se descarga automáticamente si no se encuentra en el sistema. Consulta [Wiki: Requisitos del sistema](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 > 🛠️ **Requisitos del sistema:** Montar unidades requiere WinFsp (Windows), macFUSE (macOS) o FUSE3 (Linux). Rclone se descarga automáticamente si no se encuentra en el sistema. Consulta [Wiki: Requisitos del sistema](https://hakanismail.info/zarestia/rclone-manager/docs/Installation#%EF%B8%8F-dependencies).
 
 ---

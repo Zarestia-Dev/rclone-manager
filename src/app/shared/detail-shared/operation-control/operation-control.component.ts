@@ -11,7 +11,6 @@ import {
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -34,7 +33,6 @@ import { TranslatePipe } from '@ngx-translate/core';
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
     MatExpansionModule,
     MatProgressBarModule,
     MatSlideToggleModule,
@@ -56,7 +54,7 @@ import { TranslatePipe } from '@ngx-translate/core';
             @if (dryRun() && isOperationsType()) {
               <span
                 class="app-pill p-accent"
-                [matTooltip]="'dashboard.appDetail.dryRunActive' | translate"
+                [attr.title]="'dashboard.appDetail.dryRunActive' | translate"
               >
                 <mat-icon svgIcon="eye" class="accent"></mat-icon>
                 <span>{{ 'dashboard.appDetail.dryRun' | translate }}</span>
@@ -65,7 +63,7 @@ import { TranslatePipe } from '@ngx-translate/core';
             @if (resync() && config().operationType === 'bisync') {
               <span
                 class="app-pill p-warn"
-                [matTooltip]="'dashboard.appDetail.resyncActive' | translate"
+                [attr.title]="'dashboard.appDetail.resyncActive' | translate"
               >
                 <mat-icon svgIcon="right-left" class="warn"></mat-icon>
                 <span>{{ 'dashboard.appDetail.resync' | translate }}</span>
@@ -82,7 +80,7 @@ import { TranslatePipe } from '@ngx-translate/core';
               [class]="buttonClass()"
               (click)="handleQuickAction($event)"
               [disabled]="config().isLoading"
-              [matTooltip]="
+              [attr.title]="
                 (config().isActive && config().operationType === 'mount'
                   ? 'actions.unmount'
                   : config().isActive

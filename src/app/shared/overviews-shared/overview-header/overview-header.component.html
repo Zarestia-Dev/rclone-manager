@@ -2,9 +2,7 @@
   <button
     class="header-btn"
     (click)="openBackendModal.emit()"
-    [matTooltip]="'shared.overviewHeader.manageBackends' | translate"
-    [matTooltipShowDelay]="500"
-    matTooltipPosition="left"
+    [attr.title]="'shared.overviewHeader.manageBackends' | translate"
     [attr.aria-label]="'shared.overviewHeader.backendSwitchAria' | translate: { title: title() }"
   >
     <!-- Mode icon or app logo -->

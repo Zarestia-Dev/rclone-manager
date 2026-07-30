@@ -13,7 +13,6 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
@@ -81,7 +80,6 @@ export const MONTH_OPTIONS: MonthOption[] = [
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatTooltipModule,
     MatTabsModule,
     MatSelectModule,
     MatButtonModule,

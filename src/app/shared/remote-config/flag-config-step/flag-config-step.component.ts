@@ -13,7 +13,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FlagType, RcConfigOption } from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
@@ -37,7 +36,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
     MatSelectModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
     SettingControlComponent,
     OperationConfigComponent,
     JsonEditorComponent,

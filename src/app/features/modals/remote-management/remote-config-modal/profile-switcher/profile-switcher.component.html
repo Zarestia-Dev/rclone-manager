@@ -44,11 +44,7 @@
         <mat-icon svgIcon="plus"></mat-icon>
       </button>
       @if (selProfile) {
-        <span
-          class="action-tooltip-anchor"
-          [matTooltip]="renameDisabledReason()"
-          [matTooltipDisabled]="!renameDisabledReason()"
-        >
+        <span class="action-tooltip-anchor" [attr.title]="renameDisabledReason()">
           <button
             matIconButton
             (click)="state.startEditProfile(flagType())"
@@ -58,11 +54,7 @@
             <mat-icon svgIcon="pen"></mat-icon>
           </button>
         </span>
-        <span
-          class="action-tooltip-anchor"
-          [matTooltip]="deleteReasonFor(selProfile)"
-          [matTooltipDisabled]="!deleteReasonFor(selProfile)"
-        >
+        <span class="action-tooltip-anchor" [attr.title]="deleteReasonFor(selProfile)">
           <button
             matIconButton
             class="warn"

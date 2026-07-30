@@ -46,7 +46,6 @@ import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/int
 import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-config-step/remote-config-step.component';
 import { INITIAL_COMMAND_OPTIONS } from 'src/app/services/remote/utils/command-options.util';
 import { mapFormToConfigProfile } from '../../../../services/remote/utils/remote-config.utils';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -60,7 +59,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     RemoteConfigStepComponent,
     OperationConfigComponent,
     TranslatePipe,
-    MatTooltipModule,
     CopyToClipboardDirective,
   ],
   providers: [RemoteCreationOrchestrator],
@@ -466,10 +464,16 @@ export class QuickAddRemoteComponent {
     const mountProfile = buildProfile('mount', operations.mount);
     if (preset.mount && Object.keys(preset.mount).length) {
       if (!mountProfile['rclone']) mountProfile['rclone'] = {};
-      mountProfile['rclone']['mountOpt'] = {
-        ...mountProfile['rclone']['mountOpt'],
-        ...preset.mount,
-      };
+      const { mountType, ...otherMountOpts } = preset.mount;
+      if (mountType) {
+        mountProfile['rclone']['mountType'] = mountType;
+      }
+      if (Object.keys(otherMountOpts).length) {
+        mountProfile['rclone']['mountOpt'] = {
+          ...mountProfile['rclone']['mountOpt'],
+          ...otherMountOpts,
+        };
+      }
     }
 
     const profileName = 'Default';
@@ -497,6 +501,12 @@ export class QuickAddRemoteComponent {
           ...buildProfile('serve', operations.serve),
         },
       },
+      ...(preset.vfs && Object.keys(preset.vfs).length
+        ? { [REMOTE_CONFIG_KEYS.vfs]: { [profileName]: preset.vfs } }
+        : {}),
+      ...(preset.backend && Object.keys(preset.backend).length
+        ? { [REMOTE_CONFIG_KEYS.backend]: { [profileName]: preset.backend } }
+        : {}),
       showOnTray: true,
     } as unknown as RemoteConfigSections;
   }

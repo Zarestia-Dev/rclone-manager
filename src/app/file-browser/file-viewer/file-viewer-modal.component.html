@@ -13,7 +13,7 @@
     @if (isMarkdownFile() && currentFileType() === 'text') {
       <button
         matIconButton
-        matTooltip="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
+        title="{{ showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview' }}"
         class="header-button"
         (click)="toggleMarkdownPreview(); $event.stopPropagation()"
         [attr.aria-label]="showMarkdownPreview() ? 'Show Raw Text' : 'Show Preview'"
@@ -27,7 +27,7 @@
       @if (isEditing()) {
         <button
           matIconButton
-          matTooltip="{{ 'fileBrowser.fileViewer.save' | translate }}"
+          [attr.title]="'fileBrowser.fileViewer.save' | translate"
           class="header-button save-button"
           (click)="saveChanges(); $event.stopPropagation()"
           [disabled]="isSaving()"
@@ -41,7 +41,7 @@
         </button>
         <button
           matIconButton
-          matTooltip="{{ 'fileBrowser.fileViewer.cancel' | translate }}"
+          [attr.title]="'fileBrowser.fileViewer.cancel' | translate"
           class="header-button"
           (click)="cancelEditing(); $event.stopPropagation()"
           [disabled]="isSaving()"
@@ -52,7 +52,7 @@
       } @else {
         <button
           matIconButton
-          matTooltip="{{ 'fileBrowser.fileViewer.edit' | translate }}"
+          [attr.title]="'fileBrowser.fileViewer.edit' | translate"
           class="header-button"
           (click)="startEditing(); $event.stopPropagation()"
           [attr.aria-label]="'fileBrowser.fileViewer.edit' | translate"
@@ -65,7 +65,7 @@
     @if (currentFileType() === 'archive') {
       <button
         matIconButton
-        matTooltip="{{ 'fileBrowser.fileViewer.extract' | translate }}"
+        [attr.title]="'fileBrowser.fileViewer.extract' | translate"
         class="header-button"
         [disabled]="isExtracting()"
         (click)="extractArchive(); $event.stopPropagation()"
@@ -82,7 +82,7 @@
     @if (!isHeadless()) {
       <button
         matIconButton
-        matTooltip="{{ 'fileBrowser.fileViewer.openNativeTooltip' | translate }}"
+        [attr.title]="'fileBrowser.fileViewer.openNativeTooltip' | translate"
         class="header-button"
         [disabled]="isOpeningNative()"
         (click)="openNativePdf(); $event.stopPropagation()"
@@ -99,7 +99,7 @@
     @if (isDownloadVisible()) {
       <button
         matIconButton
-        matTooltip="{{ 'fileBrowser.fileViewer.download' | translate: { name: fileName() } }}"
+        [attr.title]="'fileBrowser.fileViewer.download' | translate: { name: fileName() }"
         class="header-button"
         [disabled]="isDownloading()"
         (click)="download(); $event.stopPropagation()"
@@ -114,7 +114,7 @@
     }
     <button
       matIconButton
-      matTooltip="{{ 'fileBrowser.fileViewer.closeViewer' | translate }}"
+      [attr.title]="'fileBrowser.fileViewer.closeViewer' | translate"
       class="header-button close-button"
       (click)="closeViewer.emit(); $event.stopPropagation()"
       [attr.aria-label]="'fileBrowser.fileViewer.closeViewer' | translate"

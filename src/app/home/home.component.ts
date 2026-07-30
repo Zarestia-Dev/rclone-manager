@@ -13,7 +13,6 @@ import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -53,7 +52,6 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
     MatDividerModule,
     MatChipsModule,
     MatCardModule,
-    MatTooltipModule,
     MatCheckboxModule,
     MatIconModule,
     MatButtonModule,
@@ -128,6 +126,11 @@ export class HomeComponent {
   setSidebarOpen(open: boolean): void {
     this.isSidebarOpen.set(open);
     this.localStorage.set('ui.sidebarOpen', open);
+
+    // Notify tabs to hide when mobile drawer is open
+    if (this.sidebarMode() === 'over') {
+      this.uiStateService.setMobileSidebarOpen(open);
+    }
   }
 
   private setupResponsiveLayout(): void {

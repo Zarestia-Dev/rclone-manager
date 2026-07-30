@@ -3,9 +3,9 @@ use tauri::command;
 
 use crate::utils::types::rclone::CheckResult;
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(not(target_os = "ios"))]
 use crate::utils::types::events::NETWORK_STATUS_CHANGED;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(not(target_os = "ios"))]
 use crate::utils::types::monitoring::NetworkStatusPayload;
 
 #[command]
@@ -256,6 +256,82 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     }
 }
 
+#[cfg(target_os = "android")]
+#[must_use]
+pub fn is_metered() -> bool {
+    use jni::{jni_sig, jni_str};
+
+    let ctx = ndk_context::android_context();
+    let vm_ptr = ctx.vm();
+    let context_ptr = ctx.context();
+    if vm_ptr.is_null() || context_ptr.is_null() {
+        log::warn!("is_metered: Android context or VM pointer is null");
+        return false;
+    }
+
+    let vm = unsafe { jni::JavaVM::from_raw(vm_ptr.cast()) };
+    let res: Result<bool, jni::errors::Error> = vm.attach_current_thread(|env| {
+        let context_obj = unsafe { jni::objects::JObject::from_raw(env, context_ptr.cast()) };
+
+        let service_name = env.new_string("connectivity")?;
+
+        let cm_val = env.call_method(
+            &context_obj,
+            jni_str!("getSystemService"),
+            jni_sig!("(Ljava/lang/String;)Ljava/lang/Object;"),
+            &[jni::objects::JValue::Object(&service_name)],
+        )?;
+        let cm = cm_val.l()?;
+
+        if cm.is_null() {
+            return Ok(false);
+        }
+
+        let metered_val = env.call_method(
+            &cm,
+            jni_str!("isActiveNetworkMetered"),
+            jni_sig!("()Z"),
+            &[],
+        )?;
+
+        Ok(metered_val.z().unwrap_or(false))
+    });
+
+    match res {
+        Ok(val) => val,
+        Err(e) => {
+            log::error!("is_metered: JNI error: {e}");
+            false
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use tauri::Emitter;
+    use tokio::time::{Duration, sleep};
+
+    let mut last_metered = is_metered();
+    log::info!("Starting Android network status monitor (initial metered: {last_metered})");
+
+    loop {
+        sleep(Duration::from_secs(5)).await;
+        let current_metered = is_metered();
+        if current_metered != last_metered {
+            log::info!(
+                "Android metered network status changed: {last_metered} -> {current_metered}"
+            );
+            last_metered = current_metered;
+            let payload = NetworkStatusPayload {
+                is_metered: current_metered,
+            };
+            if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
+                log::error!("Failed to emit network status change event: {e}");
+            }
+        }
+    }
+}
+
 #[command]
 pub async fn is_network_metered() -> Result<bool, String> {
     #[cfg(target_os = "linux")]
@@ -267,6 +343,14 @@ pub async fn is_network_metered() -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     return Ok(is_metered());
 
-    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "android")]
+    return Ok(is_metered());
+
+    #[cfg(not(any(
+        windows,
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "android"
+    )))]
     return Ok(false); // Default for unsupported platforms
 }

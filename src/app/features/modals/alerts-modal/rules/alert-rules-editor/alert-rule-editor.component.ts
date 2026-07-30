@@ -8,7 +8,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AlertRule, AlertEventKind, AlertSeverity, Origin } from '@app/types';
@@ -29,7 +28,6 @@ import { BackendService } from 'src/app/services/infrastructure/system/backend.s
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatTooltipModule,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

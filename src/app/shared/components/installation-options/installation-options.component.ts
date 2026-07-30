@@ -13,7 +13,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -35,7 +34,6 @@ import {
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatTooltipModule,
     TranslatePipe,
   ],
   templateUrl: './installation-options.component.html',

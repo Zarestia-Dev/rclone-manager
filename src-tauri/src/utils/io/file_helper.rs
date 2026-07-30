@@ -113,6 +113,19 @@ pub async fn open_in_files(
 }
 
 #[command]
+#[cfg(target_os = "android")]
+pub async fn open_saf_remote(_app: tauri::AppHandle, remote: String) -> Result<String, String> {
+    if crate::rclone::backend::saf_bridge::open_saf_remote(&remote) {
+        Ok(format!("Opened SAF remote {} in system files", remote))
+    } else {
+        Err(crate::localized_error!(
+            "backendErrors.file.failedToOpen",
+            "error" => "SAF opener failed"
+        ))
+    }
+}
+
+#[command]
 pub async fn open_file_natively(
     app: AppHandle,
     remote: String,

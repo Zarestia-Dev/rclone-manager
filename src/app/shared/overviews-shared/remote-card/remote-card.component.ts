@@ -4,7 +4,6 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppTab,
   PrimaryActionType,
@@ -88,15 +87,7 @@ interface ProfilePickerGroup {
 @Component({
   selector: 'app-remote-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgClass,
-    TitleCasePipe,
-    MatIconModule,
-    MatButtonModule,
-    CdkMenuModule,
-    MatTooltipModule,
-    TranslatePipe,
-  ],
+  imports: [NgClass, TitleCasePipe, MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
   templateUrl: './remote-card.component.html',
   styleUrl: './remote-card.component.scss',
   host: {

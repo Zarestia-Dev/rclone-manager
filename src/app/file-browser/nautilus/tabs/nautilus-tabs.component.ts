@@ -12,7 +12,6 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -30,14 +29,7 @@ interface TabViewModel {
 
 @Component({
   selector: 'app-nautilus-tabs',
-  imports: [
-    MatIconModule,
-    MatTooltipModule,
-    MatDividerModule,
-    CdkMenuModule,
-    TranslatePipe,
-    ScrollShadowDirective,
-  ],
+  imports: [MatIconModule, MatDividerModule, CdkMenuModule, TranslatePipe, ScrollShadowDirective],
   templateUrl: './nautilus-tabs.component.html',
   styleUrl: './nautilus-tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

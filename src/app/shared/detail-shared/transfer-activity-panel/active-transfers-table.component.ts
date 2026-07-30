@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFileSizePipe, FormatTimePipe } from '@app/pipes';
@@ -23,7 +22,6 @@ import { TransferOperationsService } from './transfer-operations.service';
   imports: [
     MatProgressBarModule,
     MatIconModule,
-    MatTooltipModule,
     MatButtonModule,
     TranslatePipe,
     FormatFileSizePipe,
@@ -39,7 +37,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                 <mat-icon
                   svgIcon="file"
                   class="card-primary-icon file-icon"
-                  [matTooltip]="transfer.name"
+                  [attr.title]="transfer.name"
                 ></mat-icon>
                 <span class="card-title-text file-name" [title]="transfer.name">{{
                   transfer.name
@@ -48,7 +46,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                   <mat-icon
                     svgIcon="circle-exclamation"
                     class="error-badge-icon warn"
-                    [matTooltip]="
+                    [attr.title]="
                       transfer.error || ('shared.transferActivity.status.transferError' | translate)
                     "
                   ></mat-icon>
@@ -57,7 +55,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                   <mat-icon
                     svgIcon="check-circle"
                     class="success-badge-icon primary"
-                    [matTooltip]="'shared.transferActivity.status.transferCompleted' | translate"
+                    [attr.title]="'shared.transferActivity.status.transferCompleted' | translate"
                   ></mat-icon>
                 }
               </div>
@@ -97,7 +95,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             ops.copyUrlSource(transfer, transfer.uniqueId); $event.stopPropagation()
                           "
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon [svgIcon]="loading ? 'spinner' : 'link'"></mat-icon>
                         </button>
@@ -110,7 +108,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-src')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -146,7 +144,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             ops.copyUrlDst(transfer, transfer.uniqueId); $event.stopPropagation()
                           "
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -161,7 +159,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             ops.downloadDst(transfer, transfer.uniqueId); $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-dst')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="
@@ -197,7 +195,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             $event.stopPropagation()
                           "
                           [disabled]="loading"
-                          [matTooltip]="'shared.transferActivity.actions.copyUrl' | translate"
+                          [attr.title]="'shared.transferActivity.actions.copyUrl' | translate"
                         >
                           <mat-icon
                             [svgIcon]="loading ? 'spinner' : 'link'"
@@ -213,7 +211,7 @@ import { TransferOperationsService } from './transfer-operations.service';
                             $event.stopPropagation()
                           "
                           [disabled]="ops.downloadingIds().has(transfer.uniqueId + '-fallback')"
-                          [matTooltip]="'shared.transferActivity.actions.download' | translate"
+                          [attr.title]="'shared.transferActivity.actions.download' | translate"
                         >
                           <mat-icon
                             [svgIcon]="

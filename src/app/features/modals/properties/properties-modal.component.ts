@@ -13,7 +13,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { RemoteFileOperationsService } from 'src/app/services/remote/remote-file-operations.service';
@@ -37,7 +36,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
     MatIconModule,
     MatButtonModule,
     MatDividerModule,
-    MatTooltipModule,
     MatSelectModule,
     MatFormFieldModule,
     FormatFileSizePipe,

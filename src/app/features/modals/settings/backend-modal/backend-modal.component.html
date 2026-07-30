@@ -29,7 +29,7 @@
             class="backend-icon"
             [class.local]="backend.isLocal"
             [class]="backend.statusClass"
-            [matTooltip]="backend.statusTooltip"
+            [attr.title]="backend.statusTooltip"
           >
             @if (switchingTo() === backend.name) {
               <div class="connecting-dots" aria-hidden="true">
@@ -67,7 +67,7 @@
                 <span class="separator">•</span>
                 <mat-icon
                   svgIcon="file-lines"
-                  [matTooltip]="
+                  [attr.title]="
                     ('modals.backend.activeConfigPath' | translate) +
                     ': ' +
                     backend.runtimeConfigPath
@@ -81,7 +81,7 @@
             <button
               matIconButton
               (click)="$event.stopPropagation(); startEdit(backend)"
-              [matTooltip]="'modals.backend.editBackend' | translate"
+              [attr.title]="'modals.backend.editBackend' | translate"
               [attr.aria-label]="'modals.backend.editBackend' | translate"
             >
               <mat-icon svgIcon="pen"></mat-icon>
@@ -91,7 +91,7 @@
               matIconButton
               (click)="$event.stopPropagation(); testBackend(backend.name)"
               [disabled]="testingBackend() !== null"
-              [matTooltip]="'modals.backend.testConnection' | translate"
+              [attr.title]="'modals.backend.testConnection' | translate"
               [attr.aria-label]="'modals.backend.testConnection' | translate"
             >
               @if (testingBackend() === backend.name) {
@@ -107,7 +107,7 @@
                 class="warn"
                 (click)="$event.stopPropagation(); removeBackend(backend.name)"
                 [disabled]="backend.isActive"
-                [matTooltip]="
+                [attr.title]="
                   backend.isActive
                     ? ('modals.backend.switchFirst' | translate)
                     : ('modals.backend.removeTooltip' | translate)
@@ -373,7 +373,7 @@
                       <mat-icon
                         matSuffix
                         svgIcon="info"
-                        [matTooltip]="'modals.backend.fields.oauthHost.description' | translate"
+                        [attr.title]="'modals.backend.fields.oauthHost.description' | translate"
                       ></mat-icon>
                     </mat-form-field>
                   </div>
@@ -404,7 +404,7 @@
                     matPrefix
                     svgIcon="file-lines"
                     [class.primary]="editingBackendRuntimePath()"
-                    [matTooltip]="
+                    [attr.title]="
                       editingBackendRuntimePath()
                         ? ('modals.backend.activeConfigPath' | translate) +
                           ': ' +
@@ -423,7 +423,7 @@
                     (click)="selectConfigFile()"
                     type="button"
                     [disabled]="!isConfigSelectionAllowed()"
-                    [matTooltip]="
+                    [attr.title]="
                       isConfigSelectionAllowed()
                         ? ('modals.backend.selectConfigFile' | translate)
                         : ('modals.backend.notifications.onlyActiveBackend' | translate)
@@ -434,7 +434,7 @@
                   <mat-icon
                     matSuffix
                     svgIcon="info"
-                    [matTooltip]="'modals.backend.fields.configPath.description' | translate"
+                    [attr.title]="'modals.backend.fields.configPath.description' | translate"
                   ></mat-icon>
                 </mat-form-field>
               </div>
@@ -472,7 +472,7 @@
                     <mat-icon
                       matSuffix
                       svgIcon="info"
-                      [matTooltip]="'modals.backend.fields.configPassword.description' | translate"
+                      [attr.title]="'modals.backend.fields.configPassword.description' | translate"
                     ></mat-icon>
                   </mat-form-field>
                 </div>
