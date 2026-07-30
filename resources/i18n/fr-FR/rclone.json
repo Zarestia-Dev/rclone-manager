@@ -1209,7 +1209,7 @@
   },
   "mount_type_saf": {
     "title": "Storage Access Framework (SAF)",
-    "help": "Montage natif Android Storage Access Framework"
+    "help": "Montage natif Android via Storage Access Framework"
   },
   "serve_type_http": {
     "title": "Serveur HTTP",
