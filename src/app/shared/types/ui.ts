@@ -324,15 +324,31 @@ export interface OpenableFolder {
   icon: string;
 }
 
+export type OnboardingCardKey =
+  | 'welcome'
+  | 'features'
+  | 'installRclone'
+  | 'installPlugin'
+  | 'selectConfig'
+  | 'passwordRequired'
+  | 'selectMainUi'
+  | 'ready';
+
 export interface OnboardingCard {
-  key: string;
-  image: string;
+  key: OnboardingCardKey;
   title: string;
   content: string;
+  image?: string;
 }
 
 export type OnboardingAction =
   'install-rclone' | 'install-plugin' | 'config-next' | 'unlock' | 'finish' | 'next';
+
+export const DEFAULT_ONBOARDING_IMAGE = '../assets/rclone-manager.svg';
+
+export type MainView = 'main_menu' | 'nautilus' | 'flow';
+
+export const MAIN_VIEWS: readonly MainView[] = Object.freeze(['main_menu', 'nautilus', 'flow']);
 
 export interface RemoteAboutData {
   remote: { displayName: string; normalizedName: string; type?: string };

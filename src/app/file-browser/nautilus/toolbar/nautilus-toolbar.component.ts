@@ -25,6 +25,9 @@ import { ExplorerRoot } from '@app/types';
 import { ScrollShadowDirective } from '../../../shared/directives/scroll-shadow.directive';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
+import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
+
 @Component({
   selector: 'app-nautilus-toolbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +38,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
     CdkMenuModule,
     WindowControlsComponent,
     ScrollShadowDirective,
+    AppMenuComponent,
   ],
   templateUrl: './nautilus-toolbar.component.html',
   styleUrl: './nautilus-toolbar.component.scss',
@@ -42,6 +46,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 export class NautilusToolbarComponent {
   protected readonly iconService = inject(IconService);
   protected readonly nautilusService = inject(NautilusService);
+  protected readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
   private readonly injector = inject(Injector);
 

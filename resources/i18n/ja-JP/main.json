@@ -412,6 +412,15 @@
         "label": "言語",
         "description": "ユーザーインターフェースに使用する言語。デフォルトではシステム言語が使用されます。"
       },
+      "default_view": {
+        "label": "デフォルトの起動ビュー",
+        "description": "アプリ起動時に開くメイン UI インターフェースを選択します。",
+        "options": {
+          "main_menu": "メインメニュー",
+          "nautilus": "Nautilus ファイルブラウザ",
+          "flow": "Flow ワークスペース"
+        }
+      },
       "start_on_startup": {
         "label": "システム起動時に実行",
         "description": "システム起動時にアプリを自動的に開始します。"
@@ -611,6 +620,7 @@
       "preferences": "環境設定",
       "flags": "Rcloneフラグ",
       "fileBrowser": "ファイルブラウザ",
+      "flowWorkspace": "Flow ワークスペース",
       "shortcuts": "キーボードショートカット",
       "about": "RClone Manager について",
       "quickRemote": "クイックリモート作成",
@@ -645,9 +655,30 @@
         "title": "設定ファイルのパスワードが必要です",
         "content": "rclone設定ファイルが暗号化されています。このセッションでロックを解除するためのパスワードを入力してください。"
       },
+      "selectMainUi": {
+        "title": "メインUIを選択",
+        "content": "お好みのワークスペースUIレイアウトを選択してください。メニューや設定からいつでも変更可能です。"
+      },
       "ready": {
         "title": "準備完了！",
         "content": "全てのセットアップが完了しました。RClone Managerでクラウドストレージを簡単に管理しましょう。「はじめる」をクリックして開始します。"
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "クラシックダッシュボード",
+        "badge": "デフォルト",
+        "description": "リモート接続、転送、クイックアクション、システムステータスを一覧表示するタブ付きダッシュボード。"
+      },
+      "nautilus": {
+        "title": "ファイルブラウザ (Nautilus)",
+        "badge": "ファイルマネージャー",
+        "description": "リモートファイルの参照および転送に最適化された2ペインのファイル管理UI。"
+      },
+      "flow": {
+        "title": "Flow ワークスペース",
+        "badge": "ワークフロー",
+        "description": "自動タスクおよびクイック実行プロファイルを構築・実行するためのビジュアルUI。"
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "設定を読み込み",
       "exportConfig": "設定をエクスポート",
       "toggleBrowser": "ファイルブラウザの切り替え",
+      "openFlowOverlay": "Flow ワークスペースの切り替え",
       "closeDialog": "ダイアログを閉じる / 操作をキャンセル"
     },
     "categories": {

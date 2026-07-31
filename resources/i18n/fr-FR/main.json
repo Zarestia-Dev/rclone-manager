@@ -410,6 +410,15 @@
         "label": "Langue",
         "description": "Langue à utiliser pour l'interface utilisateur. La langue système est utilisée par défaut."
       },
+      "default_view": {
+        "label": "Vue de démarrage par défaut",
+        "description": "Sélectionnez l'interface principale à ouvrir au démarrage de l'application.",
+        "options": {
+          "main_menu": "Menu principal",
+          "nautilus": "Navigateur de fichiers Nautilus",
+          "flow": "Espace de travail Flow"
+        }
+      },
       "start_on_startup": {
         "label": "Lancer au démarrage",
         "description": "Démarrer automatiquement l'application au démarrage du système."
@@ -611,6 +620,7 @@
       "preferences": "Préférences",
       "flags": "Rclone Flags",
       "fileBrowser": "Explorateur de fichiers",
+      "flowWorkspace": "Espace de travail Flow",
       "shortcuts": "Raccourcis clavier",
       "about": "À propos de rclone Manager",
       "quickRemote": "Dépôt distant rapide",
@@ -645,9 +655,30 @@
         "title": "Mot de passe de configuration requis",
         "content": "Votre configuration de rclone est chiffrée. Veuillez entrer le mot de passe pour le déverrouiller pour cette session."
       },
+      "selectMainUi": {
+        "title": "Choisir l'interface principale",
+        "content": "Sélectionnez votre disposition d'interface préférée. Vous pouvez basculer entre les interfaces à tout moment depuis le menu ou les paramètres."
+      },
       "ready": {
         "title": "Prêt à commencer !",
         "content": "Tout est configuré et prêt à être utilisé. rclone Manager vous aidera à gérer votre stockage cloud en toute simplicité. Cliquez sur 'Commencer' pour commencer votre voyage."
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "Tableau de bord classique",
+        "badge": "Par défaut",
+        "description": "Aperçu avec connexions distantes, transferts actifs, actions rapides et état du système."
+      },
+      "nautilus": {
+        "title": "Navigateur de fichiers (Nautilus)",
+        "badge": "Gestionnaire de fichiers",
+        "description": "Interface dédiée à deux panneaux pour naviguer et transférer des fichiers distants."
+      },
+      "flow": {
+        "title": "Espace de travail Flow",
+        "badge": "Flux de travail",
+        "description": "Centre visuel interactif pour orchestrer des tâches automatisées et des exécutions rapides."
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "Charger la configuration",
       "exportConfig": "Exporter la configuration",
       "toggleBrowser": "Activer/désactiver Le navigateur de fichiers",
+      "openFlowOverlay": "Activer/désactiver l'espace de travail Flow",
       "closeDialog": "Fermer la boîte de dialogue / Annuler l'action"
     },
     "categories": {

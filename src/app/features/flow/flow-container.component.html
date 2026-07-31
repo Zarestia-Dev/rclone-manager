@@ -1,0 +1,47 @@
+<div class="flow-main-wrapper">
+  <!-- Top Flow Header -->
+  <header class="flow-header" data-tauri-drag-region>
+    <div class="header-branding">
+      <mat-icon svgIcon="operations" class="flow-logo"></mat-icon>
+      <div class="branding-text">
+        <h1>Flow Workspace</h1>
+        <span class="sub-text">Visual Workflow Builder & Quick Job Runner</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="header-actions">
+      <app-menu></app-menu>
+      @if (flowOverlayService.isFlowOverlayOpen()) {
+        @if (!isMobile()) {
+          <button
+            matIconButton
+            (click)="detachOverlay()"
+            [attr.aria-label]="'nautilus.contextMenu.openNewWindow' | translate"
+            [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
+          >
+            <mat-icon svgIcon="open-link"></mat-icon>
+          </button>
+        }
+        <button
+          matIconButton
+          (click)="closeOverlay()"
+          [attr.aria-label]="'common.close' | translate"
+          [attr.title]="'common.close' | translate"
+        >
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+      } @else {
+        <app-window-controls></app-window-controls>
+      }
+    </div>
+  </header>
+
+  <!-- Mode Content View -->
+  <main class="flow-body">
+    <div class="flow-placeholder-content">
+      <mat-icon svgIcon="operations" class="placeholder-icon"></mat-icon>
+      <h2>{{ 'titlebar.menu.flowWorkspace' | translate }}</h2>
+    </div>
+  </main>
+</div>

@@ -24,6 +24,17 @@ export const CONFIG_TAB_OPTIONS: readonly InstallationTabOption[] = Object.freez
   { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },
 ]);
 
+export const RCLONE_INSTALL_TAB_OPTIONS: readonly InstallationTabOption[] = Object.freeze([
+  { key: 'default', label: 'onboarding.options.recommended', icon: 'star' },
+  { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
+  { key: 'existing', label: 'onboarding.options.existing', icon: 'file' },
+]);
+
+export const ONBOARDING_CONFIG_TAB_OPTIONS: readonly InstallationTabOption[] = Object.freeze([
+  { key: 'default', label: 'onboarding.options.default', icon: 'file' },
+  { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
+]);
+
 export const DEFAULT_INSTALLATION_DATA: Readonly<InstallationOptionsData> = Object.freeze({
   installLocation: 'default',
   customPath: '',

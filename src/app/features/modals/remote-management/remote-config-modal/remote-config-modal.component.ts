@@ -19,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
+import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { ObscureToolComponent } from '../../../../shared/remote-config/obscure-tool/obscure-tool.component';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
@@ -65,6 +66,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     MatExpansionModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
+    OperationConfigComponent,
     CliImportComponent,
     ObscureToolComponent,
     AlertBannerComponent,
@@ -270,14 +272,9 @@ export class RemoteConfigModalComponent {
       return { success: true };
     }
 
-    const updatedConfig = this.buildUpdateConfig();
-    await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
-    try {
-      await this.state.pathService.createRequiredDirectories(updatedConfig);
-    } catch (err) {
-      console.error('Failed to create required directories:', err);
-    }
-    return { success: true };
+    const target = this.state.editTarget() as SharedProfileType;
+    const success = await this.state.saveRemoteProfiles(remoteName, target);
+    return { success };
   }
 
   // ── Config building ───────────────────────────────────────────────────────────

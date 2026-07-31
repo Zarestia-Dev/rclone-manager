@@ -1,0 +1,93 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.shortcut {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.menu-icon {
+  margin-right: 8px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.menu-section-label {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim-color);
+}
+
+.selection-icon {
+  margin-left: auto;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--accent-color);
+}
+
+.theme-selector {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-xs);
+}
+
+.theme-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--window-fg-color);
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+  justify-content: flex-start;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--border-color);
+    transition: box-shadow 200ms ease-in-out;
+    z-index: 0;
+  }
+
+  .checkmark {
+    opacity: 1;
+    background: var(--gnome-light-1);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: -8px;
+    color: var(--gnome-blue-3);
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.light::before {
+  background: var(--gnome-light-1);
+}
+
+.dark::before {
+  background: var(--gnome-dark-5);
+}
+
+.system::before {
+  background: linear-gradient(315deg, var(--gnome-dark-5) 49.5%, var(--gnome-light-1) 50.5%);
+}
+
+.selected::before {
+  box-shadow: 0 0 0 2px var(--accent-color);
+}

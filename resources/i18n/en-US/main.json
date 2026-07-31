@@ -412,6 +412,15 @@
         "label": "Language",
         "description": "Language to use for the user interface. System language is used by default."
       },
+      "default_view": {
+        "label": "Default Startup View",
+        "description": "Select the main interface view to launch when starting the app.",
+        "options": {
+          "main_menu": "Main Menu",
+          "nautilus": "Nautilus File Browser",
+          "flow": "Flow Workspace"
+        }
+      },
       "start_on_startup": {
         "label": "Start on Startup",
         "description": "Automatically start the app when the system starts."
@@ -611,6 +620,7 @@
       "preferences": "Preferences",
       "flags": "Rclone Flags",
       "fileBrowser": "File Browser",
+      "flowWorkspace": "Flow Workspace",
       "shortcuts": "Keyboard Shortcuts",
       "about": "About RClone Manager",
       "quickRemote": "Quick Remote",
@@ -645,9 +655,30 @@
         "title": "Configuration Password Required",
         "content": "Your rclone configuration is encrypted. Please enter the password to unlock it for this session."
       },
+      "selectMainUi": {
+        "title": "Choose Primary UI",
+        "content": "Select your preferred workspace layout. You can switch between interfaces at any time from the app menu or settings."
+      },
       "ready": {
         "title": "Ready to Go!",
         "content": "Everything is set up and ready to use. RClone Manager will help you manage your cloud storage with ease. Click 'Get Started' to begin your journey."
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "Classic Dashboard",
+        "badge": "Default",
+        "description": "Tabbed overview featuring remote connections, active transfers, quick actions, and system status."
+      },
+      "nautilus": {
+        "title": "File Browser (Nautilus)",
+        "badge": "File Manager",
+        "description": "Dedicated dual-pane file management interface designed for navigating and transferring remote files."
+      },
+      "flow": {
+        "title": "Flow Workspace",
+        "badge": "Workflows",
+        "description": "Interactive visual hub for orchestrating automated jobs, remote quick runs, and pipeline execution."
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "Load Configuration",
       "exportConfig": "Export Configuration",
       "toggleBrowser": "Toggle File Browser",
+      "openFlowOverlay": "Toggle Flow Workspace",
       "closeDialog": "Close Dialog/Cancel Action"
     },
     "categories": {

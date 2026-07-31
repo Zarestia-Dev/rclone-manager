@@ -37,6 +37,17 @@ pub struct GeneralSettings {
     pub language: String,
 
     #[setting(
+        label = "settings.general.default_view.label",
+        description = "settings.general.default_view.description",
+        options(
+            ("main_menu", "settings.general.default_view.options.main_menu"),
+            ("nautilus", "settings.general.default_view.options.nautilus"),
+            ("flow", "settings.general.default_view.options.flow")
+        )
+    )]
+    pub default_view: String,
+
+    #[setting(
         label = "settings.general.tray_enabled.label",
         description = "settings.general.tray_enabled.description"
     )]
@@ -91,6 +102,7 @@ impl Default for GeneralSettings {
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
             language,
+            default_view: "main_menu".to_string(),
             restrict: true,
         }
     }

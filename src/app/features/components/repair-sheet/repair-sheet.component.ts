@@ -11,6 +11,7 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bott
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import {
+  BinaryStatus,
   InstallationOptionsData,
   RepairData,
   RepairMode,
@@ -276,23 +277,7 @@ export class RepairSheetComponent {
     try {
       const { installLocation, customPath } = this.installationData();
       const configPath = installLocation === 'custom' ? customPath : '';
-      if (this.backendService.backends().length === 0) {
-        await this.backendService.loadBackends();
-      }
-      const localBackend = this.backendService.backends().find(b => b.name === 'Local');
-      if (localBackend) {
-        await this.backendService.updateBackend({
-          name: 'Local',
-          host: localBackend.host,
-          oauthHost: localBackend.oauthHost,
-          port: localBackend.port,
-          isLocal: true,
-          username: localBackend.username,
-          password: localBackend.password,
-          configPath: configPath || undefined,
-          oauthPort: localBackend.oauthPort,
-        });
-      }
+      await this.backendService.updateLocalBackendConfigPath(configPath || undefined);
       this.dismissAfter('success', 1000);
     } catch (error) {
       console.error('Config repair failed:', error);
@@ -353,10 +338,13 @@ export class RepairSheetComponent {
     }
     if (installLocation === 'existing') {
       if (!existingBinaryPath.trim()) return 'repairSheet.buttons.selectBinaryFirst';
-      if (binaryTestResult === 'invalid') return 'repairSheet.buttons.invalidBinary';
-      if (binaryTestResult === 'testing') return 'repairSheet.buttons.testingBinary';
-      if (binaryTestResult === 'valid') return 'repairSheet.buttons.useThisBinary';
-      return 'repairSheet.buttons.testBinaryFirst';
+      const labels: Record<BinaryStatus, string> = {
+        untested: 'repairSheet.buttons.testBinaryFirst',
+        testing: 'repairSheet.buttons.testingBinary',
+        valid: 'repairSheet.buttons.useThisBinary',
+        invalid: 'repairSheet.buttons.invalidBinary',
+      };
+      return labels[binaryTestResult];
     }
     return this.repairService.getRepairButtonTextKey(this.data.type);
   }

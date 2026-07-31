@@ -110,7 +110,12 @@
     </button>
   }
 
-  @if (nautilusService.isStandaloneWindow()) {
+  <app-menu></app-menu>
+
+  @if (
+    nautilusService.isStandaloneWindow() ||
+    (uiStateService.defaultView() === 'nautilus' && !nautilusService.isBrowserOverlayOpen())
+  ) {
     <app-window-controls></app-window-controls>
   } @else {
     @if (!isMobile()) {

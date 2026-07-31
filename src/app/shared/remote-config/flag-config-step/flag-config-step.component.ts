@@ -17,7 +17,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { FlagType, RcConfigOption } from '@app/types';
 import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-editor.component';
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
-import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
 import {
@@ -37,7 +36,6 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
     MatIconModule,
     MatButtonModule,
     SettingControlComponent,
-    OperationConfigComponent,
     JsonEditorComponent,
     TranslatePipe,
     AlertBannerComponent,
@@ -55,7 +53,6 @@ export class FlagConfigStepComponent {
   readonly flagType = input.required<FlagType>();
   readonly existingRemotes = input<string[]>([]);
   readonly currentRemoteName = input<string>('');
-  readonly isNewRemote = input<boolean>(true);
   readonly searchQuery = input<string>('');
   readonly dynamicFlagFields = input<RcConfigOption[]>([]);
   readonly isLoadingServeFields = input<boolean>(false);
@@ -69,15 +66,6 @@ export class FlagConfigStepComponent {
 
   readonly isServe = computed(() => this.flagType() === 'serve');
   readonly isMount = computed(() => this.flagType() === 'mount');
-  readonly showOperationConfig = computed(
-    () => !['vfs', 'filter', 'backend'].includes(this.flagType())
-  );
-
-  readonly operationDescriptionKey = computed(() =>
-    this.isServe()
-      ? 'wizards.remoteConfig.serveDescription'
-      : 'wizards.remoteConfig.operationDescription'
-  );
 
   readonly serveTypeValue = signal('');
   readonly isAllowOtherEnabled = signal(false);

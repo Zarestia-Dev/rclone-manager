@@ -1,6 +1,6 @@
 import { inject, Injectable, signal, effect } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, Remote, APP_TABS } from '@app/types';
+import { AppTab, Remote, APP_TABS, MainView } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { WindowService } from 'src/app/services/ui/window.service';
@@ -45,6 +45,13 @@ export class UiStateService {
   private readonly _selectedRemote = signal<Remote | null>(null);
   public readonly selectedRemote = this._selectedRemote.asReadonly();
 
+  // Main view state ('main_menu' | 'nautilus' | 'flow')
+  private readonly _defaultView = signal<MainView>('main_menu');
+  public readonly defaultView = this._defaultView.asReadonly();
+
+  private readonly _selectedMainView = signal<MainView>('main_menu');
+  public readonly selectedMainView = this._selectedMainView.asReadonly();
+
   // Mobile sidebar open state (used to hide bottom tabs when drawer is open)
   private readonly _mobileSidebarOpen = signal<boolean>(false);
   public readonly mobileSidebarOpen = this._mobileSidebarOpen.asReadonly();
@@ -81,6 +88,16 @@ export class UiStateService {
       console.warn('Failed to detect platform, falling back to linux:', error);
       return 'linux';
     }
+  }
+
+  // === Main View Management ===
+  setDefaultView(view: MainView): void {
+    this._defaultView.set(view);
+    this._selectedMainView.set(view);
+  }
+
+  setMainView(view: MainView): void {
+    this._selectedMainView.set(view);
   }
 
   // === Tab Management ===

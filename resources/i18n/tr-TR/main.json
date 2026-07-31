@@ -410,6 +410,15 @@
         "label": "Dil",
         "description": "Kullanıcı arayüzü için kullanılacak dil. Sistem dili otomatik olarak algılanır."
       },
+      "default_view": {
+        "label": "Varsayılan Başlangıç Görünümü",
+        "description": "Uygulama başlatıldığında açılacak ana arayüz görünümünü seçin.",
+        "options": {
+          "main_menu": "Ana Menü",
+          "nautilus": "Nautilus Dosya Yöneticisi",
+          "flow": "Flow Çalışma Alanı"
+        }
+      },
       "start_on_startup": {
         "label": "Başlangıçta Çalıştır",
         "description": "Sistem başlatıldığında uygulamayı otomatik olarak başlatır."
@@ -611,6 +620,7 @@
       "preferences": "Tercihler",
       "flags": "Rclone Bayrakları",
       "fileBrowser": "Dosya Gezgini",
+      "flowWorkspace": "Akış Çalışma Alanı",
       "shortcuts": "Klavye Kısayolları",
       "about": "RClone Yöneticisi Hakkında",
       "quickRemote": "Hızlı Uzak Bağlantı",
@@ -645,9 +655,30 @@
         "title": "Yapılandırma Parolası Gerekli",
         "content": "Rclone yapılandırmanız şifrelenmiş. Bu oturum için kilidini açmak üzere lütfen parolayı girin."
       },
+      "selectMainUi": {
+        "title": "Birincil Arayüzü Seçin",
+        "content": "Tercih ettiğiniz çalışma alanı düzenini seçin. Üst menüden veya ayarlardan istediğiniz zaman arayüzler arasında geçiş yapabilirsiniz."
+      },
       "ready": {
         "title": "Hazır!",
         "content": "Her şey ayarlandı ve kullanıma hazır. RClone Yöneticisi bulut depolamanızı kolayca yönetmenize yardımcı olacak. Yolculuğunuza başlamak için 'Başlayın'a tıklayın."
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "Klasik Kontrol Paneli",
+        "badge": "Varsayılan",
+        "description": "Uzak depolama bağlantıları, aktif transferler, hızlı eylemler ve sistem durumunu içeren sekmeli görünüm."
+      },
+      "nautilus": {
+        "title": "Dosya Tarayıcısı (Nautilus)",
+        "badge": "Dosya Yöneticisi",
+        "description": "Bulut dosyalarında gezinmek ve transfer etmek için tasarlanmış özel çift panelli dosya yönetimi arayüzü."
+      },
+      "flow": {
+        "title": "Flow Çalışma Alanı",
+        "badge": "İş Akışları",
+        "description": "Otomatik işleri, hızlı çalıştırma profillerini ve hat yürütmesini koordine etmek için etkileşimli görsel alan."
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "Yapılandırmayı Yükle",
       "exportConfig": "Yapılandırmayı Dışa Aktar",
       "toggleBrowser": "Dosya Tarayıcısını Aç/Kapat",
+      "openFlowOverlay": "Akış Çalışma Alanını Aç/Kapat",
       "closeDialog": "İletişim Kutusunu Kapat/İptal Et"
     },
     "categories": {

@@ -273,7 +273,17 @@ export class NautilusService extends TauriBaseService {
   }
 
   async openBrowserOverlay(remote: string | null, path: string | null): Promise<void> {
-    if (this.browserOverlayRef) return;
+    if (this.browserOverlayRef) {
+      if (remote) {
+        const remoteRoot = this.lookupRemote(remote);
+        if (path && remoteRoot) {
+          this.targetPath.set(this.pathService.getFullDisplayPath(remoteRoot, path));
+        } else {
+          this.selectedNautilusRemote.set(remote);
+        }
+      }
+      return;
+    }
 
     this._isBrowserOverlayOpen.set(true);
 
@@ -302,6 +312,14 @@ export class NautilusService extends TauriBaseService {
     this.animateAndDisposeOverlay(this.browserComponentRef, this.browserOverlayRef);
     this.browserComponentRef = null;
     this.browserOverlayRef = null;
+  }
+
+  toggleNautilusOverlay(remote: string | null = null, path: string | null = null): void {
+    if (this._isBrowserOverlayOpen()) {
+      this.closeBrowserOverlay();
+    } else {
+      void this.newNautilusWindow(remote, path);
+    }
   }
 
   openForRemote(remoteName: string): void {

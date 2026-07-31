@@ -1,17 +1,4 @@
 <form [formGroup]="configGroup()">
-  <!-- Operation Config (hidden for vfs / filter / backend) -->
-  @if (showOperationConfig()) {
-    <app-operation-config
-      [opFormGroup]="configGroup()"
-      [operationType]="flagType()"
-      [currentRemoteName]="currentRemoteName()"
-      [existingRemotes]="existingRemotes()"
-      [isNewRemote]="isNewRemote()"
-      [searchQuery]="searchQuery()"
-      [description]="operationDescriptionKey() | translate"
-    />
-  }
-
   <!-- Serve fields loading indicator -->
   @if (isServe() && isLoadingServeFields() && !showJsonMode()) {
     <div class="loading-container">

@@ -206,13 +206,29 @@
                   </mat-expansion-panel>
                 }
 
+                @if (!['vfs', 'filter', 'backend'].includes(flagType)) {
+                  <app-operation-config
+                    [opFormGroup]="$any(state.remoteConfigForm.get(flagType + 'Config'))"
+                    [operationType]="flagType"
+                    [currentRemoteName]="state.currentRemoteName()"
+                    [existingRemotes]="state.existingRemotes()"
+                    [isNewRemote]="!state.editTarget()"
+                    [searchQuery]="state.searchQuery()"
+                    [description]="
+                      (flagType === 'serve'
+                        ? 'wizards.remoteConfig.serveDescription'
+                        : 'wizards.remoteConfig.operationDescription'
+                      ) | translate
+                    "
+                  />
+                }
+
                 <app-flag-config-step
                   class="step"
                   [flagType]="flagType"
                   [form]="state.remoteConfigForm"
                   [existingRemotes]="state.existingRemotes()"
                   [currentRemoteName]="state.currentRemoteName()"
-                  [isNewRemote]="!state.editTarget()"
                   [searchQuery]="state.searchQuery()"
                   [dynamicFlagFields]="
                     flagType === 'serve'

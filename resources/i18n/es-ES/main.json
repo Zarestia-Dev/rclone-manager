@@ -410,6 +410,15 @@
         "label": "Idioma",
         "description": "Idioma que se utilizará para la interfaz de usuario."
       },
+      "default_view": {
+        "label": "Vista de inicio predeterminada",
+        "description": "Seleccione la interfaz principal que se abrirá al iniciar la aplicación.",
+        "options": {
+          "main_menu": "Menú principal",
+          "nautilus": "Navegador de archivos Nautilus",
+          "flow": "Espacio de trabajo Flow"
+        }
+      },
       "start_on_startup": {
         "label": "Iniciar al inicio",
         "description": "Iniciar automáticamente la aplicación cuando se inicia el sistema."
@@ -611,6 +620,7 @@
       "preferences": "Preferencias",
       "flags": "Banderas de Rclone",
       "fileBrowser": "Explorador de archivos",
+      "flowWorkspace": "Espacio de trabajo Flow",
       "shortcuts": "Atajos de teclado",
       "about": "Acerca de RClone Manager",
       "quickRemote": "Remoto rápido",
@@ -645,9 +655,30 @@
         "title": "Se requiere contraseña de configuración",
         "content": "Su configuración de rclone está cifrada. Introduzca la contraseña para desbloquearla para esta sesión."
       },
+      "selectMainUi": {
+        "title": "Elegir interfaz principal",
+        "content": "Selecciona el diseño de interfaz preferido. Puedes cambiar entre interfaces en cualquier momento desde el menú o los ajustes."
+      },
       "ready": {
         "title": "¡Listo para funcionar!",
         "content": "Todo está configurado y listo para usar. RClone Manager le ayudará a gestionar su almacenamiento en la nube con facilidad. Haga clic en 'Empezar' para comenzar su viaje."
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "Panel clásico",
+        "badge": "Predeterminado",
+        "description": "Vista general con conexiones remotas, transferencias activas, acciones rápidas y estado del sistema."
+      },
+      "nautilus": {
+        "title": "Navegador de archivos (Nautilus)",
+        "badge": "Gestor de archivos",
+        "description": "Interfaz de gestión de archivos de doble panel dedicada para navegar y transferir archivos remotos."
+      },
+      "flow": {
+        "title": "Espacio de trabajo Flow",
+        "badge": "Flujos de trabajo",
+        "description": "Panel visual interactivo para orquestar tareas automatizadas, ejecuciones rápidas y pipelines."
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "Cargar configuración",
       "exportConfig": "Exportar configuración",
       "toggleBrowser": "Alternar explorador de archivos",
+      "openFlowOverlay": "Alternar espacio de trabajo Flow",
       "closeDialog": "Cerrar diálogo/Cancelar acción"
     },
     "categories": {

@@ -1,0 +1,87 @@
+.flow-main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  background: var(--view-bg-color);
+  color: var(--view-fg-color);
+  overflow: hidden;
+}
+
+.flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--headerbar-bg-color);
+  border-bottom: 1px solid var(--border-color);
+
+  .header-branding {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .flow-logo {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: var(--accent-color);
+    }
+
+    .branding-text {
+      h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--window-fg-color);
+      }
+
+      .sub-text {
+        font-size: 11px;
+        color: var(--dim-color);
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+}
+
+.flow-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+
+  .flow-placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--dim-color);
+
+    .placeholder-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      opacity: 0.5;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+  }
+
+  app-workflow-builder,
+  app-quick-run {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}

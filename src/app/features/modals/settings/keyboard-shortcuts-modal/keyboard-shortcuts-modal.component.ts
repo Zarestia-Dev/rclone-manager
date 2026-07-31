@@ -111,6 +111,11 @@ export class KeyboardShortcutsModalComponent {
       category: 'shortcuts.categories.fileBrowser',
     },
     {
+      keys: 'Ctrl + Alt + F',
+      description: 'shortcuts.actions.openFlowOverlay',
+      category: 'shortcuts.categories.application',
+    },
+    {
       keys: 'Escape',
       description: 'shortcuts.actions.closeDialog',
       category: 'shortcuts.categories.navigation',
@@ -265,7 +270,7 @@ export class KeyboardShortcutsModalComponent {
   // Escape-to-close handled by EscapeCloseDirective (hostDirective).
 
   @HostListener('document:keydown.control.f')
-  onF3(): void {
+  onCtrlF(): void {
     this.toggleSearch();
     if (this.searchVisible()) {
       this.searchContainer()?.focus();

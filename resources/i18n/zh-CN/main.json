@@ -410,6 +410,15 @@
         "label": "语言",
         "description": "界面语言，默认使用系统语言"
       },
+      "default_view": {
+        "label": "默认启动视图",
+        "description": "选择启动应用时要打开的主界面视图。",
+        "options": {
+          "main_menu": "主菜单",
+          "nautilus": "Nautilus 文件浏览器",
+          "flow": "Flow 工作区"
+        }
+      },
       "start_on_startup": {
         "label": "开机自启",
         "description": "系统启动时自动运行本应用"
@@ -611,6 +620,7 @@
       "preferences": "偏好设置",
       "flags": "Rclone 标志",
       "fileBrowser": "文件浏览器",
+      "flowWorkspace": "Flow 工作区",
       "shortcuts": "快捷键",
       "about": "关于 RClone Manager",
       "quickRemote": "快速远程存储",
@@ -645,9 +655,30 @@
         "title": "需要配置密码",
         "content": "你的 Rclone 配置已加密，请输入密码以解锁本次会话。"
       },
+      "selectMainUi": {
+        "title": "选择首选主界面",
+        "content": "选择你喜欢的工作区界面布局。你可以随时通过菜单或设置切换界面。"
+      },
       "ready": {
         "title": "准备就绪！",
         "content": "一切已配置完成，可开始使用。RClone Manager 将帮你轻松管理云存储。点击“开始使用”进入。"
+      }
+    },
+    "uiOptions": {
+      "main_menu": {
+        "title": "经典控制台",
+        "badge": "默认",
+        "description": "包含远程连接、传输监控、快捷操作和系统状态的标签页总览。"
+      },
+      "nautilus": {
+        "title": "文件浏览器 (Nautilus)",
+        "badge": "文件管理器",
+        "description": "双面板文件管理界面，专门用于浏览和传输远程文件。"
+      },
+      "flow": {
+        "title": "Flow 工作区",
+        "badge": "工作流",
+        "description": "交互式可视化工作区，用于编排自动化任务与快捷运行。"
       }
     },
     "installButton": {
@@ -1640,6 +1671,7 @@
       "loadConfig": "加载配置",
       "exportConfig": "导出配置",
       "toggleBrowser": "显示/隐藏文件浏览器",
+      "openFlowOverlay": "切换 Flow 工作区",
       "closeDialog": "关闭对话框/取消操作"
     },
     "categories": {

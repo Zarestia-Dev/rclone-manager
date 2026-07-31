@@ -4,7 +4,7 @@
   animate.enter="onboarding-entrance-enter"
   animate.leave="onboarding-entrance-leave"
 >
-  @if (animationState() === 'loading') {
+  @if (isLoading()) {
     <app-loading-overlay
       animate.enter="fade-in-out-enter"
       animate.leave="fade-in-out-leave"
@@ -13,66 +13,121 @@
     ></app-loading-overlay>
   }
 
-  <div class="card-container" [class.onboarding-state-enter]="animationState() === 'visible'">
-    <div class="onboarding-header">
-      <div class="page-indicators">
-        @for (card of cards(); track $index; let i = $index) {
-          <div
-            class="indicator"
+  <div class="card-container" [class.onboarding-state-enter]="!isLoading()">
+    <div class="onboarding-header" data-tauri-drag-region>
+      <div class="page-indicators" role="tablist">
+        @for (card of cards(); track card.key; let i = $index) {
+          <button
+            type="button"
+            class="indicator-btn"
             [class.active]="i === currentCardIndex()"
             [class.completed]="i < currentCardIndex()"
-          ></div>
+            [disabled]="!canNavigateToCard(i)"
+            (click)="goToCard(i)"
+            [attr.aria-label]="card.title | translate"
+            [attr.title]="card.title | translate"
+          >
+            <span class="indicator-pill"></span>
+          </button>
         }
       </div>
     </div>
 
-    <div class="content-area">
-      <div class="card-content">
-        <div class="icon-container">
-          <img [src]="currentCard().image" alt="{{ currentCard().title | translate }} icon" />
-        </div>
-        <div class="text-content">
-          <h2 class="card-title">{{ currentCard().title | translate }}</h2>
-          <p class="card-description">{{ currentCard().content | translate }}</p>
-        </div>
+    <div class="content-viewport" [style.height.px]="viewportHeight()">
+      <div
+        class="slide-track"
+        [style.transform]="'translate3d(-' + currentCardIndex() * 100 + '%, 0, 0)'"
+      >
+        @for (card of cards(); track card.key; let i = $index) {
+          <div #slide class="slide-page" [class.active]="i === currentCardIndex()">
+            <div class="card-content">
+              <div class="icon-container">
+                <img [src]="card.image || defaultImage" alt="{{ card.title | translate }} icon" />
+              </div>
+              <div class="text-content">
+                <h2 class="card-title">{{ card.title | translate }}</h2>
+                <p class="card-description">{{ card.content | translate }}</p>
+              </div>
 
-        @switch (currentCard().key) {
-          @case ('selectConfig') {
-            <app-installation-options
-              class="form-section"
-              [mode]="'config'"
-              [disabled]="installing()"
-              [tabOptions]="[
-                { key: 'default', label: 'onboarding.options.default', icon: 'file' },
-                { key: 'custom', label: 'onboarding.options.custom', icon: 'folder' },
-              ]"
-              (dataChange)="onConfigOptionsChange($event)"
-              (validChange)="onConfigValidChange($event)"
-            ></app-installation-options>
-          }
-          @case ('passwordRequired') {
-            <app-password-manager
-              class="form-section"
-              [password]="configPassword()"
-              [hasError]="!!passwordValidationError()"
-              [storePassword]="true"
-              [isSubmitting]="isSubmittingPassword()"
-              [errorMessage]="passwordValidationError() || ''"
-              [showStoreOption]="false"
-              (passwordChange)="configPassword.set($event)"
-              (unlock)="submitConfigPassword()"
-            ></app-password-manager>
-          }
-          @case ('installRclone') {
-            <app-installation-options
-              class="form-section"
-              [mode]="'install'"
-              [disabled]="installing()"
-              [tabOptions]="onboardingTabOptions"
-              (dataChange)="onInstallationOptionsChange($event)"
-              (validChange)="onInstallationValidChange($event)"
-            ></app-installation-options>
-          }
+              @switch (card.key) {
+                @case ('selectConfig') {
+                  <app-installation-options
+                    class="form-section"
+                    [mode]="'config'"
+                    [disabled]="installing()"
+                    [tabOptions]="configTabOptions"
+                    (dataChange)="configData.set($event)"
+                    (validChange)="configValid.set($event)"
+                  ></app-installation-options>
+                }
+                @case ('passwordRequired') {
+                  <app-password-manager
+                    class="form-section"
+                    [password]="configPassword()"
+                    [hasError]="!!passwordValidationError()"
+                    [storePassword]="true"
+                    [isSubmitting]="isSubmittingPassword()"
+                    [errorMessage]="passwordValidationError() || ''"
+                    [showStoreOption]="false"
+                    (passwordChange)="configPassword.set($event)"
+                    (unlock)="submitConfigPassword()"
+                  ></app-password-manager>
+                }
+                @case ('installRclone') {
+                  <app-installation-options
+                    class="form-section"
+                    [mode]="'install'"
+                    [disabled]="installing()"
+                    [tabOptions]="installTabOptions"
+                    (dataChange)="installationData.set($event)"
+                    (validChange)="installationValid.set($event)"
+                  ></app-installation-options>
+                }
+                @case ('selectMainUi') {
+                  <div
+                    class="ui-selection-grid form-section"
+                    role="radiogroup"
+                    [attr.aria-label]="'onboarding.cards.selectMainUi.title' | translate"
+                  >
+                    @for (option of uiOptions; track option.value) {
+                      <button
+                        type="button"
+                        class="ui-option-card"
+                        [class.selected]="selectedMainUi() === option.value"
+                        (click)="selectMainUiOption(option.value)"
+                        role="radio"
+                        [attr.aria-checked]="selectedMainUi() === option.value"
+                      >
+                        <div class="option-header">
+                          <div
+                            class="option-icon-wrapper"
+                            [class.accent]="option.colorClass === 'accent'"
+                            [class.purple]="option.colorClass === 'purple'"
+                          >
+                            <mat-icon [svgIcon]="option.icon"></mat-icon>
+                          </div>
+                          <span
+                            class="option-badge"
+                            [class.accent]="option.colorClass === 'accent'"
+                            [class.purple]="option.colorClass === 'purple'"
+                          >
+                            {{ option.badgeKey | translate }}
+                          </span>
+                        </div>
+                        <div class="option-body">
+                          <h3 class="option-title">{{ option.titleKey | translate }}</h3>
+                          <p class="option-desc">{{ option.descKey | translate }}</p>
+                        </div>
+                        <div class="option-check">
+                          <mat-icon svgIcon="check-circle"></mat-icon>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
         }
       </div>
     </div>
@@ -90,76 +145,21 @@
         </button>
       }
 
-      @switch (currentAction()) {
-        @case ('install-rclone') {
-          <button
-            matButton="filled"
-            class="primary"
-            (click)="installRclone()"
-            [disabled]="!canInstall()"
-            [attr.title]="
-              !canInstall() ? ('onboarding.validation.completeInstallation' | translate) : ''
-            "
-          >
-            <mat-icon [svgIcon]="installing() ? 'spinner' : 'download'"></mat-icon>
-            {{ installButtonText() | translate }}
-          </button>
+      @let btn = primaryButton();
+      <button
+        matButton="filled"
+        class="primary"
+        (click)="btn.action()"
+        [disabled]="btn.disabled"
+        [attr.title]="btn.titleKey ? (btn.titleKey | translate) : ''"
+      >
+        @if (btn.icon) {
+          <mat-icon [svgIcon]="btn.icon"></mat-icon>
         }
-        @case ('install-plugin') {
-          <button
-            matButton="filled"
-            class="primary"
-            (click)="installMountPlugin()"
-            [disabled]="downloadingPlugin()"
-          >
-            <mat-icon [svgIcon]="downloadingPlugin() ? 'spinner' : 'download'"></mat-icon>
-            {{
-              (downloadingPlugin()
-                ? 'onboarding.actions.installingPlugin'
-                : 'onboarding.actions.installPlugin'
-              ) | translate
-            }}
-          </button>
+        @if (btn.labelKey) {
+          {{ btn.labelKey | translate }}
         }
-        @case ('config-next') {
-          <button
-            matButton="filled"
-            class="primary"
-            (click)="onConfigNext()"
-            [disabled]="!configValid()"
-            [attr.title]="!configValid() ? ('onboarding.validation.selectConfig' | translate) : ''"
-          >
-            {{ 'onboarding.actions.next' | translate }}
-            <mat-icon svgIcon="right-arrow"></mat-icon>
-          </button>
-        }
-        @case ('unlock') {
-          <button
-            matButton="filled"
-            class="primary"
-            (click)="submitConfigPassword()"
-            [disabled]="!configPassword() || isSubmittingPassword()"
-          >
-            @if (isSubmittingPassword()) {
-              <mat-icon svgIcon="spinner"></mat-icon>
-            } @else {
-              <span>{{ 'onboarding.actions.unlock' | translate }}</span>
-            }
-          </button>
-        }
-        @case ('finish') {
-          <button matButton="filled" class="primary" (click)="completeOnboarding()">
-            <mat-icon svgIcon="check-circle"></mat-icon>
-            {{ 'onboarding.actions.getStarted' | translate }}
-          </button>
-        }
-        @default {
-          <button matButton="filled" class="primary" (click)="nextCard()">
-            {{ 'onboarding.actions.next' | translate }}
-            <mat-icon svgIcon="right-arrow"></mat-icon>
-          </button>
-        }
-      }
+      </button>
     </div>
   </div>
 </div>
