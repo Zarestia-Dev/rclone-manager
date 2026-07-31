@@ -17,9 +17,6 @@ use crate::{
     },
 };
 
-#[cfg(not(feature = "librclone"))]
-use crate::rclone::backend::types::Backend;
-
 #[must_use]
 pub fn transport(app: &AppHandle) -> std::sync::Arc<dyn crate::rclone::backend::RcloneTransport> {
     app.state::<RcloneState>().transport.clone()
@@ -106,19 +103,6 @@ pub async fn is_directory(
         .unwrap_or(false);
 
     Ok(is_dir)
-}
-
-/// Return the URL for a configuration operation on the given backend.
-///
-/// Local backends route config calls through the OAuth process port so that
-/// the OAuth flow can intercept them. Remote backends use the main API port.
-#[cfg(not(feature = "librclone"))]
-pub fn get_config_url(backend: &Backend, operation: &str) -> String {
-    if backend.is_local {
-        backend.oauth_url_for(operation)
-    } else {
-        backend.url_for(operation)
-    }
 }
 
 /// Trait for creating parameter structs from configuration values

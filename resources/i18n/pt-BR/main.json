@@ -2136,8 +2136,7 @@
     "oauth": {
       "manualOpenPrompt": "Se o navegador não abriu automaticamente, utilize esse link de autenticação:",
       "openLink": "Abrir Link",
-      "copyLink": "Copiar Link",
-      "remoteFallback": "O link de OAuth manual não está disponível aqui para backends remotos. Verifique os logs/saída do backend remoto."
+      "copyLink": "Copiar Link"
     },
     "remoteConfig": {
       "aria": {

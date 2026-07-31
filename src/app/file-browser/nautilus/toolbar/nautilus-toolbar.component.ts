@@ -27,6 +27,7 @@ import { PathService } from 'src/app/services/infrastructure/platform/path.servi
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
+import { isMobile as isMobileOS } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-nautilus-toolbar',
@@ -49,6 +50,7 @@ export class NautilusToolbarComponent {
   protected readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
   private readonly injector = inject(Injector);
+  protected readonly isMobileOS = isMobileOS;
 
   // --- Inputs ---
   public readonly isMobile = input.required<boolean>();

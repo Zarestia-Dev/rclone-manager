@@ -11,7 +11,7 @@ pub struct RcloneState {
     ///
     /// On the HTTP transport (desktop), this is used by [`RcHttpBackend`] and
     /// by a few remaining direct-HTTP call sites (connectivity checks, file
-    /// streaming in the protocol handler, OAuth helper, multipart upload).
+    /// streaming in the protocol handler, multipart upload).
     /// On the librclone transport (mobile), this field is unused by rclone
     /// calls but may still be needed for non-rclone HTTP (alerts dispatch,
     /// github_client) — those callers should get their own client rather
@@ -29,9 +29,6 @@ pub struct RcloneState {
 
     /// Flag indicating the app is shutting down
     pub is_shutting_down: AtomicBool,
-    /// OAuth process state for interactive remote creation
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_process: tokio::sync::Mutex<Option<Child>>,
     /// Flag indicating if the system poller is running
     pub poller_running: AtomicBool,
     /// Flag indicating if the system poller is visible

@@ -120,9 +120,6 @@ macro_rules! MASTER_COMMAND_LIST {
             (create_remote, $crate::rclone::commands::remote::create_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (update_remote, $crate::rclone::commands::remote::update_remote, [name: String, parameters: std::collections::HashMap<String, serde_json::Value>, opt: Option<serde_json::Value>]);
             (delete_remote, $crate::rclone::commands::remote::delete_remote, [name: String]);
-            #[cfg(feature = "librclone")]
-            (cancel_oauth, $crate::rclone::commands::mobile_oauth::cancel_oauth, []);
-            #[cfg(not(feature = "librclone"))]
             (cancel_oauth, $crate::rclone::commands::system::cancel_oauth, []);
             #[cfg(not(feature = "librclone"))]
             (quit_rclone_engine, $crate::rclone::commands::system::quit_rclone_engine, []);

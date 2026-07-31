@@ -19,6 +19,15 @@
   </div>
 
   <div class="bar-right">
+    @if (!isMobileOS()) {
+      <button
+        class="nav-button"
+        (click)="popOutToWindow.emit()"
+        [title]="'nautilus.contextMenu.openNewWindow' | translate"
+      >
+        <mat-icon svgIcon="open-link"></mat-icon>
+      </button>
+    }
     <button class="nav-button" (click)="setLayout.emit(oppositeLayout())" title="Toggle Layout">
       <mat-icon [svgIcon]="oppositeLayout()"></mat-icon>
     </button>

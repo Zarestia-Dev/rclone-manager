@@ -95,10 +95,6 @@ pub struct AddBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_port: Option<u16>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_host: Option<String>,
     pub copy_backend_from: Option<String>,
     pub copy_remotes_from: Option<String>,
 }
@@ -128,15 +124,6 @@ pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(),
     backend.host = params.host;
     backend.port = params.port;
     backend.config_path = params.config_path;
-
-    #[cfg(not(feature = "librclone"))]
-    if let Some(port) = params.oauth_port {
-        backend.oauth_port = port;
-    }
-    #[cfg(not(feature = "librclone"))]
-    if let Some(host) = params.oauth_host.filter(|h| !h.is_empty()) {
-        backend.oauth_host = host;
-    }
 
     if let (Some(u), Some(p)) = (&params.username, &params.password)
         && !u.is_empty()
@@ -180,10 +167,6 @@ pub struct UpdateBackendParams {
     pub password: Option<String>,
     pub config_password: Option<String>,
     pub config_path: Option<PathBuf>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_port: Option<u16>,
-    #[cfg(not(feature = "librclone"))]
-    pub oauth_host: Option<String>,
 }
 
 #[tauri::command]
@@ -206,13 +189,6 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         port: params.port,
         username: None,
         password: None,
-        #[cfg(not(feature = "librclone"))]
-        oauth_port: params.oauth_port.unwrap_or(existing.oauth_port),
-        #[cfg(not(feature = "librclone"))]
-        oauth_host: params
-            .oauth_host
-            .filter(|h| !h.is_empty())
-            .unwrap_or(existing.oauth_host),
         config_password: existing.config_password.clone(),
         config_path: params.config_path,
     };
@@ -579,18 +555,11 @@ mod tests {
             "name": "Local",
             "host": "0.0.0.0",
             "port": 51900,
-            "oauthPort": 53682,
-            "oauthHost": "my-server.local",
             "configPassword": "secret",
             "configPath": "/config/rclone.conf"
         }"#;
 
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, Some(53682));
-            assert_eq!(params.oauth_host.as_deref(), Some("my-server.local"));
-        }
         assert_eq!(params.config_password.as_deref(), Some("secret"));
         assert_eq!(
             params.config_path.as_ref(),
@@ -604,17 +573,10 @@ mod tests {
             "name": "MyRemote",
             "host": "192.168.1.100",
             "port": 51900,
-            "isLocal": false,
-            "oauthPort": 53682,
-            "oauthHost": "192.168.1.100"
+            "isLocal": false
         }"#;
 
         let params: AddBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, Some(53682));
-            assert_eq!(params.oauth_host.as_deref(), Some("192.168.1.100"));
-        }
         assert!(!params.is_local);
     }
 
@@ -622,11 +584,6 @@ mod tests {
     fn test_missing_optional_fields_use_none() {
         let json = r#"{"name":"Local","host":"0.0.0.0","port":51900}"#;
         let params: UpdateBackendParams = serde_json::from_str(json).unwrap();
-        #[cfg(not(feature = "librclone"))]
-        {
-            assert_eq!(params.oauth_port, None);
-            assert_eq!(params.oauth_host, None);
-        }
         assert_eq!(params.username, None);
         assert_eq!(params.password, None);
     }

@@ -131,9 +131,8 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     Ok(pids)
 }
 
-/// Kill all rclone processes on managed ports
-pub fn kill_all_rclone_processes(api_port: u16, oauth_port: u16) -> Result<(), String> {
+/// Kill all rclone processes on the managed API port.
+pub fn kill_all_rclone_processes(api_port: u16) -> Result<(), String> {
     let _ = kill_processes_on_port(api_port);
-    let _ = kill_processes_on_port(oauth_port);
     Ok(())
 }

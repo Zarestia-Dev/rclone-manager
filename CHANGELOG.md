@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **SAF VFS Mount Bridge**: Integrated a SAF VFS mount bridge enabling in-process virtual filesystem access for Android storage providers.
   - **Android Background Keep-Alive & Boot Receiver**: Added `RcloneKeepAliveService` for persistent background mounts and `ResumeUploadsBootReceiver` for boot initialization on Android.
 
+### Changed
+- **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
+- **Minimum Supported Rclone Version**: Updated minimum supported Rclone version to `1.75.0`.
+
 ## [0.3.1] - 2026-07-27
 
 ### Added

@@ -1,15 +1,13 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RemoteManagementService } from '../../services/remote/remote-management.service';
 import { EventListenersService } from '../infrastructure/system/event-listeners.service';
-import { BackendService } from '../infrastructure/system/backend.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthStateService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly backendService = inject(BackendService);
 
   private readonly _isAuthInProgress = signal<boolean>(false);
   private readonly _currentRemoteName = signal<string | null>(null);
@@ -21,17 +19,6 @@ export class AuthStateService {
   public readonly isAuthInProgress = this._isAuthInProgress.asReadonly();
   public readonly isAuthCancelled = this._isAuthCancelled.asReadonly();
   public readonly oauthUrl = this._oauthUrl.asReadonly();
-  public readonly isActiveBackendLocal = computed(() => {
-    const activeBackend = this.backendService.activeBackend();
-    if (activeBackend === 'Local') return true;
-    return (
-      this.backendService.backends().find(backend => backend.name === activeBackend)?.isLocal ??
-      true
-    );
-  });
-  public readonly shouldShowRemoteOAuthFallback = computed(
-    () => this._isAuthInProgress() && !this.isActiveBackendLocal() && !this._oauthUrl()
-  );
 
   constructor() {
     this.eventListenersService
@@ -71,12 +58,10 @@ export class AuthStateService {
 
       console.debug('Cancelling auth for remote:', remoteName, 'in edit mode:', isEditMode);
 
-      if (this.isActiveBackendLocal()) {
-        try {
-          await this.remoteManagementService.quitOAuth();
-        } catch (error) {
-          console.warn('Error quitting local OAuth process:', error);
-        }
+      try {
+        await this.remoteManagementService.quitOAuth();
+      } catch (error) {
+        console.warn('Error quitting OAuth process:', error);
       }
 
       // Delete remote if it's not in edit mode

@@ -404,8 +404,6 @@ fn setup_app(
         client: reqwest::Client::new(),
         transport,
         is_shutting_down: AtomicBool::new(false),
-        #[cfg(not(feature = "librclone"))]
-        oauth_process: tokio::sync::Mutex::new(None),
         poller_running: AtomicBool::new(false),
         poller_visible: AtomicBool::new(true),
         initial_startup: AtomicBool::new(true),

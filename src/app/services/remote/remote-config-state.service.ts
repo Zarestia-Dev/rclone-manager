@@ -185,7 +185,6 @@ export class RemoteConfigStateService {
   readonly isAuthInProgress = this.authStateService.isAuthInProgress;
   readonly isAuthCancelled = this.authStateService.isAuthCancelled;
   readonly oauthUrl = this.authStateService.oauthUrl;
-  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
   readonly interactiveFlowState = this.orchestrator.interactiveFlowState;
 
   readonly isRemoteConfigLoading = signal(false);

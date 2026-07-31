@@ -180,7 +180,6 @@ export class QuickAddRemoteComponent {
   readonly oauthUrl = this.authStateService.oauthUrl;
   // Delegated to orchestrator (was a duplicate computed — now consistent with the modal).
   readonly oauthHelperUrl = this.orchestrator.oauthHelperUrl;
-  readonly shouldShowRemoteOAuthFallback = this.authStateService.shouldShowRemoteOAuthFallback;
 
   // ── Computed ─────────────────────────────────────────────────────────────
 

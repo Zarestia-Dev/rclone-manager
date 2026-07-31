@@ -2136,8 +2136,7 @@
     "oauth": {
       "manualOpenPrompt": "Tarayıcı otomatik olarak açılmadıysa bu kimlik doğrulama bağlantısını kullanın:",
       "openLink": "Bağlantıyı Aç",
-      "copyLink": "Bağlantıyı Kopyala",
-      "remoteFallback": "Uzak backend'lerde manuel OAuth bağlantısı burada mevcut değil. Uzak backend loglarını/çıktılarını kontrol edin."
+      "copyLink": "Bağlantıyı Kopyala"
     },
     "remoteConfig": {
       "aria": {

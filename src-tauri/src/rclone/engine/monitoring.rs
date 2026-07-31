@@ -35,11 +35,6 @@ impl RcApiEngine {
         Self::check_api_health_with_status(app).await
     }
 
-    #[cfg(not(feature = "librclone"))]
-    pub async fn is_api_healthy(&self, app: &AppHandle) -> bool {
-        self.probe_api_health(app).await.is_healthy()
-    }
-
     /// Check if the process is still alive using native PID checking.
     #[must_use]
     #[cfg(not(feature = "librclone"))]

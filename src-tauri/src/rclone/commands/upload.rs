@@ -383,7 +383,7 @@ pub async fn execute_upload_batch(
                     .to_string();
 
                 let result = if backend.is_local
-                    || matches!(transport.kind(), TransportKind::Librclone)
+                    || matches!(transport.kind().await, TransportKind::Librclone)
                 {
                     let dst_remote = if remote_dir.is_empty() {
                         base_filename.clone()
@@ -594,7 +594,7 @@ pub async fn upload_file(
         format!("{path}/")
     };
 
-    match transport.kind() {
+    match transport.kind().await {
         // Desktop: use reqwest::multipart to stream the file bytes directly.
         TransportKind::HttpDaemon => {
             let backend_manager = app.state::<BackendManager>();

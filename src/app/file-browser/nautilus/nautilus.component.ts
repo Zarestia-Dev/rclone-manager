@@ -598,6 +598,7 @@ export class NautilusComponent implements OnInit {
     const remote = this.tabSvc.activeRemote()?.name ?? null;
     const path = this.tabSvc.activePath() ?? null;
     void this.nautilusService.newNautilusWindow(remote, path, true);
+    this.closeOverlay.emit(null);
   }
 
   protected navigateTo(item: FileBrowserItem, isNewTab = false): void {

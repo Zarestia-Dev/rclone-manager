@@ -2136,8 +2136,7 @@
     "oauth": {
       "manualOpenPrompt": "ブラウザが自動的に開かない場合は、以下の認証リンクを使用してください:",
       "openLink": "リンクを開く",
-      "copyLink": "リンクをコピー",
-      "remoteFallback": "リモートバックエンドでは手動OAuthリンクをここでは利用できません。リモートバックエンドのログ/出力を確認してください。"
+      "copyLink": "リンクをコピー"
     },
     "remoteConfig": {
       "aria": {

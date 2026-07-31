@@ -118,7 +118,7 @@
   ) {
     <app-window-controls></app-window-controls>
   } @else {
-    @if (!isMobile()) {
+    @if (!isMobileOS()) {
       <button
         class="nav-button"
         [title]="'nautilus.contextMenu.openNewWindow' | translate"

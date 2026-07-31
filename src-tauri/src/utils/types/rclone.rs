@@ -56,9 +56,3 @@ pub struct RcloneCoreVersion {
     pub linking: String,
     pub go_tags: String,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ProcessKind {
-    Engine,
-    OAuth,
-}

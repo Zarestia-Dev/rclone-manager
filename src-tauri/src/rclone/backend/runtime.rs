@@ -32,8 +32,16 @@ pub struct RuntimeInfo {
     /// OS (e.g. "linux", "windows")
     pub os: Option<String>,
     /// Architecture (e.g. "amd64", "arm64")
+    ///
+    /// Populated by `fetch_runtime_info` but currently not surfaced to the
+    /// UI — kept for future diagnostics.
+    #[allow(dead_code)]
     pub arch: Option<String>,
     /// Go version (e.g. "go1.22.1")
+    ///
+    /// Populated by `fetch_runtime_info` but currently not surfaced to the
+    /// UI — kept for future diagnostics.
+    #[allow(dead_code)]
     pub go_version: Option<String>,
     /// Process ID of rclone
     pub pid: Option<u32>,
@@ -59,17 +67,14 @@ impl RuntimeInfo {
         }
     }
 
-    /// Set connection status
-    pub fn set_status(&mut self, status: RuntimeStatus) {
-        self.status = status;
-    }
-
     /// Check if the backend is connected
+    #[must_use]
     pub fn is_connected(&self) -> bool {
         matches!(self.status, RuntimeStatus::Connected)
     }
 
     /// Get error message if status is error
+    #[must_use]
     pub fn error_message(&self) -> Option<String> {
         if let RuntimeStatus::Error(ref msg) = self.status {
             Some(msg.clone())
@@ -92,15 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn test_runtime_info_connected() {
-        let mut info = RuntimeInfo::new();
-        info.set_status(RuntimeStatus::Connected);
-        assert_eq!(info.status, RuntimeStatus::Connected);
-        assert!(info.is_connected());
-    }
-
-    #[test]
-    fn test_runtime_info_error() {
+    fn test_runtime_info_with_error() {
         let info = RuntimeInfo::with_error("Connection timeout");
         assert!(matches!(info.status, RuntimeStatus::Error(_)));
         assert!(!info.is_connected());

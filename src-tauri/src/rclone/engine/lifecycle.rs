@@ -144,7 +144,7 @@ impl From<&EnginePhase> for EngineStatusInfo {
 
 impl EngineStatusInfo {
     #[must_use]
-    pub fn is_inactive(self) -> bool {
+    pub fn should_skip_poll(self) -> bool {
         !self.running || self.updating || self.should_exit
     }
 }
@@ -369,7 +369,6 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 }
                 Err(WaitReadyError::RcAuthFailed) => {
                     error!("Newly spawned rcd rejected our credentials");
-                    engine.process = None;
                     let _ = engine.kill_process(app).await;
                     engine.mark_auth_failed(
                         "Spawned rcd rejected credentials (HTTP 401)".to_string(),
@@ -378,30 +377,26 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
                 }
                 Err(WaitReadyError::ProcessDied) => {
                     error!("Rclone process exited during startup");
-                    engine.process = None;
                     let _ = engine.kill_process(app).await;
                     handle_start_failure(
                         engine,
                         app,
                         "Rclone process exited during startup (check rclone log)".to_string(),
-                    )
-                    .await;
+                    );
                 }
                 Err(WaitReadyError::Timeout) => {
                     error!("Failed to start Rclone API within {API_READY_TIMEOUT_SECS}s");
-                    engine.process = None;
                     let _ = engine.kill_process(app).await;
                     handle_start_failure(
                         engine,
                         app,
                         format!("Timeout waiting for API readiness ({API_READY_TIMEOUT_SECS}s)"),
-                    )
-                    .await;
+                    );
                 }
             }
         }
         Err(e) => {
-            handle_start_failure(engine, app, e.to_string()).await;
+            handle_start_failure(engine, app, e.to_string());
         }
     }
 }
@@ -417,12 +412,12 @@ async fn start_librclone(engine: &mut RcApiEngine, app: &AppHandle) {
         }
         Err(e) => {
             error!("librclone transport not responsive: {e}");
-            handle_start_failure(engine, app, format!("librclone init failed: {e}")).await;
+            handle_start_failure(engine, app, format!("librclone init failed: {e}"));
         }
     }
 }
 
-async fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
+fn handle_start_failure(engine: &mut RcApiEngine, app: &AppHandle, e: String) {
     error!("Failed to spawn Rclone process: {e}");
 
     if !engine.phase.is_failed() {

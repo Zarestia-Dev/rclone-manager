@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe } from '@ngx-translate/core';
+import { isMobile as isMobileOS } from 'src/app/services/infrastructure/platform/api-client.service';
 
 @Component({
   selector: 'app-nautilus-bottom-bar',
@@ -29,6 +30,9 @@ export class NautilusBottomBarComponent {
   public readonly setLayout = output<'grid' | 'list'>();
   public readonly confirmSelection = output<void>();
   public readonly toggleSidebar = output<void>();
+  public readonly popOutToWindow = output<void>();
+
+  protected readonly isMobileOS = isMobileOS;
 
   protected readonly oppositeLayout = computed((): 'grid' | 'list' =>
     this.layout() === 'grid' ? 'list' : 'grid'

@@ -175,17 +175,12 @@ async fn initialize_caches(app_handle: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Timeout for backend connectivity checks (10 seconds)
-/// After this timeout, the app will fallback to Local backend
 const BACKEND_CONNECTIVITY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
-/// Phase 2: Connectivity - Check if the active backend is reachable; fallback to Local if not.
-/// Also spawns background checks for other backends.
 async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     let backend_manager = app_handle.state::<BackendManager>();
 
     let active_name = backend_manager.get_active_name().await;
-    let transport = app_handle.state::<RcloneState>().transport.clone();
 
     if crate::rclone::backend::types::Backend::is_local_name(&active_name) {
         info!(
@@ -197,14 +192,27 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
                 crate::rclone::backend::runtime::RuntimeStatus::Connected,
             )
             .await;
-    } else if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
-        &backend_manager,
-        &*transport,
-        BACKEND_CONNECTIVITY_TIMEOUT,
-    )
-    .await
-    {
-        error!("Critical startup failure: {e}");
+    } else {
+        info!(
+            "Active backend '{active_name}' is remote — spawning connectivity probe in background so UI can load immediately"
+        );
+        let app_clone = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            let backend_manager = app_clone.state::<BackendManager>();
+            let transport = app_clone.state::<RcloneState>().transport.clone();
+            if let Err(e) = crate::rclone::backend::connectivity::ensure_connectivity(
+                &backend_manager,
+                &*transport,
+                BACKEND_CONNECTIVITY_TIMEOUT,
+            )
+            .await
+            {
+                error!("Remote backend connectivity check failed: {e}");
+                // Status is already set to Error(_) inside ensure_connectivity.
+            } else {
+                info!("Remote backend connectivity check completed");
+            }
+        });
     }
 
     let app_handle_clone = app_handle.clone();

@@ -5,7 +5,6 @@ use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::SystemStatusPayload;
-use crate::utils::types::rclone::ProcessKind;
 use crate::utils::types::state::{RcApiEngine, RcloneState};
 use crate::utils::{
     process::process_manager::kill_processes_on_port,
@@ -24,7 +23,7 @@ impl RcApiEngine {
 
         self.current_api_port = backend.port;
 
-        let engine_cmd = match build_rclone_process_command(app, ProcessKind::Engine).await {
+        let engine_cmd = match build_rclone_process_command(app).await {
             Ok(cmd) => cmd,
             Err(e) => {
                 error!("Failed to create engine command: {e}");

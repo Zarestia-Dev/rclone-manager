@@ -121,13 +121,6 @@
         </section>
       }
 
-      @if (state.shouldShowRemoteOAuthFallback()) {
-        <section class="oauth-helper" aria-live="polite">
-          <mat-icon svgIcon="info"></mat-icon>
-          <span>{{ 'modals.oauth.remoteFallback' | translate }}</span>
-        </section>
-      }
-
       @if (flow.isActive && flow.question) {
         <section class="step-container interactive" aria-live="polite" aria-busy="true">
           <app-interactive-config-step

@@ -36,7 +36,7 @@ impl RcloneLibBackend {
 
 #[async_trait]
 impl RcloneTransport for RcloneLibBackend {
-    fn kind(&self) -> TransportKind {
+    async fn kind(&self) -> TransportKind {
         TransportKind::Librclone
     }
 
@@ -55,10 +55,10 @@ impl RcloneTransport for RcloneLibBackend {
         }
 
         let input_clone = input.clone();
-        tokio::task::spawn_blocking(move || rclone_ffi::rpc(&input_clone))
+        let join_result = tokio::task::spawn_blocking(move || rclone_ffi::rpc(&input_clone))
             .await
-            .map_err(|e| BackendError::Other(format!("librclone FFI join error: {e}")))?
-            .map(Ok)?
+            .map_err(|e| BackendError::Other(format!("librclone FFI join error: {e}")))?;
+        join_result
     }
 
     async fn read_file(

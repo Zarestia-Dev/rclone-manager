@@ -8,7 +8,7 @@ use crate::utils::{
     types::events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
 };
 
-pub const MIN_RCLONE_VERSION: &str = "1.70.0";
+pub const MIN_RCLONE_VERSION: &str = "1.75.0";
 
 fn resolve_rclone_binary(app: &AppHandle, override_path: Option<&std::path::Path>) -> PathBuf {
     if let Some(path) = override_path
@@ -156,12 +156,12 @@ pub fn read_rclone_binary(app: &AppHandle) -> PathBuf {
         return configured;
     }
 
-    if let Ok(p) = which::which("rclone") {
+    if let Ok(p) = which::which(RCLONE_EXECUTABLE) {
         info!("Using system rclone at {}", p.display());
         p
     } else {
         error!("rclone binary not found in PATH or at configured location");
-        PathBuf::from("rclone")
+        PathBuf::from(RCLONE_EXECUTABLE)
     }
 }
 

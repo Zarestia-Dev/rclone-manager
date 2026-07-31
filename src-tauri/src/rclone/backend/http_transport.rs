@@ -59,7 +59,7 @@ fn classify_error(endpoint: &str, e: &str) -> BackendError {
 
 #[async_trait]
 impl RcloneTransport for RcHttpBackend {
-    fn kind(&self) -> TransportKind {
+    async fn kind(&self) -> TransportKind {
         TransportKind::HttpDaemon
     }
 
@@ -69,34 +69,6 @@ impl RcloneTransport for RcHttpBackend {
             .make_request(&client, reqwest::Method::POST, endpoint, payload, None)
             .await
             .map_err(|e| classify_error(endpoint, e.as_str()))?;
-        response
-            .json::<Value>()
-            .await
-            .map_err(|e| BackendError::Other(format!("Failed to parse response: {e}")))
-    }
-
-    async fn rpc_with_timeout(
-        &self,
-        endpoint: &str,
-        payload: Option<&Value>,
-        timeout: std::time::Duration,
-    ) -> Result<Value, BackendError> {
-        let (backend, client) = self.get_backend_and_client().await?;
-        let response = backend
-            .make_request(
-                &client,
-                reqwest::Method::POST,
-                endpoint,
-                payload,
-                Some(timeout),
-            )
-            .await
-            .map_err(|e| {
-                if e.contains("operation timed out") || e.contains("timed out") {
-                    return BackendError::Timeout(timeout);
-                }
-                classify_error(endpoint, e.as_str())
-            })?;
         response
             .json::<Value>()
             .await

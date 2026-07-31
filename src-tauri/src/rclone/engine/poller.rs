@@ -14,14 +14,22 @@ use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::{SystemStatus, SystemStatusPayload};
 use crate::utils::types::state::{EngineState, RcloneState};
 
+/// Initial ticks at 1s after the engine becomes healthy, so the UI gets
+/// fresh data quickly when the user opens the window or after a job starts.
 const BURST_TICK_COUNT: u32 = 5;
+/// Poller tick when the UI is visible and no jobs are running.
+const POLL_VISIBLE_IDLE: Duration = Duration::from_secs(5);
+/// Poller tick when the UI is hidden (window minimized) and no jobs are running.
+const POLL_HIDDEN: Duration = Duration::from_secs(10);
+/// Poller tick when jobs are running or we're in burst mode.
+const POLL_ACTIVE: Duration = Duration::from_secs(1);
 
 #[tauri::command]
 pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
 ) -> Result<SystemStatusPayload, String> {
     let status = get_engine_status(&app_handle).await;
-    if status.is_inactive() {
+    if status.should_skip_poll() {
         return Ok(SystemStatusPayload::inactive());
     }
 
@@ -55,28 +63,24 @@ pub fn start_system_poller(app_handle: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         debug!("Starting unified system poller");
-        let mut has_active_jobs = false;
         let mut burst_ticks = BURST_TICK_COUNT;
         let mut prev_visible = true;
-        let mut interval = time::interval(Duration::from_secs(1));
+        let mut has_active_jobs = false;
 
         loop {
-            interval.tick().await;
+            time::sleep(POLL_ACTIVE).await;
 
             let state = app_handle.state::<RcloneState>();
             if !state.poller_running.load(Ordering::Acquire) {
                 debug!("Stopping system poller");
                 break;
             }
-
             if state.is_shutting_down() {
                 break;
             }
 
             let status = get_engine_status(&app_handle).await;
-            let should_skip = status.is_inactive();
-
-            if should_skip {
+            if status.should_skip_poll() {
                 burst_ticks = BURST_TICK_COUNT;
                 if !status.running {
                     let _ = app_handle.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
@@ -90,13 +94,19 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 continue;
             }
 
-            if state.initial_startup.load(Ordering::Acquire) {
+            if app_handle
+                .state::<RcloneState>()
+                .initial_startup
+                .load(Ordering::Acquire)
+            {
                 debug!("Skipping poll during initial startup");
                 continue;
             }
 
-            let is_visible = state.poller_visible.load(Ordering::Relaxed);
-
+            let is_visible = app_handle
+                .state::<RcloneState>()
+                .poller_visible
+                .load(Ordering::Relaxed);
             if is_visible && !prev_visible {
                 debug!("Visibility restored, triggering burst mode");
                 burst_ticks = BURST_TICK_COUNT;
@@ -106,15 +116,17 @@ pub fn start_system_poller(app_handle: AppHandle) {
             match perform_batch_poll(&app_handle).await {
                 Ok(payload) => {
                     has_active_jobs = payload.has_active_jobs;
-                    burst_ticks = burst_ticks.saturating_sub(1);
+                    if burst_ticks > 0 {
+                        burst_ticks = burst_ticks.saturating_sub(1);
+                    }
                     let _ = app_handle.emit(SYSTEM_STATUS, payload);
                 }
-                Err(e) => {
-                    if is_auth_error(&e) {
-                        error!("Poller batch failed with auth error (not restarting): {e}");
-                        mark_engine_auth_failed(&app_handle, e).await;
+                Err(batch_err) => {
+                    if is_auth_error(&batch_err) {
+                        error!("Poller batch failed with auth error (not restarting): {batch_err}");
+                        mark_engine_auth_failed(&app_handle, batch_err).await;
                     } else {
-                        error!("Poller batch failed, restarting engine: {e}");
+                        error!("Poller batch failed, restarting engine: {batch_err}");
                         crate::rclone::engine::lifecycle::mark_engine_dead(&app_handle).await;
                         start_engine_if_not_running(&app_handle).await;
                     }
@@ -123,21 +135,13 @@ pub fn start_system_poller(app_handle: AppHandle) {
                 }
             }
 
-            let new_duration = if burst_ticks > 0 {
-                Duration::from_secs(1)
-            } else if !is_visible {
-                Duration::from_secs(10)
-            } else if has_active_jobs {
-                Duration::from_secs(1)
-            } else {
-                Duration::from_secs(5)
-            };
-
-            if interval.period() != new_duration {
-                debug!(
-                    "Adjusting poller interval to {new_duration:?} (burst_ticks: {burst_ticks})"
-                );
-                interval = time::interval_at(time::Instant::now() + new_duration, new_duration);
+            if burst_ticks == 0 && !has_active_jobs {
+                let delay = if is_visible {
+                    POLL_VISIBLE_IDLE
+                } else {
+                    POLL_HIDDEN
+                };
+                time::sleep(delay).await;
             }
         }
 
@@ -149,7 +153,9 @@ pub fn start_system_poller(app_handle: AppHandle) {
 }
 
 fn is_auth_error(err: &str) -> bool {
-    err.contains("HTTP 401") || err.contains("HTTP 403")
+    (err.contains("-> HTTP 401") || err.contains("-> HTTP 403"))
+        || err.contains("HTTP 401") // back-compat for older callers
+        || err.contains("HTTP 403")
 }
 
 async fn mark_engine_auth_failed(app: &AppHandle, raw_error: String) {
