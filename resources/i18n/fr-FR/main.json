@@ -1352,10 +1352,6 @@
       "profiles": {
         "title": "Profils"
       },
-      "legacy": {
-        "title": "Ancienne sauvegarde détectée",
-        "description": "Cette sauvegarde a été créée avant l’introduction du système de profil. Elle sera restaurée dans le profil par défaut."
-      },
       "options": "Restaurer les options",
       "scope": {
         "all": "Restaurer tout",

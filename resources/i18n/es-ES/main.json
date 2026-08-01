@@ -1352,10 +1352,6 @@
       "profiles": {
         "title": "Perfiles"
       },
-      "legacy": {
-        "title": "Copia de seguridad antigua detectada",
-        "description": "Esta copia de seguridad se creó antes de que se introdujera el sistema de perfiles. Se restaurará al perfil 'predeterminado'."
-      },
       "options": "Opciones de restauración",
       "scope": {
         "all": "Restaurar todo",

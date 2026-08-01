@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
 - **Minimum Supported Rclone Version**: Updated minimum supported Rclone version to `1.75.0`.
 
+### Removed
+- **Legacy Migrations & Legacy Config Support**: Removed legacy keyring credentials migration, legacy 7z/zip 1.0.0 backup format restore, legacy config conversion maps, legacy settings flattening migrators, legacy UI warning banners, and the `sevenz-rust2` crate dependency. Standard `.rcman` backup restore and preview remain fully supported.
+
 ## [0.3.1] - 2026-07-27
 
 ### Added

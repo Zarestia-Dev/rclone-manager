@@ -40,7 +40,6 @@ netstat2 = "0.11"
 sysinfo = "0.38"
 tokio-cron-scheduler = "0.15"
 croner = "3"
-sevenz-rust2 = "0.21"
 clap = { version = "4", features = ["derive", "env"] }
 lofty = "0.24"
 base64 = "0.22"

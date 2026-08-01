@@ -1,52 +1,15 @@
-//! Restore management with format detection
-//!
-//! Supports both rcman library format and legacy app format backups.
+//! Restore management using rcman library
 
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::commands::remote::{create_remote, update_remote};
 use log::{debug, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::{fs::File, io::BufReader, path::Path};
+use std::path::Path;
 use tauri::{AppHandle, Manager};
-use zip::ZipArchive;
-
-use super::legacy_restore::restore_legacy_backup;
 
 // -----------------------------------------------------------------------------
-// BACKUP FORMAT VERSION DETECTION
-// -----------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BackupFormatVersion {
-    AppLegacy,
-    Rcman,
-    Unknown,
-}
-
-fn detect_manifest_format(manifest_json: &serde_json::Value) -> BackupFormatVersion {
-    if manifest_json
-        .get("version")
-        .and_then(serde_json::Value::as_u64)
-        .is_some()
-    {
-        return BackupFormatVersion::Rcman;
-    }
-
-    if manifest_json
-        .get("format")
-        .and_then(|f| f.get("version"))
-        .and_then(|v| v.as_str())
-        .is_some()
-    {
-        return BackupFormatVersion::AppLegacy;
-    }
-
-    BackupFormatVersion::Unknown
-}
-
-// -----------------------------------------------------------------------------
-// MAIN RESTORE COMMAND (With format routing)
+// MAIN RESTORE COMMAND
 // -----------------------------------------------------------------------------
 
 #[tauri::command]
@@ -80,41 +43,7 @@ pub async fn restore_settings(
         options = options.restore_profile_as(name);
     }
 
-    if let Ok(result) = manager.backup().analyze(&backup_path)
-        && result.format_version.parse::<u64>().unwrap_or(0) >= 1
-    {
-        return restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref())
-            .await;
-    }
-
-    let file = File::open(&backup_path)
-        .map_err(|e| crate::localized_error!("backendErrors.backup.openFailed", "error" => e))?;
-    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(
-        |e| crate::localized_error!("backendErrors.backup.invalidArchive", "error" => e),
-    )?;
-
-    let manifest_file = archive
-        .by_name("manifest.json")
-        .map_err(|_| crate::localized_error!("backendErrors.backup.missingManifest"))?;
-
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    let format = detect_manifest_format(&manifest_json);
-    info!("Detected backup format via fallback: {format:?}");
-
-    match format {
-        BackupFormatVersion::Rcman => {
-            restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref()).await
-        }
-        BackupFormatVersion::AppLegacy => {
-            restore_legacy_backup(&backup_path, password, &manifest_json, &app).await
-        }
-        BackupFormatVersion::Unknown => Err(crate::localized_error!(
-            "backendErrors.backup.unknownFormat"
-        )),
-    }
+    restore_rcman_backup(&backup_path, options, &manager, &app, password.as_deref()).await
 }
 
 // -----------------------------------------------------------------------------

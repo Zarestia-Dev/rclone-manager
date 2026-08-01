@@ -222,7 +222,7 @@ impl OperationType {
         }
     }
 
-    /// All operational config keys (for iteration in migration, deletion detection, etc.)
+    /// All operational config keys (for iteration, deletion detection, etc.)
     pub const ALL: &[Self] = &[
         Self::Mount,
         Self::Sync,
@@ -284,12 +284,11 @@ pub mod helper_config_keys {
     pub const BACKEND: &str = "backendConfigs";
     pub const RUNTIME_REMOTE: &str = "runtimeRemoteConfigs";
 
-    /// All helper config keys (for iteration in migration).
+    /// All helper config keys.
     pub const ALL: &[&str] = &[VFS, FILTER, BACKEND, RUNTIME_REMOTE];
 }
 
 /// Keys that belong in the `app` partition (vs `rclone`).
-/// Used by `partition_profile_to_app_and_rclone` in migration.
 pub const APP_PARTITION_KEYS: &[&str] = &[
     "autoStart",
     "cronEnabled",

@@ -1352,10 +1352,6 @@
       "profiles": {
         "title": "Perfis"
       },
-      "legacy": {
-        "title": "Backup Legado Detectado",
-        "description": "Este backup foi criado antes do sistema de perfil ser introduzido. Ele será restaurado para o \"perfil padrão\"."
-      },
       "options": "Opções de Recuperação",
       "scope": {
         "all": "Restaurar Tudo",

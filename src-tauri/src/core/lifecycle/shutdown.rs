@@ -11,9 +11,6 @@ use crate::{
     utils::types::{events::APP_EVENT, state::RcloneState},
 };
 
-#[cfg(not(feature = "librclone"))]
-use crate::rclone::engine::core::DEFAULT_API_PORT;
-
 /// Main entry point for the shutdown sequence.
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
@@ -99,8 +96,9 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             Ok(Err(e)) => error!("Engine shutdown failed: {e}"),
             Err(_) => {
                 error!("Engine shutdown timed out — force-killing rclone processes");
+                let force_kill_port = app_handle.state::<BackendManager>().get_active().await.port;
                 if let Err(e) = crate::utils::process::process_manager::kill_all_rclone_processes(
-                    DEFAULT_API_PORT,
+                    force_kill_port,
                 ) {
                     error!("Force kill failed: {e}");
                 }

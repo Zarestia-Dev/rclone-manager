@@ -224,14 +224,12 @@ async fn check_active_backend_connectivity(app_handle: &tauri::AppHandle) {
     });
 }
 
-/// Phase 0: Core Setup - Initializes logging, i18n, security, and runs migrations asynchronously.
+/// Phase 0: Core Setup - Initializes logging, i18n, and security.
 async fn async_core_setup(app_handle: &AppHandle) -> Result<(), String> {
     info!("Phase 0: Initializing core services...");
 
     let app_paths = crate::core::paths::AppPaths::from_app_handle(app_handle)?;
     let rcman_manager = app_handle.state::<AppSettingsManager>();
-
-    crate::core::settings::migration::migrate_keyring_credentials(rcman_manager.inner());
 
     let settings = rcman_manager
         .get_all()

@@ -1,6 +1,5 @@
 pub mod backup;
 pub mod manager;
-pub mod migration;
 pub mod operations;
 pub mod rclone_backend;
 pub mod remote;

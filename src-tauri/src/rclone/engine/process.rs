@@ -107,7 +107,7 @@ impl RcApiEngine {
         Ok(())
     }
 
-    pub fn kill_port_processes(&self) -> EngineResult<()> {
-        kill_processes_on_port(self.current_api_port).map_err(EngineError::PortCleanupFailed)
+    pub fn kill_port_processes(&self, port: u16) -> EngineResult<()> {
+        kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
     }
 }

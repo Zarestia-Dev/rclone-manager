@@ -321,7 +321,7 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
         }
     }
 
-    if let Err(e) = engine.kill_port_processes() {
+    if let Err(e) = engine.kill_port_processes(backend.port) {
         error!("Failed to clean up port processes: {e}");
     }
 

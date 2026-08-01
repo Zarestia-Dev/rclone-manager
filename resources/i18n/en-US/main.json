@@ -1352,10 +1352,6 @@
       "profiles": {
         "title": "Profiles"
       },
-      "legacy": {
-        "title": "Legacy Backup Detected",
-        "description": "This backup was created before the profile system was introduced. It will be restored to the 'default' profile."
-      },
       "options": "Restore Options",
       "scope": {
         "all": "Restore Everything",

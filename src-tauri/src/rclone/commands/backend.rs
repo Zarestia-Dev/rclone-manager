@@ -226,11 +226,12 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
         }
     }
 
-    let needs_engine_restart = Backend::is_local_name(&params.name)
-        && (existing.host != backend.host
-            || existing.port != backend.port
-            || existing.config_path != backend.config_path
-            || existing.config_password != backend.config_password);
+    let creds_changed =
+        existing.username != backend.username || existing.password != backend.password;
+    let conn_changed = existing.host != backend.host
+        || existing.port != backend.port
+        || existing.config_path != backend.config_path
+        || existing.config_password != backend.config_password;
 
     backend_manager
         .update(settings_manager.inner(), &params.name, backend.clone())
@@ -238,9 +239,17 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
 
     save_backend_to_settings(settings_manager.inner(), &backend)?;
 
-    if needs_engine_restart {
-        info!("Restarting Local engine — connection settings changed");
-        crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
+    if creds_changed || conn_changed {
+        if existing.is_local {
+            info!("Restarting Local engine — connection or credentials changed");
+            crate::rclone::engine::lifecycle::restart_for_config_change(&app, "backend_settings");
+        } else {
+            info!(
+                "Clearing engine errors and re-probing after remote backend credential/connection update"
+            );
+            crate::rclone::engine::lifecycle::clear_engine_errors(&app).await;
+            crate::rclone::engine::lifecycle::start_engine_if_not_running(&app).await;
+        }
     }
 
     info!("Backend '{}' updated", params.name);

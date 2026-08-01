@@ -6,9 +6,8 @@ use crate::core::settings::AppSettingsManager;
 use crate::rclone::queries::get_rclone_config_file;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
-use std::{fs::File, io::BufReader, path::PathBuf};
+use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use zip::ZipArchive;
 
 // BACKUP COMMAND
 
@@ -166,11 +165,9 @@ pub async fn analyze_backup_file(
         ));
     }
 
-    if let Ok(analysis) = manager.backup().analyze(&path)
-        && analysis.format_version.parse::<u64>().unwrap_or(0) >= 1
-    {
-        let contents =
-            BackupContentsInfo {
+    match manager.backup().analyze(&path) {
+        Ok(analysis) => {
+            let contents = BackupContentsInfo {
                 settings: analysis.manifest.contents.settings,
                 backend_config: analysis
                     .manifest
@@ -231,57 +228,23 @@ pub async fn analyze_backup_file(
                     }),
             };
 
-        return Ok(BackupAnalysis {
-            is_encrypted: analysis.is_encrypted,
-            archive_type: if analysis.requires_password {
-                "zip-aes".into()
-            } else {
-                "zip".into()
-            },
-            format_version: analysis.format_version,
-            created_at: Some(analysis.created_at),
-            backup_type: Some(analysis.backup_type),
-            user_note: analysis.user_note,
-            contents: Some(contents),
-            is_legacy: Some(false),
-        });
+            Ok(BackupAnalysis {
+                is_encrypted: analysis.is_encrypted,
+                archive_type: if analysis.requires_password {
+                    "zip-aes".into()
+                } else {
+                    "zip".into()
+                },
+                format_version: analysis.format_version,
+                created_at: Some(analysis.created_at),
+                backup_type: Some(analysis.backup_type),
+                user_note: analysis.user_note,
+                contents: Some(contents),
+            })
+        }
+        Err(e) => Err(crate::localized_error!(
+            "backendErrors.backup.invalidArchive",
+            "error" => e
+        )),
     }
-
-    let file = File::open(&path)
-        .map_err(|e| crate::localized_error!("backendErrors.backup.openFailed", "error" => e))?;
-    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(
-        |e| crate::localized_error!("backendErrors.backup.invalidArchive", "error" => e),
-    )?;
-
-    let manifest_file = archive
-        .by_name("manifest.json")
-        .map_err(|_| crate::localized_error!("backendErrors.backup.missingManifest"))?;
-
-    let manifest_json: serde_json::Value = serde_json::from_reader(manifest_file).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    use super::legacy_restore::BackupManifest;
-
-    let manifest: BackupManifest = serde_json::from_value(manifest_json).map_err(
-        |e| crate::localized_error!("backendErrors.backup.manifestParseFailed", "error" => e),
-    )?;
-
-    Ok(BackupAnalysis {
-        is_encrypted: manifest.backup.encrypted,
-        archive_type: manifest.backup.compression,
-        format_version: manifest.format.version,
-        created_at: Some(manifest.backup.created_at),
-        backup_type: Some(manifest.backup.backup_type),
-        user_note: manifest.metadata.and_then(|m| m.user_note),
-        contents: Some(BackupContentsInfo {
-            settings: manifest.contents.settings,
-            backend_config: manifest.contents.backend_config,
-            rclone_config: manifest.contents.rclone_config,
-            remote_count: manifest.contents.remote_configs.as_ref().map(|r| r.count),
-            remote_names: manifest.contents.remote_configs.and_then(|r| r.names),
-            profiles: Some(vec!["default".to_string()]),
-        }),
-        is_legacy: Some(true),
-    })
 }
