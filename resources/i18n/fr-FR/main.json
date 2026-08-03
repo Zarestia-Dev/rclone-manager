@@ -1081,15 +1081,15 @@
       "switchToJson": "Passer en mode JSON",
       "unknownTopLevelProperty": "Attention : '{{key}}' n'est pas une propriété standard de niveau supérieur pour ce profil et peut être ignorée.",
       "jsonEditorInfo": {
-        "sync": "Sync/Copy/Move Profil : Définissez les chemins 'srcF' et 'dstFs' et les champs au niveau du profil, et placez tous les flags rclone dans '_config'.",
-        "bisync": "Profil de Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil, et place tous les flags rclone dans '_config'.",
-        "check": "Profil de vérification : définissez les chemins 'srcFs' et 'dstFs', les champs au niveau du profil, et placez tous les drapeaux de vérification dans '_config'.",
-        "mount": "Profil de montage : Définissez les chemins 'fs' et 'mountPoint', 'mountType', les champs au niveau du profil, et placez toutes les options de montage dans 'mountOpt'.",
-        "serve": "Partage Profile : Définissez le chemin 'fs', 'serveType', les champs au niveau du profil, et placez toutes les options de service dans '_config'.",
-        "vfs": "Profil de VFS : Définissez les options de mise en cache du système de fichiers virtuels, de mise en mémoire tampon et de compatibilité comme paires de valeurs clés.",
-        "filter": "Filtre de profil : Définissez des motifs glob, des règles d'inclusion/exclusion et des options de filtrage de fichiers sous forme de paires clé-valeur.",
-        "backend": "Profil de backend : Configurez les options avancées du protocole et les paramètres de connexion spécifiques à distance comme des paires clé-valeur.",
-        "runtimeRemote": "Dépôt distant d'exécution : Définissez des substitutions de connexion dynamiques et des ajustements de performances sous forme de paires clé-valeur."
+        "sync": "Sync/Copy/Move Profil : Définissez les chemins 'srcFs' et 'dstFs', les champs au niveau du profil et les drapeaux rclone (supprimez le '--' initial et remplacez '-' par '_').",
+        "bisync": "Profil de Bisync : définit les chemins 'path1' et 'path2', les champs au niveau du profil et les drapeaux rclone (supprimez le '--' initial et remplacez '-' par '_').",
+        "check": "Profil de vérification : définissez les chemins 'srcFs' et 'dstFs', les champs au niveau du profil et les drapeaux de vérification (supprimez le '--' initial et remplacez '-' par '_').",
+        "mount": "Profil de montage : Définissez les chemins 'fs' et 'mountPoint', 'mountType', les champs au niveau du profil et les options de montage (supprimez le '--' initial et remplacez '-' par '_').",
+        "serve": "Partage Profile : Définissez le chemin 'fs', 'serveType', les champs au niveau du profil et les options de service (supprimez le '--' initial et remplacez '-' par '_').",
+        "vfs": "Profil de VFS : Définissez les options de mise en cache du système de fichiers virtuels, de mise en mémoire tampon et de compatibilité comme paires de valeurs clés (supprimez le '--' initial et remplacez '-' par '_').",
+        "filter": "Filtre de profil : Définissez des motifs glob, des règles d'inclusion/exclusion et des options de filtrage de fichiers sous forme de paires clé-valeur (supprimez le '--' initial et remplacez '-' par '_').",
+        "backend": "Profil de backend : Configurez les options avancées du protocole et les paramètres de connexion spécifiques à distance comme des paires clé-valeur (supprimez le '--' initial et remplacez '-' par '_').",
+        "runtimeRemote": "Dépôt distant d'exécution : Définissez des substitutions de connexion dynamiques et des ajustements de performances sous forme de paires clé-valeur (supprimez le '--' initial et remplacez '-' par '_')."
       },
       "runtimeRemoteWarning": {
         "title": "Configuration du dépôt distant d'exécution",

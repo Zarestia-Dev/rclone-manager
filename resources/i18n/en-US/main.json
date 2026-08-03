@@ -1081,15 +1081,15 @@
       "switchToJson": "Switch to JSON Mode",
       "unknownTopLevelProperty": "Warning: '{{key}}' is not a standard top-level property for this profile and might be ignored.",
       "jsonEditorInfo": {
-        "sync": "Sync/Copy/Move Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and place all rclone flags inside '_config'.",
-        "bisync": "Bisync Profile: Set 'path1' and 'path2' paths, profile-level fields, and place all rclone flags inside '_config'.",
-        "check": "Check Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and place all check flags inside '_config'.",
-        "mount": "Mount Profile: Set 'fs' and 'mountPoint' paths, 'mountType', profile-level fields, and place all mount options inside 'mountOpt'.",
-        "serve": "Serve Profile: Set 'fs' path, 'serveType', profile-level fields, and place all serve options inside '_config'.",
-        "vfs": "VFS Profile: Set custom Virtual File System caching, buffering, and compatibility options as key-value pairs.",
-        "filter": "Filter Profile: Set glob patterns, inclusion/exclusion rules, and file filtering options as key-value pairs.",
-        "backend": "Backend Profile: Configure advanced protocol options and remote-specific connection settings as key-value pairs.",
-        "runtimeRemote": "Runtime Remote: Set dynamic connection overrides and performance tweaks as key-value pairs."
+        "sync": "Sync/Copy/Move Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and rclone flags (remove leading '--' and replace '-' with '_').",
+        "bisync": "Bisync Profile: Set 'path1' and 'path2' paths, profile-level fields, and rclone flags (remove leading '--' and replace '-' with '_').",
+        "check": "Check Profile: Set 'srcFs' and 'dstFs' paths, profile-level fields, and check flags (remove leading '--' and replace '-' with '_').",
+        "mount": "Mount Profile: Set 'fs' and 'mountPoint' paths, 'mountType', profile-level fields, and mount options (remove leading '--' and replace '-' with '_').",
+        "serve": "Serve Profile: Set 'fs' path, 'serveType', profile-level fields, and serve options (remove leading '--' and replace '-' with '_').",
+        "vfs": "VFS Profile: Set custom Virtual File System caching, buffering, and compatibility options as key-value pairs (remove leading '--' and replace '-' with '_').",
+        "filter": "Filter Profile: Set glob patterns, inclusion/exclusion rules, and file filtering options as key-value pairs (remove leading '--' and replace '-' with '_').",
+        "backend": "Backend Profile: Configure advanced protocol options and remote-specific connection settings as key-value pairs (remove leading '--' and replace '-' with '_').",
+        "runtimeRemote": "Runtime Remote: Set dynamic connection overrides and performance tweaks as key-value pairs (remove leading '--' and replace '-' with '_')."
       },
       "runtimeRemoteWarning": {
         "title": "Runtime Remote Settings",

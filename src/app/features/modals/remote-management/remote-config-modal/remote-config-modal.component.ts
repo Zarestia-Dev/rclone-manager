@@ -4,7 +4,6 @@ import {
   computed,
   DestroyRef,
   ElementRef,
-  HostListener,
   inject,
   viewChild,
 } from '@angular/core';
@@ -20,17 +19,12 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
-import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { ObscureToolComponent } from '../../../../shared/remote-config/obscure-tool/obscure-tool.component';
+import { CliImportComponent } from '../../../../shared/remote-config/cli-import/cli-import.component';
 import { AlertBannerComponent } from '../../../../shared/components/alert-banner/alert-banner.component';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import {
-  JSON_EDITOR_LOOKUP_TABLE,
-  type JsonEditorLookupTable,
-} from '../../../../shared/components/json-editor/json-editor.component';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { AuthStateService } from '../../../../services/security/auth-state.service';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { IconService } from '../../../../services/ui/icon.service';
 import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
@@ -42,7 +36,6 @@ import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-c
 import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
-  SharedProfileType,
   LINKED_PROFILE_TYPES,
   PROFILE_ICONS,
 } from '@app/types';
@@ -55,6 +48,9 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
 @Component({
   selector: 'app-remote-config-modal',
   hostDirectives: [EscapeCloseDirective],
+  host: {
+    '(window:keydown)': 'handleSearchKeyboard($event)',
+  },
   imports: [
     ReactiveFormsModule,
     TranslatePipe,
@@ -67,8 +63,8 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     OperationConfigComponent,
-    CliImportComponent,
     ObscureToolComponent,
+    CliImportComponent,
     AlertBannerComponent,
     InteractiveConfigStepComponent,
     SearchContainerComponent,
@@ -77,15 +73,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     ConfigModalSidebarComponent,
     ConfigModalFooterComponent,
   ],
-  providers: [
-    RemoteCreationOrchestrator,
-    RemoteConfigStateService,
-    {
-      provide: JSON_EDITOR_LOOKUP_TABLE,
-      useFactory: (state: RemoteConfigStateService): JsonEditorLookupTable => state.lookupTable,
-      deps: [RemoteConfigStateService],
-    },
-  ],
+  providers: [RemoteCreationOrchestrator, RemoteConfigStateService],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['../../../../styles/_shared-modal.scss', './remote-config-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,22 +81,18 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
 export class RemoteConfigModalComponent {
   readonly state = inject(RemoteConfigStateService);
 
-  // ── Injections ────────────────────────────────────────────────────────────────
-
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly authStateService = inject(AuthStateService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   readonly configStep = viewChild(RemoteConfigStepComponent);
-  private readonly appSettingsService = inject(AppSettingsService);
-  private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData;
+  private readonly dialogData = (inject(MAT_DIALOG_DATA, { optional: true }) ?? undefined) as
+    DialogData | undefined;
   readonly iconService = inject(IconService);
   private readonly notificationService = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
-
-  // ── Static config ─────────────────────────────────────────────────────────────
 
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
@@ -137,8 +121,6 @@ export class RemoteConfigModalComponent {
     return visible;
   });
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────────
-
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
     this.initializeState();
@@ -160,16 +142,14 @@ export class RemoteConfigModalComponent {
     }
   }
 
-  // ── Step navigation ───────────────────────────────────────────────────────────
-
   goToStep(step: number): void {
     if (!this.state.isStepClickable(step)) return;
     this.saveCurrentStepProfile();
     this.state.currentStep.set(step);
     this.scrollToTop();
     if (step === 1 && !this.state.editTarget()) {
-      this.state.showCliImport.set(false);
       this.state.showObscureTool.set(false);
+      this.state.showCliImport.set(false);
     }
   }
 
@@ -192,8 +172,6 @@ export class RemoteConfigModalComponent {
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
     this.orchestrator.updateInteractiveAnswer(newAnswer);
   }
-
-  // ── Form submission ───────────────────────────────────────────────────────────
 
   async onSubmit(): Promise<void> {
     if (this.state.isAuthInProgress()) return;
@@ -272,12 +250,13 @@ export class RemoteConfigModalComponent {
       return { success: true };
     }
 
-    const target = this.state.editTarget() as SharedProfileType;
+    const target = this.state.editTarget();
+    if (target === 'remote' || target === null) {
+      return { success: false };
+    }
     const success = await this.state.saveRemoteProfiles(remoteName, target);
     return { success };
   }
-
-  // ── Config building ───────────────────────────────────────────────────────────
 
   private buildFinalConfig(empty = false): RemoteConfigSections {
     this.saveCurrentStepProfile();
@@ -291,32 +270,14 @@ export class RemoteConfigModalComponent {
     return { ...sections, showOnTray: true };
   }
 
-  private buildUpdateConfig(): Record<string, unknown> {
-    const target = this.state.editTarget() as SharedProfileType;
-    if (!target) return {};
-
-    this.state.saveCurrentProfile(target);
-    this.state.dirtyProfileTypes.add(target);
-
-    const updatedConfig: Record<string, unknown> = {};
-    for (const dirty of this.state.dirtyProfileTypes) {
-      const key = REMOTE_CONFIG_KEYS[dirty as keyof typeof REMOTE_CONFIG_KEYS];
-      if (key) updatedConfig[key] = this.state.profiles()[dirty];
-    }
-
-    return updatedConfig;
-  }
-
   saveCurrentStepProfile(): void {
     const editTargetValue = this.state.editTarget();
     const type =
       editTargetValue && editTargetValue !== 'remote'
         ? editTargetValue
         : this.state.stepConfigs()[this.state.currentStep() - 1]?.type;
-    if (type && type !== 'remote') this.state.saveCurrentProfile(type as SharedProfileType);
+    if (type && type !== 'remote') this.state.saveCurrentProfile(type);
   }
-
-  // ── Interactive flow ──────────────────────────────────────────────────────────
 
   onInteractiveContinue(answer: string | number | boolean | null): void {
     if (this.state.interactiveFlowState().isProcessing) return;
@@ -326,18 +287,17 @@ export class RemoteConfigModalComponent {
       answer: String(answer),
     }));
     void this.orchestrator.submitInteractiveAnswer(answer, this.state.commandOptions()).then(() => {
-      // submitInteractiveAnswer calls finalizeCreation internally when the
-      // backend signals completion (no more questions) — at that point the
-      // flow is no longer active and we should close the modal.
-      if (!this.state.interactiveFlowState().isActive) this.close();
+      this.closeIfFlowComplete();
     });
+  }
+
+  private closeIfFlowComplete(): void {
+    if (!this.state.interactiveFlowState().isActive) this.close();
   }
 
   async cancelAuth(): Promise<void> {
     await this.orchestrator.cancelAuth();
   }
-
-  // ── Search & Listeners ─────────────────────────────────────────────────────────
 
   toggleSearchVisibility(): void {
     this.state.isSearchVisible.update(visible => !visible);
@@ -354,7 +314,6 @@ export class RemoteConfigModalComponent {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
-  @HostListener('window:keydown', ['$event'])
   handleSearchKeyboard(event: KeyboardEvent): void {
     if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
       event.preventDefault();

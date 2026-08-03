@@ -95,7 +95,9 @@ export class SettingControlComponent implements ControlValueAccessor {
       return [];
     }
 
-    const optName = opt.Name.replace(/_/g, '-');
+    const optName = opt.Name.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/_/g, '-')
+      .toLowerCase();
     const flags: string[] = [];
 
     const providerVal = this.provider();

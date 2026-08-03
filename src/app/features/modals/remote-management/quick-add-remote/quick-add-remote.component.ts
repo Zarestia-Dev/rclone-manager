@@ -495,10 +495,7 @@ export class QuickAddRemoteComponent {
         rclone['mountType'] = mountType;
       }
       if (Object.keys(otherMountOpts).length) {
-        rclone['mountOpt'] = {
-          ...((rclone['mountOpt'] as Record<string, unknown> | undefined) ?? {}),
-          ...otherMountOpts,
-        };
+        Object.assign(rclone, otherMountOpts);
       }
     }
 

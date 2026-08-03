@@ -1081,15 +1081,15 @@
       "switchToJson": "Cambiar a modo JSON",
       "unknownTopLevelProperty": "Advertencia: '{{key}}' no es una propiedad de nivel superior estándar para este perfil y podría ignorarse.",
       "jsonEditorInfo": {
-        "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
-        "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y coloque todas las banderas de rclone dentro de '_config'.",
-        "check": "Perfil de verificación: configure las rutas 'srcFs' y 'dstFs', los campos de nivel de perfil y coloque todas las banderas de verificación dentro de '_config'.",
-        "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y coloque todas las opciones de montaje dentro de 'mountOpt'.",
-        "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y coloque todas las opciones de servicio dentro de '_config'.",
-        "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor.",
-        "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor.",
-        "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor.",
-        "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor."
+        "sync": "Perfil de Sincronización/Copia/Movimiento: Establezca las rutas 'srcFs' y 'dstFs', los campos del perfil y las banderas de rclone (elimine el '--' inicial y reemplace '-' por '_').",
+        "bisync": "Perfil de Sincronización Bidireccional (Bisync): Establezca las rutas 'path1' y 'path2', los campos del perfil y las banderas de rclone (elimine el '--' inicial y reemplace '-' por '_').",
+        "check": "Perfil de verificación: configure las rutas 'srcFs' y 'dstFs', los campos de nivel de perfil y las banderas de verificación (elimine el '--' inicial y reemplace '-' por '_').",
+        "mount": "Perfil de Montaje (Mount): Establezca las rutas 'fs' y 'mountPoint', 'mountType', los campos del perfil y las opciones de montaje (elimine el '--' inicial y reemplace '-' por '_').",
+        "serve": "Perfil de Servicio (Serve): Establezca la ruta 'fs', 'serveType', los campos del perfil y las opciones de servicio (elimine el '--' inicial y reemplace '-' por '_').",
+        "vfs": "Perfil VFS: Establezca las opciones personalizadas de caché de VFS, almacenamiento en búfer y compatibilidad como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "filter": "Perfil de Filtro: Configure patrones globales, reglas de inclusión/exclusión y opciones de filtrado de archivos como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "backend": "Perfil de Backend: Configure opciones de protocolo avanzadas y configuraciones de conexión específicas del remoto como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_').",
+        "runtimeRemote": "Remoto en tiempo de ejecución: Establezca anulaciones de conexión dinámicas y ajustes de rendimiento como pares clave-valor (elimine el '--' inicial y reemplace '-' por '_')."
       },
       "runtimeRemoteWarning": {
         "title": "Configuración del remoto en tiempo de ejecución",

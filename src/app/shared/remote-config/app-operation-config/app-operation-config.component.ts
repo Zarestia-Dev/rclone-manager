@@ -473,7 +473,7 @@ export class OperationConfigComponent {
   }
 
   private async selectLocal(item: PathItem, target: FilePickerSelection): Promise<void> {
-    const allowNonEmpty = this.opFormGroup().get('options.AllowNonEmpty')?.value;
+    const allowNonEmpty = this.opFormGroup().get('options.allow_non_empty')?.value;
     const requireEmpty = this.isMount() && item.group === 'dest' && !allowNonEmpty;
 
     try {

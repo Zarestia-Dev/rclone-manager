@@ -314,15 +314,8 @@ async fn start_daemon(engine: &mut RcApiEngine, app: &AppHandle) {
     }
 
     // Step 2 (local only): tear down anything still tracked / bound to the port.
-    if engine.process.is_some() {
-        debug!("Tracked rclone process exists, stopping first");
-        if let Err(e) = engine.kill_process(app).await {
-            error!("Failed to stop Rclone process: {e}");
-        }
-    }
-
-    if let Err(e) = engine.kill_port_processes(backend.port) {
-        error!("Failed to clean up port processes: {e}");
+    if let Err(e) = engine.kill_process(app).await {
+        error!("Failed to stop Rclone process: {e}");
     }
 
     if matches!(health, HealthStatus::AuthRequired) {

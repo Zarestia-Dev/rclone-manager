@@ -57,12 +57,14 @@ export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnriched
     }
   );
 
-  private readonly _preloadEffect = effect(() => {
-    const remotes = this.remotesList();
-    if (remotes.length > 0) {
-      untracked(() => this.ops.preloadFeatures(this.transfers()));
-    }
-  });
+  constructor() {
+    effect(() => {
+      const remotes = this.remotesList();
+      if (remotes.length > 0) {
+        untracked(() => this.ops.preloadFeatures(this.transfers()));
+      }
+    });
+  }
 
   /**
    * Subclass-specific enrichment + filtering pipeline. Must return the full

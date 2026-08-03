@@ -80,10 +80,35 @@ impl FromConfig for MountParams {
 
 impl MountParams {
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
+        let mut body = serde_json::Map::new();
+
+        if let Value::Object(map) = &self.rclone_config {
+            let mut legacy_mount = serde_json::Map::new();
+            let mut legacy_config = serde_json::Map::new();
+
+            for (k, v) in map {
+                if crate::utils::json_helpers::is_flat_option_key(k) {
+                    body.insert(k.clone(), v.clone());
+                } else if k == "mountOpt" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_mount.extend(opts.clone());
+                    }
+                } else if k == "_config" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_config.extend(opts.clone());
+                    }
+                } else {
+                    legacy_config.insert(k.clone(), v.clone());
+                }
+            }
+
+            if !legacy_mount.is_empty() {
+                body.insert("mountOpt".to_string(), Value::Object(legacy_mount));
+            }
+            if !legacy_config.is_empty() {
+                body.insert("_config".to_string(), Value::Object(legacy_config));
+            }
+        }
 
         // 1. Inject runtime remote overrides directly into the "fs" key
         body.insert(
@@ -107,10 +132,15 @@ impl MountParams {
         if let Some(backend_opts) = &self.backend_options {
             let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
             if !final_backend.is_empty() {
-                body.insert(
-                    "_config".to_string(),
-                    serde_json::to_value(final_backend).unwrap(),
-                );
+                let mut config_map = body
+                    .get("_config")
+                    .and_then(|v| v.as_object())
+                    .cloned()
+                    .unwrap_or_default();
+                for (k, v) in final_backend {
+                    config_map.entry(k).or_insert(v);
+                }
+                body.insert("_config".to_string(), Value::Object(config_map));
             }
         }
 

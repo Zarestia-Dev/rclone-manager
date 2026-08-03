@@ -3,8 +3,6 @@ import { RcConfigOption, SharedProfileType } from '@app/types';
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
-import { TranslateService } from '@ngx-translate/core';
-import { getControlKey } from './utils/remote-config.utils';
 
 export interface ParsedCLIFlag {
   raw: string;
@@ -47,7 +45,6 @@ const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
 export class CliFlagMapperService {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly remoteManagementService = inject(RemoteManagementService);
-  private readonly translateService = inject(TranslateService);
 
   private booleanFlagsCache: Set<string> | null = null;
   private readonly lookupTablesCache = new Map<
@@ -277,7 +274,7 @@ export class CliFlagMapperService {
           flag,
           status: 'mapped',
           flagType: match.flagType,
-          fieldName: getControlKey(match.option, match.flagType),
+          fieldName: match.option.Name || match.option.FieldName,
           coercedValue: this.coerceValue(flag.value, match.option.Type),
         };
       }

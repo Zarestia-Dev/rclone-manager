@@ -33,7 +33,7 @@ describe('RemoteConfigStepComponent', () => {
 
     fixture.detectChanges();
 
-    expect(component.form().get('name')?.disabled).toBeTrue();
-    expect(component.remoteSearchCtrl.disabled).toBeTrue();
+    expect(component.form().get('name')?.disabled).toBe(true);
+    expect(component.remoteSearchCtrl.disabled).toBe(true);
   });
 });

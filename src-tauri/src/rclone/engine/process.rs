@@ -59,31 +59,34 @@ impl RcApiEngine {
     }
 
     pub async fn kill_process(&mut self, app: &AppHandle) -> EngineResult<()> {
-        let Some(mut child) = self.process.take() else {
-            self.mark_stopped();
-            return Ok(());
-        };
-
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 
         let mut kill_error: Option<EngineError> = None;
 
-        if child.id().is_some() {
-            let state = app.state::<RcloneState>();
-            let quit_request = backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
+        if let Some(child) = self.process.take() {
+            if child.id().is_some() {
+                let state = app.state::<RcloneState>();
+                let quit_request =
+                    backend.inject_auth(state.client.post(backend.url_for(core::QUIT)));
 
-            if let Err(e) = graceful_shutdown(child, quit_request).await {
-                log::warn!("Graceful shutdown failed: {e}");
+                if let Err(e) = graceful_shutdown(child, quit_request).await {
+                    log::warn!("Graceful shutdown failed: {e}");
+                }
+            } else {
+                info!("Force killing engine process");
+                let mut child = child;
+                if let Err(e) = child.kill().await {
+                    let msg = format!("Failed to kill process: {e}");
+                    error!("{msg}");
+                    kill_error = Some(EngineError::KillFailed(msg));
+                }
+                let _ = child.wait().await;
             }
-        } else {
-            info!("Force killing engine process");
-            if let Err(e) = child.kill().await {
-                let msg = format!("Failed to kill process: {e}");
-                error!("{msg}");
-                kill_error = Some(EngineError::KillFailed(msg));
-            }
-            let _ = child.wait().await;
+        }
+
+        if backend.is_local {
+            let _ = kill_processes_on_port(backend.port);
         }
 
         self.mark_stopped();
@@ -105,9 +108,5 @@ impl RcApiEngine {
             return Err(err);
         }
         Ok(())
-    }
-
-    pub fn kill_port_processes(&self, port: u16) -> EngineResult<()> {
-        kill_processes_on_port(port).map_err(EngineError::PortCleanupFailed)
     }
 }

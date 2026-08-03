@@ -37,60 +37,6 @@ pub struct ServeParams {
     pub serve_type: String,
 }
 
-fn to_serve_vfs_key(s: &str) -> String {
-    // 1. Convert camelCase/PascalCase to snake_case and replace '-' with '_'
-    let mut cleaned = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c == '-' {
-            cleaned.push('_');
-        } else if c.is_uppercase() {
-            if i > 0 && s.chars().nth(i - 1) != Some('-') {
-                cleaned.push('_');
-            }
-            cleaned.push(c.to_ascii_lowercase());
-        } else {
-            cleaned.push(c);
-        }
-    }
-
-    if cleaned.starts_with("vfs_") {
-        return cleaned;
-    }
-
-    // Special VFS read chunk cases
-    if cleaned == "chunk_size" {
-        return "vfs_read_chunk_size".to_string();
-    }
-    if cleaned == "chunk_size_limit" {
-        return "vfs_read_chunk_size_limit".to_string();
-    }
-    if cleaned == "chunk_streams" {
-        return "vfs_read_chunk_streams".to_string();
-    }
-
-    // VFS flags that do not get the vfs_ prefix on the CLI
-    let non_prefixed = [
-        "no_modtime",
-        "no_checksum",
-        "no_seek",
-        "dir_cache_time",
-        "poll_interval",
-        "read_only",
-        "dir_perms",
-        "file_perms",
-        "link_perms",
-        "umask",
-        "uid",
-        "gid",
-    ];
-
-    if non_prefixed.contains(&cleaned.as_str()) {
-        cleaned
-    } else {
-        format!("vfs_{cleaned}")
-    }
-}
-
 impl ServeParams {
     /// Create `ServeParams` from a profile config and settings
     pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
@@ -117,10 +63,35 @@ impl ServeParams {
     }
 
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
+        let mut body = serde_json::Map::new();
+
+        if let Value::Object(map) = &self.rclone_config {
+            let mut legacy_config = serde_json::Map::new();
+            let mut legacy_filter = serde_json::Map::new();
+
+            for (k, v) in map {
+                if crate::utils::json_helpers::is_flat_option_key(k) {
+                    body.insert(k.clone(), v.clone());
+                } else if k == "_config" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_config.extend(opts.clone());
+                    }
+                } else if k == "_filter" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_filter.extend(opts.clone());
+                    }
+                } else {
+                    legacy_config.insert(k.clone(), v.clone());
+                }
+            }
+
+            if !legacy_filter.is_empty() {
+                body.insert("_filter".to_string(), Value::Object(legacy_filter));
+            }
+            if !legacy_config.is_empty() {
+                body.insert("_config".to_string(), Value::Object(legacy_config));
+            }
+        }
 
         // 1. Pre-process serve options to handle "addr" array issue
         if let Some(addr_val) = body.get("addr") {
@@ -142,24 +113,34 @@ impl ServeParams {
 
         // 4. Merge resolved profile blocks
         if let Some(vfs_opts) = &self.vfs_options {
-            for (key, val) in vfs_opts {
-                let flat_key = to_serve_vfs_key(key);
-                body.insert(flat_key, val.clone());
-            }
+            body.insert(
+                "vfsOpt".to_string(),
+                serde_json::to_value(vfs_opts).unwrap(),
+            );
         }
         if let Some(filter_opts) = &self.filter_options {
-            body.insert(
-                "_filter".to_string(),
-                serde_json::to_value(filter_opts).unwrap(),
-            );
+            let mut filter_map = body
+                .get("_filter")
+                .and_then(|v| v.as_object())
+                .cloned()
+                .unwrap_or_default();
+            for (k, v) in filter_opts {
+                filter_map.entry(k.clone()).or_insert_with(|| v.clone());
+            }
+            body.insert("_filter".to_string(), Value::Object(filter_map));
         }
         if let Some(backend_opts) = &self.backend_options {
             let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
             if !final_backend.is_empty() {
-                body.insert(
-                    "_config".to_string(),
-                    serde_json::to_value(final_backend).unwrap(),
-                );
+                let mut config_map = body
+                    .get("_config")
+                    .and_then(|v| v.as_object())
+                    .cloned()
+                    .unwrap_or_default();
+                for (k, v) in final_backend {
+                    config_map.entry(k).or_insert(v);
+                }
+                body.insert("_config".to_string(), Value::Object(config_map));
             }
         }
 
@@ -527,8 +508,8 @@ mod tests {
         // Verify "addr" array unwrapping
         assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
 
-        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
-        assert!(obj.get("vfsOpt").is_none());
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "full");
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
         assert_eq!(filter.get("exclude").unwrap(), "secret/*");

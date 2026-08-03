@@ -1081,15 +1081,15 @@
       "switchToJson": "JSON Moduna Geç",
       "unknownTopLevelProperty": "Uyarı: '{{key}}' bu profil için standart bir üst düzey özellik değildir ve yoksayılabilir.",
       "jsonEditorInfo": {
-        "sync": "Senkronizasyon/Kopyalama/Taşıma Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
-        "bisync": "Çift Yönlü Senkronizasyon (Bisync) Profili: 'path1' ve 'path2' yollarını, profil düzeyindeki alanları ayarlayın ve tüm rclone bayraklarını '_config' içine yerleştirin.",
-        "check": "Denetleme Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ayarlayın ve tüm denetleme bayraklarını '_config' içine yerleştirin.",
-        "mount": "Bağlama (Mount) Profili: 'fs' ve 'mountPoint' yollarını, 'mountType' değerini, profil düzeyindeki alanları ayarlayın ve tüm bağlama seçeneklerini 'mountOpt' içine yerleştirin.",
-        "serve": "Sunma (Serve) Profili: 'fs' yolunu, 'serveType' değerini, profil düzeyindeki alanları ayarlayın ve tüm sunma seçeneklerini '_config' içine yerleştirin.",
-        "vfs": "VFS Profili: Özel Sanal Dosya Sistemi önbellekleme, arabelleğe alma ve uyumluluk seçeneklerini anahtar-değer çiftleri olarak ayarlayın.",
-        "filter": "Filtre Profili: Dosya filtreleme seçeneklerini, dahil etme/hariç tutma kurallarını anahtar-değer çiftleri olarak ayarlayın.",
-        "backend": "Arka Uç Profili: Gelişmiş protokol seçeneklerini ve uzak bağlantıya özel bağlantı ayarlarını anahtar-değer çiftleri olarak yapılandırın.",
-        "runtimeRemote": "Çalışma Zamanı Uzak Bağlantısı: Dinamik bağlantı geçersiz kılmalarını ve performans ayarlarını anahtar-değer çiftleri olarak ayarlayın."
+        "sync": "Senkronizasyon/Kopyalama/Taşıma Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ve rclone bayraklarını ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "bisync": "Çift Yönlü Senkronizasyon (Bisync) Profili: 'path1' ve 'path2' yollarını, profil düzeyindeki alanları ve rclone bayraklarını ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "check": "Denetleme Profili: 'srcFs' ve 'dstFs' yollarını, profil düzeyindeki alanları ve denetleme bayraklarını ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "mount": "Bağlama (Mount) Profili: 'fs' ve 'mountPoint' yollarını, 'mountType' değerini, profil düzeyindeki alanları ve bağlama seçeneklerini ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "serve": "Sunma (Serve) Profili: 'fs' yolunu, 'serveType' değerini, profil düzeyindeki alanları ve sunma seçeneklerini ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "vfs": "VFS Profili: Özel Sanal Dosya Sistemi önbellekleme, arabelleğe alma ve uyumluluk seçeneklerini anahtar-değer çiftleri olarak ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "filter": "Filtre Profili: Dosya filtreleme seçeneklerini, dahil etme/hariç tutma kurallarını anahtar-değer çiftleri olarak ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "backend": "Arka Uç Profili: Gelişmiş protokol seçeneklerini ve uzak bağlantıya özel bağlantı ayarlarını anahtar-değer çiftleri olarak yapılandırın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın).",
+        "runtimeRemote": "Çalışma Zamanı Uzak Bağlantısı: Dinamik bağlantı geçersiz kılmalarını ve performans ayarlarını anahtar-değer çiftleri olarak ayarlayın (baştaki '--' işaretini kaldırın ve '-' yerine '_' kullanın)."
       },
       "runtimeRemoteWarning": {
         "title": "Çalışma Zamanı Uzak Bağlantı Ayarları",

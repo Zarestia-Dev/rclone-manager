@@ -218,8 +218,8 @@ export class RemoteFacadeService extends TauriBaseService {
           if (opType === 'mount') {
             if (pConfig.mountPoint) pathsToCheck.push(pConfig.mountPoint);
             if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
-            if (pConfig.rclone?.mountOpt?.mountPoint)
-              pathsToCheck.push(pConfig.rclone.mountOpt.mountPoint);
+            if ((pConfig.rclone as any)?.mountPoint)
+              pathsToCheck.push((pConfig.rclone as any).mountPoint);
           } else if (opType === 'bisync') {
             if (pConfig.path1) pathsToCheck.push(pConfig.path1);
             if (pConfig.path2) pathsToCheck.push(pConfig.path2);

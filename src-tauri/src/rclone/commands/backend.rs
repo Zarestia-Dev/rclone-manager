@@ -464,10 +464,6 @@ async fn test_remote_connection(
 }
 
 async fn configure_remote_backend(app: &AppHandle, backend: &Backend) {
-    if backend.is_local {
-        return;
-    }
-
     if let Some(config_path) = &backend.config_path {
         info!(
             "Setting config path for remote backend '{}' to: {}",

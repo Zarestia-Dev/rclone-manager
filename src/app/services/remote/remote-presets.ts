@@ -4,8 +4,8 @@ import { BackendService } from '../infrastructure/system/backend.service';
 export type StorageFamily = 's3' | 'webdav' | 'generic';
 
 export interface PresetValues {
-  vfs?: Record<string, unknown>; // VFS option overrides (FieldName keys)
-  mount?: Record<string, unknown>; // mountOpt overrides
+  vfs?: Record<string, unknown>; // VFS option overrides
+  mount?: Record<string, unknown>; // Mount option overrides
   backend?: Record<string, unknown>; // global backend flag overrides (e.g. BufferSize, DisableHTTP2)
   remote?: Record<string, unknown>; // remote-specific config overrides (e.g. disable_checksum)
 }

@@ -1081,15 +1081,15 @@
       "switchToJson": "Modo de Formato JSON",
       "unknownTopLevelProperty": "Aviso: '{{key}}' não é uma propriedade padrão no nível superior para este perfil e pode ser ignorado.",
       "jsonEditorInfo": {
-        "sync": "Sincronizar/Copiar/Mover Perfil: Defina os caminhos 'srcFs' e 'dstFs', campos do perfil e coloque todas as flags de rclone dentro de '_config'.",
-        "bisync": "Perfil Bisync: Configure os caminhos \"path1\" e \"path2\", campos de perfil, e coloque todos os flags do Rclone dentro de \"_config\".",
-        "check": "Verifique o Perfil: Configure os caminhos de \"srcFs\" e \"dstFs\", campos do nível de perfil, e coloque todos as bandeiras de verificação dentro de \"_config\".",
-        "mount": "Perfil de Montagem: Defina os caminhos 'fs' e 'mountPoint', 'mountType', campos em nível de perfil e coloque todas as opções de montagem dentro do 'mountOpt'.",
-        "serve": "Configuração do Perfil: Defina o caminho de 'fs', 'serveType', campos em nível de perfil e coloque todas as opções de Servir dentro de'_config'.",
-        "vfs": "Perfis VFS: Defina opções de cache e compatibilidade personalizadas do Sistema de Arquivos Virtuais como pares chave-valor.",
-        "filter": "Perfil de Filtro: Defina padrões globais, regras de inclusão/exclusão e opções de filtragem de arquivo como pares chave-valor.",
-        "backend": "Perfil Backend: Configure opções de protocolo avançadas e configurações de conexão específicas remota como pares chave-valor.",
-        "runtimeRemote": "Tempo de Execução do Remoto: Definir sobrescritas de conexão dinâmicas e ajustes de desempenho como pares chave-valor."
+        "sync": "Sincronizar/Copiar/Mover Perfil: Defina os caminhos 'srcFs' e 'dstFs', campos do perfil e as flags do rclone (remova o '--' inicial e substitua '-' por '_').",
+        "bisync": "Perfil Bisync: Configure os caminhos \"path1\" e \"path2\", campos de perfil e as flags do Rclone (remova o '--' inicial e substitua '-' por '_').",
+        "check": "Verifique o Perfil: Configure os caminhos de \"srcFs\" e \"dstFs\", campos do nível de perfil e as bandeiras de verificação (remova o '--' inicial e substitua '-' por '_').",
+        "mount": "Perfil de Montagem: Defina os caminhos 'fs' e 'mountPoint', 'mountType', campos em nível de perfil e as opções de montagem (remova o '--' inicial e substitua '-' por '_').",
+        "serve": "Configuração do Perfil: Defina o caminho de 'fs', 'serveType', campos em nível de perfil e as opções de Servir (remova o '--' inicial e substitua '-' por '_').",
+        "vfs": "Perfis VFS: Defina opções de cache e compatibilidade personalizadas do Sistema de Arquivos Virtuais como pares chave-valor (remova o '--' inicial e substitua '-' por '_').",
+        "filter": "Perfil de Filtro: Defina padrões globais, regras de inclusão/exclusão e opções de filtragem de arquivo como pares chave-valor (remova o '--' inicial e substitua '-' por '_').",
+        "backend": "Perfil Backend: Configure opções de protocolo avançadas e configurações de conexão específicas remota como pares chave-valor (remova o '--' inicial e substitua '-' por '_').",
+        "runtimeRemote": "Tempo de Execução do Remoto: Definir sobrescritas de conexão dinâmicas e ajustes de desempenho como pares chave-valor (remova o '--' inicial e substitua '-' por '_')."
       },
       "runtimeRemoteWarning": {
         "title": "Configurações de Execução Remota",

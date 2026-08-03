@@ -29,7 +29,6 @@ import {
   ExplorerRoot,
 } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
-import { UiStateService } from './state/ui-state.service';
 import { isHeadlessMode, isMobile } from '../infrastructure/platform/api-client.service';
 import type { NautilusComponent } from 'src/app/file-browser/nautilus/nautilus.component';
 
@@ -45,7 +44,6 @@ export class NautilusService extends TauriBaseService {
   readonly eventListenersService = inject(EventListenersService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
-  private readonly uiState = inject(UiStateService);
 
   private readonly _filePickerState = signal<{ isOpen: boolean; options?: FilePickerConfig }>({
     isOpen: false,

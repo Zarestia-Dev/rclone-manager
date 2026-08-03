@@ -19,10 +19,7 @@ import { JsonEditorComponent } from 'src/app/shared/components/json-editor/json-
 import { SettingControlComponent } from 'src/app/shared/components/setting-control/setting-control.component';
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { IconService } from 'src/app/services/ui/icon.service';
-import {
-  matchesConfigSearch,
-  getControlKey,
-} from 'src/app/services/remote/utils/remote-config.utils';
+import { matchesConfigSearch } from 'src/app/services/remote/utils/remote-config.utils';
 import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
 
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
@@ -78,7 +75,7 @@ export class FlagConfigStepComponent {
 
     return fields.map(field => ({
       field,
-      controlKey: getControlKey(field, this.flagType()),
+      controlKey: field.Name || field.FieldName,
       trackKey: field.FieldName ?? field.Name ?? '',
     }));
   });

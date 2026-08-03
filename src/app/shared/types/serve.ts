@@ -37,8 +37,6 @@ export interface ServeListItem {
     type: string;
     opt?: ServeOptions;
     vfsOpt?: VfsOptions;
-    _config?: BackendOptions;
-    _filter?: FilterOptions;
   };
 }
 

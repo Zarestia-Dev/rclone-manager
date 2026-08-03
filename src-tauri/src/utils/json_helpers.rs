@@ -58,6 +58,12 @@ pub fn extract_remote_name_from_fs(fs: &str) -> String {
     normalize_remote_name(remote_part)
 }
 
+/// Returns true if the key represents a flat option (starts with a lowercase character).
+#[must_use]
+pub fn is_flat_option_key(key: &str) -> bool {
+    key.chars().next().is_some_and(|c| c.is_lowercase())
+}
+
 /// Safely converts a JSON object to a `HashMap`.
 /// Returns None if the input is not a JSON object.
 #[must_use]
@@ -355,5 +361,14 @@ mod tests {
         assert_eq!(extract_remote_name_from_fs("Mega{Gyju7}:"), "Mega");
         assert_eq!(extract_remote_name_from_fs("Mega{Gyju7}:/docs"), "Mega");
         assert_eq!(extract_remote_name_from_fs("OneDrive:/root"), "OneDrive");
+    }
+
+    #[test]
+    fn test_is_flat_option_key() {
+        assert!(is_flat_option_key("checksum"));
+        assert!(is_flat_option_key("vfs_cache_mode"));
+        assert!(is_flat_option_key("srcFs"));
+        assert!(!is_flat_option_key("CheckSum"));
+        assert!(!is_flat_option_key("CacheMode"));
     }
 }

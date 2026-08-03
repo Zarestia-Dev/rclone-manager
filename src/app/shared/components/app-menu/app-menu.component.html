@@ -46,27 +46,28 @@
         </button>
       }
     </div>
-
     <mat-divider></mat-divider>
 
-    <!-- Workspaces / Overlays -->
-    @if (activeWorkspace() !== 'main_menu') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('main_menu')">
-        <span>{{ 'settings.general.default_view.options.main_menu' | translate }}</span>
-      </button>
-    }
-    @if (activeWorkspace() !== 'nautilus') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('nautilus')">
-        <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + B</span>
-      </button>
-    }
-    @if (activeWorkspace() !== 'flow') {
-      <button cdkMenuItem class="menu-item" (click)="openWorkspace('flow')">
-        <span>{{ 'titlebar.menu.flowWorkspace' | translate }}</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + Alt + F</span>
-      </button>
-    }
+    <!-- Import / Export -->
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="restoreSettings()"
+      [attr.aria-label]="'titlebar.menu.import' | translate"
+    >
+      <span>{{ 'titlebar.menu.import' | translate }}</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + I</span>
+    </button>
+
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openExportModal()"
+      [attr.aria-label]="'titlebar.menu.export' | translate"
+    >
+      <span>{{ 'titlebar.menu.export' | translate }}</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + E</span>
+    </button>
     <mat-divider></mat-divider>
 
     <!-- Preferences & Flags -->
@@ -92,36 +93,25 @@
 
     <mat-divider></mat-divider>
 
-    <!-- Import / Export -->
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="restoreSettings()"
-      [attr.aria-label]="'titlebar.menu.import' | translate"
-    >
-      <span>{{ 'titlebar.menu.import' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + I</span>
-    </button>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openExportModal()"
-      [attr.aria-label]="'titlebar.menu.export' | translate"
-    >
-      <span>{{ 'titlebar.menu.export' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + E</span>
-    </button>
-
-    <button
-      cdkMenuItem
-      class="menu-item"
-      (click)="openKeyboardShortcutsModal()"
-      [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
-    >
-      <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
-    </button>
+    <!-- Workspaces / Overlays -->
+    @if (activeWorkspace() !== 'main_menu') {
+      <button cdkMenuItem class="menu-item" (click)="openWorkspace('main_menu')">
+        <span>{{ 'settings.general.default_view.options.main_menu' | translate }}</span>
+      </button>
+    }
+    @if (activeWorkspace() !== 'nautilus') {
+      <button cdkMenuItem class="menu-item" (click)="openWorkspace('nautilus')">
+        <span>{{ 'titlebar.menu.fileBrowser' | translate }}</span>
+        <span class="shortcut" aria-hidden="true">Ctrl + B</span>
+      </button>
+    }
+    @if (activeWorkspace() !== 'flow') {
+      <button cdkMenuItem class="menu-item" (click)="openWorkspace('flow')">
+        <span>{{ 'titlebar.menu.flowWorkspace' | translate }}</span>
+        <span class="shortcut" aria-hidden="true">Ctrl + Alt + F</span>
+      </button>
+    }
+    <mat-divider></mat-divider>
 
     <button
       cdkMenuItem
@@ -140,6 +130,18 @@
         }
         Ctrl + Alt + A</span
       >
+    </button>
+
+    <mat-divider></mat-divider>
+
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openKeyboardShortcutsModal()"
+      [attr.aria-label]="'titlebar.menu.shortcuts' | translate"
+    >
+      <span>{{ 'titlebar.menu.shortcuts' | translate }}</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
     </button>
 
     <mat-divider></mat-divider>

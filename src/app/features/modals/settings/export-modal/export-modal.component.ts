@@ -1,6 +1,5 @@
 import {
   Component,
-  DestroyRef,
   OnInit,
   inject,
   signal,
@@ -77,7 +76,6 @@ export class ExportModalComponent implements OnInit {
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly destroyRef = inject(DestroyRef);
 
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 

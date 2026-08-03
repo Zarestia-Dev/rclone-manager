@@ -213,7 +213,7 @@ export interface ProfileConfig {
     mountPoint?: string;
     type?: string;
     addr?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -223,7 +223,7 @@ export interface MountConfig {
     fs?: string;
     mountPoint?: string;
     mountType?: string;
-    mountOpt?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -233,7 +233,7 @@ export interface CopyConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -243,7 +243,7 @@ export interface SyncConfig {
     srcFs?: string | string[];
     dstFs?: string;
     createEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -260,7 +260,7 @@ export interface MoveConfig {
     dstFs?: string;
     createEmptySrcDirs?: boolean;
     deleteEmptySrcDirs?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -295,7 +295,7 @@ export interface BisyncConfig {
     backupDir1?: string;
     backupDir2?: string;
     noCleanup?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -304,7 +304,7 @@ export interface ServeConfig {
   rclone: {
     fs?: string;
     type?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -316,7 +316,7 @@ export interface CheckConfig {
     download?: boolean;
     checkFileHash?: string;
     checkFileFs?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -324,7 +324,7 @@ export interface DeleteConfig {
   app: AppConfig;
   rclone: {
     srcFs?: string | string[];
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -335,7 +335,7 @@ export interface CopyurlConfig {
     dstFs?: string;
     autoFilename?: boolean;
     filenames?: string[];
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -347,7 +347,7 @@ export interface ArchivecreateConfig {
     format?: string;
     prefix?: string;
     fullPath?: boolean;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 
@@ -356,7 +356,7 @@ export interface CryptcheckConfig {
   rclone: {
     srcFs?: string | string[];
     dstFs?: string;
-    _config?: Record<string, ConfigValue>;
+    [key: string]: ConfigValue | undefined;
   };
 }
 

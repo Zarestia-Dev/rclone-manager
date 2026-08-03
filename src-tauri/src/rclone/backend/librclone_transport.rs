@@ -55,10 +55,9 @@ impl RcloneTransport for RcloneLibBackend {
         }
 
         let input_clone = input.clone();
-        let join_result = tokio::task::spawn_blocking(move || rclone_ffi::rpc(&input_clone))
+        tokio::task::spawn_blocking(move || rclone_ffi::rpc(&input_clone))
             .await
-            .map_err(|e| BackendError::Other(format!("librclone FFI join error: {e}")))?;
-        join_result
+            .map_err(|e| BackendError::Other(format!("librclone FFI join error: {e}")))?
     }
 
     async fn read_file(

@@ -45,7 +45,7 @@ describe('InteractiveConfigStepComponent', () => {
 
     expect(fixture.nativeElement.querySelector('mat-select')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('input')).toBeTruthy();
-    expect(component.allowsCustomValue()).toBeTrue();
+    expect(component.allowsCustomValue()).toBe(true);
   });
 
   it('keeps the selected example in sync with the current answer', () => {
@@ -89,7 +89,7 @@ describe('InteractiveConfigStepComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(component.hasError()).toBeTrue();
+    expect(component.hasError()).toBe(true);
     expect(component.errorMessage()).toBe('Failed to query available drives');
     expect(fixture.nativeElement.querySelector('app-alert-banner')).toBeTruthy();
   });

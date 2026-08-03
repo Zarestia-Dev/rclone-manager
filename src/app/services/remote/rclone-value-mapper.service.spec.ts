@@ -142,20 +142,20 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should parse boolean values directly', () => {
-      expect(service.parseTristate(true)).toBeTrue();
-      expect(service.parseTristate(false)).toBeFalse();
+      expect(service.parseTristate(true)).toBe(true);
+      expect(service.parseTristate(false)).toBe(false);
     });
 
     it('should parse valid rclone Tristate objects', () => {
-      expect(service.parseTristate({ Valid: true, Value: true })).toBeTrue();
-      expect(service.parseTristate({ Valid: true, Value: false })).toBeFalse();
+      expect(service.parseTristate({ Valid: true, Value: true })).toBe(true);
+      expect(service.parseTristate({ Valid: true, Value: false })).toBe(false);
       expect(service.parseTristate({ Valid: false, Value: true })).toBeNull();
     });
 
     it('should parse string representations of boolean', () => {
-      expect(service.parseTristate('true')).toBeTrue();
-      expect(service.parseTristate('TRUE')).toBeTrue();
-      expect(service.parseTristate('false')).toBeFalse();
+      expect(service.parseTristate('true')).toBe(true);
+      expect(service.parseTristate('TRUE')).toBe(true);
+      expect(service.parseTristate('false')).toBe(false);
     });
   });
 
@@ -173,8 +173,8 @@ describe('RcloneValueMapperService', () => {
       };
 
       const normalized = service.normalizeOption(opt);
-      expect(normalized.Default).toBeTrue();
-      expect(normalized.Value).toBeFalse();
+      expect(normalized.Default).toBe(true);
+      expect(normalized.Value).toBe(false);
     });
 
     it('should keep other option types identical', () => {
@@ -197,8 +197,8 @@ describe('RcloneValueMapperService', () => {
   describe('isDefaultValue', () => {
     it('should return true for null or undefined', () => {
       const field = { Type: 'string', Default: 'def' } as RcConfigOption;
-      expect(service.isDefaultValue(null, field)).toBeTrue();
-      expect(service.isDefaultValue(undefined, field)).toBeTrue();
+      expect(service.isDefaultValue(null, field)).toBe(true);
+      expect(service.isDefaultValue(undefined, field)).toBe(true);
     });
 
     it('should handle Tristate values correctly', () => {
@@ -206,11 +206,11 @@ describe('RcloneValueMapperService', () => {
         Type: 'Tristate',
         Default: { Valid: true, Value: true },
       } as unknown as RcConfigOption;
-      expect(service.isDefaultValue(true, field)).toBeTrue();
-      expect(service.isDefaultValue(false, field)).toBeFalse();
-      expect(
-        service.isDefaultValue(null, { ...field, Default: null, DefaultStr: 'unset' })
-      ).toBeTrue();
+      expect(service.isDefaultValue(true, field)).toBe(true);
+      expect(service.isDefaultValue(false, field)).toBe(false);
+      expect(service.isDefaultValue(null, { ...field, Default: null, DefaultStr: 'unset' })).toBe(
+        true
+      );
     });
 
     it('should handle arrays correctly', () => {
@@ -219,31 +219,31 @@ describe('RcloneValueMapperService', () => {
         Default: [],
         DefaultStr: '',
       } as unknown as RcConfigOption;
-      expect(service.isDefaultValue([], field)).toBeTrue();
-      expect(service.isDefaultValue(['a'], field)).toBeFalse();
+      expect(service.isDefaultValue([], field)).toBe(true);
+      expect(service.isDefaultValue(['a'], field)).toBe(false);
 
       const commaField = {
         Type: 'CommaSepList',
         Default: 'html, md',
         DefaultStr: 'html, md',
       } as RcConfigOption;
-      expect(service.isDefaultValue(['html', 'md'], commaField)).toBeTrue();
-      expect(service.isDefaultValue(['html'], commaField)).toBeFalse();
-      expect(service.isDefaultValue(['md', 'html'], commaField)).toBeFalse();
+      expect(service.isDefaultValue(['html', 'md'], commaField)).toBe(true);
+      expect(service.isDefaultValue(['html'], commaField)).toBe(false);
+      expect(service.isDefaultValue(['md', 'html'], commaField)).toBe(false);
 
       const spaceField = {
         Type: 'SpaceSepList',
         Default: 'html md',
         DefaultStr: 'html md',
       } as RcConfigOption;
-      expect(service.isDefaultValue(['html', 'md'], spaceField)).toBeTrue();
+      expect(service.isDefaultValue(['html', 'md'], spaceField)).toBe(true);
     });
 
     it('should compare standard defaults correctly', () => {
       const field = { Type: 'string', Default: 'def', DefaultStr: 'def' } as RcConfigOption;
-      expect(service.isDefaultValue('def', field)).toBeTrue();
-      expect(service.isDefaultValue('', field)).toBeTrue();
-      expect(service.isDefaultValue('other', field)).toBeFalse();
+      expect(service.isDefaultValue('def', field)).toBe(true);
+      expect(service.isDefaultValue('', field)).toBe(true);
+      expect(service.isDefaultValue('other', field)).toBe(false);
     });
   });
 
@@ -263,14 +263,14 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should parse booleans correctly', () => {
-      expect(service.humanToMachine(true, 'bool')).toBeTrue();
-      expect(service.humanToMachine('true', 'bool')).toBeTrue();
-      expect(service.humanToMachine('false', 'bool')).toBeFalse();
+      expect(service.humanToMachine(true, 'bool')).toBe(true);
+      expect(service.humanToMachine('true', 'bool')).toBe(true);
+      expect(service.humanToMachine('false', 'bool')).toBe(false);
       expect(service.humanToMachine('invalid', 'bool')).toBe('invalid');
     });
 
     it('should parse Tristate using parseTristate', () => {
-      expect(service.humanToMachine('true', 'Tristate')).toBeTrue();
+      expect(service.humanToMachine('true', 'Tristate')).toBe(true);
       expect(service.humanToMachine('unset', 'Tristate')).toBeNull();
     });
 

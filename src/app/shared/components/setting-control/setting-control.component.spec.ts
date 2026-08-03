@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { provideTranslateService } from '@ngx-translate/core';
 import { SettingControlComponent } from './setting-control.component';
 import { RcConfigOption } from '@app/types';
-import { TranslateModule } from '@ngx-translate/core';
 import { By } from '@angular/platform-browser';
 import { MatSelect } from '@angular/material/select';
 
@@ -52,7 +52,8 @@ describe('SettingControlComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TestHostComponent, TranslateModule.forRoot()],
+      imports: [TestHostComponent],
+      providers: [provideTranslateService({})],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TestHostComponent);
@@ -66,7 +67,7 @@ describe('SettingControlComponent', () => {
     const selectDebugEl = fixture.debugElement.query(By.directive(MatSelect));
     expect(selectDebugEl).toBeTruthy();
     const matSelect = selectDebugEl.componentInstance as MatSelect;
-    expect(matSelect.multiple).toBeTrue();
+    expect(matSelect.multiple).toBe(true);
   });
 
   it('should render a single-select dropdown when option is exclusive (Exclusive: true) with Examples', () => {
@@ -76,7 +77,7 @@ describe('SettingControlComponent', () => {
     const selectDebugEl = fixture.debugElement.query(By.directive(MatSelect));
     expect(selectDebugEl).toBeTruthy();
     const matSelect = selectDebugEl.componentInstance as MatSelect;
-    expect(matSelect.multiple).toBeFalse();
+    expect(matSelect.multiple).toBe(false);
   });
 
   it('should parse comma-separated string initial value into an array for multi-select control', () => {
@@ -111,7 +112,7 @@ describe('SettingControlComponent', () => {
     const settingControlEl = fixture.debugElement.query(By.directive(SettingControlComponent));
     const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
 
-    expect(settingControlComp.isMultiselectOption()).toBeTrue();
+    expect(settingControlComp.isMultiselectOption()).toBe(true);
   });
 
   it('should NOT treat boolean options with Exclusive: false as multiselect and should reset to default boolean value', () => {
@@ -131,16 +132,16 @@ describe('SettingControlComponent', () => {
     const settingControlEl = fixture.debugElement.query(By.directive(SettingControlComponent));
     const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
 
-    expect(settingControlComp.isMultiselectOption()).toBeFalse();
-    expect(settingControlComp.control()?.value).toBeFalse();
+    expect(settingControlComp.isMultiselectOption()).toBe(false);
+    expect(settingControlComp.control()?.value).toBe(false);
 
     settingControlComp.control()?.setValue(true);
     fixture.detectChanges();
-    expect(settingControlComp.isValueChanged()).toBeTrue();
+    expect(settingControlComp.isValueChanged()).toBe(true);
 
     settingControlComp.resetToDefault();
     fixture.detectChanges();
-    expect(settingControlComp.control()?.value).toBeFalse();
-    expect(settingControlComp.isValueChanged()).toBeFalse();
+    expect(settingControlComp.control()?.value).toBe(false);
+    expect(settingControlComp.isValueChanged()).toBe(false);
   });
 });

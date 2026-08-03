@@ -30,10 +30,35 @@ pub struct GenericTransferParams {
 
 impl GenericTransferParams {
     pub fn to_rclone_body(&self) -> Result<Value, String> {
-        let mut body = match self.rclone_config.clone() {
-            Value::Object(map) => map,
-            _ => serde_json::Map::new(),
-        };
+        let mut body = Map::new();
+
+        if let Value::Object(map) = &self.rclone_config {
+            let mut legacy_config = Map::new();
+            let mut legacy_filter = Map::new();
+
+            for (k, v) in map {
+                if crate::utils::json_helpers::is_flat_option_key(k) {
+                    body.insert(k.clone(), v.clone());
+                } else if k == "_config" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_config.extend(opts.clone());
+                    }
+                } else if k == "_filter" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_filter.extend(opts.clone());
+                    }
+                } else {
+                    legacy_config.insert(k.clone(), v.clone());
+                }
+            }
+
+            if !legacy_filter.is_empty() {
+                body.insert("_filter".to_string(), Value::Object(legacy_filter));
+            }
+            if !legacy_config.is_empty() {
+                body.insert("_config".to_string(), Value::Object(legacy_config));
+            }
+        }
 
         if self.transfer_type == OperationType::Delete {
             let endpoint = if self.is_dir {

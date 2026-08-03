@@ -209,7 +209,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     // Detect current theme
     const extensions: any[] = [
       basicSetup,
-      EditorView.theme({}, { dark: true }),
+      EditorView.theme({}, { dark: document.documentElement.classList.contains('dark') }),
       keymap.of([]),
       EditorView.editable.of(!readOnly),
       EditorState.readOnly.of(readOnly),
