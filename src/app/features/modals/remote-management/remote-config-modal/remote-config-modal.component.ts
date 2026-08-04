@@ -200,9 +200,9 @@ export class RemoteConfigModalComponent {
     }
   }
 
-  private get requiresInteractiveFlow(): boolean {
-    return this.state.commandOptions().some(o => o.key === 'nonInteractive' && o.value === true);
-  }
+  private readonly requiresInteractiveFlow = computed(() =>
+    this.state.commandOptions().some(o => o.key === 'nonInteractive' && o.value === true)
+  );
 
   private async handleCreateMode(): Promise<{ success: boolean }> {
     this.state.PROFILE_TYPES.forEach(type => this.state.saveCurrentProfile(type));
@@ -210,7 +210,7 @@ export class RemoteConfigModalComponent {
     const finalConfig = this.buildFinalConfig();
     await this.authStateService.startAuth(remoteData.name, false);
 
-    if (!this.requiresInteractiveFlow) {
+    if (!this.requiresInteractiveFlow()) {
       await this.remoteManagementService.createRemote(
         remoteData.name,
         remoteData,
@@ -236,7 +236,7 @@ export class RemoteConfigModalComponent {
 
     if (this.state.editTarget() === 'remote') {
       const remoteData = this.state.cleanFormData(this.state.remoteForm.getRawValue());
-      if (this.requiresInteractiveFlow) {
+      if (this.requiresInteractiveFlow()) {
         const finalConfig = this.buildFinalConfig(true);
         this.orchestrator.setPendingConfig(remoteData, finalConfig);
         const completed = await this.orchestrator.startInteractiveCreation(

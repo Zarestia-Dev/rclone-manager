@@ -76,10 +76,6 @@ export class SidebarComponent {
 
   onCtrlF(event: Event): void {
     (event as KeyboardEvent).preventDefault();
-    if (!this.searchVisible()) {
-      this.toggleSearch();
-    } else {
-      this.searchContainer()?.focus();
-    }
+    this.toggleSearch();
   }
 }

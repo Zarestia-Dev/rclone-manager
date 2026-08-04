@@ -34,6 +34,9 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
    - Use `inject()` for dependency injection where applicable.
    - Keep translation keys organized and run `npm run audit:i18n` when adding user-facing text.
 
+3. **Angular Material**
+   - Do not use `outline` versions of the material form components (inputs, selects, textareas).
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))

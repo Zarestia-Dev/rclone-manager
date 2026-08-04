@@ -124,7 +124,12 @@ export class SettingControlComponent implements ControlValueAccessor {
   // Signal-backed list of FormArray controls — zoneless CD picks up add/remove.
   readonly formArrayControls = signal<FormControl[]>([]);
 
-  readonly isValueChanged = signal(false);
+  readonly isValueChanged = computed(() => {
+    const ctrl = this.control();
+    this.controlValueVersion();
+    if (!ctrl) return false;
+    return !this.valuesEqual(ctrl.value, this.uiDefaultValue());
+  });
 
   private readonly controlValueVersion = signal(0);
 
@@ -320,7 +325,7 @@ export class SettingControlComponent implements ControlValueAccessor {
     if (opt.Examples?.length) return opt.Examples;
     if (opt.Type === 'Encoding') return this.encodingFlags;
     if (opt.Type === 'DumpFlags') {
-      return [...SettingControlComponent.DUMP_FLAGS_FALLBACK];
+      return [...this.DUMP_FLAGS_FALLBACK];
     }
     return [];
   }
@@ -456,7 +461,7 @@ export class SettingControlComponent implements ControlValueAccessor {
       defaultArr.forEach(val => ctrl.push(new FormControl(val), { emitEvent: false }));
       this.syncFormArrayControls(ctrl);
       this.onChange(this.prepareValueForBackend(ctrl.value));
-      this.isValueChanged.set(false);
+      this.controlValueVersion.update(v => v + 1);
       this.valueChanged.emit(false);
       this.commitValue();
       return;
@@ -499,7 +504,6 @@ export class SettingControlComponent implements ControlValueAccessor {
       }
     }
     this.controlValueVersion.update(v => v + 1);
-    this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
   }
 
   private prepareValueForControl(value: unknown): unknown {
@@ -590,10 +594,8 @@ export class SettingControlComponent implements ControlValueAccessor {
       this.pendingWriteValue = undefined;
     }
 
-    const ctrl = this.control();
-    if (ctrl) {
-      this.isValueChanged.set(!this.valuesEqual(ctrl.value, this.uiDefaultValue()));
-    }
+    // Bump version so isValueChanged computed re-evaluates for the new control.
+    this.controlValueVersion.update(v => v + 1);
   }
 
   private syncFormArrayControls(ctrl: FormArray): void {
@@ -653,16 +655,7 @@ export class SettingControlComponent implements ControlValueAccessor {
 
   readonly hasBitsComboExamples = computed(() => this.isBitsWithCombos(this.mergedOption()));
 
-  /**
-   * True for all integer and float types that should use the stepper input
-   * (app-number-input) instead of falling through to a plain text input.
-   *
-   * The @switch in the template only had explicit @case entries for int,
-   * int64, uint32, and float64 — int32, uint, uint64, float, and float32
-   * fell through to @default (standardInput = text field with validation),
-   * which worked but gave a worse UX than the dedicated stepper. This
-   * computed lets the template route all numeric types to stepperInput.
-   */
+  /** Numeric types routed to the stepper input (app-number-input). */
   private static readonly NUMERIC_TYPES = new Set([
     'int',
     'int32',
@@ -696,10 +689,10 @@ export class SettingControlComponent implements ControlValueAccessor {
     this.controlSubscriptions.add(
       ctrl.valueChanges.subscribe(value => {
         this.controlValueVersion.update(v => v + 1);
+        if (this.remoteState?.isPopulatingForm()) return;
         this.onChange(this.prepareValueForBackend(value));
         this.onTouched();
         const changed = !this.valuesEqual(ctrl.value, this.uiDefaultValue());
-        this.isValueChanged.set(changed);
         this.valueChanged.emit(changed);
         if (this.mergedOption()?.Type === 'Time') this.updateSplitFromControl(value);
       })

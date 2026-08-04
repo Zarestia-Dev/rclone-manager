@@ -12,9 +12,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
-  background: var(--headerbar-bg-color);
-  border-bottom: 1px solid var(--border-color);
+  min-height: calc(var(--titlebar-height) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--space-xxs) + env(safe-area-inset-top, 0px));
+  padding-bottom: var(--space-xxs);
+  padding-left: var(--title-bar-padding);
+  padding-right: var(--title-bar-padding);
 
   .header-branding {
     display: flex;

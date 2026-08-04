@@ -179,35 +179,23 @@ export class RemotePresetsService {
   resolvePresets(remoteType: string, vendor?: string): PresetValues {
     let merged = { ...BASE_PRESET };
 
-    // 1. Merge family-specific presets
     const family = this.getStorageFamily(remoteType);
-    const familyPreset = FAMILY_PRESETS[family];
-    if (familyPreset) {
-      merged = mergePresets(merged, familyPreset);
-    }
+    if (FAMILY_PRESETS[family]) merged = mergePresets(merged, FAMILY_PRESETS[family]);
 
-    // 2. Add provider-specific remote options
     const typeLower = remoteType.toLowerCase().replace(/\s+/g, '');
-    const providerPreset = PROVIDER_REMOTE_PRESETS[typeLower];
-    if (providerPreset) {
-      merged = mergePresets(merged, providerPreset);
+    if (PROVIDER_REMOTE_PRESETS[typeLower]) {
+      merged = mergePresets(merged, PROVIDER_REMOTE_PRESETS[typeLower]);
     }
 
-    // 3. Add vendor-specific remote presets (e.g. Nextcloud/Owncloud for WebDAV)
     if (vendor) {
       const vendorLower = vendor.toLowerCase().replace(/\s+/g, '');
       const vendorPreset = VENDOR_PRESETS[typeLower]?.[vendorLower];
-      if (vendorPreset) {
-        merged = mergePresets(merged, vendorPreset);
-      }
+      if (vendorPreset) merged = mergePresets(merged, vendorPreset);
     }
 
-    // 4. Merge OS-specific presets using rule matching
     const osPlatform = this.getTargetPlatform();
     const matchedRule = OS_PRESET_RULES.find(rule => rule.matches(osPlatform));
-    if (matchedRule) {
-      merged = mergePresets(merged, matchedRule.preset);
-    }
+    if (matchedRule) merged = mergePresets(merged, matchedRule.preset);
 
     return merged;
   }

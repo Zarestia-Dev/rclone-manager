@@ -107,7 +107,8 @@ export class RcloneValueMapperService {
     if (value == null || value === '') return null;
     if (typeof value === 'boolean') return value;
     if (typeof value === 'object' && 'Valid' in value && 'Value' in value) {
-      return (value as { Valid: boolean; Value: boolean }).Valid ? (value as any).Value : null;
+      const tri = value as { Valid: boolean; Value: boolean };
+      return tri.Valid ? tri.Value : null;
     }
     const s = String(value).toLowerCase().trim();
     if (s === 'unset' || s === 'null' || s === '[object object]') return null;

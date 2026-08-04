@@ -126,7 +126,7 @@
                   </div>
                 </div>
                 <div class="flag-list">
-                  @for (item of flags; track item.flag.key) {
+                  @for (item of flags; track item.flag.raw + ':' + $index) {
                     <div class="flag-row select-row">
                       <mat-checkbox
                         [ngModel]="isFlagSelected(item.flag.key)"

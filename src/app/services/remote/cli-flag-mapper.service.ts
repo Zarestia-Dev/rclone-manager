@@ -3,6 +3,7 @@ import { RcConfigOption, SharedProfileType } from '@app/types';
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
+import { RcloneValueMapperService } from './rclone-value-mapper.service';
 
 export interface ParsedCLIFlag {
   raw: string;
@@ -45,6 +46,7 @@ const FLAG_PATTERN = /^-{1,2}[a-zA-Z]/;
 export class CliFlagMapperService {
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly remoteManagementService = inject(RemoteManagementService);
+  private readonly valueMapper = inject(RcloneValueMapperService);
 
   private booleanFlagsCache: Set<string> | null = null;
   private readonly lookupTablesCache = new Map<
@@ -236,26 +238,19 @@ export class CliFlagMapperService {
       const isRuntimeRemote = flagType === 'runtimeRemote';
 
       for (const field of fields) {
-        const nameRaw = (field.Name ?? '').toLowerCase();
-        const nameHyphen = nameRaw.replace(/_/g, '-');
-        const keyCamel = (field.FieldName ?? '').toLowerCase();
+        // CLI uses hyphens (--max-delete), RC API uses underscores (max_delete).
+        // Index the hyphen form plus a separator-stripped form so lookups succeed
+        // regardless of which separator the user typed.
+        const key = (field.Name ?? '').toLowerCase().replace(/_/g, '-');
+        if (!key) continue;
+        const val = { option: field, flagType };
+        table[key] = val;
+        table[key.replace(/-/g, '')] = val;
 
-        const addEntry = (key: string): void => {
-          if (!key) return;
-          const val = { option: field, flagType };
-          table[key] = val;
-          table[key.replace(/[-_]/g, '')] = val;
-
-          if (isRuntimeRemote && prefix) {
-            const prefixed = prefix + key;
-            table[prefixed] = val;
-            table[prefixed.replace(/[-_]/g, '')] = val;
-          }
-        };
-
-        addEntry(nameRaw);
-        addEntry(nameHyphen);
-        addEntry(keyCamel);
+        if (isRuntimeRemote && prefix) {
+          table[prefix + key] = val;
+          table[(prefix + key).replace(/-/g, '')] = val;
+        }
       }
     }
     return table;
@@ -286,7 +281,8 @@ export class CliFlagMapperService {
 
   private coerceValue(val: string | boolean, type: string): unknown {
     if (typeof val === 'boolean') return val;
-    if (type === 'bool' || type === 'Tristate') {
+    if (type === 'Tristate') return this.valueMapper.parseTristate(val);
+    if (type === 'bool') {
       const s = val.toLowerCase().trim();
       return s === 'true' || s === '1' || s === 'yes';
     }
@@ -334,16 +330,11 @@ export class CliFlagMapperService {
 
     for (const fields of Object.values(flagFields)) {
       for (const f of fields) {
-        if (f.Type === 'bool' || f.Type === 'Tristate') {
-          if (f.Name) {
-            bools.add(f.Name.toLowerCase());
-            bools.add(f.Name.toLowerCase().replace(/_/g, '-'));
-          }
-          if (f.FieldName) {
-            bools.add(f.FieldName.toLowerCase());
-            bools.add(f.FieldName.toLowerCase().replace(/_/g, '-'));
-          }
-        }
+        if (f.Type !== 'bool' && f.Type !== 'Tristate') continue;
+        const name = (f.Name || f.FieldName || '').toLowerCase();
+        if (!name) continue;
+        bools.add(name);
+        bools.add(name.replace(/_/g, '-'));
       }
     }
     this.booleanFlagsCache = bools;

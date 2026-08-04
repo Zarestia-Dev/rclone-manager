@@ -131,32 +131,25 @@ export class OperationConfigComponent {
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
-  readonly isCoreCommandOp = computed(() =>
-    (CORE_COMMAND_OPS as readonly string[]).includes(this.operationType() as string)
-  );
+  readonly isCoreCommandOp = computed(() => this.isOperationInList(CORE_COMMAND_OPS));
   readonly otherRemotes = computed(() =>
     this.existingRemotes().filter(r => r !== this.currentRemoteName())
   );
 
   private readonly formVersion = signal<number>(0);
-  private readonly pathStructureVersion = signal<number>(0);
 
   readonly isWatchSupported = computed(
-    () =>
-      this.backendService.isLocalBackend() &&
-      (WATCH_SUPPORTED_OPS as readonly string[]).includes(this.operationType() as string)
+    () => this.backendService.isLocalBackend() && this.isOperationInList(WATCH_SUPPORTED_OPS)
   );
 
   readonly sourceItems = computed(() => {
     this.formVersion();
-    this.pathStructureVersion();
     this.opFormGroup();
     return this.getPathItems('source');
   });
 
   readonly destItem = computed(() => {
     this.formVersion();
-    this.pathStructureVersion();
     this.opFormGroup();
     return this.getPathItems('dest')[0] ?? null;
   });
@@ -172,10 +165,7 @@ export class OperationConfigComponent {
   );
 
   readonly hasMixedSources = computed(
-    () =>
-      (CORE_SYNC_OPS as readonly string[]).includes(this.operationType() as string) &&
-      this.hasLocalSource() &&
-      this.hasRemoteSource()
+    () => this.isOperationInList(CORE_SYNC_OPS) && this.hasLocalSource() && this.hasRemoteSource()
   );
 
   pathStates = new Map<string, WritableSignal<PathSelectionState>>();
@@ -227,12 +217,8 @@ export class OperationConfigComponent {
       this.matchesSearch(['dest', 'output', 'target'])
   );
 
-  readonly canAddSource = computed(() =>
-    (MULTI_SOURCE_OPS as readonly string[]).includes(this.operationType() as string)
-  );
-  readonly supportsFileSource = computed(() =>
-    (FILE_SOURCE_OPS as readonly string[]).includes(this.operationType() as string)
-  );
+  readonly canAddSource = computed(() => this.isOperationInList(MULTI_SOURCE_OPS));
+  readonly supportsFileSource = computed(() => this.isOperationInList(FILE_SOURCE_OPS));
 
   readonly isSourcePickerDisabled = computed(() => {
     if (!this.isNewRemote()) return false;
@@ -335,7 +321,6 @@ export class OperationConfigComponent {
       const autoCtrl = this.autoFilenameControl();
       if (!form || !autoCtrl) return;
 
-      // Sync filename -> autoFilename
       const sub1 = form.valueChanges.subscribe(() => {
         const sources = this.sourceItems();
         const hasCustomFilename = sources.some(item => {
@@ -385,6 +370,10 @@ export class OperationConfigComponent {
     });
   }
 
+  private isOperationInList(list: readonly string[]): boolean {
+    return list.includes(this.operationType() as string);
+  }
+
   private getPathItems(group: PathDirection): PathItem[] {
     const ctrl = this.opFormGroup().get(group);
     const controls = ctrl instanceof FormArray ? ctrl.controls : [ctrl];
@@ -423,7 +412,6 @@ export class OperationConfigComponent {
     }
 
     this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
-    this.pathStructureVersion.update((v: number) => v + 1);
   }
 
   addPath(
@@ -434,7 +422,7 @@ export class OperationConfigComponent {
     const array = this.opFormGroup().get(group) as FormArray;
     if (!array) return;
 
-    const controls: Record<string, any> = {
+    const controls: Record<string, FormControl> = {
       type: new FormControl(initial?.type ?? 'currentRemote'),
       path: new FormControl(initial?.path ?? ''),
       remote: new FormControl(initial?.remote ?? ''),
@@ -445,7 +433,6 @@ export class OperationConfigComponent {
     }
 
     array.push(new FormGroup(controls));
-    this.pathStructureVersion.update((v: number) => v + 1);
   }
 
   removePath(group: PathDirection, index: number): void {
@@ -455,7 +442,6 @@ export class OperationConfigComponent {
     array.removeAt(index);
     this.pathSelectionService.unregisterField(`${group}-${index}`);
     this.pathStates.delete(`${group}-${index}`);
-    this.pathStructureVersion.update((v: number) => v + 1);
   }
 
   async selectPath(item: PathItem): Promise<void> {
@@ -486,7 +472,6 @@ export class OperationConfigComponent {
         item.pathControl.setValue(selected);
         item.typeControl.setValue('local');
         item.control.get('remote')?.setValue('');
-        this.pathStructureVersion.update((v: number) => v + 1);
       }
     } catch (e) {
       console.error('Local picker error:', e);
@@ -514,7 +499,6 @@ export class OperationConfigComponent {
           item.pathControl.setValue(data.path);
           item.typeControl.setValue(data.type);
           item.control.get('remote')?.setValue(data.remote || '');
-          this.pathStructureVersion.update((v: number) => v + 1);
         } else {
           this.addPath(item.group, data);
         }

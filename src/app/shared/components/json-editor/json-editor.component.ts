@@ -35,8 +35,9 @@ import {
   getTopLevelKeysForProfile,
 } from 'src/app/services/remote/utils/remote-config.utils';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { PathService } from '../../../services/infrastructure/platform/path.service';
+import { PathService, PathGroup } from '../../../services/infrastructure/platform/path.service';
 
+import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
 import {
   EditorView,
   keymap,
@@ -178,8 +179,6 @@ function buildRcloneCompletionSource(
   };
 }
 
-import { AlertBannerComponent } from '../alert-banner/alert-banner.component';
-
 @Component({
   selector: 'app-json-editor',
   imports: [MatIconModule, TranslatePipe, RcloneOptionTranslatePipe, AlertBannerComponent],
@@ -199,33 +198,23 @@ export class JsonEditorComponent {
   readonly currentRemoteName = input<string>('');
   readonly existingRemotes = input<string[]>([]);
 
+  private static readonly INFO_BANNERS: Readonly<Record<string, string>> = {
+    vfs: 'wizards.remoteConfig.jsonEditorInfo.vfs',
+    filter: 'wizards.remoteConfig.jsonEditorInfo.filter',
+    backend: 'wizards.remoteConfig.jsonEditorInfo.backend',
+    runtimeRemote: 'wizards.remoteConfig.jsonEditorInfo.runtimeRemote',
+    sync: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    copy: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    move: 'wizards.remoteConfig.jsonEditorInfo.sync',
+    bisync: 'wizards.remoteConfig.jsonEditorInfo.bisync',
+    check: 'wizards.remoteConfig.jsonEditorInfo.check',
+    mount: 'wizards.remoteConfig.jsonEditorInfo.mount',
+    serve: 'wizards.remoteConfig.jsonEditorInfo.serve',
+  };
+
   readonly infoBanner = computed(() => {
     const type = this.flagType();
-    if (!type) return null;
-    switch (type) {
-      case 'vfs':
-        return 'wizards.remoteConfig.jsonEditorInfo.vfs';
-      case 'filter':
-        return 'wizards.remoteConfig.jsonEditorInfo.filter';
-      case 'backend':
-        return 'wizards.remoteConfig.jsonEditorInfo.backend';
-      case 'runtimeRemote':
-        return 'wizards.remoteConfig.jsonEditorInfo.runtimeRemote';
-      case 'sync':
-      case 'copy':
-      case 'move':
-        return 'wizards.remoteConfig.jsonEditorInfo.sync';
-      case 'bisync':
-        return 'wizards.remoteConfig.jsonEditorInfo.bisync';
-      case 'check':
-        return 'wizards.remoteConfig.jsonEditorInfo.check';
-      case 'mount':
-        return 'wizards.remoteConfig.jsonEditorInfo.mount';
-      case 'serve':
-        return 'wizards.remoteConfig.jsonEditorInfo.serve';
-      default:
-        return null;
-    }
+    return type ? (JsonEditorComponent.INFO_BANNERS[type] ?? null) : null;
   });
 
   private readonly destroyRef = inject(DestroyRef);
@@ -329,9 +318,10 @@ export class JsonEditorComponent {
 
   constructor() {
     afterNextRender(() => this.initEditor());
-    effect(() => {
+    effect(onCleanup => {
       this.formValue();
-      this.pushFormToEditor();
+      const timer = setTimeout(() => this.pushFormToEditor(), 150);
+      onCleanup(() => clearTimeout(timer));
     });
 
     this.destroyRef.onDestroy(() => {
@@ -511,7 +501,9 @@ export class JsonEditorComponent {
     });
   }
 
-  private checkCliArguments(obj: Record<string, any>): { key: string; suggestion: string } | null {
+  private checkCliArguments(
+    obj: Record<string, unknown>
+  ): { key: string; suggestion: string } | null {
     for (const key of Object.keys(obj)) {
       if (key.startsWith('-')) {
         const matched = this.lookupOption(key);
@@ -525,7 +517,7 @@ export class JsonEditorComponent {
   }
 
   private validateOptions(
-    options: Record<string, any>,
+    options: Record<string, unknown>,
     validFieldNames: Set<string>,
     currentBlock: string
   ): {
@@ -602,7 +594,7 @@ export class JsonEditorComponent {
 
   private syncFormControls(
     group: FormGroup,
-    incoming: Record<string, any>,
+    incoming: Record<string, unknown>,
     excludeFilter: (key: string) => boolean = () => false
   ): void {
     const existingControls = new Set(Object.keys(group.controls));
@@ -630,9 +622,9 @@ export class JsonEditorComponent {
   }
 
   private applyEditorChanges(text: string): void {
-    let parsed: Record<string, any>;
+    let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(text) as Record<string, any>;
+      parsed = JSON.parse(text) as Record<string, unknown>;
     } catch {
       this.parseError.set({ key: 'shared.jsonEditor.parseError' });
       this.formGroup().setErrors({ jsonParse: true });
@@ -714,7 +706,7 @@ export class JsonEditorComponent {
     this.reconcileFormFromEditor(parsed);
   }
 
-  private reconcileFormFromEditor(parsed: Record<string, any>): void {
+  private reconcileFormFromEditor(parsed: Record<string, unknown>): void {
     const type = this.flagType();
     const fg = this.formGroup();
     const currentRemote = this.currentRemoteName();
@@ -758,17 +750,17 @@ export class JsonEditorComponent {
                   })
                 );
                 const lastGroup = sourceCtrl.at(sourceCtrl.length - 1) as FormGroup;
-                const parsed = this.pathService.parseFsString(
+                const parsedPath = this.pathService.parseFsString(
                   p,
                   'currentRemote',
                   currentRemote,
                   existing
                 );
                 if (type === 'mount' || type === 'serve') {
-                  parsed.type = 'currentRemote';
-                  parsed.remote = '';
+                  parsedPath.type = 'currentRemote';
+                  parsedPath.remote = '';
                 }
-                lastGroup.patchValue(parsed);
+                lastGroup.patchValue(parsedPath);
               }
             } else {
               sourceCtrl.push(
@@ -780,17 +772,17 @@ export class JsonEditorComponent {
               );
             }
           } else if (sourceCtrl instanceof FormGroup) {
-            const parsed = this.pathService.parseFsString(
-              srcVal || '',
+            const parsedPath = this.pathService.parseFsString(
+              String(srcVal || ''),
               'currentRemote',
               currentRemote,
               existing
             );
             if (type === 'mount' || type === 'serve') {
-              parsed.type = 'currentRemote';
-              parsed.remote = '';
+              parsedPath.type = 'currentRemote';
+              parsedPath.remote = '';
             }
-            sourceCtrl.patchValue(parsed);
+            sourceCtrl.patchValue(parsedPath);
           }
         }
 
@@ -800,17 +792,17 @@ export class JsonEditorComponent {
           const dstVal = rcloneParsed[mapping.destKey];
 
           if (destCtrl instanceof FormGroup && dstVal !== undefined) {
-            const parsed = this.pathService.parseFsString(
-              dstVal || '',
+            const parsedPath = this.pathService.parseFsString(
+              String(dstVal || ''),
               'local',
               currentRemote,
               existing
             );
             if (type === 'mount') {
-              parsed.type = 'local';
-              parsed.remote = '';
+              parsedPath.type = 'local';
+              parsedPath.remote = '';
             }
-            destCtrl.patchValue(parsed);
+            destCtrl.patchValue(parsedPath);
           }
         }
       }
@@ -832,7 +824,7 @@ export class JsonEditorComponent {
       const optionsGroup = fg.get('options') as FormGroup;
       if (optionsGroup) {
         // Gather all incoming options (flat + nested)
-        const incomingOptions: Record<string, any> = {};
+        const incomingOptions: Record<string, unknown> = {};
 
         if (type === 'serve') {
           // Serve is fully flat
@@ -910,11 +902,11 @@ export class JsonEditorComponent {
   private serializeForm(): string {
     try {
       const type = this.flagType();
-      const raw = this.formGroup().getRawValue() as Record<string, any>;
+      const raw = this.formGroup().getRawValue() as Record<string, unknown>;
       const currentRemote = this.currentRemoteName();
 
       if (isNestedOptionsType(type)) {
-        let out: Record<string, any> = {};
+        let out: Record<string, unknown> = {};
         const optionsGroup = this.formGroup().get('options') as FormGroup;
         if (optionsGroup) {
           out = this.serializeOptions(optionsGroup.getRawValue(), '', new Set(), false);
@@ -923,17 +915,19 @@ export class JsonEditorComponent {
       }
 
       if (isProfileType(type)) {
-        const rclone: Record<string, any> = {};
+        const rclone: Record<string, unknown> = {};
 
         const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
         if (mapping) {
           // 1. Map source paths to srcFs / path1 / fs
           if (raw['source']) {
             const srcPaths = Array.isArray(raw['source'])
-              ? raw['source']
-                  .map((s: any) => this.pathService.buildPathString(s, currentRemote))
+              ? (raw['source'] as unknown[])
+                  .map(s => this.pathService.buildPathString(s as PathGroup, currentRemote))
                   .filter(Boolean)
-              : [this.pathService.buildPathString(raw['source'], currentRemote)].filter(Boolean);
+              : [
+                  this.pathService.buildPathString(raw['source'] as PathGroup, currentRemote),
+                ].filter(Boolean);
 
             rclone[mapping.sourceKey] = mapping.isSourceArray
               ? srcPaths.length > 1
@@ -944,20 +938,23 @@ export class JsonEditorComponent {
 
           // 2. Map destination paths to dstFs / path2 / mountPoint
           if (mapping.destKey && raw['dest']) {
-            const dstPath = this.pathService.buildPathString(raw['dest'], currentRemote);
+            const dstPath = this.pathService.buildPathString(
+              raw['dest'] as PathGroup,
+              currentRemote
+            );
             rclone[mapping.destKey] = dstPath;
           }
         }
 
         // 3. Map mountType / type
         if (type === 'mount') {
-          const val = raw['options']?.['mountType'];
-          if (val && val.trim() !== '') {
+          const val = (raw['options'] as Record<string, unknown> | undefined)?.['mountType'];
+          if (typeof val === 'string' && val.trim() !== '') {
             rclone['mountType'] = val;
           }
         } else if (type === 'serve') {
-          const val = raw['options']?.['type'];
-          if (val && val.trim() !== '') {
+          const val = (raw['options'] as Record<string, unknown> | undefined)?.['type'];
+          if (typeof val === 'string' && val.trim() !== '') {
             rclone['type'] = val;
           }
         }
@@ -965,7 +962,7 @@ export class JsonEditorComponent {
         // 4. Map options (flat at top level)
         if (raw['options']) {
           const serialized = this.serializeOptions(
-            raw['options'],
+            raw['options'] as Record<string, unknown>,
             '',
             new Set(['mountType', 'type']),
             false
@@ -1019,12 +1016,12 @@ export class JsonEditorComponent {
   }
 
   private serializeOptions(
-    rawOptions: Record<string, any>,
+    rawOptions: Record<string, unknown>,
     prefix = '',
     excluded = new Set<string>(),
     maskSensitive = false
-  ): Record<string, any> {
-    const out: Record<string, any> = {};
+  ): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
     const defs = this.fieldDefs();
     const explicit = this.explicitKeys();
 

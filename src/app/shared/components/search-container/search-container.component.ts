@@ -1,7 +1,10 @@
 import {
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   effect,
+  inject,
   input,
   output,
   viewChild,
@@ -45,18 +48,18 @@ export class SearchContainerComponent {
 
   searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
+  private readonly injector = inject(Injector);
+
   constructor() {
     effect(() => {
       if (this.visible()) {
-        this.focus();
+        afterNextRender(() => this.focus(), { injector: this.injector });
       }
     });
   }
 
   focus(): void {
-    setTimeout(() => {
-      this.searchInput()?.nativeElement?.focus();
-    }, 150);
+    this.searchInput()?.nativeElement?.focus();
   }
 
   clear(): void {

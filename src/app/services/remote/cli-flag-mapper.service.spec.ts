@@ -1,14 +1,52 @@
 import { TestBed } from '@angular/core/testing';
+import { provideTranslateService } from '@ngx-translate/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { CliFlagMapperService, ParsedCLI } from './cli-flag-mapper.service';
-import { PathService } from '../infrastructure/platform/path.service';
-import { RcConfigOption } from '@app/types';
+import { FlagConfigService } from './flag-config.service';
+import { RemoteManagementService } from './remote-management.service';
+import { RcloneValueMapperService } from './rclone-value-mapper.service';
+import { RcConfigOption, SharedProfileType } from '@app/types';
+
+// The spec exercises the pure-logic methods (tokenize / parse / classify /
+// buildLookupTable). None of them touch the network, so we stub out the two
+// dependencies that would otherwise pull in HttpClient + TranslateService +
+// MatSnackBar + MatDialog.
+function stubFlagConfig(): Partial<FlagConfigService> {
+  return {
+    loadAllFlagFields: () => Promise.resolve({} as Record<string, RcConfigOption[]>),
+  };
+}
+
+function stubRemoteManagement(): Partial<RemoteManagementService> {
+  return {
+    getRemoteConfigFields: () => Promise.resolve([]),
+  };
+}
+
+// `buildLookupTable` expects a Record over all SharedProfileType keys, but the
+// tests only need to supply the ones they exercise. Treat partial input as
+// full records — the missing keys just yield no entries.
+function fields(
+  input: Partial<Record<SharedProfileType, RcConfigOption[]>>
+): Record<SharedProfileType, RcConfigOption[]> {
+  return input as Record<SharedProfileType, RcConfigOption[]>;
+}
 
 describe('CliFlagMapperService', () => {
   let service: CliFlagMapperService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [CliFlagMapperService, PathService],
+      providers: [
+        CliFlagMapperService,
+        RcloneValueMapperService,
+        provideTranslateService(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: FlagConfigService, useValue: stubFlagConfig() },
+        { provide: RemoteManagementService, useValue: stubRemoteManagement() },
+      ],
     });
     service = TestBed.inject(CliFlagMapperService);
   });
@@ -50,15 +88,15 @@ describe('CliFlagMapperService', () => {
 
   describe('hasMacro', () => {
     it('should detect $(...) macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_$(date +%Y-%m-%d)')).toBeTrue();
+      expect(service.hasMacro('dest:/archive/pCloud_$(date +%Y-%m-%d)')).toBe(true);
     });
 
     it('should detect `...` macro patterns', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_`date`')).toBeTrue();
+      expect(service.hasMacro('dest:/archive/pCloud_`date`')).toBe(true);
     });
 
     it('should return false for strings without macros', () => {
-      expect(service.hasMacro('dest:/archive/pCloud_normal')).toBeFalse();
+      expect(service.hasMacro('dest:/archive/pCloud_normal')).toBe(false);
     });
   });
 
@@ -169,27 +207,27 @@ describe('CliFlagMapperService', () => {
 
   describe('classify', () => {
     // Note: rclone RC API uses underscores in Name (e.g. "max_delete"), CLI uses hyphens (--max-delete)
-    const mockFields: Record<string, RcConfigOption[]> = {
-      sync: [
-        {
-          Name: 'max_delete',
-          FieldName: 'MaxDelete',
-          Type: 'int',
-          DefaultStr: '-1',
-          Help: '',
-        },
-        {
-          Name: 'track_renames',
-          FieldName: 'TrackRenames',
-          Type: 'bool',
-          DefaultStr: 'false',
-          Help: '',
-        },
-      ],
-    };
-
     it('should match --max-delete (hyphen) against max_delete (underscore) from RC API', () => {
-      const lookupTable = service.buildLookupTable(mockFields as any);
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            {
+              Name: 'max_delete',
+              FieldName: 'MaxDelete',
+              Type: 'int',
+              DefaultStr: '-1',
+              Help: '',
+            },
+            {
+              Name: 'track_renames',
+              FieldName: 'TrackRenames',
+              Type: 'bool',
+              DefaultStr: 'false',
+              Help: '',
+            },
+          ],
+        })
+      );
       const parsed: ParsedCLI = {
         verb: 'sync',
         sourcePath: 'src:',
@@ -208,22 +246,30 @@ describe('CliFlagMapperService', () => {
       expect(result.destPath).toBe('dst:');
 
       expect(result.classified[0].status).toBe('mapped');
-      expect(result.classified[0].fieldName).toBe('MaxDelete');
+      expect(result.classified[0].fieldName).toBe('max_delete');
       expect(result.classified[0].coercedValue).toBe(50);
 
       expect(result.classified[1].status).toBe('mapped');
-      expect(result.classified[1].fieldName).toBe('TrackRenames');
+      expect(result.classified[1].fieldName).toBe('track_renames');
 
       expect(result.classified[2].status).toBe('unknown');
     });
 
     it('should coerce uint and float types', () => {
-      const lookupTable = service.buildLookupTable({
-        sync: [
-          { Name: 'tpslimit', FieldName: 'TpsLimit', Type: 'float64' } as any,
-          { Name: 'tpslimit-burst', FieldName: 'TpsLimitBurst', Type: 'uint32' } as any,
-        ],
-      } as any);
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'tpslimit', FieldName: 'TpsLimit', Type: 'float64', Help: '', DefaultStr: '' },
+            {
+              Name: 'tpslimit-burst',
+              FieldName: 'TpsLimitBurst',
+              Type: 'uint32',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
 
       const parsed: ParsedCLI = {
         verb: 'sync',
@@ -241,26 +287,27 @@ describe('CliFlagMapperService', () => {
     });
 
     it('should match runtimeRemote specific prefixed options if remoteType is provided', () => {
-      const mockFieldsWithRuntime: Record<string, RcConfigOption[]> = {
-        runtimeRemote: [
-          {
-            Name: 'provider',
-            FieldName: 'Provider',
-            Type: 'string',
-            DefaultStr: '',
-            Help: '',
-          },
-          {
-            Name: 'chunk_size',
-            FieldName: 'ChunkSize',
-            Type: 'string',
-            DefaultStr: '',
-            Help: '',
-          },
-        ],
-      };
-
-      const lookupTable = service.buildLookupTable(mockFieldsWithRuntime as any, 's3');
+      const lookupTable = service.buildLookupTable(
+        fields({
+          runtimeRemote: [
+            {
+              Name: 'provider',
+              FieldName: 'Provider',
+              Type: 'string',
+              DefaultStr: '',
+              Help: '',
+            },
+            {
+              Name: 'chunk_size',
+              FieldName: 'ChunkSize',
+              Type: 'string',
+              DefaultStr: '',
+              Help: '',
+            },
+          ],
+        }),
+        's3'
+      );
       const parsed: ParsedCLI = {
         verb: 'serve',
         flags: [
@@ -271,11 +318,11 @@ describe('CliFlagMapperService', () => {
 
       const result = service.classify(parsed, lookupTable);
       expect(result.classified[0].status).toBe('mapped');
-      expect(result.classified[0].fieldName).toBe('Provider');
+      expect(result.classified[0].fieldName).toBe('provider');
       expect(result.classified[0].coercedValue).toBe('AWS');
 
       expect(result.classified[1].status).toBe('mapped');
-      expect(result.classified[1].fieldName).toBe('ChunkSize');
+      expect(result.classified[1].fieldName).toBe('chunk_size');
       expect(result.classified[1].coercedValue).toBe('64M');
     });
 

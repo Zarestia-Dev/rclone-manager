@@ -4,7 +4,6 @@ import {
   RcConfigOption,
   OperationType,
   SharedProfileType,
-  ConfigValue,
 } from '@app/types';
 import { staticFlagDefinitions } from '../flag-definitions';
 import { PathGroup } from '../../infrastructure/platform/path.service';
@@ -136,13 +135,11 @@ export const OPERATION_PATH_MAPPINGS: Partial<Record<SharedProfileType, PathMapp
 };
 
 const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
-  'srcFs',
-  'dstFs',
-  'path1',
-  'path2',
-  'fs',
-  'mountPoint',
+  ...Object.values(OPERATION_PATH_MAPPINGS).flatMap(m =>
+    m ? [m.sourceKey, m.destKey].filter((k): k is string => !!k) : []
+  ),
   'mountType',
+  'type',
   'autoStart',
   'cronEnabled',
   'cronExpression',
@@ -153,7 +150,6 @@ const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
   'backendProfile',
   'runtimeRemoteProfile',
   'name',
-  'type',
 ]);
 
 const MOUNT_TYPE_KEY = 'mountType';
@@ -237,13 +233,9 @@ function mapSourcePaths(
     sources as PathGroup | PathGroup[],
     ctx.remoteName
   );
-  return {
-    [mapping.sourceKey]: mapping.isSourceArray
-      ? sourcePaths.length > 1
-        ? sourcePaths
-        : (sourcePaths[0] ?? '')
-      : (sourcePaths[0] ?? ''),
-  };
+  const sourceValue =
+    mapping.isSourceArray && sourcePaths.length > 1 ? sourcePaths : (sourcePaths[0] ?? '');
+  return { [mapping.sourceKey]: sourceValue };
 }
 
 function mapCopyUrlPaths(
@@ -255,6 +247,7 @@ function mapCopyUrlPaths(
     .map(s => (typeof s === 'string' ? s : s?.path || ''))
     .filter(Boolean);
   const filenames = (sources as { filename?: string }[]).map(s => s?.filename || '');
+  const hasFilenames = filenames.some(Boolean);
 
   const rclone: Record<string, unknown> = {
     [mapping.sourceKey]: mapping.isSourceArray
@@ -262,16 +255,9 @@ function mapCopyUrlPaths(
         ? urls
         : (urls[0] ?? '')
       : (urls[0] ?? ''),
+    autoFilename: !hasFilenames,
   };
-
-  if (filenames.some(Boolean)) {
-    rclone['filenames'] = filenames;
-    if (formData['options']) {
-      (formData['options'] as Record<string, unknown>)['autoFilename'] = false;
-    }
-  } else if (formData['options']) {
-    (formData['options'] as Record<string, unknown>)['autoFilename'] = true;
-  }
+  if (hasFilenames) rclone['filenames'] = filenames;
 
   return rclone;
 }
@@ -301,6 +287,7 @@ function cleanOptions(
   };
   delete cleanedOptions[SERVE_TYPE_KEY];
   delete cleanedOptions[MOUNT_TYPE_KEY];
+  delete cleanedOptions['autoFilename'];
   return Object.keys(cleanedOptions).length > 0 ? cleanedOptions : {};
 }
 
@@ -508,6 +495,3 @@ export function mapConfigToFormProfile(
 
   return result;
 }
-
-// Re-exported for downstream consumers that need ConfigValue typing
-export type { ConfigValue };
