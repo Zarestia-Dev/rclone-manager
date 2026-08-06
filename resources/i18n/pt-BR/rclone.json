@@ -1195,14 +1195,6 @@
     "title": "Montagem Padrão",
     "help": "Montagem padrão do FUSE"
   },
-  "mount_type_nfsmount": {
-    "title": "Montagem NFS (Network File System)",
-    "help": "Montar usando o protocolo NFS"
-  },
-  "mount_type_saf": {
-    "title": "Storage Access Framework (SAF)",
-    "help": "Montagem nativa do Android Storage Access Framework"
-  },
   "mount_type_cmount": {
     "title": "Montagem FUSE no Windows/MacOS",
     "help": "Montagem FUSE usando o cgofuse (padrão em Windows/macOS)"
@@ -1214,6 +1206,10 @@
   "mount_type_nfsmount": {
     "title": "Montagem NFS (Network File System)",
     "help": "Montar usando o protocolo NFS"
+  },
+  "mount_type_saf": {
+    "title": "Storage Access Framework (SAF)",
+    "help": "Montagem nativa do Android Storage Access Framework"
   },
   "serve_type_http": {
     "title": "Servidor HTTP",
