@@ -10,6 +10,12 @@ export type AppTab = 'mount' | 'operations' | 'serve' | 'general';
 export const APP_TABS: readonly AppTab[] = ['mount', 'operations', 'serve', 'general'] as const;
 export type OperationTab = Exclude<AppTab, 'general'>;
 
+export interface TabItem<T = string> {
+  id: T;
+  icon: string;
+  label: string;
+}
+
 export interface ModeConfig {
   label: string;
   icon: string;

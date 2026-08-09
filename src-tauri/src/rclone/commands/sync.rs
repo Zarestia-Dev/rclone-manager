@@ -12,7 +12,7 @@ use crate::utils::{
     },
 };
 
-use super::common::{fs_value_with_runtime_overrides, is_directory, parse_common_config, parse_fs};
+use super::common::{is_directory, parse_common_config, parse_fs};
 use super::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 
 /// Unified parameter structure for all transfer operations
@@ -71,10 +71,7 @@ impl GenericTransferParams {
                 if fs.ends_with(':') {
                     remote = remote.trim_start_matches('/').to_string();
                 }
-                body.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(&fs, self.runtime_remote_options.as_ref()),
-                );
+                body.insert("fs".to_string(), Value::String(fs));
                 body.insert("remote".to_string(), Value::String(remote));
                 body.insert("_path".to_string(), Value::String(endpoint.to_string()));
             } else {
@@ -94,10 +91,7 @@ impl GenericTransferParams {
                     .unwrap_or(true);
 
                 body.insert("url".to_string(), Value::String(self.source.clone()));
-                body.insert(
-                    "fs".to_string(),
-                    fs_value_with_runtime_overrides(&fs, self.runtime_remote_options.as_ref()),
-                );
+                body.insert("fs".to_string(), Value::String(fs));
                 body.insert("remote".to_string(), Value::String(remote));
                 body.insert("autoFilename".to_string(), Value::Bool(auto_filename));
                 body.insert(
@@ -116,6 +110,14 @@ impl GenericTransferParams {
             self.build_file_transfer_body(&mut body)?;
         } else {
             self.build_directory_transfer_body(&mut body);
+        }
+
+        if let Some(opts) = self.runtime_remote_options.as_ref() {
+            for (k, v) in opts {
+                if !body.contains_key(k) {
+                    body.insert(k.clone(), v.clone());
+                }
+            }
         }
 
         // Merge resolved filter_options into _filter
@@ -180,15 +182,9 @@ impl GenericTransferParams {
                 format!("{}/{}", dst_root.trim_end_matches(['/', '\\']), filename)
             };
 
-            body.insert(
-                "srcFs".to_string(),
-                fs_value_with_runtime_overrides(&src_fs, self.runtime_remote_options.as_ref()),
-            );
+            body.insert("srcFs".to_string(), Value::String(src_fs));
             body.insert("srcRemote".to_string(), Value::String(src_remote));
-            body.insert(
-                "dstFs".to_string(),
-                fs_value_with_runtime_overrides(&dst_fs, self.runtime_remote_options.as_ref()),
-            );
+            body.insert("dstFs".to_string(), Value::String(dst_fs));
             body.insert("dstRemote".to_string(), Value::String(dst_remote));
             body.insert("_path".to_string(), Value::String(endpoint.to_string()));
             Ok(())
@@ -201,18 +197,14 @@ impl GenericTransferParams {
     }
 
     fn build_directory_transfer_body(&self, body: &mut Map<String, Value>) {
-        let src_fs =
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref());
-        let dst_fs =
-            fs_value_with_runtime_overrides(&self.dest, self.runtime_remote_options.as_ref());
-
         if self.transfer_type == OperationType::Bisync {
-            body.insert("path1".to_string(), src_fs);
-            body.insert("path2".to_string(), dst_fs);
+            body.insert("path1".to_string(), Value::String(self.source.clone()));
+            body.insert("path2".to_string(), Value::String(self.dest.clone()));
         } else {
-            body.insert("srcFs".to_string(), src_fs);
-            body.insert("dstFs".to_string(), dst_fs);
+            body.insert("srcFs".to_string(), Value::String(self.source.clone()));
+            body.insert("dstFs".to_string(), Value::String(self.dest.clone()));
         }
+
         body.insert(
             "_path".to_string(),
             Value::String(self.transfer_type.endpoint().unwrap_or("").to_string()),
@@ -595,14 +587,8 @@ mod tests {
             filter_options: None,
             backend_options: None,
             runtime_remote_options: Some(HashMap::from([
-                (
-                    "srcRemote".to_string(),
-                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
-                ),
-                (
-                    "dstRemote".to_string(),
-                    json!({ "type": "s3", "env_auth": true, "provider": "AWS" }),
-                ),
+                ("env_auth".to_string(), json!(true)),
+                ("provider".to_string(), json!("AWS")),
             ])),
             transfer_type: OperationType::Sync,
             is_dir: true,
@@ -611,15 +597,10 @@ mod tests {
         let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
-        let src_fs = obj.get("srcFs").unwrap().as_object().unwrap();
-        assert_eq!(src_fs.get("_name").unwrap(), "srcRemote");
-        assert_eq!(src_fs.get("_root").unwrap(), "bucket/a");
-        assert_eq!(src_fs.get("type").unwrap(), "s3");
-
-        let dst_fs = obj.get("dstFs").unwrap().as_object().unwrap();
-        assert_eq!(dst_fs.get("_name").unwrap(), "dstRemote");
-        assert_eq!(dst_fs.get("_root").unwrap(), "bucket/b");
-        assert_eq!(dst_fs.get("provider").unwrap(), "AWS");
+        assert_eq!(obj.get("srcFs").unwrap(), "srcRemote:bucket/a");
+        assert_eq!(obj.get("dstFs").unwrap(), "dstRemote:bucket/b");
+        assert_eq!(obj.get("env_auth").unwrap(), true);
+        assert_eq!(obj.get("provider").unwrap(), "AWS");
     }
 
     #[test]

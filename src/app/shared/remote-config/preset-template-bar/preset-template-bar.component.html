@@ -1,0 +1,63 @@
+<div class="preset-template-bar">
+  @if (variant() === 'sidebar-item') {
+    <button
+      type="button"
+      mat-list-item
+      [cdkMenuTriggerFor]="presetsMenu"
+      class="preset-sidebar-item"
+      title="Presets & Templates"
+    >
+      <mat-icon matListItemIcon svgIcon="reset-wrench"></mat-icon>
+      <span matListItemTitle>{{ 'templates.presetTitle' | translate }}</span>
+    </button>
+  } @else {
+    <button
+      type="button"
+      mat-stroked-button
+      [cdkMenuTriggerFor]="presetsMenu"
+      class="preset-trigger-btn"
+      title="Apply presets or custom templates"
+    >
+      <mat-icon class="preset-icon" svgIcon="tune"></mat-icon>
+      <span>{{ 'templates.presetTitle' | translate }}</span>
+      <mat-icon class="dropdown-icon" svgIcon="chevron-down"></mat-icon>
+    </button>
+  }
+
+  <ng-template #presetsMenu>
+    <div cdkMenu class="material-context-menu">
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="applyDefaultPresets.emit()">
+        <mat-icon svgIcon="reset-wrench"></mat-icon>
+        <span>{{ 'wizards.presets.apply' | translate }}</span>
+      </button>
+
+      @if (userTemplateService.allTemplates().length > 0) {
+        <mat-divider></mat-divider>
+        <div class="menu-group-label">
+          <span>{{ 'templates.userTemplates' | translate }}</span>
+        </div>
+
+        @for (tpl of userTemplateService.allTemplates(); track tpl.id) {
+          <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="onSelectTemplate(tpl)">
+            <mat-icon svgIcon="bookmark"></mat-icon>
+            <span>{{ tpl.name }}</span>
+          </button>
+        }
+      }
+
+      <mat-divider></mat-divider>
+
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="openSaveDialog()">
+        <mat-icon svgIcon="floppy-disk"></mat-icon>
+        <span>{{ 'templates.saveAsTemplate' | translate }}</span>
+      </button>
+
+      <mat-divider></mat-divider>
+
+      <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="openManageDialog()">
+        <mat-icon svgIcon="gear"></mat-icon>
+        <span>{{ 'templates.manageTemplates' | translate }}</span>
+      </button>
+    </div>
+  </ng-template>
+</div>

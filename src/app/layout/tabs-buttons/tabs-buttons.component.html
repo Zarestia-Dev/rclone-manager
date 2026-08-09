@@ -1,4 +1,4 @@
-@for (tab of tabs; track tab.id) {
+@for (tab of tabs(); track tab.id) {
   <button
     class="tab-btn"
     [class.selected]="currentTab() === tab.id"

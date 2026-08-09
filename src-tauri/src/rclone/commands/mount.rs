@@ -16,9 +16,7 @@ use crate::{
     },
 };
 
-use super::common::{
-    FromConfig, OperationContext, fs_value_with_runtime_overrides, parse_common_config,
-};
+use super::common::{FromConfig, OperationContext, parse_common_config};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -110,11 +108,16 @@ impl MountParams {
             }
         }
 
-        // 1. Inject runtime remote overrides directly into the "fs" key
-        body.insert(
-            "fs".to_string(),
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
-        );
+        // 1. Inject runtime remote overrides directly into body as flat flags and set mountPoint
+        body.insert("fs".to_string(), json!(self.source));
+        body.insert("mountPoint".to_string(), json!(self.mount_point));
+        if let Some(opts) = self.runtime_remote_options.as_ref() {
+            for (k, v) in opts {
+                if !body.contains_key(k) {
+                    body.insert(k.clone(), v.clone());
+                }
+            }
+        }
 
         // 2. Merge resolved profile blocks if they exist
         if let Some(vfs_opts) = &self.vfs_options {

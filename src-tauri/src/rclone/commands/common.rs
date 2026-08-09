@@ -84,10 +84,18 @@ pub async fn is_directory(
         remote = remote.trim_start_matches('/').to_string();
     }
 
-    let payload = json!({
-        "fs": fs_value_with_runtime_overrides(&base, runtime_remote_options),
-        "remote": remote,
-    });
+    let mut payload_map = serde_json::Map::new();
+    payload_map.insert("fs".to_string(), json!(base));
+    payload_map.insert("remote".to_string(), json!(remote));
+    if let Some(opts) = runtime_remote_options {
+        for (k, v) in opts {
+            if !payload_map.contains_key(k) {
+                payload_map.insert(k.clone(), v.clone());
+            }
+        }
+    }
+
+    let payload = Value::Object(payload_map);
 
     let val = match transport.rpc(operations::STAT, Some(&payload)).await {
         Ok(v) => v,
@@ -144,61 +152,6 @@ impl OperationContext {
     }
 }
 
-pub fn fs_value_with_runtime_overrides(
-    fs: &str,
-    runtime_remote_options: Option<&HashMap<String, Value>>,
-) -> Value {
-    let Some(overrides) = runtime_remote_options else {
-        return json!(fs);
-    };
-
-    let Some((base, root)) = parse_fs(fs) else {
-        return json!(fs);
-    };
-
-    let trimmed_base = base.trim_end_matches(':');
-    let matched_key = [&base, trimmed_base]
-        .into_iter()
-        .find(|&key| overrides.contains_key(key));
-
-    let remote_override = matched_key.and_then(|key| {
-        let val = overrides.get(key);
-        val.and_then(|v| {
-            if v.is_object() {
-                v.as_object()
-            } else {
-                log::warn!(
-                    "⚠️ Runtime override for '{key}' ignored: expected JSON object, found {v:?}"
-                );
-                None
-            }
-        })
-    });
-
-    match remote_override {
-        Some(opts) if !opts.is_empty() => {
-            let mut fs_obj = serde_json::Map::new();
-            for (k, v) in opts {
-                let stringified_v = match v {
-                    Value::String(s) => Value::String(s.clone()),
-                    Value::Bool(b) => Value::String(b.to_string()),
-                    Value::Number(n) => Value::String(n.to_string()),
-                    _ => v.clone(),
-                };
-                fs_obj.insert(k.clone(), stringified_v);
-            }
-            if base.starts_with(':') {
-                fs_obj.insert("type".to_string(), json!(base.trim_matches(':')));
-            } else {
-                fs_obj.insert("_name".to_string(), json!(base.trim_end_matches(':')));
-            }
-            fs_obj.insert("_root".to_string(), json!(root));
-            Value::Object(fs_obj)
-        }
-        _ => json!(fs),
-    }
-}
-
 /// Parses an rclone fs string into (base, root).
 /// Example: "remote:path" -> ("remote:", "path"), ":<s3:/bucket>" -> (":s3:", "/bucket")
 pub fn parse_fs(fs: &str) -> Option<(String, String)> {
@@ -248,13 +201,34 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
     }
 }
 
+/// Flatten a structured `rclone` object containing section maps (`vfs`, `filter`, `backend`, `runtimeRemote`)
+/// into a single flat key-value map for path extractions and command parameters.
+pub fn flatten_rclone_config(val: &Value) -> Value {
+    if let Value::Object(map) = val {
+        let is_structured = map.values().any(|v| v.is_object());
+        if is_structured {
+            let mut flat = map.clone();
+            for (k, v) in map {
+                if let Value::Object(sub_map) = v {
+                    flat.remove(k);
+                    for (sub_k, sub_v) in sub_map {
+                        flat.insert(sub_k.clone(), sub_v.clone());
+                    }
+                }
+            }
+            return Value::Object(flat);
+        }
+    }
+    val.clone()
+}
+
 pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonConfigParams> {
     let config = &interpolate_value(config);
 
     // Deserialize using ProfileConfig or fall back if unpartitioned
     let profile = ProfileConfig::parse_from_value(config);
 
-    let rclone_config = &profile.rclone;
+    let rclone_config = flatten_rclone_config(&profile.rclone);
 
     let get_paths = |key: &str| -> Vec<String> {
         match rclone_config.get(key) {
@@ -304,7 +278,7 @@ pub fn parse_common_config(config: &Value, settings: &Value) -> Option<CommonCon
         ),
         runtime_remote_options: resolve_runtime_remote_options(
             &profile.app,
-            rclone_config,
+            &rclone_config,
             settings,
             "remotes",
         ),
@@ -322,7 +296,11 @@ pub fn resolve_runtime_remote_options(
     let mut opts = resolve_profile_options(settings, profile, helper_config_keys::RUNTIME_REMOTE)
         .unwrap_or_default();
 
-    if let Some(inline) = json_to_hashmap(rclone_config.get(inline_remotes_key)) {
+    if let Some(inline) = json_to_hashmap(
+        rclone_config
+            .get(inline_remotes_key)
+            .or_else(|| rclone_config.get("runtimeRemote")),
+    ) {
         opts.extend(inline);
     }
 
@@ -392,7 +370,6 @@ pub fn redact_value(val: &Value, app: &AppHandle) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
     fn test_parse_fs_local() {
@@ -433,42 +410,41 @@ mod tests {
     }
 
     #[test]
-    fn test_fs_value_with_runtime_overrides() {
-        let overrides = HashMap::from([
-            (
-                "my_remote:".to_string(),
-                json!({ "type": "s3", "provider": "AWS" }),
-            ),
-            (
-                "s3_backend".to_string(),
-                json!({ "type": "s3", "env_auth": true }),
-            ),
-        ]);
+    fn test_flatten_rclone_config() {
+        let input = json!({
+            "srcFs": "dropbox:",
+            "mountPoint": "/home/hakan/rclone-manager/drive",
+            "attr_timeout": "10s",
+            "test": 123,
+            "vfs": {
+                "vfs_refresh": true,
+                "vfs_cache_mode": "full"
+            },
+            "filter": {
+                "delete_excluded": true
+            },
+            "backend": {
+                "buffer_size": "32M"
+            }
+        });
 
-        // No overrides
+        let flat = flatten_rclone_config(&input);
+        let obj = flat.as_object().unwrap();
+
+        assert_eq!(obj.get("srcFs").unwrap(), "dropbox:");
         assert_eq!(
-            fs_value_with_runtime_overrides("my_remote:bucket", None),
-            json!("my_remote:bucket")
+            obj.get("mountPoint").unwrap(),
+            "/home/hakan/rclone-manager/drive"
         );
+        assert_eq!(obj.get("attr_timeout").unwrap(), "10s");
+        assert_eq!(obj.get("test").unwrap(), 123);
+        assert_eq!(obj.get("vfs_refresh").unwrap(), true);
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
+        assert_eq!(obj.get("delete_excluded").unwrap(), true);
+        assert_eq!(obj.get("buffer_size").unwrap(), "32M");
 
-        // Match with colon
-        let overridden1 = fs_value_with_runtime_overrides("my_remote:bucket", Some(&overrides));
-        let obj1 = overridden1.as_object().unwrap();
-        assert_eq!(obj1.get("_name").unwrap(), "my_remote");
-        assert_eq!(obj1.get("_root").unwrap(), "bucket");
-        assert_eq!(obj1.get("provider").unwrap(), "AWS");
-
-        // Match without colon
-        let overridden2 = fs_value_with_runtime_overrides("s3_backend:bucket", Some(&overrides));
-        let obj2 = overridden2.as_object().unwrap();
-        assert_eq!(obj2.get("_name").unwrap(), "s3_backend");
-        assert_eq!(obj2.get("_root").unwrap(), "bucket");
-        assert_eq!(obj2.get("env_auth").unwrap(), &json!("true"));
-
-        // No match in overrides
-        assert_eq!(
-            fs_value_with_runtime_overrides("other:bucket", Some(&overrides)),
-            json!("other:bucket")
-        );
+        assert!(obj.get("vfs").is_none());
+        assert!(obj.get("filter").is_none());
+        assert!(obj.get("backend").is_none());
     }
 }

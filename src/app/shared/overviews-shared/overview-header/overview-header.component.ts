@@ -16,13 +16,19 @@ export class OverviewHeaderComponent {
   private readonly backendService = inject(BackendService);
   private readonly rcloneStatusService = inject(RcloneStatusService);
 
-  readonly mode = input<AppTab>('general');
+  readonly mode = input<AppTab | string>('general');
+  readonly customTitle = input<string | null>(null);
+  readonly customIcon = input<string | null>(null);
 
   readonly openBackendModal = output<void>();
 
   readonly activeBackend = this.backendService.activeBackend;
 
-  readonly title = computed(() => TITLE_MAP[this.mode()] ?? 'overviews.headers.default');
+  readonly title = computed(
+    () => this.customTitle() ?? TITLE_MAP[this.mode() as AppTab] ?? 'overviews.headers.default'
+  );
+
+  readonly iconName = computed(() => this.customIcon() ?? this.mode());
 
   readonly backendStatusClass = computed(() =>
     this.rcloneStatusService.rcloneStatus() === 'active' ? 'connected' : 'disconnected'

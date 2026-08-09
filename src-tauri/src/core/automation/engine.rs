@@ -1,5 +1,7 @@
 //! Cron scheduler engine using tokio-cron-scheduler
 
+use crate::core::flow::types::QuickRun;
+use crate::core::settings::AppSettingsManager;
 use crate::rclone::commands::sync::start_profile_batch;
 use crate::rclone::state::automations::{AutomationsCache, CacheUpdateResult};
 use crate::utils::app::notification::{AutomationStage, NotificationEvent, notify};
@@ -313,6 +315,95 @@ impl AutomationScheduler {
                 errors.join("; ")
             ))
         }
+    }
+
+    /// Schedule a Quick Run with tokio-cron-scheduler.
+    pub async fn schedule_quick_run(&self, quick_run: &QuickRun) -> Result<Uuid, String> {
+        if !quick_run.is_cron_enabled() {
+            return Err("Quick run cron is not enabled".to_string());
+        }
+
+        let cron_expr_5_field = quick_run
+            .cron_expression()
+            .ok_or_else(|| "Quick run has no cron expression".to_string())?;
+
+        let cron_expr_6_field = format!("0 {cron_expr_5_field}");
+
+        let scheduler_guard = self.scheduler.read().await;
+        let scheduler = scheduler_guard.as_ref().ok_or_else(|| {
+            crate::localized_error!(
+                "backendErrors.automation.initFailed",
+                "error" => "Scheduler not initialized"
+            )
+        })?;
+
+        let app_guard = self.app_handle.read().await;
+        let app_handle = app_guard
+            .as_ref()
+            .ok_or("App handle not initialized")?
+            .clone();
+
+        let qr_id = quick_run.id.clone();
+        let qr_name = quick_run.name.clone();
+
+        let app_handle_for_job = app_handle.clone();
+        let job = JobBuilder::new()
+            .with_timezone(Local)
+            .with_cron_job_type()
+            .with_schedule(&cron_expr_6_field)
+            .map_err(
+                |e| crate::localized_error!("backendErrors.automation.invalidCron", "error" => e),
+            )?
+            .with_run_async(Box::new(move |_uuid, _l| {
+                let qr_id = qr_id.clone();
+                let qr_name = qr_name.clone();
+                let app_handle = app_handle_for_job.clone();
+
+                Box::pin(async move {
+                    info!("Executing scheduled quick run: {qr_name} ({qr_id})");
+                    if let Err(e) = crate::core::flow::commands::start_quick_run(app_handle, qr_id.clone()).await {
+                        error!("Quick run scheduled execution failed {qr_id}: {e}");
+                    } else {
+                        info!("Quick run scheduled execution completed: {qr_id}");
+                    }
+                })
+            }))
+            .build()
+            .map_err(
+                |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
+            )?;
+
+        let job_id = scheduler.add(job).await.map_err(
+            |e| crate::localized_error!("backendErrors.automation.executionFailed", "error" => e),
+        )?;
+
+        info!(
+            "Scheduled Quick Run '{}' ({cron_expr_6_field}) — job ID: {job_id}",
+            quick_run.name
+        );
+        Ok(job_id)
+    }
+
+    /// Read all Quick Runs and schedule those with active cron expressions.
+    pub async fn sync_quick_runs(&self, app_handle: AppHandle) -> Result<(), String> {
+        let manager = app_handle.state::<AppSettingsManager>();
+        let quick_runs = match crate::core::flow::commands::get_all_quick_runs_sync(&manager) {
+            Ok(list) => list,
+            Err(e) => {
+                warn!("Failed to read quick runs for scheduler sync: {e}");
+                return Ok(());
+            }
+        };
+
+        for qr in &quick_runs {
+            if qr.is_cron_enabled()
+                && qr.cron_expression().is_some()
+                && let Err(e) = self.schedule_quick_run(qr).await
+            {
+                warn!("Failed to schedule quick run '{}': {e}", qr.name);
+            }
+        }
+        Ok(())
     }
 }
 

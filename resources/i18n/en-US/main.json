@@ -1064,6 +1064,12 @@
       "applyToField": "Apply obscured value to field",
       "apply": "Apply to Field"
     },
+    "presets": {
+      "title": "Apply Default Presets",
+      "apply": "Apply Default Presets",
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
+    },
     "remoteConfig": {
       "remoteName": "Remote Name",
       "remoteNameRequired": "Remote name is required",
@@ -1603,6 +1609,7 @@
       "stopping": "Stopping {{op}}...",
       "stop": "Stop {{op}}",
       "notConfigured": "Not configured",
+      "serve": "Serve",
       "serving": "Serving",
       "accessibleVia": "Accessible via",
       "mounting": "Mounting...",
@@ -3071,5 +3078,154 @@
     "openDevToolsError": "Failed to open DevTools",
     "openDevToolsHint": "Open DevTools for debugging",
     "cleared": "Data Cleared"
+  },
+  "flow": {
+    "quickRun": {
+      "title": "Quick Runs",
+      "new": "New Quick Run",
+      "toggleSearch": "Toggle Search",
+      "search": "Search quick runs...",
+      "loading": "Loading quick runs...",
+      "noResults": "No matching quick runs",
+      "actions": {
+        "start": "Start",
+        "stop": "Stop",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "badges": {
+        "scheduled": "Scheduled Task",
+        "watcher": "Folder Watcher Active",
+        "autostart": "Auto-Start Enabled"
+      },
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped"
+      },
+      "sections": {
+        "running": "Running Operations",
+        "saved": "Saved Quick Runs"
+      },
+      "empty": {
+        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+      },
+      "overview": {
+        "title": "Quick Run Overview",
+        "subtitle": "Monitor active tasks, view recent executions, and quickly trigger standalone operations.",
+        "stats": {
+          "total": "Total Quick Runs",
+          "active": "Active Jobs",
+          "completed": "Completed Runs",
+          "failed": "Failed Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "quickLaunchSub": "Click any quick run to inspect details or run immediately",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "recentJobs": "Recent & Active Executions",
+        "system": {
+          "title": "Rclone Engine Status",
+          "status": "Engine Status",
+          "version": "Rclone Version",
+          "memory": "Memory Usage",
+          "uptime": "Uptime",
+          "speed": "Global Transfer Speed"
+        },
+        "bandwidth": {
+          "title": "Bandwidth Limit Controls",
+          "current": "Current Limit",
+          "unlimited": "Unlimited (Off)",
+          "setLimit": "Set Speed Limit",
+          "preset1M": "1 MB/s",
+          "preset5M": "5 MB/s",
+          "preset10M": "10 MB/s",
+          "preset50M": "50 MB/s",
+          "customPlaceholder": "Custom rate (e.g. 2.5M, 500k)",
+          "apply": "Apply"
+        }
+      },
+      "detail": {
+        "title": "Quick Run Details",
+        "emptyTitle": "No Quick Run Selected",
+        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
+        "configuration": "Configuration",
+        "autoStart": "Auto Start",
+        "watch": "File Watcher",
+        "noConfigFlags": "No custom flags configured."
+      },
+      "editor": {
+        "createTitle": "Create Quick Run",
+        "editTitle": "Edit Quick Run",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "description": "Description (optional)",
+        "operation": "Operation Type",
+        "remote": "Remote",
+        "noRemotes": "No remotes configured",
+        "remoteRequired": "Remote is required",
+        "cliImport": "Import from CLI command",
+        "flags": "Flags",
+        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "searchFlags": "Search flags...",
+        "tabVfs": "VFS",
+        "tabFilter": "Filter",
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Runtime Remote"
+      }
+    }
+  },
+  "templates": {
+    "title": "Templates & Migration",
+    "presetTitle": "Presets & Templates",
+    "builtinPresets": "Built-in Presets",
+    "userTemplates": "Saved User Templates",
+    "saveAsTemplate": "Save Current Settings as Template...",
+    "copyFromExisting": "Copy Settings from Remote or Task...",
+    "manageTemplates": "Manage Templates (Export / Import)...",
+    "manageTitle": "Manage Templates",
+    "noUserTemplates": "No custom templates saved yet.",
+    "saveTitle": "Save as Custom Template",
+    "saveDescription": "Save current flag configurations to quickly apply them to other remotes or Quick Run tasks.",
+    "templateName": "Template Name",
+    "templateDesc": "Description (optional)",
+    "selectCategories": "Select Categories to Save",
+    "copyTitle": "Copy Settings",
+    "copyDescription": "Select an existing Remote or Quick Run task to copy settings from.",
+    "sourceRemoteOrTask": "Source Remote / Task",
+    "applySuccess": "Template \"{{name}}\" applied successfully.",
+    "copiedSuccess": "Settings copied successfully.",
+    "savedSuccess": "Template \"{{name}}\" saved successfully.",
+    "deletedSuccess": "Template deleted successfully.",
+    "importedSuccess": "Imported {{count}} template(s) successfully.",
+    "exportJson": "Export Templates JSON",
+    "importJson": "Import Templates JSON",
+    "selectKeys": "Select Setting Keys to Include",
+    "searchKeys": "Filter settings...",
+    "selectedKeysCount": "{{selected}} of {{total}} settings selected",
+    "noKeysAvailable": "No configurable settings detected in current context.",
+    "visualView": "Visual Inspector",
+    "jsonView": "JSON Editor",
+    "formatJson": "Format JSON",
+    "saveChanges": "Save Changes",
+    "invalidJson": "Invalid JSON syntax. Please fix syntax errors before saving.",
+    "selectTemplateToEdit": "Select a template to view or edit details.",
+    "newTemplate": "New Template",
+    "addCustomKey": "Add Custom Setting Key",
+    "category": "Category",
+    "keyName": "Key Name",
+    "value": "Value",
+    "addKey": "Add Key",
+    "categories": {
+      "vfs": "VFS Cache & Options",
+      "mount": "Mount Options",
+      "backend": "Backend Options",
+      "filter": "File Filtering & Excludes",
+      "sync": "Sync Options",
+      "copy": "Copy / Transfer Options",
+      "remote": "Remote Storage Flags",
+      "operation": "Operation Options"
+    }
   }
 }

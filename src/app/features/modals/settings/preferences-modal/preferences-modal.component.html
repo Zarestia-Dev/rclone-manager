@@ -285,7 +285,7 @@
               ></ng-container>
             }
             @case ('select') {
-              <mat-form-field class="input-field no-subscript" appearance="fill">
+              <mat-form-field class="input-field no-subscript">
                 <mat-select
                   [formControl]="$any(setting.control)"
                   [attr.aria-label]="meta.metadata?.display_name"
@@ -307,7 +307,7 @@
                 <div class="array-items">
                   @for (item of setting.arrayItemViewModels; track item.control) {
                     <div class="array-item">
-                      <mat-form-field appearance="fill" class="input-field">
+                      <mat-form-field class="input-field">
                         <input
                           matInput
                           [formControl]="item.control"
@@ -378,7 +378,7 @@
 
 <!-- ── Text Input Template (shared by 'string' and 'bandwidth' cases) ────── -->
 <ng-template #textInputTemplate let-setting="setting">
-  <mat-form-field class="input-field" appearance="fill">
+  <mat-form-field class="input-field">
     <input
       matInput
       [formControl]="$any(setting.control)"
@@ -394,7 +394,7 @@
 
 <!-- ── Path Picker Template (shared by 'file' and 'folder' cases) ──────── -->
 <ng-template #pathPickerTemplate let-setting="setting" let-type="type">
-  <mat-form-field appearance="fill" class="input-field">
+  <mat-form-field class="input-field">
     <input
       matInput
       [formControl]="$any(setting.control)"

@@ -221,7 +221,7 @@ export const OPERATION_REGISTRY = [
     stopTooltip: 'overviews.remoteCard.actions.stopServe',
     settingsLabel: 'dashboard.appDetail.serveSettings',
     settingsDescription: 'dashboard.appDetail.serveBehave',
-    typeLabel: 'dashboard.appDetail.serving',
+    typeLabel: 'dashboard.appDetail.serve',
     supportsVfs: true,
     supportsProfiles: true,
     configKey: 'serveConfigs',

@@ -1603,6 +1603,7 @@
       "stopping": "{{op}} を停止中...",
       "stop": "{{op}} を停止",
       "notConfigured": "未設定",
+      "serve": "公開サーバー",
       "serving": "公開サーバー",
       "accessibleVia": "アクセス可能アドレス:",
       "mounting": "マウント中...",
@@ -3071,5 +3072,63 @@
     "openDevToolsError": "開発者モードを開けませんでした",
     "openDevToolsHint": "デバッグ用に開発者モードを開く",
     "cleared": "データを消去しました"
+  },
+  "flow": {
+    "quickRun": {
+      "title": "Quick Runs",
+      "new": "New Quick Run",
+      "toggleSearch": "Toggle Search",
+      "search": "Search quick runs...",
+      "loading": "Loading quick runs...",
+      "noResults": "No matching quick runs",
+      "toggleSidebar": "Toggle Quick Run Sidebar",
+      "lastRun": "Last run",
+      "badges": {
+        "scheduled": "Scheduled Task",
+        "watcher": "Folder Watcher Active",
+        "autostart": "Auto-Start Enabled"
+      },
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped"
+      },
+      "sections": {
+        "running": "Running Operations",
+        "saved": "Saved Quick Runs"
+      },
+      "empty": {
+        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+      },
+      "detail": {
+        "title": "Quick Run Details",
+        "emptyTitle": "No Quick Run Selected",
+        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
+        "configuration": "Configuration",
+        "autoStart": "Auto Start",
+        "watch": "File Watcher",
+        "noConfigFlags": "No custom flags configured."
+      },
+      "editor": {
+        "createTitle": "Create Quick Run",
+        "editTitle": "Edit Quick Run",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "description": "Description (optional)",
+        "operation": "Operation Type",
+        "remote": "Remote",
+        "noRemotes": "No remotes configured",
+        "remoteRequired": "Remote is required",
+        "cliImport": "Import from CLI command",
+        "flags": "Flags",
+        "selectRemoteFirst": "Select a remote to view autocomplete",
+        "searchFlags": "Search flags...",
+        "tabVfs": "VFS",
+        "tabFilter": "Filter",
+        "tabBackend": "Backend"
+      }
+    }
   }
 }

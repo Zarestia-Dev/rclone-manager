@@ -1,0 +1,264 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="toggleSidebar()"
+    [attr.title]="'flow.quickRun.toggleSidebar' | translate"
+    [attr.aria-label]="'flow.quickRun.toggleSidebar' | translate"
+  >
+    <mat-icon svgIcon="menu-bar"></mat-icon>
+  </button>
+  <p>
+    {{
+      (targetQuickRun() ? 'flow.quickRun.editor.editTitle' : 'flow.quickRun.editor.createTitle')
+        | translate
+    }}
+  </p>
+
+  <button
+    matIconButton
+    type="button"
+    (click)="close()"
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<main class="dull" [formGroup]="form">
+  <mat-sidenav-container class="editor-sidenav-container">
+    <mat-sidenav
+      #sidenav
+      [opened]="isSidebarOpen()"
+      (openedChange)="isSidebarOpen.set($event)"
+      [mode]="sidebarMode()"
+      class="modal-sidebar"
+    >
+      <div class="step-indicator-container hide-scrollbar">
+        <mat-nav-list class="step-indicator">
+          @for (tab of flagTabs(); track tab.key) {
+            <button
+              mat-list-item
+              [activated]="activeTab() === tab.key"
+              [disabled]="!form.get('remoteName')?.value"
+              (click)="selectTab(tab.key)"
+              [attr.title]="tab.label | translate"
+            >
+              <mat-icon matListItemIcon [svgIcon]="tab.icon"></mat-icon>
+              <span matListItemTitle>{{ tab.label | translate }}</span>
+            </button>
+          }
+        </mat-nav-list>
+      </div>
+
+      <div class="sidebar-footer">
+        <mat-nav-list class="step-indicator">
+          <button
+            mat-list-item
+            [activated]="showSearch()"
+            (click)="toggleSearch()"
+            [attr.title]="'shared.search.toggle' | translate"
+          >
+            <mat-icon matListItemIcon svgIcon="search"></mat-icon>
+            <span matListItemTitle>{{ 'shared.search.toggle' | translate }}</span>
+          </button>
+
+          <button
+            mat-list-item
+            [activated]="showCliImport()"
+            (click)="toggleCliImport()"
+            [attr.title]="'wizards.cliImport.title' | translate"
+          >
+            <mat-icon matListItemIcon svgIcon="terminal"></mat-icon>
+            <span matListItemTitle>{{ 'wizards.cliImport.title' | translate }}</span>
+          </button>
+
+          <button
+            mat-list-item
+            [activated]="showObscureTool()"
+            (click)="toggleObscureTool()"
+            [attr.title]="'wizards.obscure.title' | translate"
+          >
+            <mat-icon matListItemIcon svgIcon="lock"></mat-icon>
+            <span matListItemTitle>{{ 'wizards.obscure.title' | translate }}</span>
+          </button>
+
+          <app-preset-template-bar
+            variant="sidebar-item"
+            [currentValues]="currentValues()"
+            (applyDefaultPresets)="applyDefaultPresets()"
+            (applyTemplate)="onApplyTemplate($event)"
+          />
+        </mat-nav-list>
+      </div>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="modal-content">
+      <!-- 1. Top Configuration Section -->
+      <section class="top-config-section">
+        <app-search-container
+          [visible]="showSearch()"
+          [searchText]="searchQuery()"
+          (searchTextChange)="searchQuery.set($event)"
+          [placeholder]="'shared.search.placeholder'"
+          [ariaLabel]="'shared.search.ariaLabel'"
+        ></app-search-container>
+
+        <div class="identity-remote-row">
+          <!-- Name Field -->
+          <mat-form-field class="name-field">
+            <mat-label>{{ 'flow.quickRun.editor.name' | translate }}</mat-label>
+            <input matInput formControlName="name" />
+            @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+              <mat-error>{{ 'flow.quickRun.editor.nameRequired' | translate }}</mat-error>
+            }
+          </mat-form-field>
+
+          <!-- Description Field -->
+          <mat-form-field class="desc-field">
+            <mat-label>{{ 'flow.quickRun.editor.description' | translate }}</mat-label>
+            <input matInput formControlName="description" />
+          </mat-form-field>
+
+          <!-- Remote Picker Field -->
+          <mat-form-field class="remote-field">
+            <mat-label>{{ 'flow.quickRun.editor.remote' | translate }}</mat-label>
+            <mat-select formControlName="remoteName">
+              @for (remote of remotes(); track remote.name) {
+                <mat-option [value]="remote.name">
+                  <mat-icon
+                    [svgIcon]="iconService.getIconName(remote.type)"
+                    class="op-option-icon"
+                  ></mat-icon>
+                  <span>{{ remote.name }}</span>
+                </mat-option>
+              }
+              @if (remotes().length === 0) {
+                <mat-option disabled>{{ 'flow.quickRun.editor.noRemotes' | translate }}</mat-option>
+              }
+            </mat-select>
+            @if (form.get('remoteName')?.hasError('required') && form.get('remoteName')?.touched) {
+              <mat-error>{{ 'flow.quickRun.editor.remoteRequired' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Operation Selector Bar -->
+        <div class="op-selector-bar">
+          <div class="op-chips-group hide-scrollbar">
+            @for (op of operations; track op.key) {
+              <button
+                type="button"
+                class="app-pill interactive"
+                [class.is-selected]="currentOpType() === op.key"
+                (click)="selectOperation(op.key)"
+                [attr.title]="getOperationLabel(op.key) | translate"
+              >
+                <mat-icon [svgIcon]="op.icon"></mat-icon>
+                <span>{{ getOperationLabel(op.key) | translate }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- CLI Import Drawer (if toggled) -->
+        @if (showCliImport()) {
+          <app-cli-import
+            [visible]="true"
+            [remoteType]="selectedRemoteType()"
+            [activeStep]="activeTab()"
+            [existingProfiles]="existingProfiles()"
+            (apply)="onCliImportApply($event)"
+          />
+        }
+
+        <!-- Obscure Tool Drawer (if toggled) -->
+        @if (showObscureTool()) {
+          <app-obscure-tool
+            [visible]="true"
+            [sensitiveFields]="activeSensitiveFields()"
+            [provider]="selectedRemoteType()"
+            (applyObscured)="applyObscuredValue($event.key, $event.value)"
+          />
+        }
+      </section>
+
+      <!-- 2. Active Tab Content Section -->
+      @if (form.get('remoteName')?.value) {
+        <section class="config-tabs-section">
+          <div class="tab-content">
+            @if (activeTab() === currentOpType()) {
+              <!-- Operation tab: app config (paths, cron, watch) -->
+              <app-operation-config
+                [opFormGroup]="getOpFormGroup(activeTab())"
+                [operationType]="currentOpType()"
+                [currentRemoteName]="currentRemoteName()"
+                [existingRemotes]="existingRemoteNames()"
+                [isNewRemote]="false"
+                [searchQuery]="searchQuery()"
+              />
+            }
+
+            @if (activeTab() === 'runtimeRemote') {
+              <app-alert-banner
+                severity="info"
+                [title]="'wizards.remoteConfig.runtimeRemoteWarning.title' | translate"
+                [description]="'wizards.remoteConfig.runtimeRemoteWarning.description' | translate"
+              ></app-alert-banner>
+
+              <app-remote-config-step
+                [form]="runtimeRemoteForm()"
+                [remoteFields]="runtimeRemoteFields()"
+                [isLoading]="isLoadingRuntimeRemoteFields()"
+                [existingRemotes]="existingRemoteNames()"
+                [searchQuery]="searchQuery()"
+                [visibility]="{
+                  type: false,
+                  name: false,
+                  advanced: false,
+                  interactive: false,
+                  commands: false,
+                }"
+                [showAdvancedOptions]="true"
+              />
+            } @else {
+              <!-- Flag settings step (common for all other tabs) -->
+              <app-flag-config-step
+                [form]="form"
+                [flagType]="$any(activeTab())"
+                [dynamicFlagFields]="getFlagFields(activeTab())"
+                [currentRemoteName]="currentRemoteName()"
+                [existingRemotes]="existingRemoteNames()"
+                [searchQuery]="searchQuery()"
+                [isLoadingServeFields]="false"
+              />
+            }
+          </div>
+        </section>
+      } @else {
+        <div class="empty-state">
+          <mat-icon svgIcon="hard-drive"></mat-icon>
+          <span>{{ 'flow.quickRun.editor.selectRemoteFirst' | translate }}</span>
+        </div>
+      }
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</main>
+
+<footer>
+  <button matButton type="button" (click)="close()" [disabled]="isSaving()">
+    {{ 'common.cancel' | translate }}
+  </button>
+  <button
+    matButton="filled"
+    type="button"
+    (click)="submit()"
+    [disabled]="isSaving() || form.invalid"
+  >
+    @if (isSaving()) {
+      <mat-icon svgIcon="spinner"></mat-icon>
+    }
+    {{ (targetQuickRun() ? 'common.save' : 'common.create') | translate }}
+  </button>
+</footer>

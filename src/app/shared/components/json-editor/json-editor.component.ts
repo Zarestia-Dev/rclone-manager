@@ -86,7 +86,8 @@ function hasOptionsGroup(type: string | null): boolean {
 
 function buildRcloneCompletionSource(
   getFieldDefs: () => RcConfigOption[],
-  getFlagType: () => SharedProfileType | null
+  getFlagType: () => SharedProfileType | null,
+  getFieldKey: (f: RcConfigOption) => string = f => f.Name || f.FieldName
 ) {
   return (context: CompletionContext): CompletionResult | null => {
     const tree = syntaxTree(context.state);
@@ -116,7 +117,7 @@ function buildRcloneCompletionSource(
       if (isProfile && flagType) {
         // Autocomplete top-level properties and option names
         const topLevelKeys = getTopLevelKeysForProfile(flagType);
-        const optionKeys = fieldDefs.map(f => f.Name || f.FieldName);
+        const optionKeys = fieldDefs.map(f => getFieldKey(f));
         const allKeys = Array.from(new Set([...topLevelKeys, ...optionKeys]));
 
         return {
@@ -136,7 +137,7 @@ function buildRcloneCompletionSource(
           from,
           to,
           options: fieldDefs.map(f => ({
-            label: f.Name || f.FieldName,
+            label: getFieldKey(f),
             type: 'property',
             detail: f.Type,
             info: f.Help || undefined,
@@ -157,7 +158,7 @@ function buildRcloneCompletionSource(
 
     const rawKey = context.state.sliceDoc(keyNode.from, keyNode.to);
     const keyText = rawKey.replace(/^"|"$/g, '');
-    const fieldDef = fieldDefs.find(f => (f.Name || f.FieldName) === keyText);
+    const fieldDef = fieldDefs.find(f => getFieldKey(f) === keyText);
     if (!fieldDef?.Examples?.length) return null;
 
     const word = context.matchBefore(/"[^"]*/) ?? context.matchBefore(/\w*/);
@@ -193,6 +194,7 @@ export class JsonEditorComponent {
   readonly searchQuery = input('');
   readonly keyPrefix = input('');
   readonly excludeKeys = input<string[]>([]);
+  readonly preferFieldName = input(false);
 
   readonly flagType = input<SharedProfileType | null>(null);
   readonly currentRemoteName = input<string>('');
@@ -225,6 +227,10 @@ export class JsonEditorComponent {
   readonly translateService = inject(TranslateService);
 
   readonly lookupTable = computed(() => this.sharedLookupTable?.() ?? {});
+
+  /** Resolves the canonical key for a field definition. */
+  readonly fieldKey = (f: RcConfigOption): string =>
+    this.preferFieldName() ? f.FieldName || f.Name : f.Name || f.FieldName;
 
   readonly restrictMode = toSignal(
     this.appSettingsService
@@ -275,14 +281,14 @@ export class JsonEditorComponent {
 
     const isSafMount = type === 'mount' && value['mountType'] === 'saf';
     const baseDefs = defs.filter(f => {
-      const key = f.Name || f.FieldName;
+      const key = this.fieldKey(f);
       if (isSafMount && key === 'mountPoint') return false;
       return !excluded.has(prefix + key);
     });
     const filteredDefs = query ? baseDefs.filter(f => matchesConfigSearch(f, query)) : baseDefs;
 
     return filteredDefs.map(field => {
-      const controlKey = prefix + (field.Name || field.FieldName);
+      const controlKey = prefix + this.fieldKey(field);
       const currentValue = value[controlKey] ?? null;
       const isChanged = !this.valueMapper.isDefaultValue(currentValue, field);
       const isActive = isChanged || explicit.has(controlKey);
@@ -305,7 +311,7 @@ export class JsonEditorComponent {
 
       return {
         controlKey,
-        displayKey: field.Name || field.FieldName,
+        displayKey: this.fieldKey(field),
         currentValue,
         displayValue,
         fullValue: rawDisplay,
@@ -335,13 +341,14 @@ export class JsonEditorComponent {
 
     const completionSource = buildRcloneCompletionSource(
       () => this.fieldDefs(),
-      () => this.flagType()
+      () => this.flagType(),
+      f => this.fieldKey(f)
     );
 
     const rcloneLinter = linter(view => {
       const diagnostics: Diagnostic[] = [];
       const flagType = this.flagType();
-      const validFieldNames = new Set(this.fieldDefs().map(f => f.Name || f.FieldName));
+      const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
       const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
       const isProfile = isProfileType(flagType);
 
@@ -598,6 +605,7 @@ export class JsonEditorComponent {
     excludeFilter: (key: string) => boolean = () => false
   ): void {
     const existingControls = new Set(Object.keys(group.controls));
+    const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
     const prevCustom = new Set(this.customControlKeys());
     const nextCustom = new Set<string>();
 
@@ -607,13 +615,14 @@ export class JsonEditorComponent {
       if (!existingControls.has(controlKey)) {
         group.addControl(controlKey, new FormControl(val), { emitEvent: false });
         nextCustom.add(controlKey);
-      } else if (prevCustom.has(controlKey)) {
+      } else if (prevCustom.has(controlKey) || !validFieldNames.has(controlKey)) {
         nextCustom.add(controlKey);
       }
     }
 
-    for (const key of prevCustom) {
-      if (!nextCustom.has(key)) {
+    for (const key of Object.keys(group.controls)) {
+      if (excludeFilter(key)) continue;
+      if (!Object.prototype.hasOwnProperty.call(incoming, key) && !validFieldNames.has(key)) {
         group.removeControl(key, { emitEvent: false });
       }
     }
@@ -633,7 +642,7 @@ export class JsonEditorComponent {
 
     const type = this.flagType();
     const isProfile = isProfileType(type);
-    const validFieldNames = new Set(this.fieldDefs().map(f => f.Name || f.FieldName));
+    const validFieldNames = new Set(this.fieldDefs().map(f => this.fieldKey(f)));
     const currentBlock = this.keyPrefix() ? this.keyPrefix().replace('---', '') : '';
 
     if (isProfile) {
@@ -644,7 +653,7 @@ export class JsonEditorComponent {
         topLevelKeys.add('type');
       }
       for (const field of this.fieldDefs()) {
-        topLevelKeys.add(field.Name || field.FieldName);
+        topLevelKeys.add(this.fieldKey(field));
       }
 
       // Check CLI arguments at top level
@@ -1006,8 +1015,8 @@ export class JsonEditorComponent {
         patch[controlKey] = val === '••••••••' ? latestRaw[controlKey] : val;
       } else if (!prefix || controlKey.startsWith(prefix)) {
         const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-        const field = defs.find(f => (f.Name || f.FieldName) === displayKey);
-        patch[controlKey] = field?.Default ?? field?.DefaultStr ?? latestRaw[controlKey] ?? null;
+        const field = defs.find(f => this.fieldKey(f) === displayKey);
+        patch[controlKey] = field ? (field.Default ?? field.DefaultStr ?? null) : null;
       } else {
         patch[controlKey] = latestRaw[controlKey];
       }
@@ -1030,7 +1039,7 @@ export class JsonEditorComponent {
       if (excluded.has(controlKey)) continue;
 
       const displayKey = prefix ? controlKey.slice(prefix.length) : controlKey;
-      const field = defs.find(f => (f.Name || f.FieldName) === displayKey);
+      const field = defs.find(f => this.fieldKey(f) === displayKey);
       const isExplicit = explicit.has(controlKey);
 
       if (field && this.valueMapper.isDefaultValue(val, field) && !isExplicit) continue;

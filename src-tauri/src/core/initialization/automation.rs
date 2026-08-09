@@ -51,5 +51,36 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         log::error!("Failed to initialize watchers: {e}");
     }
 
+    // ── Quick Run Automations & Watchers ────────────────────────────────────
+    if let Ok(quick_runs) = crate::core::flow::commands::get_all_quick_runs_sync(&manager) {
+        info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
+
+        for qr in &quick_runs {
+            if qr.is_autostart() {
+                info!("⚡ Auto-starting Quick Run: {} ({})", qr.name, qr.id);
+                let app = app_handle.clone();
+                let qr_id = qr.id.clone();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        crate::core::flow::commands::start_quick_run(app, qr_id.clone()).await
+                    {
+                        log::error!("Failed to auto-start Quick Run {qr_id}: {e}");
+                    }
+                });
+            }
+        }
+
+        if let Err(e) = scheduler_state.sync_quick_runs(app_handle.clone()).await {
+            log::error!("Failed to sync Quick Run scheduler: {e}");
+        }
+
+        if let Err(e) = watcher_manager
+            .sync_quick_run_watchers(app_handle.clone())
+            .await
+        {
+            log::error!("Failed to sync Quick Run watchers: {e}");
+        }
+    }
+
     Ok(())
 }

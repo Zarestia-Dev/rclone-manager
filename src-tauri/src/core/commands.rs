@@ -161,6 +161,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (save_setting, $crate::core::settings::operations::core::save_setting, [category: String, key: String, value: serde_json::Value]);
             (reset_settings, $crate::core::settings::operations::core::reset_settings, []);
             (reset_setting, $crate::core::settings::operations::core::reset_setting, [category: String, key: String]);
+            (list_user_templates, $crate::core::settings::operations::templates::list_user_templates, []);
+            (get_user_template, $crate::core::settings::operations::templates::get_user_template, [id: String]);
+            (save_user_template, $crate::core::settings::operations::templates::save_user_template, [id: String, template: serde_json::Value]);
+            (update_user_template, $crate::core::settings::operations::templates::update_user_template, [id: String, template: serde_json::Value]);
+            (delete_user_template, $crate::core::settings::operations::templates::delete_user_template, [id: String]);
+
 
             // RCLONE BACKEND SETTINGS
             (load_rclone_backend_options, $crate::core::settings::rclone_backend::load_rclone_backend_options, []);
@@ -243,6 +249,14 @@ macro_rules! MASTER_COMMAND_LIST {
             (reload_automations, $crate::core::automation::commands::reload_automations, []);
             (reload_automations_from_configs, $crate::core::automation::commands::reload_automations_from_configs, [all_settings: serde_json::Value]);
             (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
+
+            // QUICK RUNS (FLOW WORKSPACE)
+            (list_quick_runs, $crate::core::flow::commands::list_quick_runs, []);
+            (create_quick_run, $crate::core::flow::commands::create_quick_run, [quick_run: $crate::core::flow::types::QuickRunInput]);
+            (update_quick_run, $crate::core::flow::commands::update_quick_run, [quick_run: $crate::core::flow::types::QuickRunInput]);
+            (delete_quick_run, $crate::core::flow::commands::delete_quick_run, [quick_run_id: String]);
+            (start_quick_run, $crate::core::flow::commands::start_quick_run, [quick_run_id: String]);
+            (stop_quick_run, $crate::core::flow::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);

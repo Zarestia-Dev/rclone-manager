@@ -1285,6 +1285,9 @@ mat-accordion {
     &.delete .menu-item-dot {
       background-color: var(--warn-color);
     }
+    &.danger-item {
+      color: var(--warn-color);
+    }
     &.copyurl .menu-item-dot {
       background-color: var(--accent-color);
     }
@@ -1335,11 +1338,6 @@ mat-accordion {
       opacity: 0.4;
       background: transparent;
     }
-  }
-
-  mat-divider {
-    margin: 4px 6px;
-    opacity: 0.5;
   }
 
   .menu-group-label {

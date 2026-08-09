@@ -1,0 +1,38 @@
+@if (selected(); as qr) {
+  <app-app-detail
+    mode="quickRun"
+    [quickRun]="qr"
+    (startJob)="startQuickRun(qr.id)"
+    (stopJob)="stopQuickRun(qr.id)"
+    (openRemoteConfigModal)="editQuickRun(qr.id)"
+    (openInFiles)="openInFiles($event)"
+  />
+
+  <button
+    matIconButton
+    [cdkMenuTriggerFor]="quickRunMenu"
+    [attr.title]="'common.moreActions' | translate"
+    [attr.aria-label]="'common.moreActions' | translate"
+    class="ellipsis-button"
+  >
+    <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+  </button>
+  <ng-template #quickRunMenu>
+    <div class="material-context-menu" cdkMenu>
+      <button class="menu-item" (click)="editQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="pen" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.edit' | translate }}</span>
+      </button>
+      <button class="menu-item" (click)="duplicateQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="copy" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.duplicate' | translate }}</span>
+      </button>
+      <button class="menu-item danger-item" (click)="removeQuickRun(qr.id)" cdkMenuItem>
+        <mat-icon svgIcon="trash" class="menu-item-icon"></mat-icon>
+        <span class="menu-item-label">{{ 'common.delete' | translate }}</span>
+      </button>
+    </div>
+  </ng-template>
+} @else {
+  <app-quick-run-overview />
+}

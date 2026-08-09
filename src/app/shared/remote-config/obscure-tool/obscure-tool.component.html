@@ -11,7 +11,7 @@
       <section class="input-section">
         <p class="description">{{ 'wizards.obscure.description' | translate }}</p>
 
-        <mat-form-field appearance="fill" class="full-width">
+        <mat-form-field class="full-width">
           <mat-label>{{ 'wizards.obscure.clearPlaceholder' | translate }}</mat-label>
           <input
             matInput
@@ -80,7 +80,7 @@
 
           @if (sensitiveFields().length > 0) {
             <div class="apply-to-field-section">
-              <mat-form-field appearance="fill" class="full-width">
+              <mat-form-field class="full-width">
                 <mat-label>{{ 'wizards.obscure.applyToField' | translate }}</mat-label>
                 <mat-select [formControl]="targetFieldCtrl">
                   @for (field of sensitiveFields(); track field.key) {

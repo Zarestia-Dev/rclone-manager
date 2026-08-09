@@ -1,0 +1,497 @@
+<header data-tauri-drag-region>
+  <button
+    type="button"
+    matIconButton
+    (click)="isSearchVisible.update(v => !v)"
+    [attr.title]="'shared.search.placeholder' | translate"
+    [attr.aria-label]="'shared.search.placeholder' | translate"
+  >
+    <mat-icon svgIcon="search"></mat-icon>
+  </button>
+  <p data-tauri-drag-region>{{ 'templates.title' | translate }}</p>
+  <button
+    type="button"
+    matIconButton
+    [attr.title]="'common.close' | translate"
+    [attr.aria-label]="'common.close' | translate"
+    (click)="onClose()"
+  >
+    <mat-icon svgIcon="circle-xmark"></mat-icon>
+  </button>
+</header>
+
+<app-search-container
+  [visible]="isSearchVisible()"
+  [searchText]="keySearchQuery()"
+  (searchTextChange)="keySearchQuery.set($event)"
+></app-search-container>
+
+<main class="dull">
+  <mat-tab-group
+    class="template-modal-tabs"
+    [selectedIndex]="mode() === 'save' ? 0 : 1"
+    (selectedIndexChange)="mode.set($event === 0 ? 'save' : 'manage')"
+  >
+    <!-- TAB 0: SAVE AS CUSTOM TEMPLATE -->
+    <mat-tab>
+      <ng-template matTabLabel>
+        <span>{{ 'templates.saveTitle' | translate }}</span>
+      </ng-template>
+
+      <div class="tab-pane save-pane">
+        <p class="pane-description">{{ 'templates.saveDescription' | translate }}</p>
+
+        <form [formGroup]="saveForm" (ngSubmit)="onSaveTemplate()" class="save-form">
+          <div class="form-row">
+            <mat-form-field>
+              <mat-label>{{ 'templates.templateName' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="name"
+                placeholder="e.g. My Fast S3 Backup Settings"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>{{ 'templates.templateDesc' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="description"
+                placeholder="Brief description of these settings..."
+              />
+            </mat-form-field>
+          </div>
+
+          <div class="keys-section">
+            <div class="keys-header">
+              <span class="section-label">{{ 'templates.selectKeys' | translate }}</span>
+              <div class="header-right-actions">
+                <span class="selected-count-badge">
+                  {{ selectedKeysCount() }} / {{ settingEntries().length }}
+                </span>
+
+                <div class="view-mode-toggle">
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    [class.active]="saveViewMode() === 'visual'"
+                    (click)="toggleSaveViewMode('visual')"
+                    title="Switch to Visual View"
+                  >
+                    <mat-icon svgIcon="tune"></mat-icon>
+                    <span>{{ 'templates.visualView' | translate }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    [class.active]="saveViewMode() === 'json'"
+                    (click)="toggleSaveViewMode('json')"
+                    title="Switch to JSON Editor"
+                  >
+                    <mat-icon svgIcon="code"></mat-icon>
+                    <span>{{ 'templates.jsonView' | translate }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            @if (saveViewMode() === 'visual') {
+              <div class="keys-toolbar">
+                <div class="bulk-actions">
+                  <button
+                    type="button"
+                    class="action-link-btn"
+                    (click)="selectAllKeys()"
+                    title="Select all setting keys"
+                  >
+                    {{ 'common.selectAll' | translate }}
+                  </button>
+                  <span class="divider">•</span>
+                  <button
+                    type="button"
+                    class="action-link-btn"
+                    (click)="deselectAllKeys()"
+                    title="Deselect all setting keys"
+                  >
+                    {{ 'common.deselectAll' | translate }}
+                  </button>
+                  <span class="divider">•</span>
+                  <button
+                    type="button"
+                    class="action-link-btn highlight"
+                    (click)="showAddKeyForm.set(!showAddKeyForm())"
+                    title="Add custom key manually"
+                  >
+                    <mat-icon svgIcon="plus"></mat-icon>
+                    <span>{{ 'templates.addCustomKey' | translate }}</span>
+                  </button>
+                </div>
+              </div>
+
+              @if (showAddKeyForm()) {
+                <div class="add-custom-key-row">
+                  <select
+                    class="cat-select"
+                    [value]="newKeyCategory()"
+                    (change)="newKeyCategory.set($any($event.target).value)"
+                  >
+                    @for (cat of availableCategories; track cat) {
+                      <option [value]="cat">{{ cat }}</option>
+                    }
+                  </select>
+
+                  <input
+                    type="text"
+                    class="custom-key-input"
+                    placeholder="Key (e.g. dir_cache_time)"
+                    [value]="newKeyName()"
+                    (input)="newKeyName.set($any($event.target).value)"
+                  />
+
+                  <input
+                    type="text"
+                    class="custom-val-input"
+                    placeholder="Value (e.g. 10m)"
+                    [value]="newKeyValue()"
+                    (input)="newKeyValue.set($any($event.target).value)"
+                  />
+
+                  <button
+                    type="button"
+                    mat-flat-button
+                    color="accent"
+                    class="add-key-btn"
+                    [disabled]="!newKeyName().trim()"
+                    (click)="addCustomSettingKey()"
+                  >
+                    <mat-icon svgIcon="plus"></mat-icon>
+                    {{ 'templates.addKey' | translate }}
+                  </button>
+                </div>
+              }
+
+              @if (settingEntries().length === 0) {
+                <div class="empty-state">
+                  <mat-icon svgIcon="info"></mat-icon>
+                  <p>{{ 'templates.noKeysAvailable' | translate }}</p>
+                </div>
+              } @else {
+                <div class="keys-grid">
+                  @for (entry of filteredEntries(); track entry.id) {
+                    <div
+                      class="key-card"
+                      [class.selected]="entry.selected"
+                      role="button"
+                      tabindex="0"
+                      (click)="toggleEntry(entry.id)"
+                      (keydown.enter)="toggleEntry(entry.id)"
+                    >
+                      <mat-checkbox
+                        [checked]="entry.selected"
+                        (change)="toggleEntry(entry.id)"
+                        (click)="$event.stopPropagation()"
+                      >
+                      </mat-checkbox>
+                      <div class="key-card-content">
+                        <div class="key-meta">
+                          <span class="cat-tag">{{ entry.category }}</span>
+                          <span class="key-name">{{ entry.key }}</span>
+                        </div>
+
+                        @if (editingEntryId() === entry.id) {
+                          <div class="inline-edit-box">
+                            <input
+                              type="text"
+                              class="edit-val-input"
+                              [value]="editingValueText()"
+                              (click)="$event.stopPropagation()"
+                              (input)="editingValueText.set($any($event.target).value)"
+                            />
+                            <button
+                              type="button"
+                              class="icon-confirm-btn"
+                              title="Save"
+                              (click)="saveEditEntry(entry.id, $event)"
+                            >
+                              <mat-icon svgIcon="check-circle"></mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="icon-confirm-btn cancel"
+                              title="Cancel"
+                              (click)="cancelEditEntry($event)"
+                            >
+                              <mat-icon svgIcon="close"></mat-icon>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="key-value-row">
+                            <span class="key-value" [title]="entry.displayValue">
+                              {{ entry.displayValue }}
+                            </span>
+                            <button
+                              type="button"
+                              class="quick-edit-btn"
+                              title="Edit value manually"
+                              (click)="startEditEntry(entry, $event)"
+                            >
+                              <mat-icon svgIcon="pen"></mat-icon>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            } @else {
+              <!-- JSON EDITOR VIEW IN TAB 0 -->
+              <div class="json-editor-pane">
+                @if (saveJsonError(); as err) {
+                  <app-alert-banner severity="error" [description]="err" />
+                }
+
+                <div #saveEditorContainer class="code-mirror editor-box"></div>
+              </div>
+            }
+          </div>
+        </form>
+      </div>
+    </mat-tab>
+
+    <!-- TAB 1: MANAGE TEMPLATES -->
+    <mat-tab>
+      <ng-template matTabLabel>
+        <span>{{ 'templates.manageTitle' | translate }}</span>
+      </ng-template>
+
+      <div class="tab-pane manage-pane">
+        <div class="manage-top-bar">
+          <div class="top-bar-title">
+            <h3>{{ 'templates.userTemplates' | translate }}</h3>
+          </div>
+          <div class="top-bar-actions">
+            <button
+              type="button"
+              mat-flat-button
+              color="primary"
+              class="new-template-btn"
+              (click)="createNewDraftTemplate()"
+              title="Create a new template from scratch"
+            >
+              <mat-icon svgIcon="plus"></mat-icon>
+              <span>{{ 'templates.newTemplate' | translate }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="manage-split-container">
+          <!-- Template List Left Panel -->
+          <div class="template-list-column">
+            @if (userTemplateService.userTemplates().length === 0) {
+              <div class="empty-state">
+                <p>{{ 'templates.noUserTemplates' | translate }}</p>
+              </div>
+            } @else {
+              <div class="template-nav-list">
+                @for (tpl of userTemplateService.userTemplates(); track tpl.id) {
+                  <div
+                    class="template-nav-item"
+                    [class.active]="selectedTemplateId() === tpl.id"
+                    role="button"
+                    tabindex="0"
+                    (click)="selectTemplate(tpl.id)"
+                    (keydown.enter)="selectTemplate(tpl.id)"
+                  >
+                    <div class="item-icon-area">
+                      <mat-icon svgIcon="bookmark"></mat-icon>
+                    </div>
+                    <div class="item-details">
+                      <span class="tpl-name">{{ tpl.name }}</span>
+                      <span class="tpl-desc">{{ tpl.description || 'Custom preset' }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      mat-icon-button
+                      class="delete-btn"
+                      title="Delete template"
+                      (click)="onDeleteUserTemplate(tpl.id); $event.stopPropagation()"
+                    >
+                      <mat-icon svgIcon="trash"></mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Template Detail Right Panel -->
+          <div class="template-detail-column">
+            @if (!selectedTemplate()) {
+              <div class="empty-state">
+                <mat-icon svgIcon="info"></mat-icon>
+                <span>{{ 'templates.selectTemplateToEdit' | translate }}</span>
+              </div>
+            } @else {
+              <div class="detail-header">
+                <div class="detail-title">
+                  <h4>{{ selectedTemplate()?.name }}</h4>
+                  @if (selectedTemplate()?.remoteType) {
+                    <span class="remote-type-chip">{{ selectedTemplate()?.remoteType }}</span>
+                  }
+                </div>
+
+                <div class="view-mode-toggle">
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    [class.active]="manageViewMode() === 'visual'"
+                    (click)="toggleViewMode('visual')"
+                    title="Switch to Visual View"
+                  >
+                    <mat-icon svgIcon="tune"></mat-icon>
+                    <span>{{ 'templates.visualView' | translate }}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    [class.active]="manageViewMode() === 'json'"
+                    (click)="toggleViewMode('json')"
+                    title="Switch to Code/JSON Editor"
+                  >
+                    <mat-icon svgIcon="code"></mat-icon>
+                    <span>{{ 'templates.jsonView' | translate }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- VISUAL INSPECTOR VIEW -->
+              @if (manageViewMode() === 'visual') {
+                <div class="visual-inspector">
+                  @for (catKey of Object.keys(selectedTemplate()?.values || {}); track catKey) {
+                    <div class="category-block">
+                      <div class="cat-header">
+                        <span class="cat-badge">{{ catKey }}</span>
+                        <button
+                          type="button"
+                          class="cat-add-btn"
+                          title="Add setting key to this category"
+                          (click)="addingCatKey.set($any(catKey))"
+                        >
+                          <mat-icon svgIcon="plus"></mat-icon>
+                        </button>
+                      </div>
+
+                      @if (addingCatKey() === catKey) {
+                        <div class="cat-inline-add">
+                          <input
+                            type="text"
+                            class="inline-key-in"
+                            placeholder="Key name"
+                            [value]="catKeyInput()"
+                            (input)="catKeyInput.set($any($event.target).value)"
+                          />
+                          <input
+                            type="text"
+                            class="inline-val-in"
+                            placeholder="Value"
+                            [value]="catValInput()"
+                            (input)="catValInput.set($any($event.target).value)"
+                          />
+                          <button
+                            type="button"
+                            class="inline-save-btn"
+                            [disabled]="!catKeyInput().trim()"
+                            (click)="addKeyToCategory($any(catKey))"
+                          >
+                            <mat-icon svgIcon="check-circle"></mat-icon>
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-save-btn cancel"
+                            (click)="addingCatKey.set(null)"
+                          >
+                            <mat-icon svgIcon="close"></mat-icon>
+                          </button>
+                        </div>
+                      }
+
+                      <div class="cat-kv-grid">
+                        @for (
+                          entry of Object.entries($any(selectedTemplate()?.values)[catKey] || {});
+                          track entry[0]
+                        ) {
+                          <div class="kv-item">
+                            <div class="kv-header">
+                              <span class="k-label">{{ entry[0] }}</span>
+                              <button
+                                type="button"
+                                class="kv-del-btn"
+                                title="Remove key"
+                                (click)="removeKeyFromCategory($any(catKey), entry[0])"
+                              >
+                                <mat-icon svgIcon="close"></mat-icon>
+                              </button>
+                            </div>
+                            <span class="v-val">{{ entry[1] }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- CODEMIRROR JSON EDITOR VIEW -->
+              @if (manageViewMode() === 'json') {
+                <div class="json-editor-pane">
+                  @if (jsonParseError(); as err) {
+                    <app-alert-banner severity="error" [description]="err" />
+                  }
+
+                  <div #manageEditorContainer class="code-mirror editor-box"></div>
+
+                  <div class="editor-actions">
+                    <button
+                      type="button"
+                      mat-flat-button
+                      color="primary"
+                      [disabled]="!!jsonParseError()"
+                      (click)="onSaveTemplateEdits()"
+                    >
+                      <mat-icon svgIcon="floppy-disk"></mat-icon>
+                      <span>{{ 'templates.saveChanges' | translate }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</main>
+
+<footer>
+  @if (mode() === 'save') {
+    <button type="button" mat-button (click)="onClose()">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button
+      type="button"
+      mat-flat-button
+      color="primary"
+      [disabled]="saveForm.invalid || selectedKeysCount() === 0"
+      (click)="onSaveTemplate()"
+    >
+      <mat-icon svgIcon="floppy-disk"></mat-icon>
+      <span>{{ 'common.save' | translate }}</span>
+    </button>
+  } @else {
+    <button type="button" mat-flat-button color="primary" (click)="onClose()">
+      {{ 'common.close' | translate }}
+    </button>
+  }
+</footer>

@@ -20,6 +20,8 @@ pub enum Origin {
     /// Background system processes (disk usage, directory sorting, cleanup).
     #[default]
     Internal,
+    /// Quick Run / Flow workspace operation.
+    Flow,
 }
 
 impl std::fmt::Display for Origin {
@@ -33,7 +35,7 @@ impl Origin {
     /// initiated the operation.
     #[must_use]
     pub fn is_user_facing(&self) -> bool {
-        matches!(self, Origin::Dashboard | Origin::FileManager)
+        matches!(self, Origin::Dashboard | Origin::FileManager | Origin::Flow)
     }
 
     /// Return a stable tag suitable for storage/IPC matching.
@@ -46,6 +48,7 @@ impl Origin {
             Origin::Startup => "startup",
             Origin::Update => "update",
             Origin::Internal => "internal",
+            Origin::Flow => "flow",
         }
     }
 }

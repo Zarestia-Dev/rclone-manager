@@ -1,0 +1,231 @@
+<div class="overview-container">
+  <!-- Top Header Banner -->
+  <app-overview-header
+    [customTitle]="'flow.quickRun.overview.title'"
+    [customIcon]="'quick-run'"
+    (openBackendModal)="openBackendModal()"
+  ></app-overview-header>
+
+  <!-- Key Metrics Summary Grid -->
+  <div class="stats-grid">
+    <mat-card class="stat-card">
+      <div class="stat-icon-wrapper primary">
+        <mat-icon svgIcon="operations"></mat-icon>
+      </div>
+      <div class="stat-info">
+        <span class="stat-value">{{ totalCount() }}</span>
+        <span class="stat-label">{{ 'flow.quickRun.overview.stats.total' | translate }}</span>
+      </div>
+    </mat-card>
+
+    <mat-card class="stat-card" [class.is-active]="activeCount() > 0">
+      <div class="stat-icon-wrapper active">
+        <mat-icon svgIcon="spinner" [class.spin]="activeCount() > 0"></mat-icon>
+      </div>
+      <div class="stat-info">
+        <span class="stat-value">{{ activeCount() }}</span>
+        <span class="stat-label">{{ 'flow.quickRun.overview.stats.active' | translate }}</span>
+      </div>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <div class="stat-icon-wrapper success">
+        <mat-icon svgIcon="check-circle"></mat-icon>
+      </div>
+      <div class="stat-info">
+        <span class="stat-value">{{ completedCount() }}</span>
+        <span class="stat-label">{{ 'flow.quickRun.overview.stats.completed' | translate }}</span>
+      </div>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <div class="stat-icon-wrapper warn">
+        <mat-icon svgIcon="warning"></mat-icon>
+      </div>
+      <div class="stat-info">
+        <span class="stat-value">{{ failedCount() }}</span>
+        <span class="stat-label">{{ 'flow.quickRun.overview.stats.failed' | translate }}</span>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- System Info & Bandwidth Control Row -->
+  <div class="sys-bandwidth-grid">
+    <!-- Engine System Info Card -->
+    <mat-card class="sys-card">
+      <div class="card-header-bar">
+        <div class="header-left">
+          <mat-icon svgIcon="core" class="icon-accent"></mat-icon>
+          <h3>{{ 'flow.quickRun.overview.system.title' | translate }}</h3>
+        </div>
+        <span class="status-dot-badge" [class]="rcloneStatus()">
+          <span class="dot"></span>
+          {{ rcloneStatus() | titlecase }}
+        </span>
+      </div>
+      <div class="sys-metrics-row">
+        <div class="sys-metric-item">
+          <span class="sys-label">{{ 'flow.quickRun.overview.system.version' | translate }}</span>
+          <span class="sys-val">{{ rcloneInfo()?.version || 'Native v2' }}</span>
+        </div>
+        <div class="sys-metric-item">
+          <span class="sys-label">{{ 'flow.quickRun.overview.system.memory' | translate }}</span>
+          <span class="sys-val">
+            @if (memoryUsage()?.HeapAlloc; as alloc) {
+              {{ alloc | formatFileSize }}
+            } @else {
+              -
+            }
+          </span>
+        </div>
+        <div class="sys-metric-item">
+          <span class="sys-label">{{ 'flow.quickRun.overview.system.uptime' | translate }}</span>
+          <span class="sys-val">{{ uptime() | formatTime }}</span>
+        </div>
+        <div class="sys-metric-item">
+          <span class="sys-label">{{ 'flow.quickRun.overview.system.speed' | translate }}</span>
+          <span class="sys-val highlight">{{ jobStats().speed | formatRateValue }}</span>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Bandwidth Limit Control Card -->
+    <mat-card class="bandwidth-card">
+      <div class="card-header-bar">
+        <div class="header-left">
+          <mat-icon svgIcon="right-left" class="icon-primary"></mat-icon>
+          <h3>{{ 'flow.quickRun.overview.bandwidth.title' | translate }}</h3>
+        </div>
+        <span class="bw-current-badge">
+          {{ bandwidthLimit()?.rate | formatRateValue }}
+        </span>
+      </div>
+      <div class="bw-preset-chips">
+        <button
+          type="button"
+          class="preset-chip"
+          [class.active]="savedBandwidthLimit() === '' || savedBandwidthLimit() === 'off'"
+          (click)="setBandwidthLimit('off')"
+          [attr.title]="'flow.quickRun.overview.bandwidth.unlimited' | translate"
+        >
+          <mat-icon svgIcon="right-left"></mat-icon>
+          <span>{{ 'flow.quickRun.overview.bandwidth.unlimited' | translate }}</span>
+        </button>
+        <button
+          type="button"
+          class="preset-chip"
+          [class.active]="savedBandwidthLimit() === '1M'"
+          (click)="setBandwidthLimit('1M')"
+          [attr.title]="'flow.quickRun.overview.bandwidth.preset1M' | translate"
+        >
+          <span>1 MB/s</span>
+        </button>
+        <button
+          type="button"
+          class="preset-chip"
+          [class.active]="savedBandwidthLimit() === '5M'"
+          (click)="setBandwidthLimit('5M')"
+          [attr.title]="'flow.quickRun.overview.bandwidth.preset5M' | translate"
+        >
+          <span>5 MB/s</span>
+        </button>
+        <button
+          type="button"
+          class="preset-chip"
+          [class.active]="savedBandwidthLimit() === '10M'"
+          (click)="setBandwidthLimit('10M')"
+          [attr.title]="'flow.quickRun.overview.bandwidth.preset10M' | translate"
+        >
+          <span>10 MB/s</span>
+        </button>
+        <button
+          type="button"
+          class="preset-chip"
+          [class.active]="savedBandwidthLimit() === '50M'"
+          (click)="setBandwidthLimit('50M')"
+          [attr.title]="'flow.quickRun.overview.bandwidth.preset50M' | translate"
+        >
+          <span>50 MB/s</span>
+        </button>
+      </div>
+
+      <div class="custom-bw-row">
+        <mat-form-field subscriptSizing="dynamic" class="custom-bw-field">
+          <mat-icon matPrefix svgIcon="right-left" class="custom-bw-prefix-icon"></mat-icon>
+          <input
+            matInput
+            type="text"
+            [value]="customBandwidthInput()"
+            (input)="customBandwidthInput.set($any($event.target).value)"
+            [placeholder]="'flow.quickRun.overview.bandwidth.customPlaceholder' | translate"
+            (keydown.enter)="applyCustomBandwidth()"
+          />
+          <button
+            matSuffix
+            type="button"
+            class="custom-bw-apply-btn"
+            [disabled]="!isCustomBandwidthChanged()"
+            (click)="applyCustomBandwidth()"
+            [attr.title]="'flow.quickRun.overview.bandwidth.apply' | translate"
+          >
+            <mat-icon svgIcon="check-circle"></mat-icon>
+            <span>{{ 'flow.quickRun.overview.bandwidth.apply' | translate }}</span>
+          </button>
+        </mat-form-field>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Content Section: Quick Launch Grid & Jobs Panel -->
+  <div class="overview-body">
+    <!-- Quick Launch Grid -->
+    <section class="quick-launch-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <mat-icon svgIcon="play" class="section-icon"></mat-icon>
+          <h3>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</h3>
+        </div>
+        <span class="section-sub">{{ 'flow.quickRun.overview.quickLaunchSub' | translate }}</span>
+      </div>
+
+      @if (quickRuns().length > 0) {
+        <div class="quick-runs-grid">
+          @for (qr of quickRuns(); track qr.id) {
+            <app-quick-run-card
+              [quickRun]="qr"
+              [isRunning]="isRunning(qr.id)"
+              variant="overview"
+              (selectedChange)="onSelectQuickRunById($event)"
+              (startRun)="onStartQuickRun($event)"
+              (stopRun)="onStopQuickRun($event)"
+              (editRun)="onEditQuickRun($event)"
+            />
+          }
+        </div>
+      } @else {
+        <div class="empty-quick-runs">
+          <mat-icon svgIcon="operations" class="empty-icon"></mat-icon>
+          <p>{{ 'flow.quickRun.overview.createFirst' | translate }}</p>
+          <button
+            mat-stroked-button
+            color="primary"
+            (click)="onCreateQuickRun()"
+            [attr.title]="'flow.quickRun.new' | translate"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'flow.quickRun.new' | translate }}</span>
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- Recent & Active Executions Panel -->
+    <section class="jobs-section">
+      <app-jobs-panel
+        [config]="jobsPanelConfig()"
+        (stopJob)="onStopJob($event)"
+        (deleteJob)="onDeleteJob($event)"
+      />
+    </section>
+  </div>
+</div>

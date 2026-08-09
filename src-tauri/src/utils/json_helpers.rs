@@ -58,10 +58,19 @@ pub fn extract_remote_name_from_fs(fs: &str) -> String {
     normalize_remote_name(remote_part)
 }
 
-/// Returns true if the key represents a flat option (starts with a lowercase character).
+/// Returns true if the key represents an internal UI path field (e.g. `srcFs`, `dstFs`, `mountPoint`).
+#[must_use]
+pub fn is_path_key(key: &str) -> bool {
+    matches!(
+        key,
+        "srcFs" | "dstFs" | "path1" | "path2" | "fs" | "mountPoint" | "source" | "dest"
+    )
+}
+
+/// Returns true if the key represents a flat option (starts with a lowercase character) and is not a path key.
 #[must_use]
 pub fn is_flat_option_key(key: &str) -> bool {
-    key.chars().next().is_some_and(|c| c.is_lowercase())
+    !is_path_key(key) && key.chars().next().is_some_and(|c| c.is_lowercase())
 }
 
 /// Safely converts a JSON object to a `HashMap`.
@@ -367,7 +376,8 @@ mod tests {
     fn test_is_flat_option_key() {
         assert!(is_flat_option_key("checksum"));
         assert!(is_flat_option_key("vfs_cache_mode"));
-        assert!(is_flat_option_key("srcFs"));
+        assert!(!is_flat_option_key("srcFs"));
+        assert!(!is_flat_option_key("mountPoint"));
         assert!(!is_flat_option_key("CheckSum"));
         assert!(!is_flat_option_key("CacheMode"));
     }

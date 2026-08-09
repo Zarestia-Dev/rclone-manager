@@ -6,3 +6,4 @@
 //! - Resetting to defaults
 
 pub mod core;
+pub mod templates;

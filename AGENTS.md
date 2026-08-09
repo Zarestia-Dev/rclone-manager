@@ -19,7 +19,7 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
 
 1. **Keep Changes Minimal & Elegant**: Work to make the smallest, most effective change possible. Avoid unneeded refactoring, re-ordering of imports, or restyling surrounding code.
 2. **Backwards Compatibility**: PRs should preserve existing behavior across desktop, web server (headless), and mobile targets.
-3. **Verify Before Proposing**: AI agents must run build, lint, and formatting verification commands before declaring success.
+3. **Verify Before Proposing**: AI agents must run build, lint, and formatting verification commands before declaring success. **Frontend changes must produce a warning-free build** (see §Build, Test & Lint Commands).
 
 ---
 
@@ -56,6 +56,9 @@ The commands below mirror the exact validation checks executed in [.github/workf
 ### 1. Frontend (Angular / TypeScript)
 
 ```bash
+# Build the frontend — must complete with ZERO warnings
+ng build
+
 # Lint TypeScript and HTML files
 npx eslint "**/*.{ts,html}"
 
@@ -68,6 +71,10 @@ npx prettier --write "**/*.{ts,html,scss,json}"
 # Auto-fix lint & formatting issues across project
 npm run fix:all
 ```
+
+> **Frontend Build Rule (CRITICAL)**:
+> After any frontend change, run `ng build` and verify the output contains **no warnings**.
+> Warnings (e.g., unused imports, deprecated APIs, template binding issues) must be treated as build failures and fixed before declaring the task complete.
 
 ### 2. Backend (Rust / Tauri)
 

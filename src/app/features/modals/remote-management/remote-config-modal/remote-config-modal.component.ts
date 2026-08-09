@@ -5,9 +5,11 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  signal,
+  afterNextRender,
   viewChild,
 } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSidenavModule, MatDrawerMode } from '@angular/material/sidenav';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
@@ -38,12 +41,14 @@ import {
   REMOTE_CONFIG_KEYS,
   LINKED_PROFILE_TYPES,
   PROFILE_ICONS,
+  EditTarget,
 } from '@app/types';
 import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
 import { ProfileSwitcherComponent } from './profile-switcher/profile-switcher.component';
 import { ConfigModalSidebarComponent } from './config-modal-sidebar/config-modal-sidebar.component';
 import { ConfigModalFooterComponent } from './config-modal-footer/config-modal-footer.component';
 import { EscapeCloseDirective } from '../../../../shared/directives/escape-close.directive';
+import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-template-bar/preset-template-bar.component';
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -60,6 +65,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     MatFormFieldModule,
     MatInputModule,
     MatExpansionModule,
+    MatSidenavModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
     OperationConfigComponent,
@@ -73,6 +79,7 @@ import { EscapeCloseDirective } from '../../../../shared/directives/escape-close
     ConfigModalSidebarComponent,
     ConfigModalFooterComponent,
   ],
+
   providers: [RemoteCreationOrchestrator, RemoteConfigStateService],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['../../../../styles/_shared-modal.scss', './remote-config-modal.component.scss'],
@@ -97,6 +104,9 @@ export class RemoteConfigModalComponent {
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
   readonly PROFILE_ICONS = PROFILE_ICONS;
+
+  readonly isSidebarOpen = signal(true);
+  readonly sidebarMode = signal<MatDrawerMode>('side');
 
   readonly remoteEditCategories = [
     { id: 'section-general', label: 'modals.remoteConfig.editMode.sections.general', icon: 'gear' },
@@ -123,7 +133,23 @@ export class RemoteConfigModalComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.authStateService.cancelAuth());
+    afterNextRender(() => this.setupResponsiveLayout());
     this.initializeState();
+  }
+
+  private setupResponsiveLayout(): void {
+    const mql = window.matchMedia('(min-width: 768px)');
+    const update = (matches: boolean): void => {
+      this.sidebarMode.set(matches ? 'side' : 'over');
+      if (!matches) {
+        this.isSidebarOpen.set(false);
+      }
+    };
+    const handler = (e: MediaQueryListEvent): void => update(e.matches);
+
+    update(mql.matches);
+    mql.addEventListener('change', handler);
+    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   private async initializeState(): Promise<void> {
@@ -319,6 +345,119 @@ export class RemoteConfigModalComponent {
       event.preventDefault();
       this.toggleSearchVisibility();
     }
+  }
+
+  toggleSidebar(): void {
+    this.isSidebarOpen.update(v => !v);
+  }
+
+  private closeSidebarIfOver(): void {
+    if (this.sidebarMode() === 'over') {
+      this.isSidebarOpen.set(false);
+    }
+  }
+
+  onStepSelected(step: number): void {
+    this.goToStep(step);
+    this.closeSidebarIfOver();
+  }
+
+  onSectionScrolled(sectionId: string): void {
+    this.scrollToSection(sectionId);
+    this.closeSidebarIfOver();
+  }
+
+  onProfileSelected(event: { type: EditTarget; name: string }): void {
+    this.state.selectProfile(event.type, event.name);
+    this.closeSidebarIfOver();
+  }
+
+  onSharedNavigated(type: EditTarget): void {
+    this.state.navigateToShared(type);
+    this.closeSidebarIfOver();
+  }
+
+  onReturnFromShared(): void {
+    this.state.returnFromShared();
+    this.closeSidebarIfOver();
+  }
+
+  onSearchToggled(): void {
+    this.toggleSearchVisibility();
+    this.closeSidebarIfOver();
+  }
+
+  onCliImportToggled(): void {
+    this.state.toggleCliImportVisibility();
+    if (this.state.showCliImport()) this.closeSidebarIfOver();
+  }
+
+  onObscureToolToggled(): void {
+    this.state.toggleObscureToolVisibility();
+    if (this.state.showObscureTool()) this.closeSidebarIfOver();
+  }
+
+  onApplyPresets(): void {
+    const remoteType = this.state.remoteTypeSignal();
+    if (!remoteType) return;
+    this.state.applyPresets(remoteType);
+    const msg = this.translate.instant('wizards.presets.applied');
+    this.notificationService.showSuccess(
+      msg !== 'wizards.presets.applied' ? msg : 'Default presets applied successfully'
+    );
+  }
+
+  readonly currentValues = computed(() => {
+    const rcf = this.state.remoteConfigForm;
+    const flagFields = this.state.dynamicFlagFields();
+
+    const getCleanOptions = (
+      configKey: string,
+      flagType: 'vfs' | 'mount' | 'backend' | 'filter'
+    ): Record<string, unknown> => {
+      const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
+      return this.state.cleanData(opts, flagFields[flagType] ?? []);
+    };
+
+    const remoteRaw = this.state.remoteForm.getRawValue();
+    const cleanRemoteData = this.state.cleanFormData(remoteRaw) as Record<string, unknown>;
+    delete cleanRemoteData['name'];
+    delete cleanRemoteData['type'];
+
+    return {
+      vfs: getCleanOptions('vfsConfig', 'vfs'),
+      mount: getCleanOptions('mountConfig', 'mount'),
+      backend: getCleanOptions('backendConfig', 'backend'),
+      filter: getCleanOptions('filterConfig', 'filter'),
+      remote: cleanRemoteData,
+    };
+  });
+
+  onApplyTemplate(event: ApplyTemplateEvent): void {
+    const { values } = event;
+    const patchGroupOptions = (configKey: string, opts?: Record<string, unknown>): void => {
+      if (!opts) return;
+      const group = this.state.remoteConfigForm.get(`${configKey}.options`) as FormGroup | null;
+      if (group) {
+        for (const [k, v] of Object.entries(opts)) {
+          if (!group.contains(k)) {
+            group.addControl(k, new FormControl(v));
+          } else {
+            group.get(k)?.setValue(v);
+          }
+        }
+      }
+    };
+
+    if (values.vfs) patchGroupOptions('vfsConfig', values.vfs);
+    if (values.mount) patchGroupOptions('mountConfig', values.mount);
+    if (values.backend) patchGroupOptions('backendConfig', values.backend);
+    if (values.filter) patchGroupOptions('filterConfig', values.filter);
+    if (values.remote) {
+      this.state.remoteForm.patchValue(values.remote, { emitEvent: false });
+    }
+    const msg = this.translate.instant('templates.applySuccess', { name: event.sourceName });
+    this.notificationService.showSuccess(msg);
   }
 
   close(): void {

@@ -62,6 +62,8 @@ import {
   STANDARD_MODAL_SIZE,
   MODE_DEFAULTS,
   BACKEND_PROFILE_SUPPORTED_OPS,
+  QuickRun,
+  Remote,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -108,6 +110,8 @@ import {
 })
 export class AppDetailComponent {
   // --- Inputs ---
+  readonly mode = input<'remote' | 'quickRun'>('remote');
+  readonly quickRun = input<QuickRun | null>(null);
   readonly mainOperationType = input<OperationTab>('mount');
   readonly selectedSyncOperation = model<SyncOperationType>('sync');
   readonly remoteSettings = input<RemoteSettings>({});
@@ -157,7 +161,43 @@ export class AppDetailComponent {
     return profiles[0]?.name ?? 'default';
   });
 
-  protected readonly selectedRemote = computed(() => {
+  protected readonly selectedRemote = computed<Remote>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      const remoteName = qr?.remoteName ?? '';
+      const found = this.remoteFacade.activeRemotes().find((r: Remote) => r.name === remoteName);
+      if (found) return found;
+      return {
+        name: remoteName || 'Remote',
+        type: 'alias',
+        config: { name: remoteName || 'Remote', type: 'alias' },
+        status: {
+          diskUsage: {},
+          mount: { active: false },
+          sync: { active: false },
+          copy: { active: false },
+          bisync: { active: false },
+          move: { active: false },
+          check: { active: false },
+          delete: { active: false },
+          copyurl: { active: false },
+          archivecreate: { active: false },
+          cryptcheck: { active: false },
+          serve: { active: false, count: 0, serves: [] },
+        },
+        features: {
+          IsLocal: false,
+          About: false,
+          BucketBased: false,
+          CleanUp: false,
+          PublicLink: false,
+          ChangeNotify: false,
+          Hashes: [],
+        },
+        primaryActions: [],
+        syncActions: [],
+      };
+    }
     const remote = this.remoteFacade.selectedRemote();
     if (!remote) throw new Error('[AppDetail] Selected remote is required');
     return remote;
@@ -168,9 +208,26 @@ export class AppDetailComponent {
   );
 
   // --- Derived: Operation Type ---
-  readonly isOperationsType = computed(() => this.mainOperationType() === 'operations');
+  readonly isOperationsType = computed<boolean>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return false;
+      return qr.operationType !== 'mount' && qr.operationType !== 'serve';
+    }
+    return this.mainOperationType() === 'operations';
+  });
+
+  readonly isQuickRunRunning = computed(() => {
+    const qr = this.quickRun();
+    if (!qr) return false;
+    return qr.status === 'running';
+  });
 
   readonly currentOpType = computed<PrimaryActionType>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (qr) return qr.operationType;
+    }
     const op = this.isOperationsType()
       ? this.selectedSyncOperation()
       : (this.mainOperationType() as PrimaryActionType);
@@ -190,7 +247,12 @@ export class AppDetailComponent {
     );
   });
 
-  readonly operationActiveState = computed(() => this.isOperationActive(this.currentOpType()));
+  readonly operationActiveState = computed(() => {
+    if (this.mode() === 'quickRun') {
+      return this.isQuickRunRunning();
+    }
+    return this.isOperationActive(this.currentOpType());
+  });
 
   readonly operationColor = computed<OperationColor>(
     () => (this.currentOpMetadata()?.cssClass as OperationColor) ?? 'primary'
@@ -206,6 +268,11 @@ export class AppDetailComponent {
 
   // CSS class for the icon container — single operation state class or empty.
   protected readonly iconContainerClass = computed((): string => {
+    if (this.mode() === 'quickRun') {
+      if (!this.isQuickRunRunning()) return '';
+      const op = this.currentOpType();
+      return op === 'check' || op === 'cryptcheck' ? 'check' : op;
+    }
     const remote = this.selectedRemote();
     if (remote.status.mount.active) return 'mount';
     if (remote.status.serve.active) return 'serve';
@@ -224,7 +291,7 @@ export class AppDetailComponent {
   readonly primarySyncOps = computed<SyncOperationType[]>(() => {
     const remote = this.selectedRemote();
     const syncTypesSet: ReadonlySet<string> = new Set(SYNC_TYPES);
-    const custom = (remote.syncActions ?? []).filter((a): a is SyncOperationType =>
+    const custom = (remote.syncActions ?? []).filter((a: string): a is SyncOperationType =>
       syncTypesSet.has(a)
     );
     if (custom.length > 0) {
@@ -323,13 +390,34 @@ export class AppDetailComponent {
       `${this.currentOpType()}/${this.selectedRemote().name}/${this.selectedProfile() ?? 'default'}`
   );
 
-  readonly activeGroupJob = computed<JobInfo | null>(() =>
-    this.jobService.getLatestJobForRemote(
+  readonly activeGroupJob = computed<JobInfo | null>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return null;
+      const jobs = this.jobService.jobs();
+      if (!jobs || jobs.length === 0) return null;
+      const cleanRemote = qr.remoteName.replace(/:$/, '');
+      const matchingJobs = jobs.filter(j => {
+        const remoteMatch =
+          j.remote_name === qr.remoteName || j.remote_name.replace(/:$/, '') === cleanRemote;
+        const flowMatch = j.origin === 'flow' && (j.profile === qr.name || remoteMatch);
+        return remoteMatch && flowMatch;
+      });
+
+      if (matchingJobs.length === 0) return null;
+
+      return matchingJobs.sort((a, b) => {
+        const ta = a.start_time ? new Date(a.start_time).getTime() : 0;
+        const tb = b.start_time ? new Date(b.start_time).getTime() : 0;
+        return tb !== ta ? tb - ta : b.jobid - a.jobid;
+      })[0];
+    }
+    return this.jobService.getLatestJobForRemote(
       this.selectedRemote().name,
       this.selectedProfile() ?? 'default',
       this.currentOpType()
-    )
-  );
+    );
+  });
 
   readonly isDryRun = computed(() =>
     this.getDryRunState(this.currentOpType(), this.selectedProfile())
@@ -516,6 +604,20 @@ export class AppDetailComponent {
 
   // --- Derived: Control Configs ---
   readonly controlConfigs = computed<OperationControlConfig[]>(() => {
+    if (this.mode() === 'quickRun') {
+      const qr = this.quickRun();
+      if (!qr) return [];
+      const type = qr.operationType;
+      const ctrl = this.buildControlConfig(
+        type,
+        (qr.config ?? {}) as unknown as ProfileConfig,
+        qr.name
+      );
+      if (qr.description) {
+        ctrl.operationDescription = qr.description;
+      }
+      return [ctrl];
+    }
     const type = this.currentOpType();
     const metadata = this.currentOpMetadata();
     if (!metadata) return [];
@@ -531,6 +633,19 @@ export class AppDetailComponent {
     const selected = this.selectedProfile();
     if (!this.showProfileSelector() || all.length <= 1) return all;
     return all.filter(c => c.profileName === selected);
+  });
+
+  readonly quickRunSettingsConfig = computed<SettingsPanelConfig>(() => {
+    const qr = this.quickRun();
+    return {
+      section: {
+        key: 'quickRun',
+        title: this.translate.instant('flow.quickRun.detail.configuration'),
+        icon: 'tune',
+      },
+      settings: (qr?.config ?? {}) as unknown as Record<string, unknown>,
+      buttonLabel: 'common.edit',
+    };
   });
 
   // --- Derived: Stats & Transfer Panels ---
@@ -877,7 +992,10 @@ export class AppDetailComponent {
     profileName?: string
   ): OperationControlConfig {
     const metadata = OPERATION_METADATA[type];
-    const isActive = this.isOperationActive(type, profileName);
+    const isActive =
+      this.mode() === 'quickRun'
+        ? this.isQuickRunRunning()
+        : this.isOperationActive(type, profileName);
     const actionMatch = this.actionInProgress()?.find(
       a =>
         (a.type === type ||
@@ -891,22 +1009,34 @@ export class AppDetailComponent {
     const opLabel = t(metadata.typeLabel || metadata.label);
     const isMount = type === 'mount';
 
-    const rclone = (config.rclone || {}) as Record<string, unknown>;
-    const resolvedSource = (rclone['srcFs'] ?? rclone['path1'] ?? rclone['fs']) as
-      string | undefined;
+    const rawRclone = (config.rclone || {}) as Record<string, unknown>;
+    const opData = (rawRclone[type] as Record<string, unknown> | undefined) ?? rawRclone;
+    const resolvedSource = (opData['srcFs'] ??
+      opData['path1'] ??
+      opData['fs'] ??
+      rawRclone['srcFs'] ??
+      rawRclone['path1'] ??
+      rawRclone['fs']) as string | undefined;
     const isSafMount =
       isMount &&
-      (rclone['mountType'] === 'saf' || String(rclone['mountPoint'] ?? '').startsWith('saf://'));
+      (opData['mountType'] === 'saf' ||
+        rawRclone['mountType'] === 'saf' ||
+        String(opData['mountPoint'] ?? rawRclone['mountPoint'] ?? '').startsWith('saf://'));
     const rawDest = isSafMount
       ? `saf://${this.selectedRemote().name}`
-      : ((rclone['dstFs'] ?? rclone['path2'] ?? rclone['mountPoint']) as string | undefined);
+      : ((opData['dstFs'] ??
+          opData['path2'] ??
+          opData['mountPoint'] ??
+          rawRclone['dstFs'] ??
+          rawRclone['path2'] ??
+          rawRclone['mountPoint']) as string | undefined);
     const resolvedDest = rawDest;
 
     const pathConfig: PathDisplayConfig =
       type === 'serve'
         ? {
             source: resolvedSource ?? t('dashboard.appDetail.notConfigured'),
-            destination: `${((rclone['type'] as string) ?? 'http').toUpperCase()} at ${(rclone['addr'] as string) ?? t('dashboard.appDetail.default')}`,
+            destination: `${((opData['type'] as string) ?? (rawRclone['type'] as string) ?? 'http').toUpperCase()} at ${(opData['addr'] as string) ?? (rawRclone['addr'] as string) ?? t('dashboard.appDetail.default')}`,
             sourceLabel: t('dashboard.appDetail.serving'),
             destinationLabel: t('dashboard.appDetail.accessibleVia'),
             showOpenButtons: true,

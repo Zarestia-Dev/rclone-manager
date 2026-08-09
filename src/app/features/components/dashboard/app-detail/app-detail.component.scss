@@ -489,5 +489,9 @@
 @media (min-width: 1024px) {
   .settings-layout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    &:has(> :only-child) {
+      grid-template-columns: 1fr;
+    }
   }
 }

@@ -88,7 +88,7 @@
               @if (opt.Examples?.length) {
                 <div class="example-inputs">
                   <div class="input-card select-input">
-                    <mat-form-field appearance="fill">
+                    <mat-form-field>
                       <mat-label>{{
                         opt.Name || ('wizards.remoteConfig.chooseOption' | translate)
                       }}</mat-label>
@@ -137,7 +137,7 @@
                     </div>
 
                     <div class="input-card custom-input">
-                      <mat-form-field appearance="fill">
+                      <mat-form-field>
                         <mat-label>{{
                           opt.Name || ('wizards.remoteConfig.enterValue' | translate)
                         }}</mat-label>
@@ -174,7 +174,7 @@
                 </div>
               } @else {
                 <div class="input-card text-input">
-                  <mat-form-field appearance="fill">
+                  <mat-form-field>
                     <mat-label>{{
                       opt.Name || ('wizards.remoteConfig.enterValue' | translate)
                     }}</mat-label>

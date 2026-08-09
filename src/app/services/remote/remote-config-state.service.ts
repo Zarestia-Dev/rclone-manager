@@ -624,10 +624,7 @@ export class RemoteConfigStateService {
     }
   }
 
-  private cleanData(
-    formData: Record<string, unknown>,
-    fields: RcConfigOption[]
-  ): Record<string, unknown> {
+  cleanData(formData: Record<string, unknown>, fields: RcConfigOption[]): Record<string, unknown> {
     const map = new Map(fields.map(f => [f.Name || f.FieldName, f]));
     return Object.entries(formData).reduce(
       (acc, [k, v]) => {

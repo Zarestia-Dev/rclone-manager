@@ -11,6 +11,9 @@ import {
   ABOUT_MODAL_SIZE,
   BackupAnalysis,
   JobInfo,
+  QuickRun,
+  TemplateCategory,
+  PrimaryActionType,
 } from '@app/types';
 import {
   ApiClientService,
@@ -80,6 +83,12 @@ export interface RemoteAboutModalOptions {
 export interface RestorePreviewOptions {
   backupPath: string;
   analysis: BackupAnalysis;
+}
+
+export interface TemplateManagerModalOptions {
+  mode: 'save' | 'manage';
+  currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
+  remoteType?: string;
 }
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -227,6 +236,14 @@ export class ModalService {
       import('../../shared/modals/archive-create-modal/archive-create-modal.component').then(
         m => m.ArchiveCreateModalComponent
       ),
+    'quick-run-editor': () =>
+      import('../../features/flow/quick-run-editor/quick-run-editor.component').then(
+        m => m.QuickRunEditorComponent
+      ),
+    'template-manager': () =>
+      import('../../shared/remote-config/template-manager-modal/template-manager-modal.component').then(
+        m => m.TemplateManagerModalComponent
+      ),
   };
 
   async resolveDialogWindow(): Promise<void> {
@@ -326,6 +343,22 @@ export class ModalService {
     } catch (err) {
       console.error('[ModalService] Failed to bind standalone window:', err);
     }
+  }
+
+  openQuickRunEditor(quickRun?: QuickRun, initialOpType?: PrimaryActionType): any {
+    const data = { quickRun, initialOpType };
+    return this.openModal(
+      'quick-run-editor',
+      { ...CONFIG_MODAL_SIZE, disableClose: true, data },
+      {
+        title: quickRun
+          ? this.translate.instant('flow.quickRun.editor.editTitle')
+          : this.translate.instant('flow.quickRun.editor.createTitle'),
+        width: 1024,
+        height: 860,
+        suffix: quickRun?.id ?? 'new',
+      }
+    );
   }
 
   openRemoteConfig(options: RemoteConfigModalOptions = {}): any {
@@ -526,6 +559,18 @@ export class ModalService {
       height: '600px',
       disableClose: true,
       data,
+    });
+  }
+
+  openTemplateManager(options: TemplateManagerModalOptions): any {
+    return this.openModal('template-manager', {
+      ...STANDARD_MODAL_SIZE,
+      disableClose: true,
+      data: {
+        mode: options.mode,
+        currentValues: options.currentValues,
+        remoteType: options.remoteType,
+      },
     });
   }
 }

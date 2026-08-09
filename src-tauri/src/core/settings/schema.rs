@@ -357,3 +357,72 @@ pub struct AppSettings {
     pub runtime: RuntimeSettings,
     pub nautilus: NautilusSettings,
 }
+
+/// User preset template schema for `rcman`
+#[derive(Debug, Serialize, Deserialize, Clone, DeriveSettingsSchema)]
+#[schema(category = "templates")]
+pub struct UserPresetTemplate {
+    #[setting(label = "templates.id.label", description = "templates.id.description")]
+    pub id: String,
+
+    #[setting(
+        label = "templates.name.label",
+        description = "templates.name.description"
+    )]
+    pub name: String,
+
+    #[setting(
+        label = "templates.description.label",
+        description = "templates.description.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    #[setting(
+        label = "templates.remote_type.label",
+        description = "templates.remote_type.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_type: Option<String>,
+
+    #[setting(
+        label = "templates.icon.label",
+        description = "templates.icon.description"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+
+    #[setting(
+        label = "templates.created_at.label",
+        description = "templates.created_at.description"
+    )]
+    pub created_at: String,
+
+    #[setting(
+        label = "templates.updated_at.label",
+        description = "templates.updated_at.description"
+    )]
+    pub updated_at: String,
+
+    #[setting(
+        label = "templates.values.label",
+        description = "templates.values.description"
+    )]
+    #[serde(default)]
+    pub values: Value,
+}
+
+impl Default for UserPresetTemplate {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            description: None,
+            remote_type: None,
+            icon: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+            values: Value::Object(Default::default()),
+        }
+    }
+}

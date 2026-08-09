@@ -19,9 +19,7 @@ use crate::{
     },
 };
 
-use super::common::{
-    OperationContext, fs_value_with_runtime_overrides, parse_common_config, redact_value,
-};
+use super::common::{OperationContext, parse_common_config, redact_value};
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, Clone)]
@@ -103,10 +101,14 @@ impl ServeParams {
         }
 
         // 2. Inject runtime remote overrides
-        body.insert(
-            "fs".to_string(),
-            fs_value_with_runtime_overrides(&self.source, self.runtime_remote_options.as_ref()),
-        );
+        body.insert("fs".to_string(), json!(self.source));
+        if let Some(opts) = self.runtime_remote_options.as_ref() {
+            for (k, v) in opts {
+                if !body.contains_key(k) {
+                    body.insert(k.clone(), v.clone());
+                }
+            }
+        }
 
         // 3. Inject serve type
         body.insert("type".to_string(), json!(self.serve_type));

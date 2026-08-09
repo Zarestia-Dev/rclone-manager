@@ -3,16 +3,10 @@
 }
 
 .modal-sidebar {
-  width: var(--sidebar-width);
-  background: var(--sidebar-bg-color);
-  box-shadow:
-    inset -1px 0 0 0 var(--border-color),
-    inset -5px 0 10px -5px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
-  transition: width var(--transition-cubic);
-  animation: fadeInUp 0.2s ease-out both;
 
   .sidebar-header {
     padding: var(--space-sm) var(--space-md) 0;
@@ -98,48 +92,5 @@
     .step-indicator {
       padding: 0 !important;
     }
-  }
-}
-
-// ── Responsive States ────────────────────────────────────────────────────────
-
-@media (max-width: 800px) and (min-width: 641px) {
-  .modal-sidebar {
-    width: var(--sidebar-icon-width);
-
-    .sidebar-header {
-      display: none;
-    }
-
-    .step-indicator-container {
-      .step-indicator {
-        padding: var(--radius-xxs);
-      }
-    }
-
-    ::ng-deep .mat-mdc-list-item {
-      padding-left: 0 !important;
-      padding-right: 0 !important;
-
-      .mdc-list-item__content {
-        display: none !important;
-      }
-
-      // Hide count badges too
-      .mdc-list-item__end {
-        display: none !important;
-      }
-
-      .mdc-list-item__start {
-        margin-left: auto;
-        margin-right: auto;
-      }
-    }
-  }
-}
-
-@media (max-width: 640px) {
-  .modal-sidebar {
-    display: none;
   }
 }
