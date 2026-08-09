@@ -21,6 +21,65 @@ pub fn is_librclone() -> bool {
     cfg!(feature = "librclone")
 }
 
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveOperationsSummary {
+    pub has_active_operations: bool,
+    pub active_jobs_count: usize,
+    pub active_mounts_count: usize,
+    pub active_serves_count: usize,
+}
+
+#[tauri::command]
+pub async fn get_active_operations_summary(
+    app: tauri::AppHandle,
+) -> Result<ActiveOperationsSummary, String> {
+    use tauri::Manager;
+    let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+
+    let active_jobs = backend_manager.job_cache.get_active_jobs().await;
+    let active_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
+    let active_serves = backend_manager.remote_cache.get_serves().await;
+
+    let active_jobs_count = active_jobs.len();
+    let active_mounts_count = active_mounts.len();
+    let active_serves_count = active_serves.len();
+
+    let has_active_operations =
+        active_jobs_count > 0 || active_mounts_count > 0 || active_serves_count > 0;
+
+    Ok(ActiveOperationsSummary {
+        has_active_operations,
+        active_jobs_count,
+        active_mounts_count,
+        active_serves_count,
+    })
+}
+
+#[tauri::command]
+pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
+    use crate::utils::types::{events::APP_EXIT_REQUESTED, state::RcloneState};
+    use tauri::{Emitter, Manager};
+
+    let summary = get_active_operations_summary(app.clone()).await?;
+
+    if summary.has_active_operations {
+        #[cfg(desktop)]
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+        let _ = app.emit(APP_EXIT_REQUESTED, summary);
+    } else {
+        app.state::<RcloneState>().set_shutting_down();
+        crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
+        app.exit(0);
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;

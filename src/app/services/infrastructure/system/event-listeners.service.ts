@@ -7,6 +7,7 @@ import {
   JOB_CACHE_CHANGED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
+  APP_EXIT_REQUESTED,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
   SERVE_STATE_CHANGED,
@@ -27,6 +28,7 @@ import {
   UpdateInfo,
   DownloadStatus,
   EngineErrorType,
+  ActiveOperationsSummary,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -214,5 +216,9 @@ export class EventListenersService extends TauriBaseService {
 
   listenToBackendSwitched(): Observable<string> {
     return this.listenToEvent<string>(BACKEND_SWITCHED);
+  }
+
+  listenToAppExitRequested(): Observable<ActiveOperationsSummary> {
+    return this.listenToEvent<ActiveOperationsSummary>(APP_EXIT_REQUESTED);
   }
 }

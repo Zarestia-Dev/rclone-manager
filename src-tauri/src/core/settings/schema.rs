@@ -80,6 +80,13 @@ pub struct GeneralSettings {
     )]
     #[cfg(all(desktop, not(feature = "web-server")))]
     pub standalone_dialogs: bool,
+
+    #[setting(
+        label = "settings.general.prevent_sleep.label",
+        description = "settings.general.prevent_sleep.description"
+    )]
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    pub prevent_sleep: bool,
 }
 
 impl Default for GeneralSettings {
@@ -101,6 +108,8 @@ impl Default for GeneralSettings {
             start_on_startup: false,
             #[cfg(all(desktop, not(feature = "web-server")))]
             standalone_dialogs: false,
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            prevent_sleep: true,
             language,
             default_view: "main_menu".to_string(),
             restrict: true,

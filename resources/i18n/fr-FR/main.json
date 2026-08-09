@@ -434,6 +434,10 @@
       "standalone_dialogs": {
         "label": "Boîte de dialogue détachée",
         "description": "Ouvre des boîtes de dialogue (modals) dans des fenêtres distinctes de l'OS natif."
+      },
+      "prevent_sleep": {
+        "label": "Empêcher la mise en veille / l'extinction du système",
+        "description": "Empêche la mise en veille et l'extinction du système tant que des transferts sont actifs."
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "Éteindre",
-      "message": "Veuillez patienter pendant que l'application s'éteint en toute sécurité..."
+      "message": "Veuillez patienter pendant que l'application s'éteint en toute sécurité...",
+      "confirmTitle": "Tâches actives en cours",
+      "confirmMessage": "Rclone Manager a des tâches actives en cours ({{jobs}} transferts, {{mounts}} montages, {{serves}} services). Voulez-vous vraiment tout arrêter et quitter ?",
+      "stopAndQuit": "Arrêter et Quitter"
     }
   },
   "modals": {

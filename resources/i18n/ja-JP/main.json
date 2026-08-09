@@ -436,6 +436,10 @@
       "standalone_dialogs": {
         "label": "独立したダイアログ",
         "description": "ダイアログボックス (モーダル) をOSの別ウィンドウで開きます。"
+      },
+      "prevent_sleep": {
+        "label": "システムのスリープ/シャットダウンを防止",
+        "description": "転送、コピー、同期ジョブの実行中にOSのスリープおよびシャットダウンを抑制します。"
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "終了処理中",
-      "message": "アプリが安全に終了するまでお待ちください..."
+      "message": "アプリが安全に終了するまでお待ちください...",
+      "confirmTitle": "アクティブなタスクが実行中",
+      "confirmMessage": "Rclone Managerでアクティブなタスクが実行中です（転送: {{jobs}}、マウント: {{mounts}}、配信: {{serves}}）。すべてのタスクを停止して終了しますか？",
+      "stopAndQuit": "停止して終了"
     }
   },
   "modals": {

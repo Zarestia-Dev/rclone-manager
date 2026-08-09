@@ -434,6 +434,10 @@
       "standalone_dialogs": {
         "label": "Diálogos independientes",
         "description": "Abre cuadros de diálogo (modales) en ventanas nativas independientes del sistema operativo."
+      },
+      "prevent_sleep": {
+        "label": "Evitar suspensión / apagado del sistema",
+        "description": "Inhibe la suspensión y el apagado del SO mientras las tareas de transferencia están activas."
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "Cerrando",
-      "message": "Espere mientras la aplicación se cierra de forma segura..."
+      "message": "Espere mientras la aplicación se cierra de forma segura...",
+      "confirmTitle": "Tareas activas en progreso",
+      "confirmMessage": "Rclone Manager tiene tareas activas ({{jobs}} transferencias, {{mounts}} montajes, {{serves}} servidores). ¿Seguro que desea detener todo y salir?",
+      "stopAndQuit": "Detener y Salir"
     }
   },
   "modals": {

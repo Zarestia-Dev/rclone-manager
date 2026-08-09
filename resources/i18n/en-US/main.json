@@ -436,6 +436,10 @@
       "standalone_dialogs": {
         "label": "Detached Dialogs",
         "description": "Open dialog boxes (modals) in separate native OS windows."
+      },
+      "prevent_sleep": {
+        "label": "Prevent System Sleep / Shutdown",
+        "description": "Inhibit system sleep and OS shutdown while transfer, copy, or sync jobs are active."
       }
     },
     "core": {
@@ -1695,7 +1699,10 @@
   "app": {
     "shutdown": {
       "title": "Shutting Down",
-      "message": "Please wait while the application shuts down safely..."
+      "message": "Please wait while the application shuts down safely...",
+      "confirmTitle": "Active Tasks in Progress",
+      "confirmMessage": "Rclone Manager has active tasks running ({{jobs}} transfers, {{mounts}} mounts, {{serves}} serves). Are you sure you want to stop all active tasks and quit?",
+      "stopAndQuit": "Stop & Quit"
     }
   },
   "modals": {

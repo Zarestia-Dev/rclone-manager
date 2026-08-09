@@ -434,6 +434,10 @@
       "standalone_dialogs": {
         "label": "Bağımsız Pencereler",
         "description": "İletişim kutularını (modalleri) ayrı işletim sistemi pencerelerinde açar."
+      },
+      "prevent_sleep": {
+        "label": "Sistem Uyku / Kapanmasını Engelle",
+        "description": "Transfer, kopyalama veya senkronizasyon işlemleri aktifken sistem uykusunu ve işletim sistemi kapanmasını engeller."
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "Kapatılıyor",
-      "message": "Uygulama güvenli bir şekilde kapatılırken lütfen bekleyin..."
+      "message": "Uygulama güvenli bir şekilde kapatılırken lütfen bekleyin...",
+      "confirmTitle": "Aktif İşlemler Devam Ediyor",
+      "confirmMessage": "Rclone Manager üzerinde aktif işlemler çalışıyor ({{jobs}} transfer, {{mounts}} bağlama, {{serves}} sunum). Tüm aktif işlemleri durdurup çıkmak istediğinize emin misiniz?",
+      "stopAndQuit": "Durdur ve Çık"
     }
   },
   "modals": {

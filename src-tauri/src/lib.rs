@@ -208,16 +208,10 @@ pub fn run() {
                         crate::utils::app::platform::update_macos_dock_visibility(app_handle);
                     } else {
                         api.prevent_close();
-                        let window_ = _window.clone();
+                        let app_handle_clone = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            window_
-                                .app_handle()
-                                .state::<RcloneState>()
-                                .set_shutting_down();
-                            let _ = core::lifecycle::shutdown::shutdown_app(
-                                window_.app_handle().clone(),
-                            )
-                            .await;
+                            let _ = crate::utils::app::platform::request_app_exit(app_handle_clone)
+                                .await;
                         });
                     }
                 }
@@ -420,6 +414,9 @@ fn setup_app(
     app.manage(utils::types::updater::AppUpdaterState::default());
     #[cfg(feature = "updater")]
     app.manage(utils::types::updater::RcloneUpdaterState::default());
+
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    app.manage(crate::core::power::PowerInhibitorState::new());
 
     #[cfg(all(desktop, feature = "tray"))]
     app.manage(crate::core::tray::TrayMenuState::default());
@@ -664,8 +661,7 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
         TrayAction::Quit => {
             let app_clone = app.clone();
             tauri::async_runtime::spawn(async move {
-                app_clone.state::<RcloneState>().set_shutting_down();
-                let _ = core::lifecycle::shutdown::shutdown_app(app_clone).await;
+                let _ = crate::utils::app::platform::request_app_exit(app_clone).await;
             });
         }
     }

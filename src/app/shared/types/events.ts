@@ -20,7 +20,15 @@ export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed' as const;
 export const NETWORK_STATUS_CHANGED = 'network_status_changed' as const;
 export const AUTOMATIONS_CACHE_CHANGED = 'automations_cache_changed' as const;
 export const APP_EVENT = 'app_event' as const;
+export const APP_EXIT_REQUESTED = 'app_exit_requested' as const;
 export const BROWSE = 'browse' as const;
+
+export interface ActiveOperationsSummary {
+  hasActiveOperations: boolean;
+  activeJobsCount: number;
+  activeMountsCount: number;
+  activeServesCount: number;
+}
 
 export interface SettingsChangeEvent {
   category: string;

@@ -434,6 +434,10 @@
       "standalone_dialogs": {
         "label": "独立窗口对话框",
         "description": "在独立的系统原生窗口中打开对话框（模态框）。"
+      },
+      "prevent_sleep": {
+        "label": "防止系统睡眠 / 关机",
+        "description": "在传输、复制或同步任务活动时阻止系统睡眠和操作系统关机。"
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "正在关闭",
-      "message": "请等待应用安全关闭..."
+      "message": "请等待应用安全关闭...",
+      "confirmTitle": "有正在运行的任务",
+      "confirmMessage": "Rclone Manager 有正在运行的任务（{{jobs}} 个传输任务，{{mounts}} 个挂载，{{serves}} 个服务）。您确定要停止所有任务并退出吗？",
+      "stopAndQuit": "停止并退出"
     }
   },
   "modals": {

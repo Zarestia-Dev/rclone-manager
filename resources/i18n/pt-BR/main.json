@@ -436,6 +436,10 @@
       "standalone_dialogs": {
         "label": "Diálogos Destacados",
         "description": "Abrir janelas de diálogo (modais) em janelas nativas do sistema operacional separadas."
+      },
+      "prevent_sleep": {
+        "label": "Evitar suspensão / desligamento do sistema",
+        "description": "Inibe a suspensão do sistema e desligamento do SO enquanto tarefas de transferência estão ativas."
       }
     },
     "core": {
@@ -1689,7 +1693,10 @@
   "app": {
     "shutdown": {
       "title": "Desligamento",
-      "message": "Por favor, aguarde enquanto a aplicação é fechada com segurança..."
+      "message": "Por favor, aguarde enquanto a aplicação é fechada com segurança...",
+      "confirmTitle": "Tarefas ativas em andamento",
+      "confirmMessage": "O Rclone Manager possui tarefas ativas em andamento ({{jobs}} transferências, {{mounts}} montagens, {{serves}} servidores). Tem certeza de que deseja parar tudo e sair?",
+      "stopAndQuit": "Parar e Sair"
     }
   },
   "modals": {

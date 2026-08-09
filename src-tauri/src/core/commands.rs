@@ -44,6 +44,10 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_build_type, $crate::utils::app::platform::get_build_type, [], [sync, no_app, infallible]);
             (is_updater_enabled, $crate::utils::app::platform::is_updater_enabled, [], [sync, no_app, infallible]);
             (is_librclone, $crate::utils::app::platform::is_librclone, [], [sync, no_app, infallible]);
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            (get_active_operations_summary, $crate::utils::app::platform::get_active_operations_summary, []);
+            #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+            (request_app_exit, $crate::utils::app::platform::request_app_exit, []);
             (relaunch_app, $crate::utils::app::platform::relaunch_app, []);
 
             #[cfg(not(any(target_os = "android", target_os = "ios")))]

@@ -38,6 +38,10 @@ pub const ALERT_FIRED: &str = "alert_fired";
 
 // Application events
 pub const APP_EVENT: &str = "app_event";
+
+#[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+pub const APP_EXIT_REQUESTED: &str = "app_exit_requested";
+
 pub const BROWSE: &str = "browse";
 
 /// List of all events that should be forwarded to SSE clients in headless mode

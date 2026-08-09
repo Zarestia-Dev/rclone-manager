@@ -16,6 +16,7 @@ import { GlobalLoadingService } from 'src/app/services/ui/global-loading.service
 import { ModalService } from 'src/app/services/ui/modal.service';
 import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
 import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
+import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
@@ -65,6 +66,7 @@ export class AppComponent implements OnInit {
   constructor() {
     inject(IconService);
     inject(DebugService);
+    inject(AppLifecycleService).initialize();
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();

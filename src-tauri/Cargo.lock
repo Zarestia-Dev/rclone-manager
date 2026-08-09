@@ -4654,6 +4654,8 @@ dependencies = [
  "nix",
  "notify",
  "notify-rust",
+ "objc2",
+ "objc2-foundation",
  "once_cell",
  "parking_lot",
  "rcman",

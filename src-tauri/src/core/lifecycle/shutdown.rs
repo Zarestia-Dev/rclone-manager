@@ -15,6 +15,11 @@ use crate::{
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
 
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+    if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
+        power_state.release(&app_handle).await;
+    }
+
     let scheduler_state = app_handle.state::<AutomationScheduler>();
 
     if let Some(watcher_manager) =
