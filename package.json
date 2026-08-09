@@ -96,7 +96,7 @@
     ],
     "src-tauri/**/*.rs": [
       "sh -c 'cd src-tauri && cargo fmt'",
-      "sh -c 'cd src-tauri && cargo clippy -- -D warnings'"
+      "sh -c 'export LIBRCLONE_SKIP_LINK_CHECK=1 && cd src-tauri && cargo clippy -- -D warnings'"
     ]
   }
 }

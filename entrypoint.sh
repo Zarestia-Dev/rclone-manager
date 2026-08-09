@@ -4,18 +4,21 @@ set -e
 # =============================================================================
 # 1. User & Permission Setup
 # =============================================================================
-# Read requested UID/GID or default to 1000
+# Read requested UID/GID or default to 1000.
+# PGIDS allows specifying supplementary group IDs (comma-separated, e.g. PGIDS=1000,3000,950).
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
+SUP_GROUPS="${PGIDS:-$PGID}"
 
 # Modify internal rclone-manager user to match the host UID/GID requested.
-# The -o flag allows non-unique IDs to prevent crashes if the ID exists.
-groupmod -o -g "$PGID" rclone-manager 2>/dev/null || true
-usermod -o -u "$PUID" rclone-manager 2>/dev/null || true
+# Only performed when running as root inside the container.
+if [ "$(id -u)" -eq 0 ]; then
+    groupmod -o -g "$PGID" rclone-manager 2>/dev/null || true
+    usermod -o -u "$PUID" rclone-manager 2>/dev/null || true
 
-# Ensure critical volumes and data directories have the correct ownership
-# This step is crucial for persistent volumes spawned as root by Docker.
-chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2>/dev/null || true
+    # Ensure critical volumes and data directories have the correct ownership
+    chown -R rclone-manager:rclone-manager /home/rclone-manager /app /data /config 2>/dev/null || true
+fi
 
 # =============================================================================
 # 2. Legacy Migration & Backward Compatibility (#158)
@@ -74,7 +77,7 @@ if [ ! -x "$RCLONE_BIN" ]; then
     
     cp /tmp/rclone-dl/rclone-*-linux-${RCLONE_ARCH}/rclone "/data/rclone-bin/rclone"
     chmod 755 "/data/rclone-bin/rclone"
-    chown rclone-manager:rclone-manager "/data/rclone-bin/rclone"
+    [ "$(id -u)" -eq 0 ] && chown rclone-manager:rclone-manager "/data/rclone-bin/rclone" 2>/dev/null || true
     RCLONE_BIN="/data/rclone-bin/rclone"
     
     rm -rf /tmp/rclone-dl
@@ -112,7 +115,19 @@ ARGS=()
 # =============================================================================
 # 7. Handover
 # =============================================================================
-# Execute using gosu to securely drop privileges from root to rclone-manager.
+# Execute using setpriv to securely drop privileges from root to the requested UID/GID
+# while populating supplementary groups (PGIDS) for NFSv4 ACL compatibility.
 # `exec` ensures the resulting process becomes PID 1 to gracefully receive
 # termination signals issued by Docker stop commands.
-exec gosu rclone-manager /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Starting rclone-manager-headless as UID $PUID, GID $PGID (Supplementary Groups: $SUP_GROUPS)..."
+    exec setpriv \
+        --reuid="$PUID" \
+        --regid="$PGID" \
+        --groups="$SUP_GROUPS" \
+        --inh-caps=-all \
+        /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
+else
+    echo "Starting rclone-manager-headless as unprivileged user (UID $(id -u))..."
+    exec /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"
+fi
