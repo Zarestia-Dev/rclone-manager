@@ -1,13 +1,23 @@
-use log::{error, info};
+use log::info;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Manager};
+
+#[cfg(all(desktop, target_os = "macos"))]
+struct MacosActivityToken(
+    objc2::rc::Retained<objc2::runtime::ProtocolObject<dyn objc2_foundation::NSObjectProtocol>>,
+);
+
+#[cfg(all(desktop, target_os = "macos"))]
+unsafe impl Send for MacosActivityToken {}
+#[cfg(all(desktop, target_os = "macos"))]
+unsafe impl Sync for MacosActivityToken {}
 
 pub struct PowerInhibitorState {
     is_inhibited: AtomicBool,
     #[cfg(all(desktop, target_os = "linux"))]
     linux_fd: tokio::sync::Mutex<Option<zbus::zvariant::OwnedFd>>,
     #[cfg(all(desktop, target_os = "macos"))]
-    macos_activity: tokio::sync::Mutex<Option<objc2::rc::Retained<objc2_foundation::NSObject>>>,
+    macos_activity: tokio::sync::Mutex<Option<MacosActivityToken>>,
     #[cfg(all(desktop, target_os = "windows"))]
     windows_hwnd: tokio::sync::Mutex<Option<isize>>,
 }
@@ -124,14 +134,14 @@ impl PowerInhibitorState {
                                 *self.linux_fd.lock().await = Some(fd);
                             }
                             Err(e) => {
-                                error!("Failed to acquire systemd logind inhibitor lock: {e}");
+                                log::error!("Failed to acquire systemd logind inhibitor lock: {e}");
                             }
                         }
                     }
-                    Err(e) => error!("Failed to create login1 proxy: {e}"),
+                    Err(e) => log::error!("Failed to create login1 proxy: {e}"),
                 }
             }
-            Err(e) => error!("Failed to connect to system D-Bus: {e}"),
+            Err(e) => log::error!("Failed to connect to system D-Bus: {e}"),
         }
     }
 
@@ -194,25 +204,29 @@ impl PowerInhibitorState {
     async fn acquire_macos(&self) {
         use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
 
-        let process_info = NSProcessInfo::processInfo();
-        let options = NSActivityOptions::IdleSystemSleepDisabled | NSActivityOptions::UserInitiated;
-        let reason = NSString::from_str("Active file transfer jobs in progress");
-
-        let activity = unsafe { process_info.beginActivityWithOptions_reason(options, &reason) };
-        info!(
-            "🔒 macOS NSProcessInfo activity assertion lock acquired (Prevent System Sleep & App Nap)"
-        );
-        *self.macos_activity.lock().await = Some(activity);
+        let mut lock = self.macos_activity.lock().await;
+        if lock.is_none() {
+            let process_info = NSProcessInfo::processInfo();
+            let options =
+                NSActivityOptions::IdleSystemSleepDisabled | NSActivityOptions::UserInitiated;
+            let reason = NSString::from_str("Active file transfer jobs in progress");
+            let activity = process_info.beginActivityWithOptions_reason(options, &reason);
+            info!(
+                "🔒 macOS NSProcessInfo activity assertion lock acquired (Prevent System Sleep & App Nap)"
+            );
+            *lock = Some(MacosActivityToken(activity));
+        }
     }
 
     #[cfg(all(desktop, target_os = "macos"))]
     async fn release_macos(&self) {
         use objc2_foundation::NSProcessInfo;
 
-        if let Some(activity) = self.macos_activity.lock().await.take() {
+        let mut lock = self.macos_activity.lock().await;
+        if let Some(token) = lock.take() {
             let process_info = NSProcessInfo::processInfo();
             unsafe {
-                process_info.endActivity(&activity);
+                process_info.endActivity(&token.0);
             }
             info!("🔓 macOS NSProcessInfo activity assertion lock released");
         }
