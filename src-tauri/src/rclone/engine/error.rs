@@ -1,5 +1,6 @@
 use std::fmt;
 
+//Librclone mode we don't use rclone binary so we don't use all error types. This is why allow dead code is used here.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum EngineError {

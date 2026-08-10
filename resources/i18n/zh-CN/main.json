@@ -437,7 +437,7 @@
       },
       "prevent_sleep": {
         "label": "防止系统睡眠 / 关机",
-        "description": "在传输、复制或同步任务活动时阻止系统睡眠和操作系统关机。"
+        "description": "在活动传输、挂载或服务运行时禁止系统休眠和操作系统关机。"
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "{{count}} 个挂载",
     "tooltipServe": "1 个服务",
     "tooltipServes": "{{count}} 个服务"
+  },
+  "powerInhibitor": {
+    "reason": "正在运行活动操作：{{details}}",
+    "mounts": "{{count}} 个挂载",
+    "jobs": "{{count}} 个任务",
+    "serves": "{{count}} 个服务"
   },
   "notification": {
     "title": {

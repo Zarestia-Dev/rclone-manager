@@ -439,7 +439,7 @@
       },
       "prevent_sleep": {
         "label": "システムのスリープ/シャットダウンを防止",
-        "description": "転送、コピー、同期ジョブの実行中にOSのスリープおよびシャットダウンを抑制します。"
+        "description": "アクティブな転送、マウント、またはサーバーの実行中にシステムの休止状態やシャットダウンを防止します。"
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "マウント {{count}}件",
     "tooltipServe": "公開サーバー 1件",
     "tooltipServes": "公開サーバー {{count}}件"
+  },
+  "powerInhibitor": {
+    "reason": "アクティブな操作を実行中: {{details}}",
+    "mounts": "{{count}} マウント",
+    "jobs": "{{count}} ジョブ",
+    "serves": "{{count}} サーバー"
   },
   "notification": {
     "title": {

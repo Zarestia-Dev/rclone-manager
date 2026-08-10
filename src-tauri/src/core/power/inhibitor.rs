@@ -43,12 +43,11 @@ impl PowerInhibitorState {
     }
 
     #[must_use]
-    #[allow(dead_code)]
     pub fn is_inhibited(&self) -> bool {
         self.is_inhibited.load(Ordering::Relaxed)
     }
 
-    pub async fn acquire(&self, _app: &AppHandle) {
+    pub async fn acquire(&self, _app: &AppHandle, reason: &str) {
         if self
             .is_inhibited
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
@@ -57,25 +56,13 @@ impl PowerInhibitorState {
             return;
         }
 
-        info!("🔒 Acquiring system OS power/shutdown inhibitor lock...");
+        info!("🔒 Acquiring system OS power/shutdown inhibitor lock: {reason}");
 
-        #[cfg(target_os = "linux")]
-        {
-            self.acquire_linux().await;
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            self.acquire_windows(_app).await;
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            self.acquire_macos().await;
-        }
+        #[cfg(desktop)]
+        self.acquire_platform(_app, reason).await;
     }
 
-    pub async fn release(&self, _app: &AppHandle) {
+    pub async fn release(&self) {
         if self
             .is_inhibited
             .compare_exchange(true, false, Ordering::Acquire, Ordering::Relaxed)
@@ -86,24 +73,12 @@ impl PowerInhibitorState {
 
         info!("🔓 Releasing system OS power/shutdown inhibitor lock...");
 
-        #[cfg(target_os = "linux")]
-        {
-            self.release_linux().await;
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            self.release_windows().await;
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            self.release_macos().await;
-        }
+        #[cfg(desktop)]
+        self.release_platform().await;
     }
 
     #[cfg(all(desktop, target_os = "linux"))]
-    async fn acquire_linux(&self) {
+    async fn acquire_platform(&self, _app: &AppHandle, reason: &str) {
         match zbus::Connection::system().await {
             Ok(connection) => {
                 match zbus::Proxy::new(
@@ -118,20 +93,46 @@ impl PowerInhibitorState {
                         match proxy
                             .call::<_, _, zbus::zvariant::OwnedFd>(
                                 "Inhibit",
-                                &(
-                                    "shutdown:sleep",
-                                    "Rclone Manager",
-                                    "Active file transfer jobs in progress",
-                                    "block",
-                                ),
+                                &("shutdown:sleep", "RClone Manager", reason, "block"),
                             )
                             .await
                         {
                             Ok(fd) => {
                                 info!(
-                                    "🔒 Linux systemd logind shutdown/sleep inhibitor lock acquired"
+                                    "🔒 Linux systemd logind shutdown/sleep inhibitor lock acquired: {reason}"
                                 );
                                 *self.linux_fd.lock().await = Some(fd);
+
+                                let proxy_clone = proxy.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    if let Ok(mut sleep_stream) =
+                                        proxy_clone.receive_signal("PrepareForSleep").await
+                                    {
+                                        use futures_lite::stream::StreamExt;
+                                        while let Some(signal) = sleep_stream.next().await {
+                                            if let Ok(true) = signal.body().deserialize::<bool>() {
+                                                info!(
+                                                    "⚠️ OS Sleep requested while power inhibitor is active"
+                                                );
+                                            }
+                                        }
+                                    }
+                                });
+
+                                tauri::async_runtime::spawn(async move {
+                                    if let Ok(mut shutdown_stream) =
+                                        proxy.receive_signal("PrepareForShutdown").await
+                                    {
+                                        use futures_lite::stream::StreamExt;
+                                        while let Some(signal) = shutdown_stream.next().await {
+                                            if let Ok(true) = signal.body().deserialize::<bool>() {
+                                                info!(
+                                                    "⚠️ OS Shutdown requested while power inhibitor is active"
+                                                );
+                                            }
+                                        }
+                                    }
+                                });
                             }
                             Err(e) => {
                                 log::error!("Failed to acquire systemd logind inhibitor lock: {e}");
@@ -146,7 +147,7 @@ impl PowerInhibitorState {
     }
 
     #[cfg(all(desktop, target_os = "linux"))]
-    async fn release_linux(&self) {
+    async fn release_platform(&self) {
         if let Some(fd) = self.linux_fd.lock().await.take() {
             drop(fd);
             info!("🔓 Linux systemd logind shutdown/sleep inhibitor lock released");
@@ -154,7 +155,7 @@ impl PowerInhibitorState {
     }
 
     #[cfg(all(desktop, target_os = "windows"))]
-    async fn acquire_windows(&self, app: &AppHandle) {
+    async fn acquire_platform(&self, app: &AppHandle, reason_str: &str) {
         use windows_sys::Win32::System::Threading::{
             ES_AWAYMODE_REQUIRED, ES_CONTINUOUS, ES_SYSTEM_REQUIRED, SetThreadExecutionState,
         };
@@ -167,11 +168,10 @@ impl PowerInhibitorState {
             && let Ok(hwnd) = window.hwnd()
         {
             let raw_hwnd = hwnd.0 as isize;
-            let reason: Vec<u16> =
-                "Rclone Manager is currently executing background file transfers."
-                    .encode_utf16()
-                    .chain(std::iter::once(0))
-                    .collect();
+            let reason: Vec<u16> = reason_str
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
 
             unsafe {
                 windows_sys::Win32::System::Shutdown::ShutdownBlockReasonCreate(
@@ -180,12 +180,12 @@ impl PowerInhibitorState {
                 );
             }
             *self.windows_hwnd.lock().await = Some(raw_hwnd);
-            info!("🔒 Windows shutdown block reason registered");
+            info!("🔒 Windows shutdown block reason registered: {reason_str}");
         }
     }
 
     #[cfg(all(desktop, target_os = "windows"))]
-    async fn release_windows(&self) {
+    async fn release_platform(&self) {
         use windows_sys::Win32::System::Threading::{ES_CONTINUOUS, SetThreadExecutionState};
 
         if let Some(hwnd) = self.windows_hwnd.lock().await.take() {
@@ -201,7 +201,7 @@ impl PowerInhibitorState {
     }
 
     #[cfg(all(desktop, target_os = "macos"))]
-    async fn acquire_macos(&self) {
+    async fn acquire_platform(&self, _app: &AppHandle, reason_str: &str) {
         use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
 
         let mut lock = self.macos_activity.lock().await;
@@ -209,17 +209,17 @@ impl PowerInhibitorState {
             let process_info = NSProcessInfo::processInfo();
             let options =
                 NSActivityOptions::IdleSystemSleepDisabled | NSActivityOptions::UserInitiated;
-            let reason = NSString::from_str("Active file transfer jobs in progress");
+            let reason = NSString::from_str(reason_str);
             let activity = process_info.beginActivityWithOptions_reason(options, &reason);
             info!(
-                "🔒 macOS NSProcessInfo activity assertion lock acquired (Prevent System Sleep & App Nap)"
+                "🔒 macOS NSProcessInfo activity assertion lock acquired (Prevent System Sleep & App Nap): {reason_str}"
             );
             *lock = Some(MacosActivityToken(activity));
         }
     }
 
     #[cfg(all(desktop, target_os = "macos"))]
-    async fn release_macos(&self) {
+    async fn release_platform(&self) {
         use objc2_foundation::NSProcessInfo;
 
         let mut lock = self.macos_activity.lock().await;
@@ -231,6 +231,53 @@ impl PowerInhibitorState {
             info!("🔓 macOS NSProcessInfo activity assertion lock released");
         }
     }
+
+    #[cfg(all(
+        desktop,
+        not(any(target_os = "linux", target_os = "windows", target_os = "macos"))
+    ))]
+    async fn acquire_platform(&self, _app: &AppHandle, _reason: &str) {}
+
+    #[cfg(all(
+        desktop,
+        not(any(target_os = "linux", target_os = "windows", target_os = "macos"))
+    ))]
+    async fn release_platform(&self) {}
+}
+
+fn get_localized_inhibitor_reason(
+    mounts_count: usize,
+    jobs_count: usize,
+    serves_count: usize,
+) -> String {
+    use crate::utils::i18n::{t, t_with_params};
+
+    let mut parts = Vec::new();
+    if mounts_count > 0 {
+        parts.push(t_with_params(
+            "powerInhibitor.mounts",
+            &[("count", &mounts_count.to_string())],
+        ));
+    }
+    if jobs_count > 0 {
+        parts.push(t_with_params(
+            "powerInhibitor.jobs",
+            &[("count", &jobs_count.to_string())],
+        ));
+    }
+    if serves_count > 0 {
+        parts.push(t_with_params(
+            "powerInhibitor.serves",
+            &[("count", &serves_count.to_string())],
+        ));
+    }
+
+    if parts.is_empty() {
+        t("notification.body.powerInhibited")
+    } else {
+        let details = parts.join(", ");
+        t_with_params("powerInhibitor.reason", &[("details", &details)])
+    }
 }
 
 pub async fn update_power_inhibition(app: &AppHandle) {
@@ -241,20 +288,28 @@ pub async fn update_power_inhibition(app: &AppHandle) {
         .unwrap_or(true);
 
     let backend_manager = app.try_state::<crate::rclone::backend::BackendManager>();
-    let has_active_operations = if let Some(bm) = backend_manager {
-        let has_jobs = bm.job_cache.has_running_jobs().await;
-        let has_mounts = !bm.remote_cache.get_mounted_remotes().await.is_empty();
-        let has_serves = !bm.remote_cache.get_serves().await.is_empty();
-        has_jobs || has_mounts || has_serves
-    } else {
-        false
-    };
+    let (has_active_operations, mounts_count, jobs_count, serves_count) =
+        if let Some(bm) = backend_manager {
+            let active_jobs = bm.job_cache.get_active_jobs().await;
+            let active_mounts = bm.remote_cache.get_mounted_remotes().await;
+            let active_serves = bm.remote_cache.get_serves().await;
+
+            let j_count = active_jobs.len();
+            let m_count = active_mounts.len();
+            let s_count = active_serves.len();
+
+            let active = j_count > 0 || m_count > 0 || s_count > 0;
+            (active, m_count, j_count, s_count)
+        } else {
+            (false, 0, 0, 0)
+        };
 
     if let Some(state) = app.try_state::<PowerInhibitorState>() {
         if prevent_sleep_enabled && has_active_operations {
-            state.acquire(app).await;
-        } else {
-            state.release(app).await;
+            let reason = get_localized_inhibitor_reason(mounts_count, jobs_count, serves_count);
+            state.acquire(app, &reason).await;
+        } else if state.is_inhibited() {
+            state.release().await;
         }
     }
 }

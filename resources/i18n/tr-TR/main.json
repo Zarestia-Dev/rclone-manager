@@ -437,7 +437,7 @@
       },
       "prevent_sleep": {
         "label": "Sistem Uyku / Kapanmasını Engelle",
-        "description": "Transfer, kopyalama veya senkronizasyon işlemleri aktifken sistem uykusunu ve işletim sistemi kapanmasını engeller."
+        "description": "Aktif dosya aktarımları, bağlantılar (mount) veya sunucular çalışırken sistem uykusunu ve kapanmasını engeller."
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "{{count}} Bağlama",
     "tooltipServe": "1 Sunucu",
     "tooltipServes": "{{count}} Sunucu"
+  },
+  "powerInhibitor": {
+    "reason": "Aktif işlemler devam ediyor: {{details}}",
+    "mounts": "{{count}} bağlantı",
+    "jobs": "{{count}} iş",
+    "serves": "{{count}} sunucu"
   },
   "notification": {
     "title": {

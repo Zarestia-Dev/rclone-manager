@@ -437,7 +437,7 @@
       },
       "prevent_sleep": {
         "label": "Evitar suspensión / apagado del sistema",
-        "description": "Inhibe la suspensión y el apagado del SO mientras las tareas de transferencia están activas."
+        "description": "Inhibe la suspensión del sistema y el apagado del SO mientras haya transferencias, montajes o servidores activos."
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "{{count}} Montajes",
     "tooltipServe": "1 Servicio",
     "tooltipServes": "{{count}} Servicios"
+  },
+  "powerInhibitor": {
+    "reason": "Operaciones activas en curso: {{details}}",
+    "mounts": "{{count}} montaje(s)",
+    "jobs": "{{count}} tarea(s)",
+    "serves": "{{count}} servidor(es)"
   },
   "notification": {
     "title": {

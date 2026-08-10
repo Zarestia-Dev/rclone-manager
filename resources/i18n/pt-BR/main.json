@@ -439,7 +439,7 @@
       },
       "prevent_sleep": {
         "label": "Evitar suspensão / desligamento do sistema",
-        "description": "Inibe a suspensão do sistema e desligamento do SO enquanto tarefas de transferência estão ativas."
+        "description": "Inibe a suspensão do sistema e o desligamento do SO enquanto houver transferências, montagens ou servidores ativos."
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "{{count}} Montagens",
     "tooltipServe": "1 Serviço",
     "tooltipServes": "{{count}} Serviços"
+  },
+  "powerInhibitor": {
+    "reason": "Operações ativas em andamento: {{details}}",
+    "mounts": "{{count}} ponto(s) de montagem",
+    "jobs": "{{count}} tarefa(s)",
+    "serves": "{{count}} servidor(es)"
   },
   "notification": {
     "title": {

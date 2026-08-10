@@ -437,7 +437,7 @@
       },
       "prevent_sleep": {
         "label": "Empêcher la mise en veille / l'extinction du système",
-        "description": "Empêche la mise en veille et l'extinction du système tant que des transferts sont actifs."
+        "description": "Empêche la mise en veille et l'arrêt du système pendant que des transferts, des montages ou des serveurs sont actifs."
       }
     },
     "core": {
@@ -2880,6 +2880,12 @@
     "tooltipMounts": "{{count}} Montages",
     "tooltipServe": "1 Partage",
     "tooltipServes": "{{count}} Service de partage"
+  },
+  "powerInhibitor": {
+    "reason": "Opérations actives en cours : {{details}}",
+    "mounts": "{{count}} montage(s)",
+    "jobs": "{{count}} tâche(s)",
+    "serves": "{{count}} serveur(s)"
   },
   "notification": {
     "title": {

@@ -5,32 +5,6 @@ use serde_json::Value;
 
 use crate::utils::types::remotes::OperationType;
 
-/// Runtime status of a quick run entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum QuickRunStatus {
-    #[default]
-    Idle,
-    Running,
-    Completed,
-    Failed,
-    Stopped,
-}
-
-impl QuickRunStatus {
-    #[must_use]
-    #[allow(dead_code)]
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Idle => "idle",
-            Self::Running => "running",
-            Self::Completed => "completed",
-            Self::Failed => "failed",
-            Self::Stopped => "stopped",
-        }
-    }
-}
-
 /// A saved "quick run" record stored in `quick_runs` sub-settings.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -150,17 +124,6 @@ pub struct StartQuickRunResponse {
 mod tests {
     use super::*;
     use serde_json::json;
-
-    #[test]
-    fn test_quick_run_status_serde() {
-        let status = QuickRunStatus::Running;
-        assert_eq!(status.as_str(), "running");
-        let json = serde_json::to_string(&status).unwrap();
-        assert_eq!(json, "\"running\"");
-
-        let deserialized: QuickRunStatus = serde_json::from_str("\"completed\"").unwrap();
-        assert_eq!(deserialized, QuickRunStatus::Completed);
-    }
 
     #[test]
     fn test_quick_run_serde_roundtrip() {

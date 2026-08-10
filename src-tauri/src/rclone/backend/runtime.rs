@@ -35,13 +35,11 @@ pub struct RuntimeInfo {
     ///
     /// Populated by `fetch_runtime_info` but currently not surfaced to the
     /// UI — kept for future diagnostics.
-    #[allow(dead_code)]
     pub arch: Option<String>,
     /// Go version (e.g. "go1.22.1")
     ///
     /// Populated by `fetch_runtime_info` but currently not surfaced to the
     /// UI — kept for future diagnostics.
-    #[allow(dead_code)]
     pub go_version: Option<String>,
     /// Process ID of rclone
     pub pid: Option<u32>,
@@ -82,6 +80,18 @@ impl RuntimeInfo {
             None
         }
     }
+
+    /// Get architecture string if available
+    #[must_use]
+    pub fn arch(&self) -> Option<&str> {
+        self.arch.as_deref()
+    }
+
+    /// Get Go version string if available
+    #[must_use]
+    pub fn go_version(&self) -> Option<&str> {
+        self.go_version.as_deref()
+    }
 }
 
 #[cfg(test)]
@@ -94,6 +104,8 @@ mod tests {
         assert_eq!(info.status, RuntimeStatus::Unknown);
         assert!(info.version.is_none());
         assert!(info.os.is_none());
+        assert!(info.arch().is_none());
+        assert!(info.go_version().is_none());
     }
 
     #[test]
@@ -110,9 +122,11 @@ mod tests {
         info.version = Some("v1.66.0".to_string());
         info.os = Some("linux".to_string());
         info.arch = Some("amd64".to_string());
+        info.go_version = Some("go1.22.1".to_string());
 
         assert_eq!(info.version, Some("v1.66.0".to_string()));
         assert_eq!(info.os, Some("linux".to_string()));
-        assert_eq!(info.arch.as_deref(), Some("amd64"));
+        assert_eq!(info.arch(), Some("amd64"));
+        assert_eq!(info.go_version(), Some("go1.22.1"));
     }
 }

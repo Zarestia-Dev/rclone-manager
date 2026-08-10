@@ -439,7 +439,7 @@
       },
       "prevent_sleep": {
         "label": "Prevent System Sleep / Shutdown",
-        "description": "Inhibit system sleep and OS shutdown while transfer, copy, or sync jobs are active."
+        "description": "Inhibit system sleep and OS shutdown while active transfers, mounts, or servers are running."
       }
     },
     "core": {
@@ -2886,6 +2886,12 @@
     "tooltipMounts": "{{count}} Mounts",
     "tooltipServe": "1 Serve",
     "tooltipServes": "{{count}} Serves"
+  },
+  "powerInhibitor": {
+    "reason": "Active operations running: {{details}}",
+    "mounts": "{{count}} mount(s)",
+    "jobs": "{{count}} job(s)",
+    "serves": "{{count}} server(s)"
   },
   "notification": {
     "title": {

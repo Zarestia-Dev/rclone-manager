@@ -344,6 +344,12 @@ impl BackendManager {
 
     /// Set runtime info for a backend (used by connectivity module)
     pub(crate) async fn set_runtime_info(&self, name: &str, info: RuntimeInfo) {
+        log::debug!(
+            "Backend '{name}' runtime: os={:?}, arch={:?}, go={:?}",
+            info.os,
+            info.arch(),
+            info.go_version()
+        );
         self.runtime_info
             .write()
             .await

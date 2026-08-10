@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **System Sleep/Shutdown Intercept**: Added OS-level power inhibitor integration on Linux (systemd logind), Windows (ShutdownBlockReasonCreate), and macOS (IOPMAssertionCreateWithName). The application now prevents the system from sleeping or shutting down while active file transfer operations are in progress.
 - **Android Storage Access Framework (SAF) Integration**: Added comprehensive Storage Access Framework (SAF) support for Android devices. #273
   - **SAF Remote & Tree Picker**: Allows selecting and authorizing local directories, SD cards, and USB OTG drives via native Android SAF tree picker intents (`ACTION_OPEN_DOCUMENT_TREE`).
   - **Android DocumentsProvider**: Added `RcloneDocumentsProvider` to expose mounted Rclone remotes to external Android apps and system file pickers.
