@@ -80,6 +80,7 @@
       <mat-sidenav-content class="modal-content">
         <app-search-container
           [visible]="state.isSearchVisible()"
+          (searchToggle)="toggleSearchVisibility()"
           [searchText]="state.searchQuery()"
           (searchTextChange)="onSearchInput($event)"
           [placeholder]="'shared.search.placeholder'"

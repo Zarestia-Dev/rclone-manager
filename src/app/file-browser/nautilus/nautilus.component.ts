@@ -25,6 +25,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { NautilusService } from 'src/app/services/ui/nautilus.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { PathNavigationService } from 'src/app/services/infrastructure/platform/path-navigation.service';
@@ -96,6 +97,7 @@ export class NautilusComponent implements OnInit {
   private readonly keyboard = inject(NautilusKeyboardDirective);
 
   protected readonly nautilusService = inject(NautilusService);
+  private readonly uiStateService = inject(UiStateService);
   protected readonly fileOps = inject(NautilusFileOperationsService);
   protected readonly dragDrop = inject(NautilusDragDropService);
   protected readonly settings = inject(NautilusSettingsService);
@@ -305,10 +307,17 @@ export class NautilusComponent implements OnInit {
     this._registerKeyboard();
     this._registerDragDrop();
 
+    this.uiStateService.registerMobileSidebar({
+      view: 'nautilus',
+      isOver: this.isMobile,
+      isOpen: this.isSidenavOpen,
+    });
+
     this.tabSvc.onCloseOverlay = (): void => this.closeOverlay.emit(null);
 
     this.destroyRef.onDestroy(() => {
       this.nautilusService.setWindowTitle('RClone Manager');
+      this.uiStateService.unregisterMobileSidebar('nautilus');
     });
   }
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { RcConfigOption } from '@app/types';
+import { RcConfigOption, SENSITIVE_KEYS } from '@app/types';
 import { isIntType, isFloatType } from 'src/app/shared/utils';
 
 @Injectable({ providedIn: 'root' })
@@ -219,5 +219,38 @@ export class RcloneValueMapperService {
       default:
         return value;
     }
+  }
+
+  cleanData(formData: Record<string, unknown>, fields: RcConfigOption[]): Record<string, unknown> {
+    const map = new Map(fields.map(f => [f.Name || f.FieldName, f]));
+    return Object.entries(formData).reduce(
+      (acc, [k, v]) => {
+        const f = map.get(k);
+        if (f) {
+          if (!this.isDefaultValue(v, f)) acc[f.Name || f.FieldName] = v;
+        } else if (v !== undefined && v !== null && v !== '') acc[k] = v;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
+  }
+
+  extractSensitiveFields(fields: RcConfigOption[]): { key: string; name: string; help: string }[] {
+    if (!fields) return [];
+
+    return fields
+      .filter(field => {
+        const name = (field.FieldName || field.Name || '').toLowerCase();
+        return (
+          field.IsPassword ||
+          field.Name === 'pass' ||
+          SENSITIVE_KEYS.some(key => name.includes(key))
+        );
+      })
+      .map(field => ({
+        key: field.Name || field.FieldName || '',
+        name: field.FieldName || field.Name || '',
+        help: field.Help || '',
+      }));
   }
 }

@@ -26,9 +26,6 @@ import { RemoteFacadeService } from '../../services/facade/remote-facade.service
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(document:keydown.control.f)': 'onCtrlF($event)',
-  },
 })
 export class SidebarComponent {
   readonly remotes = input.required<Remote[]>();
@@ -72,10 +69,5 @@ export class SidebarComponent {
   clearSearch(): void {
     this.searchTerm.set('');
     this.searchContainer()?.clear();
-  }
-
-  onCtrlF(event: Event): void {
-    (event as KeyboardEvent).preventDefault();
-    this.toggleSearch();
   }
 }

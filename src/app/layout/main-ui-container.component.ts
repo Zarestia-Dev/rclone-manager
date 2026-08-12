@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, viewChild } from '@angular/core';
 import { TitlebarComponent } from './titlebar/titlebar.component';
 import { BannerComponent } from './banners/banner.component';
 import { HomeComponent } from '../home/home.component';
@@ -13,7 +13,7 @@ import { TabsButtonsComponent } from './tabs-buttons/tabs-buttons.component';
       <app-titlebar data-tauri-drag-region></app-titlebar>
       <app-banner></app-banner>
       <app-home></app-home>
-      <app-tabs data-tauri-drag-region></app-tabs>
+      <app-tabs [mobileHidden]="tabsMobileHidden()" data-tauri-drag-region></app-tabs>
     </div>
   `,
   styles: [
@@ -36,4 +36,11 @@ import { TabsButtonsComponent } from './tabs-buttons/tabs-buttons.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MainUiContainerComponent {}
+export class MainUiContainerComponent {
+  private readonly home = viewChild(HomeComponent);
+  readonly tabsMobileHidden = computed(() => {
+    const home = this.home();
+    if (!home) return false;
+    return home.isSidebarOver() && home.isSidebarOpen();
+  });
+}

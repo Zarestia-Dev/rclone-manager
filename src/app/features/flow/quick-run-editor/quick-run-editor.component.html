@@ -95,16 +95,32 @@
     </mat-sidenav>
 
     <mat-sidenav-content class="modal-content">
+      <app-search-container
+        [visible]="showSearch()"
+        (searchToggle)="toggleSearch()"
+        [searchText]="searchQuery()"
+        (searchTextChange)="searchQuery.set($event)"
+        [placeholder]="'shared.search.placeholder'"
+        [ariaLabel]="'shared.search.ariaLabel'"
+      ></app-search-container>
+
+      <app-cli-import
+        [visible]="showCliImport()"
+        [remoteType]="selectedRemoteType()"
+        [activeStep]="$any(activeTab())"
+        [existingProfiles]="existingProfiles()"
+        (apply)="onCliImportApply($event)"
+      />
+
+      <app-obscure-tool
+        [visible]="showObscureTool()"
+        [sensitiveFields]="activeSensitiveFields()"
+        [provider]="selectedRemoteType()"
+        (applyObscured)="applyObscuredValue($event.key, $event.value)"
+      />
+
       <!-- 1. Top Configuration Section -->
       <section class="top-config-section">
-        <app-search-container
-          [visible]="showSearch()"
-          [searchText]="searchQuery()"
-          (searchTextChange)="searchQuery.set($event)"
-          [placeholder]="'shared.search.placeholder'"
-          [ariaLabel]="'shared.search.ariaLabel'"
-        ></app-search-container>
-
         <div class="identity-remote-row">
           <!-- Name Field -->
           <mat-form-field class="name-field">
@@ -161,45 +177,12 @@
             }
           </div>
         </div>
-
-        <!-- CLI Import Drawer (if toggled) -->
-        @if (showCliImport()) {
-          <app-cli-import
-            [visible]="true"
-            [remoteType]="selectedRemoteType()"
-            [activeStep]="activeTab()"
-            [existingProfiles]="existingProfiles()"
-            (apply)="onCliImportApply($event)"
-          />
-        }
-
-        <!-- Obscure Tool Drawer (if toggled) -->
-        @if (showObscureTool()) {
-          <app-obscure-tool
-            [visible]="true"
-            [sensitiveFields]="activeSensitiveFields()"
-            [provider]="selectedRemoteType()"
-            (applyObscured)="applyObscuredValue($event.key, $event.value)"
-          />
-        }
       </section>
 
       <!-- 2. Active Tab Content Section -->
       @if (form.get('remoteName')?.value) {
         <section class="config-tabs-section">
           <div class="tab-content">
-            @if (activeTab() === currentOpType()) {
-              <!-- Operation tab: app config (paths, cron, watch) -->
-              <app-operation-config
-                [opFormGroup]="getOpFormGroup(activeTab())"
-                [operationType]="currentOpType()"
-                [currentRemoteName]="currentRemoteName()"
-                [existingRemotes]="existingRemoteNames()"
-                [isNewRemote]="false"
-                [searchQuery]="searchQuery()"
-              />
-            }
-
             @if (activeTab() === 'runtimeRemote') {
               <app-alert-banner
                 severity="info"
@@ -223,7 +206,19 @@
                 [showAdvancedOptions]="true"
               />
             } @else {
-              <!-- Flag settings step (common for all other tabs) -->
+              @if (activeTab() === currentOpType()) {
+                <!-- Operation tab: app config (paths, cron, watch) -->
+                <app-operation-config
+                  [opFormGroup]="getOpFormGroup(activeTab())"
+                  [operationType]="currentOpType()"
+                  [currentRemoteName]="currentRemoteName()"
+                  [existingRemotes]="existingRemoteNames()"
+                  [isNewRemote]="false"
+                  [searchQuery]="searchQuery()"
+                />
+              }
+
+              <!-- Flag settings step (operation, vfs, filter, backend) -->
               <app-flag-config-step
                 [form]="form"
                 [flagType]="$any(activeTab())"

@@ -27,6 +27,7 @@ import { UserPresetTemplate, TemplateCategory } from '@app/types';
 import { UserTemplateService } from 'src/app/services/remote/user-template.service';
 import { SearchContainerComponent } from '../../components/search-container/search-container.component';
 import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
+import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
@@ -89,6 +90,7 @@ const CATEGORY_LIST: TemplateCategory[] = [
 
 @Component({
   selector: 'app-template-manager-modal',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     FormsModule,
@@ -118,7 +120,15 @@ export class TemplateManagerModalComponent {
 
   readonly mode = signal<'save' | 'manage'>(this.data?.mode ?? 'save');
   readonly isSearchVisible = signal<boolean>(false);
+
+  toggleSearch(): void {
+    this.isSearchVisible.update(v => !v);
+    if (!this.isSearchVisible()) {
+      this.keySearchQuery.set('');
+    }
+  }
   readonly Object = Object;
+  readonly String = String;
   readonly availableCategories = CATEGORY_LIST;
 
   // --- Save Form State ---
@@ -492,19 +502,13 @@ export class TemplateManagerModalComponent {
 
   // --- Manage Templates Handlers ---
   createNewDraftTemplate(): void {
-    const defaultValues: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
-    for (const cat of CATEGORY_LIST) {
-      defaultValues[cat] = {};
-    }
-
-    const created = this.userTemplateService.saveTemplate({
-      name: `New Template ${this.userTemplateService.userTemplates().length + 1}`,
-      description: 'Custom preset template',
-      values: defaultValues,
+    this.saveForm.reset({
+      name: '',
+      description: '',
+      remoteType: this.data?.remoteType ?? '',
     });
-
-    this.selectTemplate(created.id);
-    this.manageViewMode.set('json');
+    this.settingEntries.set([]);
+    this.mode.set('save');
   }
 
   selectTemplate(id: string): void {

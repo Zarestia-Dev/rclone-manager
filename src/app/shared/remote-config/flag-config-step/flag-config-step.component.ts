@@ -43,7 +43,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 })
 export class FlagConfigStepComponent {
   readonly iconService = inject(IconService);
-  readonly state = inject(RemoteConfigStateService);
+  readonly state = inject(RemoteConfigStateService, { optional: true });
   private readonly uiStateService = inject(UiStateService);
 
   readonly form = input.required<FormGroup>();

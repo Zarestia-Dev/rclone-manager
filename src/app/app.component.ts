@@ -74,6 +74,13 @@ export class AppComponent implements OnInit {
     // Start listening for Android share intents (no-op on desktop/web).
     inject(AndroidShareService).initialize();
 
+    // Wire overlay signals into UiStateService for mobile-sidebar computation.
+    this.uiStateService.setOverlaySignals({
+      mainOverlay: this.mainUiOverlayService.isMainUiOverlayOpen,
+      flowOverlay: this.flowOverlayService.isFlowOverlayOpen,
+      nautilusOverlay: this.nautilusService.isBrowserOverlayOpen,
+    });
+
     this.setupDefaultViewListener();
   }
 

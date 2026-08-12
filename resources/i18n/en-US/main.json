@@ -3199,6 +3199,8 @@
     "manageTemplates": "Manage Templates (Export / Import)...",
     "manageTitle": "Manage Templates",
     "noUserTemplates": "No custom templates saved yet.",
+    "newTitle": "New Template",
+    "newDescription": "Create a custom template or save current settings to quickly apply them across remotes and tasks.",
     "saveTitle": "Save as Custom Template",
     "saveDescription": "Save current flag configurations to quickly apply them to other remotes or Quick Run tasks.",
     "templateName": "Template Name",

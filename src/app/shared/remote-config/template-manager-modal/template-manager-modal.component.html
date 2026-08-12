@@ -22,6 +22,7 @@
 
 <app-search-container
   [visible]="isSearchVisible()"
+  (searchToggle)="toggleSearch()"
   [searchText]="keySearchQuery()"
   (searchTextChange)="keySearchQuery.set($event)"
 ></app-search-container>
@@ -32,14 +33,14 @@
     [selectedIndex]="mode() === 'save' ? 0 : 1"
     (selectedIndexChange)="mode.set($event === 0 ? 'save' : 'manage')"
   >
-    <!-- TAB 0: SAVE AS CUSTOM TEMPLATE -->
+    <!-- TAB 0: NEW TEMPLATE -->
     <mat-tab>
       <ng-template matTabLabel>
-        <span>{{ 'templates.saveTitle' | translate }}</span>
+        <span>{{ 'templates.newTitle' | translate }}</span>
       </ng-template>
 
       <div class="tab-pane save-pane">
-        <p class="pane-description">{{ 'templates.saveDescription' | translate }}</p>
+        <p class="pane-description">{{ 'templates.newDescription' | translate }}</p>
 
         <form [formGroup]="saveForm" (ngSubmit)="onSaveTemplate()" class="save-form">
           <div class="form-row">
@@ -266,81 +267,58 @@
       </ng-template>
 
       <div class="tab-pane manage-pane">
-        <div class="manage-top-bar">
-          <div class="top-bar-title">
-            <h3>{{ 'templates.userTemplates' | translate }}</h3>
-          </div>
-          <div class="top-bar-actions">
-            <button
-              type="button"
-              mat-flat-button
-              color="primary"
-              class="new-template-btn"
-              (click)="createNewDraftTemplate()"
-              title="Create a new template from scratch"
-            >
-              <mat-icon svgIcon="plus"></mat-icon>
-              <span>{{ 'templates.newTemplate' | translate }}</span>
-            </button>
-          </div>
+        <div class="manage-control-bar">
+          @if (userTemplateService.userTemplates().length > 0) {
+            <mat-form-field class="template-select-field">
+              <mat-label>{{ 'templates.userTemplates' | translate }}</mat-label>
+              <mat-select
+                [value]="selectedTemplateId()"
+                (selectionChange)="selectTemplate($event.value)"
+              >
+                @for (tpl of userTemplateService.userTemplates(); track tpl.id) {
+                  <mat-option [value]="tpl.id">
+                    {{ tpl.name }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+
+          <button
+            type="button"
+            mat-flat-button
+            color="primary"
+            class="new-template-btn"
+            (click)="createNewDraftTemplate()"
+            title="Create a new template from scratch"
+          >
+            <mat-icon svgIcon="plus"></mat-icon>
+            <span>{{ 'templates.newTemplate' | translate }}</span>
+          </button>
         </div>
 
-        <div class="manage-split-container">
-          <!-- Template List Left Panel -->
-          <div class="template-list-column">
-            @if (userTemplateService.userTemplates().length === 0) {
-              <div class="empty-state">
-                <p>{{ 'templates.noUserTemplates' | translate }}</p>
-              </div>
-            } @else {
-              <div class="template-nav-list">
-                @for (tpl of userTemplateService.userTemplates(); track tpl.id) {
-                  <div
-                    class="template-nav-item"
-                    [class.active]="selectedTemplateId() === tpl.id"
-                    role="button"
-                    tabindex="0"
-                    (click)="selectTemplate(tpl.id)"
-                    (keydown.enter)="selectTemplate(tpl.id)"
-                  >
-                    <div class="item-icon-area">
-                      <mat-icon svgIcon="bookmark"></mat-icon>
-                    </div>
-                    <div class="item-details">
-                      <span class="tpl-name">{{ tpl.name }}</span>
-                      <span class="tpl-desc">{{ tpl.description || 'Custom preset' }}</span>
-                    </div>
-                    <button
-                      type="button"
-                      mat-icon-button
-                      class="delete-btn"
-                      title="Delete template"
-                      (click)="onDeleteUserTemplate(tpl.id); $event.stopPropagation()"
-                    >
-                      <mat-icon svgIcon="trash"></mat-icon>
-                    </button>
-                  </div>
-                }
-              </div>
-            }
+        @if (!selectedTemplate()) {
+          <div class="empty-state">
+            <mat-icon svgIcon="info"></mat-icon>
+            <p>{{ 'templates.noUserTemplates' | translate }}</p>
           </div>
-
-          <!-- Template Detail Right Panel -->
-          <div class="template-detail-column">
-            @if (!selectedTemplate()) {
-              <div class="empty-state">
-                <mat-icon svgIcon="info"></mat-icon>
-                <span>{{ 'templates.selectTemplateToEdit' | translate }}</span>
-              </div>
-            } @else {
-              <div class="detail-header">
-                <div class="detail-title">
+        } @else {
+          <div class="template-detail-card">
+            <div class="detail-header">
+              <div class="detail-title">
+                <mat-icon svgIcon="bookmark" class="tpl-icon"></mat-icon>
+                <div class="title-meta">
                   <h4>{{ selectedTemplate()?.name }}</h4>
-                  @if (selectedTemplate()?.remoteType) {
-                    <span class="remote-type-chip">{{ selectedTemplate()?.remoteType }}</span>
+                  @if (selectedTemplate()?.description) {
+                    <p class="tpl-desc">{{ selectedTemplate()?.description }}</p>
                   }
                 </div>
+                @if (selectedTemplate()?.remoteType) {
+                  <span class="remote-type-chip">{{ selectedTemplate()?.remoteType }}</span>
+                }
+              </div>
 
+              <div class="header-actions">
                 <div class="view-mode-toggle">
                   <button
                     type="button"
@@ -364,44 +342,58 @@
                     <span>{{ 'templates.jsonView' | translate }}</span>
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  mat-icon-button
+                  class="delete-btn"
+                  title="Delete template"
+                  (click)="onDeleteUserTemplate(selectedTemplate()!.id)"
+                >
+                  <mat-icon svgIcon="trash"></mat-icon>
+                </button>
               </div>
+            </div>
 
-              <!-- VISUAL INSPECTOR VIEW -->
-              @if (manageViewMode() === 'visual') {
-                <div class="visual-inspector">
-                  @for (catKey of Object.keys(selectedTemplate()?.values || {}); track catKey) {
-                    <div class="category-block">
-                      <div class="cat-header">
-                        <span class="cat-badge">{{ catKey }}</span>
-                        <button
-                          type="button"
-                          class="cat-add-btn"
-                          title="Add setting key to this category"
-                          (click)="addingCatKey.set($any(catKey))"
-                        >
-                          <mat-icon svgIcon="plus"></mat-icon>
-                        </button>
-                      </div>
+            <!-- VISUAL INSPECTOR VIEW -->
+            @if (manageViewMode() === 'visual') {
+              <div class="visual-inspector">
+                @for (catKey of Object.keys(selectedTemplate()?.values || {}); track catKey) {
+                  <div class="category-block">
+                    <div class="cat-header">
+                      <span class="cat-badge">{{ catKey }}</span>
+                      <button
+                        type="button"
+                        class="cat-add-btn"
+                        title="Add setting key to this category"
+                        (click)="addingCatKey.set($any(catKey))"
+                      >
+                        <mat-icon svgIcon="plus"></mat-icon>
+                        <span>{{ 'templates.addKey' | translate }}</span>
+                      </button>
+                    </div>
 
-                      @if (addingCatKey() === catKey) {
-                        <div class="cat-inline-add">
-                          <input
-                            type="text"
-                            class="inline-key-in"
-                            placeholder="Key name"
-                            [value]="catKeyInput()"
-                            (input)="catKeyInput.set($any($event.target).value)"
-                          />
-                          <input
-                            type="text"
-                            class="inline-val-in"
-                            placeholder="Value"
-                            [value]="catValInput()"
-                            (input)="catValInput.set($any($event.target).value)"
-                          />
+                    @if (addingCatKey() === catKey) {
+                      <div class="cat-inline-add">
+                        <input
+                          type="text"
+                          class="inline-key-in"
+                          placeholder="Key (e.g. dir_cache_time)"
+                          [value]="catKeyInput()"
+                          (input)="catKeyInput.set($any($event.target).value)"
+                        />
+                        <input
+                          type="text"
+                          class="inline-val-in"
+                          placeholder="Value (e.g. 10m)"
+                          [value]="catValInput()"
+                          (input)="catValInput.set($any($event.target).value)"
+                        />
+                        <div class="inline-actions">
                           <button
                             type="button"
-                            class="inline-save-btn"
+                            class="icon-confirm-btn"
+                            title="Save key"
                             [disabled]="!catKeyInput().trim()"
                             (click)="addKeyToCategory($any(catKey))"
                           >
@@ -409,66 +401,67 @@
                           </button>
                           <button
                             type="button"
-                            class="inline-save-btn cancel"
+                            class="icon-confirm-btn cancel"
+                            title="Cancel"
                             (click)="addingCatKey.set(null)"
                           >
                             <mat-icon svgIcon="close"></mat-icon>
                           </button>
                         </div>
-                      }
-
-                      <div class="cat-kv-grid">
-                        @for (
-                          entry of Object.entries($any(selectedTemplate()?.values)[catKey] || {});
-                          track entry[0]
-                        ) {
-                          <div class="kv-item">
-                            <div class="kv-header">
-                              <span class="k-label">{{ entry[0] }}</span>
-                              <button
-                                type="button"
-                                class="kv-del-btn"
-                                title="Remove key"
-                                (click)="removeKeyFromCategory($any(catKey), entry[0])"
-                              >
-                                <mat-icon svgIcon="close"></mat-icon>
-                              </button>
-                            </div>
-                            <span class="v-val">{{ entry[1] }}</span>
-                          </div>
-                        }
                       </div>
+                    }
+
+                    <div class="cat-kv-grid">
+                      @for (
+                        entry of Object.entries($any(selectedTemplate()?.values)[catKey] || {});
+                        track entry[0]
+                      ) {
+                        <div class="kv-item">
+                          <div class="kv-header">
+                            <span class="k-label" [title]="entry[0]">{{ entry[0] }}</span>
+                            <button
+                              type="button"
+                              class="kv-del-btn"
+                              title="Remove key"
+                              (click)="removeKeyFromCategory($any(catKey), entry[0])"
+                            >
+                              <mat-icon svgIcon="close"></mat-icon>
+                            </button>
+                          </div>
+                          <span class="v-val" [title]="String(entry[1])">{{ entry[1] }}</span>
+                        </div>
+                      }
                     </div>
-                  }
-                </div>
-              }
-
-              <!-- CODEMIRROR JSON EDITOR VIEW -->
-              @if (manageViewMode() === 'json') {
-                <div class="json-editor-pane">
-                  @if (jsonParseError(); as err) {
-                    <app-alert-banner severity="error" [description]="err" />
-                  }
-
-                  <div #manageEditorContainer class="code-mirror editor-box"></div>
-
-                  <div class="editor-actions">
-                    <button
-                      type="button"
-                      mat-flat-button
-                      color="primary"
-                      [disabled]="!!jsonParseError()"
-                      (click)="onSaveTemplateEdits()"
-                    >
-                      <mat-icon svgIcon="floppy-disk"></mat-icon>
-                      <span>{{ 'templates.saveChanges' | translate }}</span>
-                    </button>
                   </div>
+                }
+              </div>
+            }
+
+            <!-- CODEMIRROR JSON EDITOR VIEW -->
+            @if (manageViewMode() === 'json') {
+              <div class="json-editor-pane">
+                @if (jsonParseError(); as err) {
+                  <app-alert-banner severity="error" [description]="err" />
+                }
+
+                <div #manageEditorContainer class="code-mirror editor-box"></div>
+
+                <div class="editor-actions">
+                  <button
+                    type="button"
+                    mat-flat-button
+                    color="primary"
+                    [disabled]="!!jsonParseError()"
+                    (click)="onSaveTemplateEdits()"
+                  >
+                    <mat-icon svgIcon="floppy-disk"></mat-icon>
+                    <span>{{ 'templates.saveChanges' | translate }}</span>
+                  </button>
                 </div>
-              }
+              </div>
             }
           </div>
-        </div>
+        }
       </div>
     </mat-tab>
   </mat-tab-group>
@@ -483,7 +476,11 @@
       type="button"
       mat-flat-button
       color="primary"
-      [disabled]="saveForm.invalid || selectedKeysCount() === 0"
+      [disabled]="
+        saveForm.invalid ||
+        selectedKeysCount() === 0 ||
+        (saveViewMode() === 'json' && !!saveJsonError())
+      "
       (click)="onSaveTemplate()"
     >
       <mat-icon svgIcon="floppy-disk"></mat-icon>

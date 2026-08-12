@@ -19,6 +19,7 @@
 <!-- Search Box with Animation -->
 <app-search-container
   [visible]="searchVisible()"
+  (searchToggle)="toggleSearch()"
   [searchText]="searchText()"
   (searchTextChange)="onSearchTextChange($event)"
   [placeholder]="'shortcuts.searchPlaceholder' | translate"

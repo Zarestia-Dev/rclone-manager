@@ -1,10 +1,20 @@
-import { inject, Injectable, signal, effect } from '@angular/core';
+import { inject, Injectable, signal, effect, computed, Injector, type Signal } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote, APP_TABS, MainView } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
+
+/** Shape each sidebar-owning component passes to registerMobileSidebar. */
+export interface MobileSidebarRegistration {
+  /** View identifier so the service knows which registration is topmost. */
+  view: MainView;
+  /** Signal that is `true` when the sidebar drawer uses 'over' mode (mobile). */
+  isOver: Signal<boolean>;
+  /** Signal that is `true` when the sidebar drawer is open. */
+  isOpen: Signal<boolean>;
+}
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -16,6 +26,7 @@ export class UiStateService {
   private pathService = inject(PathService);
   private windowService = inject(WindowService);
   private localStorage = inject(LocalStorageService);
+  private readonly injector = inject(Injector);
 
   public isMaximized = this.windowService.isMaximized;
   public readonly platform: string;
@@ -52,9 +63,87 @@ export class UiStateService {
   private readonly _selectedMainView = signal<MainView>('main_menu');
   public readonly selectedMainView = this._selectedMainView.asReadonly();
 
-  // Mobile sidebar open state (used to hide bottom tabs when drawer is open)
-  private readonly _mobileSidebarOpen = signal<boolean>(false);
-  public readonly mobileSidebarOpen = this._mobileSidebarOpen.asReadonly();
+  // ── Mobile Sidebar (centralized) ────────────────────────────────────────
+  private readonly _mobileSidebarRegistrations = signal<Map<MainView, MobileSidebarRegistration>>(
+    new Map()
+  );
+
+  /**
+   * Reactive flag consumed by `TabsButtonsComponent` to hide the floating
+   * mobile tab bar whenever the topmost view's sidebar drawer is open in
+   * overlay ('over') mode.
+   *
+   * The value is computed from the active registrations plus the overlay
+   * signals injected lazily via `setOverlaySignals()`.
+   */
+  public readonly mobileSidebarOpen = computed(() => {
+    const registrations = this._mobileSidebarRegistrations();
+
+    // Determine the topmost view from overlay signals (if available).
+    const mainOverlay = this._mainOverlayOpen();
+    const flowOverlay = this._flowOverlayOpen();
+    const nautilusOverlay = this._nautilusOverlayOpen();
+
+    if (mainOverlay || flowOverlay || nautilusOverlay) {
+      return true;
+    }
+
+    const topView = this._selectedMainView();
+    const reg = registrations.get(topView);
+    if (!reg) return false;
+    return reg.isOver() && reg.isOpen();
+  });
+
+  // Overlay open signals — set lazily to avoid circular DI.
+  private readonly _mainOverlayOpen = signal(false);
+  private readonly _flowOverlayOpen = signal(false);
+  private readonly _nautilusOverlayOpen = signal(false);
+  private _overlayEffectInitialized = false;
+
+  /**
+   * Called once (typically by AppComponent) to wire overlay signals into
+   * the mobile-sidebar computation without creating circular imports.
+   *
+   * The effects are bound to this service's own injector so their lifecycle
+   * tracks UiStateService, not the caller's injection context.
+   */
+  setOverlaySignals(signals: {
+    mainOverlay: Signal<boolean>;
+    flowOverlay: Signal<boolean>;
+    nautilusOverlay: Signal<boolean>;
+  }): void {
+    if (this._overlayEffectInitialized) return;
+    this._overlayEffectInitialized = true;
+
+    effect(() => this._mainOverlayOpen.set(signals.mainOverlay()), { injector: this.injector });
+    effect(() => this._flowOverlayOpen.set(signals.flowOverlay()), { injector: this.injector });
+    effect(() => this._nautilusOverlayOpen.set(signals.nautilusOverlay()), {
+      injector: this.injector,
+    });
+  }
+
+  /**
+   * Register a sidebar-owning component so the mobile-sidebar computation
+   * can track its drawer state. Call from the component constructor.
+   */
+  registerMobileSidebar(reg: MobileSidebarRegistration): void {
+    this._mobileSidebarRegistrations.update(m => {
+      const next = new Map(m);
+      next.set(reg.view, reg);
+      return next;
+    });
+  }
+
+  /**
+   * Unregister when the component is destroyed. Call from `destroyRef.onDestroy`.
+   */
+  unregisterMobileSidebar(view: MainView): void {
+    this._mobileSidebarRegistrations.update(m => {
+      const next = new Map(m);
+      next.delete(view);
+      return next;
+    });
+  }
 
   // Viewport settings configuration
   private viewportSettings = {
@@ -127,11 +216,6 @@ export class UiStateService {
 
   resetSelectedRemote(): void {
     this._selectedRemote.set(null);
-  }
-
-  // === Mobile Sidebar ===
-  setMobileSidebarOpen(open: boolean): void {
-    this._mobileSidebarOpen.set(open);
   }
 
   extractFilename(path: string): string {

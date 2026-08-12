@@ -87,6 +87,8 @@ export class NautilusService extends TauriBaseService {
 
   private pickerOverlayRef: OverlayRef | null = null;
   private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
+  private isBrowserOpening = false;
+  private isPickerOpening = false;
 
   private browserOverlayRef: OverlayRef | null = null;
   private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
@@ -282,6 +284,8 @@ export class NautilusService extends TauriBaseService {
       }
       return;
     }
+    if (this.isBrowserOpening) return;
+    this.isBrowserOpening = true;
 
     this._isBrowserOverlayOpen.set(true);
 
@@ -294,12 +298,17 @@ export class NautilusService extends TauriBaseService {
       }
     }
 
-    const { NautilusComponent } = await import('src/app/file-browser/nautilus/nautilus.component');
-    const { overlayRef, componentRef } = this.createNautilusOverlay(NautilusComponent, () =>
-      this.closeBrowserOverlay()
-    );
-    this.browserOverlayRef = overlayRef;
-    this.browserComponentRef = componentRef;
+    try {
+      const { NautilusComponent } =
+        await import('src/app/file-browser/nautilus/nautilus.component');
+      const { overlayRef, componentRef } = this.createNautilusOverlay(NautilusComponent, () =>
+        this.closeBrowserOverlay()
+      );
+      this.browserOverlayRef = overlayRef;
+      this.browserComponentRef = componentRef;
+    } finally {
+      this.isBrowserOpening = false;
+    }
   }
 
   closeBrowserOverlay(): void {
@@ -330,12 +339,17 @@ export class NautilusService extends TauriBaseService {
   }
 
   async openFilePicker(options: FilePickerConfig): Promise<void> {
-    if (this.pickerOverlayRef) return;
+    if (this.pickerOverlayRef || this.isPickerOpening) return;
+    this.isPickerOpening = true;
     this._filePickerState.set({
       isOpen: true,
       options: { ...options, requestId: options.requestId ?? crypto.randomUUID() },
     });
-    await this.createPickerOverlay();
+    try {
+      await this.createPickerOverlay();
+    } finally {
+      this.isPickerOpening = false;
+    }
   }
 
   closeFilePicker(result: FileBrowserItem[] | null): void {

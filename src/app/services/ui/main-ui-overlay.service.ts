@@ -12,6 +12,7 @@ export class MainUiOverlayService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private overlayRef: OverlayRef | null = null;
   private componentRef: ComponentRef<MainUiContainerComponent> | null = null;
+  private isOpening = false;
 
   private readonly _isMainUiOverlayOpen = signal<boolean>(false);
   readonly isMainUiOverlayOpen = this._isMainUiOverlayOpen.asReadonly();
@@ -25,7 +26,8 @@ export class MainUiOverlayService extends TauriBaseService {
   }
 
   async openMainUiOverlay(): Promise<void> {
-    if (this.overlayRef) return;
+    if (this.overlayRef || this.isOpening) return;
+    this.isOpening = true;
     this._isMainUiOverlayOpen.set(true);
 
     const overlayRef = this.overlay.create({
@@ -37,21 +39,26 @@ export class MainUiOverlayService extends TauriBaseService {
       backdropClass: 'cdk-overlay-dark-backdrop',
     });
 
-    const { MainUiContainerComponent } = await import('src/app/layout/main-ui-container.component');
-    const componentRef = overlayRef.attach(new ComponentPortal(MainUiContainerComponent));
+    try {
+      const { MainUiContainerComponent } =
+        await import('src/app/layout/main-ui-container.component');
+      const componentRef = overlayRef.attach(new ComponentPortal(MainUiContainerComponent));
 
-    const host = componentRef.location.nativeElement as HTMLElement;
-    host.classList.add('slide-overlay-left-enter');
-    host.style.width = '100vw';
-    host.style.height = '100dvh';
+      const host = componentRef.location.nativeElement as HTMLElement;
+      host.classList.add('slide-overlay-left-enter');
+      host.style.width = '100vw';
+      host.style.height = '100dvh';
 
-    overlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => this.closeMainUiOverlay());
+      overlayRef
+        .backdropClick()
+        .pipe(take(1))
+        .subscribe(() => this.closeMainUiOverlay());
 
-    this.overlayRef = overlayRef;
-    this.componentRef = componentRef;
+      this.overlayRef = overlayRef;
+      this.componentRef = componentRef;
+    } finally {
+      this.isOpening = false;
+    }
   }
 
   closeMainUiOverlay(): void {

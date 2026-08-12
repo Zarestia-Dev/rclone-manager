@@ -201,6 +201,7 @@
     [customTabs]="tabs"
     [activeTab]="activeSubMode()"
     (activeTabChange)="setSubMode($event)"
+    [mobileHidden]="isSidebarOver() && isSidebarOpen()"
     data-tauri-drag-region
   ></app-tabs>
 </div>

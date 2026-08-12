@@ -654,14 +654,6 @@ export class PreferencesModalComponent {
     this.searchQuery.set(searchText.toLowerCase());
   }
 
-  // Escape-to-close handled by EscapeCloseDirective (hostDirective).
-
-  @HostListener('document:keydown.control.f', ['$event'])
-  handleCtrlF(event: Event): void {
-    event.preventDefault();
-    this.toggleSearch();
-  }
-
   toggleSearch(): void {
     this.searchVisible.update(v => !v);
     if (!this.searchVisible()) this.onSearchTextChange('');

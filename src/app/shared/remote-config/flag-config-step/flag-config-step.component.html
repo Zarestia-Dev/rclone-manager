@@ -32,7 +32,7 @@
         matIconButton
         class="json-toggle-btn"
         [class.active]="showJsonMode()"
-        [disabled]="showJsonMode() && state.isActiveStepInvalid()"
+        [disabled]="showJsonMode() && (state?.isActiveStepInvalid() ?? false)"
         (click)="toggleJsonMode()"
         [attr.title]="
           (showJsonMode()

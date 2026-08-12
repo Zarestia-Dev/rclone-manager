@@ -1137,6 +1137,44 @@ button {
 // ============================================================================
 // SECTION 6: COMPONENT STYLES
 // ============================================================================
+mat-tab-group,
+.mat-mdc-tab-group {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+
+  .mat-mdc-tab-body-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .mat-mdc-tab-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    &.mat-mdc-tab-body-active {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+  }
+
+  .mat-mdc-tab-body-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100% !important;
+  }
+}
+
 mat-accordion {
   display: flex;
   flex-direction: column;

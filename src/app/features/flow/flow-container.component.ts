@@ -18,6 +18,7 @@ import { MountedRemote, QuickRun, ServeListItem, TabItem } from '@app/types';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { isMobile } from 'src/app/services/infrastructure/platform/api-client.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -54,6 +55,7 @@ export type FlowSubMode = 'builder' | 'quick_run';
 export class FlowContainerComponent {
   readonly flowOverlayService = inject(FlowOverlayService);
   readonly quickRunService = inject(QuickRunService);
+  private readonly uiStateService = inject(UiStateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
   private readonly localStorage = inject(LocalStorageService);
@@ -76,6 +78,7 @@ export class FlowContainerComponent {
 
   readonly isSidebarOpen = signal(this.localStorage.get('ui.flowSidebarOpen', true));
   readonly sidebarMode = signal<MatDrawerMode>('side');
+  readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
   readonly searchQuery = signal('');
   readonly searchVisible = signal(false);
 
@@ -90,6 +93,16 @@ export class FlowContainerComponent {
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
+
+    this.uiStateService.registerMobileSidebar({
+      view: 'flow',
+      isOver: this.isSidebarOver,
+      isOpen: this.isSidebarOpen,
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.uiStateService.unregisterMobileSidebar('flow');
+    });
   }
 
   setSidebarOpen(open: boolean): void {

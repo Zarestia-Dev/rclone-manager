@@ -36,6 +36,7 @@ import {
   DialogData,
 } from '../../../../services/remote/remote-config-state.service';
 import { RemoteCreationOrchestrator } from '../../../../services/remote/remote-creation-orchestrator.service';
+import { RcloneValueMapperService } from '../../../../services/remote/rclone-value-mapper.service';
 import {
   RemoteConfigSections,
   REMOTE_CONFIG_KEYS,
@@ -53,9 +54,6 @@ import { ApplyTemplateEvent } from '../../../../shared/remote-config/preset-temp
 @Component({
   selector: 'app-remote-config-modal',
   hostDirectives: [EscapeCloseDirective],
-  host: {
-    '(window:keydown)': 'handleSearchKeyboard($event)',
-  },
   imports: [
     ReactiveFormsModule,
     TranslatePipe,
@@ -100,6 +98,7 @@ export class RemoteConfigModalComponent {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly orchestrator = inject(RemoteCreationOrchestrator);
+  private readonly valueMapper = inject(RcloneValueMapperService);
 
   readonly LINKED_PROFILE_TYPES = LINKED_PROFILE_TYPES;
 
@@ -340,13 +339,6 @@ export class RemoteConfigModalComponent {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
 
-  handleSearchKeyboard(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-      event.preventDefault();
-      this.toggleSearchVisibility();
-    }
-  }
-
   toggleSidebar(): void {
     this.isSidebarOpen.update(v => !v);
   }
@@ -416,7 +408,7 @@ export class RemoteConfigModalComponent {
       flagType: 'vfs' | 'mount' | 'backend' | 'filter'
     ): Record<string, unknown> => {
       const opts = (rcf.get(`${configKey}.options`) as FormGroup | null)?.getRawValue() ?? {};
-      return this.state.cleanData(opts, flagFields[flagType] ?? []);
+      return this.valueMapper.cleanData(opts, flagFields[flagType] ?? []);
     };
 
     const remoteRaw = this.state.remoteForm.getRawValue();

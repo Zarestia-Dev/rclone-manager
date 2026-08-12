@@ -103,6 +103,7 @@ export class HomeComponent {
   private readonly localStorage = inject(LocalStorageService);
   readonly isSidebarOpen = signal(this.localStorage.get('ui.sidebarOpen', false));
   readonly sidebarMode = signal<MatDrawerMode>('side');
+  readonly isSidebarOver = computed(() => this.sidebarMode() === 'over');
   readonly selectedSyncOperation = linkedSignal<SyncOperationType>(() => {
     const remote = this.selectedRemote();
     if (!remote) return 'sync';
@@ -118,7 +119,17 @@ export class HomeComponent {
 
   constructor() {
     afterNextRender(() => this.setupResponsiveLayout());
-    this.destroyRef.onDestroy(() => this.uiStateService.resetSelectedRemote());
+
+    this.uiStateService.registerMobileSidebar({
+      view: 'main_menu',
+      isOver: this.isSidebarOver,
+      isOpen: this.isSidebarOpen,
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.uiStateService.resetSelectedRemote();
+      this.uiStateService.unregisterMobileSidebar('main_menu');
+    });
   }
 
   // --- Layout ---
@@ -126,11 +137,6 @@ export class HomeComponent {
   setSidebarOpen(open: boolean): void {
     this.isSidebarOpen.set(open);
     this.localStorage.set('ui.sidebarOpen', open);
-
-    // Notify tabs to hide when mobile drawer is open
-    if (this.sidebarMode() === 'over') {
-      this.uiStateService.setMobileSidebarOpen(open);
-    }
   }
 
   private setupResponsiveLayout(): void {

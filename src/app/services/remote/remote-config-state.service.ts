@@ -14,7 +14,6 @@ import {
   RemoteSettings,
   FlagType,
   SYNC_TYPES,
-  SENSITIVE_KEYS,
   PROFILE_ICONS,
   PendingRemoteData,
 } from '@app/types';
@@ -340,26 +339,7 @@ export class RemoteConfigStateService {
     if (!stepType) return [];
 
     const fields = this.getFieldsForStep(stepType);
-    if (!fields) return [];
-
-    return fields
-      .filter(field => {
-        const name = (field.FieldName || field.Name || '').toLowerCase();
-        return (
-          field.IsPassword ||
-          field.Name === 'pass' ||
-          SENSITIVE_KEYS.some(key => name.includes(key))
-        );
-      })
-      .map(field => {
-        const key = field.Name || field.FieldName;
-        const name = field.FieldName || field.Name || '';
-        return {
-          key,
-          name,
-          help: field.Help || '',
-        };
-      });
+    return this.valueMapper.extractSensitiveFields(fields);
   });
   readonly activeStepType = computed(
     () =>
@@ -624,20 +604,6 @@ export class RemoteConfigStateService {
     }
   }
 
-  cleanData(formData: Record<string, unknown>, fields: RcConfigOption[]): Record<string, unknown> {
-    const map = new Map(fields.map(f => [f.Name || f.FieldName, f]));
-    return Object.entries(formData).reduce(
-      (acc, [k, v]) => {
-        const f = map.get(k);
-        if (f) {
-          if (!this.valueMapper.isDefaultValue(v, f)) acc[f.Name || f.FieldName] = v;
-        } else if (v !== undefined && v !== null && v !== '') acc[k] = v;
-        return acc;
-      },
-      {} as Record<string, unknown>
-    );
-  }
-
   private getRuntimeRemoteOptions(
     remoteName: string,
     config: Record<string, unknown>
@@ -665,7 +631,7 @@ export class RemoteConfigStateService {
       return { [remoteName]: opts };
     }
     if (type === 'vfs' || type === 'filter' || type === 'backend')
-      return this.cleanData(
+      return this.valueMapper.cleanData(
         (configData['options'] as Record<string, unknown>) || {},
         this.getFieldsForStep(type)
       );
@@ -673,7 +639,7 @@ export class RemoteConfigStateService {
       remoteName,
       pathService: this.pathService,
       runtimeRemoteProfileNames: this.profileOptions().runtimeRemote,
-      cleanData: (opts, fields) => this.cleanData(opts, fields),
+      cleanData: (opts, fields) => this.valueMapper.cleanData(opts, fields),
       dynamicFields: this.getFieldsForStep(type),
       flatOptionNames: new Set((staticFlagDefinitions[type] || []).map(f => f.Name || f.FieldName)),
     });

@@ -59,8 +59,6 @@ import {
   PresetTemplateBarComponent,
   ApplyTemplateEvent,
 } from 'src/app/shared/remote-config/preset-template-bar/preset-template-bar.component';
-import { RemoteConfigStateService } from 'src/app/services/remote/remote-config-state.service';
-import { RemoteCreationOrchestrator } from 'src/app/services/remote/remote-creation-orchestrator.service';
 import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
@@ -70,6 +68,7 @@ import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService, DefaultPathOp } from 'src/app/services/infrastructure/platform/path.service';
 import { RcloneValueMapperService } from 'src/app/services/remote/rclone-value-mapper.service';
+import { EscapeCloseDirective } from 'src/app/shared/directives/escape-close.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const ALL_FLAG_TYPES = [
@@ -92,6 +91,7 @@ const ALL_FLAG_TYPES = [
  */
 @Component({
   selector: 'app-quick-run-editor',
+  hostDirectives: [EscapeCloseDirective],
   imports: [
     ReactiveFormsModule,
     MatIconModule,
@@ -115,7 +115,6 @@ const ALL_FLAG_TYPES = [
     ObscureToolComponent,
     PresetTemplateBarComponent,
   ],
-  providers: [RemoteCreationOrchestrator, RemoteConfigStateService],
   templateUrl: './quick-run-editor.component.html',
   styleUrls: ['./quick-run-editor.component.scss', '../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -161,6 +160,7 @@ export class QuickRunEditorComponent implements OnInit {
     })
   );
   private seedRcloneConfig?: Record<string, unknown>;
+  private destPathGeneration = 0;
 
   // ── UI state ──────────────────────────────────────────────────────────────
 
@@ -181,20 +181,7 @@ export class QuickRunEditorComponent implements OnInit {
     const fields: RcConfigOption[] =
       tab === 'runtimeRemote' ? this.runtimeRemoteFields() : this.getFlagFields(tab);
 
-    return fields
-      .filter(field => {
-        const name = (field.FieldName || field.Name || '').toLowerCase();
-        return (
-          field.IsPassword ||
-          field.Name === 'pass' ||
-          ['pass', 'secret', 'token', 'key', 'password', 'auth'].some(k => name.includes(k))
-        );
-      })
-      .map(field => ({
-        key: field.Name || field.FieldName || '',
-        name: field.FieldName || field.Name || '',
-        help: field.Help || '',
-      }));
+    return this.valueMapper.extractSensitiveFields(fields);
   });
 
   readonly remotes = computed(() => this.remoteFacade.orderedVisibleRemotes());
@@ -660,9 +647,11 @@ export class QuickRunEditorComponent implements OnInit {
     const pathCtrl = destGroup?.get('path');
 
     if (destGroup && pathCtrl && (!pathCtrl.value || pathCtrl.pristine)) {
+      const gen = ++this.destPathGeneration;
       void this.pathService
         .resolveDefaultPath(remoteName, opType as DefaultPathOp)
         .then(defaultPath => {
+          if (gen !== this.destPathGeneration) return;
           if (destGroup && pathCtrl && (!pathCtrl.value || pathCtrl.pristine)) {
             destGroup.patchValue({ type: 'local', path: defaultPath });
           }
@@ -748,6 +737,7 @@ export class QuickRunEditorComponent implements OnInit {
   toggleObscureTool(): void {
     this.showObscureTool.update(v => !v);
     if (this.showObscureTool()) {
+      this.showSearch.set(false);
       this.showCliImport.set(false);
       if (this.sidebarMode() === 'over') this.isSidebarOpen.set(false);
     }
@@ -789,28 +779,12 @@ export class QuickRunEditorComponent implements OnInit {
 
     const preset = this.remotePresetsService.resolvePresets(remoteType);
 
-    const patchOptions = (
-      groupKey: string,
-      overrides: Record<string, unknown> | undefined
-    ): void => {
-      if (!overrides) return;
-      const optsGroup = this.form.get(`${groupKey}.options`) as FormGroup | null;
-      if (!optsGroup) return;
-      for (const [k, v] of Object.entries(overrides)) {
-        if (!optsGroup.contains(k)) {
-          optsGroup.addControl(k, new FormControl(v));
-        } else {
-          optsGroup.get(k)?.setValue(v);
-        }
-      }
-    };
-
-    patchOptions('vfsConfig', preset.vfs);
-    patchOptions('backendConfig', preset.backend);
+    this.patchGroupOptions('vfsConfig', preset.vfs);
+    this.patchGroupOptions('backendConfig', preset.backend);
 
     const currentOp = this.currentOpType();
     if (currentOp === 'mount' && preset.mount) {
-      patchOptions('mountConfig', preset.mount);
+      this.patchGroupOptions('mountConfig', preset.mount);
     }
 
     if (preset.remote) {
@@ -876,23 +850,6 @@ export class QuickRunEditorComponent implements OnInit {
     this.showCliImport.set(false);
   }
 
-  private cleanData(
-    formData: Record<string, unknown>,
-    fields: RcConfigOption[]
-  ): Record<string, unknown> {
-    const map = new Map(fields.map(f => [f.Name || f.FieldName, f]));
-    return Object.entries(formData).reduce(
-      (acc, [k, v]) => {
-        const f = map.get(k);
-        if (f) {
-          if (!this.valueMapper.isDefaultValue(v, f)) acc[f.Name || f.FieldName] = v;
-        } else if (v !== undefined && v !== null && v !== '') acc[k] = v;
-        return acc;
-      },
-      {} as Record<string, unknown>
-    );
-  }
-
   /**
    * Build a {@link QuickRunInput} from the current form state.
    */
@@ -947,7 +904,7 @@ export class QuickRunEditorComponent implements OnInit {
 
     const opOptsGroup = inner.get('options') as FormGroup | null;
     if (opOptsGroup) {
-      const cleanedOp = this.cleanData(
+      const cleanedOp = this.valueMapper.cleanData(
         opOptsGroup.getRawValue() as Record<string, unknown>,
         fields[opType as FlagType] ?? []
       );
@@ -973,7 +930,7 @@ export class QuickRunEditorComponent implements OnInit {
 
       const optsValue = optsGroup.getRawValue() as Record<string, unknown>;
       const typeFields = fields[flagType as FlagType] ?? [];
-      const cleaned = this.cleanData(optsValue, typeFields);
+      const cleaned = this.valueMapper.cleanData(optsValue, typeFields);
       if (Object.keys(cleaned).length > 0) {
         rclone[flagType] = cleaned;
       }
@@ -981,7 +938,7 @@ export class QuickRunEditorComponent implements OnInit {
 
     const runtimeRaw = this.runtimeRemoteForm().getRawValue() as Record<string, unknown>;
     delete runtimeRaw['type'];
-    const cleanedRuntime = this.cleanData(runtimeRaw, this.runtimeRemoteFields());
+    const cleanedRuntime = this.valueMapper.cleanData(runtimeRaw, this.runtimeRemoteFields());
     if (Object.keys(cleanedRuntime).length > 0) {
       rclone['runtimeRemote'] = cleanedRuntime;
     }
@@ -1045,7 +1002,7 @@ export class QuickRunEditorComponent implements OnInit {
         (raw[`${flagType}Config`] as { options?: Record<string, unknown> } | undefined)?.options ??
         {};
       const typeFields = fields[flagType as FlagType] ?? [];
-      return this.cleanData(opts, typeFields);
+      return this.valueMapper.cleanData(opts, typeFields);
     };
 
     const isVfsApplicable = opType === 'mount' || opType === 'serve';
@@ -1068,36 +1025,39 @@ export class QuickRunEditorComponent implements OnInit {
     return res;
   });
 
-  onApplyTemplate(event: ApplyTemplateEvent): void {
-    const { values } = event;
-    const patchGroupOptions = (configKey: string, opts?: Record<string, unknown>): void => {
-      if (!opts) return;
-      const groupKey = configKey.endsWith('Config') ? configKey : `${configKey}Config`;
-      const configGroup = this.form.get(groupKey) as FormGroup | null;
-      if (!configGroup) return;
+  private patchGroupOptions(
+    configKey: string,
+    opts?: Record<string, unknown>,
+    ignoredKeys?: string[]
+  ): void {
+    if (!opts) return;
+    const groupKey = configKey.endsWith('Config') ? configKey : `${configKey}Config`;
+    const configGroup = this.form.get(groupKey) as FormGroup | null;
+    if (!configGroup) return;
 
-      const optsGroup = configGroup.get('options') as FormGroup | null;
-      if (optsGroup) {
-        for (const [k, v] of Object.entries(opts)) {
-          if (
-            ['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint', 'source', 'dest'].includes(k)
-          )
-            continue;
-          if (!optsGroup.contains(k)) {
-            optsGroup.addControl(k, new FormControl(v));
-          } else {
-            optsGroup.get(k)?.setValue(v);
-          }
+    const optsGroup = configGroup.get('options') as FormGroup | null;
+    if (optsGroup) {
+      for (const [k, v] of Object.entries(opts)) {
+        if (ignoredKeys && ignoredKeys.includes(k)) continue;
+        if (!optsGroup.contains(k)) {
+          optsGroup.addControl(k, new FormControl(v));
+        } else {
+          optsGroup.get(k)?.setValue(v);
         }
       }
-    };
+    }
+  }
 
-    if (values.vfs) patchGroupOptions('vfsConfig', values.vfs);
-    if (values.mount) patchGroupOptions('mountConfig', values.mount);
-    if (values.backend) patchGroupOptions('backendConfig', values.backend);
-    if (values.filter) patchGroupOptions('filterConfig', values.filter);
-    if (values.sync) patchGroupOptions('syncConfig', values.sync);
-    if (values.copy) patchGroupOptions('copyConfig', values.copy);
+  onApplyTemplate(event: ApplyTemplateEvent): void {
+    const { values } = event;
+    const PATH_KEYS = ['srcFs', 'dstFs', 'path1', 'path2', 'fs', 'mountPoint', 'source', 'dest'];
+
+    if (values.vfs) this.patchGroupOptions('vfsConfig', values.vfs, PATH_KEYS);
+    if (values.mount) this.patchGroupOptions('mountConfig', values.mount, PATH_KEYS);
+    if (values.backend) this.patchGroupOptions('backendConfig', values.backend, PATH_KEYS);
+    if (values.filter) this.patchGroupOptions('filterConfig', values.filter, PATH_KEYS);
+    if (values.sync) this.patchGroupOptions('syncConfig', values.sync, PATH_KEYS);
+    if (values.copy) this.patchGroupOptions('copyConfig', values.copy, PATH_KEYS);
 
     const currentOp = this.currentOpType();
     if (currentOp) {
@@ -1106,7 +1066,7 @@ export class QuickRunEditorComponent implements OnInit {
         values.operation ??
         (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
       if (opOpts && typeof opOpts === 'object') {
-        patchGroupOptions(`${currentOp}Config`, opOpts);
+        this.patchGroupOptions(`${currentOp}Config`, opOpts, PATH_KEYS);
 
         const srcPath = (opOpts['srcFs'] ?? opOpts['path1'] ?? opOpts['fs'] ?? opOpts['source']) as
           string | undefined;

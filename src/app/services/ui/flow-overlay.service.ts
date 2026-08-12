@@ -12,6 +12,7 @@ export class FlowOverlayService extends TauriBaseService {
   private readonly overlay = inject(Overlay);
   private overlayRef: OverlayRef | null = null;
   private componentRef: ComponentRef<FlowContainerComponent> | null = null;
+  private isOpening = false;
 
   private readonly _isFlowOverlayOpen = signal<boolean>(false);
   readonly isFlowOverlayOpen = this._isFlowOverlayOpen.asReadonly();
@@ -25,7 +26,8 @@ export class FlowOverlayService extends TauriBaseService {
   }
 
   async openFlowOverlay(): Promise<void> {
-    if (this.overlayRef) return;
+    if (this.overlayRef || this.isOpening) return;
+    this.isOpening = true;
     this._isFlowOverlayOpen.set(true);
 
     const overlayRef = this.overlay.create({
@@ -37,22 +39,26 @@ export class FlowOverlayService extends TauriBaseService {
       backdropClass: 'cdk-overlay-dark-backdrop',
     });
 
-    const { FlowContainerComponent } =
-      await import('src/app/features/flow/flow-container.component');
-    const componentRef = overlayRef.attach(new ComponentPortal(FlowContainerComponent));
+    try {
+      const { FlowContainerComponent } =
+        await import('src/app/features/flow/flow-container.component');
+      const componentRef = overlayRef.attach(new ComponentPortal(FlowContainerComponent));
 
-    const host = componentRef.location.nativeElement as HTMLElement;
-    host.classList.add('slide-overlay-left-enter');
-    host.style.width = '100vw';
-    host.style.height = '100dvh';
+      const host = componentRef.location.nativeElement as HTMLElement;
+      host.classList.add('slide-overlay-left-enter');
+      host.style.width = '100vw';
+      host.style.height = '100dvh';
 
-    overlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => this.closeFlowOverlay());
+      overlayRef
+        .backdropClick()
+        .pipe(take(1))
+        .subscribe(() => this.closeFlowOverlay());
 
-    this.overlayRef = overlayRef;
-    this.componentRef = componentRef;
+      this.overlayRef = overlayRef;
+      this.componentRef = componentRef;
+    } finally {
+      this.isOpening = false;
+    }
   }
 
   closeFlowOverlay(): void {

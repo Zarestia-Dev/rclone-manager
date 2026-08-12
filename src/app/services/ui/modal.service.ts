@@ -161,17 +161,28 @@ export class ModalService {
       if (this.dialog.openDialogs.length > 0) {
         const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
         topmostDialog.close();
+
+        // If parent dialogs remain, re-push so the back button can close them too
+        topmostDialog.afterClosed().subscribe(() => {
+          if (this.dialog.openDialogs.length > 0) {
+            window.history.pushState({ modal: true }, '');
+          }
+        });
       }
     });
 
-    this.dialog.afterOpened.subscribe(dialogRef => {
-      window.history.pushState({ dialogId: dialogRef.id }, '');
+    // Push a single history entry when the first dialog opens
+    this.dialog.afterOpened.subscribe(() => {
+      if (this.dialog.openDialogs.length === 1) {
+        window.history.pushState({ modal: true }, '');
+      }
+    });
 
-      dialogRef.afterClosed().subscribe(() => {
-        if (window.history.state?.dialogId === dialogRef.id) {
-          window.history.back();
-        }
-      });
+    // Clean up history only when ALL dialogs are closed (programmatic close)
+    this.dialog.afterAllClosed.subscribe(() => {
+      if (window.history.state?.modal) {
+        window.history.back();
+      }
     });
   }
 

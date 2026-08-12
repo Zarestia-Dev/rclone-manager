@@ -42,6 +42,7 @@
 
 <app-search-container
   [visible]="searchVisible()"
+  (searchToggle)="toggleSearch()"
   [searchText]="searchQuery()"
   (searchTextChange)="onSearchTextChange($event)"
   [placeholder]="'modals.preferences.searchPlaceholder' | translate"

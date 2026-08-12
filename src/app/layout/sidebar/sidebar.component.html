@@ -16,6 +16,7 @@
 <!-- Search Container -->
 <app-search-container
   [visible]="searchVisible()"
+  (searchToggle)="toggleSearch()"
   [searchText]="searchTerm()"
   (searchTextChange)="onSearchTextChange($event)"
   [placeholder]="'sidebar.searchPlaceholder' | translate"
