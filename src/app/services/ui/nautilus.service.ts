@@ -524,9 +524,9 @@ export class NautilusService extends TauriBaseService {
     return this.invokeCommand<void>('unregister_send_to', { remote, path });
   }
 
-  private createNautilusOverlay(
+  private createNautilusOverlay<T = unknown>(
     componentClass: typeof NautilusComponent,
-    onClose: () => void,
+    onClose: (result?: T) => void,
     showAnimation = true
   ): { overlayRef: OverlayRef; componentRef: ComponentRef<NautilusComponent> } {
     const overlayRef = this.overlay.create({
@@ -540,35 +540,23 @@ export class NautilusService extends TauriBaseService {
       componentRef.location.nativeElement.classList.add('slide-overlay-enter');
     }
 
-    outputToObservable(componentRef.instance.closeOverlay).pipe(take(1)).subscribe(onClose);
-    overlayRef.backdropClick().pipe(take(1)).subscribe(onClose);
+    outputToObservable(componentRef.instance.closeOverlay)
+      .pipe(take(1))
+      .subscribe(res => onClose(res as T));
+    overlayRef
+      .backdropClick()
+      .pipe(take(1))
+      .subscribe(() => onClose());
 
     return { overlayRef, componentRef };
   }
 
   private async createPickerOverlay(): Promise<void> {
     const { NautilusComponent } = await import('src/app/file-browser/nautilus/nautilus.component');
-
-    const overlayRef = this.overlay.create({
-      positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
-      scrollStrategy: this.overlay.scrollStrategies.block(),
-    });
-
-    const componentRef = overlayRef.attach(new ComponentPortal(NautilusComponent));
-
-    componentRef.location.nativeElement.classList.add('slide-overlay-enter');
-
-    // When the picker confirms a selection, it emits the chosen items via closeOverlay
-    outputToObservable(componentRef.instance.closeOverlay)
-      .pipe(take(1))
-      .subscribe(items => this.closeFilePicker(items ?? null));
-
-    // Clicking the backdrop (outside the picker) cancels the selection
-    overlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => this.closeFilePicker(null));
-
+    const { overlayRef, componentRef } = this.createNautilusOverlay<FileBrowserItem[] | null>(
+      NautilusComponent,
+      items => this.closeFilePicker(items ?? null)
+    );
     this.pickerOverlayRef = overlayRef;
     this.pickerComponentRef = componentRef;
   }

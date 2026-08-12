@@ -27,8 +27,8 @@ import { WindowControlsComponent } from 'src/app/shared/components/window-contro
 import { AppMenuComponent } from 'src/app/shared/components/app-menu/app-menu.component';
 import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
 import { TabsButtonsComponent } from 'src/app/layout/tabs-buttons/tabs-buttons.component';
-import { QuickRunCardComponent } from './quick-run-card/quick-run-card.component';
-import { QuickRunWorkspaceComponent } from './quick-run-workspace/quick-run-workspace.component';
+import { QuickRunCardComponent } from './quick-run/quick-run-card/quick-run-card.component';
+import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quick-run-workspace.component';
 
 export type FlowSubMode = 'builder' | 'quick_run';
 

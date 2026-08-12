@@ -202,8 +202,12 @@ export class NautilusDragDropService {
     this._dragGhostHost.appendChild(this._dragGhostEl);
     if ('popover' in this._dragGhostEl) {
       try {
-        (this._dragGhostEl as any).popover = 'manual';
-        (this._dragGhostEl as any).showPopover();
+        const el = this._dragGhostEl as HTMLElement & {
+          popover?: string;
+          showPopover?: () => void;
+        };
+        el.popover = 'manual';
+        el.showPopover?.();
       } catch {
         // Popover fallback
       }

@@ -66,7 +66,7 @@ export class NotificationService {
   ): Promise<MatDialogRef<any, boolean>> {
     const { ConfirmModalComponent } =
       await import('../../shared/modals/confirm-modal/confirm-modal.component');
-    return this.dialog.open(ConfirmModalComponent, {
+    return this.dialog.open<any, ConfirmDialogData, boolean>(ConfirmModalComponent, {
       maxWidth: '480px',
       disableClose: true,
       data,
@@ -81,7 +81,7 @@ export class NotificationService {
   ): Promise<MatDialogRef<any, T>> {
     const { InputModalComponent } =
       await import('../../shared/modals/input-modal/input-modal.component');
-    return this.dialog.open(InputModalComponent, {
+    return this.dialog.open<any, InputModalData, T>(InputModalComponent, {
       minWidth: '362px',
       disableClose: true,
       data,

@@ -10,6 +10,85 @@ import { Entry } from '@app/types';
 export type FileCategory =
   'image' | 'video' | 'audio' | 'pdf' | 'directory' | 'binary' | 'text' | 'archive';
 
+const ARCHIVE_EXTENSIONS: ReadonlySet<string> = new Set([
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+  'bz2',
+  'xz',
+  'tgz',
+  'rcman',
+]);
+
+const KNOWN_BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
+  'exe',
+  'dll',
+  'so',
+  'dylib',
+  'bin',
+  'app',
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+  'bz2',
+  'xz',
+  'tgz',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'odt',
+  'ods',
+  'db',
+  'sqlite',
+  'mdb',
+  'psd',
+  'ai',
+  'indd',
+  'raw',
+  'cr2',
+  'nef',
+  'o',
+  'a',
+  'lib',
+  'class',
+  'pyc',
+  'jar',
+  'img',
+  'iso',
+  'dmg',
+  'qcow',
+  'qcow2',
+  'vdi',
+  'vmdk',
+  'vpc',
+  'vhdx',
+]);
+
+const FILE_TYPE_MAPPINGS: Record<string, string> = {
+  image: 'image-x-generic',
+  video: 'video-x-generic',
+  audio: 'audio-x-generic',
+  pdf: 'application-pdf',
+  text: 'text-x-generic',
+  binary: 'package-x-generic',
+  archive: 'package-x-generic',
+  directory: 'folder-adw',
+};
+
+const FOLDER_ALIASES: Record<string, string> = {
+  movies: 'folder-videos',
+  node_modules: 'folder-code',
+  downloads: 'folder-download',
+  home: 'go-home',
+};
+
 @Injectable({
   providedIn: 'root',
 })
@@ -27,18 +106,15 @@ export class IconService {
   }
 
   private registerIcons(): void {
-    // Start with base icons, then add Adwaita icons
     this.allIcons = { ...BASE_ICONS };
 
     for (const [name, path] of Object.entries(ADWAITA_ICONS)) {
       const lower = name.toLowerCase();
-      // Prefer base icons if key conflicts
       if (!this.allIcons[lower]) {
         this.allIcons[lower] = path;
       }
     }
 
-    // Register all icons with MatIconRegistry
     for (const [name, path] of Object.entries(this.allIcons)) {
       const normalizedPath = path.startsWith('/') ? path : `/${path}`;
       this.iconRegistry.addSvgIcon(
@@ -77,19 +153,11 @@ export class IconService {
     if (entry.IsDir) {
       const lowerName = entry.Name.toLowerCase();
 
-      // Special folder cases
       const folderKey = `folder-${lowerName}`;
       const resolved = this.resolveIcon(folderKey);
       if (resolved) return resolved;
 
-      // Common folder aliases
-      const aliases: Record<string, string> = {
-        movies: 'folder-videos',
-        node_modules: 'folder-code',
-        downloads: 'folder-download',
-        home: 'go-home',
-      };
-      if (aliases[lowerName]) return aliases[lowerName];
+      if (FOLDER_ALIASES[lowerName]) return FOLDER_ALIASES[lowerName];
 
       return 'folder-adw';
     }
@@ -98,14 +166,12 @@ export class IconService {
     const parts = entry.Name.split('.');
     const extension = parts.length > 1 ? parts.pop()?.toLowerCase() : undefined;
 
-    // 1) Extension mapping
     if (extension && MIME_EXTENSION_MAP[extension]) {
       const extIcon = MIME_EXTENSION_MAP[extension];
       const resolved = this.resolveIcon(extIcon);
       if (resolved) return resolved;
     }
 
-    // 2) MIME mapping
     if (rawMime) {
       const mimeIcon = getIconForMimeType(rawMime);
       if (mimeIcon) {
@@ -113,11 +179,9 @@ export class IconService {
         if (resolved) return resolved;
       }
 
-      // 3) Normalized MIME (application/json -> application-json)
       const resolvedMime = this.resolveIcon(rawMime);
       if (resolvedMime) return resolvedMime;
 
-      // 4) Generic category fallback
       const genericIcon = getGenericIconForMimeType(rawMime);
       const resolvedGeneric = this.resolveIcon(genericIcon);
       if (resolvedGeneric) return resolvedGeneric;
@@ -131,80 +195,24 @@ export class IconService {
       return 'directory';
     }
 
-    // Check MIME type and extension
     const mimeType = item.MimeType;
     const extension = item.Name.split('.').pop()?.toLowerCase() || '';
 
-    // Media types that need special HTML elements
     if (mimeType?.startsWith('image/')) return 'image';
     if (mimeType?.startsWith('video/')) return 'video';
     if (mimeType?.startsWith('audio/')) return 'audio';
     if (mimeType === 'application/pdf') return 'pdf';
     if (mimeType?.startsWith('text/')) return 'text';
 
-    // Extension-based detection for media (when MIME is missing)
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'].includes(extension))
       return 'image';
     if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(extension)) return 'video';
     if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(extension)) return 'audio';
     if (extension === 'pdf') return 'pdf';
 
-    // Archive types
-    const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz', 'rcman'];
-    if (archiveExtensions.includes(extension)) return 'archive';
+    if (ARCHIVE_EXTENSIONS.has(extension)) return 'archive';
 
-    // Known binary extensions that definitely cannot be previewed
-    const knownBinary = [
-      'exe',
-      'dll',
-      'so',
-      'dylib',
-      'bin',
-      'app',
-      'zip',
-      'rar',
-      '7z',
-      'tar',
-      'gz',
-      'bz2',
-      'xz',
-      'tgz',
-      'doc',
-      'docx',
-      'xls',
-      'xlsx',
-      'ppt',
-      'pptx',
-      'odt',
-      'ods',
-      'db',
-      'sqlite',
-      'mdb',
-      'psd',
-      'ai',
-      'indd',
-      'raw',
-      'cr2',
-      'nef',
-      'o',
-      'a',
-      'lib',
-      'class',
-      'pyc',
-      'jar',
-      'img',
-      'iso',
-      'dmg',
-      'qcow',
-      'qcow2',
-      'vdi',
-      'vmdk',
-      'vpc',
-      'vhdx',
-      'vdi',
-    ];
-
-    if (knownBinary.includes(extension)) {
+    if (KNOWN_BINARY_EXTENSIONS.has(extension)) {
       return 'binary';
     }
 
@@ -217,16 +225,6 @@ export class IconService {
   }
 
   getIconForFileType(fileType: string): string {
-    const mapping: Record<string, string> = {
-      image: 'image-x-generic',
-      video: 'video-x-generic',
-      audio: 'audio-x-generic',
-      pdf: 'application-pdf',
-      text: 'text-x-generic',
-      binary: 'package-x-generic',
-      archive: 'package-x-generic',
-      directory: 'folder-adw',
-    };
-    return mapping[fileType] || 'text-x-generic';
+    return FILE_TYPE_MAPPINGS[fileType] || 'text-x-generic';
   }
 }

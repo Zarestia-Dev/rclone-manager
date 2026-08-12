@@ -1,4 +1,5 @@
-import { effect, inject, Injectable, Injector, signal } from '@angular/core';
+import { DestroyRef, effect, inject, Injectable, Injector, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { platform } from '@tauri-apps/plugin-os';
 import { Theme } from '@app/types';
 import { AppSettingsService } from '../settings/app-settings.service';
@@ -16,6 +17,7 @@ export class WindowService extends TauriBaseService {
   public readonly theme = this._theme.asReadonly();
   appSettingsService = inject(AppSettingsService);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   private readonly _isMaximized = signal<boolean>(false);
@@ -23,18 +25,24 @@ export class WindowService extends TauriBaseService {
 
   constructor() {
     super();
-    // Reactively listen to settings changes
-    this.appSettingsService.selectSetting('runtime.theme').subscribe(setting => {
-      const theme = (setting?.value as Theme) || 'system';
-      this.applyTheme(theme);
-      this._theme.set(theme);
-    });
 
-    // Listen for system theme changes
-    this.systemThemeQuery.addEventListener('change', () => {
+    this.appSettingsService
+      .selectSetting('runtime.theme')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(setting => {
+        const theme = (setting?.value as Theme) || 'system';
+        this.applyTheme(theme);
+        this._theme.set(theme);
+      });
+
+    const handleSystemThemeChange = (): void => {
       if (this._theme() === 'system') {
         this.applyTheme('system');
       }
+    };
+    this.systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+    this.destroyRef.onDestroy(() => {
+      this.systemThemeQuery.removeEventListener('change', handleSystemThemeChange);
     });
 
     this.initWindowListeners();
@@ -44,9 +52,11 @@ export class WindowService extends TauriBaseService {
   private async initWindowListeners(): Promise<void> {
     if (this.isTauri) {
       this.checkMaximizedState();
-      this.listenToEvent('tauri://resize').subscribe(() => {
-        this.checkMaximizedState();
-      });
+      this.listenToEvent('tauri://resize')
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => {
+          this.checkMaximizedState();
+        });
     }
   }
 

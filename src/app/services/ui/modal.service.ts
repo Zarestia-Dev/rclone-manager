@@ -1,5 +1,10 @@
 import { Injectable, inject, Injector, signal, Type } from '@angular/core';
-import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { Subject, Observable, from, switchMap } from 'rxjs';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
@@ -22,30 +27,6 @@ import {
 } from '../infrastructure/platform/api-client.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 
-const originalClose = MatDialogRef.prototype.close;
-MatDialogRef.prototype.close = function (this: MatDialogRef<any>, dialogResult?: any): void {
-  const container = this.id ? document.getElementById(this.id) : null;
-  const overlayElement = container?.closest('.cdk-overlay-pane');
-
-  if (overlayElement?.classList.contains('mobile-sheet-dialog') && window.innerWidth <= 450) {
-    if (container) {
-      if (container.classList.contains('closing')) {
-        return;
-      }
-      container.classList.add('closing');
-    }
-    const backdrop = overlayElement.parentElement?.querySelector('.cdk-overlay-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('closing');
-    }
-    setTimeout(() => {
-      originalClose.call(this, dialogResult);
-    }, 200);
-  } else {
-    originalClose.call(this, dialogResult);
-  }
-};
-
 export interface RemoteConfigModalOptions {
   remoteName?: string;
   remoteType?: string;
@@ -65,7 +46,7 @@ export interface PropertiesModalOptions {
   remoteName?: string;
   path?: string;
   isLocal?: boolean;
-  item?: any;
+  item?: unknown;
   remoteType?: string;
   features?: RemoteFeatures;
   height?: string;
@@ -93,17 +74,22 @@ export interface TemplateManagerModalOptions {
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
 
-interface StandaloneOpts {
+interface StandaloneOpts<D = any> {
   type: string;
   title: string;
-  data?: any;
+  data?: D | null;
   width?: number;
   height?: number;
   suffix?: string;
 }
 
-class AsyncDialogRef<R = any> {
-  constructor(private readonly promise: Promise<MatDialogRef<any, R>>) {}
+export interface DialogRefLike<R = any> {
+  afterClosed(): Observable<R | undefined>;
+  close?(result?: R): void;
+}
+
+export class AsyncDialogRef<R = any> implements DialogRefLike<R> {
+  constructor(private readonly promise: Promise<MatDialogRef<unknown, R>>) {}
 
   afterClosed(): Observable<R | undefined> {
     return from(this.promise).pipe(switchMap(ref => ref.afterClosed()));
@@ -126,7 +112,7 @@ class ChildWindowRef<R = any> {
   }
 }
 
-class StandaloneWindowRef<R = any> {
+export class StandaloneWindowRef<R = any> implements DialogRefLike<R> {
   private readonly closed$ = new Subject<R | undefined>();
 
   afterClosed(): Observable<R | undefined> {
@@ -151,7 +137,7 @@ export class ModalService {
     new URLSearchParams(window.location.search).get('standalone') === 'dialog'
   ).asReadonly();
 
-  private readonly _dialogComponent = signal<Type<any> | null>(null);
+  private readonly _dialogComponent = signal<Type<unknown> | null>(null);
   readonly dialogComponent = this._dialogComponent.asReadonly();
 
   dialogInjector?: Injector;
@@ -162,7 +148,6 @@ export class ModalService {
         const topmostDialog = this.dialog.openDialogs[this.dialog.openDialogs.length - 1];
         topmostDialog.close();
 
-        // If parent dialogs remain, re-push so the back button can close them too
         topmostDialog.afterClosed().subscribe(() => {
           if (this.dialog.openDialogs.length > 0) {
             window.history.pushState({ modal: true }, '');
@@ -171,14 +156,34 @@ export class ModalService {
       }
     });
 
-    // Push a single history entry when the first dialog opens
-    this.dialog.afterOpened.subscribe(() => {
+    this.dialog.afterOpened.subscribe(dialogRef => {
       if (this.dialog.openDialogs.length === 1) {
         window.history.pushState({ modal: true }, '');
       }
+
+      const originalClose = dialogRef.close.bind(dialogRef);
+      dialogRef.close = (dialogResult?: unknown): void => {
+        const container = dialogRef.id ? document.getElementById(dialogRef.id) : null;
+        const overlayElement = container?.closest('.cdk-overlay-pane');
+
+        if (overlayElement?.classList.contains('mobile-sheet-dialog') && window.innerWidth <= 450) {
+          if (container) {
+            if (container.classList.contains('closing')) return;
+            container.classList.add('closing');
+          }
+          const backdrop = overlayElement.parentElement?.querySelector('.cdk-overlay-backdrop');
+          if (backdrop) {
+            backdrop.classList.add('closing');
+          }
+          setTimeout(() => {
+            originalClose(dialogResult);
+          }, 200);
+        } else {
+          originalClose(dialogResult);
+        }
+      };
     });
 
-    // Clean up history only when ALL dialogs are closed (programmatic close)
     this.dialog.afterAllClosed.subscribe(() => {
       if (window.history.state?.modal) {
         window.history.back();
@@ -186,7 +191,7 @@ export class ModalService {
     });
   }
 
-  private readonly loaders: Record<string, () => Promise<Type<any>>> = {
+  private readonly loaders: Record<string, () => Promise<Type<unknown>>> = {
     'quick-add-remote': () =>
       import('../../features/modals/remote-management/quick-add-remote/quick-add-remote.component').then(
         m => m.QuickAddRemoteComponent
@@ -248,7 +253,7 @@ export class ModalService {
         m => m.ArchiveCreateModalComponent
       ),
     'quick-run-editor': () =>
-      import('../../features/flow/quick-run-editor/quick-run-editor.component').then(
+      import('../../flow/quick-run/quick-run-editor/quick-run-editor.component').then(
         m => m.QuickRunEditorComponent
       ),
     'template-manager': () =>
@@ -269,7 +274,7 @@ export class ModalService {
 
     this._dialogComponent.set(await loader());
 
-    let data: any = null;
+    let data: unknown = null;
     const raw = params.get('dialogData');
     if (raw) {
       try {
@@ -295,40 +300,48 @@ export class ModalService {
     );
   }
 
-  private openModal(
+  private openModal<TData = any, TResult = any>(
     type: string,
-    config: any,
-    standalone?: Omit<StandaloneOpts, 'type' | 'data'>
-  ): any {
+    config: MatDialogConfig<TData>,
+    standalone?: Omit<StandaloneOpts<TData>, 'type' | 'data'>
+  ): DialogRefLike<TResult> {
     if (standalone && this.standaloneEnabled) {
-      return this.spawnStandaloneWindow({ type, data: config.data, ...standalone });
+      return this.spawnStandaloneWindow<TData, TResult>({
+        type,
+        data: config.data,
+        ...standalone,
+      });
     }
     if (config.height && !config.panelClass) {
       config.panelClass = 'mobile-sheet-dialog';
     }
-    const dialogPromise = this.loaders[type]().then(comp => this.dialog.open(comp, config));
-    return new AsyncDialogRef(dialogPromise);
+    const dialogPromise = this.loaders[type]().then(comp =>
+      this.dialog.open<unknown, TData, TResult>(comp, config)
+    );
+    return new AsyncDialogRef<TResult>(dialogPromise);
   }
 
-  private spawnStandaloneWindow(opts: StandaloneOpts): StandaloneWindowRef {
+  private spawnStandaloneWindow<TData = any, TResult = any>(
+    opts: StandaloneOpts<TData>
+  ): StandaloneWindowRef<TResult> {
     const suffix = opts.suffix ? `-${sanitizeLabel(opts.suffix)}` : '';
     const label = `dialog-${opts.type}${suffix}`;
-    const ref = new StandaloneWindowRef();
+    const ref = new StandaloneWindowRef<TResult>();
 
     const encoded = opts.data ? encodeURIComponent(JSON.stringify(opts.data)) : '';
     const url = `index.html?standalone=dialog&dialogType=${opts.type}${encoded ? `&dialogData=${encoded}` : ''}`;
 
-    this.openWindowAndBind(label, url, opts.title, opts.width, opts.height, ref);
+    void this.openWindowAndBind(label, url, opts.title, opts.width, opts.height, ref);
     return ref;
   }
 
-  private async openWindowAndBind(
+  private async openWindowAndBind<TResult = any>(
     label: string,
     url: string,
     title: string,
     width: number | undefined,
     height: number | undefined,
-    ref: StandaloneWindowRef
+    ref: StandaloneWindowRef<TResult>
   ): Promise<void> {
     try {
       const created = await this.apiClient.invoke<boolean>('new_window', {
@@ -341,7 +354,7 @@ export class ModalService {
 
       const unlistenResult = await win.listen(`dialog-result-${label}`, ({ payload }) => {
         resultReceived = true;
-        ref.resolve(payload);
+        ref.resolve(payload as TResult);
         unlistenResult();
         unlistenDestroyed();
       });
@@ -356,7 +369,10 @@ export class ModalService {
     }
   }
 
-  openQuickRunEditor(quickRun?: QuickRun, initialOpType?: PrimaryActionType): any {
+  openQuickRunEditor<TResult = any>(
+    quickRun?: QuickRun,
+    initialOpType?: PrimaryActionType
+  ): DialogRefLike<TResult> {
     const data = { quickRun, initialOpType };
     return this.openModal(
       'quick-run-editor',
@@ -372,7 +388,7 @@ export class ModalService {
     );
   }
 
-  openRemoteConfig(options: RemoteConfigModalOptions = {}): any {
+  openRemoteConfig<TResult = any>(options: RemoteConfigModalOptions = {}): DialogRefLike<TResult> {
     const data = {
       name: options.remoteName,
       remoteType: options.remoteType,
@@ -397,7 +413,7 @@ export class ModalService {
     );
   }
 
-  openLogs(remoteName: string): any {
+  openLogs<TResult = any>(remoteName: string): DialogRefLike<TResult> {
     const data = { remoteName };
     return this.openModal(
       'logs',
@@ -411,7 +427,7 @@ export class ModalService {
     );
   }
 
-  openExport(options: ExportModalOptions = {}): any {
+  openExport<TResult = any>(options: ExportModalOptions = {}): DialogRefLike<TResult> {
     const data = {
       remoteName: options.remoteName,
       defaultExportType: options.defaultExportType ?? 'FullBackup',
@@ -428,7 +444,7 @@ export class ModalService {
     );
   }
 
-  openJobDetail(job: JobInfo): any {
+  openJobDetail<TResult = any>(job: JobInfo): DialogRefLike<TResult> {
     const data = { ...job };
     return this.openModal(
       'job-detail',
@@ -442,7 +458,7 @@ export class ModalService {
     );
   }
 
-  openRestorePreview(options: RestorePreviewOptions): any {
+  openRestorePreview<TResult = any>(options: RestorePreviewOptions): DialogRefLike<TResult> {
     const data = { backupPath: options.backupPath, analysis: options.analysis };
     return this.openModal(
       'restore-preview',
@@ -456,7 +472,7 @@ export class ModalService {
     );
   }
 
-  openQuickAddRemote(): any {
+  openQuickAddRemote<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'quick-add-remote',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -468,7 +484,7 @@ export class ModalService {
     );
   }
 
-  openBackend(): any {
+  openBackend<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'backend',
       { ...STANDARD_MODAL_SIZE, disableClose: false },
@@ -480,7 +496,7 @@ export class ModalService {
     );
   }
 
-  openPreferences(): any {
+  openPreferences<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'preferences',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -492,7 +508,7 @@ export class ModalService {
     );
   }
 
-  openRcloneFlags(): any {
+  openRcloneFlags<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'rclone-flags',
       { ...STANDARD_MODAL_SIZE, disableClose: true },
@@ -504,7 +520,7 @@ export class ModalService {
     );
   }
 
-  openAlerts(): any {
+  openAlerts<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal(
       'alerts',
       {
@@ -521,7 +537,7 @@ export class ModalService {
     );
   }
 
-  openProperties(options: PropertiesModalOptions): any {
+  openProperties<TResult = any>(options: PropertiesModalOptions): DialogRefLike<TResult> {
     return this.openModal('properties', {
       data: {
         remoteName: options.remoteName,
@@ -538,7 +554,7 @@ export class ModalService {
     });
   }
 
-  openRemoteAbout(options: RemoteAboutModalOptions): any {
+  openRemoteAbout<TResult = any>(options: RemoteAboutModalOptions): DialogRefLike<TResult> {
     return this.openModal('remote-about', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -552,7 +568,7 @@ export class ModalService {
     });
   }
 
-  openKeyboardShortcuts(data?: { nautilus?: boolean }): any {
+  openKeyboardShortcuts<TResult = any>(data?: { nautilus?: boolean }): DialogRefLike<TResult> {
     return this.openModal('keyboard-shortcuts', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -560,11 +576,14 @@ export class ModalService {
     });
   }
 
-  openAbout(): any {
+  openAbout<TResult = any>(): DialogRefLike<TResult> {
     return this.openModal('about', { ...ABOUT_MODAL_SIZE, disableClose: true });
   }
 
-  openArchiveCreate(data: { items: any[]; defaultName: string }): any {
+  openArchiveCreate<TResult = any>(data: {
+    items: any[];
+    defaultName: string;
+  }): DialogRefLike<TResult> {
     return this.openModal('archive-create', {
       width: '450px',
       height: '600px',
@@ -573,7 +592,7 @@ export class ModalService {
     });
   }
 
-  openTemplateManager(options: TemplateManagerModalOptions): any {
+  openTemplateManager<TResult = any>(options: TemplateManagerModalOptions): DialogRefLike<TResult> {
     return this.openModal('template-manager', {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,

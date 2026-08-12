@@ -1,8 +1,7 @@
-import { inject, Injectable, signal, effect, computed, Injector, type Signal } from '@angular/core';
+import { inject, Injectable, signal, computed, effect, type Signal } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, Remote, APP_TABS, MainView } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
 
@@ -23,27 +22,13 @@ export interface MobileSidebarRegistration {
   providedIn: 'root',
 })
 export class UiStateService {
-  private pathService = inject(PathService);
   private windowService = inject(WindowService);
   private localStorage = inject(LocalStorageService);
-  private readonly injector = inject(Injector);
 
   public isMaximized = this.windowService.isMaximized;
   public readonly platform: string;
 
-  private readonly _currentTab = signal<AppTab>(
-    ((): AppTab => {
-      const stored = this.localStorage.get<string>('ui.currentTab', 'general');
-      const validTabs = APP_TABS;
-      if (validTabs.includes(stored as AppTab)) {
-        return stored as AppTab;
-      }
-      if (stored === 'sync') {
-        return 'operations';
-      }
-      return 'general';
-    })()
-  );
+  private readonly _currentTab = signal<AppTab>(this.getInitialTab());
   public readonly currentTab = this._currentTab.asReadonly();
 
   // JSON Editor mode state
@@ -63,10 +48,17 @@ export class UiStateService {
   private readonly _selectedMainView = signal<MainView>('main_menu');
   public readonly selectedMainView = this._selectedMainView.asReadonly();
 
-  // ── Mobile Sidebar (centralized) ────────────────────────────────────────
+  // Mobile Sidebar registrations
   private readonly _mobileSidebarRegistrations = signal<Map<MainView, MobileSidebarRegistration>>(
     new Map()
   );
+
+  // Overlay signals set lazily to avoid circular dependencies
+  private _overlaySignals?: {
+    mainOverlay: Signal<boolean>;
+    flowOverlay: Signal<boolean>;
+    nautilusOverlay: Signal<boolean>;
+  };
 
   /**
    * Reactive flag consumed by `TabsButtonsComponent` to hide the floating
@@ -77,49 +69,38 @@ export class UiStateService {
    * signals injected lazily via `setOverlaySignals()`.
    */
   public readonly mobileSidebarOpen = computed(() => {
-    const registrations = this._mobileSidebarRegistrations();
-
-    // Determine the topmost view from overlay signals (if available).
-    const mainOverlay = this._mainOverlayOpen();
-    const flowOverlay = this._flowOverlayOpen();
-    const nautilusOverlay = this._nautilusOverlayOpen();
-
-    if (mainOverlay || flowOverlay || nautilusOverlay) {
+    if (
+      this._overlaySignals?.mainOverlay() ||
+      this._overlaySignals?.flowOverlay() ||
+      this._overlaySignals?.nautilusOverlay()
+    ) {
       return true;
     }
 
+    const registrations = this._mobileSidebarRegistrations();
     const topView = this._selectedMainView();
     const reg = registrations.get(topView);
     if (!reg) return false;
     return reg.isOver() && reg.isOpen();
   });
 
-  // Overlay open signals — set lazily to avoid circular DI.
-  private readonly _mainOverlayOpen = signal(false);
-  private readonly _flowOverlayOpen = signal(false);
-  private readonly _nautilusOverlayOpen = signal(false);
-  private _overlayEffectInitialized = false;
-
-  /**
-   * Called once (typically by AppComponent) to wire overlay signals into
-   * the mobile-sidebar computation without creating circular imports.
-   *
-   * The effects are bound to this service's own injector so their lifecycle
-   * tracks UiStateService, not the caller's injection context.
-   */
   setOverlaySignals(signals: {
     mainOverlay: Signal<boolean>;
     flowOverlay: Signal<boolean>;
     nautilusOverlay: Signal<boolean>;
   }): void {
-    if (this._overlayEffectInitialized) return;
-    this._overlayEffectInitialized = true;
+    this._overlaySignals = signals;
+  }
 
-    effect(() => this._mainOverlayOpen.set(signals.mainOverlay()), { injector: this.injector });
-    effect(() => this._flowOverlayOpen.set(signals.flowOverlay()), { injector: this.injector });
-    effect(() => this._nautilusOverlayOpen.set(signals.nautilusOverlay()), {
-      injector: this.injector,
-    });
+  private getInitialTab(): AppTab {
+    const stored = this.localStorage.get<string>('ui.currentTab', 'general');
+    if (APP_TABS.includes(stored as AppTab)) {
+      return stored as AppTab;
+    }
+    if (stored === 'sync') {
+      return 'operations';
+    }
+    return 'general';
   }
 
   /**
@@ -216,17 +197,6 @@ export class UiStateService {
 
   resetSelectedRemote(): void {
     this._selectedRemote.set(null);
-  }
-
-  extractFilename(path: string): string {
-    return this.pathService.getFilename(path);
-  }
-
-  /**
-   * Join path segments.
-   */
-  joinPath(...segments: string[]): string {
-    return this.pathService.joinPath(...segments);
   }
 
   // === Viewport Management ===

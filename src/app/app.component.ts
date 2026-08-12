@@ -20,7 +20,7 @@ import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-
 import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
 import { SseClientService } from './services/infrastructure/platform/sse-client.service';
 import { AndroidShareService } from './services/ui/android-share.service';
-import { FlowContainerComponent } from './features/flow/flow-container.component';
+import { FlowContainerComponent } from './flow/flow-container.component';
 import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
 import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
 
