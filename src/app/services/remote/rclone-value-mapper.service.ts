@@ -10,8 +10,9 @@ export class RcloneValueMapperService {
       case 'Duration':
         return this.nanosecondsToDuration(value as number, fallback);
       case 'SizeSuffix':
-      case 'BwTimetable':
         return this.bytesToSize(value as number, fallback);
+      case 'BwTimetable':
+        return String(value);
       case 'FileMode':
         return this.fileModeToString(value as number | string, fallback);
       default:
@@ -66,15 +67,7 @@ export class RcloneValueMapperService {
     if (bytes === 0) return '0';
     if (bytes < 0) return fallback;
 
-    const units = [
-      { s: 'Pi', v: 1125899906842624 },
-      { s: 'Ti', v: 1099511627776 },
-      { s: 'Gi', v: 1073741824 },
-      { s: 'Mi', v: 1048576 },
-      { s: 'Ki', v: 1024 },
-    ];
-
-    for (const u of units) {
+    for (const u of BYTES_UNITS) {
       if (bytes >= u.v) {
         const val = bytes / u.v;
         return `${bytes % u.v === 0 ? val : Math.round(val * 1000) / 1000}${u.s}`;
@@ -95,12 +88,12 @@ export class RcloneValueMapperService {
     return s ? s.padStart(minWidth, '0') : fallback;
   }
 
-  parseFileMode(value: unknown): unknown {
+  parseFileMode(value: unknown): number | string {
     if (typeof value === 'string' && value.trim()) {
       const parsed = parseInt(value, 8);
       return isNaN(parsed) ? value : parsed;
     }
-    return value;
+    return value as number | string;
   }
 
   parseTristate(value: unknown): boolean | null {
@@ -156,17 +149,12 @@ export class RcloneValueMapperService {
 
     if (Array.isArray(value)) {
       const normVal = this.normalizeList(value, field.Type);
+      const normDefault = this.normalizeList(field.Default, field.Type);
+      const normDefaultStr = this.normalizeList(field.DefaultStr, field.Type);
       if (value.length === 0) {
-        return (
-          field.Default == null ||
-          normVal === this.normalizeList(field.Default, field.Type) ||
-          normVal === this.normalizeList(field.DefaultStr, field.Type)
-        );
+        return field.Default == null || normVal === normDefault || normVal === normDefaultStr;
       }
-      return (
-        normVal === this.normalizeList(field.Default, field.Type) ||
-        normVal === this.normalizeList(field.DefaultStr, field.Type)
-      );
+      return normVal === normDefault || normVal === normDefaultStr;
     }
 
     const strVal = String(value);
@@ -254,3 +242,11 @@ export class RcloneValueMapperService {
       }));
   }
 }
+
+const BYTES_UNITS: readonly { s: string; v: number }[] = [
+  { s: 'Pi', v: 1125899906842624 },
+  { s: 'Ti', v: 1099511627776 },
+  { s: 'Gi', v: 1073741824 },
+  { s: 'Mi', v: 1048576 },
+  { s: 'Ki', v: 1024 },
+];

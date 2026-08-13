@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
-import { Observable } from 'rxjs';
+import { Observable, Subject, share } from 'rxjs';
 import { ApiClientService, isHeadlessMode } from './api-client.service';
 import { SseClientService } from './sse-client.service';
 import { NotificationService } from '../../ui/notification.service';
@@ -19,6 +19,8 @@ export class TauriBaseService {
   private readonly sseClient = inject(SseClientService);
   protected readonly isTauri = !isHeadlessMode();
 
+  private readonly tauriEventStreams = new Map<string, Observable<unknown>>();
+
   protected getCurrentTauriWindow(): Window | undefined {
     return this.isTauri ? getCurrentWindow() : undefined;
   }
@@ -32,10 +34,14 @@ export class TauriBaseService {
       return this.sseClient.listen<T>(eventName);
     }
 
-    return new Observable(observer => {
-      const unlisten = listen<T>(eventName, event => observer.next(event.payload));
-      return () => void unlisten.then(f => f());
-    });
+    let stream = this.tauriEventStreams.get(eventName);
+    if (!stream) {
+      const subject = new Subject<T>();
+      void listen<T>(eventName, event => subject.next(event.payload));
+      stream = subject.asObservable().pipe(share()) as Observable<unknown>;
+      this.tauriEventStreams.set(eventName, stream);
+    }
+    return stream as Observable<T>;
   }
 
   protected async invokeWithNotification<T>(

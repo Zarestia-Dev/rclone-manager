@@ -59,13 +59,12 @@ export class BackendService extends TauriBaseService {
 
   // Legacy API support for components expecting a Promise
   async loadBackends(): Promise<void> {
-    this.backendData.reload();
+    await this.backendData.reload();
   }
 
   async runStartupChecks(): Promise<void> {
     await this.backendData.reload();
-    await this.checkStartupConnectivity();
-    await this.checkAllBackends();
+    await Promise.all([this.checkStartupConnectivity(), this.checkAllBackends()]);
   }
 
   async getActiveBackend(): Promise<string> {

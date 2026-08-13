@@ -839,38 +839,35 @@ export class SettingControlComponent implements ControlValueAccessor {
     const validators: ValidatorFn[] = [];
     if (opt.Required) validators.push(Validators.required);
 
-    const r = this.validatorRegistry;
-    if (isArrayType(opt.Type)) {
-      validators.push(r.arrayValidator());
-    } else {
-      const vMap: Record<string, () => ValidatorFn> = {
-        int: () => r.integerValidator(opt.DefaultStr),
-        int64: () => r.integerValidator(opt.DefaultStr),
-        int32: () => r.integerValidator(opt.DefaultStr),
-        uint: () => r.integerValidator(opt.DefaultStr),
-        uint32: () => r.integerValidator(opt.DefaultStr),
-        uint64: () => r.integerValidator(opt.DefaultStr),
-        float: () => r.floatValidator(opt.DefaultStr),
-        float32: () => r.floatValidator(opt.DefaultStr),
-        float64: () => r.floatValidator(opt.DefaultStr),
-        Duration: () => r.durationValidator(opt.DefaultStr),
-        SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr),
-        BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
-        FileMode: () => r.fileModeValidator(opt.DefaultStr),
-        Time: () => r.timeValidator(opt.DefaultStr),
-        Bits: () =>
-          opt.Examples?.length && !this.isBitsWithCombos(opt)
-            ? r.arrayValidator()
-            : Validators.nullValidator,
-        Encoding: () => r.arrayValidator(),
-        Tristate: () => r.tristateValidator(),
-      };
-      if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
-    }
-
     const isMultiSelect = this.isMultiselectOption();
-    if (opt.Examples && !isMultiSelect && opt.Exclusive !== false) {
-      validators.push(r.enumValidator(opt.Examples.map(e => e.Value)));
+    const isSingleSelect =
+      this.hasBitsComboExamples() ||
+      (!!opt.Examples?.length && !isMultiSelect && opt.Exclusive !== false);
+
+    if (!isSingleSelect) {
+      const r = this.validatorRegistry;
+      if (isMultiSelect || isJsonArrayType(opt.Type)) {
+        validators.push(r.arrayValidator());
+      } else {
+        const vMap: Record<string, () => ValidatorFn> = {
+          int: () => r.integerValidator(opt.DefaultStr),
+          int64: () => r.integerValidator(opt.DefaultStr),
+          int32: () => r.integerValidator(opt.DefaultStr),
+          uint: () => r.integerValidator(opt.DefaultStr),
+          uint32: () => r.integerValidator(opt.DefaultStr),
+          uint64: () => r.integerValidator(opt.DefaultStr),
+          float: () => r.floatValidator(opt.DefaultStr),
+          float32: () => r.floatValidator(opt.DefaultStr),
+          float64: () => r.floatValidator(opt.DefaultStr),
+          Duration: () => r.durationValidator(opt.DefaultStr),
+          SizeSuffix: () => r.sizeSuffixValidator(opt.DefaultStr),
+          BwTimetable: () => r.bwTimetableValidator(opt.DefaultStr),
+          FileMode: () => r.fileModeValidator(opt.DefaultStr),
+          Time: () => r.timeValidator(opt.DefaultStr),
+          Tristate: () => r.tristateValidator(),
+        };
+        if (vMap[opt.Type]) validators.push(vMap[opt.Type]());
+      }
     }
 
     return validators;

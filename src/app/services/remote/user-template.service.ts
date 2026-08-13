@@ -1,13 +1,15 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { UserPresetTemplate } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
 export class UserTemplateService extends TauriBaseService {
   private readonly _templates = signal<UserPresetTemplate[]>([]);
+  private readonly _loaded = signal<boolean>(false);
 
   readonly userTemplates = this._templates.asReadonly();
-  readonly allTemplates = computed(() => this._templates());
+  readonly allTemplates = this._templates.asReadonly();
+  readonly loaded = this._loaded.asReadonly();
 
   constructor() {
     super();
@@ -29,11 +31,13 @@ export class UserTemplateService extends TauriBaseService {
       }
     } catch (err) {
       console.warn('[UserTemplateService] Failed to load templates from backend:', err);
+    } finally {
+      this._loaded.set(true);
     }
   }
 
   saveTemplate(input: Omit<UserPresetTemplate, 'id'>): UserPresetTemplate {
-    const id = `usr-tpl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = `usr-tpl-${crypto.randomUUID()}`;
     const newTemplate: UserPresetTemplate = { id, ...input };
 
     const updated = [newTemplate, ...this._templates()];
@@ -53,24 +57,29 @@ export class UserTemplateService extends TauriBaseService {
   updateTemplate(updated: UserPresetTemplate): void {
     const current = this._templates();
     const index = current.findIndex(t => t.id === updated.id);
-    if (index >= 0) {
-      const list = [...current];
-      list[index] = updated;
-      this._templates.set(list);
-
-      const { id, ...template } = updated;
-      void this.invokeCommand('update_user_template', { id, template }).catch(err => {
-        console.warn('[UserTemplateService] Failed to update template on rcman backend:', err);
-      });
-
-      this.notificationService.showSuccess(
-        this.translate.instant('templates.savedSuccess', { name: updated.name })
-      );
+    if (index < 0) {
+      console.warn(`[UserTemplateService] Cannot update unknown template: ${updated.id}`);
+      return;
     }
+
+    const list = [...current];
+    list[index] = updated;
+    this._templates.set(list);
+
+    const { id, ...template } = updated;
+    void this.invokeCommand('update_user_template', { id, template }).catch(err => {
+      console.warn('[UserTemplateService] Failed to update template on rcman backend:', err);
+    });
+
+    this.notificationService.showSuccess(
+      this.translate.instant('templates.savedSuccess', { name: updated.name })
+    );
   }
 
   deleteTemplate(id: string): void {
-    if (id.startsWith('builtin-')) return;
+    if (id.startsWith('builtin-')) {
+      throw new Error(`Cannot delete built-in template: ${id}`);
+    }
 
     const updated = this._templates().filter(t => t.id !== id);
     this._templates.set(updated);

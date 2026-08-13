@@ -1018,7 +1018,6 @@ export class QuickRunEditorComponent implements OnInit {
 
     if (opType) {
       const cleanedOp = getCleanOptions(opType);
-      res['operation'] = cleanedOp;
       (res as Record<string, unknown>)[opType] = cleanedOp;
     }
 
@@ -1062,9 +1061,7 @@ export class QuickRunEditorComponent implements OnInit {
     const currentOp = this.currentOpType();
     if (currentOp) {
       const opGroup = this.getOpFormGroup(currentOp);
-      const opOpts =
-        values.operation ??
-        (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
+      const opOpts = (values as Record<string, Record<string, unknown> | undefined>)[currentOp];
       if (opOpts && typeof opOpts === 'object') {
         this.patchGroupOptions(`${currentOp}Config`, opOpts, PATH_KEYS);
 

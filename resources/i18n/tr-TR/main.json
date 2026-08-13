@@ -296,7 +296,9 @@
       "filemanager": "Dosya Yöneticisi",
       "startup": "Başlangıç",
       "update": "Güncelleme",
-      "internal": "Dahili"
+      "internal": "Dahili",
+      "flow": "Akış Çalışma Alanı",
+      "quickrun": "Hızlı Çalıştırma"
     },
     "rule": {
       "filters": "Filtreler",

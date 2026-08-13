@@ -1,5 +1,4 @@
 import {
-  DestroyRef,
   Injectable,
   computed,
   inject,
@@ -11,8 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, concatMap, from } from 'rxjs';
-import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { merge } from 'rxjs';
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
@@ -27,6 +25,9 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
+import { NotificationService } from '../ui/notification.service';
+import { TranslateService } from '@ngx-translate/core';
+import { findUniqueName } from '../remote/utils/unique-name.util';
 import {
   Remote,
   JobInfo,
@@ -61,7 +62,7 @@ interface RemoteState {
 }
 
 @Injectable({ providedIn: 'root' })
-export class RemoteFacadeService extends TauriBaseService {
+export class RemoteFacadeService {
   private readonly jobService = inject(JobManagementService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
@@ -74,9 +75,10 @@ export class RemoteFacadeService extends TauriBaseService {
   private readonly backendService = inject(BackendService);
   private readonly uiStateService = inject(UiStateService);
   private readonly pathService = inject(PathService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly statusService = inject(RcloneStatusService);
   private readonly flagConfigService = inject(FlagConfigService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -153,8 +155,9 @@ export class RemoteFacadeService extends TauriBaseService {
 
   readonly hiddenRemoteNames = computed(() => [...this.hiddenSet()]);
 
+  private refreshInFlight: Promise<void> | null = null;
+
   constructor() {
-    super();
     void this.refreshAll();
 
     // Primary trigger: engine ready event (fires after caches are populated)
@@ -177,7 +180,7 @@ export class RemoteFacadeService extends TauriBaseService {
       this.eventListeners.listenToBackendSwitched()
     )
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.loadRemotes());
+      .subscribe(() => void this.loadRemotes());
   }
 
   // --- Settings & Path Collisions ---
@@ -351,6 +354,7 @@ export class RemoteFacadeService extends TauriBaseService {
         if (!configs[name]) {
           this.remoteStates.delete(name);
           this.remoteService.clearCache(name);
+          this._actionSignals.delete(name);
         }
       }
 
@@ -361,7 +365,8 @@ export class RemoteFacadeService extends TauriBaseService {
         const state = this.remoteStates.get(name);
 
         if (state) {
-          if (JSON.stringify(state.base().config) !== JSON.stringify(config)) {
+          const prevConfig = state.base().config;
+          if (prevConfig !== config && !shallowEqualObjects(prevConfig, config)) {
             this.remoteService.clearCache(name);
           }
           state.base.update((b: Omit<Remote, 'status' | 'features'>) => ({ ...b, config }));
@@ -415,24 +420,40 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   async refreshAll(): Promise<void> {
-    this.isLoading.set(true);
-    void this.flagConfigService.loadAllFlagFields();
-    void this.remoteService.getRemoteTypes();
-    try {
-      await Promise.all([
-        this.statusService.refreshStatus(),
-        this.loadRemotes(),
-        this.mountService.getMountedRemotes(),
-        this.serveService.refreshServes(),
-        this.jobService.refreshJobs(),
-      ]);
-      this.loadDiskUsageInBackground();
-    } finally {
-      this.isLoading.set(false);
-    }
+    if (this.refreshInFlight) return this.refreshInFlight;
+
+    const promise = (async (): Promise<void> => {
+      this.isLoading.set(true);
+      void this.flagConfigService.loadAllFlagFields();
+      void this.remoteService.getRemoteTypes();
+      try {
+        await Promise.all([
+          this.statusService.refreshStatus(),
+          this.loadRemotes(),
+          this.mountService.getMountedRemotes(),
+          this.serveService.refreshServes(),
+          this.jobService.refreshJobs(),
+        ]);
+        this.loadDiskUsageInBackground();
+      } finally {
+        this.isLoading.set(false);
+        this.refreshInFlight = null;
+      }
+    })();
+
+    this.refreshInFlight = promise;
+    return promise;
   }
 
   // --- Action State ---
+
+  diskUsageSignal(remoteName: string): Signal<DiskUsage> {
+    return this.getOrCreateRemoteState(remoteName).disk;
+  }
+
+  featuresSignal(remoteName: string): Signal<RemoteFeatures> {
+    return this.remoteService.getFeaturesSignal(remoteName, undefined);
+  }
 
   getActionSignal(remoteName: string): Signal<ActionState[]> {
     let sig = this._actionSignals.get(remoteName);
@@ -441,25 +462,6 @@ export class RemoteFacadeService extends TauriBaseService {
       this._actionSignals.set(remoteName, sig);
     }
     return sig;
-  }
-
-  diskUsageSignal(remoteName: string): Signal<DiskUsage> {
-    return this.getOrCreateRemoteState(remoteName).disk;
-  }
-
-  featuresSignal(remoteName: string): Signal<RemoteFeatures> {
-    const remote = this.activeRemotes().find(r => r.name === remoteName);
-    return this.remoteService.getFeaturesSignal(remoteName, remote?.type);
-  }
-
-  getActionState(remoteName: string): ActionState[] {
-    return this._actionInProgress()[remoteName] ?? [];
-  }
-
-  isActionInProgress(remoteName: string, action: RemoteAction, profileName?: string): boolean {
-    return this.getActionState(remoteName).some(
-      a => a.type === action && a.profileName === profileName
-    );
   }
 
   async executeAction<T>(
@@ -679,11 +681,7 @@ export class RemoteFacadeService extends TauriBaseService {
   }
 
   generateUniqueRemoteName(baseName: string): string {
-    const existing = Array.from(this.remoteStates.keys());
-    let name = baseName;
-    let i = 1;
-    while (existing.includes(name)) name = `${baseName}-${i++}`;
-    return name;
+    return findUniqueName(baseName, Array.from(this.remoteStates.keys()));
   }
 
   async cloneRemote(remoteName: string): Promise<RemoteSettings | null> {
@@ -727,22 +725,16 @@ export class RemoteFacadeService extends TauriBaseService {
     const targets = remotes ?? this.activeRemotes();
     if (!targets.length) return;
 
-    from(targets)
-      .pipe(
-        concatMap(async remote => {
-          if (generation !== this.backgroundLoadGeneration) return null;
-          try {
-            return await this.getCachedOrFetchDiskUsage(remote.name);
-          } catch (e) {
-            console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
-            return null;
-          }
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        error: e => console.error('[RemoteFacadeService] Background loading error:', e),
-      });
+    void (async (): Promise<void> => {
+      for (const remote of targets) {
+        if (generation !== this.backgroundLoadGeneration) return;
+        try {
+          await this.getCachedOrFetchDiskUsage(remote.name);
+        } catch (e) {
+          console.error(`[RemoteFacadeService] Error loading disk usage for ${remote.name}:`, e);
+        }
+      }
+    })();
   }
 
   // --- Private Signal Accessors ---
@@ -976,4 +968,20 @@ function buildActiveProfiles<T, V>(
     if (target && !(target in result)) result[target] = getValue(item);
   }
   return result;
+}
+
+function shallowEqualObjects(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const aKeys = Object.keys(a as object);
+  const bKeys = Object.keys(b as object);
+  if (aKeys.length !== bKeys.length) return false;
+  const bObj = b as Record<string, unknown>;
+  for (const key of aKeys) {
+    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
+    const av = (a as Record<string, unknown>)[key];
+    const bv = bObj[key];
+    if (av !== bv && JSON.stringify(av) !== JSON.stringify(bv)) return false;
+  }
+  return true;
 }

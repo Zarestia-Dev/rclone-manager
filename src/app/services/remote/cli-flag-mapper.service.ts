@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { RcConfigOption, SharedProfileType } from '@app/types';
-import { isIntType, isFloatType } from 'src/app/shared/utils';
 import { FlagConfigService } from './flag-config.service';
 import { RemoteManagementService } from './remote-management.service';
 import { RcloneValueMapperService } from './rclone-value-mapper.service';
@@ -282,19 +281,7 @@ export class CliFlagMapperService {
   private coerceValue(val: string | boolean, type: string): unknown {
     if (typeof val === 'boolean') return val;
     if (type === 'Tristate') return this.valueMapper.parseTristate(val);
-    if (type === 'bool') {
-      const s = val.toLowerCase().trim();
-      return s === 'true' || s === '1' || s === 'yes';
-    }
-    if (isIntType(type)) {
-      const num = parseInt(val, 10);
-      return isNaN(num) ? val : num;
-    }
-    if (isFloatType(type)) {
-      const num = parseFloat(val);
-      return isNaN(num) ? val : num;
-    }
-    return val;
+    return this.valueMapper.humanToMachine(val, type);
   }
 
   async getGlobalLookupTable(

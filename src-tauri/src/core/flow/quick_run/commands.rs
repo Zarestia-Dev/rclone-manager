@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{
-        flow::types::{QuickRun, QuickRunInput, StartQuickRunResponse},
+        flow::quick_run::types::{QuickRun, QuickRunInput, StartQuickRunResponse},
         settings::AppSettingsManager,
     },
     rclone::commands::{
@@ -129,7 +129,7 @@ pub async fn start_quick_run(
                 || format!("Quick run '{}' mount configuration is incomplete", qr.name),
             )?;
         mount_params.profile = Some(qr.name.clone());
-        mount_params.origin = Some(Origin::Flow);
+        mount_params.origin = Some(Origin::QuickRun);
 
         mount_remote(app.clone(), mount_params).await?;
 
@@ -189,7 +189,7 @@ pub async fn start_quick_run(
             source: common.source.clone(),
             destination: common.dest.clone(),
             profile: Some(qr.name.clone()),
-            origin: Some(Origin::Flow),
+            origin: Some(Origin::QuickRun),
             group: None,
             no_cache: false,
             dry_run,
@@ -265,7 +265,8 @@ pub async fn stop_quick_run(
 
         for j in running_jobs {
             let matches_profile = j.profile.as_deref() == Some(&qr.name);
-            let matches_origin = j.origin == Some(Origin::Flow);
+            let matches_origin =
+                j.origin == Some(Origin::QuickRun) || j.origin == Some(Origin::Flow);
             let matches_remote = j.remote_name == qr.remote_name;
 
             if j.status == JobStatus::Running

@@ -214,6 +214,14 @@ export class RemoteFileOperationsService extends TauriBaseService {
     name: string,
     content: Uint8Array
   ): Promise<string> {
+    // ⚠️ Performance issue (preserved for wire-format compatibility):
+    // `Array.from(content)` serializes every byte as a JSON number, multiplying
+    // payload size ~5x and amplifying memory pressure on large files.
+    // The proper fix is to switch to a base64-encoded payload + a backend
+    // handler that decodes it — but that requires a coordinated Rust-side
+    // change to `upload_file`. See refactor plan: switch both sides to
+    // base64 in a single PR, or route large uploads through `uploadFileStream`
+    // which already uses multipart FormData via HTTP.
     return this.invokeCommand<string>('upload_file', {
       remote,
       path,

@@ -296,7 +296,9 @@
       "filemanager": "文件管理器",
       "startup": "启动",
       "update": "更新",
-      "internal": "内部"
+      "internal": "内部",
+      "flow": "Flow 工作区",
+      "quickrun": "快速运行"
     },
     "rule": {
       "filters": "过滤器",

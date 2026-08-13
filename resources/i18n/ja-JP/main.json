@@ -296,7 +296,9 @@
       "filemanager": "ファイルマネージャー",
       "startup": "起動時",
       "update": "アップデート",
-      "internal": "内部"
+      "internal": "内部",
+      "flow": "フローワークスペース",
+      "quickrun": "クイックラン"
     },
     "rule": {
       "filters": "フィルタ",

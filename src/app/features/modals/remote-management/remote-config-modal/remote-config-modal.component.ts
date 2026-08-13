@@ -117,6 +117,20 @@ export class RemoteConfigModalComponent {
     },
   ] as const;
 
+  /**
+   * Sections currently visible in the remote-edit view.
+   *
+   * ⚠️ Known anti-pattern: this computed reads 6 internal computeds of the
+   * `RemoteConfigStepComponent` via `viewChild()`, which breaks OnPush
+   * isolation between parent and child and creates a one-cycle CD lag (the
+   * viewChild is `undefined` on first render).
+   *
+   * The proper fix is to move the underlying `showNameField`, `providerField`,
+   * `showAdvancedOptions`, `advancedFields`, `providerReady` computeds into
+   * `RemoteConfigStateService` (which already owns `showAdvancedOptions()`)
+   * and read them from there. Deferred to a follow-up PR because the step
+   * component currently computes them locally from its `remoteFields` input.
+   */
   readonly visibleSections = computed(() => {
     const step = this.configStep();
     if (!step) return new Set<string>();

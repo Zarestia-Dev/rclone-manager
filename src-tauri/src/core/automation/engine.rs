@@ -1,6 +1,6 @@
 //! Cron scheduler engine using tokio-cron-scheduler
 
-use crate::core::flow::types::QuickRun;
+use crate::core::flow::quick_run::types::QuickRun;
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::commands::sync::start_profile_batch;
 use crate::rclone::state::automations::{AutomationsCache, CacheUpdateResult};
@@ -361,7 +361,7 @@ impl AutomationScheduler {
 
                 Box::pin(async move {
                     info!("Executing scheduled quick run: {qr_name} ({qr_id})");
-                    if let Err(e) = crate::core::flow::commands::start_quick_run(app_handle, qr_id.clone()).await {
+                    if let Err(e) = crate::core::flow::quick_run::commands::start_quick_run(app_handle, qr_id.clone()).await {
                         error!("Quick run scheduled execution failed {qr_id}: {e}");
                     } else {
                         info!("Quick run scheduled execution completed: {qr_id}");
@@ -387,13 +387,14 @@ impl AutomationScheduler {
     /// Read all Quick Runs and schedule those with active cron expressions.
     pub async fn sync_quick_runs(&self, app_handle: AppHandle) -> Result<(), String> {
         let manager = app_handle.state::<AppSettingsManager>();
-        let quick_runs = match crate::core::flow::commands::get_all_quick_runs_sync(&manager) {
-            Ok(list) => list,
-            Err(e) => {
-                warn!("Failed to read quick runs for scheduler sync: {e}");
-                return Ok(());
-            }
-        };
+        let quick_runs =
+            match crate::core::flow::quick_run::commands::get_all_quick_runs_sync(&manager) {
+                Ok(list) => list,
+                Err(e) => {
+                    warn!("Failed to read quick runs for scheduler sync: {e}");
+                    return Ok(());
+                }
+            };
 
         for qr in &quick_runs {
             if qr.is_cron_enabled()

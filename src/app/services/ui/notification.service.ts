@@ -3,40 +3,64 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import type { InputModalData } from '../../shared/modals/input-modal/input-modal.component';
+import type { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
+import type {
+  InputModalData,
+  InputModalComponent,
+} from '../../shared/modals/input-modal/input-modal.component';
 import { ConfirmDialogData } from '@app/types';
 
-/**
- * Centralizes snackbar, modal, and toast notifications.
- * Button texts default to their translated `common.*` counterparts.
- */
+type NotificationSeverity = 'success' | 'error' | 'info' | 'warning';
+
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
   private dialog = inject(MatDialog);
 
-  showSuccess(message: string, action?: string, duration = 3000): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
-    });
+  /** Default action label per severity. */
+  private static readonly DEFAULT_ACTION_KEY = {
+    success: 'common.ok',
+    info: 'common.ok',
+    warning: 'common.close',
+    error: 'common.close',
+  } as const;
+
+  /** Default duration per severity (undefined = no auto-dismiss). */
+  private static readonly DEFAULT_DURATION_MS: Record<NotificationSeverity, number | undefined> = {
+    success: 3000,
+    info: 3000,
+    warning: 4000,
+    error: undefined,
+  };
+
+  showSuccess(message: string, action?: string, duration?: number): void {
+    this.show('success', message, action, duration);
   }
 
   showError(message: string, action?: string, duration?: number): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.close'), {
-      duration,
-    });
+    this.show('error', message, action, duration);
   }
 
-  showInfo(message: string, action?: string, duration = 3000): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
-    });
+  showInfo(message: string, action?: string, duration?: number): void {
+    this.show('info', message, action, duration);
   }
 
   showWarning(message: string, action?: string, duration?: number): void {
-    this.snackBar.open(message, action ?? this.translate.instant('common.ok'), {
-      duration,
+    this.show('warning', message, action, duration);
+  }
+
+  private show(
+    severity: NotificationSeverity,
+    message: string,
+    action: string | undefined,
+    duration: number | undefined
+  ): void {
+    const resolvedAction =
+      action ?? this.translate.instant(NotificationService.DEFAULT_ACTION_KEY[severity]);
+    const resolvedDuration = duration ?? NotificationService.DEFAULT_DURATION_MS[severity];
+    this.snackBar.open(message, resolvedAction, {
+      duration: resolvedDuration,
     });
   }
 
@@ -63,10 +87,10 @@ export class NotificationService {
   async openConfirm(
     data: ConfirmDialogData,
     config: Partial<MatDialogConfig<ConfirmDialogData>> = {}
-  ): Promise<MatDialogRef<any, boolean>> {
+  ): Promise<MatDialogRef<ConfirmModalComponent, boolean>> {
     const { ConfirmModalComponent } =
       await import('../../shared/modals/confirm-modal/confirm-modal.component');
-    return this.dialog.open<any, ConfirmDialogData, boolean>(ConfirmModalComponent, {
+    return this.dialog.open(ConfirmModalComponent, {
       maxWidth: '480px',
       disableClose: true,
       data,
@@ -75,13 +99,13 @@ export class NotificationService {
     });
   }
 
-  async openInput<T = any>(
+  async openInput<T = unknown>(
     data: InputModalData,
     config: Partial<MatDialogConfig<InputModalData>> = {}
-  ): Promise<MatDialogRef<any, T>> {
+  ): Promise<MatDialogRef<InputModalComponent, T>> {
     const { InputModalComponent } =
       await import('../../shared/modals/input-modal/input-modal.component');
-    return this.dialog.open<any, InputModalData, T>(InputModalComponent, {
+    return this.dialog.open(InputModalComponent, {
       minWidth: '362px',
       disableClose: true,
       data,

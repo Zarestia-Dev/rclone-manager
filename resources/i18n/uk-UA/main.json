@@ -296,7 +296,9 @@
       "filemanager": "Файловий менеджер",
       "startup": "Запуск",
       "update": "Оновлення",
-      "internal": "Внутрішнє"
+      "internal": "Внутрішнє",
+      "flow": "Робоча область Flow",
+      "quickrun": "Швидкий запуск"
     },
     "rule": {
       "filters": "Фільтри",

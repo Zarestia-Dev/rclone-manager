@@ -296,7 +296,9 @@
       "filemanager": "File Manager",
       "startup": "Startup",
       "update": "Update",
-      "internal": "Internal"
+      "internal": "Internal",
+      "flow": "Flow Workspace",
+      "quickrun": "Quick Run"
     },
     "rule": {
       "filters": "Filters",
@@ -3192,6 +3194,7 @@
   "templates": {
     "title": "Templates & Migration",
     "presetTitle": "Presets & Templates",
+    "applyPresets": "Apply Default Presets",
     "builtinPresets": "Built-in Presets",
     "userTemplates": "Saved User Templates",
     "saveAsTemplate": "Save Current Settings as Template...",
@@ -3220,6 +3223,7 @@
     "searchKeys": "Filter settings...",
     "selectedKeysCount": "{{selected}} of {{total}} settings selected",
     "noKeysAvailable": "No configurable settings detected in current context.",
+    "noCatKeys": "No settings in {{category}} configured yet.",
     "visualView": "Visual Inspector",
     "jsonView": "JSON Editor",
     "formatJson": "Format JSON",

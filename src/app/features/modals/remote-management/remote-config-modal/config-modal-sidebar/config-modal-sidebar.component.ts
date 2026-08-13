@@ -46,7 +46,6 @@ export class ConfigModalSidebarComponent {
   readonly cliImportToggled = output<void>();
   readonly obscureToolToggled = output<void>();
   readonly presetsApplied = output<void>();
-  readonly defaultPresetsApplied = output<void>();
   readonly templateApplied = output<ApplyTemplateEvent>();
 
   // ── Template helpers ──────────────────────────────────────────────────────

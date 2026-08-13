@@ -144,4 +144,61 @@ describe('SettingControlComponent', () => {
     expect(settingControlComp.control()?.value).toBe(false);
     expect(settingControlComp.isValueChanged()).toBe(false);
   });
+
+  it('should not attach type regex or enum validators to exclusive dropdown options', () => {
+    const mockDurationOptionWithExamples: RcConfigOption = {
+      Name: 'timeout',
+      FieldName: '',
+      Help: 'Timeout setting',
+      Type: 'Duration',
+      Exclusive: true,
+      DefaultStr: 'off',
+      Examples: [
+        { Value: 'off', Help: 'Disabled' },
+        { Value: '10s', Help: '10 Seconds' },
+      ],
+    };
+
+    host.option.set(mockDurationOptionWithExamples);
+    fixture.detectChanges();
+
+    const settingControlEl = fixture.debugElement.query(By.directive(SettingControlComponent));
+    const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
+
+    settingControlComp.control()?.setValue('off');
+    fixture.detectChanges();
+
+    expect(settingControlComp.control()?.valid).toBe(true);
+    expect(settingControlComp.control()?.errors).toBeNull();
+  });
+
+  it('should not mark Bits single-select options like metadata_owner as invalid when selecting a string example value', () => {
+    const mockMetadataOwnerOption: RcConfigOption = {
+      Name: 'metadata_owner',
+      FieldName: '',
+      Help: 'Control whether owner should be read or written in metadata.',
+      Type: 'Bits',
+      Exclusive: false,
+      Default: 1,
+      DefaultStr: 'read',
+      Examples: [
+        { Help: 'Do not read or write the value', Value: 'off' },
+        { Help: 'Read the value only', Value: 'read' },
+        { Help: 'Write the value only', Value: 'write' },
+        { Help: 'Read and Write the value.', Value: 'read,write' },
+      ],
+    };
+
+    host.option.set(mockMetadataOwnerOption);
+    fixture.detectChanges();
+
+    const settingControlEl = fixture.debugElement.query(By.directive(SettingControlComponent));
+    const settingControlComp = settingControlEl.componentInstance as SettingControlComponent;
+
+    settingControlComp.control()?.setValue('off');
+    fixture.detectChanges();
+
+    expect(settingControlComp.control()?.valid).toBe(true);
+    expect(settingControlComp.control()?.errors).toBeNull();
+  });
 });

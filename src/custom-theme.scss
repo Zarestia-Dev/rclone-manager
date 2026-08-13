@@ -1175,13 +1175,13 @@ mat-tab-group,
   }
 }
 
-mat-accordion {
+mat-accordion:not(.dull) {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
 }
 
-.mat-expansion-panel {
+.mat-expansion-panel:not(.dull) {
   background: var(--view-bg-color) !important;
   border-radius: var(--radius-md) !important;
 

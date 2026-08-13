@@ -255,12 +255,12 @@ macro_rules! MASTER_COMMAND_LIST {
             (clear_all_automations, $crate::core::automation::commands::clear_all_automations, []);
 
             // QUICK RUNS (FLOW WORKSPACE)
-            (list_quick_runs, $crate::core::flow::commands::list_quick_runs, []);
-            (create_quick_run, $crate::core::flow::commands::create_quick_run, [quick_run: $crate::core::flow::types::QuickRunInput]);
-            (update_quick_run, $crate::core::flow::commands::update_quick_run, [quick_run: $crate::core::flow::types::QuickRunInput]);
-            (delete_quick_run, $crate::core::flow::commands::delete_quick_run, [quick_run_id: String]);
-            (start_quick_run, $crate::core::flow::commands::start_quick_run, [quick_run_id: String]);
-            (stop_quick_run, $crate::core::flow::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
+            (list_quick_runs, $crate::core::flow::quick_run::commands::list_quick_runs, []);
+            (create_quick_run, $crate::core::flow::quick_run::commands::create_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
+            (update_quick_run, $crate::core::flow::quick_run::commands::update_quick_run, [quick_run: $crate::core::flow::quick_run::types::QuickRunInput]);
+            (delete_quick_run, $crate::core::flow::quick_run::commands::delete_quick_run, [quick_run_id: String]);
+            (start_quick_run, $crate::core::flow::quick_run::commands::start_quick_run, [quick_run_id: String]);
+            (stop_quick_run, $crate::core::flow::quick_run::commands::stop_quick_run, [quick_run_id: String, job_id: Option<u64>]);
 
             // WATCHERS
             (force_check_mounted_remotes, $crate::rclone::state::watcher::force_check_mounted_remotes, []);

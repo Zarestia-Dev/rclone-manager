@@ -93,13 +93,14 @@ impl WatcherManager {
         }
 
         let manager = app_handle.state::<crate::core::settings::AppSettingsManager>();
-        let quick_runs = match crate::core::flow::commands::get_all_quick_runs_sync(&manager) {
-            Ok(list) => list,
-            Err(e) => {
-                log::warn!("Failed to read quick runs for watcher sync: {e}");
-                return Ok(());
-            }
-        };
+        let quick_runs =
+            match crate::core::flow::quick_run::commands::get_all_quick_runs_sync(&manager) {
+                Ok(list) => list,
+                Err(e) => {
+                    log::warn!("Failed to read quick runs for watcher sync: {e}");
+                    return Ok(());
+                }
+            };
 
         let mut sessions = self.sessions.write().await;
         let active_qr_keys: std::collections::HashSet<String> = quick_runs
@@ -140,7 +141,7 @@ impl WatcherManager {
 
     async fn start_quick_run_watch_session(
         &self,
-        quick_run: &crate::core::flow::types::QuickRun,
+        quick_run: &crate::core::flow::quick_run::types::QuickRun,
         app_handle: AppHandle,
     ) -> Result<WatchSession, String> {
         let raw_paths = quick_run.watch_paths();
@@ -201,7 +202,7 @@ impl WatcherManager {
                     () = &mut timeout, if pending_event => {
                         pending_event = false;
                         log::info!("File watcher triggering quick run: {qr_name} ({qr_id})");
-                        if let Err(e) = crate::core::flow::commands::start_quick_run(app_handle.clone(), qr_id.clone()).await {
+                        if let Err(e) = crate::core::flow::quick_run::commands::start_quick_run(app_handle.clone(), qr_id.clone()).await {
                             log::error!("File watcher execution failed for quick run {qr_id}: {e}");
                         }
                     }

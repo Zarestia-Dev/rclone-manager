@@ -116,7 +116,6 @@ export class RemoteConfigStepComponent {
   readonly newOptionKey = signal('');
   readonly newOptionType = signal<'boolean' | 'string' | 'number' | 'array'>('boolean');
   readonly randomIcon = signal('cloud');
-  readonly animTrigger = signal(0);
   readonly suggestedRemotes = signal<{ label: string; value: string; icon: string }[]>([]);
 
   // ── Computed View Models ──────────────────────────────────────────────────
@@ -320,12 +319,10 @@ export class RemoteConfigStepComponent {
 
         const id = setInterval(() => {
           this.randomIcon.set(pickNextIcon());
-          this.animTrigger.update(v => v + 1);
         }, 3000);
         onCleanup(() => clearInterval(id));
       } else {
         this.randomIcon.set('cloud');
-        this.animTrigger.set(0);
       }
     });
   }

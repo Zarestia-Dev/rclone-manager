@@ -296,7 +296,9 @@
       "filemanager": "Gestionnaire de fichiers",
       "startup": "Démarrage",
       "update": "Mettre à jour",
-      "internal": "Interne"
+      "internal": "Interne",
+      "flow": "Espace de travail Flow",
+      "quickrun": "Exécution rapide"
     },
     "rule": {
       "filters": "Filtres",

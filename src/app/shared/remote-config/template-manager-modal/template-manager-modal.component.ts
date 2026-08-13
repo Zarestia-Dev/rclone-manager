@@ -10,6 +10,7 @@ import {
   DestroyRef,
   afterNextRender,
   Injector,
+  untracked,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -21,12 +22,20 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatListModule } from '@angular/material/list';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslatePipe } from '@ngx-translate/core';
 
-import { UserPresetTemplate, TemplateCategory } from '@app/types';
+import {
+  UserPresetTemplate,
+  TemplateCategory,
+  TEMPLATE_CATEGORIES,
+  isTemplateCategory,
+  isTemplateCategoryRecord,
+} from '@app/types';
+import { parseTypedValue, formatValueDisplay, deepEqual } from 'src/app/shared/utils';
 import { UserTemplateService } from 'src/app/services/remote/user-template.service';
 import { SearchContainerComponent } from '../../components/search-container/search-container.component';
-import { AlertBannerComponent } from '../../components/alert-banner/alert-banner.component';
 import { EscapeCloseDirective } from '../../directives/escape-close.directive';
 
 import { EditorView } from '@codemirror/view';
@@ -42,6 +51,7 @@ import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter, lintGutter } from '@codemirror/lint';
 import { bracketMatching, indentOnInput } from '@codemirror/language';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 
 export interface TemplateManagerModalData {
   mode: 'save' | 'manage';
@@ -50,43 +60,13 @@ export interface TemplateManagerModalData {
 }
 
 export interface SettingKeyEntry {
-  id: string; // e.g. "vfs:cache_mode"
+  id: string;
   category: TemplateCategory;
   key: string;
   value: unknown;
   displayValue: string;
   selected: boolean;
 }
-
-function parseTypedValue(val: string): unknown {
-  const trimmed = val.trim();
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
-  if (/^-?\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-  if (/^-?\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed);
-  try {
-    if (
-      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-      (trimmed.startsWith('[') && trimmed.endsWith(']'))
-    ) {
-      return JSON.parse(trimmed);
-    }
-  } catch {
-    // fallback to plain string
-  }
-  return trimmed;
-}
-
-const CATEGORY_LIST: TemplateCategory[] = [
-  'vfs',
-  'mount',
-  'backend',
-  'filter',
-  'sync',
-  'copy',
-  'remote',
-  'operation',
-];
 
 @Component({
   selector: 'app-template-manager-modal',
@@ -103,9 +83,10 @@ const CATEGORY_LIST: TemplateCategory[] = [
     MatCheckboxModule,
     MatListModule,
     MatTabsModule,
+    MatDividerModule,
+    MatExpansionModule,
     TranslatePipe,
     SearchContainerComponent,
-    AlertBannerComponent,
   ],
   templateUrl: './template-manager-modal.component.html',
   styleUrls: ['./template-manager-modal.component.scss', '../../../styles/_shared-modal.scss'],
@@ -114,126 +95,96 @@ const CATEGORY_LIST: TemplateCategory[] = [
 export class TemplateManagerModalComponent {
   private readonly fb = inject(FormBuilder);
   readonly userTemplateService = inject(UserTemplateService);
+  private readonly presetsService = inject(RemotePresetsService);
   private readonly dialogRef = inject(MatDialogRef<TemplateManagerModalComponent>);
   readonly data = inject<TemplateManagerModalData>(MAT_DIALOG_DATA, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
+  readonly availableCategories = TEMPLATE_CATEGORIES;
+
+  // === Top-level UI state ===
   readonly mode = signal<'save' | 'manage'>(this.data?.mode ?? 'save');
   readonly isSearchVisible = signal<boolean>(false);
+  readonly keySearchQuery = signal<string>('');
 
-  toggleSearch(): void {
-    this.isSearchVisible.update(v => !v);
-    if (!this.isSearchVisible()) {
-      this.keySearchQuery.set('');
-    }
-  }
-  readonly Object = Object;
-  readonly String = String;
-  readonly availableCategories = CATEGORY_LIST;
-
-  // --- Save Form State ---
+  // === Save tab state ===
   readonly saveForm = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(50)]],
     description: ['', [Validators.maxLength(200)]],
     remoteType: [this.data?.remoteType ?? ''],
   });
-
-  readonly keySearchQuery = signal<string>('');
   readonly saveViewMode = signal<'visual' | 'json'>('visual');
   readonly saveJsonError = signal<string | null>(null);
-
-  // Extract non-empty setting keys from currentValues
   readonly settingEntries = signal<SettingKeyEntry[]>(
-    this.extractEntriesFromCurrentValues(this.data?.currentValues)
+    extractEntriesFromCurrentValues(this.data?.currentValues)
   );
-
-  // Manual key addition in Save mode
-  readonly showAddKeyForm = signal<boolean>(false);
-  readonly newKeyCategory = signal<TemplateCategory>('vfs');
-  readonly newKeyName = signal<string>('');
-  readonly newKeyValue = signal<string>('');
-
-  // Manual key editing in Save mode
-  readonly editingEntryId = signal<string | null>(null);
-  readonly editingValueText = signal<string>('');
-
-  readonly filteredEntries = computed(() => {
-    const query = this.keySearchQuery().trim().toLowerCase();
-    const entries = this.settingEntries();
-    if (!query) return entries;
-    return entries.filter(
-      e =>
-        e.key.toLowerCase().includes(query) ||
-        e.category.toLowerCase().includes(query) ||
-        e.displayValue.toLowerCase().includes(query)
-    );
-  });
-
   readonly selectedKeysCount = computed(() => this.settingEntries().filter(e => e.selected).length);
 
-  // --- Manage Templates State ---
-  readonly selectedTemplateId = signal<string | null>(
-    this.userTemplateService.userTemplates()[0]?.id ?? null
-  );
-
+  // === Manage tab state ===
+  readonly selectedTemplateId = signal<string | null>(null);
   readonly selectedTemplate = computed<UserPresetTemplate | null>(() => {
     const id = this.selectedTemplateId();
     if (!id) return null;
     return this.userTemplateService.userTemplates().find(t => t.id === id) ?? null;
   });
-
+  readonly draftName = signal<string>('');
+  readonly draftDescription = signal<string>('');
+  readonly draftValues = signal<Partial<Record<TemplateCategory, Record<string, unknown>>>>({});
   readonly manageViewMode = signal<'visual' | 'json'>('visual');
   readonly jsonEditorContent = signal<string>('');
   readonly jsonParseError = signal<string | null>(null);
 
-  // Visual mode key addition in Manage mode
-  readonly addingCatKey = signal<TemplateCategory | null>(null);
-  readonly catKeyInput = signal<string>('');
-  readonly catValInput = signal<string>('');
+  readonly isManageDirty = computed<boolean>(() => {
+    const tpl = this.selectedTemplate();
+    if (!tpl) return false;
+    if (this.draftName().trim() !== (tpl.name || '').trim()) return true;
+    if (this.draftDescription().trim() !== (tpl.description || '').trim()) return true;
+    // Use order-insensitive deep equality instead of JSON.stringify which
+    // would falsely report dirty on key reorder and stringifies twice per call.
+    return !deepEqual(this.draftValues() ?? {}, tpl.values ?? {});
+  });
 
-  // CodeMirror References & Instances
+  // === Add-key row drafts (shared between Save and Manage tabs) ===
+  // One draft per category so input fields across both tabs read/write the
+  // same in-flight text without cross-contaminating actual template state.
+  private readonly draftKeyByCategory = signal<Partial<Record<TemplateCategory, string>>>({});
+  private readonly draftValByCategory = signal<Partial<Record<TemplateCategory, string>>>({});
+
+  // === CodeMirror state ===
   private readonly saveEditorContainer = viewChild<ElementRef<HTMLElement>>('saveEditorContainer');
   private readonly manageEditorContainer =
     viewChild<ElementRef<HTMLElement>>('manageEditorContainer');
-
   private saveEditorView: EditorView | null = null;
   private manageEditorView: EditorView | null = null;
 
-  private readonly injector = inject(Injector);
+  readonly String = String;
 
   constructor() {
-    // Synchronize initial JSON editor content when a template is selected
-    const initialTpl = this.selectedTemplate();
-    if (initialTpl) {
-      this.jsonEditorContent.set(JSON.stringify(initialTpl.values || {}, null, 2));
-    }
+    // CodeMirror lifecycle — single helper drives both Save and Manage tabs.
+    this.setupEditorLifecycle('save');
+    this.setupEditorLifecycle('manage');
 
-    // Effect for Save Tab CodeMirror instance
     effect(() => {
-      const container = this.saveEditorContainer();
-      const isJsonView = this.saveViewMode() === 'json';
-      if (container && isJsonView) {
-        afterNextRender(() => this.initSaveCodeMirror(container.nativeElement), {
-          injector: this.injector,
-        });
-      } else {
-        this.saveEditorView?.destroy();
-        this.saveEditorView = null;
+      const templates = this.userTemplateService.userTemplates();
+      const currentId = this.selectedTemplateId();
+      if (!currentId || !templates.some(t => t.id === currentId)) {
+        this.selectedTemplateId.set(templates[0]?.id ?? null);
       }
     });
 
-    // Effect for Manage Tab CodeMirror instance
     effect(() => {
-      const container = this.manageEditorContainer();
-      const isJsonView = this.manageViewMode() === 'json';
-      if (container && isJsonView) {
-        afterNextRender(() => this.initManageCodeMirror(container.nativeElement), {
-          injector: this.injector,
-        });
-      } else {
-        this.manageEditorView?.destroy();
-        this.manageEditorView = null;
-      }
+      const id = this.selectedTemplateId();
+      untracked(() => {
+        const tpl = this.userTemplateService.userTemplates().find(t => t.id === id);
+        this.draftName.set(tpl?.name ?? '');
+        this.draftDescription.set(tpl?.description ?? '');
+        this.draftValues.set(structuredClone(tpl?.values ?? {}));
+        const jsonStr = JSON.stringify(tpl?.values ?? {}, null, 2);
+        this.jsonEditorContent.set(jsonStr);
+        this.jsonParseError.set(null);
+        this.dispatchEditorText('manage', jsonStr);
+      });
     });
 
     this.destroyRef.onDestroy(() => {
@@ -242,6 +193,384 @@ export class TemplateManagerModalComponent {
     });
   }
 
+  /**
+   * Wire one CodeMirror editor instance to its container + view-mode signal.
+   * Replaces the previously duplicated pair of near-identical effects.
+   */
+  private setupEditorLifecycle(which: 'save' | 'manage'): void {
+    const container = which === 'save' ? this.saveEditorContainer : this.manageEditorContainer;
+    const viewMode = which === 'save' ? this.saveViewMode : this.manageViewMode;
+
+    effect(() => {
+      const el = container();
+      const isJsonView = viewMode() === 'json';
+      if (el && isJsonView) {
+        afterNextRender(() => this.initEditor(which, el.nativeElement), {
+          injector: this.injector,
+        });
+      } else if (which === 'save') {
+        this.saveEditorView?.destroy();
+        this.saveEditorView = null;
+      } else {
+        this.manageEditorView?.destroy();
+        this.manageEditorView = null;
+      }
+    });
+  }
+
+  // === Header / search ===
+  toggleSearch(): void {
+    this.isSearchVisible.update(v => !v);
+    if (!this.isSearchVisible()) {
+      this.keySearchQuery.set('');
+    }
+  }
+
+  // === Save tab: entry selection ===
+  toggleEntry(id: string): void {
+    this.settingEntries.update(entries =>
+      entries.map(e => (e.id === id ? { ...e, selected: !e.selected } : e))
+    );
+  }
+
+  selectAllKeys(): void {
+    this.settingEntries.update(entries => entries.map(e => ({ ...e, selected: true })));
+  }
+
+  deselectAllKeys(): void {
+    this.settingEntries.update(entries => entries.map(e => ({ ...e, selected: false })));
+  }
+
+  removeSaveKey(id: string): void {
+    this.settingEntries.update(entries => entries.filter(e => e.id !== id));
+  }
+
+  applyDefaultPresets(): void {
+    const remoteType =
+      this.mode() === 'save'
+        ? this.saveForm.value.remoteType || this.data?.remoteType || ''
+        : this.selectedTemplate()?.remoteType || this.data?.remoteType || '';
+
+    const presets = this.presetsService.resolvePresets(remoteType);
+
+    if (this.mode() === 'save') {
+      this.settingEntries.update(entries => {
+        const updated = [...entries];
+        for (const [cat, kvObj] of Object.entries(presets)) {
+          if (!isTemplateCategory(cat) || !kvObj) continue;
+          for (const [key, val] of Object.entries(kvObj)) {
+            const entryId = `${cat}:${key}`;
+            const existingIdx = updated.findIndex(e => e.id === entryId);
+            const newEntry: SettingKeyEntry = {
+              id: entryId,
+              category: cat,
+              key,
+              value: val,
+              displayValue: formatValueDisplay(val),
+              selected: true,
+            };
+            if (existingIdx >= 0) {
+              updated[existingIdx] = newEntry;
+            } else {
+              updated.push(newEntry);
+            }
+          }
+        }
+        return updated;
+      });
+
+      if (this.saveViewMode() === 'json') {
+        const jsonStr = JSON.stringify(this.buildSelectedJson(), null, 2);
+        this.dispatchEditorText('save', jsonStr);
+      }
+    } else {
+      const currentValues = structuredClone(this.draftValues() ?? {});
+      for (const [cat, kvObj] of Object.entries(presets)) {
+        if (!isTemplateCategory(cat) || !kvObj) continue;
+        if (!currentValues[cat]) currentValues[cat] = {};
+        for (const [key, val] of Object.entries(kvObj)) {
+          (currentValues[cat] as Record<string, unknown>)[key] = val;
+        }
+      }
+      this.draftValues.set(currentValues);
+
+      const jsonStr = JSON.stringify(currentValues, null, 2);
+      this.jsonEditorContent.set(jsonStr);
+      if (this.manageViewMode() === 'json') {
+        this.dispatchEditorText('manage', jsonStr);
+      }
+    }
+  }
+
+  // === Manage tab: draft editing ===
+  updateTemplateName(name: string): void {
+    this.draftName.set(name);
+  }
+
+  updateTemplateDesc(description: string): void {
+    this.draftDescription.set(description);
+  }
+
+  selectTemplate(id: string): void {
+    this.selectedTemplateId.set(id);
+  }
+
+  // === Shared category accessors ===
+  private filterByText<T>(items: T[], query: string, extractor: (item: T) => string): T[] {
+    if (!query) return items;
+    const q = query.toLowerCase();
+    return items.filter(item => extractor(item).toLowerCase().includes(q));
+  }
+
+  getSaveCategoryEntries(catKey: TemplateCategory): SettingKeyEntry[] {
+    return this.filterByText(
+      this.settingEntries().filter(e => e.category === catKey),
+      this.keySearchQuery(),
+      e => `${e.key} ${e.category} ${e.displayValue}`
+    );
+  }
+
+  getManageCategoryEntries(catKey: TemplateCategory): [string, unknown][] {
+    const obj = this.draftValues()?.[catKey];
+    if (!obj) return [];
+    return this.filterByText(
+      Object.entries(obj),
+      this.keySearchQuery(),
+      ([k, v]) => `${k} ${catKey} ${String(v)}`
+    );
+  }
+
+  shouldShowSaveCategory(catKey: TemplateCategory): boolean {
+    return !this.keySearchQuery().trim() || this.getSaveCategoryEntries(catKey).length > 0;
+  }
+
+  shouldShowManageCategory(catKey: TemplateCategory): boolean {
+    return !this.keySearchQuery().trim() || this.getManageCategoryEntries(catKey).length > 0;
+  }
+
+  readonly hasAnyMatchingSaveCategory = computed(
+    () =>
+      !this.keySearchQuery().trim() ||
+      this.availableCategories.some(c => this.getSaveCategoryEntries(c).length > 0)
+  );
+
+  readonly hasAnyMatchingManageCategory = computed(
+    () =>
+      !this.keySearchQuery().trim() ||
+      this.availableCategories.some(c => this.getManageCategoryEntries(c).length > 0)
+  );
+
+  getSaveCategoryTotalCount(catKey: TemplateCategory): number {
+    return this.settingEntries().filter(e => e.category === catKey).length;
+  }
+
+  getSaveCategorySelectedCount(catKey: TemplateCategory): number {
+    return this.settingEntries().filter(e => e.category === catKey && e.selected).length;
+  }
+
+  getManageCategoryTotalCount(catKey: TemplateCategory): number {
+    const obj = this.draftValues()?.[catKey];
+    return obj ? Object.keys(obj).length : 0;
+  }
+
+  isSaveCategoryExpanded(catKey: TemplateCategory): boolean {
+    if (this.keySearchQuery().trim()) {
+      return this.getSaveCategoryEntries(catKey).length > 0;
+    }
+    return this.getSaveCategoryTotalCount(catKey) > 0;
+  }
+
+  isManageCategoryExpanded(catKey: TemplateCategory): boolean {
+    if (this.keySearchQuery().trim()) {
+      return this.getManageCategoryEntries(catKey).length > 0;
+    }
+    return this.getManageCategoryTotalCount(catKey) > 0;
+  }
+
+  // === Shared add-key row drafts ===
+  draftKey(cat: TemplateCategory): string {
+    return this.draftKeyByCategory()[cat] ?? '';
+  }
+
+  draftVal(cat: TemplateCategory): string {
+    return this.draftValByCategory()[cat] ?? '';
+  }
+
+  setDraftKey(cat: TemplateCategory, value: string): void {
+    this.draftKeyByCategory.update(s => ({ ...s, [cat]: value }));
+  }
+
+  setDraftVal(cat: TemplateCategory, value: string): void {
+    this.draftValByCategory.update(s => ({ ...s, [cat]: value }));
+  }
+
+  isAddKeyDisabled(cat: TemplateCategory): boolean {
+    const k = this.draftKeyByCategory()[cat];
+    return !k || !k.trim();
+  }
+
+  addKeyToCategory(cat: TemplateCategory): void {
+    const rawKey = (this.draftKeyByCategory()[cat] ?? '').trim();
+    if (!rawKey) return;
+
+    const rawVal = (this.draftValByCategory()[cat] ?? '').trim();
+    const parsedVal = parseTypedValue(rawVal);
+
+    if (this.mode() === 'save') {
+      const entryId = `${cat}:${rawKey}`;
+      this.settingEntries.update(entries => {
+        const idx = entries.findIndex(e => e.id === entryId);
+        const newEntry: SettingKeyEntry = {
+          id: entryId,
+          category: cat,
+          key: rawKey,
+          value: parsedVal,
+          displayValue: rawVal || String(parsedVal),
+          selected: true,
+        };
+        if (idx >= 0) {
+          const updated = [...entries];
+          updated[idx] = newEntry;
+          return updated;
+        }
+        return [newEntry, ...entries];
+      });
+    } else {
+      const currentValues = structuredClone(this.draftValues() ?? {});
+      if (!currentValues[cat]) currentValues[cat] = {};
+      (currentValues[cat] as Record<string, unknown>)[rawKey] = parsedVal;
+      this.draftValues.set(currentValues);
+
+      const jsonStr = JSON.stringify(currentValues, null, 2);
+      this.jsonEditorContent.set(jsonStr);
+      this.dispatchEditorText('manage', jsonStr);
+    }
+
+    this.setDraftKey(cat, '');
+    this.setDraftVal(cat, '');
+  }
+
+  removeKeyFromCategory(cat: TemplateCategory, key: string): void {
+    const currentValues = structuredClone(this.draftValues() ?? {});
+    const catObj = currentValues[cat];
+    if (catObj) {
+      delete (catObj as Record<string, unknown>)[key];
+    }
+    this.draftValues.set(currentValues);
+
+    const jsonStr = JSON.stringify(currentValues, null, 2);
+    this.jsonEditorContent.set(jsonStr);
+    this.dispatchEditorText('manage', jsonStr);
+  }
+
+  // === View-mode toggle (shared by Save and Manage) ===
+  toggleViewMode(which: 'save' | 'manage', mode: 'visual' | 'json'): void {
+    const modeSignal = which === 'save' ? this.saveViewMode : this.manageViewMode;
+    const errorSignal = which === 'save' ? this.saveJsonError : this.jsonParseError;
+
+    if (mode === 'json') {
+      const payload = which === 'save' ? this.buildSelectedJson() : this.draftValues();
+      const jsonStr = JSON.stringify(payload, null, 2);
+      errorSignal.set(null);
+      modeSignal.set('json');
+      if (which === 'manage') this.jsonEditorContent.set(jsonStr);
+      this.dispatchEditorText(which, jsonStr);
+      return;
+    }
+
+    // Switching away from JSON: try to parse it back into draft state.
+    if (which === 'manage') {
+      const text = this.manageEditorView?.state.doc.toString() ?? this.jsonEditorContent();
+      try {
+        const parsed: unknown = JSON.parse(text);
+        if (isTemplateCategoryRecord(parsed)) {
+          this.draftValues.set(parsed);
+          this.jsonParseError.set(null);
+        } else if (parsed !== null) {
+          this.jsonParseError.set('Invalid template category record');
+        }
+      } catch (e) {
+        this.jsonParseError.set((e as Error).message);
+      }
+    }
+    modeSignal.set('visual');
+  }
+
+  // === Save handlers ===
+  onSaveTemplate(): void {
+    if (this.saveForm.invalid) return;
+    const formVal = this.saveForm.value;
+
+    const filteredValues = buildCategoryValuesFromEntries(
+      this.settingEntries().filter(e => e.selected)
+    );
+
+    const created = this.userTemplateService.saveTemplate({
+      name: formVal.name?.trim() || 'Untitled Template',
+      description: formVal.description?.trim(),
+      remoteType: formVal.remoteType || undefined,
+      values: filteredValues,
+    });
+
+    this.mode.set('manage');
+    this.selectedTemplateId.set(created.id);
+  }
+
+  onSaveManageTemplate(): void {
+    const id = this.selectedTemplateId();
+    const tpl = this.selectedTemplate();
+    if (!id || !tpl) return;
+
+    let finalValues = this.draftValues();
+
+    if (this.manageViewMode() === 'json') {
+      const text = this.manageEditorView?.state.doc.toString() ?? this.jsonEditorContent();
+      try {
+        const parsed: unknown = JSON.parse(text);
+        if (!isTemplateCategoryRecord(parsed)) {
+          throw new Error('JSON content must be a valid template category record.');
+        }
+        finalValues = parsed;
+        this.draftValues.set(parsed);
+        this.jsonParseError.set(null);
+      } catch (e) {
+        this.jsonParseError.set((e as Error).message);
+        return;
+      }
+    }
+
+    this.userTemplateService.updateTemplate({
+      ...tpl,
+      name: this.draftName() || tpl.name,
+      description: this.draftDescription(),
+      values: finalValues,
+    });
+  }
+
+  createNewDraftTemplate(): void {
+    this.saveForm.reset({
+      name: '',
+      description: '',
+      remoteType: this.data?.remoteType ?? '',
+    });
+    this.settingEntries.set([]);
+    this.mode.set('save');
+  }
+
+  onDeleteUserTemplate(id: string): void {
+    try {
+      this.userTemplateService.deleteTemplate(id);
+      // Auto-select effect handles picking the next template and syncing drafts.
+    } catch (e) {
+      console.warn('[TemplateManagerModal] Failed to delete template:', e);
+    }
+  }
+
+  onClose(): void {
+    this.dialogRef.close();
+  }
+
+  // === CodeMirror helpers ===
   private createCodeMirror(
     container: HTMLElement,
     initialContent: string,
@@ -272,272 +601,44 @@ export class TemplateManagerModalComponent {
     });
   }
 
-  private initSaveCodeMirror(container: HTMLElement): void {
-    if (this.saveEditorView) return;
-    const initialJson = JSON.stringify(this.buildSelectedJson(), null, 2);
-    this.saveEditorView = this.createCodeMirror(container, initialJson, text => {
-      this.handleSaveJsonInput(text);
-    });
-  }
+  private initEditor(which: 'save' | 'manage', container: HTMLElement): void {
+    if (which === 'save') {
+      if (this.saveEditorView) return;
+      const initialJson = JSON.stringify(this.buildSelectedJson(), null, 2);
+      this.saveEditorView = this.createCodeMirror(container, initialJson, text =>
+        this.handleSaveJsonInput(text)
+      );
+      return;
+    }
 
-  private initManageCodeMirror(container: HTMLElement): void {
     if (this.manageEditorView) return;
     const initialJson =
-      this.jsonEditorContent() || JSON.stringify(this.selectedTemplate()?.values || {}, null, 2);
-    this.manageEditorView = this.createCodeMirror(container, initialJson, text => {
-      this.handleManageJsonInput(text);
-    });
+      this.jsonEditorContent() || JSON.stringify(this.selectedTemplate()?.values ?? {}, null, 2);
+    this.manageEditorView = this.createCodeMirror(container, initialJson, text =>
+      this.handleManageJsonInput(text)
+    );
   }
 
-  private buildSelectedJson(): Partial<Record<TemplateCategory, Record<string, unknown>>> {
-    const selected = this.settingEntries().filter(e => e.selected);
-    const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
-
-    for (const item of selected) {
-      if (!result[item.category]) {
-        result[item.category] = {};
-      }
-      (result[item.category] as Record<string, unknown>)[item.key] = item.value;
-    }
-    return result;
+  private getEditorView(which: 'save' | 'manage'): EditorView | null {
+    return which === 'save' ? this.saveEditorView : this.manageEditorView;
   }
 
-  toggleSaveViewMode(mode: 'visual' | 'json'): void {
-    if (mode === 'json') {
-      const jsonStr = JSON.stringify(this.buildSelectedJson(), null, 2);
-      this.saveJsonError.set(null);
-      this.saveViewMode.set('json');
-      if (this.saveEditorView) {
-        this.saveEditorView.dispatch({
-          changes: { from: 0, to: this.saveEditorView.state.doc.length, insert: jsonStr },
-        });
-      }
-    } else {
-      this.saveViewMode.set('visual');
-    }
+  private dispatchEditorText(which: 'save' | 'manage', text: string): void {
+    const view = this.getEditorView(which);
+    if (!view) return;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
   }
 
   private handleSaveJsonInput(text: string): void {
     try {
-      const parsed = JSON.parse(text) as Record<string, Record<string, unknown>>;
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error('JSON content must be an object.');
+      const parsed: unknown = JSON.parse(text);
+      if (!isTemplateCategoryRecord(parsed)) {
+        throw new Error('JSON content must be a valid template category record.');
       }
       this.saveJsonError.set(null);
       this.reconcileSettingEntriesFromCategoryJson(parsed);
     } catch (e) {
       this.saveJsonError.set((e as Error).message);
-    }
-  }
-
-  private reconcileSettingEntriesFromCategoryJson(
-    parsed: Record<string, Record<string, unknown>>
-  ): void {
-    const updatedEntries: SettingKeyEntry[] = [];
-    const processedIds = new Set<string>();
-
-    for (const [cat, kvObj] of Object.entries(parsed)) {
-      if (kvObj && typeof kvObj === 'object' && !Array.isArray(kvObj)) {
-        const category = cat as TemplateCategory;
-        for (const [key, val] of Object.entries(kvObj)) {
-          const entryId = `${category}:${key}`;
-          processedIds.add(entryId);
-          updatedEntries.push({
-            id: entryId,
-            category,
-            key,
-            value: val,
-            displayValue: this.formatValueDisplay(val),
-            selected: true,
-          });
-        }
-      }
-    }
-
-    // Retain existing unselected entries if not in parsed JSON
-    for (const entry of this.settingEntries()) {
-      if (!processedIds.has(entry.id)) {
-        updatedEntries.push({ ...entry, selected: false });
-      }
-    }
-
-    this.settingEntries.set(updatedEntries);
-  }
-
-  private extractEntriesFromCurrentValues(
-    currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>
-  ): SettingKeyEntry[] {
-    if (!currentValues) return [];
-    const entries: SettingKeyEntry[] = [];
-
-    const categories = Object.keys(currentValues) as TemplateCategory[];
-    for (const cat of categories) {
-      const catObj = currentValues[cat];
-      if (catObj && typeof catObj === 'object') {
-        for (const [key, val] of Object.entries(catObj)) {
-          if (val !== undefined && val !== null && val !== '') {
-            entries.push({
-              id: `${cat}:${key}`,
-              category: cat,
-              key,
-              value: val,
-              displayValue: this.formatValueDisplay(val),
-              selected: true,
-            });
-          }
-        }
-      }
-    }
-
-    return entries;
-  }
-
-  private formatValueDisplay(val: unknown): string {
-    if (typeof val === 'boolean') return val ? 'true' : 'false';
-    if (typeof val === 'object') return JSON.stringify(val);
-    return String(val);
-  }
-
-  toggleEntry(id: string): void {
-    this.settingEntries.update(entries =>
-      entries.map(e => (e.id === id ? { ...e, selected: !e.selected } : e))
-    );
-  }
-
-  selectAllKeys(): void {
-    this.settingEntries.update(entries => entries.map(e => ({ ...e, selected: true })));
-  }
-
-  deselectAllKeys(): void {
-    this.settingEntries.update(entries => entries.map(e => ({ ...e, selected: false })));
-  }
-
-  addCustomSettingKey(): void {
-    const key = this.newKeyName().trim();
-    if (!key) return;
-
-    const cat = this.newKeyCategory();
-    const rawValStr = this.newKeyValue().trim();
-    const parsedVal = parseTypedValue(rawValStr);
-    const entryId = `${cat}:${key}`;
-
-    this.settingEntries.update(entries => {
-      const existingIdx = entries.findIndex(e => e.id === entryId);
-      const newEntry: SettingKeyEntry = {
-        id: entryId,
-        category: cat,
-        key,
-        value: parsedVal,
-        displayValue: rawValStr || String(parsedVal),
-        selected: true,
-      };
-
-      if (existingIdx >= 0) {
-        const updated = [...entries];
-        updated[existingIdx] = newEntry;
-        return updated;
-      }
-      return [newEntry, ...entries];
-    });
-
-    this.newKeyName.set('');
-    this.newKeyValue.set('');
-    this.showAddKeyForm.set(false);
-  }
-
-  startEditEntry(entry: SettingKeyEntry, event: Event): void {
-    event.stopPropagation();
-    this.editingEntryId.set(entry.id);
-    this.editingValueText.set(entry.displayValue);
-  }
-
-  saveEditEntry(id: string, event: Event): void {
-    event.stopPropagation();
-    const newStr = this.editingValueText().trim();
-    const parsedVal = parseTypedValue(newStr);
-
-    this.settingEntries.update(entries =>
-      entries.map(e =>
-        e.id === id
-          ? {
-              ...e,
-              value: parsedVal,
-              displayValue: newStr || String(parsedVal),
-            }
-          : e
-      )
-    );
-
-    this.editingEntryId.set(null);
-  }
-
-  cancelEditEntry(event: Event): void {
-    event.stopPropagation();
-    this.editingEntryId.set(null);
-  }
-
-  onSaveTemplate(): void {
-    if (this.saveForm.invalid) return;
-    const formVal = this.saveForm.value;
-    const selected = this.settingEntries().filter(e => e.selected);
-
-    const filteredValues: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
-
-    for (const item of selected) {
-      if (!filteredValues[item.category]) {
-        filteredValues[item.category] = {};
-      }
-      (filteredValues[item.category] as Record<string, unknown>)[item.key] = item.value;
-    }
-
-    const created = this.userTemplateService.saveTemplate({
-      name: formVal.name?.trim() || 'Untitled Template',
-      description: formVal.description?.trim(),
-      remoteType: formVal.remoteType || undefined,
-      values: filteredValues,
-    });
-
-    this.dialogRef.close({ action: 'saved', template: created });
-  }
-
-  // --- Manage Templates Handlers ---
-  createNewDraftTemplate(): void {
-    this.saveForm.reset({
-      name: '',
-      description: '',
-      remoteType: this.data?.remoteType ?? '',
-    });
-    this.settingEntries.set([]);
-    this.mode.set('save');
-  }
-
-  selectTemplate(id: string): void {
-    this.selectedTemplateId.set(id);
-    const tpl = this.userTemplateService.userTemplates().find(t => t.id === id);
-    if (tpl) {
-      const jsonStr = JSON.stringify(tpl.values || {}, null, 2);
-      this.jsonEditorContent.set(jsonStr);
-      this.jsonParseError.set(null);
-
-      if (this.manageEditorView) {
-        this.manageEditorView.dispatch({
-          changes: { from: 0, to: this.manageEditorView.state.doc.length, insert: jsonStr },
-        });
-      }
-    }
-  }
-
-  toggleViewMode(mode: 'visual' | 'json'): void {
-    this.manageViewMode.set(mode);
-    if (mode === 'json' && this.selectedTemplate()) {
-      const jsonStr = JSON.stringify(this.selectedTemplate()?.values || {}, null, 2);
-      this.jsonEditorContent.set(jsonStr);
-      this.jsonParseError.set(null);
-      if (this.manageEditorView) {
-        this.manageEditorView.dispatch({
-          changes: { from: 0, to: this.manageEditorView.state.doc.length, insert: jsonStr },
-        });
-      }
     }
   }
 
@@ -551,104 +652,82 @@ export class TemplateManagerModalComponent {
     }
   }
 
-  onSaveTemplateEdits(): void {
-    const tpl = this.selectedTemplate();
-    if (!tpl) return;
+  private buildSelectedJson(): Partial<Record<TemplateCategory, Record<string, unknown>>> {
+    return buildCategoryValuesFromEntries(this.settingEntries().filter(e => e.selected));
+  }
 
-    try {
-      const text = this.manageEditorView?.state.doc.toString() || this.jsonEditorContent();
-      const parsedValues = JSON.parse(text);
-      if (
-        typeof parsedValues !== 'object' ||
-        parsedValues === null ||
-        Array.isArray(parsedValues)
-      ) {
-        throw new Error('JSON content must be an object.');
+  private reconcileSettingEntriesFromCategoryJson(
+    parsed: Partial<Record<TemplateCategory, Record<string, unknown>>>
+  ): void {
+    const updatedEntries: SettingKeyEntry[] = [];
+    const processedIds = new Set<string>();
+
+    for (const [cat, kvObj] of Object.entries(parsed)) {
+      if (!isTemplateCategory(cat)) continue;
+      if (kvObj && typeof kvObj === 'object' && !Array.isArray(kvObj)) {
+        for (const [key, val] of Object.entries(kvObj)) {
+          const entryId = `${cat}:${key}`;
+          processedIds.add(entryId);
+          updatedEntries.push({
+            id: entryId,
+            category: cat,
+            key,
+            value: val,
+            displayValue: formatValueDisplay(val),
+            selected: true,
+          });
+        }
       }
+    }
 
-      this.userTemplateService.updateTemplate({
-        ...tpl,
-        values: parsedValues,
-      });
+    // Retain existing unselected entries if not present in parsed JSON.
+    for (const entry of this.settingEntries()) {
+      if (!processedIds.has(entry.id)) {
+        updatedEntries.push({ ...entry, selected: false });
+      }
+    }
 
-      this.jsonParseError.set(null);
-    } catch (e) {
-      this.jsonParseError.set((e as Error).message);
+    this.settingEntries.set(updatedEntries);
+  }
+}
+
+// === Module-level pure helpers ===
+
+function extractEntriesFromCurrentValues(
+  currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>
+): SettingKeyEntry[] {
+  if (!currentValues) return [];
+  const entries: SettingKeyEntry[] = [];
+
+  for (const cat of Object.keys(currentValues)) {
+    if (!isTemplateCategory(cat)) continue;
+    const catObj = currentValues[cat];
+    if (catObj && typeof catObj === 'object') {
+      for (const [key, val] of Object.entries(catObj)) {
+        if (val !== undefined && val !== null && val !== '') {
+          entries.push({
+            id: `${cat}:${key}`,
+            category: cat,
+            key,
+            value: val,
+            displayValue: formatValueDisplay(val),
+            selected: true,
+          });
+        }
+      }
     }
   }
 
-  addKeyToCategory(cat: TemplateCategory): void {
-    const key = this.catKeyInput().trim();
-    if (!key) return;
+  return entries;
+}
 
-    const tpl = this.selectedTemplate();
-    if (!tpl) return;
-
-    const rawVal = this.catValInput().trim();
-    const parsedVal = parseTypedValue(rawVal);
-
-    const currentValues = JSON.parse(JSON.stringify(tpl.values || {})) as Partial<
-      Record<TemplateCategory, Record<string, unknown>>
-    >;
-    if (!currentValues[cat]) {
-      currentValues[cat] = {};
-    }
-    (currentValues[cat] as Record<string, unknown>)[key] = parsedVal;
-
-    this.userTemplateService.updateTemplate({
-      ...tpl,
-      values: currentValues,
-    });
-
-    this.catKeyInput.set('');
-    this.catValInput.set('');
-    this.addingCatKey.set(null);
-
-    const jsonStr = JSON.stringify(currentValues, null, 2);
-    this.jsonEditorContent.set(jsonStr);
-    if (this.manageEditorView) {
-      this.manageEditorView.dispatch({
-        changes: { from: 0, to: this.manageEditorView.state.doc.length, insert: jsonStr },
-      });
-    }
+function buildCategoryValuesFromEntries(
+  entries: readonly SettingKeyEntry[]
+): Partial<Record<TemplateCategory, Record<string, unknown>>> {
+  const result: Partial<Record<TemplateCategory, Record<string, unknown>>> = {};
+  for (const item of entries) {
+    if (!result[item.category]) result[item.category] = {};
+    (result[item.category] as Record<string, unknown>)[item.key] = item.value;
   }
-
-  removeKeyFromCategory(cat: TemplateCategory, key: string): void {
-    const tpl = this.selectedTemplate();
-    if (!tpl) return;
-
-    const currentValues = JSON.parse(JSON.stringify(tpl.values || {})) as Partial<
-      Record<TemplateCategory, Record<string, unknown>>
-    >;
-    if (currentValues[cat]) {
-      delete (currentValues[cat] as Record<string, unknown>)[key];
-    }
-
-    this.userTemplateService.updateTemplate({
-      ...tpl,
-      values: currentValues,
-    });
-
-    const jsonStr = JSON.stringify(currentValues, null, 2);
-    this.jsonEditorContent.set(jsonStr);
-    if (this.manageEditorView) {
-      this.manageEditorView.dispatch({
-        changes: { from: 0, to: this.manageEditorView.state.doc.length, insert: jsonStr },
-      });
-    }
-  }
-
-  onDeleteUserTemplate(id: string): void {
-    this.userTemplateService.deleteTemplate(id);
-    const remaining = this.userTemplateService.userTemplates();
-    if (remaining.length > 0) {
-      this.selectTemplate(remaining[0].id);
-    } else {
-      this.selectedTemplateId.set(null);
-    }
-  }
-
-  onClose(): void {
-    this.dialogRef.close();
-  }
+  return result;
 }

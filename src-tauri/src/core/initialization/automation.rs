@@ -52,7 +52,9 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
     }
 
     // ── Quick Run Automations & Watchers ────────────────────────────────────
-    if let Ok(quick_runs) = crate::core::flow::commands::get_all_quick_runs_sync(&manager) {
+    if let Ok(quick_runs) =
+        crate::core::flow::quick_run::commands::get_all_quick_runs_sync(&manager)
+    {
         info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
 
         for qr in &quick_runs {
@@ -62,7 +64,8 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
                 let qr_id = qr.id.clone();
                 tokio::spawn(async move {
                     if let Err(e) =
-                        crate::core::flow::commands::start_quick_run(app, qr_id.clone()).await
+                        crate::core::flow::quick_run::commands::start_quick_run(app, qr_id.clone())
+                            .await
                     {
                         log::error!("Failed to auto-start Quick Run {qr_id}: {e}");
                     }

@@ -1,4 +1,5 @@
 import { OPERATION_REGISTRY } from './operation-registry';
+import { PrimaryActionType } from './operations';
 import { ConfigValue } from './system';
 
 // Dynamic extraction of FlagTypes based on registry
@@ -19,11 +20,15 @@ export const FLAG_TYPES = Object.freeze([
 export type EditTarget = FlagType | 'remote' | 'runtimeRemote' | null;
 export type SharedProfileType = FlagType | 'runtimeRemote';
 
-export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set(
+export const LINKED_PROFILE_TYPES: ReadonlySet<string> = new Set<string>(
   OPERATION_REGISTRY.filter(op => op.hasLinkedProfiles).map(op => op.key)
 );
 
-export const PROFILE_ICONS: Readonly<Record<string, string>> = Object.freeze({
+export function isLinkedProfileType(type: string): type is SharedProfileType {
+  return LINKED_PROFILE_TYPES.has(type);
+}
+
+export const PROFILE_ICONS: Readonly<Record<SharedProfileType, string>> = Object.freeze({
   mount: 'hard-drive',
   sync: 'refresh',
   copy: 'copy',
@@ -39,7 +44,7 @@ export const PROFILE_ICONS: Readonly<Record<string, string>> = Object.freeze({
   filter: 'filter',
   backend: 'database',
   runtimeRemote: 'gear',
-});
+} as Record<SharedProfileType, string>);
 
 export const INTERACTIVE_REMOTES: ReadonlySet<string> = new Set([
   'onedrive',
@@ -494,15 +499,7 @@ export interface PendingRemoteData {
 }
 
 export type WizardStep = 'setup' | 'operations' | 'interactive';
-export type OperationType =
-  | 'mount'
-  | 'sync'
-  | 'copy'
-  | 'bisync'
-  | 'move'
-  | 'serve'
-  | 'check'
-  | 'cryptcheck'
-  | 'delete'
-  | 'copyurl'
-  | 'archivecreate';
+// `OperationType` was previously a hand-maintained 11-literal union duplicating
+// `PrimaryActionType` from `operations.ts`. Now aliased to it so adding a new
+// operation to `OPERATION_REGISTRY` automatically extends this type.
+export type OperationType = PrimaryActionType;

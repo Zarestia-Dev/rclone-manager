@@ -288,7 +288,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = await this.notifications.openInput({
+    const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.rename.title'),
       label: this.translate.instant('nautilus.modals.rename.label'),
       icon: 'pen',
@@ -527,7 +527,7 @@ export class NautilusFileOperationsService {
   ): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = await this.notifications.openInput({
+    const ref = await this.notifications.openInput<string>({
       title: this.translate.instant('nautilus.modals.newFolder.title'),
       label: this.translate.instant('nautilus.modals.newFolder.label'),
       icon: 'folder',
@@ -551,7 +551,7 @@ export class NautilusFileOperationsService {
   async openCopyUrlDialog(remote: ExplorerRoot, currentPath: string): Promise<boolean> {
     const normalizedRemote = this._normalizeRemote(remote);
 
-    const ref = await this.notifications.openInput({
+    const ref = await this.notifications.openInput<{ url?: string; filename?: string }>({
       title: this.translate.instant('nautilus.modals.copyUrl.title'),
       icon: 'download',
       createLabel: this.translate.instant('nautilus.modals.copyUrl.confirm'),
@@ -580,9 +580,10 @@ export class NautilusFileOperationsService {
       const { url, filename } = result;
       const autoFilename = !filename || filename.trim() === '';
       const targetFilename = filename?.trim();
-      const targetPath = !autoFilename
-        ? this.pathService.joinPath(currentPath, targetFilename)
-        : currentPath;
+      const targetPath =
+        !autoFilename && targetFilename
+          ? this.pathService.joinPath(currentPath, targetFilename)
+          : currentPath;
 
       this.notifications.showInfo(this.translate.instant('nautilus.notifications.copyUrlStarted'));
 

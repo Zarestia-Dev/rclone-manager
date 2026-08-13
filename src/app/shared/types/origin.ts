@@ -6,6 +6,7 @@ export const ORIGINS = [
   'update',
   'internal',
   'flow',
+  'quickrun',
 ] as const;
 
 export type Origin = (typeof ORIGINS)[number];

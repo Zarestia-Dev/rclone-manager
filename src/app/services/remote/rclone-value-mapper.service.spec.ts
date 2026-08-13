@@ -12,10 +12,6 @@ describe('RcloneValueMapperService', () => {
     service = TestBed.inject(RcloneValueMapperService);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
   describe('machineToHuman', () => {
     it('should return fallback if value is null or undefined', () => {
       expect(service.machineToHuman(null, 'string', 'fallback')).toBe('fallback');

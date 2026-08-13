@@ -50,7 +50,8 @@ export class ValidatorRegistryService {
 
   arrayValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || Array.isArray(control.value)) return null;
+      if (!control.value || Array.isArray(control.value) || typeof control.value === 'string')
+        return null;
       return { invalidArray: true };
     };
   }
@@ -167,10 +168,11 @@ export class ValidatorRegistryService {
     };
   }
 
-  enumValidator(allowedValues: string[]): ValidatorFn {
-    const lowerValues = allowedValues.map(v => v.toLowerCase());
+  enumValidator(allowedValues: unknown[]): ValidatorFn {
+    const lowerValues = allowedValues.map(v => String(v ?? '').toLowerCase());
     return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
+      if (control.value === null || control.value === undefined || control.value === '')
+        return null;
       const value = control.value.toString().trim().toLowerCase();
       if (!lowerValues.includes(value)) {
         return {
@@ -178,7 +180,7 @@ export class ValidatorRegistryService {
             value,
             allowedValues,
             message: this.translate.instant('validators.enum', {
-              values: allowedValues.join(', '),
+              values: allowedValues.map(v => String(v)).join(', '),
             }),
           },
         };

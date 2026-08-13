@@ -50,12 +50,7 @@
     @if (showTypeField() && !remoteType && !isLoading()) {
       <div class="empty-state">
         <div class="empty-state-icon-ring">
-          <mat-icon
-            [svgIcon]="randomIcon()"
-            class="empty-state-icon"
-            [class.anim-icon-fade-a]="animTrigger() % 2 === 0"
-            [class.anim-icon-fade-b]="animTrigger() % 2 === 1"
-          ></mat-icon>
+          <mat-icon [svgIcon]="randomIcon()" class="empty-state-icon anim-icon-fade"></mat-icon>
         </div>
         <div class="empty-state-body">
           <h3 class="empty-state-title">

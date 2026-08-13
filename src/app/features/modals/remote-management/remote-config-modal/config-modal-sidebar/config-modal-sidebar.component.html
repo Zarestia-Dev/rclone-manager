@@ -179,7 +179,7 @@
           variant="sidebar-item"
           [currentValues]="currentValues()"
           [remoteType]="state.remoteTypeSignal()"
-          (applyDefaultPresets)="defaultPresetsApplied.emit()"
+          (applyDefaultPresets)="presetsApplied.emit()"
           (applyTemplate)="templateApplied.emit($event)"
         />
       }

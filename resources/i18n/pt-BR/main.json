@@ -296,7 +296,9 @@
       "filemanager": "Gerenciador de Arquivos",
       "startup": "Inicialização",
       "update": "Atualizar",
-      "internal": "Internamente"
+      "internal": "Internamente",
+      "flow": "Espaço de Trabalho Flow",
+      "quickrun": "Execução Rápida"
     },
     "rule": {
       "filters": "Filtros",

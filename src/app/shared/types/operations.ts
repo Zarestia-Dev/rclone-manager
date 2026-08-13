@@ -115,10 +115,32 @@ export type BatchApiLabel = Extract<
  */
 export const OPERATION_TYPE_KEYS: ReadonlySet<string> = new Set<string>(ALL_PRIMARY_ACTIONS);
 
+/**
+ * Type guard to check if a value is a PrimaryActionType.
+ */
+export function isPrimaryActionType(type: string): type is PrimaryActionType {
+  return OPERATION_TYPE_KEYS.has(type);
+}
+
 // ── Operation Category Constants for unifying inline lists ──────────────────
-export const CORE_SYNC_OPS = ['sync', 'copy', 'move'] as const;
-export const WATCH_SUPPORTED_OPS = ['sync', 'copy', 'move', 'bisync', 'check'] as const;
-export const CORE_COMMAND_OPS = ['archivecreate', 'cryptcheck'] as const;
+// Each list is typed as `readonly PrimaryActionType[]` so consumers can pass
+// them to APIs expecting `PrimaryActionType` without an `as` cast.
+export const CORE_SYNC_OPS = [
+  'sync',
+  'copy',
+  'move',
+] as const satisfies readonly PrimaryActionType[];
+export const WATCH_SUPPORTED_OPS = [
+  'sync',
+  'copy',
+  'move',
+  'bisync',
+  'check',
+] as const satisfies readonly PrimaryActionType[];
+export const CORE_COMMAND_OPS = [
+  'archivecreate',
+  'cryptcheck',
+] as const satisfies readonly PrimaryActionType[];
 export const MULTI_SOURCE_OPS = [
   'sync',
   'copy',
@@ -127,8 +149,13 @@ export const MULTI_SOURCE_OPS = [
   'copyurl',
   'check',
   'cryptcheck',
-] as const;
-export const FILE_SOURCE_OPS = ['copy', 'move', 'delete', 'archivecreate'] as const;
+] as const satisfies readonly PrimaryActionType[];
+export const FILE_SOURCE_OPS = [
+  'copy',
+  'move',
+  'delete',
+  'archivecreate',
+] as const satisfies readonly PrimaryActionType[];
 export const BACKEND_PROFILE_SUPPORTED_OPS = [
   'sync',
   'copy',
@@ -137,5 +164,5 @@ export const BACKEND_PROFILE_SUPPORTED_OPS = [
   'delete',
   'copyurl',
   'archivecreate',
-] as const;
-export const NON_JOB_OPS = ['mount', 'serve'] as const;
+] as const satisfies readonly PrimaryActionType[];
+export const NON_JOB_OPS = ['mount', 'serve'] as const satisfies readonly PrimaryActionType[];

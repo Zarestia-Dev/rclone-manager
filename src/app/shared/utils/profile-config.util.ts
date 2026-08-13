@@ -4,27 +4,51 @@ export type RcloneSubConfig = NonNullable<ProfileConfig['rclone']>;
 
 export interface ConfigWithSubConfigs {
   app?: AppConfig;
-  rclone?: unknown;
+  rclone?: Record<string, unknown>;
 }
 
-export function getAppCfg<T extends object>(config: T | undefined | null): AppConfig | null {
-  if (!config) return null;
-  const maybeApp = (config as ConfigWithSubConfigs).app;
-  return maybeApp && typeof maybeApp === 'object' ? maybeApp : null;
+/** Internal helper shared by both getAppCfg and getRcloneCfg — avoids the previous duplication. */
+function pickSubConfig<TKey extends 'app' | 'rclone'>(
+  config: unknown,
+  key: TKey
+): TKey extends 'app' ? AppConfig | null : RcloneSubConfig | null {
+  if (!config || typeof config !== 'object') return null;
+  const value = (config as ConfigWithSubConfigs)[key];
+  // `value && typeof value === 'object'` filters out null/undefined/primitives.
+  return value && typeof value === 'object'
+    ? (value as TKey extends 'app' ? AppConfig : RcloneSubConfig)
+    : null;
 }
 
-export function getRcloneCfg<T extends object>(
-  config: T | undefined | null
-): RcloneSubConfig | null {
-  if (!config) return null;
-  const maybeRclone = (config as ConfigWithSubConfigs).rclone;
-  return maybeRclone && typeof maybeRclone === 'object' ? (maybeRclone as RcloneSubConfig) : null;
+export function getAppCfg(config: unknown): AppConfig | null {
+  return pickSubConfig(config, 'app');
 }
 
-export function getFormConfig(
-  config: ProfileConfig | undefined | null
-): ProfileConfig | RcloneSubConfig | null {
-  if (config == null) return null;
-  const rclone = getRcloneCfg(config);
-  return rclone ?? config;
+export function getRcloneCfg(config: unknown): RcloneSubConfig | null {
+  return pickSubConfig(config, 'rclone');
+}
+
+export function parseTypedValue(val: string): unknown {
+  const trimmed = val.trim();
+  if (trimmed === 'true') return true;
+  if (trimmed === 'false') return false;
+  if (/^-?\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+  if (/^-?\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed);
+  try {
+    if (
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
+    ) {
+      return JSON.parse(trimmed);
+    }
+  } catch {
+    // fall through to plain string
+  }
+  return trimmed;
+}
+
+export function formatValueDisplay(val: unknown): string {
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
 }
