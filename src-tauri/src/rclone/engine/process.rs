@@ -62,8 +62,6 @@ impl RcApiEngine {
         let backend_manager = app.state::<BackendManager>();
         let backend = backend_manager.get_active().await;
 
-        let mut kill_error: Option<EngineError> = None;
-
         if let Some(child) = self.process.take() {
             if child.id().is_some() {
                 let state = app.state::<RcloneState>();
@@ -74,14 +72,7 @@ impl RcApiEngine {
                     log::warn!("Graceful shutdown failed: {e}");
                 }
             } else {
-                info!("Force killing engine process");
-                let mut child = child;
-                if let Err(e) = child.kill().await {
-                    let msg = format!("Failed to kill process: {e}");
-                    error!("{msg}");
-                    kill_error = Some(EngineError::KillFailed(msg));
-                }
-                let _ = child.wait().await;
+                log::debug!("Engine process had already terminated");
             }
         }
 
@@ -102,11 +93,8 @@ impl RcApiEngine {
                 .await;
         }
 
-        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::error());
+        let _ = app.emit(SYSTEM_STATUS, SystemStatusPayload::inactive());
 
-        if let Some(err) = kill_error {
-            return Err(err);
-        }
         Ok(())
     }
 }

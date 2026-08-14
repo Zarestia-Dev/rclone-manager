@@ -145,7 +145,11 @@
       "debounce": "Retardo de rebote",
       "watcherActive": "Observador activo",
       "seconds": "segundos",
-      "realtimeSchedule": "Observador de archivos en tiempo real"
+      "realtimeSchedule": "Observador de archivos en tiempo real",
+      "changedOnlyShort": "Solo subdirectorios",
+      "changedOnlyActive": "Solo subdirectorios",
+      "syncScope": "Ámbito de sincronización",
+      "realtimeChangedOnly": "Monitoreo en tiempo real (Solo subdirectorios)"
     }
   },
   "actions": {
@@ -1176,6 +1180,10 @@
       "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
       "watchDescription": "Monitoree directorios de origen locales para detectar modificaciones de archivos y sincronizar cambios automáticamente.",
       "watchDelay": "Retardo de rebote (segundos)",
+      "watchDelayHint": "Tiempo de espera tras el último cambio detectado antes de iniciar la sincronización.",
+      "watchZeroDelayWarning": "El modo instantáneo (0s) sincroniza de inmediato al detectar cambios. Para archivos grandes o múltiples ediciones, se recomiendan 3–5s.",
+      "watchChangedOnly": "Sincronizar solo subdirectorios modificados",
+      "watchChangedOnlyHint": "Cuando se activa por el monitor de archivos, sincroniza solo los subdirectorios que contienen archivos modificados en lugar de escanear todo el árbol raíz.",
       "watchRequiresLocalSource": "El monitoreo en tiempo real requiere al menos un directorio de origen local.",
       "watchRequiresLocal": "El monitoreo en tiempo real requiere al menos un directorio de origen o destino local.",
       "watchMixedSourcesNote": "Solo los directorios de origen locales se monitorearán en tiempo real. Los cambios en los orígenes remotos no activarán la sincronización automáticamente.",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

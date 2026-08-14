@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Android DocumentsProvider**: Added `RcloneDocumentsProvider` to expose mounted Rclone remotes to external Android apps and system file pickers.
   - **SAF VFS Mount Bridge**: Integrated a SAF VFS mount bridge enabling in-process virtual filesystem access for Android storage providers.
   - **Android Background Keep-Alive & Boot Receiver**: Added `RcloneKeepAliveService` for persistent background mounts and `ResumeUploadsBootReceiver` for boot initialization on Android.
+- **Template Management**: Added support for managing and using templates. Added in Quick run editor and Remote Config Modal. Releated #260.
+- **Subdirectory-Scoped Real-time Monitoring & File Watcher**: Added an option to synchronize only modified subdirectories instead of scanning the full root tree when triggered by real-time file monitoring events.
+  - **Scoped Sync Targets**: Computes scoped source and destination targets from detected filesystem changes and dispatches targeted batch operations.
 
 ### Changed
 - **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.

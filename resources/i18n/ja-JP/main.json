@@ -145,7 +145,11 @@
       "debounce": "デバウンス遅延",
       "watcherActive": "監視中",
       "seconds": "秒",
-      "realtimeSchedule": "リアルタイムファイル監視"
+      "realtimeSchedule": "リアルタイムファイル監視",
+      "changedOnlyShort": "サブディレクトリのみ",
+      "changedOnlyActive": "サブディレクトリのみ",
+      "syncScope": "同期スコープ",
+      "realtimeChangedOnly": "リアルタイム監視（サブディレクトリのみ）"
     }
   },
   "actions": {
@@ -1176,6 +1180,10 @@
       "enableWatch": "リアルタイムファイル監視を有効化",
       "watchDescription": "ローカルの転送元ディレクトリでファイルの変更を監視し、変更を自動的に同期します。",
       "watchDelay": "デバウンス遅延（秒）",
+      "watchDelayHint": "同期をトリガーする前に、最後に検出された変更からの待機時間。",
+      "watchZeroDelayWarning": "インスタントモード（0秒）は変更時に即座に同期を開始します。大容量ファイルや複数ファイルの編集には、書き込み完了のため3〜5秒を推奨します。",
+      "watchChangedOnly": "変更されたサブディレクトリのみ同期",
+      "watchChangedOnlyHint": "ファイルウォッチャーによってトリガーされた場合、ルートツリー全体をスキャンする代わりらに変更されたファイルを含むサブディレクトリのみを同期します。",
       "watchRequiresLocalSource": "リアルタイム監視には少なくとも1つのローカル転送元ディレクトリが必要です。",
       "watchRequiresLocal": "リアルタイム監視には少なくとも1つのローカル転送元または転送先ディレクトリが必要です。",
       "watchMixedSourcesNote": "リアルタイムで監視されるのはローカルの転送元ディレクトリのみです。リモートソースでの変更によって自動的に同期が開始されることはありません。",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

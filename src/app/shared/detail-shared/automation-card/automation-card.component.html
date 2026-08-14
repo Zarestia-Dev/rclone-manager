@@ -20,7 +20,12 @@
               ·
               <span
                 class="watcher-mini-badge"
-                [attr.title]="'automation.monitoring.realtime' | translate"
+                [attr.title]="
+                  (automation().watchChangedOnly
+                    ? 'automation.monitoring.realtimeChangedOnly'
+                    : 'automation.monitoring.realtime'
+                  ) | translate
+                "
               >
                 <mat-icon svgIcon="eye" class="watcher-mini-icon"></mat-icon>
               </span>
@@ -144,6 +149,14 @@
                 {{ 'automation.monitoring.seconds' | translate }}</span
               >
             </div>
+            @if (automation().watchChangedOnly) {
+              <div class="detail-item">
+                <span class="label">{{ 'automation.monitoring.syncScope' | translate }}</span>
+                <span class="value">{{
+                  'automation.monitoring.changedOnlyActive' | translate
+                }}</span>
+              </div>
+            }
           }
         </div>
       </div>

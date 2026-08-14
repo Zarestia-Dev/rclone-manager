@@ -463,22 +463,6 @@ pub async fn unmount_all_remotes(
             .clone();
         info!("🗑️ Unmounting all remotes");
 
-        let backend_manager = app.state::<BackendManager>();
-
-        // Check current mounted remotes first.
-        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
-        if mounted.is_empty() || context.is_shutdown() {
-            log::debug!("No mounted remotes to unmount — skipping API call");
-            // Refresh cache for UI consistency (unless during shutdown)
-            if !context.is_shutdown() {
-                refresh_mounts_quietly(&app).await;
-            }
-            // Silent no-op during shutdown
-            return Ok(crate::localized_success!(
-                "backendSuccess.mount.allUnmounted"
-            ));
-        }
-
         let _ = transport
             .rpc(crate::utils::rclone::endpoints::mount::UNMOUNTALL, None)
             .await
@@ -497,11 +481,10 @@ pub async fn unmount_all_remotes(
 
         if !context.is_shutdown() {
             refresh_mounts_quietly(&app).await;
+            notify(&app, NotificationEvent::Mount(MountStage::AllUnmounted));
         }
 
         info!("✅ All remotes unmounted successfully");
-
-        notify(&app, NotificationEvent::Mount(MountStage::AllUnmounted));
 
         Ok(crate::localized_success!(
             "backendSuccess.mount.allUnmounted"

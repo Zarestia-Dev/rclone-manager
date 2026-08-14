@@ -44,6 +44,7 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
         profile_name: profile_name.to_string(),
         source: Some(Origin::Dashboard),
         no_cache: None,
+        scoped_targets: None,
     }
 }
 

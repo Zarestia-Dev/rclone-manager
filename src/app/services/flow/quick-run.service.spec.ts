@@ -2,11 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { QuickRunService } from './quick-run.service';
 import { QuickRun, QuickRunInput } from '@app/types';
 import { NotificationService } from '../ui/notification.service';
+import { ModalService } from '../ui/modal.service';
 
 describe('QuickRunService', () => {
   let service: QuickRunService;
   let invokeSpy: jasmine.Spy;
   let notificationSpy: jasmine.SpyObj<NotificationService>;
+  let modalSpy: jasmine.SpyObj<ModalService>;
 
   const mockQuickRun: QuickRun = {
     id: 'qr-1',
@@ -15,7 +17,7 @@ describe('QuickRunService', () => {
     operationType: 'sync',
     remoteName: 'drive:',
     config: {
-      app: {},
+      app: { autoStart: false },
       rclone: { srcFs: '/home/user/docs', dstFs: 'drive:backup' },
     },
     status: 'idle',
@@ -27,9 +29,14 @@ describe('QuickRunService', () => {
       'showError',
       'showInfo',
     ]);
+    modalSpy = jasmine.createSpyObj('ModalService', ['openQuickRunEditor']);
 
     TestBed.configureTestingModule({
-      providers: [QuickRunService, { provide: NotificationService, useValue: notificationSpy }],
+      providers: [
+        QuickRunService,
+        { provide: NotificationService, useValue: notificationSpy },
+        { provide: ModalService, useValue: modalSpy },
+      ],
     });
 
     service = TestBed.inject(QuickRunService);
@@ -41,7 +48,6 @@ describe('QuickRunService', () => {
     expect(service.quickRuns()).toEqual([]);
     expect(service.selectedId()).toBeNull();
     expect(service.isCreating()).toBeFalse();
-    expect(service.editingId()).toBeNull();
   });
 
   describe('selection', () => {
@@ -61,26 +67,14 @@ describe('QuickRunService', () => {
   });
 
   describe('editor lifecycle', () => {
-    it('should open editor in create mode when no id provided', () => {
+    it('should open editor via modal service when no id provided', () => {
       service.openEditor();
-      expect(service.isCreating()).toBeTrue();
-      expect(service.editingId()).toBeNull();
-      expect(service.isEditorOpen()).toBeTrue();
+      expect(modalSpy.openQuickRunEditor).toHaveBeenCalledWith(undefined, undefined);
     });
 
-    it('should open editor in edit mode when a QuickRun is provided', () => {
+    it('should open editor via modal service when a QuickRun is provided', () => {
       service.openEditor(mockQuickRun);
-      expect(service.isCreating()).toBeFalse();
-      expect(service.editingId()).toBe('qr-1');
-      expect(service.isEditorOpen()).toBeTrue();
-    });
-
-    it('should close editor', () => {
-      service.openEditor();
-      service.closeEditor();
-      expect(service.isCreating()).toBeFalse();
-      expect(service.editingId()).toBeNull();
-      expect(service.isEditorOpen()).toBeFalse();
+      expect(modalSpy.openQuickRunEditor).toHaveBeenCalledWith(mockQuickRun, undefined);
     });
   });
 
@@ -99,7 +93,7 @@ describe('QuickRunService', () => {
         name: 'New Quick Run',
         operationType: 'copy',
         remoteName: 'drive:',
-        config: { app: {}, rclone: {} },
+        config: { app: { autoStart: false }, rclone: {} },
       };
 
       invokeSpy.and.resolveTo({
@@ -113,7 +107,6 @@ describe('QuickRunService', () => {
       expect(invokeSpy).toHaveBeenCalledWith('create_quick_run', { quickRun: input });
       expect(result?.id).toBe('qr-new');
       expect(service.quickRuns().some(q => q.id === 'qr-new')).toBeTrue();
-      expect(service.isEditorOpen()).toBeFalse();
     });
 
     it('remove should delete quick run from backend and store', async () => {

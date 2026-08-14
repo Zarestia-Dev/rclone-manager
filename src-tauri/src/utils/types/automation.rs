@@ -115,6 +115,10 @@ pub struct Automation {
     /// Delay in seconds to debounce file changes before running the sync
     #[serde(default = "default_watch_delay")]
     pub watch_delay: u64,
+
+    /// Only synchronize directories containing changed files when triggered by file watcher
+    #[serde(default)]
+    pub watch_changed_only: bool,
 }
 
 impl Automation {
@@ -245,6 +249,7 @@ mod tests {
                     profile_name: "profile".to_string(),
                     source: None,
                     no_cache: None,
+                    scoped_targets: None,
                 },
                 src_paths: vec![],
                 dst_paths: vec![],
@@ -262,6 +267,7 @@ mod tests {
             stopped_count: 0,
             watch_enabled: false,
             watch_delay: 5,
+            watch_changed_only: false,
         }
     }
 

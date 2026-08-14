@@ -145,7 +145,11 @@
       "debounce": "Délai de débordement",
       "watcherActive": "Surveillance active",
       "seconds": "secondes",
-      "realtimeSchedule": "Surveillance de fichiers en temps réel"
+      "realtimeSchedule": "Surveillance de fichiers en temps réel",
+      "changedOnlyShort": "Sous-dossiers uniquement",
+      "changedOnlyActive": "Sous-dossiers uniquement",
+      "syncScope": "Périmètre de synchronisation",
+      "realtimeChangedOnly": "Surveillance en temps réel (Sous-dossiers uniquement)"
     }
   },
   "actions": {
@@ -1176,6 +1180,10 @@
       "enableWatch": "Activer la surveillance des fichiers en temps réel",
       "watchDescription": "Surveiller les répertoires sources locaux pour les modifications de fichiers et synchroniser automatiquement les modifications.",
       "watchDelay": "Délai de débordement (secondes)",
+      "watchDelayHint": "Délai d'attente après la dernière modification détectée avant de lancer la synchronisation.",
+      "watchZeroDelayWarning": "Le mode instantané (0s) lance la synchronisation immédiatement. Pour les gros fichiers ou plusieurs modifications, 3 à 5 s sont recommandées.",
+      "watchChangedOnly": "Synchroniser uniquement les sous-dossiers modifiés",
+      "watchChangedOnlyHint": "Lorsqu'il est déclenché par le moniteur de fichiers, synchronise uniquement les sous-dossiers contenant des fichiers modifiés au lieu d'analyser l'arborescence complète.",
       "watchRequiresLocalSource": "La surveillance en temps réel nécessite au moins un répertoire source local.",
       "watchRequiresLocal": "La surveillance en temps réel nécessite au moins un répertoire local source ou destination.",
       "watchMixedSourcesNote": "Seuls les répertoires sources locaux seront surveillés en temps réel. Les changements sur les sources distantes ne déclencheront pas automatiquement la synchronisation.",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

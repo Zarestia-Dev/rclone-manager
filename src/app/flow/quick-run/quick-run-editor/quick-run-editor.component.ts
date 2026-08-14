@@ -417,6 +417,7 @@ export class QuickRunEditorComponent implements OnInit {
       cronExpression: [app?.cronExpression ?? null],
       watchEnabled: [app?.watchEnabled ?? false],
       watchDelay: [app?.watchDelay ?? 5],
+      watchChangedOnly: [app?.watchChangedOnly ?? false],
       source,
       vfsProfile: ['Default'],
       filterProfile: ['Default'],
@@ -878,9 +879,9 @@ export class QuickRunEditorComponent implements OnInit {
     const sourceValue = rawValue['source'];
     if (sourceValue) {
       if (Array.isArray(sourceValue)) {
-        const paths = (sourceValue as Record<string, unknown>[])
-          .map(item => this.resolvePath(item, remoteName))
-          .filter(Boolean);
+        const paths = (sourceValue as Record<string, unknown>[]).map(item =>
+          this.resolvePath(item, remoteName)
+        );
         if (opType === 'bisync') opConfig['path1'] = paths[0] ?? '';
         else opConfig['srcFs'] = paths.length === 1 ? (paths[0] ?? '') : paths;
       } else if (typeof sourceValue === 'object') {

@@ -28,6 +28,7 @@ struct ProfileConfig {
     cron_expression: Option<String>,
     watch_enabled: Option<bool>,
     watch_delay: Option<u64>,
+    watch_changed_only: Option<bool>,
     source: Option<Value>,
     dest: Option<Value>,
 }
@@ -63,6 +64,7 @@ impl<'de> Deserialize<'de> for ProfileConfig {
             cron_expression: profile.app.cron_expression,
             watch_enabled: profile.app.watch_enabled,
             watch_delay: profile.app.watch_delay,
+            watch_changed_only: profile.app.watch_changed_only,
             source,
             dest,
         })
@@ -258,6 +260,7 @@ impl AutomationsCache {
             || existing.automation_type != new.automation_type
             || existing.watch_enabled != new.watch_enabled
             || existing.watch_delay != new.watch_delay
+            || existing.watch_changed_only != new.watch_changed_only
     }
 
     async fn update_automation_config(
@@ -274,6 +277,7 @@ impl AutomationsCache {
                 t.next_run = new_config.next_run;
                 t.watch_enabled = new_config.watch_enabled;
                 t.watch_delay = new_config.watch_delay;
+                t.watch_changed_only = new_config.watch_changed_only;
                 // Intentionally NOT overwriting `status` — the user's
                 // enabled/disabled choice is the source of truth in the cache.
             },
@@ -345,6 +349,7 @@ impl AutomationsCache {
             profile_name: profile_name.to_string(),
             source: Some(crate::utils::types::origin::Origin::Automation),
             no_cache: None,
+            scoped_targets: None,
         };
 
         let args = AutomationArgs {
@@ -376,6 +381,11 @@ impl AutomationsCache {
             stopped_count: 0,
             watch_enabled,
             watch_delay: config.watch_delay.unwrap_or(5),
+            watch_changed_only: if *automation_type == OperationType::Bisync {
+                false
+            } else {
+                config.watch_changed_only.unwrap_or(false)
+            },
         })
     }
 
@@ -1022,6 +1032,7 @@ mod tests {
                     profile_name: "p".to_string(),
                     source: None,
                     no_cache: None,
+                    scoped_targets: None,
                 },
                 src_paths: vec![],
                 dst_paths: vec![],
@@ -1039,6 +1050,7 @@ mod tests {
             stopped_count: 0,
             watch_enabled: false,
             watch_delay: 5,
+            watch_changed_only: false,
         }
     }
 

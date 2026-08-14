@@ -37,7 +37,7 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::Value;
 
@@ -66,36 +66,33 @@ fn sync_env(key: &str) {
     }
 }
 
-/// Guard to ensure RcloneInitialize is called exactly once per process.
-/// RcloneInitialize is idempotent in librclone, but calling it once avoids
-/// redundant Go runtime setup.
-static INIT_GUARD: OnceLock<()> = OnceLock::new();
+/// Tracks whether librclone is currently initialized.
+static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Initialize librclone. Idempotent — safe to call multiple times.
 ///
-/// This should be called once at app startup (from `setup_app` when
-/// constructing `RcloneLibBackend`). The Go runtime initialized here lives
-/// for the lifetime of the process.
+/// This should be called at app startup (from `setup_app` when
+/// constructing `RcloneLibBackend`) and upon restart.
 #[allow(clippy::disallowed_methods)]
 pub fn initialize() {
-    INIT_GUARD.get_or_init(|| {
+    if !IS_INITIALIZED.swap(true, Ordering::AcqRel) {
         log::info!("Initializing librclone (RcloneInitialize)");
         unsafe {
             std::env::set_var("RCLONE_ASK_PASSWORD", "false");
         }
         sync_env("RCLONE_ASK_PASSWORD");
         unsafe { RcloneInitialize() };
-    });
+    }
 }
 
 /// Finalize librclone. Releases Go runtime resources.
 ///
-/// Call this once at app shutdown (from `RcApiEngine::shutdown`). After this,
-/// no further `rpc()` calls can be made unless `initialize()` is called again.
-/// In practice the process is exiting, so this is just for clean shutdown.
+/// Call this at app shutdown (from `RcApiEngine::shutdown`) or before re-initialization.
 pub fn finalize() {
-    log::info!("Finalizing librclone (RcloneFinalize)");
-    unsafe { RcloneFinalize() };
+    if IS_INITIALIZED.swap(false, Ordering::AcqRel) {
+        log::info!("Finalizing librclone (RcloneFinalize)");
+        unsafe { RcloneFinalize() };
+    }
 }
 
 /// Execute an rc call via librclone FFI.

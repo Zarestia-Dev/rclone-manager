@@ -145,7 +145,11 @@
       "debounce": "防抖延迟",
       "watcherActive": "监控器处于活动状态",
       "seconds": "秒",
-      "realtimeSchedule": "实时文件监控"
+      "realtimeSchedule": "实时文件监控",
+      "changedOnlyShort": "仅子目录",
+      "changedOnlyActive": "仅子目录",
+      "syncScope": "同步范围",
+      "realtimeChangedOnly": "实时监控（仅子目录）"
     }
   },
   "actions": {
@@ -1176,6 +1180,10 @@
       "enableWatch": "启用实时文件监控",
       "watchDescription": "监控本地源目录的文件修改并自动同步更改。",
       "watchDelay": "防抖延迟（秒）",
+      "watchDelayHint": "在触发同步之前，检测到最后一次更改后的等待时间。",
+      "watchZeroDelayWarning": "即时模式（0秒）在发生更改时立即触发同步。对于大文件或多次编辑，建议设置 3–5 秒以确保写入完成。",
+      "watchChangedOnly": "仅同步已更改的子目录",
+      "watchChangedOnlyHint": "当由文件监视器触发时，仅同步包含已修改文件的子目录，而不是扫描完整的根目录树。",
       "watchRequiresLocalSource": "实时监控需要至少一个本地源目录。",
       "watchRequiresLocal": "实时监控需要至少一个本地源或目标目录。",
       "watchMixedSourcesNote": "系统仅会实时监控本地源目录。远程源目录中的更改不会自动触发同步。",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

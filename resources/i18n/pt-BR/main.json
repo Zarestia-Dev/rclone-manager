@@ -142,10 +142,14 @@
     },
     "monitoring": {
       "realtime": "Monitoramento em Tempo Real",
-      "debounce": "Atraso de debounce",
-      "watcherActive": "Observador Ativo",
+      "debounce": "Atraso de estabilização",
+      "watcherActive": "Monitoramento Ativo",
       "seconds": "segundos",
-      "realtimeSchedule": "Observador de Arquivos em Tempo Real"
+      "realtimeSchedule": "Monitor de Arquivos em Tempo Real",
+      "changedOnlyShort": "Apenas subdiretórios",
+      "changedOnlyActive": "Apenas subdiretórios",
+      "syncScope": "Escopo de sincronização",
+      "realtimeChangedOnly": "Monitoramento em Tempo Real (Apenas subdiretórios)"
     }
   },
   "actions": {
@@ -1175,7 +1179,11 @@
       "enableScheduled": "Habilitar Programação Agendada ({{type}})",
       "enableWatch": "Habilitar Monitoramento de Arquivos em Tempo Real",
       "watchDescription": "Monitore as diretórias de origem locais para modificações de arquivos e sincronize alterações automaticamente.",
-      "watchDelay": "Atraso de debounce (segundos)",
+      "watchDelay": "Atraso de estabilização (segundos)",
+      "watchDelayHint": "Tempo de espera após a última alteração detectada antes de acionar a sincronização.",
+      "watchZeroDelayWarning": "O modo instantâneo (0s) sincroniza imediatamente na alteração. Para arquivos grandes ou várias edições, 3–5s são recomendados para que a gravação termine.",
+      "watchChangedOnly": "Sincronizar apenas subdiretórios modificados",
+      "watchChangedOnlyHint": "Quando acionado pelo monitor de arquivos, sincroniza apenas os subdiretórios que contêm arquivos modificados em vez de escanear toda a árvore raiz.",
       "watchRequiresLocalSource": "O monitoramento em tempo real exige pelo menos um diretório de origem local.",
       "watchRequiresLocal": "O monitoramento em tempo real exige pelo menos um diretório fonte ou de destino local.",
       "watchMixedSourcesNote": "Apenas os diretórios de origem locais serão monitorados em tempo real. Mudanças nos fontes remotos não desencadearão sincronização automática.",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

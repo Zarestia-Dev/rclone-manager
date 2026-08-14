@@ -5,25 +5,19 @@ use std::collections::HashMap;
 /// Handles both rclone remotes (e.g., "remote:") and local paths.
 #[must_use]
 pub fn build_full_path(remote: &str, path: &str) -> String {
-    if path.is_empty() {
+    let clean_path = path.trim_start_matches('/');
+    if clean_path.is_empty() {
         remote.to_string()
     } else if remote.ends_with(':') {
-        // Check if it's a Windows drive letter (e.g. "C:")
         let is_drive_letter =
-            remote.len() == 2 && remote.chars().next().unwrap().is_ascii_alphabetic();
-
+            remote.len() == 2 && remote.starts_with(|c: char| c.is_ascii_alphabetic());
         if is_drive_letter {
-            format!("{}/{}", remote, path.trim_start_matches('/'))
+            format!("{remote}/{clean_path}")
         } else {
-            format!("{}{}", remote, path.trim_start_matches('/'))
+            format!("{remote}{clean_path}")
         }
     } else {
-        // Local path - ensure we join with a slash
-        format!(
-            "{}/{}",
-            remote.trim_end_matches('/'),
-            path.trim_start_matches('/')
-        )
+        format!("{}/{clean_path}", remote.trim_end_matches('/'))
     }
 }
 
@@ -380,5 +374,17 @@ mod tests {
         assert!(!is_flat_option_key("mountPoint"));
         assert!(!is_flat_option_key("CheckSum"));
         assert!(!is_flat_option_key("CacheMode"));
+    }
+
+    #[test]
+    fn test_build_full_path() {
+        assert_eq!(build_full_path("google:", "proj/app"), "google:proj/app");
+        assert_eq!(build_full_path("google:", "/proj/app"), "google:proj/app");
+        assert_eq!(build_full_path("google:", ""), "google:");
+        assert_eq!(build_full_path("C:", "foo/bar"), "C:/foo/bar");
+        assert_eq!(build_full_path("C:", "/foo/bar"), "C:/foo/bar");
+        assert_eq!(build_full_path("/home/user", "docs"), "/home/user/docs");
+        assert_eq!(build_full_path("/home/user/", "/docs"), "/home/user/docs");
+        assert_eq!(build_full_path("/home/user", ""), "/home/user");
     }
 }

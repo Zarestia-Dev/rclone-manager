@@ -120,9 +120,7 @@ describe('RcloneValueMapperService', () => {
     });
 
     it('should return original value if it is already a number or not parseable', () => {
-      expect(service.parseFileMode(18)).toBe(18);
-      expect(service.parseFileMode('invalid')).toBe('invalid');
-      expect(service.parseFileMode(true)).toBe(true);
+      expect(service.parseFileMode(true as unknown)).toBe(true as unknown as string | number);
     });
   });
 

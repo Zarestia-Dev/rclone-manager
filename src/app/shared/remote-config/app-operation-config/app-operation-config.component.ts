@@ -128,6 +128,14 @@ export class OperationConfigComponent {
     this.formVersion();
     return !!this.opFormGroup().get('watchEnabled')?.value;
   });
+  readonly isWatchChangedOnly = computed(() => {
+    this.formVersion();
+    return !!this.opFormGroup().get('watchChangedOnly')?.value;
+  });
+  readonly watchDelayValue = computed(() => {
+    this.formVersion();
+    return this.opFormGroup().get('watchDelay')?.value;
+  });
 
   readonly isMount = computed(() => this.operationType() === 'mount');
   readonly isServe = computed(() => this.operationType() === 'serve');
@@ -220,15 +228,10 @@ export class OperationConfigComponent {
   readonly canAddSource = computed(() => this.isOperationInList(MULTI_SOURCE_OPS));
   readonly supportsFileSource = computed(() => this.isOperationInList(FILE_SOURCE_OPS));
 
-  readonly isSourcePickerDisabled = computed(() => {
+  isItemPickerDisabled(item: PathItem): boolean {
     if (!this.isNewRemote()) return false;
-    return this.sourceItems().some(i => i.type === 'currentRemote' && !i.pathControl.value);
-  });
-
-  readonly isDestPickerDisabled = computed(() => {
-    if (!this.isNewRemote()) return false;
-    return this.destItem()?.type === 'currentRemote' && !this.destItem()?.pathControl.value;
-  });
+    return item.type === 'currentRemote' && !item.pathControl.value;
+  }
 
   readonly autoFilenameControl = computed(() => {
     return this.opFormGroup().get('options.autoFilename') as FormControl | null;
@@ -292,24 +295,28 @@ export class OperationConfigComponent {
     });
 
     effect(() => {
-      if (this.isNewRemote()) {
-        this.clearAutocomplete();
-        return;
-      }
       const dest = this.destItem();
       const items = [...this.sourceItems(), ...(dest ? [dest] : [])];
-      this.syncAutocomplete(items);
+      if (this.isNewRemote()) {
+        this.syncAutocomplete(items.filter(i => i.type !== 'currentRemote'));
+      } else {
+        this.syncAutocomplete(items);
+      }
     });
 
     effect(() => {
       const watchEnabledCtrl = this.opFormGroup().get('watchEnabled');
+      const watchChangedOnlyCtrl = this.opFormGroup().get('watchChangedOnly');
       if (!watchEnabledCtrl) return;
 
       if (this.isWatchPossible()) {
         watchEnabledCtrl.enable({ emitEvent: false });
+        watchChangedOnlyCtrl?.enable({ emitEvent: false });
       } else {
         if (watchEnabledCtrl.value) watchEnabledCtrl.setValue(false);
+        if (watchChangedOnlyCtrl?.value) watchChangedOnlyCtrl.setValue(false);
         watchEnabledCtrl.disable({ emitEvent: false });
+        watchChangedOnlyCtrl?.disable({ emitEvent: false });
       }
     });
 
@@ -412,6 +419,7 @@ export class OperationConfigComponent {
     }
 
     this.pathSelectionService.resetPath(`${item.group}-${item.index}`);
+    this.formVersion.update(v => v + 1);
   }
 
   addPath(
@@ -433,6 +441,7 @@ export class OperationConfigComponent {
     }
 
     array.push(new FormGroup(controls));
+    this.formVersion.update(v => v + 1);
   }
 
   removePath(group: PathDirection, index: number): void {
@@ -442,19 +451,20 @@ export class OperationConfigComponent {
     array.removeAt(index);
     this.pathSelectionService.unregisterField(`${group}-${index}`);
     this.pathStates.delete(`${group}-${index}`);
+    this.formVersion.update(v => v + 1);
   }
 
   async selectPath(item: PathItem): Promise<void> {
-    const isSource = item.group === 'source';
-    if (isSource ? this.isSourcePickerDisabled() : this.isDestPickerDisabled()) return;
+    if (this.isItemPickerDisabled(item)) return;
 
+    const isSource = item.group === 'source';
     const target: FilePickerSelection = isSource && this.supportsFileSource() ? 'both' : 'folders';
     const isMountDest = this.isMount() && item.group === 'dest';
 
-    if (isSource || (!isMountDest && item.type !== 'local')) {
-      await this.selectNautilus(item, target);
-    } else {
+    if (item.type === 'local' || isMountDest) {
       await this.selectLocal(item, target);
+    } else {
+      await this.selectNautilus(item, target);
     }
   }
 

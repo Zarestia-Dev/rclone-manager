@@ -145,7 +145,11 @@
       "debounce": "Debounce Delay",
       "watcherActive": "Watcher Active",
       "seconds": "seconds",
-      "realtimeSchedule": "Real-time File Watcher"
+      "realtimeSchedule": "Real-time File Watcher",
+      "changedOnlyShort": "Subdirectories Only",
+      "changedOnlyActive": "Subdirectories Only",
+      "syncScope": "Sync Scope",
+      "realtimeChangedOnly": "Real-time Monitoring (Subdirectories only)"
     }
   },
   "actions": {
@@ -1182,6 +1186,10 @@
       "enableWatch": "Enable Real-time File Monitoring",
       "watchDescription": "Watch local source directories for file modifications and sync changes automatically.",
       "watchDelay": "Debounce delay (seconds)",
+      "watchDelayHint": "Wait time after the last detected change before triggering the sync.",
+      "watchZeroDelayWarning": "Instant mode (0s) triggers sync immediately on change. For large files or multiple edits, 3–5s is recommended so writes can finish.",
+      "watchChangedOnly": "Sync only changed subdirectories",
+      "watchChangedOnlyHint": "When triggered by the file watcher, synchronize only the subdirectories containing modified files instead of scanning the full root tree.",
       "watchRequiresLocalSource": "Real-time monitoring requires at least one local source directory.",
       "watchRequiresLocal": "Real-time monitoring requires at least one local source or destination directory.",
       "watchMixedSourcesNote": "Only local source directories will be monitored in real-time. Changes on remote sources will not trigger sync automatically.",
@@ -3111,6 +3119,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

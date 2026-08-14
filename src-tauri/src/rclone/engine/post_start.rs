@@ -4,12 +4,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     core::initialization::apply_settings::apply_core_settings,
     rclone::backend::BackendManager,
-    utils::{
-        constants::LOCAL_BACKEND_NAME,
-        types::{
-            events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
-            state::RcloneState,
-        },
+    utils::types::{
+        events::{EngineStatus, RCLONE_ENGINE_STATUS_CHANGED},
+        state::RcloneState,
     },
 };
 
@@ -37,16 +34,17 @@ pub async fn run_post_start_setup(app: &AppHandle) {
 async fn refresh_caches_and_tray(app: &AppHandle) {
     let transport = app.state::<RcloneState>().transport.clone();
     let backend_manager = app.state::<BackendManager>();
+    let active_name = backend_manager.get_active_name().await;
 
     if let Err(e) = crate::rclone::backend::connectivity::check_connectivity(
         &backend_manager,
-        LOCAL_BACKEND_NAME,
+        &active_name,
         &*transport,
         None,
     )
     .await
     {
-        error!("Post-start: Failed to fetch Local backend runtime info: {e}");
+        error!("Post-start: Failed to fetch '{active_name}' backend runtime info: {e}");
     }
 
     if let Err(e) = backend_manager.remote_cache.refresh_all(app.clone()).await {

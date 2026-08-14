@@ -81,6 +81,7 @@ const OPERATION_FIELDS = [
   'cronExpression',
   'watchEnabled',
   'watchDelay',
+  'watchChangedOnly',
   'source',
   'dest',
 ] as const;
@@ -89,6 +90,7 @@ const FIELD_DEFAULTS: Record<string, unknown> = {
   cronEnabled: false,
   watchEnabled: false,
   watchDelay: 5,
+  watchChangedOnly: false,
 };
 // Form fields each operation type uses (besides the dynamic `options` group).
 const FLAG_TYPE_FIELDS: Partial<Record<string, readonly string[]>> = {
@@ -100,7 +102,15 @@ const FLAG_TYPE_FIELDS: Partial<Record<string, readonly string[]>> = {
   check: OPERATION_FIELDS,
   archivecreate: OPERATION_FIELDS,
   cryptcheck: OPERATION_FIELDS,
-  delete: ['autoStart', 'cronEnabled', 'cronExpression', 'watchEnabled', 'watchDelay', 'source'],
+  delete: [
+    'autoStart',
+    'cronEnabled',
+    'cronExpression',
+    'watchEnabled',
+    'watchDelay',
+    'watchChangedOnly',
+    'source',
+  ],
   copyurl: OPERATION_FIELDS,
 };
 
@@ -112,6 +122,7 @@ const PROFILE_FORM_FIELDS = [
   'cronExpression',
   'watchEnabled',
   'watchDelay',
+  'watchChangedOnly',
   'vfsProfile',
   'filterProfile',
   'backendProfile',

@@ -145,7 +145,11 @@
       "debounce": "Geciktirme Süresi",
       "watcherActive": "İzleyici Etkin",
       "seconds": "saniye",
-      "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici"
+      "realtimeSchedule": "Gerçek Zamanlı Dosya İzleyici",
+      "changedOnlyShort": "Yalnızca Alt Dizinler",
+      "changedOnlyActive": "Yalnızca Alt Dizinler",
+      "syncScope": "Senkronizasyon Kapsamı",
+      "realtimeChangedOnly": "Gerçek Zamanlı İzleme (Yalnızca alt dizinler)"
     }
   },
   "actions": {
@@ -1176,6 +1180,10 @@
       "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
       "watchDescription": "Dosya değişikliklerini izlemek ve bunları otomatik olarak senkronize etmek için yerel kaynak dizinlerini izleyin.",
       "watchDelay": "Gecikme süresi (saniye)",
+      "watchDelayHint": "Senkronizasyonu tetiklemeden önce son algılanan değişiklikten sonraki bekleme süresi.",
+      "watchZeroDelayWarning": "Anlık mod (0 sn), değişiklik algılandığında hemen senkronizasyonu başlatır. Büyük dosyalar veya çoklu düzenlemeler için yazmanın bitmesi adına 3–5 sn önerilir.",
+      "watchChangedOnly": "Yalnızca değişen alt dizinleri senkronize et",
+      "watchChangedOnlyHint": "Dosya izleyici tarafından tetiklendiğinde, tüm kök dizin ağacını taramak yerine yalnızca değiştirilen dosyaları içeren alt dizinleri senkronize eder.",
       "watchRequiresLocalSource": "Gerçek zamanlı izleme en az bir yerel kaynak dizini gerektirir.",
       "watchRequiresLocal": "Gerçek zamanlı izleme en az bir yerel kaynak veya hedef dizini gerektirir.",
       "watchMixedSourcesNote": "Sadece yerel kaynak dizinleri gerçek zamanlı olarak izlenecektir. Uzak kaynaklardaki değişiklikler senkronizasyonu otomatik olarak tetiklemez.",
@@ -3101,6 +3109,7 @@
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
+        "watcherChangedOnly": "Folder Watcher Active (Subdirectories only)",
         "autostart": "Auto-Start Enabled"
       },
       "status": {

@@ -188,7 +188,11 @@
               <span class="cron-schedule">
                 {{ 'automation.monitoring.realtimeSchedule' | translate }}
                 ({{ 'automation.monitoring.debounce' | translate }}: {{ watcher.watchDelay }}
-                {{ 'automation.monitoring.seconds' | translate }})
+                {{ 'automation.monitoring.seconds' | translate }}
+                @if (watcher.watchChangedOnly) {
+                  · {{ 'automation.monitoring.changedOnlyShort' | translate }}
+                }
+                )
               </span>
             </div>
           }

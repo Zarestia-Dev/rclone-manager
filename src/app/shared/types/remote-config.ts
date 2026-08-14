@@ -201,6 +201,7 @@ export interface AppConfig {
   cronExpression?: string | null;
   watchEnabled?: boolean;
   watchDelay?: number;
+  watchChangedOnly?: boolean;
   vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;

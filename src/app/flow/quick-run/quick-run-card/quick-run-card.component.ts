@@ -66,6 +66,11 @@ export class QuickRunCardComponent {
     return !!app?.watchEnabled;
   });
 
+  readonly hasWatchChangedOnly = computed(() => {
+    const app = this.quickRun().config?.app;
+    return !!app?.watchChangedOnly;
+  });
+
   readonly hasAutoStart = computed(() => {
     const app = this.quickRun().config?.app;
     return !!app?.autoStart;

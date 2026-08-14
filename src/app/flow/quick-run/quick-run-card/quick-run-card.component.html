@@ -58,10 +58,20 @@
             @if (hasWatcher()) {
               <span
                 class="feature-chip watcher"
-                [attr.title]="'flow.quickRun.badges.watcher' | translate"
+                [attr.title]="
+                  (hasWatchChangedOnly()
+                    ? 'flow.quickRun.badges.watcherChangedOnly'
+                    : 'flow.quickRun.badges.watcher'
+                  ) | translate
+                "
               >
                 <mat-icon svgIcon="eye"></mat-icon>
-                <span>{{ 'flow.quickRun.badges.watcher' | translate }}</span>
+                <span>{{
+                  (hasWatchChangedOnly()
+                    ? 'flow.quickRun.badges.watcherChangedOnly'
+                    : 'flow.quickRun.badges.watcher'
+                  ) | translate
+                }}</span>
               </span>
             }
             @if (hasAutoStart()) {
@@ -150,7 +160,12 @@
             <mat-icon
               svgIcon="eye"
               class="feature-icon watcher"
-              [attr.title]="'flow.quickRun.badges.watcher' | translate"
+              [attr.title]="
+                (hasWatchChangedOnly()
+                  ? 'flow.quickRun.badges.watcherChangedOnly'
+                  : 'flow.quickRun.badges.watcher'
+                ) | translate
+              "
             ></mat-icon>
           }
           @if (hasAutoStart()) {

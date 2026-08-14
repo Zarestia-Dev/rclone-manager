@@ -145,6 +145,7 @@ const CONFIG_METADATA_KEYS: ReadonlySet<string> = new Set([
   'cronExpression',
   'watchEnabled',
   'watchDelay',
+  'watchChangedOnly',
   'vfsProfile',
   'filterProfile',
   'backendProfile',
@@ -202,6 +203,7 @@ function buildAppConfig(formData: Record<string, unknown>): Record<string, unkno
     cronExpression: formData['cronExpression'] ?? null,
     watchEnabled: formData['watchEnabled'] ?? false,
     watchDelay: formData['watchDelay'] ?? 5,
+    watchChangedOnly: formData['watchChangedOnly'] ?? false,
     vfsProfile: formData['vfsProfile'] || undefined,
     filterProfile: formData['filterProfile'] || undefined,
     backendProfile: formData['backendProfile'] || undefined,
@@ -350,6 +352,7 @@ function buildAppConfigResult(appConfig: Record<string, unknown>): Record<string
     cronExpression: appConfig['cronExpression'] ?? null,
     watchEnabled: appConfig['watchEnabled'] ?? false,
     watchDelay: appConfig['watchDelay'] ?? 5,
+    watchChangedOnly: appConfig['watchChangedOnly'] ?? false,
     vfsProfile: appConfig['vfsProfile'] || 'Default',
     filterProfile: appConfig['filterProfile'] || 'Default',
     backendProfile: appConfig['backendProfile'] || 'Default',
@@ -375,7 +378,7 @@ function mapSourceToForm(
   if (mapping.isSourceArray) {
     return {
       source: configSources.map(s =>
-        ctx.pathService.parseFsString(s, 'currentRemote', ctx.remoteName, ctx.existingRemotes)
+        ctx.pathService.parseFsString(s, 'local', ctx.remoteName, ctx.existingRemotes)
       ),
     };
   }

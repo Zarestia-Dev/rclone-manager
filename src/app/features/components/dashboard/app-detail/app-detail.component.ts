@@ -531,6 +531,7 @@ export class AppDetailComponent {
       return {
         profileName,
         watchDelay: cfg.app.watchDelay ?? 5,
+        watchChangedOnly: cfg.app.watchChangedOnly ?? false,
       };
     }
     return null;

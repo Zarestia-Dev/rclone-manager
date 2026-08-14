@@ -44,6 +44,8 @@ pub struct ProfileParams {
     pub profile_name: String,
     pub source: Option<crate::utils::types::origin::Origin>,
     pub no_cache: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scoped_targets: Option<Vec<(String, String)>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
@@ -59,6 +61,8 @@ pub struct AppConfig {
     pub watch_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watch_delay: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub watch_changed_only: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vfs_profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -295,6 +299,7 @@ pub const APP_PARTITION_KEYS: &[&str] = &[
     "cronExpression",
     "watchEnabled",
     "watchDelay",
+    "watchChangedOnly",
     "vfsProfile",
     "filterProfile",
     "backendProfile",

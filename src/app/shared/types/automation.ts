@@ -88,6 +88,9 @@ export interface Automation {
 
   /** Delay in seconds to debounce file changes before running the sync */
   watchDelay?: number;
+
+  /** Only synchronize directories containing changed files when triggered by file watcher */
+  watchChangedOnly?: boolean;
 }
 
 /**

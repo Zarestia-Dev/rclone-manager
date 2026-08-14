@@ -269,6 +269,7 @@ export class QuickAddRemoteComponent {
       cronExpression: new FormControl(''),
       watchEnabled: new FormControl(false),
       watchDelay: new FormControl(5),
+      watchChangedOnly: new FormControl(false),
     };
 
     if (opType === 'bisync') {

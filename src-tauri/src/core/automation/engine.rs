@@ -149,7 +149,7 @@ impl AutomationScheduler {
                         "Executing scheduled automation: {automation_name} ({automation_id}) — {automation_type:?}"
                     );
 
-                    if let Err(e) = execute_automation(&automation_id, &app_handle).await {
+                    if let Err(e) = execute_automation(&automation_id, &app_handle, None).await {
                         error!("Automation execution failed {automation_id}: {e}");
                     } else {
                         info!("Automation execution completed: {automation_id}");
@@ -448,7 +448,11 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
     Ok(next_local.with_timezone(&Utc))
 }
 
-pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> Result<(), String> {
+pub async fn execute_automation(
+    automation_id: &str,
+    app_handle: &AppHandle,
+    scoped_targets: Option<Vec<(String, String)>>,
+) -> Result<(), String> {
     let cache = app_handle.state::<AutomationsCache>();
     let automation = cache
         .get_automation(automation_id)
@@ -496,12 +500,11 @@ pub async fn execute_automation(automation_id: &str, app_handle: &AppHandle) -> 
         )
         .await?;
 
-    let params = automation.args.params.clone();
+    let mut params = automation.args.params.clone();
+    params.source = Some(crate::utils::types::origin::Origin::Automation);
+    params.scoped_targets = scoped_targets;
 
     let transfer_type = automation.automation_type;
-
-    let mut params = params;
-    params.source = Some(crate::utils::types::origin::Origin::Automation);
     let result = start_profile_batch(app_handle.clone(), transfer_type, params).await;
 
     match result {

@@ -380,18 +380,6 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
     info!("🗑️ Stopping all serves");
 
     let transport = app.state::<RcloneState>().transport.clone();
-    let backend_manager = app.state::<BackendManager>();
-
-    // If there are no active serves, skip the API call.
-    let serves = backend_manager.remote_cache.get_serves().await;
-    if serves.is_empty() || context.is_shutdown() {
-        debug!("No active serves to stop — skipping STOPALL");
-        if !context.is_shutdown() {
-            refresh_serves_quietly(&app).await;
-        }
-        // Silent no-op during shutdown
-        return Ok(crate::localized_success!("backendSuccess.serve.stopped"));
-    }
 
     if let Err(e) = transport.rpc(serve::STOPALL, None).await {
         warn!("Failed to stop all serves: {e}");
@@ -399,11 +387,10 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
 
     if !context.is_shutdown() {
         refresh_serves_quietly(&app).await;
+        notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
     }
 
     info!("✅ All serves stopped successfully");
-
-    notify(&app, NotificationEvent::Serve(ServeStage::AllStopped));
 
     Ok(crate::localized_success!("backendSuccess.serve.stopped"))
 }

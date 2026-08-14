@@ -264,13 +264,27 @@ pub async fn start_profile_batch(
 
     let mut inputs = Vec::new();
 
-    let dest = common.dest.clone();
-    if dest.is_empty() && transfer_type != OperationType::Delete {
-        return Err("No destination specified".to_string());
-    }
+    let (target_pairs, is_scoped) = if transfer_type != OperationType::Bisync
+        && let Some(scoped) = params.scoped_targets.filter(|t| !t.is_empty())
+    {
+        (scoped, true)
+    } else {
+        let dest = common.dest.clone();
+        if dest.is_empty() && transfer_type != OperationType::Delete {
+            return Err("No destination specified".to_string());
+        }
+        (
+            common
+                .source
+                .iter()
+                .map(|s| (s.clone(), dest.clone()))
+                .collect(),
+            false,
+        )
+    };
 
     let mut tasks = Vec::new();
-    for source in &common.source {
+    for (source, _) in &target_pairs {
         let app = app.clone();
         let source = source.clone();
         let runtime_remote_options = common.runtime_remote_options.clone();
@@ -282,14 +296,14 @@ pub async fn start_profile_batch(
         });
     }
 
-    let results = join_all(tasks).await;
+    let dir_results = join_all(tasks).await;
 
     // Validate that Sync, Bisync, and Check do not contain files
     if matches!(
         transfer_type,
         OperationType::Sync | OperationType::Bisync | OperationType::Check
     ) {
-        for (source, is_dir) in &results {
+        for (source, is_dir) in &dir_results {
             if !*is_dir {
                 return Err(format!(
                     "{transfer_type:?} only supports directories, not files: {source}"
@@ -327,15 +341,18 @@ pub async fn start_profile_batch(
 
     let mut first_job_id = None;
 
-    for (i, (source, is_dir)) in results.into_iter().enumerate() {
+    for (i, ((source, dest_val), (_, is_dir))) in
+        target_pairs.into_iter().zip(dir_results).enumerate()
+    {
         if transfer_type == OperationType::Archivecreate
             || transfer_type == OperationType::Cryptcheck
         {
             let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
             let backend = backend_manager.get_active().await;
 
-            let mut dest_val = dest.clone();
-            if transfer_type == OperationType::Archivecreate && !has_archive_extension(&dest_val) {
+            let mut final_dest = dest_val.clone();
+            if transfer_type == OperationType::Archivecreate && !has_archive_extension(&final_dest)
+            {
                 let format = if let Value::Object(map) = &common.rclone_config {
                     map.get("format").and_then(|v| v.as_str()).unwrap_or("zip")
                 } else {
@@ -348,10 +365,13 @@ pub async fn start_profile_batch(
                     .unwrap_or("archive");
 
                 let filename = format!("{}.{}", folder_name, format);
-                if dest_val.ends_with(':') || dest_val.ends_with('/') || dest_val.ends_with('\\') {
-                    dest_val.push_str(&filename);
+                if final_dest.ends_with(':')
+                    || final_dest.ends_with('/')
+                    || final_dest.ends_with('\\')
+                {
+                    final_dest.push_str(&filename);
                 } else {
-                    dest_val.push_str(&format!("/{filename}"));
+                    final_dest.push_str(&format!("/{filename}"));
                 }
             }
 
@@ -360,7 +380,7 @@ pub async fn start_profile_batch(
                     let mut p = json!({
                         "action": "create",
                         "src": source,
-                        "dst": dest_val,
+                        "dst": final_dest,
                         "_async": true,
                     });
                     if let Value::Object(map) = &common.rclone_config {
@@ -384,7 +404,7 @@ pub async fn start_profile_batch(
                         operations::CRYPTCHECK,
                         json!({
                             "src": source,
-                            "dst": dest_val,
+                            "dst": final_dest,
                             "_async": true,
                         }),
                     )
@@ -396,9 +416,9 @@ pub async fn start_profile_batch(
                     "cryptcheck"
                 };
                 let mut args = if transfer_type == OperationType::Archivecreate {
-                    vec!["create".to_string(), source.clone(), dest_val.clone()]
+                    vec!["create".to_string(), source.clone(), final_dest.clone()]
                 } else {
-                    vec![source.clone(), dest_val.clone()]
+                    vec![source.clone(), final_dest.clone()]
                 };
 
                 if transfer_type == OperationType::Archivecreate
@@ -438,7 +458,7 @@ pub async fn start_profile_batch(
                 remote_name: params.remote_name.clone(),
                 job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
                 source: vec![source.clone()],
-                destination: dest_val.clone(),
+                destination: final_dest.clone(),
                 profile: Some(params.profile_name.clone()),
                 origin: params.source.clone(),
                 group: None,
@@ -462,7 +482,7 @@ pub async fn start_profile_batch(
                 first_job_id = Some(jobid);
             }
         } else {
-            let mut custom_dest = dest.clone();
+            let mut custom_dest = dest_val.clone();
             let mut custom_config = common.rclone_config.clone();
 
             if transfer_type == OperationType::Copyurl
@@ -498,14 +518,43 @@ pub async fn start_profile_batch(
     }
 
     if !inputs.is_empty() {
+        let metadata_source = if is_scoped {
+            inputs
+                .iter()
+                .filter_map(|input| {
+                    input
+                        .get("srcFs")
+                        .or_else(|| input.get("path1"))
+                        .or_else(|| input.get("fs"))
+                        .and_then(|v| v.as_str().map(String::from))
+                })
+                .collect()
+        } else {
+            common.source.clone()
+        };
+        let metadata_dest = if is_scoped {
+            inputs
+                .first()
+                .and_then(|input| {
+                    input
+                        .get("dstFs")
+                        .or_else(|| input.get("path2"))
+                        .or_else(|| input.get("remote"))
+                        .and_then(|v| v.as_str().map(String::from))
+                })
+                .unwrap_or_else(|| common.dest.clone())
+        } else {
+            common.dest.clone()
+        };
+
         crate::rclone::commands::job::submit_batch_job(
             app,
             inputs,
             JobMetadata {
                 remote_name: params.remote_name.clone(),
                 job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
-                source: common.source.clone(),
-                destination: common.dest.clone(),
+                source: metadata_source,
+                destination: metadata_dest,
                 profile: Some(params.profile_name.clone()),
                 origin: params.source,
                 group: None,
