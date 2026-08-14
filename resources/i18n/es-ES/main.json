@@ -412,6 +412,16 @@
         "label": "Habilitar icono de bandeja",
         "description": "Mostrar un icono en la bandeja del sistema. También habilita el servicio en segundo plano."
       },
+      "tray_icon_theme": {
+        "label": "Tema del icono de la bandeja",
+        "description": "Elige el estilo de icono para la bandeja del sistema.",
+        "options": {
+          "system": "Sistema (Monocromático automático)",
+          "color": "Color",
+          "monochrome_light": "Monocromático (Claro)",
+          "monochrome_dark": "Monocromático (Oscuro)"
+        }
+      },
       "language": {
         "label": "Idioma",
         "description": "Idioma que se utilizará para la interfaz de usuario."

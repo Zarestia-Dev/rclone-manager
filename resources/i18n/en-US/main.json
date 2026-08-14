@@ -414,6 +414,16 @@
         "label": "Enable Tray Icon",
         "description": "Show an icon in the system tray. Also enables the background service."
       },
+      "tray_icon_theme": {
+        "label": "Tray Icon Theme",
+        "description": "Choose the icon style for the system tray.",
+        "options": {
+          "system": "System (Auto Monochrome)",
+          "color": "Color",
+          "monochrome_light": "Monochrome (Light)",
+          "monochrome_dark": "Monochrome (Dark)"
+        }
+      },
       "language": {
         "label": "Language",
         "description": "Language to use for the user interface. System language is used by default."

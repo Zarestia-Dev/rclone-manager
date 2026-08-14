@@ -34,9 +34,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // UI & THEME
             // UI / Theming (Desktop Only)
             #[cfg(not(feature = "web-server"))]
-            (set_theme, $crate::utils::app::ui::set_theme, [theme: String]);
-            #[cfg(not(feature = "web-server"))]
-            (get_system_theme, $crate::utils::app::ui::get_system_theme, [], [sync, no_app, infallible]);
+            (set_theme, $crate::utils::app::ui::set_theme, [theme: String, system_is_dark: Option<bool>]);
             (get_i18n, $crate::utils::i18n::get_i18n, [lang: String], [sync, no_app]);
             (get_rclone_rc_url, $crate::rclone::queries::get_rclone_rc_url, []);
 

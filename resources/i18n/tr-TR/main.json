@@ -412,6 +412,16 @@
         "label": "Tepsi Simgesini Etkinleştir",
         "description": "Sistem tepsisinde bir simge gösterir. Ayrıca arka plan servisini etkinleştirir."
       },
+      "tray_icon_theme": {
+        "label": "Sistem Tepsisi Simge Teması",
+        "description": "Sistem tepsisi simgesi için görsel stil seçin.",
+        "options": {
+          "system": "Sistem (Otomatik Tek Renkli)",
+          "color": "Renkli",
+          "monochrome_light": "Tek Renkli (Açık)",
+          "monochrome_dark": "Tek Renkli (Koyu)"
+        }
+      },
       "language": {
         "label": "Dil",
         "description": "Kullanıcı arayüzü için kullanılacak dil. Sistem dili otomatik olarak algılanır."

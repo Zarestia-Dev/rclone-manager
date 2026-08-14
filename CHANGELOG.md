@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Template Management**: Added support for managing and using templates. Added in Quick run editor and Remote Config Modal. Releated #260.
 - **Subdirectory-Scoped Real-time Monitoring & File Watcher**: Added an option to synchronize only modified subdirectories instead of scanning the full root tree when triggered by real-time file monitoring events.
   - **Scoped Sync Targets**: Computes scoped source and destination targets from detected filesystem changes and dispatches targeted batch operations.
+- **Monochrome & Theme-Aware System Tray Icon Management**: Added configurable tray icon theme options (Color, System Auto Monochrome, Monochrome Light, Monochrome Dark) in Preferences -> General. Automatically adapts tray icons to desktop dark/light themes with real-time reactive updates. Closes #286.
 
 ### Changed
 - **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
@@ -27,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - **Docker Entrypoint Privilege Dropping & Supplementary Groups (`PGIDS`)**: Fixed permission denied errors (`EACCES`) when accessing ZFS datasets or directories formatted with NFSv4 ACLs in Docker by replacing `gosu` with `setpriv` in `entrypoint.sh`. Added support for the `PGIDS` environment variable to propagate supplementary group IDs to the daemon process. Fixes #282
 - Fix dynamic reloading of remotes list on rclone configuration and backend settings changes.
+- **Reactive System Theme Updates**: Fixed system theme detection and state synchronization by eliminating blocking CLI subprocess checks in favor of WebKit's native `matchMedia` color-scheme event listeners.
 
 ## [0.3.1] - 2026-07-27
 

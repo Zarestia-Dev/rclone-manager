@@ -124,6 +124,10 @@ fn handle_settings_changed(app: &AppHandle) {
                         handle_tray_visibility_change(&app, enabled);
                     }
                 }
+                #[cfg(feature = "tray")]
+                ("general", "tray_icon_theme") => {
+                    trigger_tray_update(app.clone());
+                }
                 ("general", "restrict") => {
                     if let Some(restrict) = change.value.as_bool() {
                         handle_restrict_mode_change(&app, restrict);

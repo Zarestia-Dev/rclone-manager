@@ -412,6 +412,16 @@
         "label": "启用托盘图标",
         "description": "在系统托盘显示图标，同时启用后台服务"
       },
+      "tray_icon_theme": {
+        "label": "托盘图标主题",
+        "description": "选择系统托盘的图标样式。",
+        "options": {
+          "system": "跟随系统 (自动单色)",
+          "color": "彩色",
+          "monochrome_light": "单色 (浅色)",
+          "monochrome_dark": "单色 (深色)"
+        }
+      },
       "language": {
         "label": "语言",
         "description": "界面语言，默认使用系统语言"

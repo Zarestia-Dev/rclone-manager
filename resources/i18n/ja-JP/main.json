@@ -414,6 +414,16 @@
         "label": "トレイアイコンを有効化",
         "description": "システムトレイにアイコンを表示します。バックグラウンドサービスも有効になります。"
       },
+      "tray_icon_theme": {
+        "label": "トレイアイコンのテーマ",
+        "description": "システムトレイのアイコンスタイルを選択します。",
+        "options": {
+          "system": "システム（自動モノクロ）",
+          "color": "カラー",
+          "monochrome_light": "モノクロ（ライト）",
+          "monochrome_dark": "モノクロ（ダーク）"
+        }
+      },
       "language": {
         "label": "言語",
         "description": "ユーザーインターフェースに使用する言語。デフォルトではシステム言語が使用されます。"

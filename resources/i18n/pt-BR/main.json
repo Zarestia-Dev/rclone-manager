@@ -414,6 +414,16 @@
         "label": "Ativar Ícone da Bandeja",
         "description": "Mostrar um ícone na bandeja do sistema. Também habilita o serviço de fundo."
       },
+      "tray_icon_theme": {
+        "label": "Tema do ícone da bandeja",
+        "description": "Escolha o estilo de ícone para a bandeja do sistema.",
+        "options": {
+          "system": "Sistema (Monocromático automático)",
+          "color": "Colorido",
+          "monochrome_light": "Monocromático (Claro)",
+          "monochrome_dark": "Monocromático (Escuro)"
+        }
+      },
       "language": {
         "label": "Idioma",
         "description": "Idioma para usar na interface do usuário. O idioma do sistema é usado por padrão."

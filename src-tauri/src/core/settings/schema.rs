@@ -55,6 +55,19 @@ pub struct GeneralSettings {
     pub tray_enabled: bool,
 
     #[setting(
+        label = "settings.general.tray_icon_theme.label",
+        description = "settings.general.tray_icon_theme.description",
+        options(
+            ("system", "settings.general.tray_icon_theme.options.system"),
+            ("color", "settings.general.tray_icon_theme.options.color"),
+            ("monochrome_light", "settings.general.tray_icon_theme.options.monochrome_light"),
+            ("monochrome_dark", "settings.general.tray_icon_theme.options.monochrome_dark")
+        )
+    )]
+    #[cfg(feature = "tray")]
+    pub tray_icon_theme: String,
+
+    #[setting(
         label = "settings.general.start_on_startup.label",
         description = "settings.general.start_on_startup.description"
     )]
@@ -102,6 +115,8 @@ impl Default for GeneralSettings {
         Self {
             #[cfg(feature = "tray")]
             tray_enabled: true,
+            #[cfg(feature = "tray")]
+            tray_icon_theme: "color".to_string(),
             #[cfg(feature = "tauri-plugin-notification")]
             notifications: true,
             #[cfg(not(any(target_os = "android", target_os = "ios")))]

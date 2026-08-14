@@ -412,6 +412,16 @@
         "label": "Activer l'icône dans la zone de notification",
         "description": "Afficher une icône dans la barre d'état système. Active également le service d'arrière-plan."
       },
+      "tray_icon_theme": {
+        "label": "Thème de l'icône de la barre d'état",
+        "description": "Choisissez le style d'icône pour la barre d'état système.",
+        "options": {
+          "system": "Système (Monochrome automatique)",
+          "color": "Couleur",
+          "monochrome_light": "Monochrome (Clair)",
+          "monochrome_dark": "Monochrome (Sombre)"
+        }
+      },
       "language": {
         "label": "Langue",
         "description": "Langue à utiliser pour l'interface utilisateur. La langue système est utilisée par défaut."

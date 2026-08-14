@@ -35,10 +35,6 @@ export class ApiClientService {
   private async invokeHttp<T>(command: string, args?: Record<string, unknown>): Promise<T> {
     if (command === 'set_theme') return {} as T;
 
-    if (command === 'get_system_theme') {
-      return (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as T;
-    }
-
     if (command === 'open_in_files') {
       throw new Error('Native file manager is not available in web mode.');
     }
