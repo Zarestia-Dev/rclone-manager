@@ -156,7 +156,7 @@ impl PowerInhibitorState {
 
     #[cfg(all(desktop, target_os = "windows"))]
     async fn acquire_platform(&self, app: &AppHandle, reason_str: &str) {
-        use windows_sys::Win32::System::Threading::{
+        use windows_sys::Win32::System::Power::{
             ES_AWAYMODE_REQUIRED, ES_CONTINUOUS, ES_SYSTEM_REQUIRED, SetThreadExecutionState,
         };
 
@@ -164,10 +164,12 @@ impl PowerInhibitorState {
             SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED);
         }
 
-        if let Some(window) = app.get_webview_window("main")
-            && let Ok(hwnd) = window.hwnd()
-        {
-            let raw_hwnd = hwnd.0 as isize;
+        let raw_hwnd = app
+            .get_webview_window("main")
+            .and_then(|window| window.hwnd().ok())
+            .map(|hwnd| hwnd.0 as isize);
+
+        if let Some(raw_hwnd) = raw_hwnd {
             let reason: Vec<u16> = reason_str
                 .encode_utf16()
                 .chain(std::iter::once(0))
@@ -186,7 +188,7 @@ impl PowerInhibitorState {
 
     #[cfg(all(desktop, target_os = "windows"))]
     async fn release_platform(&self) {
-        use windows_sys::Win32::System::Threading::{ES_CONTINUOUS, SetThreadExecutionState};
+        use windows_sys::Win32::System::Power::{ES_CONTINUOUS, SetThreadExecutionState};
 
         if let Some(hwnd) = self.windows_hwnd.lock().await.take() {
             unsafe {

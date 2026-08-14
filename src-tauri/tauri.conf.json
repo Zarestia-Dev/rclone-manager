@@ -17,7 +17,14 @@
         {
           "identifier": "default-desktop",
           "description": "Capability for the main window on desktop",
-          "windows": ["main", "main-standalone", "flow", "nautilus", "nautilus-*", "dialog-*"],
+          "windows": [
+            "main",
+            "main-standalone",
+            "flow",
+            "nautilus",
+            "nautilus-*",
+            "dialog-*"
+          ],
           "platforms": ["linux", "macOS", "windows"],
           "permissions": [
             "core:event:allow-listen",
@@ -31,7 +38,6 @@
             "core:window:allow-toggle-maximize",
             "core:window:allow-internal-toggle-maximize",
             "notification:default",
-            "shell:allow-open",
             "clipboard-manager:allow-read-text",
             "clipboard-manager:allow-write-text",
             "os:default",
@@ -41,7 +47,14 @@
         {
           "identifier": "default-mobile",
           "description": "Capability for the main window on mobile",
-          "windows": ["main", "main-standalone", "flow", "nautilus", "nautilus-*", "dialog-*"],
+          "windows": [
+            "main",
+            "main-standalone",
+            "flow",
+            "nautilus",
+            "nautilus-*",
+            "dialog-*"
+          ],
           "platforms": ["android", "iOS"],
           "permissions": [
             "core:event:allow-listen",

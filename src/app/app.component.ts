@@ -1,37 +1,45 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import { NgComponentOutlet } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnInit,
+  signal,
+} from "@angular/core";
+import { NgComponentOutlet } from "@angular/common";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
-import { OnboardingComponent } from './features/onboarding/onboarding.component';
-import { NautilusComponent } from './file-browser/nautilus/nautilus.component';
+import { OnboardingComponent } from "./features/onboarding/onboarding.component";
+import { NautilusComponent } from "./file-browser/nautilus/nautilus.component";
 
 // Services
-import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
-import { OnboardingStateService } from 'src/app/services/ui/state/onboarding-state.service';
-import { NautilusService } from 'src/app/services/ui/nautilus.service';
-import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
-import { IconService } from 'src/app/services/ui/icon.service';
-import { DebugService } from 'src/app/services/infrastructure/system/debug.service';
-import { GlobalLoadingService } from 'src/app/services/ui/global-loading.service';
-import { ModalService } from 'src/app/services/ui/modal.service';
-import { AppUpdaterService } from 'src/app/services/infrastructure/maintenance/app-updater.service';
-import { RcloneUpdateService } from 'src/app/services/infrastructure/maintenance/rclone-update.service';
-import { AppLifecycleService } from 'src/app/services/infrastructure/system/app-lifecycle.service';
-import { isHeadlessMode } from './services/infrastructure/platform/api-client.service';
-import { SseClientService } from './services/infrastructure/platform/sse-client.service';
-import { AndroidShareService } from './services/ui/android-share.service';
-import { FlowContainerComponent } from './flow/flow-container.component';
-import { FlowOverlayService } from 'src/app/services/ui/flow-overlay.service';
-import { MainUiOverlayService } from 'src/app/services/ui/main-ui-overlay.service';
+import { AppSettingsService } from "src/app/services/settings/app-settings.service";
+import { OnboardingStateService } from "src/app/services/ui/state/onboarding-state.service";
+import { NautilusService } from "src/app/services/ui/nautilus.service";
+import { BackendService } from "src/app/services/infrastructure/system/backend.service";
+import { IconService } from "src/app/services/ui/icon.service";
+import { DebugService } from "src/app/services/infrastructure/system/debug.service";
+import { GlobalLoadingService } from "src/app/services/ui/global-loading.service";
+import { ModalService } from "src/app/services/ui/modal.service";
+import { AppUpdaterService } from "src/app/services/infrastructure/maintenance/app-updater.service";
+import { RcloneUpdateService } from "src/app/services/infrastructure/maintenance/rclone-update.service";
+import { AppLifecycleService } from "src/app/services/infrastructure/system/app-lifecycle.service";
+import { isHeadlessMode } from "./services/infrastructure/platform/api-client.service";
+import { SseClientService } from "./services/infrastructure/platform/sse-client.service";
+import { AndroidShareService } from "./services/ui/android-share.service";
+import { FlowContainerComponent } from "./flow/flow-container.component";
+import { FlowOverlayService } from "src/app/services/ui/flow-overlay.service";
+import { MainUiOverlayService } from "src/app/services/ui/main-ui-overlay.service";
 
-import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
-import { MainView } from '@app/types';
+import { OpenerService } from "src/app/services/infrastructure/platform/opener.service";
 
-import { MainUiContainerComponent } from './layout/main-ui-container.component';
-import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
+import { UiStateService } from "src/app/services/ui/state/ui-state.service";
+import { MainView } from "@app/types";
+
+import { MainUiContainerComponent } from "./layout/main-ui-container.component";
+import { ShortcutHandlerDirective } from "./shared/directives/shortcut-handler.directive";
 
 @Component({
-  selector: 'app-root',
+  selector: "app-root",
   imports: [
     MainUiContainerComponent,
     OnboardingComponent,
@@ -40,8 +48,8 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
     NgComponentOutlet,
     ShortcutHandlerDirective,
   ],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+  templateUrl: "./app.component.html",
+  styleUrl: "./app.component.scss",
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
@@ -67,6 +75,7 @@ export class AppComponent implements OnInit {
     inject(IconService);
     inject(DebugService);
     inject(AppLifecycleService).initialize();
+    inject(OpenerService).initializeGlobalLinkInterceptor();
 
     this.loadingService.bindToShutdownEvents();
     this.connectSseIfHeadless();
@@ -85,8 +94,8 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.initializeApp().catch(error => {
-      console.error('Error during app initialization:', error);
+    this.initializeApp().catch((error) => {
+      console.error("Error during app initialization:", error);
       this.initializing.set(false);
     });
   }
@@ -110,7 +119,7 @@ export class AppComponent implements OnInit {
         await this.applyDefaultView();
       }
     } catch (error) {
-      console.error('App initialization failed:', error);
+      console.error("App initialization failed:", error);
     } finally {
       this.initializing.set(false);
     }
@@ -118,9 +127,9 @@ export class AppComponent implements OnInit {
 
   private setupDefaultViewListener(): void {
     this.appSettingsService
-      .selectSetting('general.default_view')
+      .selectSetting("general.default_view")
       .pipe(takeUntilDestroyed())
-      .subscribe(setting => {
+      .subscribe((setting) => {
         if (!setting?.value) return;
 
         if (
@@ -131,12 +140,16 @@ export class AppComponent implements OnInit {
           return;
         }
 
-        if (this.nautilusService.targetPath() || this.nautilusService.selectedNautilusRemote()) {
+        if (
+          this.nautilusService.targetPath() ||
+          this.nautilusService.selectedNautilusRemote()
+        ) {
           return;
         }
 
         const view = String(setting.value) as MainView;
-        if (view !== 'nautilus' && view !== 'flow' && view !== 'main_menu') return;
+        if (view !== "nautilus" && view !== "flow" && view !== "main_menu")
+          return;
 
         this.nautilusService.closeBrowserOverlay();
         this.flowOverlayService.closeFlowOverlay();
@@ -146,13 +159,21 @@ export class AppComponent implements OnInit {
   }
 
   private async applyDefaultView(): Promise<void> {
-    if (this.nautilusService.targetPath() || this.nautilusService.selectedNautilusRemote()) {
+    if (
+      this.nautilusService.targetPath() ||
+      this.nautilusService.selectedNautilusRemote()
+    ) {
       return;
     }
 
-    const defaultView =
-      await this.appSettingsService.getSettingValue<string>('general.default_view');
-    if (defaultView === 'nautilus' || defaultView === 'flow' || defaultView === 'main_menu') {
+    const defaultView = await this.appSettingsService.getSettingValue<string>(
+      "general.default_view",
+    );
+    if (
+      defaultView === "nautilus" ||
+      defaultView === "flow" ||
+      defaultView === "main_menu"
+    ) {
       this.uiStateService.setDefaultView(defaultView as MainView);
     }
   }
@@ -168,7 +189,7 @@ export class AppComponent implements OnInit {
       await this.onboardingStateService.completeOnboarding();
       await this.applyDefaultView();
     } catch (error) {
-      console.error('Error saving onboarding status:', error);
+      console.error("Error saving onboarding status:", error);
       throw error;
     }
   }

@@ -52,7 +52,6 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 sys-locale = "0.3"
 
 
-tauri-plugin-shell = { version = "2", optional = true, default-features = false }
 tauri-plugin-dialog = { version = "2", optional = true, default-features = false }
 tauri-plugin-clipboard-manager = { version = "2", optional = true, default-features = false }
 tauri-plugin-notification = { version = "2", optional = true, default-features = false }
@@ -96,9 +95,8 @@ rustls-platform-verifier = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_System_Shutdown", "Win32_System_Power"] }
 windows = { version = "0.62", features = ["Networking_Connectivity"] }
-shellexpand = "3"
 winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
@@ -117,7 +115,7 @@ web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "up
 # Container
 container = ["web-server"]
 
-shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-shell", "tauri-plugin-os", "tauri-plugin-opener"]
+shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
 desktop = ["tauri-plugin-window-state", "tauri/devtools", "updater", "shared-tauri"]
