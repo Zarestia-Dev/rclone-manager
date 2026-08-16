@@ -31,7 +31,12 @@
     "password": "Password",
     "username": "Username",
     "selectAll": "Select All",
-    "deselectAll": "Deselect All"
+    "deselectAll": "Deselect All",
+    "viewDetails": "View Details",
+    "moreActions": "More Actions",
+    "duplicate": "Duplicate",
+    "clearAll": "Clear All",
+    "acknowledge": "Acknowledge"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -197,7 +202,8 @@
       "used": "Used:",
       "free": "Free:",
       "loading": "Loading...",
-      "errorLoading": "Problem loading disk usage"
+      "errorLoading": "Problem loading disk usage",
+      "retry": "Retry loading disk usage"
     },
     "status": {
       "mounted": "Mounted",
@@ -324,7 +330,8 @@
       "actionRequired": "At least one action is required.",
       "noActionsHint": "You need to create an alert action first before you can assign it to a rule.",
       "filtersEmptyHint": "Leave empty to match all events.",
-      "scopeFilters": "Scope Filters"
+      "scopeFilters": "Scope Filters",
+      "allEvents": "All Events"
     },
     "events": {
       "job": "Jobs & File Operations",
@@ -396,7 +403,9 @@
       "slack": "Slack",
       "headerKey": "Header Name",
       "headerValue": "Value"
-    }
+    },
+    "noRulesHint": "No alert rules configured yet. Create a rule to receive notifications.",
+    "noActionsHint": "No alert actions configured yet. Create an action to define how alerts are delivered."
   },
   "settings": {
     "resetAll": {
@@ -552,6 +561,10 @@
         "label": "Dashboard Layout",
         "description": "Custom layout configuration for the dashboard."
       },
+      "quick_run_layout": {
+        "label": "Quick Run Layout",
+        "description": "Custom layout configuration for the quick run overview."
+      },
       "dashboard_card_variant": {
         "label": "Remote Card Display Mode",
         "description": "Default display variant for remote cards in overview panels.",
@@ -602,6 +615,10 @@
       "generic": {
         "title": "Engine Failed to Start",
         "subtitle": "Please check logs for more details"
+      },
+      "auth": {
+        "title": "Rclone Authentication Required",
+        "subtitle": "Please check your credentials or configuration password"
       }
     }
   },
@@ -877,7 +894,8 @@
     "actions": {
       "hide": "Hide",
       "show": "Show",
-      "open": "Open"
+      "open": "Open",
+      "cancel": "Cancel"
     },
     "overviewHeader": {
       "manageBackends": "Manage Backends",
@@ -1037,6 +1055,10 @@
       "required": "Password required",
       "remember": "Remember password",
       "keychain": "Stored in system keychain"
+    },
+    "validation": {
+      "required": "This field is required.",
+      "min": "Value must be at least {{val}}."
     }
   },
   "wizards": {
@@ -1085,8 +1107,6 @@
       "apply": "Apply to Field"
     },
     "presets": {
-      "title": "Apply Default Presets",
-      "apply": "Apply Default Presets",
       "applied": "Default presets applied successfully",
       "noRemoteSelected": "Please select a remote first"
     },
@@ -1192,6 +1212,7 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
+      "showOnTray": "Show in System Tray",
       "enableScheduled": "Enable Scheduled {{type}}",
       "enableWatch": "Enable Real-time File Monitoring",
       "watchDescription": "Watch local source directories for file modifications and sync changes automatically.",
@@ -1652,7 +1673,8 @@
       "dryRun": "Dry Run",
       "dryRunActive": "Dry run is active — no changes will be made",
       "resync": "Resync",
-      "resyncActive": "Resync is active — performing full resynchronization"
+      "resyncActive": "Resync is active — performing full resynchronization",
+      "remoteSettings": "Remote Settings"
     },
     "generalDetail": {
       "automations": "Automations",
@@ -2215,7 +2237,8 @@
         "inUseWarning": "Cannot delete profile \"{{name}}\" - it is in use by {{count}} active {{type}}(s)",
         "disabledReason": {
           "inUse": "Profile is in use by a running {{operation}}. Stop it first."
-        }
+        },
+        "duplicate": "Duplicate Profile"
       },
       "buttons": {
         "back": "Back",
@@ -2240,6 +2263,11 @@
       "errors": {
         "interactiveProcessingFailed": "Failed to process interactive response",
         "loadFailed": "Failed to load remote configuration"
+      },
+      "profileSaved": "Profile '{{profile}}' saved for {{remote}}",
+      "profileSaveFailed": "Failed to save profile",
+      "warnings": {
+        "selectRemoteToSave": "Please select a remote to save profile"
       }
     },
     "rcloneFlags": {
@@ -2584,18 +2612,25 @@
       "retry": "Retry loading bandwidth",
       "upload": "Upload:",
       "download": "Download:",
-      "total": "Total:"
+      "total": "Total:",
+      "unlimited": "Unlimited (Off)",
+      "customPlaceholder": "Custom rate (e.g. 10M, 10M:50M)",
+      "apply": "Apply"
     },
     "system": {
       "aria": {
         "loading": "Loading system information"
       },
       "loading": "Loading system information...",
-      "status": "Rclone Status:",
+      "status": "Engine Status:",
+      "version": "Engine Version:",
+      "platform": "Platform:",
+      "pid": "Process ID:",
+      "goVersion": "Go Runtime:",
       "totalRemotes": "Total Remotes:",
       "activeJobs": "Active Jobs:",
-      "memoryUsage": "Memory Usage:",
-      "uptime": "Uptime:",
+      "memoryUsage": "Heap Memory:",
+      "uptime": "Engine Uptime:",
       "active": "Active",
       "inactive": "Inactive",
       "error": "Error"
@@ -2666,9 +2701,6 @@
     "request": {
       "failed": "Request failed: {{error}}"
     },
-    "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
-    },
     "file": {
       "driveRoot": "Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.",
       "folderNotEmpty": "Selected folder is not empty",
@@ -2715,14 +2747,8 @@
       "rcloneError": "Rclone error: {{error}}"
     },
     "backup": {
-      "unknownFormat": "Unknown backup format",
-      "integrityFailed": "Integrity check failed! Backup may be corrupted.",
-      "encryptedPasswordRequired": "This backup is encrypted. Password required.",
       "unsupportedArchive": "Unsupported archive type. Must be a .rcman file",
       "invalidArchive": "Invalid backup archive format",
-      "manifestParseFailed": "Failed to parse backup manifest: {{error}}",
-      "missingManifest": "Backup manifest is missing from the archive",
-      "openFailed": "Failed to open backup archive: {{error}}",
       "restoreFailed": "Backup restore failed: {{error}}",
       "secretRequirePassword": "This backup is protected by a secret and requires a password"
     },
@@ -2756,9 +2782,7 @@
       "automationNotFound": "Automation not found"
     },
     "system": {
-      "themeSetFailed": "Failed to set application theme: {{error}}",
-      "unlockFailed": "Unlock failed: {{error}}",
-      "killFailed": "Failed to kill process: {{error}}"
+      "unlockFailed": "Unlock failed: {{error}}"
     },
     "remote": {
       "configFailed": "Failed to configure remote: {{error}}"
@@ -2899,6 +2923,7 @@
     "copyurlCount": "Copy URL [{{active}}/{{total}}]",
     "archivecreateCount": "Archive [{{active}}/{{total}}]",
     "serveCount": "Serve [{{active}}/{{total}}]",
+    "quickRunsCount": "Quick Runs [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Job",
     "tooltipTasks": "{{count}} Jobs",
@@ -2986,7 +3011,8 @@
       "engineConnectionFailed": "Could not connect to rclone engine: {{error}}",
       "engineBinaryNotFound": "Rclone binary not found, please check your settings.",
       "enginePasswordRequired": "Password is required to access the configuration file.",
-      "engineAuthFailed": "Failed to authenticate with rclone engine: {{error}}"
+      "engineAuthFailed": "Failed to authenticate with rclone engine: {{error}}",
+      "powerInhibited": "Active operations are preventing system sleep."
     }
   },
   "repairSheet": {
@@ -3109,7 +3135,6 @@
     "clearCache": "Clear Cache",
     "openDevTools": "Open Developer Tools",
     "openDevToolsError": "Failed to open DevTools",
-    "openDevToolsHint": "Open DevTools for debugging",
     "cleared": "Data Cleared"
   },
   "flow": {
@@ -3122,9 +3147,7 @@
       "noResults": "No matching quick runs",
       "actions": {
         "start": "Start",
-        "stop": "Stop",
-        "edit": "Edit",
-        "delete": "Delete"
+        "stop": "Stop"
       },
       "badges": {
         "scheduled": "Scheduled Task",
@@ -3139,55 +3162,20 @@
         "failed": "Failed",
         "stopped": "Stopped"
       },
-      "sections": {
-        "running": "Running Operations",
-        "saved": "Saved Quick Runs"
-      },
       "empty": {
         "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
       },
       "overview": {
-        "title": "Quick Run Overview",
-        "subtitle": "Monitor active tasks, view recent executions, and quickly trigger standalone operations.",
         "stats": {
-          "total": "Total Quick Runs",
-          "active": "Active Jobs",
-          "completed": "Completed Runs",
-          "failed": "Failed Runs"
+          "total": "Total Quick Runs"
         },
         "quickLaunch": "Quick Launch",
-        "quickLaunchSub": "Click any quick run to inspect details or run immediately",
         "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
-        "recentJobs": "Recent & Active Executions",
-        "system": {
-          "title": "Rclone Engine Status",
-          "status": "Engine Status",
-          "version": "Rclone Version",
-          "memory": "Memory Usage",
-          "uptime": "Uptime",
-          "speed": "Global Transfer Speed"
-        },
-        "bandwidth": {
-          "title": "Bandwidth Limit Controls",
-          "current": "Current Limit",
-          "unlimited": "Unlimited (Off)",
-          "setLimit": "Set Speed Limit",
-          "preset1M": "1 MB/s",
-          "preset5M": "5 MB/s",
-          "preset10M": "10 MB/s",
-          "preset50M": "50 MB/s",
-          "customPlaceholder": "Custom rate (e.g. 2.5M, 500k)",
-          "apply": "Apply"
-        }
+        "noRunsForRemote": "No quick runs configured for {{remote}}.",
+        "createForRemote": "Create Quick Run for {{remote}}"
       },
       "detail": {
-        "title": "Quick Run Details",
-        "emptyTitle": "No Quick Run Selected",
-        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
-        "configuration": "Configuration",
-        "autoStart": "Auto Start",
-        "watch": "File Watcher",
-        "noConfigFlags": "No custom flags configured."
+        "configuration": "Configuration"
       },
       "editor": {
         "createTitle": "Create Quick Run",
@@ -3195,75 +3183,63 @@
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description (optional)",
-        "operation": "Operation Type",
         "remote": "Remote",
         "noRemotes": "No remotes configured",
         "remoteRequired": "Remote is required",
-        "cliImport": "Import from CLI command",
-        "flags": "Flags",
         "selectRemoteFirst": "Select a remote to view autocomplete",
-        "searchFlags": "Search flags...",
         "tabVfs": "VFS",
         "tabFilter": "Filter",
         "tabBackend": "Backend",
         "tabRuntimeRemote": "Runtime Remote"
-      }
+      },
+      "toggleSidebar": "Toggle Quick Run Sidebar"
+    },
+    "tabs": {
+      "quickRun": "Quick Run",
+      "workflow": "Workflow"
+    },
+    "builder": {
+      "placeholderTitle": "Workflow Builder in Progress",
+      "placeholderMessage": "A visual canvas for multi-step rclone pipelines and conditional job chaining is coming soon.",
+      "viewRoadmap": "View Roadmap on GitHub"
     }
   },
   "templates": {
-    "title": "Templates & Migration",
+    "title": "Templates",
     "presetTitle": "Presets & Templates",
     "applyPresets": "Apply Default Presets",
-    "builtinPresets": "Built-in Presets",
     "userTemplates": "Saved User Templates",
     "saveAsTemplate": "Save Current Settings as Template...",
-    "copyFromExisting": "Copy Settings from Remote or Task...",
-    "manageTemplates": "Manage Templates (Export / Import)...",
+    "manageTemplates": "Manage Templates...",
     "manageTitle": "Manage Templates",
     "noUserTemplates": "No custom templates saved yet.",
     "newTitle": "New Template",
-    "newDescription": "Create a custom template or save current settings to quickly apply them across remotes and tasks.",
-    "saveTitle": "Save as Custom Template",
-    "saveDescription": "Save current flag configurations to quickly apply them to other remotes or Quick Run tasks.",
     "templateName": "Template Name",
     "templateDesc": "Description (optional)",
-    "selectCategories": "Select Categories to Save",
-    "copyTitle": "Copy Settings",
-    "copyDescription": "Select an existing Remote or Quick Run task to copy settings from.",
-    "sourceRemoteOrTask": "Source Remote / Task",
-    "applySuccess": "Template \"{{name}}\" applied successfully.",
-    "copiedSuccess": "Settings copied successfully.",
-    "savedSuccess": "Template \"{{name}}\" saved successfully.",
-    "deletedSuccess": "Template deleted successfully.",
-    "importedSuccess": "Imported {{count}} template(s) successfully.",
-    "exportJson": "Export Templates JSON",
-    "importJson": "Import Templates JSON",
-    "selectKeys": "Select Setting Keys to Include",
-    "searchKeys": "Filter settings...",
-    "selectedKeysCount": "{{selected}} of {{total}} settings selected",
-    "noKeysAvailable": "No configurable settings detected in current context.",
+    "selectAllKeys": "Select All Keys",
+    "deselectAllKeys": "Deselect All Keys",
+    "addKeyToCategory": "Add Key to Category",
+    "addKey": "Add Key",
+    "removeKey": "Remove Key",
+    "deleteTemplate": "Delete Template",
     "noCatKeys": "No settings in {{category}} configured yet.",
     "visualView": "Visual Inspector",
     "jsonView": "JSON Editor",
-    "formatJson": "Format JSON",
-    "saveChanges": "Save Changes",
-    "invalidJson": "Invalid JSON syntax. Please fix syntax errors before saving.",
-    "selectTemplateToEdit": "Select a template to view or edit details.",
-    "newTemplate": "New Template",
-    "addCustomKey": "Add Custom Setting Key",
-    "category": "Category",
-    "keyName": "Key Name",
+    "key": "Key",
     "value": "Value",
-    "addKey": "Add Key",
-    "categories": {
-      "vfs": "VFS Cache & Options",
-      "mount": "Mount Options",
-      "backend": "Backend Options",
-      "filter": "File Filtering & Excludes",
-      "sync": "Sync Options",
-      "copy": "Copy / Transfer Options",
-      "remote": "Remote Storage Flags",
-      "operation": "Operation Options"
-    }
+    "namePlaceholder": "e.g. My Fast S3 Backup Settings",
+    "descPlaceholder": "Brief description of these settings...",
+    "keyPlaceholder": "e.g. dir_cache_time",
+    "valuePlaceholder": "e.g. 10m",
+    "selectedCount": "{{selected}} / {{total}} selected",
+    "keyCount": "{{count}} key",
+    "keysCount": "{{count}} keys",
+    "zeroKeys": "0 keys",
+    "applySuccess": "Template \"{{name}}\" applied successfully.",
+    "savedSuccess": "Template \"{{name}}\" saved successfully.",
+    "deletedSuccess": "Template deleted successfully."
+  },
+  "navigation": {
+    "dashboard": "Dashboard"
   }
 }

@@ -3,8 +3,12 @@
     type="button"
     matIconButton
     (click)="toggleSearch()"
-    [attr.title]="'shared.search.placeholder' | translate"
-    [attr.aria-label]="'shared.search.placeholder' | translate"
+    [attr.title]="
+      (isSearchVisible() ? 'shared.search.hideSearch' : 'shared.search.showSearch') | translate
+    "
+    [attr.aria-label]="
+      (isSearchVisible() ? 'shared.search.hideSearch' : 'shared.search.showSearch') | translate
+    "
   >
     <mat-icon svgIcon="search"></mat-icon>
   </button>
@@ -105,7 +109,7 @@
                 <input
                   matInput
                   formControlName="name"
-                  placeholder="e.g. My Fast S3 Backup Settings"
+                  [placeholder]="'templates.namePlaceholder' | translate"
                 />
               </mat-form-field>
 
@@ -114,7 +118,7 @@
                 <input
                   matInput
                   formControlName="description"
-                  placeholder="Brief description of these settings..."
+                  [placeholder]="'templates.descPlaceholder' | translate"
                 />
               </mat-form-field>
             </div>
@@ -135,10 +139,16 @@
                         [class.has-keys]="getSaveCategoryTotalCount(catKey) > 0"
                       >
                         @if (getSaveCategoryTotalCount(catKey) > 0) {
-                          {{ getSaveCategorySelectedCount(catKey) }} /
-                          {{ getSaveCategoryTotalCount(catKey) }} selected
+                          {{
+                            'templates.selectedCount'
+                              | translate
+                                : {
+                                    selected: getSaveCategorySelectedCount(catKey),
+                                    total: getSaveCategoryTotalCount(catKey),
+                                  }
+                          }}
                         } @else {
-                          0 keys
+                          {{ 'templates.zeroKeys' | translate }}
                         }
                       </span>
                     </mat-panel-description>
@@ -147,10 +157,10 @@
                   <div class="category-panel-content">
                     <div class="cat-inline-add">
                       <mat-form-field class="inline-key-field no-subscript">
-                        <mat-label>Key</mat-label>
+                        <mat-label>{{ 'templates.key' | translate }}</mat-label>
                         <input
                           matInput
-                          placeholder="e.g. dir_cache_time"
+                          [placeholder]="'templates.keyPlaceholder' | translate"
                           [value]="draftKey(catKey)"
                           (input)="setDraftKey(catKey, $any($event.target).value)"
                           (keyup.enter)="addKeyToCategory(catKey)"
@@ -158,10 +168,10 @@
                       </mat-form-field>
 
                       <mat-form-field class="inline-val-field no-subscript">
-                        <mat-label>Value</mat-label>
+                        <mat-label>{{ 'templates.value' | translate }}</mat-label>
                         <input
                           matInput
-                          placeholder="e.g. 10m"
+                          [placeholder]="'templates.valuePlaceholder' | translate"
                           [value]="draftVal(catKey)"
                           (input)="setDraftVal(catKey, $any($event.target).value)"
                           (keyup.enter)="addKeyToCategory(catKey)"
@@ -220,8 +230,8 @@
 
           @if (keySearchQuery().trim() && !hasAnyMatchingSaveCategory()) {
             <div class="empty-state">
-              <mat-icon svgIcon="magnify"></mat-icon>
-              <p>{{ 'common.noResults' | translate }}</p>
+              <mat-icon svgIcon="search"></mat-icon>
+              <p>{{ 'shared.search.title' | translate }}</p>
             </div>
           }
         </div>
@@ -319,6 +329,7 @@
                   <input
                     matInput
                     [value]="draftName()"
+                    [placeholder]="'templates.namePlaceholder' | translate"
                     (input)="updateTemplateName($any($event.target).value)"
                   />
                 </mat-form-field>
@@ -328,13 +339,10 @@
                   <input
                     matInput
                     [value]="draftDescription()"
+                    [placeholder]="'templates.descPlaceholder' | translate"
                     (input)="updateTemplateDesc($any($event.target).value)"
                   />
                 </mat-form-field>
-
-                @if (selectedTemplate()?.remoteType; as rType) {
-                  <span class="remote-type-chip">{{ rType }}</span>
-                }
               </div>
             }
 
@@ -352,10 +360,14 @@
                           [class.has-keys]="getManageCategoryTotalCount(catKey) > 0"
                         >
                           @if (getManageCategoryTotalCount(catKey) > 0) {
-                            {{ getManageCategoryTotalCount(catKey) }}
-                            {{ getManageCategoryTotalCount(catKey) === 1 ? 'key' : 'keys' }}
+                            {{
+                              (getManageCategoryTotalCount(catKey) === 1
+                                ? 'templates.keyCount'
+                                : 'templates.keysCount'
+                              ) | translate: { count: getManageCategoryTotalCount(catKey) }
+                            }}
                           } @else {
-                            0 keys
+                            {{ 'templates.zeroKeys' | translate }}
                           }
                         </span>
                       </mat-panel-description>
@@ -364,10 +376,10 @@
                     <div class="category-panel-content">
                       <div class="cat-inline-add">
                         <mat-form-field class="inline-key-field no-subscript">
-                          <mat-label>Key</mat-label>
+                          <mat-label>{{ 'templates.key' | translate }}</mat-label>
                           <input
                             matInput
-                            placeholder="e.g. dir_cache_time"
+                            [placeholder]="'templates.keyPlaceholder' | translate"
                             [value]="draftKey(catKey)"
                             (input)="setDraftKey(catKey, $any($event.target).value)"
                             (keyup.enter)="addKeyToCategory(catKey)"
@@ -375,10 +387,10 @@
                         </mat-form-field>
 
                         <mat-form-field class="inline-val-field no-subscript">
-                          <mat-label>Value</mat-label>
+                          <mat-label>{{ 'templates.value' | translate }}</mat-label>
                           <input
                             matInput
-                            placeholder="e.g. 10m"
+                            [placeholder]="'templates.valuePlaceholder' | translate"
                             [value]="draftVal(catKey)"
                             (input)="setDraftVal(catKey, $any($event.target).value)"
                             (keyup.enter)="addKeyToCategory(catKey)"
@@ -433,7 +445,7 @@
             @if (keySearchQuery().trim() && !hasAnyMatchingManageCategory()) {
               <div class="empty-state">
                 <mat-icon svgIcon="search"></mat-icon>
-                <p>{{ 'common.noResults' | translate }}</p>
+                <p>{{ 'shared.search.title' | translate }}</p>
               </div>
             }
           </div>

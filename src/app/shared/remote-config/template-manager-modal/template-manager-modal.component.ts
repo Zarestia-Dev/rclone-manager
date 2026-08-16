@@ -56,7 +56,6 @@ import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 export interface TemplateManagerModalData {
   mode: 'save' | 'manage';
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
-  remoteType?: string;
 }
 
 export interface SettingKeyEntry {
@@ -109,10 +108,9 @@ export class TemplateManagerModalComponent {
   readonly keySearchQuery = signal<string>('');
 
   // === Save tab state ===
-  readonly saveForm = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(50)]],
-    description: ['', [Validators.maxLength(200)]],
-    remoteType: [this.data?.remoteType ?? ''],
+  readonly saveForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required]],
+    description: [''],
   });
   readonly saveViewMode = signal<'visual' | 'json'>('visual');
   readonly saveJsonError = signal<string | null>(null);
@@ -246,12 +244,7 @@ export class TemplateManagerModalComponent {
   }
 
   applyDefaultPresets(): void {
-    const remoteType =
-      this.mode() === 'save'
-        ? this.saveForm.value.remoteType || this.data?.remoteType || ''
-        : this.selectedTemplate()?.remoteType || this.data?.remoteType || '';
-
-    const presets = this.presetsService.resolvePresets(remoteType);
+    const presets = this.presetsService.resolvePresets('');
 
     if (this.mode() === 'save') {
       this.settingEntries.update(entries => {
@@ -499,16 +492,17 @@ export class TemplateManagerModalComponent {
   // === Save handlers ===
   onSaveTemplate(): void {
     if (this.saveForm.invalid) return;
-    const formVal = this.saveForm.value;
+    const formVal = this.saveForm.getRawValue();
+    const name = formVal.name.trim();
+    if (!name) return;
 
     const filteredValues = buildCategoryValuesFromEntries(
       this.settingEntries().filter(e => e.selected)
     );
 
     const created = this.userTemplateService.saveTemplate({
-      name: formVal.name?.trim() || 'Untitled Template',
-      description: formVal.description?.trim(),
-      remoteType: formVal.remoteType || undefined,
+      name,
+      description: formVal.description.trim() || undefined,
       values: filteredValues,
     });
 
@@ -551,7 +545,6 @@ export class TemplateManagerModalComponent {
     this.saveForm.reset({
       name: '',
       description: '',
-      remoteType: this.data?.remoteType ?? '',
     });
     this.settingEntries.set([]);
     this.mode.set('save');

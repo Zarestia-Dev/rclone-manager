@@ -8,6 +8,10 @@ pub enum TrayAction {
     StartProfile(OperationType, String, String),
     StopProfile(OperationType, String, String),
 
+    // Quick run actions
+    StartQuickRun(String),
+    StopQuickRun(String),
+
     // Remote-level actions
     Browse(String, String),
     BrowseInApp(String),
@@ -37,6 +41,8 @@ impl TrayAction {
                     format!("stop_{}_profile__{remote}__{profile}", op.as_str())
                 }
             }
+            Self::StartQuickRun(id) => format!("start_quick_run__{id}"),
+            Self::StopQuickRun(id) => format!("stop_quick_run__{id}"),
             Self::Browse(remote, profile) => format!("browse_profile__{remote}__{profile}"),
             Self::BrowseInApp(remote) => format!("browse_in_app__{remote}"),
             Self::UnmountAll => "unmount_all".to_string(),
@@ -67,10 +73,12 @@ impl TrayAction {
         let parts: Vec<&str> = id.splitn(3, "__").collect();
 
         if parts.len() == 2 {
-            // Action without profile (browse-in-app or global)
-            let (prefix, remote) = (parts[0], parts[1]);
+            // Action without 3-part profile (browse-in-app or quick run)
+            let (prefix, payload) = (parts[0], parts[1]);
             match prefix {
-                "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
+                "browse_in_app" => return Some(Self::BrowseInApp(payload.to_string())),
+                "start_quick_run" => return Some(Self::StartQuickRun(payload.to_string())),
+                "stop_quick_run" => return Some(Self::StopQuickRun(payload.to_string())),
                 _ => return None,
             }
         }
@@ -128,6 +136,8 @@ mod tests {
             TrayAction::StartProfile(OperationType::Sync, "remote".to_string(), "p".to_string()),
             TrayAction::StartProfile(OperationType::Check, "remote".to_string(), "p".to_string()),
             TrayAction::StopProfile(OperationType::Check, "remote".to_string(), "p".to_string()),
+            TrayAction::StartQuickRun("qr-test-123".to_string()),
+            TrayAction::StopQuickRun("qr-test-123".to_string()),
             TrayAction::Browse("remote".to_string(), "profile1".to_string()),
             TrayAction::BrowseInApp("remote".to_string()),
             TrayAction::UnmountAll,

@@ -199,6 +199,7 @@ export interface FormToConfigContext {
 function buildAppConfig(formData: Record<string, unknown>): Record<string, unknown> {
   const app: Record<string, unknown> = {
     autoStart: formData['autoStart'] ?? false,
+    showOnTray: formData['showOnTray'] !== undefined ? formData['showOnTray'] : true,
     cronEnabled: formData['cronEnabled'] ?? false,
     cronExpression: formData['cronExpression'] ?? null,
     watchEnabled: formData['watchEnabled'] ?? false,
@@ -348,6 +349,7 @@ export interface ConfigToFormContext {
 function buildAppConfigResult(appConfig: Record<string, unknown>): Record<string, unknown> {
   return {
     autoStart: appConfig['autoStart'] ?? false,
+    showOnTray: appConfig['showOnTray'] !== undefined ? appConfig['showOnTray'] : true,
     cronEnabled: appConfig['cronEnabled'] ?? false,
     cronExpression: appConfig['cronExpression'] ?? null,
     watchEnabled: appConfig['watchEnabled'] ?? false,

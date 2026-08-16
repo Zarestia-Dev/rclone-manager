@@ -1,34 +1,20 @@
 <div class="preset-template-bar">
-  @if (variant() === 'sidebar-item') {
-    <button
-      type="button"
-      mat-list-item
-      [cdkMenuTriggerFor]="presetsMenu"
-      class="preset-sidebar-item"
-      title="Presets & Templates"
-    >
-      <mat-icon matListItemIcon svgIcon="reset-wrench"></mat-icon>
-      <span matListItemTitle>{{ 'templates.presetTitle' | translate }}</span>
-    </button>
-  } @else {
-    <button
-      type="button"
-      mat-stroked-button
-      [cdkMenuTriggerFor]="presetsMenu"
-      class="preset-trigger-btn"
-      title="Apply presets or custom templates"
-    >
-      <mat-icon class="preset-icon" svgIcon="tune"></mat-icon>
-      <span>{{ 'templates.presetTitle' | translate }}</span>
-      <mat-icon class="dropdown-icon" svgIcon="chevron-down"></mat-icon>
-    </button>
-  }
+  <button
+    type="button"
+    mat-list-item
+    [cdkMenuTriggerFor]="presetsMenu"
+    class="preset-sidebar-item"
+    [title]="'templates.presetTitle' | translate"
+  >
+    <mat-icon matListItemIcon svgIcon="reset-wrench"></mat-icon>
+    <span matListItemTitle>{{ 'templates.presetTitle' | translate }}</span>
+  </button>
 
   <ng-template #presetsMenu>
     <div cdkMenu class="material-context-menu">
       <button cdkMenuItem class="menu-item" (cdkMenuItemTriggered)="applyDefaultPresets.emit()">
         <mat-icon svgIcon="reset-wrench"></mat-icon>
-        <span>{{ 'wizards.presets.apply' | translate }}</span>
+        <span>{{ 'templates.applyPresets' | translate }}</span>
       </button>
 
       @if (userTemplateService.allTemplates().length > 0) {

@@ -1,4 +1,3 @@
-import { NgClass, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,8 +9,6 @@ import {
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -27,58 +24,43 @@ import {
   PanelConfig,
   DashboardPanel,
   SCROLL_DELAY_MS,
-  JOB_ICON_MAP,
   ALL_PANELS,
-  BandwidthDetailItem,
-  JobStatItem,
   OpenInFilesEvent,
 } from '@app/types';
 
-import { FormatTimePipe, FormatEtaPipe, FormatFileSizePipe, FormatRateValuePipe } from '@app/pipes';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
+import { BandwidthOverviewPanelComponent } from '../../../../shared/overviews-shared/bandwidth-overview-panel/bandwidth-overview-panel.component';
+import { SystemOverviewPanelComponent } from '../../../../shared/overviews-shared/system-overview-panel/system-overview-panel.component';
+import { JobsOverviewPanelComponent } from '../../../../shared/overviews-shared/jobs-overview-panel/jobs-overview-panel.component';
+import { ServesOverviewPanelComponent } from '../../../../shared/overviews-shared/serves-overview-panel/serves-overview-panel.component';
+import { AutomationsOverviewPanelComponent } from '../../../../shared/overviews-shared/automations-overview-panel/automations-overview-panel.component';
 import { AutomationService } from 'src/app/services/operations/automation.service';
-import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
-import { RcloneStatusService } from 'src/app/services/infrastructure/maintenance/rclone-status.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 import { BackendService } from 'src/app/services/infrastructure/system/backend.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
-import { CopyToClipboardDirective } from '../../../../shared/directives/copy-to-clipboard.directive';
-import { AutomationCardComponent } from '../../../../shared/detail-shared/automation-card/automation-card.component';
-
-interface RunningJobViewModel {
-  job: JobInfo;
-  typeIcon: string;
-  label: string;
-}
+import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 
 @Component({
   selector: 'app-general-overview',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    NgClass,
-    DecimalPipe,
     MatIconModule,
     MatButtonModule,
-    MatExpansionModule,
-    MatProgressBarModule,
     MatSnackBarModule,
     MatSlideToggleModule,
     DragDropModule,
-    FormatTimePipe,
-    FormatEtaPipe,
-    FormatFileSizePipe,
     RemotesPanelComponent,
-    ServeCardComponent,
-    FormatRateValuePipe,
     OverviewHeaderComponent,
+    BandwidthOverviewPanelComponent,
+    SystemOverviewPanelComponent,
+    JobsOverviewPanelComponent,
+    ServesOverviewPanelComponent,
+    AutomationsOverviewPanelComponent,
     TranslatePipe,
-    CopyToClipboardDirective,
-    AutomationCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -86,13 +68,11 @@ interface RunningJobViewModel {
 export class GeneralOverviewComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly automationService = inject(AutomationService);
-  private readonly uiStateService = inject(UiStateService);
   private readonly appSettingsService = inject(AppSettingsService);
-  private readonly rcloneStatusService = inject(RcloneStatusService);
   private readonly translate = inject(TranslateService);
   private readonly localStorage = inject(LocalStorageService);
+  private readonly navigationDispatcher = inject(NavigationDispatcherService);
 
-  readonly iconService = inject(IconService);
   readonly backendService = inject(BackendService);
   readonly remoteFacade = inject(RemoteFacadeService);
   private readonly pathService = inject(PathService);
@@ -109,6 +89,7 @@ export class GeneralOverviewComponent {
   readonly cardDisplayMode = signal<CardDisplayMode>('compact');
   readonly panelOpenStates = signal<Record<string, boolean>>(
     this.localStorage.get<Record<string, boolean>>('dashboard.panelOpenStates', {
+      remotes: true,
       bandwidth: false,
       system: false,
       jobs: false,
@@ -119,16 +100,9 @@ export class GeneralOverviewComponent {
   readonly dashboardPanels = signal<DashboardPanel[]>(
     ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
   );
-
-  readonly automations = this.automationService.automations;
-
-  // --- Re-exposed Service Signals ---
-  readonly rcloneStatus = this.rcloneStatusService.rcloneStatus;
-  readonly jobStats = this.rcloneStatusService.jobStats;
-  readonly bandwidthLimit = this.rcloneStatusService.bandwidthLimit;
-  readonly isLoadingStats = this.rcloneStatusService.isLoading;
-  readonly memoryUsage = this.rcloneStatusService.memoryUsage;
-  readonly uptime = this.rcloneStatusService.uptime;
+  readonly displayPanels = computed(() =>
+    this.isEditingLayout() ? this.dashboardPanels() : this.dashboardPanels().filter(p => p.visible)
+  );
 
   // --- Computed Pipeline ---
   readonly totalRemotes = computed(() => this.remoteFacade.activeRemotes().length);
@@ -136,62 +110,9 @@ export class GeneralOverviewComponent {
     this.remoteFacade.jobs().filter(j => j.status === 'Running' && !j.parent_job_id)
   );
   readonly activeJobsCount = computed(() => this.runningJobs().length);
-  readonly runningJobViewModels = computed<RunningJobViewModel[]>(() =>
-    this.runningJobs().map(job => ({
-      job,
-      typeIcon: this.getJobTypeIcon(job),
-      label: this.getJobLabel(job),
-    }))
-  );
-  readonly allRunningServes = computed(() =>
-    this.remoteFacade.activeRemotes().flatMap(r => r.status.serve?.serves ?? [])
-  );
-
-  readonly jobCompletionPercentage = computed(() => {
-    const { totalBytes = 0, bytes = 0 } = this.jobStats();
-    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
-  });
-
-  readonly isBandwidthLimited = computed(() => {
-    const limit = this.bandwidthLimit();
-    return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
-  });
-
-  readonly activeAutomationsCount = computed(
-    () => this.automations().filter(t => t.status === 'enabled' || t.status === 'running').length
-  );
-
-  readonly totalAutomationsCount = computed(() => this.automations().length);
-
-  readonly bandwidthDetails = computed((): BandwidthDetailItem[] => {
-    const limit = this.bandwidthLimit();
-    return [
-      { labelKey: 'generalOverview.bandwidth.upload', bytesPerSec: limit?.bytesPerSecondTx },
-      { labelKey: 'generalOverview.bandwidth.download', bytesPerSec: limit?.bytesPerSecondRx },
-      { labelKey: 'generalOverview.bandwidth.total', bytesPerSec: limit?.bytesPerSecond },
-    ];
-  });
-
-  readonly jobStatsItems = computed((): JobStatItem[] => {
-    const s = this.jobStats();
-    return [
-      { labelKey: 'generalOverview.jobs.speed', value: s.speed, formatAsBytes: true },
-      { labelKey: 'generalOverview.jobs.transfers', value: `${s.transfers} / ${s.totalTransfers}` },
-      { labelKey: 'generalOverview.jobs.checks', value: `${s.checks} / ${s.totalChecks}` },
-      { labelKey: 'generalOverview.jobs.errors', value: s.errors, error: s.errors > 0 },
-      { labelKey: 'generalOverview.jobs.deletes', value: s.deletes },
-      { labelKey: 'generalOverview.jobs.renames', value: s.renames },
-      { labelKey: 'generalOverview.jobs.serverCopies', value: s.serverSideCopies },
-      { labelKey: 'generalOverview.jobs.serverMoves', value: s.serverSideMoves },
-    ];
-  });
 
   constructor() {
-    this.initDashboardData();
-  }
-
-  private async initDashboardData(): Promise<void> {
-    await this.loadLayoutSettings();
+    void this.loadLayoutSettings();
   }
 
   // --- Layout management ---
@@ -237,10 +158,6 @@ export class GeneralOverviewComponent {
     this.persistLayout();
   }
 
-  loadBandwidthLimit(): Promise<void> {
-    return this.rcloneStatusService.loadBandwidthLimit();
-  }
-
   protected setPanelOpenState(id: string, isOpen: boolean): void {
     const updated = { ...this.panelOpenStates(), [id]: isOpen };
     this.panelOpenStates.set(updated);
@@ -260,7 +177,11 @@ export class GeneralOverviewComponent {
     );
   }
 
-  // --- Serve actions ---
+  // --- Actions ---
+  handleJobClick(job: JobInfo): void {
+    this.navigationDispatcher.navigateToJob(job);
+  }
+
   stopServe(serve: ServeListItem): void {
     const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
     if (remoteName)
@@ -273,17 +194,10 @@ export class GeneralOverviewComponent {
   }
 
   handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = this.pathService.getRemoteNameFromFs(serve.params?.fs);
-    if (!remoteName) return;
-    const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-    if (remote) {
-      this.uiStateService.setTab('serve');
-      this.uiStateService.setSelectedRemote(remote);
-      setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
-    }
+    this.navigationDispatcher.navigateToServe(serve);
+    setTimeout(() => this.scrollToTop(), SCROLL_DELAY_MS);
   }
 
-  // --- Automation actions ---
   async toggleAutomation(automationId: string): Promise<void> {
     try {
       await this.automationService.toggleAutomation(automationId);
@@ -294,26 +208,12 @@ export class GeneralOverviewComponent {
   }
 
   onAutomationClick(automation: Automation): void {
-    const remoteName = automation.args.remoteName;
-    if (remoteName) {
-      const remote = this.remoteFacade.activeRemotes().find(r => r.name === remoteName);
-      if (remote) this.selectRemote.emit(remote);
-    }
+    this.navigationDispatcher.navigateToAutomation(automation);
   }
 
   onOpenAutomationInFiles(path: string): void {
     const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
     void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
-  }
-
-  getJobTypeIcon(job: JobInfo): string {
-    return JOB_ICON_MAP[job.job_type] ?? 'folder';
-  }
-
-  getJobLabel(job: JobInfo): string {
-    const key = `fileBrowser.operations.types.${job.job_type}`;
-    const translated = this.translate.instant(key);
-    return translated === key ? job.job_type.replace(/_/g, ' ') : translated;
   }
 
   // --- Private helpers ---

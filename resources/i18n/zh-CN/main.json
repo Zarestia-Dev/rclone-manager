@@ -31,7 +31,12 @@
     "password": "密码",
     "username": "用户名",
     "selectAll": "全选",
-    "deselectAll": "取消全选"
+    "deselectAll": "取消全选",
+    "viewDetails": "查看详情",
+    "moreActions": "更多操作",
+    "duplicate": "复制",
+    "clearAll": "清除全部",
+    "acknowledge": "确认"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -197,7 +202,8 @@
       "used": "已用：",
       "free": "可用：",
       "loading": "加载中...",
-      "errorLoading": "加载磁盘使用情况时出错"
+      "errorLoading": "加载磁盘使用情况时出错",
+      "retry": "重试加载磁盘使用情况"
     },
     "status": {
       "mounted": "已挂载",
@@ -324,7 +330,8 @@
       "actionRequired": "至少需要一个操作。",
       "noActionsHint": "您需要先创建一个警报操作，然后才能将其分配给规则。",
       "filtersEmptyHint": "留空以匹配所有事件。",
-      "scopeFilters": "范围过滤器"
+      "scopeFilters": "范围过滤器",
+      "allEvents": "所有事件"
     },
     "events": {
       "job": "任务与文件操作",
@@ -396,7 +403,9 @@
       "slack": "Slack",
       "headerKey": "请求头名称",
       "headerValue": "值"
-    }
+    },
+    "noRulesHint": "尚未配置警报规则。创建规则以接收通知。",
+    "noActionsHint": "尚未配置警报操作。创建操作以定义警报的发送方式。"
   },
   "settings": {
     "resetAll": {
@@ -550,6 +559,10 @@
         "label": "仪表盘布局",
         "description": "仪表盘自定义布局配置"
       },
+      "quick_run_layout": {
+        "label": "快速运行布局",
+        "description": "快速运行概览自定义布局配置"
+      },
       "dashboard_card_variant": {
         "label": "卡片显示模式",
         "description": "以紧凑或详细模式显示仪表板卡片",
@@ -602,6 +615,10 @@
       "generic": {
         "title": "引擎启动失败",
         "subtitle": "请查看日志获取详细信息"
+      },
+      "auth": {
+        "title": "需要 Rclone 身份验证",
+        "subtitle": "请检查您的凭据或配置密码"
       }
     }
   },
@@ -877,7 +894,8 @@
     "actions": {
       "hide": "隐藏",
       "show": "显示",
-      "open": "打开"
+      "open": "打开",
+      "cancel": "取消"
     },
     "overviewHeader": {
       "manageBackends": "管理后端",
@@ -1037,6 +1055,10 @@
       "required": "密码为必填项",
       "remember": "记住密码",
       "keychain": "存储在系统钥匙串中"
+    },
+    "validation": {
+      "required": "此字段是必需的。",
+      "min": "值必须至少为 {{val}}。"
     }
   },
   "wizards": {
@@ -1186,6 +1208,7 @@
     "appOperation": {
       "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
       "enableAutoStart": "开机自动{{type}}",
+      "showOnTray": "在系统托盘中显示",
       "enableScheduled": "启用{{type}}计划任务",
       "enableWatch": "启用实时文件监控",
       "watchDescription": "监控本地源目录的文件修改并自动同步更改。",
@@ -1341,6 +1364,10 @@
         "title": "每月1号",
         "description": "每月1号午夜执行"
       }
+    },
+    "presets": {
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -1646,7 +1673,8 @@
       "dryRun": "模拟运行",
       "dryRunActive": "模拟运行已激活 — 不会进行任何更改",
       "resync": "重新同步",
-      "resyncActive": "重新同步已激活 — 正在执行完整重新同步"
+      "resyncActive": "重新同步已激活 — 正在执行完整重新同步",
+      "remoteSettings": "远程设置"
     },
     "generalDetail": {
       "automations": "自动化",
@@ -2209,7 +2237,8 @@
         "inUseWarning": "无法删除配置文件 \"{{name}}\" - 正被 {{count}} 个活动 {{type}} 使用",
         "disabledReason": {
           "inUse": "配置文件正在被运行中的 {{operation}} 使用，请先停止它。"
-        }
+        },
+        "duplicate": "复制配置文件"
       },
       "buttons": {
         "back": "上一步",
@@ -2234,6 +2263,11 @@
       "errors": {
         "interactiveProcessingFailed": "处理交互式响应失败",
         "loadFailed": "加载远程配置失败"
+      },
+      "profileSaved": "已为 {{remote}} 保存配置文件“{{profile}}”",
+      "profileSaveFailed": "保存配置文件失败",
+      "warnings": {
+        "selectRemoteToSave": "请选择要保存配置文件的远程"
       }
     },
     "rcloneFlags": {
@@ -2578,17 +2612,24 @@
       "retry": "重试加载带宽",
       "upload": "上传：",
       "download": "下载：",
-      "total": "总计："
+      "total": "总计：",
+      "unlimited": "无限制 (关闭)",
+      "customPlaceholder": "自定义速率（如 10M, 10M:50M）",
+      "apply": "应用"
     },
     "system": {
       "aria": {
         "loading": "正在加载系统信息"
       },
       "loading": "正在加载系统信息...",
-      "status": "Rclone 状态：",
+      "status": "引擎状态：",
+      "version": "引擎版本：",
+      "platform": "平台：",
+      "pid": "进程 ID：",
+      "goVersion": "Go 运行时：",
       "totalRemotes": "远程存储总数：",
       "activeJobs": "活动任务数：",
-      "memoryUsage": "内存使用率：",
+      "memoryUsage": "堆内存：",
       "uptime": "运行时间：",
       "active": "活动",
       "inactive": "未活动",
@@ -2660,9 +2701,6 @@
     "request": {
       "failed": "请求失败：{{error}}"
     },
-    "http": {
-      "error": "HTTP/S {{status}}：{{body}}"
-    },
     "file": {
       "driveRoot": "不能选择磁盘根目录（如 D:\\)作为挂载点，请选择或创建子文件夹。",
       "folderNotEmpty": "所选文件夹非空",
@@ -2709,14 +2747,8 @@
       "rcloneError": "Rclone 错误：{{error}}"
     },
     "backup": {
-      "unknownFormat": "未知备份格式",
-      "integrityFailed": "完整性校验失败！备份可能已损坏。",
-      "encryptedPasswordRequired": "备份已加密，需要密码。",
       "unsupportedArchive": "不支持的压缩包类型，必须是 .rcman 文件",
       "invalidArchive": "无效的备份存档格式",
-      "manifestParseFailed": "解析备份清单失败: {{error}}",
-      "missingManifest": "存档中缺少备份清单",
-      "openFailed": "打开备份存档失败: {{error}}",
       "restoreFailed": "备份恢复失败: {{error}}",
       "secretRequirePassword": "此备份受密码保护，需要输入密码"
     },
@@ -2750,9 +2782,7 @@
       "automationNotFound": "未找到自动化"
     },
     "system": {
-      "themeSetFailed": "设置应用主题失败: {{error}}",
-      "unlockFailed": "解锁失败：{{error}}",
-      "killFailed": "终止进程失败：{{error}}"
+      "unlockFailed": "解锁失败：{{error}}"
     },
     "remote": {
       "configFailed": "配置远程存储失败：{{error}}"
@@ -2893,6 +2923,7 @@
     "copyurlCount": "复制 URL [{{active}}/{{total}}]",
     "archivecreateCount": "归档 [{{active}}/{{total}}]",
     "serveCount": "服务 [{{active}}/{{total}}]",
+    "quickRunsCount": "快捷运行 [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 个作业",
     "tooltipTasks": "{{count}} 个作业",
@@ -2980,7 +3011,8 @@
       "engineConnectionFailed": "无法连接到 rclone 引擎：{{error}}",
       "engineBinaryNotFound": "未找到 rclone 可执行文件，请检查您的设置。",
       "enginePasswordRequired": "访问配置文件需要密码。",
-      "engineAuthFailed": "无法通过 rclone 引擎身份验证：{{error}}"
+      "engineAuthFailed": "无法通过 rclone 引擎身份验证：{{error}}",
+      "powerInhibited": "正在运行的操作正在阻止系统休眠。"
     }
   },
   "repairSheet": {
@@ -3103,7 +3135,6 @@
     "clearCache": "清空缓存",
     "openDevTools": "打开开发者工具",
     "openDevToolsError": "打开开发者工具失败",
-    "openDevToolsHint": "打开开发者工具进行调试",
     "cleared": "数据已清空"
   },
   "flow": {
@@ -3114,8 +3145,7 @@
       "search": "Search quick runs...",
       "loading": "Loading quick runs...",
       "noResults": "No matching quick runs",
-      "toggleSidebar": "Toggle Quick Run Sidebar",
-      "lastRun": "Last run",
+      "toggleSidebar": "切换快速运行侧边栏",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3129,21 +3159,11 @@
         "failed": "Failed",
         "stopped": "Stopped"
       },
-      "sections": {
-        "running": "Running Operations",
-        "saved": "Saved Quick Runs"
-      },
       "empty": {
         "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
       },
       "detail": {
-        "title": "Quick Run Details",
-        "emptyTitle": "No Quick Run Selected",
-        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
-        "configuration": "Configuration",
-        "autoStart": "Auto Start",
-        "watch": "File Watcher",
-        "noConfigFlags": "No custom flags configured."
+        "configuration": "Configuration"
       },
       "editor": {
         "createTitle": "Create Quick Run",
@@ -3151,18 +3171,75 @@
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description (optional)",
-        "operation": "Operation Type",
         "remote": "Remote",
         "noRemotes": "No remotes configured",
         "remoteRequired": "Remote is required",
-        "cliImport": "Import from CLI command",
-        "flags": "Flags",
         "selectRemoteFirst": "Select a remote to view autocomplete",
-        "searchFlags": "Search flags...",
         "tabVfs": "VFS",
         "tabFilter": "Filter",
-        "tabBackend": "Backend"
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Runtime Remote"
+      },
+      "actions": {
+        "start": "Start",
+        "stop": "Stop"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total Quick Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "noRunsForRemote": "未为 {{remote}} 配置快速运行。",
+        "createForRemote": "为 {{remote}} 创建快速运行"
       }
+    },
+    "tabs": {
+      "quickRun": "快速运行",
+      "workflow": "工作流"
+    },
+    "builder": {
+      "placeholderTitle": "工作流构建器正在开发中",
+      "placeholderMessage": "用于多步骤 rclone 管道和条件任务链接的可视化画布即将推出。",
+      "viewRoadmap": "在 GitHub 上查看路线图"
     }
+  },
+  "templates": {
+    "title": "模板",
+    "presetTitle": "预设与模板",
+    "applyPresets": "应用默认预设",
+    "userTemplates": "已保存的用户模板",
+    "saveAsTemplate": "将当前设置保存为模板...",
+    "manageTemplates": "管理模板...",
+    "manageTitle": "管理模板",
+    "noUserTemplates": "尚未保存自定义模板。",
+    "newTitle": "新建模板",
+    "templateName": "模板名称",
+    "templateDesc": "描述（可选）",
+    "selectAllKeys": "全选键",
+    "deselectAllKeys": "取消全选键",
+    "addKeyToCategory": "向分类添加键",
+    "addKey": "添加键",
+    "removeKey": "移除键",
+    "deleteTemplate": "删除模板",
+    "noCatKeys": "{{category}} 分类中尚未配置任何设置。",
+    "visualView": "可视化检查器",
+    "jsonView": "JSON 编辑器",
+    "key": "键",
+    "value": "值",
+    "namePlaceholder": "例如：我的快速 S3 备份设置",
+    "descPlaceholder": "这些设置的简要描述...",
+    "keyPlaceholder": "例如：dir_cache_time",
+    "valuePlaceholder": "例如：10m",
+    "selectedCount": "已选 {{selected}} / {{total}} 项",
+    "keyCount": "{{count}} 个键",
+    "keysCount": "{{count}} 个键",
+    "zeroKeys": "0 个键",
+    "applySuccess": "已成功应用模板 \"{{name}}\"。",
+    "savedSuccess": "已成功保存模板 \"{{name}}\"。",
+    "deletedSuccess": "已成功删除模板。"
+  },
+  "navigation": {
+    "dashboard": "仪表盘"
   }
 }

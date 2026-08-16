@@ -315,6 +315,12 @@ pub struct RuntimeSettings {
     pub dashboard_layout: Value,
 
     #[setting(
+        label = "settings.runtime.quick_run_layout.label",
+        description = "settings.runtime.quick_run_layout.description"
+    )]
+    pub quick_run_layout: Value,
+
+    #[setting(
         label = "settings.runtime.remote_layouts.label",
         description = "settings.runtime.remote_layouts.description"
     )]
@@ -347,6 +353,7 @@ impl Default for RuntimeSettings {
             #[cfg(feature = "flatpak")]
             flatpak_warn: true,
             dashboard_layout: Value::Object(Default::default()),
+            quick_run_layout: Value::Object(Default::default()),
             remote_layouts: Value::Object(Default::default()),
             dashboard_card_variant: "compact".to_string(),
         }
@@ -403,13 +410,6 @@ pub struct UserPresetTemplate {
     pub description: Option<String>,
 
     #[setting(
-        label = "templates.remote_type.label",
-        description = "templates.remote_type.description"
-    )]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remote_type: Option<String>,
-
-    #[setting(
         label = "templates.icon.label",
         description = "templates.icon.description"
     )]
@@ -442,7 +442,6 @@ impl Default for UserPresetTemplate {
             id: String::new(),
             name: String::new(),
             description: None,
-            remote_type: None,
             icon: None,
             created_at: String::new(),
             updated_at: String::new(),

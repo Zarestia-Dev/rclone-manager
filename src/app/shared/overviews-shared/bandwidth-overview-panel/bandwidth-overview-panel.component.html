@@ -1,0 +1,115 @@
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="hideToggle()"
+  class="bandwidth-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="right-left" class="primary" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.bandwidth' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <span aria-live="polite">
+        @if (bandwidthLimit()?.loading) {
+          <span aria-busy="true">{{ 'generalOverview.bandwidth.loading' | translate }}</span>
+        } @else if (bandwidthLimit()?.error) {
+          <span class="error-text">{{ 'generalOverview.bandwidth.error' | translate }}</span>
+        } @else {
+          {{ bandwidthLimit()?.rate | formatRateValue }}
+        }
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @let bandwidth = bandwidthLimit();
+  @if (bandwidth?.loading) {
+    <div class="loading fade-in" aria-live="polite">
+      <mat-icon
+        svgIcon="spinner"
+        [attr.aria-label]="'generalOverview.bandwidth.aria.loading' | translate"
+      ></mat-icon>
+      <span>{{ 'generalOverview.bandwidth.loading' | translate }}</span>
+    </div>
+  } @else if (bandwidth?.error) {
+    <div class="bandwidth-error" role="alert">
+      <mat-icon class="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+      <span>{{ bandwidth?.error }}</span>
+      <button
+        matIconButton
+        (click)="loadBandwidthLimit()"
+        [attr.title]="'generalOverview.bandwidth.retry' | translate"
+        [attr.aria-label]="'generalOverview.bandwidth.retry' | translate"
+      >
+        <mat-icon class="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
+      </button>
+    </div>
+  } @else {
+    <div class="bandwidth-content">
+      <div
+        class="bandwidth-status"
+        [class.limited]="isBandwidthLimited()"
+        [class.unlimited]="!isBandwidthLimited()"
+        aria-live="polite"
+      >
+        <div class="status-indicator" aria-hidden="true"></div>
+        <span class="status-text">{{ bandwidth?.rate | formatRateValue }}</span>
+      </div>
+
+      @if (isBandwidthLimited()) {
+        <div class="bandwidth-details">
+          @for (detail of bandwidthDetails(); track $index) {
+            <div class="detail-item">
+              <span class="label">{{ detail.labelKey | translate }}</span>
+              <span class="value">{{ detail.bytesPerSec | formatRateValue }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+
+      <div class="bw-preset-chips">
+        @for (preset of bandwidthPresets; track preset.value) {
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class.is-selected]="isPresetActive(preset.value)"
+            (click)="setBandwidthLimit(preset.value)"
+            [attr.title]="preset.labelKey ? (preset.labelKey | translate) : preset.label"
+          >
+            <span>{{ preset.labelKey ? (preset.labelKey | translate) : preset.label }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="custom-bw-row">
+        <mat-form-field class="custom-bw-field">
+          <input
+            matInput
+            type="text"
+            [formControl]="customBandwidthControl"
+            [placeholder]="'generalOverview.bandwidth.customPlaceholder' | translate"
+            (keydown.enter)="applyCustomBandwidth()"
+          />
+          <button
+            matSuffix
+            matIconButton
+            [disabled]="!isCustomBandwidthChanged()"
+            (click)="applyCustomBandwidth()"
+            [attr.title]="'generalOverview.bandwidth.apply' | translate"
+          >
+            <mat-icon svgIcon="check-circle"></mat-icon>
+          </button>
+          @if (
+            customBandwidthControl.invalid &&
+            (customBandwidthControl.touched || customBandwidthControl.dirty)
+          ) {
+            <mat-error>{{ getBandwidthErrorMessage() }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </div>
+  }
+</mat-expansion-panel>

@@ -1185,6 +1185,10 @@ mat-accordion:not(.dull) {
   background: var(--view-bg-color) !important;
   border-radius: var(--radius-md) !important;
 
+  .mat-content.mat-content-hide-toggle {
+    margin-right: 0;
+  }
+
   mat-panel-title {
     gap: var(--space-sm);
 
@@ -1814,7 +1818,7 @@ mat-accordion:not(.dull) {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   outline: none;
   position: relative;

@@ -64,6 +64,8 @@ pub struct AppConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watch_changed_only: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_on_tray: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vfs_profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter_profile: Option<String>,
@@ -300,6 +302,7 @@ pub const APP_PARTITION_KEYS: &[&str] = &[
     "watchEnabled",
     "watchDelay",
     "watchChangedOnly",
+    "showOnTray",
     "vfsProfile",
     "filterProfile",
     "backendProfile",

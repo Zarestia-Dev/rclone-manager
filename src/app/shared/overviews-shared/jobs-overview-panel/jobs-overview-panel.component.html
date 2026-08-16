@@ -1,0 +1,230 @@
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="hideToggle()"
+  class="job-info-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.jobs' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      @let activeJobs = activeJobsCount();
+      <span class="app-pill" [class.p-primary]="activeJobs > 0" [class.p-dim]="activeJobs === 0">
+        {{
+          activeJobs > 0
+            ? ('generalOverview.jobs.activeCount'
+              | translate: { count: activeJobs, s: activeJobs !== 1 ? 's' : '' })
+            : ('generalOverview.jobs.noActive' | translate)
+        }}
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @if (isLoadingStats()) {
+    <div class="loading fade-in" aria-live="polite">
+      <mat-icon
+        svgIcon="spinner"
+        [attr.aria-label]="'generalOverview.jobs.aria.loading' | translate"
+      ></mat-icon>
+      <span>{{ 'generalOverview.jobs.loading' | translate }}</span>
+    </div>
+  } @else {
+    @let stats = jobStats();
+    @let activeJobs = activeJobsCount();
+    <div class="job-grid" role="grid">
+      @if (showFilterChips()) {
+        <div class="origin-filter-row">
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class.is-selected]="selectedOriginFilter() === 'all'"
+            (click)="selectedOriginFilter.set('all')"
+            [attr.title]="'common.all' | translate"
+          >
+            <span>{{ 'common.all' | translate }}</span>
+          </button>
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class.is-selected]="selectedOriginFilter() === 'quickrun'"
+            (click)="selectedOriginFilter.set('quickrun')"
+            [attr.title]="'flow.tabs.quickRun' | translate"
+          >
+            <mat-icon svgIcon="quick-run"></mat-icon>
+            <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+          </button>
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class.is-selected]="selectedOriginFilter() === 'dashboard'"
+            (click)="selectedOriginFilter.set('dashboard')"
+            [attr.title]="'navigation.dashboard' | translate"
+          >
+            <mat-icon svgIcon="cloud"></mat-icon>
+            <span>{{ 'navigation.dashboard' | translate }}</span>
+          </button>
+          <button
+            type="button"
+            class="app-pill interactive"
+            [class.is-selected]="selectedOriginFilter() === 'automation'"
+            (click)="selectedOriginFilter.set('automation')"
+            [attr.title]="'generalOverview.panels.automations' | translate"
+          >
+            <mat-icon svgIcon="clock"></mat-icon>
+            <span>{{ 'generalOverview.panels.automations' | translate }}</span>
+          </button>
+        </div>
+      }
+
+      @if (stats.totalBytes > 0) {
+        <div class="job-progress-section" role="rowgroup">
+          <div class="progress-header" role="row">
+            <span class="label" role="gridcell">{{
+              'generalOverview.jobs.progress' | translate
+            }}</span>
+            <span class="value" role="gridcell"
+              >{{ jobCompletionPercentage() | number: '1.0-1' }}%</span
+            >
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="jobCompletionPercentage()"
+            role="progressbar"
+            [attr.aria-valuenow]="jobCompletionPercentage()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></mat-progress-bar>
+          <div class="progress-details" role="row">
+            <span role="gridcell">
+              {{ stats.bytes | formatFileSize }}
+              {{ 'generalOverview.jobs.of' | translate }}
+              {{ stats.totalBytes | formatFileSize }}
+            </span>
+            <span role="gridcell">
+              {{ 'generalOverview.jobs.eta' | translate }}
+              {{ stats.eta | formatEta }}
+            </span>
+          </div>
+        </div>
+      }
+
+      <div class="job-stats-grid" role="grid">
+        @for (item of jobStatsItems(); track $index) {
+          <div class="info-item" role="row">
+            <span class="label" role="gridcell">{{ item.labelKey | translate }}</span>
+            <span class="value" [class.error]="item.error" role="gridcell">
+              @if (item.formatAsBytes) {
+                {{ $any(item.value) | formatRateValue }}
+              } @else {
+                {{ item.value }}
+              }
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (stats.lastError) {
+        <section class="detail-section">
+          <span class="section-title error">
+            <mat-icon svgIcon="circle-exclamation"></mat-icon>
+            {{ 'generalOverview.jobs.lastError' | translate }}
+          </span>
+          <pre
+            class="error-entry"
+            [appCopyToClipboard]="stats.lastError"
+            [attr.title]="'common.copy' | translate"
+          ><mat-icon svgIcon="circle-xmark"></mat-icon><span>{{ stats.lastError }}</span></pre>
+        </section>
+      }
+
+      @if (runningJobs().length > 0) {
+        <div class="running-jobs-section">
+          <div class="section-heading">
+            <mat-icon svgIcon="download" aria-hidden="true"></mat-icon>
+            <span>{{ 'generalOverview.jobs.runningJobs' | translate }}</span>
+          </div>
+
+          <div class="running-jobs-list">
+            @for (vm of runningJobViewModels(); track vm.job.jobid) {
+              <div
+                class="running-job-row interactive"
+                (click)="onJobRowClick(vm.job)"
+                tabindex="0"
+                role="button"
+                [attr.title]="'common.viewDetails' | translate"
+              >
+                <div class="running-job-main">
+                  <mat-icon [svgIcon]="vm.typeIcon" class="running-job-icon"></mat-icon>
+                  <div class="running-job-text">
+                    <div class="running-job-title-row">
+                      <span class="running-job-title">{{ vm.label }}</span>
+                      <span class="app-pill {{ vm.originBadgeClass }} origin-pill">
+                        {{ vm.originLabel }}
+                      </span>
+                    </div>
+                    <span class="running-job-path">{{ vm.job.destination || vm.job.source }}</span>
+                  </div>
+                  <button
+                    matIconButton
+                    class="stop-job-btn"
+                    (click)="onStopJobClick(vm.job, $event)"
+                    [attr.title]="'detailShared.jobs.actions.stop' | translate"
+                  >
+                    <mat-icon svgIcon="stop"></mat-icon>
+                  </button>
+                </div>
+
+                @if (vm.job.stats; as jStats) {
+                  <div class="running-job-meta">
+                    <span>
+                      {{ jStats.bytes | formatFileSize }}
+                      @if (jStats.totalBytes > 0) {
+                        / {{ jStats.totalBytes | formatFileSize }}
+                      }
+                    </span>
+                    <span class="dot-separator">•</span>
+                    <span>{{
+                      jStats.speed > 0
+                        ? (jStats.speed | formatRateValue)
+                        : ('generalOverview.jobs.starting' | translate)
+                    }}</span>
+                    <span class="dot-separator">•</span>
+                    <span>{{ jStats.eta | formatEta }}</span>
+                  </div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="jStats.totalBytes > 0 ? (jStats.bytes / jStats.totalBytes) * 100 : 0"
+                    class="running-job-progress"
+                  ></mat-progress-bar>
+                } @else {
+                  <div class="running-job-meta">
+                    <span>{{ 0 | formatFileSize }}</span>
+                    <span class="dot-separator">•</span>
+                    <span>{{ 'generalOverview.jobs.starting' | translate }}</span>
+                    <span class="dot-separator">•</span>
+                    <span>{{ 0 | formatEta }}</span>
+                  </div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="0"
+                    class="running-job-progress"
+                  ></mat-progress-bar>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (activeJobs === 0) {
+        <div class="no-jobs-message empty-state-message" role="status">
+          <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+          <span>{{ 'generalOverview.jobs.noRunning' | translate }}</span>
+        </div>
+      }
+    </div>
+  }
+</mat-expansion-panel>

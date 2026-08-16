@@ -25,6 +25,7 @@ export class NautilusBottomBarComponent {
   public readonly viewMenu = input.required<TemplateRef<unknown>>();
   public readonly isPickerMode = input(false);
   public readonly isConfirmDisabled = input(false);
+  public readonly isSidebarOpen = input(false);
 
   // --- Outputs ---
   public readonly setLayout = output<'grid' | 'list'>();

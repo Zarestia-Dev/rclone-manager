@@ -1,231 +1,260 @@
-<div class="overview-container">
+<div class="overview-container" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <!-- Top Header Banner -->
-  <app-overview-header
-    [customTitle]="'flow.quickRun.overview.title'"
-    [customIcon]="'quick-run'"
-    (openBackendModal)="openBackendModal()"
-  ></app-overview-header>
-
-  <!-- Key Metrics Summary Grid -->
-  <div class="stats-grid">
-    <mat-card class="stat-card">
-      <div class="stat-icon-wrapper primary">
-        <mat-icon svgIcon="operations"></mat-icon>
-      </div>
-      <div class="stat-info">
-        <span class="stat-value">{{ totalCount() }}</span>
-        <span class="stat-label">{{ 'flow.quickRun.overview.stats.total' | translate }}</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="stat-card" [class.is-active]="activeCount() > 0">
-      <div class="stat-icon-wrapper active">
-        <mat-icon svgIcon="spinner" [class.spin]="activeCount() > 0"></mat-icon>
-      </div>
-      <div class="stat-info">
-        <span class="stat-value">{{ activeCount() }}</span>
-        <span class="stat-label">{{ 'flow.quickRun.overview.stats.active' | translate }}</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="stat-card">
-      <div class="stat-icon-wrapper success">
-        <mat-icon svgIcon="check-circle"></mat-icon>
-      </div>
-      <div class="stat-info">
-        <span class="stat-value">{{ completedCount() }}</span>
-        <span class="stat-label">{{ 'flow.quickRun.overview.stats.completed' | translate }}</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="stat-card">
-      <div class="stat-icon-wrapper warn">
-        <mat-icon svgIcon="warning"></mat-icon>
-      </div>
-      <div class="stat-info">
-        <span class="stat-value">{{ failedCount() }}</span>
-        <span class="stat-label">{{ 'flow.quickRun.overview.stats.failed' | translate }}</span>
-      </div>
-    </mat-card>
+  <div class="overview-header-wrapper" role="banner">
+    <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
+    </app-overview-header>
   </div>
 
-  <!-- System Info & Bandwidth Control Row -->
-  <div class="sys-bandwidth-grid">
-    <!-- Engine System Info Card -->
-    <mat-card class="sys-card">
-      <div class="card-header-bar">
-        <div class="header-left">
-          <mat-icon svgIcon="core" class="icon-accent"></mat-icon>
-          <h3>{{ 'flow.quickRun.overview.system.title' | translate }}</h3>
-        </div>
-        <span class="status-dot-badge" [class]="rcloneStatus()">
-          <span class="dot"></span>
-          {{ rcloneStatus() | titlecase }}
-        </span>
-      </div>
-      <div class="sys-metrics-row">
-        <div class="sys-metric-item">
-          <span class="sys-label">{{ 'flow.quickRun.overview.system.version' | translate }}</span>
-          <span class="sys-val">{{ rcloneInfo()?.version || 'Native v2' }}</span>
-        </div>
-        <div class="sys-metric-item">
-          <span class="sys-label">{{ 'flow.quickRun.overview.system.memory' | translate }}</span>
-          <span class="sys-val">
-            @if (memoryUsage()?.HeapAlloc; as alloc) {
-              {{ alloc | formatFileSize }}
-            } @else {
-              -
+  <div class="overview-content" role="main">
+    <!-- Modular Accordion Panel Grid (with drag & drop) -->
+    <div class="layout-grid">
+      <mat-accordion
+        multi
+        cdkDropList
+        [cdkDropListDisabled]="!isEditingLayout()"
+        [cdkDropListData]="dashboardPanels()"
+        (cdkDropListDropped)="drop($event)"
+      >
+        @for (panel of displayPanels(); track panel.id) {
+          <div
+            cdkDrag
+            [cdkDragData]="panel"
+            [cdkDragDisabled]="!isEditingLayout()"
+            class="draggable-panel-wrapper"
+            [class.editing]="isEditingLayout()"
+          >
+            <div class="custom-placeholder" *cdkDragPlaceholder></div>
+
+            @if (isEditingLayout()) {
+              <div
+                class="panel-edit-controls"
+                cdkDragHandle
+                animate.enter="expand-height-enter"
+                animate.leave="expand-height-leave"
+              >
+                <mat-icon svgIcon="drag-indicator"></mat-icon>
+                <span class="panel-label">{{ panel.title | translate }}</span>
+
+                <div class="visibility-toggle">
+                  <span class="toggle-label">{{
+                    panel.visible
+                      ? ('generalOverview.layout.visible' | translate)
+                      : ('generalOverview.layout.hidden' | translate)
+                  }}</span>
+                  <mat-slide-toggle
+                    [checked]="panel.visible"
+                    (change)="togglePanelVisibility(panel.id)"
+                    class="primary"
+                  >
+                  </mat-slide-toggle>
+                </div>
+              </div>
             }
-          </span>
-        </div>
-        <div class="sys-metric-item">
-          <span class="sys-label">{{ 'flow.quickRun.overview.system.uptime' | translate }}</span>
-          <span class="sys-val">{{ uptime() | formatTime }}</span>
-        </div>
-        <div class="sys-metric-item">
-          <span class="sys-label">{{ 'flow.quickRun.overview.system.speed' | translate }}</span>
-          <span class="sys-val highlight">{{ jobStats().speed | formatRateValue }}</span>
-        </div>
-      </div>
-    </mat-card>
 
-    <!-- Bandwidth Limit Control Card -->
-    <mat-card class="bandwidth-card">
-      <div class="card-header-bar">
-        <div class="header-left">
-          <mat-icon svgIcon="right-left" class="icon-primary"></mat-icon>
-          <h3>{{ 'flow.quickRun.overview.bandwidth.title' | translate }}</h3>
-        </div>
-        <span class="bw-current-badge">
-          {{ bandwidthLimit()?.rate | formatRateValue }}
-        </span>
-      </div>
-      <div class="bw-preset-chips">
-        <button
-          type="button"
-          class="preset-chip"
-          [class.active]="savedBandwidthLimit() === '' || savedBandwidthLimit() === 'off'"
-          (click)="setBandwidthLimit('off')"
-          [attr.title]="'flow.quickRun.overview.bandwidth.unlimited' | translate"
-        >
-          <mat-icon svgIcon="right-left"></mat-icon>
-          <span>{{ 'flow.quickRun.overview.bandwidth.unlimited' | translate }}</span>
-        </button>
-        <button
-          type="button"
-          class="preset-chip"
-          [class.active]="savedBandwidthLimit() === '1M'"
-          (click)="setBandwidthLimit('1M')"
-          [attr.title]="'flow.quickRun.overview.bandwidth.preset1M' | translate"
-        >
-          <span>1 MB/s</span>
-        </button>
-        <button
-          type="button"
-          class="preset-chip"
-          [class.active]="savedBandwidthLimit() === '5M'"
-          (click)="setBandwidthLimit('5M')"
-          [attr.title]="'flow.quickRun.overview.bandwidth.preset5M' | translate"
-        >
-          <span>5 MB/s</span>
-        </button>
-        <button
-          type="button"
-          class="preset-chip"
-          [class.active]="savedBandwidthLimit() === '10M'"
-          (click)="setBandwidthLimit('10M')"
-          [attr.title]="'flow.quickRun.overview.bandwidth.preset10M' | translate"
-        >
-          <span>10 MB/s</span>
-        </button>
-        <button
-          type="button"
-          class="preset-chip"
-          [class.active]="savedBandwidthLimit() === '50M'"
-          (click)="setBandwidthLimit('50M')"
-          [attr.title]="'flow.quickRun.overview.bandwidth.preset50M' | translate"
-        >
-          <span>50 MB/s</span>
-        </button>
-      </div>
+            <div
+              [class.panel-hidden-visual]="isEditingLayout() && !panel.visible"
+              class="panel-content-wrapper"
+            >
+              @switch (panel.id) {
+                @case ('quickRuns') {
+                  <mat-expansion-panel
+                    [expanded]="panelOpenStates()['quickRuns']"
+                    (opened)="setPanelOpenState('quickRuns', true)"
+                    (closed)="setPanelOpenState('quickRuns', false)"
+                    [hideToggle]="true"
+                    class="quick-runs-panel"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon svgIcon="quick-run" class="primary" aria-hidden="true"></mat-icon>
+                        <span>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</span>
+                      </mat-panel-title>
+                      <mat-panel-description>
+                        <span
+                          class="app-pill"
+                          [class.p-primary]="quickRuns().length > 0"
+                          [class.p-dim]="quickRuns().length === 0"
+                          aria-label="{{ quickRuns().length }} quick runs"
+                        >
+                          {{ quickRuns().length }}
+                        </span>
+                      </mat-panel-description>
+                    </mat-expansion-panel-header>
 
-      <div class="custom-bw-row">
-        <mat-form-field subscriptSizing="dynamic" class="custom-bw-field">
-          <mat-icon matPrefix svgIcon="right-left" class="custom-bw-prefix-icon"></mat-icon>
-          <input
-            matInput
-            type="text"
-            [value]="customBandwidthInput()"
-            (input)="customBandwidthInput.set($any($event.target).value)"
-            [placeholder]="'flow.quickRun.overview.bandwidth.customPlaceholder' | translate"
-            (keydown.enter)="applyCustomBandwidth()"
-          />
-          <button
-            matSuffix
-            type="button"
-            class="custom-bw-apply-btn"
-            [disabled]="!isCustomBandwidthChanged()"
-            (click)="applyCustomBandwidth()"
-            [attr.title]="'flow.quickRun.overview.bandwidth.apply' | translate"
-          >
-            <mat-icon svgIcon="check-circle"></mat-icon>
-            <span>{{ 'flow.quickRun.overview.bandwidth.apply' | translate }}</span>
-          </button>
-        </mat-form-field>
-      </div>
-    </mat-card>
+                    @if (remoteGroups().length > 0) {
+                      <div class="filter-chips hide-scrollbar">
+                        <button
+                          type="button"
+                          class="app-pill interactive"
+                          [class.is-selected]="selectedRemoteFilter() === null"
+                          [class.p-primary]="selectedRemoteFilter() === null"
+                          (click)="setRemoteFilter(null)"
+                        >
+                          <span>{{ 'common.all' | translate }} ({{ quickRuns().length }})</span>
+                        </button>
+                        @for (group of remoteGroups(); track group.remoteName) {
+                          <button
+                            type="button"
+                            class="app-pill interactive"
+                            [class.is-selected]="selectedRemoteFilter() === group.remoteName"
+                            [class.p-primary]="selectedRemoteFilter() === group.remoteName"
+                            (click)="setRemoteFilter(group.remoteName)"
+                          >
+                            <mat-icon [svgIcon]="group.icon"></mat-icon>
+                            <span>{{ group.remoteName }} ({{ group.count }})</span>
+                          </button>
+                        }
+                      </div>
+                    }
+
+                    @if (filteredQuickRuns().length > 0) {
+                      <div class="grid">
+                        @for (qr of filteredQuickRuns(); track qr.id) {
+                          <app-quick-run-card
+                            [quickRun]="qr"
+                            [isRunning]="isRunning(qr.id)"
+                            variant="overview"
+                            (selectedChange)="onSelectQuickRunById($event)"
+                            (startRun)="onStartQuickRun($event)"
+                            (stopRun)="onStopQuickRun($event)"
+                            (editRun)="onEditQuickRun($event)"
+                            (openInFiles)="openInFiles($event)"
+                            (openRemoteDetail)="onOpenRemoteDetail($event)"
+                          />
+                        }
+                      </div>
+                    } @else if (selectedRemoteFilter(); as filterRemote) {
+                      <div class="empty-state">
+                        <mat-icon svgIcon="quick-run" class="empty-icon"></mat-icon>
+                        <p>
+                          {{
+                            'flow.quickRun.overview.noRunsForRemote'
+                              | translate: { remote: filterRemote }
+                          }}
+                        </p>
+                        <div class="empty-actions">
+                          <button
+                            matButton="filled"
+                            class="primary"
+                            (click)="onCreateQuickRunForRemote(filterRemote)"
+                            [attr.title]="
+                              'flow.quickRun.overview.createForRemote'
+                                | translate: { remote: filterRemote }
+                            "
+                          >
+                            <mat-icon svgIcon="plus"></mat-icon>
+                            <span>{{
+                              'flow.quickRun.overview.createForRemote'
+                                | translate: { remote: filterRemote }
+                            }}</span>
+                          </button>
+                          <button
+                            matButton="tonal"
+                            (click)="onOpenRemoteDetail(filterRemote)"
+                            [attr.title]="'dashboard.appDetail.remoteSettings' | translate"
+                          >
+                            <mat-icon svgIcon="open-link"></mat-icon>
+                            <span>{{ 'dashboard.appDetail.remoteSettings' | translate }}</span>
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="empty-state">
+                        <mat-icon svgIcon="operations"></mat-icon>
+                        <p>{{ 'flow.quickRun.overview.createFirst' | translate }}</p>
+                        <button
+                          matButton="filled"
+                          class="primary"
+                          (click)="onCreateQuickRun()"
+                          [attr.title]="'flow.quickRun.new' | translate"
+                        >
+                          <mat-icon svgIcon="plus"></mat-icon>
+                          <span>{{ 'flow.quickRun.new' | translate }}</span>
+                        </button>
+                      </div>
+                    }
+                  </mat-expansion-panel>
+                }
+                @case ('bandwidth') {
+                  <app-bandwidth-overview-panel
+                    [expanded]="panelOpenStates()['bandwidth']"
+                    (expandedChange)="setPanelOpenState('bandwidth', $event)"
+                  ></app-bandwidth-overview-panel>
+                }
+                @case ('system') {
+                  <app-system-overview-panel
+                    [expanded]="panelOpenStates()['system']"
+                    (expandedChange)="setPanelOpenState('system', $event)"
+                    [totalCount]="totalCount()"
+                    [totalCountLabelKey]="'flow.quickRun.overview.stats.total'"
+                    [activeJobsCount]="activeCount()"
+                  ></app-system-overview-panel>
+                }
+                @case ('jobs') {
+                  <app-jobs-overview-panel
+                    [expanded]="panelOpenStates()['jobs']"
+                    (expandedChange)="setPanelOpenState('jobs', $event)"
+                    [showFilterChips]="true"
+                    (jobClick)="handleJobClick($event)"
+                    (stopJob)="handleStopJob($event)"
+                  ></app-jobs-overview-panel>
+                }
+                @case ('serves') {
+                  <app-serves-overview-panel
+                    [expanded]="panelOpenStates()['serves']"
+                    (expandedChange)="setPanelOpenState('serves', $event)"
+                    [defaultOriginFilter]="'quickrun'"
+                    [showFilterChips]="true"
+                    (serveClick)="handleServeClick($event)"
+                    (stopServe)="handleStopServe($event)"
+                  ></app-serves-overview-panel>
+                }
+                @case ('automations') {
+                  <app-automations-overview-panel
+                    [expanded]="panelOpenStates()['automations']"
+                    (expandedChange)="setPanelOpenState('automations', $event)"
+                    [defaultOriginFilter]="'quickrun'"
+                    [showFilterChips]="true"
+                    (automationClick)="handleAutomationClick($event)"
+                    (toggleAutomation)="toggleAutomation($event)"
+                    (openInFiles)="openInFiles($event)"
+                  ></app-automations-overview-panel>
+                }
+              }
+            </div>
+          </div>
+        }
+      </mat-accordion>
+    </div>
   </div>
 
-  <!-- Content Section: Quick Launch Grid & Jobs Panel -->
-  <div class="overview-body">
-    <!-- Quick Launch Grid -->
-    <section class="quick-launch-section">
-      <div class="section-header">
-        <div class="section-title-group">
-          <mat-icon svgIcon="play" class="section-icon"></mat-icon>
-          <h3>{{ 'flow.quickRun.overview.quickLaunch' | translate }}</h3>
-        </div>
-        <span class="section-sub">{{ 'flow.quickRun.overview.quickLaunchSub' | translate }}</span>
-      </div>
+  <!-- Floating Layout Controls -->
+  <div class="layout-actions">
+    <button
+      matIconButton
+      (click)="toggleEditLayout()"
+      [attr.title]="
+        isEditingLayout()
+          ? ('generalOverview.layout.save' | translate)
+          : ('generalOverview.layout.edit' | translate)
+      "
+    >
+      <mat-icon
+        [class.primary]="isEditingLayout()"
+        [svgIcon]="isEditingLayout() ? 'check-circle' : 'pen'"
+      ></mat-icon>
+    </button>
 
-      @if (quickRuns().length > 0) {
-        <div class="quick-runs-grid">
-          @for (qr of quickRuns(); track qr.id) {
-            <app-quick-run-card
-              [quickRun]="qr"
-              [isRunning]="isRunning(qr.id)"
-              variant="overview"
-              (selectedChange)="onSelectQuickRunById($event)"
-              (startRun)="onStartQuickRun($event)"
-              (stopRun)="onStopQuickRun($event)"
-              (editRun)="onEditQuickRun($event)"
-            />
-          }
-        </div>
-      } @else {
-        <div class="empty-quick-runs">
-          <mat-icon svgIcon="operations" class="empty-icon"></mat-icon>
-          <p>{{ 'flow.quickRun.overview.createFirst' | translate }}</p>
-          <button
-            mat-stroked-button
-            color="primary"
-            (click)="onCreateQuickRun()"
-            [attr.title]="'flow.quickRun.new' | translate"
-          >
-            <mat-icon svgIcon="plus"></mat-icon>
-            <span>{{ 'flow.quickRun.new' | translate }}</span>
-          </button>
-        </div>
-      }
-    </section>
-
-    <!-- Recent & Active Executions Panel -->
-    <section class="jobs-section">
-      <app-jobs-panel
-        [config]="jobsPanelConfig()"
-        (stopJob)="onStopJob($event)"
-        (deleteJob)="onDeleteJob($event)"
-      />
-    </section>
+    @if (isEditingLayout()) {
+      <button
+        matIconButton
+        (click)="resetLayout()"
+        [attr.title]="'generalOverview.layout.reset' | translate"
+        animate.enter="fade-in-out-enter"
+        animate.leave="fade-in-out-leave"
+      >
+        <mat-icon class="warn" svgIcon="rotate-right"></mat-icon>
+      </button>
+    }
   </div>
 </div>

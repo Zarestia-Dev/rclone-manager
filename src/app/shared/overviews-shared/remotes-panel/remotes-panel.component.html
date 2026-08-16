@@ -1,43 +1,59 @@
-<!-- Panel Header -->
-<div class="panel-header">
-  <div class="panel-title">
-    <mat-icon [svgIcon]="icon()" [class.active-icon]="isActive()" aria-hidden="true"></mat-icon>
-    <span class="title-text">{{ title() }}</span>
-  </div>
-  <span class="panel-count" aria-label="{{ count() }} remotes">{{ count() }}</span>
-</div>
-
-<!-- Remotes Grid -->
-<div
-  class="remotes-grid"
-  cdkDropList
-  cdkDropListOrientation="mixed"
-  (cdkDropListDropped)="onDrop($event)"
-  [cdkDropListDisabled]="!isEditingLayout()"
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="true"
+  class="remotes-panel"
 >
-  @for (remote of displayRemotes(); track remote.name) {
-    @let isHidden = hiddenSet().has(remote.name);
-    <app-remote-card
-      cdkDrag
-      [cdkDragDisabled]="!isEditingLayout()"
-      [remote]="remote"
-      [mode]="mode()"
-      [displayMode]="displayMode()"
-      [primaryActionLabel]="primaryActionLabel()"
-      [activeIcon]="activeIcon()"
-      [primaryActions]="remote.primaryActions"
-      [syncActions]="remote.syncActions"
-      [isEditingLayout]="isEditingLayout()"
-      [isHidden]="isHidden"
-      (remoteClick)="remoteSelected.emit($event)"
-      (openInFiles)="openInFiles.emit($event)"
-      (startJob)="startJob.emit($event)"
-      (stopJob)="stopJob.emit($event)"
-      (toggleHidden)="toggleHidden.emit($event)"
-    >
-      <div class="remote-drag-placeholder" *cdkDragPlaceholder>
-        <mat-icon svgIcon="plus" class="placeholder-icon"></mat-icon>
-      </div>
-    </app-remote-card>
-  }
-</div>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon [svgIcon]="icon()" [class.active-icon]="isActive()" aria-hidden="true"></mat-icon>
+      <span class="title-text">{{ title() }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <span
+        class="app-pill"
+        [class.p-primary]="count() > 0"
+        [class.p-dim]="count() === 0"
+        aria-label="{{ count() }} remotes"
+      >
+        {{ count() }}
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <!-- Remotes Grid -->
+  <div
+    class="grid"
+    cdkDropList
+    cdkDropListOrientation="mixed"
+    (cdkDropListDropped)="onDrop($event)"
+    [cdkDropListDisabled]="!isEditingLayout()"
+  >
+    @for (remote of displayRemotes(); track remote.name) {
+      @let isHidden = hiddenSet().has(remote.name);
+      <app-remote-card
+        cdkDrag
+        [cdkDragDisabled]="!isEditingLayout()"
+        [remote]="remote"
+        [mode]="mode()"
+        [displayMode]="displayMode()"
+        [primaryActionLabel]="primaryActionLabel()"
+        [activeIcon]="activeIcon()"
+        [primaryActions]="remote.primaryActions"
+        [syncActions]="remote.syncActions"
+        [isEditingLayout]="isEditingLayout()"
+        [isHidden]="isHidden"
+        (remoteClick)="remoteSelected.emit($event)"
+        (openInFiles)="openInFiles.emit($event)"
+        (startJob)="startJob.emit($event)"
+        (stopJob)="stopJob.emit($event)"
+        (toggleHidden)="toggleHidden.emit($event)"
+      >
+        <div class="remote-drag-placeholder" *cdkDragPlaceholder>
+          <mat-icon svgIcon="plus" class="placeholder-icon"></mat-icon>
+        </div>
+      </app-remote-card>
+    }
+  </div>
+</mat-expansion-panel>

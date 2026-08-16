@@ -85,6 +85,9 @@ impl MountParams {
             let mut legacy_config = serde_json::Map::new();
 
             for (k, v) in map {
+                if crate::utils::json_helpers::is_path_key(k) {
+                    continue;
+                }
                 if crate::utils::json_helpers::is_flat_option_key(k) {
                     body.insert(k.clone(), v.clone());
                 } else if k == "mountOpt" && v.is_object() {
@@ -119,18 +122,18 @@ impl MountParams {
             }
         }
 
-        // 2. Merge resolved profile blocks if they exist
+        // 2. Merge resolved profile blocks if they exist and are non-empty
         if let Some(vfs_opts) = &self.vfs_options {
-            body.insert(
-                "vfsOpt".to_string(),
-                serde_json::to_value(vfs_opts).unwrap(),
-            );
+            let val = serde_json::to_value(vfs_opts).unwrap_or_default();
+            if val.as_object().is_some_and(|o| !o.is_empty()) {
+                body.insert("vfsOpt".to_string(), val);
+            }
         }
         if let Some(filter_opts) = &self.filter_options {
-            body.insert(
-                "_filter".to_string(),
-                serde_json::to_value(filter_opts).unwrap(),
-            );
+            let val = serde_json::to_value(filter_opts).unwrap_or_default();
+            if val.as_object().is_some_and(|o| !o.is_empty()) {
+                body.insert("_filter".to_string(), val);
+            }
         }
         if let Some(backend_opts) = &self.backend_options {
             let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
@@ -143,7 +146,9 @@ impl MountParams {
                 for (k, v) in final_backend {
                     config_map.entry(k).or_insert(v);
                 }
-                body.insert("_config".to_string(), Value::Object(config_map));
+                if !config_map.is_empty() {
+                    body.insert("_config".to_string(), Value::Object(config_map));
+                }
             }
         }
 

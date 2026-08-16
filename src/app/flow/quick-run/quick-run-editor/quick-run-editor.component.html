@@ -2,11 +2,12 @@
   <button
     type="button"
     matIconButton
+    [class.is-open]="isSidebarOpen()"
     (click)="toggleSidebar()"
     [attr.title]="'flow.quickRun.toggleSidebar' | translate"
     [attr.aria-label]="'flow.quickRun.toggleSidebar' | translate"
   >
-    <mat-icon svgIcon="menu-bar"></mat-icon>
+    <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
   </button>
   <p>
     {{

@@ -35,6 +35,33 @@
       font-size: var(--font-size-base);
       color: var(--dim-color);
       font-weight: 400;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+
+      .remote-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        border-radius: var(--radius-xs);
+        font-size: var(--font-size-md);
+        color: var(--dim-color);
+        cursor: pointer;
+        transition: var(--transition-fast);
+
+        mat-icon {
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
+          font-size: var(--icon-size-sm);
+        }
+
+        &:hover {
+          color: var(--primary-color);
+          background: rgba(var(--primary-color-rgb), 0.12);
+          text-decoration: underline;
+        }
+      }
     }
   }
 }

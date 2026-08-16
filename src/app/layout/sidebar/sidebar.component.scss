@@ -42,7 +42,8 @@
   flex-direction: column;
 }
 
-// Remote Card
+// Sidebar Card (Remote / Quick Run)
+.sidebar-card,
 .remote-card {
   margin: var(--space-md);
   margin-bottom: 0;
@@ -74,13 +75,18 @@
     }
   }
 
+  &.is-running {
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.3);
+  }
+
   .card-content {
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
 
-    // Remote Header with Status
+    // Card Header with Status
+    .card-header,
     .remote-header {
       display: flex;
       align-items: center;
@@ -88,6 +94,7 @@
       gap: var(--space-xs);
       position: relative;
 
+      .name-wrapper,
       .remote-name-wrapper {
         display: flex;
         align-items: center;
@@ -129,10 +136,70 @@
         flex-wrap: wrap;
         gap: 6px;
         max-width: 58px;
+
+        .feature-icon {
+          width: 14px;
+          height: 14px;
+          font-size: 14px;
+          color: var(--dim-color);
+          opacity: 0.75;
+          transition:
+            opacity 0.15s ease,
+            color 0.15s ease;
+
+          &:hover {
+            opacity: 1;
+          }
+
+          &.cron {
+            color: var(--primary-color);
+          }
+
+          &.watcher {
+            color: var(--accent-color);
+          }
+
+          &.autostart {
+            color: var(--yellow);
+          }
+        }
+
+        .status-dot-mini {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          background: var(--dim-color);
+          opacity: 0.5;
+
+          &.running {
+            background: var(--accent-color);
+            opacity: 1;
+            animation: pulse 1.4s ease-in-out infinite;
+          }
+          &.completed {
+            background: var(--primary-color);
+            opacity: 0.8;
+          }
+          &.failed {
+            background: var(--warn-color);
+            opacity: 1;
+          }
+          &.stopped {
+            background: var(--dim-color);
+            opacity: 0.7;
+          }
+          &.idle {
+            background: var(--dim-color);
+            opacity: 0.4;
+          }
+        }
       }
     }
 
-    // Remote Type
+    // Card Subtitle / Type
+    .card-type,
+    .card-meta,
     .remote-type {
       display: flex;
       align-items: center;
@@ -140,6 +207,28 @@
       color: var(--dim-color);
       font-size: 0.9rem;
       font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      mat-icon {
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
+        font-size: var(--icon-size-xs);
+        color: var(--dim-color);
+        flex-shrink: 0;
+      }
+
+      .separator {
+        opacity: 0.5;
+        margin: 0 2px;
+      }
+
+      .remote-name {
+        font-family: var(--font-mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
 
     // Status Dots
@@ -230,6 +319,25 @@
   }
 }
 
+// Loading State
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xxl) var(--space-md);
+  color: var(--dim-color);
+  font-size: 13px;
+
+  .spinner {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: var(--primary-color);
+  }
+}
+
 // No Remotes Message
 .no-remotes {
   display: flex;
@@ -241,11 +349,19 @@
   font-weight: 500;
   height: 100%;
   min-height: 200px;
+  padding: var(--space-md);
+  gap: var(--space-sm);
 
   mat-icon {
     width: var(--icon-size-xl);
     height: var(--icon-size-xl);
     font-size: var(--icon-size-xl);
     opacity: 0.5;
+  }
+
+  span {
+    font-size: 13px;
+    max-width: 200px;
+    line-height: 1.5;
   }
 }

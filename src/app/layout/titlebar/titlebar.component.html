@@ -2,18 +2,20 @@
   <!-- Main Buttons -->
   <button
     matIconButton
-    [cdkMenuTriggerFor]="addRemoteMenu"
+    [cdkMenuTriggerFor]="customAddMenu() ?? addRemoteMenu"
     [attr.aria-label]="'titlebar.addRemoteMenu' | translate"
+    [attr.title]="'titlebar.addRemoteMenu' | translate"
     data-tauri-drag-region="false"
   >
     <mat-icon svgIcon="plus" aria-hidden="true"></mat-icon>
   </button>
 
-  <div class="contextual-action-wrapper" [class.visible]="uiStateService.selectedRemote()">
+  <div class="contextual-action-wrapper" [class.visible]="isHomeVisible()">
     <button
       matIconButton
-      (click)="resetRemote()"
+      (click)="onHomeClicked()"
       [attr.aria-label]="'titlebar.home' | translate"
+      [attr.title]="'titlebar.home' | translate"
       data-tauri-drag-region="false"
     >
       <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
@@ -43,11 +45,11 @@
   <!-- App Menu -->
   <app-menu></app-menu>
 
-  @if (mainUiOverlayService.isMainUiOverlayOpen()) {
+  @if (isOverlayOpen()) {
     @if (!isMobile()) {
       <button
         matIconButton
-        (click)="mainUiOverlayService.detachToStandaloneWindow()"
+        (click)="detachOverlay()"
         [attr.aria-label]="'nautilus.contextMenu.openNewWindow' | translate"
         [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
         data-tauri-drag-region="false"
@@ -57,8 +59,9 @@
     }
     <button
       matIconButton
-      (click)="mainUiOverlayService.closeMainUiOverlay()"
+      (click)="closeOverlay()"
       [attr.aria-label]="'common.close' | translate"
+      [attr.title]="'common.close' | translate"
       data-tauri-drag-region="false"
     >
       <mat-icon svgIcon="circle-xmark" aria-hidden="true"></mat-icon>

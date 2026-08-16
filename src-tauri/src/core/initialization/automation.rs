@@ -38,24 +38,17 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
         }
     }
 
-    info!("📅 Loaded {} automation(s)", result.added.len());
+    info!("📅 Loaded {} remote automation(s)", result.added.len());
 
-    scheduler_state.initialize(app_handle.clone()).await?;
-    scheduler_state.start().await?;
-    scheduler_state
-        .reload_automations(app_handle.clone())
-        .await?;
-
-    let watcher_manager = app_handle.state::<WatcherManager>();
-    if let Err(e) = watcher_manager.sync_watchers(app_handle.clone()).await {
-        log::error!("Failed to initialize watchers: {e}");
-    }
-
-    // ── Quick Run Automations & Watchers ────────────────────────────────────
+    // ── Quick Run Automations ───────────────────────────────────────────────
     if let Ok(quick_runs) =
         crate::core::flow::quick_run::commands::get_all_quick_runs_sync(&manager)
     {
         info!("🚀 Syncing {} Quick Run(s)...", quick_runs.len());
+
+        let _ = cache_state
+            .load_from_quick_runs(&quick_runs, &backend_name, Some(&app_handle))
+            .await;
 
         for qr in &quick_runs {
             if qr.is_autostart() {
@@ -72,17 +65,17 @@ pub async fn initialize_automations(app_handle: AppHandle) -> Result<(), String>
                 });
             }
         }
+    }
 
-        if let Err(e) = scheduler_state.sync_quick_runs(app_handle.clone()).await {
-            log::error!("Failed to sync Quick Run scheduler: {e}");
-        }
+    scheduler_state.initialize(app_handle.clone()).await?;
+    scheduler_state.start().await?;
+    scheduler_state
+        .reload_automations(app_handle.clone())
+        .await?;
 
-        if let Err(e) = watcher_manager
-            .sync_quick_run_watchers(app_handle.clone())
-            .await
-        {
-            log::error!("Failed to sync Quick Run watchers: {e}");
-        }
+    let watcher_manager = app_handle.state::<WatcherManager>();
+    if let Err(e) = watcher_manager.sync_watchers(app_handle.clone()).await {
+        log::error!("Failed to initialize watchers: {e}");
     }
 
     Ok(())

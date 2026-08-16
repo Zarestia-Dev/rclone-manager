@@ -18,7 +18,6 @@ export interface ApplyTemplateEvent {
   selector: 'app-preset-template-bar',
   imports: [MatButtonModule, MatIconModule, MatListModule, CdkMenuModule, TranslatePipe],
   templateUrl: './preset-template-bar.component.html',
-  styleUrl: './preset-template-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PresetTemplateBarComponent {
@@ -26,8 +25,6 @@ export class PresetTemplateBarComponent {
   readonly userTemplateService = inject(UserTemplateService);
 
   readonly currentValues = input<Partial<Record<TemplateCategory, Record<string, unknown>>>>({});
-  readonly remoteType = input<string>('');
-  readonly variant = input<'button' | 'sidebar-item'>('sidebar-item');
 
   readonly applyTemplate = output<ApplyTemplateEvent>();
   readonly applyDefaultPresets = output<void>();
@@ -43,7 +40,6 @@ export class PresetTemplateBarComponent {
     const dialogRef = this.modalService.openTemplateManager({
       mode: 'save',
       currentValues: this.currentValues(),
-      remoteType: this.remoteType(),
     });
 
     dialogRef

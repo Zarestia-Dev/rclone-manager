@@ -34,7 +34,6 @@ export interface UserPresetTemplate {
   id: string;
   name: string;
   description?: string;
-  remoteType?: string;
   values: Partial<Record<TemplateCategory, Record<string, unknown>>>;
 }
 

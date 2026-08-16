@@ -17,14 +17,7 @@
         {
           "identifier": "default-desktop",
           "description": "Capability for the main window on desktop",
-          "windows": [
-            "main",
-            "main-standalone",
-            "flow",
-            "nautilus",
-            "nautilus-*",
-            "dialog-*"
-          ],
+          "windows": ["main", "main-standalone", "flow", "nautilus", "nautilus-*", "dialog-*"],
           "platforms": ["linux", "macOS", "windows"],
           "permissions": [
             "core:event:allow-listen",
@@ -47,14 +40,7 @@
         {
           "identifier": "default-mobile",
           "description": "Capability for the main window on mobile",
-          "windows": [
-            "main",
-            "main-standalone",
-            "flow",
-            "nautilus",
-            "nautilus-*",
-            "dialog-*"
-          ],
+          "windows": ["main", "main-standalone", "flow", "nautilus", "nautilus-*", "dialog-*"],
           "platforms": ["android", "iOS"],
           "permissions": [
             "core:event:allow-listen",

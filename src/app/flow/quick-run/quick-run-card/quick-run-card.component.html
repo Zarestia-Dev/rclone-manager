@@ -1,133 +1,170 @@
 @if (variant() === 'overview') {
-  <mat-card
-    class="quick-run-card overview-variant"
-    [class.selected]="selected()"
-    [class.is-running]="isRunning()"
-    role="button"
-    tabindex="0"
-    (click)="onRowClick()"
-    (keydown.enter)="onRowClick()"
-    (keydown.space)="onRowClick()"
-    [attr.title]="quickRun().name"
-  >
-    <mat-card-content class="card-content">
-      <!-- Top Row: Icon + Name & Remote + Status Badge -->
-      <div class="card-header">
-        <div class="name-wrapper">
-          <div class="op-icon-badge">
-            <mat-icon [svgIcon]="icon()"></mat-icon>
-          </div>
-          <div class="title-meta">
-            <h4 [attr.title]="quickRun().name">{{ quickRun().name }}</h4>
-            <span class="remote-badge" [attr.title]="quickRun().remoteName">
-              {{ quickRun().remoteName }}
-            </span>
-          </div>
-        </div>
-
-        <div class="status-indicator" [class]="statusBadge().cssClass">
-          <span class="status-dot" [class]="statusBadge().cssClass"></span>
-          <span class="status-text">
-            {{ 'flow.quickRun.status.' + statusBadge().cssClass | translate }}
-          </span>
-        </div>
+  <div class="card-header">
+    <div class="card-info">
+      <div class="icon-container">
+        <mat-icon
+          [svgIcon]="icon()"
+          class="card-type-icon"
+          [class]="isRunning() ? operationDef()?.animationClass || 'animate-spin' : ''"
+        ></mat-icon>
       </div>
-
-      <!-- Middle Row: Description & Feature Chips -->
-      <div class="card-body">
-        <div class="op-summary">
-          <span class="op-label">{{ actionLabel() | translate }}</span>
-          @if (quickRun().description) {
-            <span class="description-text">{{ quickRun().description }}</span>
-          }
-        </div>
-
-        @if (hasCron() || hasWatcher() || hasAutoStart()) {
-          <div class="feature-chips">
-            @if (hasCron()) {
-              <span
-                class="feature-chip cron"
-                [attr.title]="
-                  ('flow.quickRun.badges.scheduled' | translate) + ': ' + cronExpression()
-                "
-              >
-                <mat-icon svgIcon="clock"></mat-icon>
-                <span>{{ cronExpression() }}</span>
-              </span>
-            }
-            @if (hasWatcher()) {
-              <span
-                class="feature-chip watcher"
-                [attr.title]="
-                  (hasWatchChangedOnly()
-                    ? 'flow.quickRun.badges.watcherChangedOnly'
-                    : 'flow.quickRun.badges.watcher'
-                  ) | translate
-                "
-              >
-                <mat-icon svgIcon="eye"></mat-icon>
-                <span>{{
-                  (hasWatchChangedOnly()
-                    ? 'flow.quickRun.badges.watcherChangedOnly'
-                    : 'flow.quickRun.badges.watcher'
-                  ) | translate
-                }}</span>
-              </span>
-            }
-            @if (hasAutoStart()) {
-              <span
-                class="feature-chip autostart"
-                [attr.title]="'flow.quickRun.badges.autostart' | translate"
-              >
-                <mat-icon svgIcon="bolt"></mat-icon>
-                <span>{{ 'flow.quickRun.badges.autostart' | translate }}</span>
-              </span>
-            }
-          </div>
-        }
-      </div>
-
-      <!-- Footer Actions Row -->
-      <div class="card-actions">
-        <div class="primary-action">
-          @if (isRunning()) {
-            <button
-              mat-flat-button
-              class="action-btn stop-btn"
-              (click)="onStop($event)"
-              [attr.title]="'flow.quickRun.actions.stop' | translate"
-            >
-              <mat-icon svgIcon="stop"></mat-icon>
-              <span>{{ 'flow.quickRun.actions.stop' | translate }}</span>
-            </button>
-          } @else {
-            <button
-              mat-flat-button
-              color="primary"
-              class="action-btn start-btn"
-              (click)="onStart($event)"
-              [attr.title]="'flow.quickRun.actions.start' | translate"
-            >
-              <mat-icon svgIcon="play"></mat-icon>
-              <span>{{ 'flow.quickRun.actions.start' | translate }}</span>
-            </button>
-          }
-        </div>
-
-        <div class="secondary-actions">
+      <div class="card-details">
+        <h4 class="card-name" [attr.title]="quickRun().name">
+          {{ quickRun().name }}
+        </h4>
+        <span class="card-meta">
+          <span class="op-badge">{{ actionLabel() | translate }}</span>
+          <span>·</span>
           <button
-            matIconButton
-            class="icon-action-btn"
-            (click)="onEdit($event)"
-            [attr.title]="'common.edit' | translate"
-            [attr.aria-label]="'common.edit' | translate"
+            type="button"
+            class="remote-link-btn"
+            (click)="onRemoteNameClick($event)"
+            [attr.title]="
+              ('dashboard.appDetail.remoteSettings' | translate) + ': ' + quickRun().remoteName
+            "
           >
-            <mat-icon svgIcon="pen"></mat-icon>
+            <mat-icon [svgIcon]="remoteIcon()"></mat-icon>
+            <span class="remote-name-text">{{ quickRun().remoteName }}</span>
           </button>
-        </div>
+        </span>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </div>
+
+    <div class="card-status-indicators" aria-hidden="true">
+      @if (statusBadge().cssClass === 'failed') {
+        <div class="app-pill p-warn" [attr.title]="'flow.quickRun.status.failed' | translate">
+          <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        </div>
+      }
+
+      @if (hasCron()) {
+        <div
+          class="app-pill p-primary"
+          [attr.title]="('flow.quickRun.badges.scheduled' | translate) + ': ' + cronExpression()"
+        >
+          <mat-icon svgIcon="clock"></mat-icon>
+        </div>
+      }
+      @if (hasWatcher()) {
+        <div
+          class="app-pill p-accent"
+          [attr.title]="
+            (hasWatchChangedOnly()
+              ? 'flow.quickRun.badges.watcherChangedOnly'
+              : 'flow.quickRun.badges.watcher'
+            ) | translate
+          "
+        >
+          <mat-icon svgIcon="eye"></mat-icon>
+        </div>
+      }
+      @if (hasAutoStart()) {
+        <div class="app-pill p-yellow" [attr.title]="'flow.quickRun.badges.autostart' | translate">
+          <mat-icon svgIcon="bolt"></mat-icon>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (quickRun().description) {
+    <span class="description-text">{{ quickRun().description }}</span>
+  }
+
+  <div class="quick-actions">
+    <!-- Primary Start / Stop Action -->
+    <button
+      matMiniFab
+      [class]="isRunning() ? 'warn' : operationDef()?.cssClass || 'primary'"
+      [disabled]="isActionInProgress()"
+      [attr.title]="currentActionTooltip()"
+      (click)="isRunning() ? onStop($event) : onStart($event)"
+    >
+      @if (isActionInProgress()) {
+        <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+      } @else {
+        <mat-icon [svgIcon]="currentActionIcon()"></mat-icon>
+      }
+    </button>
+
+    <!-- Edit Action -->
+    <button
+      matMiniFab
+      class="action-btn-secondary"
+      [attr.title]="'common.edit' | translate"
+      (click)="onEdit($event)"
+    >
+      <mat-icon svgIcon="pen"></mat-icon>
+    </button>
+
+    <!-- Single Openable Folder -->
+    @if (openableFolders().length === 1) {
+      <button
+        matMiniFab
+        [class]="openableFolders()[0].cssClass || 'primary'"
+        [attr.title]="openableFolders()[0].tooltip"
+        [disabled]="isFolderOpening()"
+        (click)="onOpenFolderClick(openableFolders()[0].path, $event)"
+      >
+        @if (isFolderOpeningFor(openableFolders()[0].path)) {
+          <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+        } @else {
+          <mat-icon [svgIcon]="openableFolders()[0].icon"></mat-icon>
+        }
+      </button>
+    }
+
+    <!-- Multiple Openable Folders (Source and Destination Menu) -->
+    @if (openableFolders().length > 1) {
+      <ng-template #folderMenu>
+        <div cdkMenu class="material-context-menu has-caret">
+          @for (folder of openableFolders(); track folder.type + folder.path) {
+            <button
+              cdkMenuItem
+              class="menu-item"
+              [class]="folder.cssClass"
+              [disabled]="isFolderOpeningFor(folder.path)"
+              (click)="onOpenFolderClick(folder.path, $event)"
+            >
+              <mat-icon [svgIcon]="folder.icon" style="color: white"></mat-icon>
+              <span>
+                {{
+                  folder.type === 'source'
+                    ? ('detailShared.pathDisplay.source' | translate)
+                    : ('detailShared.pathDisplay.destination' | translate)
+                }}
+                ({{ pathService.getFilename(folder.path) || folder.path }})
+              </span>
+            </button>
+          }
+        </div>
+      </ng-template>
+
+      <button
+        matMiniFab
+        [class]="openableFolders()[0].cssClass || 'primary'"
+        [attr.title]="'overviews.remoteCard.browse' | translate"
+        [disabled]="isFolderOpening()"
+        [cdkMenuTriggerFor]="folderMenu"
+        [cdkMenuPosition]="[
+          {
+            originX: 'center',
+            originY: 'top',
+            overlayX: 'center',
+            overlayY: 'bottom',
+            offsetY: -8,
+          },
+        ]"
+        (click)="$event.stopPropagation()"
+      >
+        @if (isFolderOpening()) {
+          <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
+        } @else {
+          <mat-icon svgIcon="folder"></mat-icon>
+        }
+        <span class="folder-badge" aria-hidden="true">{{ openableFolders().length }}</span>
+      </button>
+    }
+  </div>
 } @else {
   <!-- Sidebar variant (Compact list mode) -->
   <mat-card

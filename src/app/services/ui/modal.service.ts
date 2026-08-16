@@ -17,6 +17,7 @@ import {
   BackupAnalysis,
   JobInfo,
   QuickRun,
+  QuickRunInput,
   TemplateCategory,
   PrimaryActionType,
 } from '@app/types';
@@ -69,7 +70,13 @@ export interface RestorePreviewOptions {
 export interface TemplateManagerModalOptions {
   mode: 'save' | 'manage';
   currentValues?: Partial<Record<TemplateCategory, Record<string, unknown>>>;
-  remoteType?: string;
+}
+
+export interface QuickRunEditorModalOptions {
+  quickRun?: QuickRun;
+  cloneData?: QuickRunInput | QuickRun;
+  initialOpType?: PrimaryActionType;
+  initialRemoteName?: string;
 }
 
 const sanitizeLabel = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -370,20 +377,35 @@ export class ModalService {
   }
 
   openQuickRunEditor<TResult = any>(
-    quickRun?: QuickRun,
-    initialOpType?: PrimaryActionType
+    optionsOrTarget?: QuickRun | QuickRunEditorModalOptions,
+    initialOpType?: PrimaryActionType,
+    initialRemoteName?: string
   ): DialogRefLike<TResult> {
-    const data = { quickRun, initialOpType };
+    let data: QuickRunEditorModalOptions;
+    if (optionsOrTarget && ('name' in optionsOrTarget || 'id' in optionsOrTarget)) {
+      const isExisting = 'id' in optionsOrTarget && !!optionsOrTarget.id;
+      data = {
+        quickRun: isExisting ? (optionsOrTarget as QuickRun) : undefined,
+        cloneData: !isExisting ? (optionsOrTarget as QuickRunInput) : undefined,
+        initialOpType,
+        initialRemoteName,
+      };
+    } else if (optionsOrTarget) {
+      data = optionsOrTarget as QuickRunEditorModalOptions;
+    } else {
+      data = { initialOpType, initialRemoteName };
+    }
+
     return this.openModal(
       'quick-run-editor',
       { ...CONFIG_MODAL_SIZE, disableClose: true, data },
       {
-        title: quickRun
+        title: data.quickRun
           ? this.translate.instant('flow.quickRun.editor.editTitle')
           : this.translate.instant('flow.quickRun.editor.createTitle'),
         width: 1024,
         height: 860,
-        suffix: quickRun?.id ?? 'new',
+        suffix: data.quickRun?.id ?? 'new',
       }
     );
   }
@@ -599,7 +621,6 @@ export class ModalService {
       data: {
         mode: options.mode,
         currentValues: options.currentValues,
-        remoteType: options.remoteType,
       },
     });
   }

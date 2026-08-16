@@ -215,7 +215,7 @@ export class RemoteConfigModalComponent {
   async onSubmit(): Promise<void> {
     if (this.state.isAuthInProgress()) return;
     try {
-      const result = this.state.editTarget()
+      const result = this.state.isEditingExisting()
         ? await this.handleEditMode()
         : await this.handleCreateMode();
       if (result.success && !this.state.isAuthCancelled()) this.close();

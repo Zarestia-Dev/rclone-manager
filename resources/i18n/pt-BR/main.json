@@ -31,7 +31,12 @@
     "password": "Senha",
     "username": "Nome de usuário",
     "selectAll": "Selecione Tudo",
-    "deselectAll": "Desmarcar todos"
+    "deselectAll": "Desmarcar todos",
+    "viewDetails": "Ver detalhes",
+    "moreActions": "Mais ações",
+    "duplicate": "Duplicar",
+    "clearAll": "Limpar tudo",
+    "acknowledge": "Reconhecer"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -197,7 +202,8 @@
       "used": "Usado:",
       "free": "Livre:",
       "loading": "Carregando...",
-      "errorLoading": "Problema ao carregar uso de disco"
+      "errorLoading": "Problema ao carregar uso de disco",
+      "retry": "Tentar carregar o uso do disco novamente"
     },
     "status": {
       "mounted": "Montado",
@@ -324,7 +330,8 @@
       "actionRequired": "Pelo menos uma ação é necessária.",
       "noActionsHint": "É necessário criar uma ação de aviso primeiro antes que possa ser atribuída a uma regra.",
       "filtersEmptyHint": "Deixe em branco para que sejam registrados todos os eventos.",
-      "scopeFilters": "Filtros de Escopo"
+      "scopeFilters": "Filtros de Escopo",
+      "allEvents": "Todos os eventos"
     },
     "events": {
       "job": "Operações de Arquivos & Tarefas",
@@ -396,7 +403,9 @@
       "slack": "Slack",
       "headerKey": "Nome do Cabecalho",
       "headerValue": "Valor"
-    }
+    },
+    "noRulesHint": "Nenhuma regra de alerta configurada ainda. Crie uma regra para receber notificações.",
+    "noActionsHint": "Nenhuma ação de alerta configurada ainda. Crie uma ação para definir como os alertas são entregues."
   },
   "settings": {
     "resetAll": {
@@ -552,6 +561,10 @@
         "label": "Layout do Painel de Controle",
         "description": "Configuração de layout personalizada para o painel."
       },
+      "quick_run_layout": {
+        "label": "Layout de Execução Rápida",
+        "description": "Configuração de layout personalizada para a visão geral de execução rápida."
+      },
       "dashboard_card_variant": {
         "label": "Modo de Exibição de Card do Remoto",
         "description": "Variante de exibição padrão para cartões remotos em painéis de visão geral.",
@@ -602,6 +615,10 @@
       "generic": {
         "title": "O Motor Falhou ao Iniciar",
         "subtitle": "Verifique os logs para mais detalhes"
+      },
+      "auth": {
+        "title": "Autenticação do Rclone necessária",
+        "subtitle": "Verifique suas credenciais ou senha de configuração"
       }
     }
   },
@@ -877,7 +894,8 @@
     "actions": {
       "hide": "Esconder",
       "show": "Mostrar",
-      "open": "Abrir"
+      "open": "Abrir",
+      "cancel": "Cancelar"
     },
     "overviewHeader": {
       "manageBackends": "Gerenciar Backends",
@@ -1037,6 +1055,10 @@
       "required": "É necessário senha",
       "remember": "Lembre-se da senha",
       "keychain": "Armazenado no keychain do sistema"
+    },
+    "validation": {
+      "required": "Este campo é obrigatório.",
+      "min": "O valor deve ser de pelo menos {{val}}."
     }
   },
   "wizards": {
@@ -1186,6 +1208,7 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Múltiplos caminhos de origem detectados. O verificação uma-por-uma foi ativada automaticamente para garantir que o RClone verifique cada fonte contra a destino.",
       "enableAutoStart": "Ativar o Auto-{{type}} na Inicialização",
+      "showOnTray": "Mostrar na bandeja do sistema",
       "enableScheduled": "Habilitar Programação Agendada ({{type}})",
       "enableWatch": "Habilitar Monitoramento de Arquivos em Tempo Real",
       "watchDescription": "Monitore as diretórias de origem locais para modificações de arquivos e sincronize alterações automaticamente.",
@@ -1341,6 +1364,10 @@
         "title": "Primeiro dia do mês",
         "description": "Primeiro dia à meia-noite"
       }
+    },
+    "presets": {
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -1646,7 +1673,8 @@
       "dryRun": "Simulação (Dry Run)",
       "dryRunActive": "Tentativa em modo de simulação (dry-run) está ativa – não serão feitas alterações",
       "resync": "Resincronizar",
-      "resyncActive": "O Resync está ativo — realizando uma re-sincronização completa"
+      "resyncActive": "O Resync está ativo — realizando uma re-sincronização completa",
+      "remoteSettings": "Configurações do remoto"
     },
     "generalDetail": {
       "automations": "Automações",
@@ -2209,7 +2237,8 @@
         "inUseWarning": "Não é possível excluir o perfil \"{{name}}\" - ele está em uso por {{count}} perfil(s) ativo(s) de {{type}}(s).",
         "disabledReason": {
           "inUse": "O perfil está em uso por um processo corrente {{operation}}. Pare-o primeiro."
-        }
+        },
+        "duplicate": "Duplicar perfil"
       },
       "buttons": {
         "back": "Voltar",
@@ -2234,6 +2263,11 @@
       "errors": {
         "interactiveProcessingFailed": "Falha ao processar resposta interativa",
         "loadFailed": "Falha ao carregar configuração remota"
+      },
+      "profileSaved": "Perfil '{{profile}}' salvo para {{remote}}",
+      "profileSaveFailed": "Falha ao salvar o perfil",
+      "warnings": {
+        "selectRemoteToSave": "Selecione um remoto para salvar o perfil"
       }
     },
     "rcloneFlags": {
@@ -2578,18 +2612,25 @@
       "retry": "Recarregar a largura de banda",
       "upload": "Carregar:",
       "download": "Baixar:",
-      "total": "Total:"
+      "total": "Total:",
+      "unlimited": "Ilimitado (Desativado)",
+      "customPlaceholder": "Taxa personalizada (ex.: 10M, 10M:50M)",
+      "apply": "Aplicar"
     },
     "system": {
       "aria": {
         "loading": "Carregando informações do sistema"
       },
       "loading": "Carregando informações do sistema...",
-      "status": "Status de Rclone:",
+      "status": "Status do Motor:",
+      "version": "Versão do Motor:",
+      "platform": "Plataforma:",
+      "pid": "ID do Processo:",
+      "goVersion": "Runtime Go:",
       "totalRemotes": "Controle Total:",
       "activeJobs": "Tarefas Ativas:",
-      "memoryUsage": "Uso de Memória:",
-      "uptime": "Uptime:",
+      "memoryUsage": "Memória Heap:",
+      "uptime": "Tempo de Atividade:",
       "active": "Ativo",
       "inactive": "Inativo",
       "error": "Erro"
@@ -2660,9 +2701,6 @@
     "request": {
       "failed": "Solicitação falhou: {{error}}"
     },
-    "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
-    },
     "file": {
       "driveRoot": "Não é possível selecionar uma raiz de drive (por exemplo, D:\\) como um ponto de montagem. Por favor, selecione ou crie uma subpastas.",
       "folderNotEmpty": "A pasta selecionada não está vazia",
@@ -2709,14 +2747,8 @@
       "rcloneError": "Erro do Rclone: {{error}}"
     },
     "backup": {
-      "unknownFormat": "Formato de backup desconhecido",
-      "integrityFailed": "Verificação de integridade falhou! O backup pode estar corrompido.",
-      "encryptedPasswordRequired": "Este backup está criptografado. É necessário senha.",
       "unsupportedArchive": "Tipo de arquivo não suportado. Deve ser um arquivo .rcman",
       "invalidArchive": "Formato de arquivo de backup inválido",
-      "manifestParseFailed": "Falha ao processar o manifesto de backup: {{error}}",
-      "missingManifest": "O manifesto de backup está faltando do arquivo",
-      "openFailed": "Falha ao abrir arquivo de backup: {{error}}",
       "restoreFailed": "Falha na restauração do backup: {{error}}",
       "secretRequirePassword": "Esta cópia de segurança está protegida por um segredo e requer uma senha"
     },
@@ -2750,9 +2782,7 @@
       "automationNotFound": "Automação não encontrada"
     },
     "system": {
-      "themeSetFailed": "Falha ao definir o tema da aplicação: {{error}}",
-      "unlockFailed": "Falha ao desbloquear: {{error}}",
-      "killFailed": "Falha ao matar processo: {{error}}"
+      "unlockFailed": "Falha ao desbloquear: {{error}}"
     },
     "remote": {
       "configFailed": "Falha ao configurar remoto: {{error}}"
@@ -2893,6 +2923,7 @@
     "copyurlCount": "Cópia de URL [{{active}}/{{total}}]",
     "archivecreateCount": "Arquivo [{{active}}]/[{{total}}]",
     "serveCount": "Servir [{{active}}/{{total}}]",
+    "quickRunsCount": "Execuções Rápidas [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 Tarefa",
     "tooltipTasks": "{{count}} Tarefas",
@@ -2980,7 +3011,8 @@
       "engineConnectionFailed": "Não foi possível conectar ao motor do rclone: {{error}}",
       "engineBinaryNotFound": "Não foi encontrado o binário Rclone, por favor verifique suas configurações.",
       "enginePasswordRequired": "É necessário inserir uma senha para acessar o arquivo de configuração.",
-      "engineAuthFailed": "Falha na autenticação com o motor rclone: {{error}}"
+      "engineAuthFailed": "Falha na autenticação com o motor rclone: {{error}}",
+      "powerInhibited": "Operações ativas estão impedindo a suspensão do sistema."
     }
   },
   "repairSheet": {
@@ -3103,7 +3135,6 @@
     "clearCache": "Limpar cache",
     "openDevTools": "Abrir Ferramentas do Desenvolvedor",
     "openDevToolsError": "Falha ao abrir o DevTools",
-    "openDevToolsHint": "Abrir o DevTools para depuração",
     "cleared": "Dados Limpos"
   },
   "flow": {
@@ -3114,8 +3145,7 @@
       "search": "Search quick runs...",
       "loading": "Loading quick runs...",
       "noResults": "No matching quick runs",
-      "toggleSidebar": "Toggle Quick Run Sidebar",
-      "lastRun": "Last run",
+      "toggleSidebar": "Alternar barra lateral de execução rápida",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3129,21 +3159,11 @@
         "failed": "Failed",
         "stopped": "Stopped"
       },
-      "sections": {
-        "running": "Running Operations",
-        "saved": "Saved Quick Runs"
-      },
       "empty": {
         "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
       },
       "detail": {
-        "title": "Quick Run Details",
-        "emptyTitle": "No Quick Run Selected",
-        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
-        "configuration": "Configuration",
-        "autoStart": "Auto Start",
-        "watch": "File Watcher",
-        "noConfigFlags": "No custom flags configured."
+        "configuration": "Configuration"
       },
       "editor": {
         "createTitle": "Create Quick Run",
@@ -3151,18 +3171,75 @@
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description (optional)",
-        "operation": "Operation Type",
         "remote": "Remote",
         "noRemotes": "No remotes configured",
         "remoteRequired": "Remote is required",
-        "cliImport": "Import from CLI command",
-        "flags": "Flags",
         "selectRemoteFirst": "Select a remote to view autocomplete",
-        "searchFlags": "Search flags...",
         "tabVfs": "VFS",
         "tabFilter": "Filter",
-        "tabBackend": "Backend"
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Runtime Remote"
+      },
+      "actions": {
+        "start": "Start",
+        "stop": "Stop"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total Quick Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "noRunsForRemote": "Nenhuma execução rápida configurada para {{remote}}.",
+        "createForRemote": "Criar execução rápida para {{remote}}"
       }
+    },
+    "tabs": {
+      "quickRun": "Execução rápida",
+      "workflow": "Fluxo de trabalho"
+    },
+    "builder": {
+      "placeholderTitle": "Criador de fluxo de trabalho em desenvolvimento",
+      "placeholderMessage": "Uma tela visual para pipelines do rclone com várias etapas estará disponível em breve.",
+      "viewRoadmap": "Ver roteiro no GitHub"
     }
+  },
+  "templates": {
+    "title": "Modelos",
+    "presetTitle": "Predefinições e Modelos",
+    "applyPresets": "Aplicar Predefinições Padrão",
+    "userTemplates": "Modelos Salvos do Usuário",
+    "saveAsTemplate": "Salvar Configurações Atuais como Modelo...",
+    "manageTemplates": "Gerenciar Modelos...",
+    "manageTitle": "Gerenciar Modelos",
+    "noUserTemplates": "Nenhum modelo personalizado salvo ainda.",
+    "newTitle": "Novo Modelo",
+    "templateName": "Nome do Modelo",
+    "templateDesc": "Descrição (opcional)",
+    "selectAllKeys": "Selecionar Todas as Chaves",
+    "deselectAllKeys": "Desmarcar Todas as Chaves",
+    "addKeyToCategory": "Adicionar Chave à Categoria",
+    "addKey": "Adicionar Chave",
+    "removeKey": "Remover Chave",
+    "deleteTemplate": "Excluir Modelo",
+    "noCatKeys": "Nenhuma configuração em {{category}} ainda.",
+    "visualView": "Inspetor Visual",
+    "jsonView": "Editor JSON",
+    "key": "Chave",
+    "value": "Valor",
+    "namePlaceholder": "ex.: Minhas configurações rápidas de backup S3",
+    "descPlaceholder": "Breve descrição destas configurações...",
+    "keyPlaceholder": "ex.: dir_cache_time",
+    "valuePlaceholder": "ex.: 10m",
+    "selectedCount": "{{selected}} / {{total}} selecionados",
+    "keyCount": "{{count}} chave",
+    "keysCount": "{{count}} chaves",
+    "zeroKeys": "0 chaves",
+    "applySuccess": "Modelo \"{{name}}\" aplicado com sucesso.",
+    "savedSuccess": "Modelo \"{{name}}\" salvo com sucesso.",
+    "deletedSuccess": "Modelo excluído com sucesso."
+  },
+  "navigation": {
+    "dashboard": "Painel"
   }
 }

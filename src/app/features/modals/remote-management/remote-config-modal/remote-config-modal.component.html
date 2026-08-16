@@ -8,7 +8,7 @@
     [attr.aria-label]="'flow.quickRun.toggleSidebar' | translate"
     type="button"
   >
-    <mat-icon svgIcon="menu-bar"></mat-icon>
+    <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
   </button>
   <p data-tauri-drag-region>
     @let stepKey = state.editTargetStepKey();
@@ -152,8 +152,15 @@
                   [isLoading]="state.isRemoteConfigLoading()"
                   [existingRemotes]="state.existingRemotes()"
                   [remoteTypes]="state.remoteTypes()"
-                  [isTypeLocked]="state.editTarget() === 'remote' || state.cloneTarget()"
-                  [isNameLocked]="state.editTarget() === 'remote' && !state.cloneTarget()"
+                  [isTypeLocked]="
+                    (state.editTarget() === 'remote' && state.isEditingExisting()) ||
+                    state.cloneTarget()
+                  "
+                  [isNameLocked]="
+                    state.editTarget() === 'remote' &&
+                    state.isEditingExisting() &&
+                    !state.cloneTarget()
+                  "
                   [searchQuery]="state.searchQuery()"
                   [showAdvancedOptions]="state.showAdvancedOptions()"
                   [initialCommandOptions]="state.commandOptions()"

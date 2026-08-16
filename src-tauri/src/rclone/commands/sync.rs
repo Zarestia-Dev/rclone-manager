@@ -37,6 +37,9 @@ impl GenericTransferParams {
             let mut legacy_filter = Map::new();
 
             for (k, v) in map {
+                if crate::utils::json_helpers::is_path_key(k) {
+                    continue;
+                }
                 if crate::utils::json_helpers::is_flat_option_key(k) {
                     body.insert(k.clone(), v.clone());
                 } else if k == "_config" && v.is_object() {
@@ -130,7 +133,9 @@ impl GenericTransferParams {
             for (k, v) in filters {
                 filter_map.entry(k.clone()).or_insert_with(|| v.clone());
             }
-            body.insert("_filter".to_string(), Value::Object(filter_map));
+            if !filter_map.is_empty() {
+                body.insert("_filter".to_string(), Value::Object(filter_map));
+            }
         }
 
         // Merge resolved backend_options into _config
@@ -317,6 +322,7 @@ pub async fn start_profile_batch(
         common
             .rclone_config
             .get("dryRun")
+            .or_else(|| common.rclone_config.get("dry_run"))
             .or_else(|| common.rclone_config.get("DryRun"))
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
@@ -324,7 +330,18 @@ pub async fn start_profile_batch(
         common
             .backend_options
             .as_ref()
-            .and_then(|opts| opts.get("DryRun"))
+            .and_then(|opts| {
+                opts.get("DryRun")
+                    .or_else(|| opts.get("dry_run"))
+                    .or_else(|| opts.get("dryRun"))
+            })
+            .or_else(|| {
+                common
+                    .rclone_config
+                    .get("DryRun")
+                    .or_else(|| common.rclone_config.get("dry_run"))
+                    .or_else(|| common.rclone_config.get("dryRun"))
+            })
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
     };

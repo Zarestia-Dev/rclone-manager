@@ -1,0 +1,82 @@
+@let servesList = allServes();
+
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="hideToggle()"
+  class="serves-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="satellite-dish" class="primary" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.serves' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <span
+        class="app-pill"
+        [class.p-primary]="servesList.length > 0"
+        [class.p-dim]="servesList.length === 0"
+      >
+        {{
+          servesList.length > 0
+            ? ('generalOverview.serves.activeCount'
+              | translate: { count: servesList.length, s: servesList.length !== 1 ? 's' : '' })
+            : ('generalOverview.serves.noActive' | translate)
+        }}
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @if (showFilterChips()) {
+    <div class="origin-filter-row">
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'all'"
+        (click)="selectedOriginFilter.set('all')"
+        [attr.title]="'common.all' | translate"
+      >
+        <span>{{ 'common.all' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'quickrun'"
+        (click)="selectedOriginFilter.set('quickrun')"
+        [attr.title]="'flow.tabs.quickRun' | translate"
+      >
+        <mat-icon svgIcon="quick-run"></mat-icon>
+        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'dashboard'"
+        (click)="selectedOriginFilter.set('dashboard')"
+        [attr.title]="'navigation.dashboard' | translate"
+      >
+        <mat-icon svgIcon="cloud"></mat-icon>
+        <span>{{ 'navigation.dashboard' | translate }}</span>
+      </button>
+    </div>
+  }
+
+  @if (servesList.length === 0) {
+    <div class="empty-state" role="status">
+      <mat-icon svgIcon="satellite-dish" aria-hidden="true"></mat-icon>
+      <p>{{ 'generalOverview.serves.noRunning' | translate }}</p>
+    </div>
+  } @else {
+    <div class="grid">
+      @for (serve of servesList; track serve.id) {
+        <app-serve-card
+          [serve]="serve"
+          [showRemoteName]="true"
+          (stopServe)="onStopServe($event)"
+          (cardClick)="onServeClick($event)"
+        ></app-serve-card>
+      }
+    </div>
+  }
+</mat-expansion-panel>

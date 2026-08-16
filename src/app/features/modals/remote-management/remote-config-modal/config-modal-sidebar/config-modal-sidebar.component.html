@@ -178,7 +178,6 @@
         <app-preset-template-bar
           variant="sidebar-item"
           [currentValues]="currentValues()"
-          [remoteType]="state.remoteTypeSignal()"
           (applyDefaultPresets)="presetsApplied.emit()"
           (applyTemplate)="templateApplied.emit($event)"
         />

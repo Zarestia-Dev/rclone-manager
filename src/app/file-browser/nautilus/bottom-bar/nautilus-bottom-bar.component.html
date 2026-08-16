@@ -1,7 +1,7 @@
 <div class="nautilus-bottom-bar" [class.picker-mode]="isPickerMode()" data-tauri-drag-region>
   <div class="bar-left">
     <button class="nav-button" (click)="toggleSidebar.emit()" title="Toggle Sidebar">
-      <mat-icon svgIcon="menu-bar"></mat-icon>
+      <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
   </div>
 

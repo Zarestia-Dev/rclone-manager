@@ -31,7 +31,12 @@
     "password": "Пароль",
     "username": "Імʼя користувача",
     "selectAll": "Виділити все",
-    "deselectAll": "Зняти виділення"
+    "deselectAll": "Зняти виділення",
+    "viewDetails": "Докладніше",
+    "moreActions": "Інші дії",
+    "duplicate": "Дублювати",
+    "clearAll": "Очистити все",
+    "acknowledge": "Підтвердити"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -197,7 +202,8 @@
       "used": "Використано:",
       "free": "Вільно:",
       "loading": "Завантаження...",
-      "errorLoading": "Проблема із завантаженням даних про використання диска"
+      "errorLoading": "Проблема із завантаженням даних про використання диска",
+      "retry": "Повторити завантаження використання диска"
     },
     "status": {
       "mounted": "Змонтовано",
@@ -324,7 +330,8 @@
       "actionRequired": "Потрібна щонайменше одна дія.",
       "noActionsHint": "Спочатку потрібно створити дію сповіщення, перш ніж призначати її правилу.",
       "filtersEmptyHint": "Залиште порожнім, щоб відповідати всім подіям.",
-      "scopeFilters": "Фільтри області"
+      "scopeFilters": "Фільтри області",
+      "allEvents": "Усі події"
     },
     "events": {
       "job": "Завдання та операції з файлами",
@@ -396,7 +403,9 @@
       "slack": "Slack",
       "headerKey": "Назва заголовка",
       "headerValue": "Значення"
-    }
+    },
+    "noRulesHint": "Правила сповіщень ще не налаштовані. Створіть правило для отримання сповіщень.",
+    "noActionsHint": "Дії сповіщень ще не налаштовані. Створіть дію для доставки сповіщень."
   },
   "settings": {
     "resetAll": {
@@ -550,6 +559,10 @@
         "label": "Розкладка панелі",
         "description": "Власна конфігурація розкладки панелі."
       },
+      "quick_run_layout": {
+        "label": "Розкладка швидкого запуску",
+        "description": "Власна конфігурація розкладки для огляду швидкого запуску."
+      },
       "dashboard_card_variant": {
         "label": "Режим показу карток сховищ",
         "description": "Типовий варіант показу карток сховищ на панелях огляду.",
@@ -602,6 +615,10 @@
       "generic": {
         "title": "Не вдалося запустити рушій",
         "subtitle": "Перегляньте журнали для деталей"
+      },
+      "auth": {
+        "title": "Потрібна автентифікація Rclone",
+        "subtitle": "Будь ласка, перевірте облікові дані або пароль конфігурації"
       }
     }
   },
@@ -877,7 +894,8 @@
     "actions": {
       "hide": "Приховати",
       "show": "Показати",
-      "open": "Відкрити"
+      "open": "Відкрити",
+      "cancel": "Скасувати"
     },
     "overviewHeader": {
       "manageBackends": "Керувати бекендами",
@@ -1037,6 +1055,10 @@
       "required": "Потрібен пароль",
       "remember": "Запамʼятати пароль",
       "keychain": "Зберігається у системному сховищі ключів"
+    },
+    "validation": {
+      "required": "Це поле є обов'язковим.",
+      "min": "Значення має бути не менше {{val}}."
     }
   },
   "wizards": {
@@ -1186,6 +1208,7 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Виявлено кілька джерельних шляхів. Односторонню перевірку було ввімкнено автоматично, щоб переконатися, що rclone перевіряє кожне джерело відносно призначення.",
       "enableAutoStart": "Увімкнути авто-{{type}} під час запуску",
+      "showOnTray": "Показувати в системному треї",
       "enableScheduled": "Увімкнути заплановане {{type}}",
       "enableWatch": "Увімкнути моніторинг файлів у реальному часі",
       "watchDescription": "Стежити за змінами файлів у локальних теках-джерелах і синхронізувати зміни автоматично.",
@@ -1341,6 +1364,10 @@
         "title": "Першого числа місяця",
         "description": "1-го числа опівночі"
       }
+    },
+    "presets": {
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -1646,7 +1673,8 @@
       "dryRun": "Пробний запуск",
       "dryRunActive": "Пробний запуск активний — жодних змін не буде внесено",
       "resync": "Повторна синхронізація",
-      "resyncActive": "Повторна синхронізація активна — виконується повна ресинхронізація"
+      "resyncActive": "Повторна синхронізація активна — виконується повна ресинхронізація",
+      "remoteSettings": "Налаштування сховища"
     },
     "generalDetail": {
       "automations": "Автоматизації",
@@ -2209,7 +2237,8 @@
         "inUseWarning": "Неможливо видалити профіль «{{name}}» — він використовується активними {{type}} ({{count}})",
         "disabledReason": {
           "inUse": "Профіль використовується запущеною операцією {{operation}}. Спочатку зупиніть її."
-        }
+        },
+        "duplicate": "Дублювати профіль"
       },
       "buttons": {
         "back": "Назад",
@@ -2234,6 +2263,11 @@
       "errors": {
         "interactiveProcessingFailed": "Не вдалося обробити інтерактивну відповідь",
         "loadFailed": "Не вдалося завантажити конфігурацію сховища"
+      },
+      "profileSaved": "Профіль '{{profile}}' збережено для {{remote}}",
+      "profileSaveFailed": "Не вдалося зберегти профіль",
+      "warnings": {
+        "selectRemoteToSave": "Будь ласка, виберіть сховище для збереження профілю"
       }
     },
     "rcloneFlags": {
@@ -2578,17 +2612,24 @@
       "retry": "Повторити завантаження пропускної здатності",
       "upload": "Вивантаження:",
       "download": "Завантаження:",
-      "total": "Усього:"
+      "total": "Усього:",
+      "unlimited": "Без обмежень (Вимк)",
+      "customPlaceholder": "Власна швидкість (напр. 10M, 10M:50M)",
+      "apply": "Застосувати"
     },
     "system": {
       "aria": {
         "loading": "Завантаження інформації про систему"
       },
       "loading": "Завантаження інформації про систему...",
-      "status": "Стан Rclone:",
+      "status": "Стан рушія:",
+      "version": "Версія рушія:",
+      "platform": "Платформа:",
+      "pid": "ID процесу:",
+      "goVersion": "Середовище Go:",
       "totalRemotes": "Усього сховищ:",
       "activeJobs": "Активні завдання:",
-      "memoryUsage": "Використання памʼяті:",
+      "memoryUsage": "Памʼять купи:",
       "uptime": "Час роботи:",
       "active": "Активно",
       "inactive": "Неактивно",
@@ -2660,9 +2701,6 @@
     "request": {
       "failed": "Запит не вдався: {{error}}"
     },
-    "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
-    },
     "file": {
       "driveRoot": "Неможливо вибрати корінь диска (наприклад, D:\\) як точку монтування. Виберіть або створіть підтеку.",
       "folderNotEmpty": "Вибрана тека не порожня",
@@ -2709,14 +2747,8 @@
       "rcloneError": "Помилка Rclone: {{error}}"
     },
     "backup": {
-      "unknownFormat": "Невідомий формат резервної копії",
-      "integrityFailed": "Перевірку цілісності не пройдено! Резервну копію може бути пошкоджено.",
-      "encryptedPasswordRequired": "Цю резервну копію зашифровано. Потрібен пароль.",
       "unsupportedArchive": "Непідтримуваний тип архіву. Має бути файл .rcman",
       "invalidArchive": "Невірний формат архіву резервної копії",
-      "manifestParseFailed": "Не вдалося розібрати маніфест резервної копії: {{error}}",
-      "missingManifest": "В архіві відсутній маніфест резервної копії",
-      "openFailed": "Не вдалося відкрити архів резервної копії: {{error}}",
       "restoreFailed": "Не вдалося відновити з резервної копії: {{error}}",
       "secretRequirePassword": "Цю резервну копію захищено секретом і потрібен пароль"
     },
@@ -2750,9 +2782,7 @@
       "automationNotFound": "Автоматизацію не знайдено"
     },
     "system": {
-      "themeSetFailed": "Не вдалося встановити тему застосунку: {{error}}",
-      "unlockFailed": "Не вдалося розблокувати: {{error}}",
-      "killFailed": "Не вдалося завершити процес: {{error}}"
+      "unlockFailed": "Не вдалося розблокувати: {{error}}"
     },
     "remote": {
       "configFailed": "Не вдалося налаштувати сховище: {{error}}"
@@ -2893,6 +2923,7 @@
     "copyurlCount": "Копіювати URL [{{active}}/{{total}}]",
     "archivecreateCount": "Архівувати [{{active}}/{{total}}]",
     "serveCount": "Роздача [{{active}}/{{total}}]",
+    "quickRunsCount": "Швидкі запуски [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Manager",
     "tooltipTask": "1 завдання",
     "tooltipTasks": "Завдань: {{count}}",
@@ -2980,7 +3011,8 @@
       "engineConnectionFailed": "Не вдалося підключитися до рушія rclone: {{error}}",
       "engineBinaryNotFound": "Виконуваний файл Rclone не знайдено, перевірте налаштування.",
       "enginePasswordRequired": "Для доступу до файлу конфігурації потрібен пароль.",
-      "engineAuthFailed": "Не вдалося автентифікуватися в двигуні rclone: {{error}}"
+      "engineAuthFailed": "Не вдалося автентифікуватися в двигуні rclone: {{error}}",
+      "powerInhibited": "Активні операції запобігають переходу системи в режим сну."
     }
   },
   "repairSheet": {
@@ -3103,7 +3135,6 @@
     "clearCache": "Очистити кеш",
     "openDevTools": "Відкрити інструменти розробника",
     "openDevToolsError": "Не вдалося відкрити DevTools",
-    "openDevToolsHint": "Відкрити DevTools для налагодження",
     "cleared": "Дані очищено"
   },
   "flow": {
@@ -3114,8 +3145,7 @@
       "search": "Search quick runs...",
       "loading": "Loading quick runs...",
       "noResults": "No matching quick runs",
-      "toggleSidebar": "Toggle Quick Run Sidebar",
-      "lastRun": "Last run",
+      "toggleSidebar": "Перемкнути бічну панель швидкого запуску",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3129,21 +3159,11 @@
         "failed": "Failed",
         "stopped": "Stopped"
       },
-      "sections": {
-        "running": "Running Operations",
-        "saved": "Saved Quick Runs"
-      },
       "empty": {
         "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
       },
       "detail": {
-        "title": "Quick Run Details",
-        "emptyTitle": "No Quick Run Selected",
-        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
-        "configuration": "Configuration",
-        "autoStart": "Auto Start",
-        "watch": "File Watcher",
-        "noConfigFlags": "No custom flags configured."
+        "configuration": "Configuration"
       },
       "editor": {
         "createTitle": "Create Quick Run",
@@ -3151,18 +3171,75 @@
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description (optional)",
-        "operation": "Operation Type",
         "remote": "Remote",
         "noRemotes": "No remotes configured",
         "remoteRequired": "Remote is required",
-        "cliImport": "Import from CLI command",
-        "flags": "Flags",
         "selectRemoteFirst": "Select a remote to view autocomplete",
-        "searchFlags": "Search flags...",
         "tabVfs": "VFS",
         "tabFilter": "Filter",
-        "tabBackend": "Backend"
+        "tabBackend": "Backend",
+        "tabRuntimeRemote": "Runtime Remote"
+      },
+      "actions": {
+        "start": "Start",
+        "stop": "Stop"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total Quick Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "noRunsForRemote": "Для {{remote}} не налаштовано швидких запусків.",
+        "createForRemote": "Створити швидкий запуск для {{remote}}"
       }
+    },
+    "tabs": {
+      "quickRun": "Швидкий запуск",
+      "workflow": "Робочий процес"
+    },
+    "builder": {
+      "placeholderTitle": "Конструктор робочих процесів у розробці",
+      "placeholderMessage": "Візуальне полотно для багатоетапних конвеєрів rclone незабаром з'явиться.",
+      "viewRoadmap": "Переглянути план розвитку на GitHub"
     }
+  },
+  "templates": {
+    "title": "Шаблони",
+    "presetTitle": "Пресети та шаблони",
+    "applyPresets": "Застосувати типові пресети",
+    "userTemplates": "Збережені шаблони користувача",
+    "saveAsTemplate": "Зберегти поточні налаштування як шаблон...",
+    "manageTemplates": "Керування шаблонами...",
+    "manageTitle": "Керування шаблонами",
+    "noUserTemplates": "Немає збережених власних шаблонів.",
+    "newTitle": "Новий шаблон",
+    "templateName": "Назва шаблону",
+    "templateDesc": "Опис (необов'язково)",
+    "selectAllKeys": "Вибрати всі ключі",
+    "deselectAllKeys": "Зняти вибір з усіх ключів",
+    "addKeyToCategory": "Додати ключ до категорії",
+    "addKey": "Додати ключ",
+    "removeKey": "Видалити ключ",
+    "deleteTemplate": "Видалити шаблон",
+    "noCatKeys": "У категорії {{category}} ще немає налаштувань.",
+    "visualView": "Візуальний інспектор",
+    "jsonView": "Редактор JSON",
+    "key": "Ключ",
+    "value": "Значення",
+    "namePlaceholder": "напр., Мої швидкі налаштування резервного копіювання S3",
+    "descPlaceholder": "Короткий опис цих налаштувань...",
+    "keyPlaceholder": "напр., dir_cache_time",
+    "valuePlaceholder": "напр., 10m",
+    "selectedCount": "{{selected}} / {{total}} вибрано",
+    "keyCount": "{{count}} ключ",
+    "keysCount": "{{count}} ключів",
+    "zeroKeys": "0 ключів",
+    "applySuccess": "Шаблон \"{{name}}\" успішно застосовано.",
+    "savedSuccess": "Шаблон \"{{name}}\" успішно збережено.",
+    "deletedSuccess": "Шаблон успішно видалено."
+  },
+  "navigation": {
+    "dashboard": "Панель керування"
   }
 }

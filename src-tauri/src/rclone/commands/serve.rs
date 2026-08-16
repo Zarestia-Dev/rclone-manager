@@ -68,6 +68,9 @@ impl ServeParams {
             let mut legacy_filter = serde_json::Map::new();
 
             for (k, v) in map {
+                if crate::utils::json_helpers::is_path_key(k) {
+                    continue;
+                }
                 if crate::utils::json_helpers::is_flat_option_key(k) {
                     body.insert(k.clone(), v.clone());
                 } else if k == "_config" && v.is_object() {
@@ -113,12 +116,12 @@ impl ServeParams {
         // 3. Inject serve type
         body.insert("type".to_string(), json!(self.serve_type));
 
-        // 4. Merge resolved profile blocks
+        // 4. Merge resolved profile blocks if non-empty
         if let Some(vfs_opts) = &self.vfs_options {
-            body.insert(
-                "vfsOpt".to_string(),
-                serde_json::to_value(vfs_opts).unwrap(),
-            );
+            let val = serde_json::to_value(vfs_opts).unwrap_or_default();
+            if val.as_object().is_some_and(|o| !o.is_empty()) {
+                body.insert("vfsOpt".to_string(), val);
+            }
         }
         if let Some(filter_opts) = &self.filter_options {
             let mut filter_map = body
@@ -129,7 +132,9 @@ impl ServeParams {
             for (k, v) in filter_opts {
                 filter_map.entry(k.clone()).or_insert_with(|| v.clone());
             }
-            body.insert("_filter".to_string(), Value::Object(filter_map));
+            if !filter_map.is_empty() {
+                body.insert("_filter".to_string(), Value::Object(filter_map));
+            }
         }
         if let Some(backend_opts) = &self.backend_options {
             let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
@@ -142,7 +147,9 @@ impl ServeParams {
                 for (k, v) in final_backend {
                     config_map.entry(k).or_insert(v);
                 }
-                body.insert("_config".to_string(), Value::Object(config_map));
+                if !config_map.is_empty() {
+                    body.insert("_config".to_string(), Value::Object(config_map));
+                }
             }
         }
 

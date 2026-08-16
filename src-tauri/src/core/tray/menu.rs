@@ -4,7 +4,7 @@ use tauri::{
 };
 
 use super::tray_action::TrayAction;
-use super::{TrayProfileSummary, TrayRemoteSummary, TraySnapshot};
+use super::{TrayProfileSummary, TrayQuickRunSummary, TrayRemoteSummary, TraySnapshot};
 use crate::t;
 use crate::utils::types::remotes::OperationType;
 
@@ -68,6 +68,19 @@ impl MenuPlan {
         }));
 
         items.push(MenuItemKind::Separator);
+
+        let visible_quick_runs: Vec<&TrayQuickRunSummary> = snapshot
+            .quick_runs
+            .iter()
+            .filter(|qr| qr.show_on_tray)
+            .collect();
+
+        if !visible_quick_runs.is_empty() {
+            items.push(MenuItemKind::Submenu(build_quick_runs_submenu(
+                &visible_quick_runs,
+            )));
+            items.push(MenuItemKind::Separator);
+        }
 
         let visible_remotes: Vec<&TrayRemoteSummary> = snapshot
             .remotes
@@ -383,6 +396,42 @@ fn build_profile_submenu(
     SubmenuPlan {
         label,
         enabled: !profiles.is_empty(),
+        items,
+    }
+}
+
+fn build_quick_runs_submenu(quick_runs: &[&super::TrayQuickRunSummary]) -> SubmenuPlan {
+    let active_count = quick_runs.iter().filter(|qr| qr.is_active).count();
+    let label = t!(
+        "tray.quickRunsCount",
+        "active" => &active_count.to_string(),
+        "total" => &quick_runs.len().to_string()
+    );
+
+    let items = quick_runs
+        .iter()
+        .map(|qr| {
+            let action = if qr.is_active {
+                TrayAction::StopQuickRun(qr.id.clone())
+            } else {
+                TrayAction::StartQuickRun(qr.id.clone())
+            };
+            let item_label = if qr.is_active {
+                format!("● {} ▸ {}", qr.name, t!("tray.stop"))
+            } else {
+                format!("  {} ▸ {}", qr.name, t!("tray.start"))
+            };
+            MenuItemKind::Regular(RegularItem {
+                id: action.to_id(),
+                label: item_label,
+                enabled: true,
+            })
+        })
+        .collect();
+
+    SubmenuPlan {
+        label,
+        enabled: !quick_runs.is_empty(),
         items,
     }
 }

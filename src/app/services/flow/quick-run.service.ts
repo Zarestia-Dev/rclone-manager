@@ -12,7 +12,9 @@ import {
 import { JobManagementService } from '../operations/job-management.service';
 import { MountManagementService } from '../operations/mount-management.service';
 import { ServeManagementService } from '../operations/serve-management.service';
+import { AutomationService } from '../operations/automation.service';
 import { ModalService } from '../ui/modal.service';
+import { findUniqueName } from '../remote/utils/unique-name.util';
 
 /**
  * Front-end store for the Flow workspace's "Quick Run" feature.
@@ -22,6 +24,7 @@ export class QuickRunService extends TauriBaseService {
   private readonly jobService = inject(JobManagementService);
   private readonly mountService = inject(MountManagementService);
   private readonly serveService = inject(ServeManagementService);
+  private readonly automationService = inject(AutomationService);
   private readonly modalService = inject(ModalService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -214,9 +217,38 @@ export class QuickRunService extends TauriBaseService {
 
   // ── Editor lifecycle ─────────────────────────────────────────────────────
 
-  openEditor(input?: QuickRunInput | QuickRun, initialOpType?: PrimaryActionType): void {
-    const target = input && 'id' in input ? (input as QuickRun) : undefined;
-    this.modalService.openQuickRunEditor(target, initialOpType);
+  generateUniqueQuickRunName(baseName: string): string {
+    const base = baseName
+      .replace(/-\d+$/, '')
+      .replace(/\s*\(copy\)$/i, '')
+      .trim();
+    const existing = this._quickRuns().map(qr => qr.name);
+    return findUniqueName(base || 'quickrun', existing);
+  }
+
+  openEditor(
+    input?: QuickRunInput | QuickRun,
+    initialOpType?: PrimaryActionType,
+    initialRemoteName?: string
+  ): void {
+    if (input && 'id' in input && input.id) {
+      this.modalService.openQuickRunEditor({
+        quickRun: input as QuickRun,
+        initialOpType,
+        initialRemoteName,
+      });
+    } else if (input) {
+      this.modalService.openQuickRunEditor({
+        cloneData: input,
+        initialOpType: initialOpType ?? input.operationType,
+        initialRemoteName: initialRemoteName ?? input.remoteName,
+      });
+    } else {
+      this.modalService.openQuickRunEditor({
+        initialOpType,
+        initialRemoteName,
+      });
+    }
   }
 
   // ── Backend commands ─────────────────────────────────────────────────────
@@ -235,6 +267,7 @@ export class QuickRunService extends TauriBaseService {
       void this.mountService.getMountedRemotes();
       void this.serveService.refreshServes();
       void this.jobService.refreshJobs();
+      void this.automationService.refreshAutomations();
     } catch (err) {
       console.warn('[QuickRunService] list_quick_runs not available, running in-memory only:', err);
       // In-memory fallback — keep whatever we already have.
@@ -261,6 +294,7 @@ export class QuickRunService extends TauriBaseService {
         : this.synthesizeLocal(input);
 
       this.mergeIntoStore(itemToStore);
+      void this.automationService.refreshAutomations();
       return itemToStore;
     } catch (err) {
       console.error('[QuickRunService] save failed, falling back to in-memory:', err);
@@ -281,23 +315,25 @@ export class QuickRunService extends TauriBaseService {
     }
     this._quickRuns.update(list => list.filter(qr => qr.id !== id));
     if (this._selectedId() === id) this._selectedId.set(null);
+    void this.automationService.refreshAutomations();
   }
 
   /**
-   * Duplicate an existing quick run. The copy gets a new id and a
-   * " (copy)" suffix on the name.
+   * Duplicate an existing quick run by opening the editor modal prefilled
+   * with the source configuration and an auto-generated unique name (e.g. `Name-1`).
    */
-  async duplicate(id: string): Promise<QuickRun | null> {
+  duplicate(id: string): void {
     const source = this._quickRuns().find(qr => qr.id === id);
-    if (!source) return null;
-    const input: QuickRunInput = {
-      name: `${source.name} (copy)`,
+    if (!source) return;
+    const newName = this.generateUniqueQuickRunName(source.name);
+    const cloneData: QuickRunInput = {
+      name: newName,
       description: source.description,
       operationType: source.operationType,
       remoteName: source.remoteName,
-      config: JSON.parse(JSON.stringify(source.config)),
+      config: structuredClone(source.config),
     };
-    return this.save(input);
+    this.openEditor(cloneData);
   }
 
   // ── Execution ────────────────────────────────────────────────────────────

@@ -122,7 +122,8 @@ export type Theme = 'light' | 'dark' | 'system';
 
 export type ConnectionStatus = 'online' | 'offline' | 'checking';
 
-export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves';
+export type PanelId =
+  'remotes' | 'bandwidth' | 'system' | 'jobs' | 'automations' | 'serves' | 'quickRuns';
 
 export interface PanelConfig {
   id: PanelId;
@@ -141,6 +142,15 @@ export const ALL_PANELS: readonly PanelConfig[] = Object.freeze([
   { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
 ]);
 
+export const ALL_QUICK_RUN_PANELS: readonly PanelConfig[] = Object.freeze([
+  { id: 'quickRuns', title: 'flow.quickRun.overview.quickLaunch', defaultVisible: true },
+  { id: 'bandwidth', title: 'generalOverview.panels.bandwidth', defaultVisible: true },
+  { id: 'system', title: 'generalOverview.panels.system', defaultVisible: true },
+  { id: 'jobs', title: 'generalOverview.panels.jobs', defaultVisible: true },
+  { id: 'serves', title: 'generalOverview.panels.serves', defaultVisible: true },
+  { id: 'automations', title: 'generalOverview.panels.automations', defaultVisible: true },
+]);
+
 export interface DashboardPanel extends PanelConfig {
   visible: boolean;
 }
@@ -149,6 +159,21 @@ export interface BandwidthDetailItem {
   labelKey: string;
   bytesPerSec: number | undefined;
 }
+
+export interface BandwidthPreset {
+  readonly value: string;
+  readonly label?: string;
+  readonly labelKey?: string;
+}
+
+export const BANDWIDTH_PRESETS: readonly BandwidthPreset[] = Object.freeze([
+  { value: 'off', labelKey: 'generalOverview.bandwidth.unlimited' },
+  { value: '1M', label: '1 MB/s' },
+  { value: '5M', label: '5 MB/s' },
+  { value: '10M', label: '10 MB/s' },
+  { value: '50M', label: '50 MB/s' },
+  { value: '10M:50M', label: '10M : 50M' },
+]);
 
 export interface JobStatItem {
   labelKey: string;

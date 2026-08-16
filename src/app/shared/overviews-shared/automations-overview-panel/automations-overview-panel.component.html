@@ -1,0 +1,85 @@
+@let automationsList = allAutomations();
+@let total = totalCount();
+@let active = activeCount();
+
+<mat-expansion-panel
+  [expanded]="expanded()"
+  (opened)="expanded.set(true)"
+  (closed)="expanded.set(false)"
+  [hideToggle]="hideToggle()"
+  class="automations-panel"
+>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
+      <span>{{ 'generalOverview.panels.automations' | translate }}</span>
+    </mat-panel-title>
+    <mat-panel-description>
+      <span class="app-pill" [class.p-primary]="active > 0" [class.p-dim]="active === 0">
+        {{
+          total > 0
+            ? ('generalOverview.automations.activeCount'
+              | translate
+                : {
+                    active: active,
+                    total: total,
+                  })
+            : ('generalOverview.automations.noScheduled' | translate)
+        }}
+      </span>
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+  @if (showFilterChips()) {
+    <div class="origin-filter-row">
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'all'"
+        (click)="selectedOriginFilter.set('all')"
+        [attr.title]="'common.all' | translate"
+      >
+        <span>{{ 'common.all' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'quickrun'"
+        (click)="selectedOriginFilter.set('quickrun')"
+        [attr.title]="'flow.tabs.quickRun' | translate"
+      >
+        <mat-icon svgIcon="quick-run"></mat-icon>
+        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="app-pill interactive"
+        [class.is-selected]="selectedOriginFilter() === 'dashboard'"
+        (click)="selectedOriginFilter.set('dashboard')"
+        [attr.title]="'navigation.dashboard' | translate"
+      >
+        <mat-icon svgIcon="cloud"></mat-icon>
+        <span>{{ 'navigation.dashboard' | translate }}</span>
+      </button>
+    </div>
+  }
+
+  @if (total === 0) {
+    <div class="empty-state" role="status">
+      <mat-icon svgIcon="clock" aria-hidden="true"></mat-icon>
+      <p>{{ 'generalOverview.automations.noConfigured' | translate }}</p>
+    </div>
+  } @else {
+    <div class="grid">
+      @for (automation of automationsList; track automation.id) {
+        <app-automation-card
+          [automation]="automation"
+          variant="compact"
+          (click)="onAutomationCardClick(automation)"
+          (toggled)="onToggleAutomation($event)"
+          (openInFiles)="onOpenInFiles($event)"
+        ></app-automation-card>
+      }
+    </div>
+  }
+</mat-expansion-panel>

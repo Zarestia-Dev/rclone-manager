@@ -1,0 +1,270 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.origin-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.job-info-panel .job-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .job-progress-section {
+    background-color: rgba(var(--view-bg-color-rgb), 0.02);
+    border-radius: 8px;
+    padding: 16px;
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    mat-progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-details {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: clamp(10px, 2vw, 12px);
+      opacity: 0.8;
+    }
+  }
+
+  .job-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .running-jobs-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(var(--view-bg-color-rgb), 0.02);
+    border: 1px solid rgba(var(--window-fg-color-rgb), 0.06);
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dim-color);
+
+      mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+      }
+    }
+
+    .running-jobs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .running-job-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(var(--window-bg-color-rgb), 0.7);
+      border: 1px solid rgba(var(--window-fg-color-rgb), 0.05);
+      transition:
+        background-color var(--transition-standard),
+        transform var(--transition-standard);
+
+      &.interactive {
+        cursor: pointer;
+
+        &:hover {
+          background: rgba(var(--window-bg-color-rgb), 0.95);
+          border-color: rgba(var(--primary-color-rgb), 0.3);
+          transform: translateY(-1px);
+        }
+      }
+    }
+
+    .running-job-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .running-job-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      color: var(--primary-color);
+      flex-shrink: 0;
+    }
+
+    .running-job-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .running-job-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .running-job-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--window-fg-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .origin-pill {
+      font-size: 10px;
+      padding: 2px 6px;
+    }
+
+    .running-job-path,
+    .running-job-meta {
+      font-size: 11px;
+      color: var(--dim-color);
+    }
+
+    .running-job-path {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .running-job-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dot-separator {
+      opacity: 0.5;
+    }
+
+    .running-job-progress {
+      height: 4px;
+      border-radius: 999px;
+    }
+
+    .stop-job-btn {
+      color: var(--warn-color);
+      flex-shrink: 0;
+    }
+  }
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+
+    &.error {
+      color: var(--warn-color);
+    }
+  }
+
+  .error-entry {
+    margin: 0;
+    padding: 10px 12px;
+    background: rgba(var(--warn-color-rgb), 0.08);
+    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+    border-radius: 8px;
+    color: var(--warn-color);
+    font-family: monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+}
+
+.info-item {
+  gap: 4px;
+  padding: 12px;
+  display: flex;
+  border-radius: 8px;
+  flex-direction: column;
+  margin-top: var(--space-xxs);
+  box-shadow: var(--box-shadow);
+  background: var(--window-bg-color);
+
+  .label {
+    font-size: clamp(10px, 2vw, 12px);
+    color: var(--window-fg-color);
+    opacity: 0.7;
+  }
+
+  .value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: clamp(14px, 2.5vw, 16px);
+    min-width: 0;
+
+    &.error {
+      color: var(--warn-color);
+    }
+  }
+}
+
+.loading {
+  @include flex-center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.empty-state-message {
+  @include flex-center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--dim-color);
+  text-align: center;
+}
+
+.no-jobs-message {
+  padding: 16px;
+}

@@ -1,3 +1,4 @@
+import type { Origin } from './origin';
 import type { PrimaryActionType } from './operations';
 
 /**
@@ -23,7 +24,7 @@ export interface AutomationArgs {
   remoteName: string;
   profileName: string;
   /** Origin of the operation */
-  source?: string;
+  source?: Origin;
   /** Whether to use cache */
   noCache?: boolean;
 }

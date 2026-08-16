@@ -55,6 +55,16 @@ impl QuickRun {
             .unwrap_or(false)
     }
 
+    #[cfg(all(desktop, feature = "tray"))]
+    #[must_use]
+    pub fn is_show_on_tray(&self) -> bool {
+        self.config
+            .get("app")
+            .and_then(|a| a.get("showOnTray"))
+            .and_then(Value::as_bool)
+            .unwrap_or(true)
+    }
+
     #[must_use]
     pub fn watch_paths(&self) -> Vec<String> {
         let app = self.config.get("app");
@@ -184,6 +194,7 @@ mod tests {
         assert!(!qr_disabled.is_cron_enabled());
         assert!(qr_disabled.cron_expression().is_none());
         assert!(!qr_disabled.is_watch_enabled());
+        assert!(qr_disabled.is_show_on_tray()); // Default when omitted is true
 
         let qr_enabled = QuickRun {
             id: "qr-2".to_string(),
@@ -197,7 +208,8 @@ mod tests {
                     "cronEnabled": true,
                     "cronExpression": "0 2 * * *",
                     "watchEnabled": true,
-                    "watchPaths": ["/local/path"]
+                    "watchPaths": ["/local/path"],
+                    "showOnTray": false
                 }
             }),
         };
@@ -206,6 +218,7 @@ mod tests {
         assert!(qr_enabled.is_cron_enabled());
         assert_eq!(qr_enabled.cron_expression(), Some("0 2 * * *".to_string()));
         assert!(qr_enabled.is_watch_enabled());
+        assert!(!qr_enabled.is_show_on_tray()); // Explicit false
         assert_eq!(qr_enabled.watch_paths(), vec!["/local/path".to_string()]);
     }
 

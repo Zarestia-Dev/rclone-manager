@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ServeListItem, TYPE_INFO, DEFAULT_ICON, URL_BASED_PROTOCOLS } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.directive';
 
 @Component({
@@ -25,12 +26,31 @@ import { CopyToClipboardDirective } from '../../directives/copy-to-clipboard.dir
 export class ServeCardComponent {
   private readonly translate = inject(TranslateService);
   private readonly pathService = inject(PathService);
+  private readonly quickRunService = inject(QuickRunService);
 
   serve = input.required<ServeListItem>();
   showRemoteName = input(false);
 
   stopServe = output<ServeListItem>();
   cardClick = output<ServeListItem>();
+
+  readonly isQuickRun = computed(() => {
+    const profile = this.serve().profile;
+    if (!profile) return false;
+    return this.quickRunService
+      .quickRuns()
+      .some(qr => qr.operationType === 'serve' && qr.name === profile);
+  });
+
+  readonly originLabel = computed(() => {
+    return this.isQuickRun()
+      ? this.translate.instant('flow.tabs.quickRun') || 'Quick Run'
+      : this.translate.instant('navigation.dashboard') || 'Dashboard';
+  });
+
+  readonly originIcon = computed(() => {
+    return this.isQuickRun() ? 'quick-run' : 'cloud';
+  });
 
   serveIcon = computed<string>(() => {
     const type = this.serve().params.type.toLowerCase();

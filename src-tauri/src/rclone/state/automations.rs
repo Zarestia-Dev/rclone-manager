@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::automation::engine::get_next_run,
+    core::{automation::engine::get_next_run, flow::quick_run::types::QuickRun},
     utils::{
         constants::{
             AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
@@ -146,6 +146,38 @@ impl AutomationsCache {
         let result = self
             .sync_automations(backend_name, automations, |t| {
                 t.backend_name == backend_name
+                    && t.args.params.source != Some(crate::utils::types::origin::Origin::QuickRun)
+            })
+            .await?;
+
+        if result.has_changes()
+            && let Some(app) = app
+        {
+            let _ = app.emit(AUTOMATIONS_CACHE_CHANGED, AUTOMATIONS_BULK_UPDATE);
+        }
+
+        Ok(result)
+    }
+
+    /// Load automations from Quick Runs, preserving existing automation states.
+    pub async fn load_from_quick_runs(
+        &self,
+        quick_runs: &[QuickRun],
+        backend_name: &str,
+        app: Option<&AppHandle>,
+    ) -> Result<CacheUpdateResult, String> {
+        let mut automations = Vec::new();
+
+        for qr in quick_runs {
+            if let Some(automation) = self.create_automation_from_quick_run(backend_name, qr) {
+                automations.push(automation);
+            }
+        }
+
+        let result = self
+            .sync_automations(backend_name, automations, |t| {
+                t.backend_name == backend_name
+                    && t.args.params.source == Some(crate::utils::types::origin::Origin::QuickRun)
             })
             .await?;
 
@@ -386,6 +418,117 @@ impl AutomationsCache {
             } else {
                 config.watch_changed_only.unwrap_or(false)
             },
+        })
+    }
+
+    pub fn create_automation_from_quick_run(
+        &self,
+        backend_name: &str,
+        qr: &QuickRun,
+    ) -> Option<Automation> {
+        let cron_enabled = qr.is_cron_enabled();
+        let watch_enabled = qr.is_watch_enabled();
+
+        if !cron_enabled && !watch_enabled {
+            return None;
+        }
+
+        let cron = if cron_enabled {
+            qr.cron_expression().filter(|s| !s.is_empty())
+        } else {
+            None
+        };
+
+        let mut src_paths = qr.watch_paths();
+        let rclone = qr.config.get("rclone");
+        if src_paths.is_empty() {
+            if let Some(src) = rclone.and_then(|r| r.get("srcFs")).and_then(Value::as_str)
+                && !src.trim().is_empty()
+            {
+                src_paths.push(src.to_string());
+            } else if let Some(src) = rclone
+                .and_then(|r| r.get("source").or_else(|| r.get("src")))
+                .and_then(Value::as_str)
+                && !src.trim().is_empty()
+            {
+                src_paths.push(src.to_string());
+            }
+        }
+        if src_paths.is_empty() {
+            src_paths.push(qr.remote_name.clone());
+        }
+
+        let mut dst_paths = Vec::new();
+        if let Some(dst) = rclone.and_then(|r| r.get("dstFs")).and_then(Value::as_str)
+            && !dst.trim().is_empty()
+        {
+            dst_paths.push(dst.to_string());
+        } else if let Some(dest) = rclone
+            .and_then(|r| r.get("dest").or_else(|| r.get("destination")))
+            .and_then(Value::as_str)
+            && !dest.trim().is_empty()
+        {
+            dst_paths.push(dest.to_string());
+        } else if let Some(mp) = rclone
+            .and_then(|r| r.get("mountPoint").or_else(|| r.get("mount_point")))
+            .and_then(Value::as_str)
+            && !mp.trim().is_empty()
+        {
+            dst_paths.push(mp.to_string());
+        }
+
+        let automation_id = qr.id.clone();
+
+        let params = ProfileParams {
+            remote_name: qr.remote_name.clone(),
+            profile_name: qr.name.clone(),
+            source: Some(crate::utils::types::origin::Origin::QuickRun),
+            no_cache: None,
+            scoped_targets: None,
+        };
+
+        let args = AutomationArgs {
+            params,
+            src_paths,
+            dst_paths,
+        };
+
+        let next_run = cron.as_ref().and_then(|c| get_next_run(c).ok());
+        let watch_delay = qr
+            .config
+            .get("app")
+            .and_then(|a| a.get("watchDelay"))
+            .and_then(Value::as_u64)
+            .unwrap_or(5);
+        let watch_changed_only = qr
+            .config
+            .get("app")
+            .and_then(|a| a.get("watchChangedOnly"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
+        Some(Automation {
+            id: automation_id,
+            automation_type: qr.operation_type,
+            remote_name: qr.remote_name.clone(),
+            profile_name: qr.name.clone(),
+            cron_expression: cron,
+            status: AutomationStatus::Enabled,
+            args,
+            backend_name: backend_name.to_string(),
+            created_at: chrono::Utc::now(),
+            last_run: None,
+            next_run,
+            last_error: None,
+            current_job_id: None,
+            scheduler_job_id: None,
+            run_count: 0,
+            success_count: 0,
+            failure_count: 0,
+            stopped_count: 0,
+            watch_enabled,
+            watch_delay,
+            watch_changed_only,
         })
     }
 

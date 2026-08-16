@@ -12,7 +12,16 @@
           <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
         </div>
         <div class="automation-title-section">
-          <span class="automation-name">{{ automation().profileName }}</span>
+          <div class="automation-title-row">
+            <span class="automation-name">{{ automation().profileName }}</span>
+            <span
+              class="origin-mini-badge"
+              [class.quickrun]="isQuickRun()"
+              [attr.title]="originLabel()"
+            >
+              <mat-icon [svgIcon]="originIcon()" class="origin-mini-icon"></mat-icon>
+            </span>
+          </div>
           <span class="automation-subtitle">
             {{ automation().remoteName }} ·
             {{ 'dashboard.appDetail.' + automation().automationType | translate }}
@@ -89,7 +98,12 @@
           <mat-icon [svgIcon]="automationMeta().icon"></mat-icon>
         </div>
         <div class="title-text">
-          <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
+          <div class="title-heading-row">
+            <h4>{{ automation().profileName }} · {{ automation().backendName }}</h4>
+            <span class="app-pill origin-pill {{ originBadgeClass() }}">
+              {{ originLabel() }}
+            </span>
+          </div>
           <span class="automation-type-label">
             {{ automation().remoteName }} ·
             {{ 'dashboard.appDetail.' + automation().automationType | translate }}

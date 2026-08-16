@@ -17,8 +17,9 @@ use crate::core::tray::actions::handle_browse_remote;
 #[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
     actions::{
-        handle_mount_profile, handle_serve_profile, handle_start_job_profile, handle_stop_all_jobs,
-        handle_stop_job_profile, handle_stop_serve_profile, handle_unmount_profile,
+        handle_mount_profile, handle_serve_profile, handle_start_job_profile,
+        handle_start_quick_run, handle_stop_all_jobs, handle_stop_job_profile,
+        handle_stop_quick_run, handle_stop_serve_profile, handle_unmount_profile,
     },
     tray_action::TrayAction,
 };
@@ -590,6 +591,12 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             }
             _ => {}
         },
+        TrayAction::StartQuickRun(id) => {
+            handle_start_quick_run(app.clone(), id);
+        }
+        TrayAction::StopQuickRun(id) => {
+            handle_stop_quick_run(app.clone(), id);
+        }
         TrayAction::Browse(_remote, _profile) => {
             #[cfg(not(feature = "web-server"))]
             handle_browse_remote(app, &_remote, &_profile);

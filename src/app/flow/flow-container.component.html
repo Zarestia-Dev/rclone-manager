@@ -1,70 +1,29 @@
 <div class="flow-main-wrapper">
   <!-- Top Flow Header -->
-  <header class="flow-header" data-tauri-drag-region>
-    <div class="header-left">
-      <!-- Add button (cdkMenu) -->
-      <button
-        matIconButton
-        [cdkMenuTriggerFor]="addMenu"
-        [attr.title]="'flow.quickRun.new' | translate"
-        [attr.aria-label]="'flow.quickRun.new' | translate"
-      >
-        <mat-icon svgIcon="plus"></mat-icon>
+  <app-titlebar
+    overlayType="flow"
+    [customAddMenu]="addMenu"
+    [showHome]="hasDetailOpen()"
+    (homeClick)="goHome()"
+    data-tauri-drag-region
+  ></app-titlebar>
+
+  <ng-template #addMenu>
+    <div class="material-context-menu" cdkMenu>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newRemote()" class="menu-item">
+        <mat-icon svgIcon="server"></mat-icon>
+        <span>{{ 'flow.quickRun.editor.remote' | translate }}</span>
       </button>
-
-      <div class="contextual-action-wrapper" [class.visible]="quickRunService.selected()">
-        <button
-          matIconButton
-          (click)="quickRunService.deselect()"
-          [attr.title]="'titlebar.home' | translate"
-          [attr.aria-label]="'titlebar.home' | translate"
-          data-tauri-drag-region="false"
-        >
-          <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
-        </button>
-      </div>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newQuickRun()" class="menu-item">
+        <mat-icon svgIcon="quick-run"></mat-icon>
+        <span>{{ 'flow.tabs.quickRun' | translate }}</span>
+      </button>
+      <button cdkMenuItem (cdkMenuItemTriggered)="newWorkflow()" class="menu-item">
+        <mat-icon svgIcon="workflow"></mat-icon>
+        <span>{{ 'flow.tabs.workflow' | translate }}</span>
+      </button>
     </div>
-
-    <ng-template #addMenu>
-      <div class="material-context-menu" cdkMenu>
-        <button cdkMenuItem (cdkMenuItemTriggered)="newQuickRun()" class="menu-item">
-          <mat-icon svgIcon="quick-run"></mat-icon>
-          <span>{{ 'flow.tabs.quickRun' | translate }}</span>
-        </button>
-        <button cdkMenuItem (cdkMenuItemTriggered)="newWorkflow()" class="menu-item">
-          <mat-icon svgIcon="workflow"></mat-icon>
-          <span>{{ 'flow.tabs.workflow' | translate }}</span>
-        </button>
-      </div>
-    </ng-template>
-
-    <!-- Right: add menu + app menu + window controls -->
-    <div class="header-actions">
-      <app-menu></app-menu>
-      @if (flowOverlayService.isFlowOverlayOpen()) {
-        @if (!isMobile()) {
-          <button
-            matIconButton
-            (click)="detachOverlay()"
-            [attr.aria-label]="'nautilus.contextMenu.openNewWindow' | translate"
-            [attr.title]="'nautilus.contextMenu.openNewWindow' | translate"
-          >
-            <mat-icon svgIcon="open-link"></mat-icon>
-          </button>
-        }
-        <button
-          matIconButton
-          (click)="closeOverlay()"
-          [attr.aria-label]="'common.close' | translate"
-          [attr.title]="'common.close' | translate"
-        >
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      } @else {
-        <app-window-controls></app-window-controls>
-      }
-    </div>
-  </header>
+  </ng-template>
 
   <!-- Main Body with Sidenav Container (Visible across all tabs) -->
   <mat-sidenav-container class="flow-sidenav-container">
@@ -78,98 +37,21 @@
       [mode]="sidebarMode()"
       class="flow-sidenav"
     >
-      <aside class="sidebar">
-        <!-- Header (click toggles search, same as main sidebar) -->
-        <div
-          class="sidebar-header"
-          (click)="toggleSearch()"
-          [attr.title]="'flow.quickRun.toggleSearch' | translate"
-          role="button"
-          tabindex="0"
-          (keydown.enter)="toggleSearch()"
-        >
-          <h3>
-            <mat-icon svgIcon="operations"></mat-icon>
-            <span>{{ 'flow.quickRun.title' | translate }}</span>
-          </h3>
-        </div>
-
-        <!-- Search (reuses the shared SearchContainerComponent) -->
-        <app-search-container
-          [visible]="searchVisible()"
-          [searchText]="searchQuery()"
-          (searchTextChange)="searchQuery.set($event)"
-          [placeholder]="'flow.quickRun.search'"
-          [ariaLabel]="'flow.quickRun.search'"
-        ></app-search-container>
-
-        <!-- Scrollable content area -->
-        <div class="content-area">
-          @if (isLoading()) {
-            <div class="loading-state">
-              <mat-icon svgIcon="spinner" class="spinner"></mat-icon>
-              <span>{{ 'flow.quickRun.loading' | translate }}</span>
-            </div>
-          } @else if (!hasAny()) {
-            <div class="no-remotes">
-              <mat-icon svgIcon="operations"></mat-icon>
-              <span>{{ 'flow.quickRun.empty.description' | translate }}</span>
-            </div>
-          } @else {
-            @if (hasRunning()) {
-              <div class="section-label">
-                <mat-icon svgIcon="play" class="section-icon"></mat-icon>
-                <span>{{ 'flow.quickRun.sections.running' | translate }}</span>
-                <span class="count">{{ filteredRunning().length }}</span>
-              </div>
-              @for (qr of filteredRunning(); track trackById($index, qr)) {
-                <app-quick-run-card
-                  [quickRun]="qr"
-                  [selected]="selectedId() === qr.id"
-                  [isRunning]="isRunning(qr.id)"
-                  (selectedChange)="selectQuickRun($event)"
-                />
-              }
-            }
-
-            @if (hasIdle()) {
-              <div class="section-label">
-                <mat-icon svgIcon="list" class="section-icon"></mat-icon>
-                <span>{{ 'flow.quickRun.sections.saved' | translate }}</span>
-                <span class="count">{{ filteredIdle().length }}</span>
-              </div>
-              @for (qr of filteredIdle(); track trackById($index, qr)) {
-                <app-quick-run-card
-                  [quickRun]="qr"
-                  [selected]="selectedId() === qr.id"
-                  [isRunning]="isRunning(qr.id)"
-                  (selectedChange)="selectQuickRun($event)"
-                />
-              }
-            }
-
-            @if (!hasRunning() && !hasIdle()) {
-              <div class="no-remotes">
-                <mat-icon svgIcon="search"></mat-icon>
-                <span>{{ 'flow.quickRun.noResults' | translate }}</span>
-              </div>
-            }
-          }
-        </div>
-      </aside>
+      <app-sidebar mode="flow" (itemSelected)="onItemSelected()"></app-sidebar>
     </mat-sidenav>
 
     <!-- ── Mode Content View ────────────────────────────────────────────────── -->
     <mat-sidenav-content class="flow-body">
-      <!-- Hamburger Sidebar Toggle Button (matches HomeComponent pattern) -->
+      <!-- Sidebar Toggle Button (matches HomeComponent pattern) -->
       <button
         matIconButton
         class="sidebar-button"
+        [class.is-open]="isSidebarOpen()"
         (click)="sidenav.toggle()"
         [attr.title]="'flow.quickRun.toggleSidebar' | translate"
         [attr.aria-label]="'flow.quickRun.toggleSidebar' | translate"
       >
-        <mat-icon svgIcon="menu-bar"></mat-icon>
+        <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
       </button>
 
       @switch (activeSubMode()) {

@@ -20,7 +20,17 @@
       <span class="remote-type">
         @if (mode() === 'quickRun') {
           {{ currentOpMetadata().typeLabel || currentOpMetadata().label | translate }} ·
-          {{ quickRun()?.remoteName }}
+          <button
+            type="button"
+            class="remote-link-btn"
+            (click)="openRemoteDetail.emit(quickRun()?.remoteName || '')"
+            [attr.title]="
+              ('dashboard.appDetail.remoteSettings' | translate) + ': ' + quickRun()?.remoteName
+            "
+          >
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote().type)"></mat-icon>
+            <span>{{ quickRun()?.remoteName }}</span>
+          </button>
         } @else {
           {{ selectedRemote().type | titlecase }}
         }
@@ -173,7 +183,7 @@
         }
 
         @if (isOperationsType()) {
-          @if (mode() === 'remote' && selectedCronSchedule(); as schedule) {
+          @if (selectedCronSchedule(); as schedule) {
             <div class="cron-human-readable" [class]="operationColorClass()">
               <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
               <span class="cron-schedule" [attr.title]="schedule.cronExpression">{{
@@ -182,7 +192,7 @@
             </div>
           }
 
-          @if (mode() === 'remote' && selectedWatcher(); as watcher) {
+          @if (selectedWatcher(); as watcher) {
             <div class="cron-human-readable" [class]="operationColorClass()">
               <mat-icon svgIcon="eye" class="cron-icon"></mat-icon>
               <span class="cron-schedule">

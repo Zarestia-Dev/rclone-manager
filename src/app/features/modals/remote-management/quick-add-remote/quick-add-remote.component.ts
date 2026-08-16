@@ -265,6 +265,7 @@ export class QuickAddRemoteComponent {
 
     const baseGroup = {
       autoStart: new FormControl(false),
+      showOnTray: new FormControl(true),
       cronEnabled: new FormControl(false),
       cronExpression: new FormControl(''),
       watchEnabled: new FormControl(false),

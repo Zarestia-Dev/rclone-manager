@@ -1,8 +1,8 @@
-import { Injectable } from "@angular/core";
-import { isHeadlessMode } from "./api-client.service";
-import { openUrl, openPath } from "@tauri-apps/plugin-opener";
+import { Injectable } from '@angular/core';
+import { isHeadlessMode } from './api-client.service';
+import { openUrl, openPath } from '@tauri-apps/plugin-opener';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class OpenerService {
   private readonly isTauri = !isHeadlessMode();
   private interceptorInitialized = false;
@@ -19,14 +19,11 @@ export class OpenerService {
         await openUrl(url);
         return;
       } catch (err) {
-        console.warn(
-          "Failed to open URL via plugin-opener, falling back to window.open:",
-          err,
-        );
+        console.warn('Failed to open URL via plugin-opener, falling back to window.open:', err);
       }
     }
 
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   /**
@@ -39,7 +36,7 @@ export class OpenerService {
       try {
         await openPath(path);
       } catch (err) {
-        console.error("Failed to open path via plugin-opener:", err);
+        console.error('Failed to open path via plugin-opener:', err);
       }
     }
   }
@@ -53,10 +50,10 @@ export class OpenerService {
     this.interceptorInitialized = true;
 
     document.addEventListener(
-      "click",
+      'click',
       (event: MouseEvent) => {
         const target = event.target as HTMLElement | null;
-        const anchor = target?.closest("a") as HTMLAnchorElement | null;
+        const anchor = target?.closest('a') as HTMLAnchorElement | null;
         if (!anchor || !anchor.href) return;
 
         const href = anchor.href;
@@ -66,7 +63,7 @@ export class OpenerService {
           void this.openUrl(href);
         }
       },
-      true,
+      true
     );
   }
 }

@@ -20,6 +20,8 @@ export const BASE_ICONS: Record<string, string> = {
   'arrow-down': 'assets/icons/navigation/circle-arrow-down.svg',
   'right-left': 'assets/icons/navigation/right-left.svg',
   bisync: 'assets/icons/navigation/right-left.svg',
+  'left-panel-open': 'assets/icons/navigation/left-panel-open.svg',
+  'left-panel-close': 'assets/icons/navigation/left-panel-close.svg',
 
   // ------------------- Status Icons -------------------
   'check-circle': 'assets/icons/status/check-circle.svg',

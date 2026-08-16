@@ -672,7 +672,7 @@
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--view-bg-color) 60%, transparent);
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-color);
     cursor: pointer;
     transition:
       background 0.15s ease,
@@ -681,17 +681,13 @@
     box-sizing: border-box;
 
     code {
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
       color: var(--accent-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      letter-spacing: 0.01em;
     }
 
     mat-icon {
-      flex-shrink: 0;
       font-size: 1rem;
       width: 1rem;
       height: 1rem;

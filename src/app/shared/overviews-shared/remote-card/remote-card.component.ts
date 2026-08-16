@@ -89,7 +89,7 @@ interface ProfilePickerGroup {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgClass, TitleCasePipe, MatIconModule, MatButtonModule, CdkMenuModule, TranslatePipe],
   templateUrl: './remote-card.component.html',
-  styleUrl: './remote-card.component.scss',
+  styleUrls: ['./remote-card.component.scss', '../../../styles/_shared-card.scss'],
   host: {
     role: 'button',
     '[attr.tabindex]': 'isEditingLayout() ? -1 : 0',

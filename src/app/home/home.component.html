@@ -14,8 +14,13 @@
   <!-- Main Content -->
   <mat-sidenav-content class="main-content">
     <!-- Sidebar Toggle Button -->
-    <button matIconButton class="sidebar-button" (click)="sidenav.toggle()">
-      <mat-icon svgIcon="menu-bar"></mat-icon>
+    <button
+      matIconButton
+      class="sidebar-button"
+      [class.is-open]="isSidebarOpen()"
+      (click)="sidenav.toggle()"
+    >
+      <mat-icon [svgIcon]="isSidebarOpen() ? 'left-panel-close' : 'left-panel-open'"></mat-icon>
     </button>
 
     <!-- Remote Options Menu -->

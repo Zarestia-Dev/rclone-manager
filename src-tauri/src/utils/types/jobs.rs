@@ -85,6 +85,9 @@ impl JobType {
                 | JobType::Check
                 | JobType::Mount
                 | JobType::CryptCheck
+                | JobType::Delete
+                | JobType::CopyUrl
+                | JobType::ArchiveCreate
         )
     }
 }

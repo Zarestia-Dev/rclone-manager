@@ -197,6 +197,7 @@ export interface RemoteConfigStepVisibility {
 
 export interface AppConfig {
   autoStart: boolean;
+  showOnTray?: boolean;
   cronEnabled?: boolean;
   cronExpression?: string | null;
   watchEnabled?: boolean;

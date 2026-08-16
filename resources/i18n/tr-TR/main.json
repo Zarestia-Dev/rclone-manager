@@ -31,7 +31,12 @@
     "password": "Şifre",
     "username": "Kullanıcı Adı",
     "selectAll": "Tümünü Seç",
-    "deselectAll": "Tümünü Temizle"
+    "deselectAll": "Tümünü Temizle",
+    "viewDetails": "Detayları Görüntüle",
+    "moreActions": "Diğer İşlemler",
+    "duplicate": "Çoğalt",
+    "clearAll": "Tümünü Temizle",
+    "acknowledge": "Onayla"
   },
   "remoteConfig": {
     "pathStatus": {
@@ -197,7 +202,8 @@
       "used": "Kullanılan:",
       "free": "Boş:",
       "loading": "Yükleniyor...",
-      "errorLoading": "Disk kullanımı yüklenirken sorun oluştu"
+      "errorLoading": "Disk kullanımı yüklenirken sorun oluştu",
+      "retry": "Disk kullanımını yeniden yükle"
     },
     "status": {
       "mounted": "Bağlı",
@@ -324,7 +330,8 @@
       "actionRequired": "En az bir eylem gereklidir.",
       "noActionsHint": "Bir kurala atamadan önce bir uyarı eylemi oluşturmanız gerekir.",
       "filtersEmptyHint": "Tüm olaylarla eşleştirmek için boş bırakın.",
-      "scopeFilters": "Kapsam Filtreleri"
+      "scopeFilters": "Kapsam Filtreleri",
+      "allEvents": "Tüm Olaylar"
     },
     "events": {
       "job": "İşler ve Dosya İşlemleri",
@@ -396,7 +403,9 @@
       "slack": "Slack",
       "headerKey": "Başlık Adı",
       "headerValue": "Değer"
-    }
+    },
+    "noRulesHint": "Henüz yapılandırılmış uyarı kuralı yok. Bildirim almak için bir kural oluşturun.",
+    "noActionsHint": "Henüz yapılandırılmış uyarı eylemi yok. Uyarıların nasıl iletileceğini belirlemek için bir eylem oluşturun."
   },
   "settings": {
     "resetAll": {
@@ -550,6 +559,10 @@
         "label": "Panel Düzeni",
         "description": "Panel için özel düzen yapılandırması."
       },
+      "quick_run_layout": {
+        "label": "Hızlı Çalıştırma Düzeni",
+        "description": "Hızlı çalıştırma genel bakışı için özel düzen yapılandırması."
+      },
       "dashboard_card_variant": {
         "label": "Kart Görüntüleme Modu",
         "description": "Pano kartlarını kompakt veya ayrıntılı modda göster",
@@ -602,6 +615,10 @@
       "generic": {
         "title": "Motor Başlatılamadı",
         "subtitle": "Daha fazla detay için lütfen logları kontrol edin"
+      },
+      "auth": {
+        "title": "Rclone Kimlik Doğrulaması Gerekli",
+        "subtitle": "Lütfen kimlik bilgilerinizi veya yapılandırma şifrenizi kontrol edin"
       }
     }
   },
@@ -877,7 +894,8 @@
     "actions": {
       "hide": "Gizle",
       "show": "Göster",
-      "open": "Aç"
+      "open": "Aç",
+      "cancel": "İptal"
     },
     "overviewHeader": {
       "manageBackends": "Arka Uçları Yönet",
@@ -1037,6 +1055,10 @@
       "required": "Şifre gerekli",
       "remember": "Şifreyi hatırla",
       "keychain": "Sistem anahtarlığında saklandı"
+    },
+    "validation": {
+      "required": "Bu alan zorunludur.",
+      "min": "Değer en az {{val}} olmalıdır."
     }
   },
   "wizards": {
@@ -1186,6 +1208,7 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
+      "showOnTray": "Sistem Tepsisinde Göster",
       "enableScheduled": "Zamanlanmış {{type}} Etkinleştir",
       "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
       "watchDescription": "Dosya değişikliklerini izlemek ve bunları otomatik olarak senkronize etmek için yerel kaynak dizinlerini izleyin.",
@@ -1341,6 +1364,10 @@
         "title": "Ayın 1'i",
         "description": "1. gün gece yarısı"
       }
+    },
+    "presets": {
+      "applied": "Default presets applied successfully",
+      "noRemoteSelected": "Please select a remote first"
     }
   },
   "backup": {
@@ -1646,7 +1673,8 @@
       "dryRun": "Simülasyon",
       "dryRunActive": "Simülasyon etkin — hiçbir değişiklik yapılmayacak",
       "resync": "Yeniden Senkronize Et",
-      "resyncActive": "Yeniden senkronizasyon etkin — tam yeniden senkronizasyon gerçekleştiriliyor"
+      "resyncActive": "Yeniden senkronizasyon etkin — tam yeniden senkronizasyon gerçekleştiriliyor",
+      "remoteSettings": "Uzak Bağlantı Ayarları"
     },
     "generalDetail": {
       "automations": "Otomasyonlar",
@@ -2209,7 +2237,8 @@
         "inUseWarning": "\"{{name}}\" profili silinemez - {{count}} aktif {{type}} tarafından kullanılıyor",
         "disabledReason": {
           "inUse": "Profil çalışan bir {{operation}} tarafından kullanılıyor. Önce onu durdurun."
-        }
+        },
+        "duplicate": "Profili Çoğalt"
       },
       "buttons": {
         "back": "Geri",
@@ -2234,6 +2263,11 @@
       "errors": {
         "interactiveProcessingFailed": "Etkileşimli yanıt işlenemedi",
         "loadFailed": "Uzak yapılandırma yüklenemedi"
+      },
+      "profileSaved": "{{remote}} için '{{profile}}' profili kaydedildi",
+      "profileSaveFailed": "Profil kaydedilemedi",
+      "warnings": {
+        "selectRemoteToSave": "Lütfen profili kaydetmek için bir uzak bağlantı seçin"
       }
     },
     "rcloneFlags": {
@@ -2578,17 +2612,24 @@
       "retry": "Yeniden dene",
       "upload": "Yükleme:",
       "download": "İndirme:",
-      "total": "Toplam:"
+      "total": "Toplam:",
+      "unlimited": "Sınırsız (Kapalı)",
+      "customPlaceholder": "Özel hız (örn. 10M, 10M:50M)",
+      "apply": "Uygula"
     },
     "system": {
       "aria": {
         "loading": "Sistem bilgisi yükleniyor"
       },
       "loading": "Sistem bilgisi yükleniyor...",
-      "status": "Rclone Durumu:",
+      "status": "Motor Durumu:",
+      "version": "Motor Sürümü:",
+      "platform": "Platform:",
+      "pid": "İşlem Kimliği (PID):",
+      "goVersion": "Go Çalışma Zamanı:",
       "totalRemotes": "Toplam Uzak Bağlantılar:",
       "activeJobs": "Aktif İşler:",
-      "memoryUsage": "Bellek Kullanımı:",
+      "memoryUsage": "Öbek Belleği:",
       "uptime": "Çalışma Süresi:",
       "active": "Aktif",
       "inactive": "İnaktif",
@@ -2660,9 +2701,6 @@
     "request": {
       "failed": "İstek başarısız: {{error}}"
     },
-    "http": {
-      "error": "HTTP/S {{status}}: {{body}}"
-    },
     "file": {
       "driveRoot": "Sürücü kökü (örn. D:\\) bağlama noktası olarak seçilemez. Lütfen bir alt klasör seçin veya oluşturun.",
       "folderNotEmpty": "Seçilen klasör boş değil",
@@ -2709,14 +2747,8 @@
       "rcloneError": "Rclone hatası: {{error}}"
     },
     "backup": {
-      "unknownFormat": "Bilinmeyen yedekleme formatı",
-      "integrityFailed": "Bütünlük kontrolü başarısız! Yedekleme bozuk olabilir.",
-      "encryptedPasswordRequired": "Bu yedekleme şifrelenmiş. Şifre gerekli.",
       "unsupportedArchive": "Desteklenmeyen arşiv türü. .rcman dosyası olmalıdır",
       "invalidArchive": "Geçersiz yedekleme arşivi biçimi",
-      "manifestParseFailed": "Yedekleme bildirimi ayrıştırılamadı: {{error}}",
-      "missingManifest": "Arşivde yedekleme bildirimi eksik",
-      "openFailed": "Yedekleme arşivi açılamadı: {{error}}",
       "restoreFailed": "Yedekleme geri yükleme başarısız oldu: {{error}}",
       "secretRequirePassword": "Bu yedekleme gizli bir anahtarla korunuyor ve şifre gerektiriyor"
     },
@@ -2750,9 +2782,7 @@
       "automationNotFound": "Otomasyon bulunamadı"
     },
     "system": {
-      "themeSetFailed": "Uygulama teması ayarlanamadı: {{error}}",
-      "unlockFailed": "Kilit açma başarısız: {{error}}",
-      "killFailed": "İşlem sonlandırılamadı: {{error}}"
+      "unlockFailed": "Kilit açma başarısız: {{error}}"
     },
     "remote": {
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}"
@@ -2893,6 +2923,7 @@
     "copyurlCount": "URL Kopyala [{{active}}/{{total}}]",
     "archivecreateCount": "Arşivle [{{active}}/{{total}}]",
     "serveCount": "Sunucu [{{active}}/{{total}}]",
+    "quickRunsCount": "Hızlı Çalıştırmalar [{{active}}/{{total}}]",
     "tooltipDefault": "RClone Yöneticisi",
     "tooltipTask": "1 İş",
     "tooltipTasks": "{{count}} İş",
@@ -2980,7 +3011,8 @@
       "engineConnectionFailed": "Rclone motoruna bağlanılamadı: {{error}}",
       "engineBinaryNotFound": "Rclone ikili dosyası bulunamadı, lütfen ayarları kontrol edin.",
       "enginePasswordRequired": "Yapılandırma dosyasına erişmek için parola gereklidir.",
-      "engineAuthFailed": "Rclone motoru ile kimlik doğrulaması başarısız oldu: {{error}}"
+      "engineAuthFailed": "Rclone motoru ile kimlik doğrulaması başarısız oldu: {{error}}",
+      "powerInhibited": "Aktif işlemler sistemin uyku moduna geçmesini engelliyor."
     }
   },
   "repairSheet": {
@@ -3103,7 +3135,6 @@
     "clearCache": "Önbelleği Temizle",
     "openDevTools": "Geliştirici Araçlarını Aç",
     "openDevToolsError": "Geliştirici Araçları açılamadı",
-    "openDevToolsHint": "Hata ayıklamak için Geliştirici Araçlarını açın",
     "cleared": "Veriler Temizlendi"
   },
   "flow": {
@@ -3114,8 +3145,7 @@
       "search": "Search quick runs...",
       "loading": "Loading quick runs...",
       "noResults": "No matching quick runs",
-      "toggleSidebar": "Toggle Quick Run Sidebar",
-      "lastRun": "Last run",
+      "toggleSidebar": "Hızlı Çalıştırma Kenar Çubuğunu Aç/Kapat",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3129,21 +3159,11 @@
         "failed": "Failed",
         "stopped": "Stopped"
       },
-      "sections": {
-        "running": "Running Operations",
-        "saved": "Saved Quick Runs"
-      },
       "empty": {
         "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
       },
       "detail": {
-        "title": "Quick Run Details",
-        "emptyTitle": "No Quick Run Selected",
-        "emptyHint": "Select a quick run from the sidebar to inspect its configuration and status.",
-        "configuration": "Configuration",
-        "autoStart": "Auto Start",
-        "watch": "File Watcher",
-        "noConfigFlags": "No custom flags configured."
+        "configuration": "Configuration"
       },
       "editor": {
         "createTitle": "Create Quick Run",
@@ -3151,19 +3171,75 @@
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description (optional)",
-        "operation": "Operation Type",
         "remote": "Remote",
         "noRemotes": "No remotes configured",
         "remoteRequired": "Remote is required",
-        "cliImport": "Import from CLI command",
-        "flags": "Flags",
         "selectRemoteFirst": "Select a remote to view autocomplete",
-        "searchFlags": "Search flags...",
         "tabVfs": "VFS",
         "tabFilter": "Filter",
         "tabBackend": "Backend",
         "tabRuntimeRemote": "Çalışma Zamanı Remote"
+      },
+      "actions": {
+        "start": "Start",
+        "stop": "Stop"
+      },
+      "overview": {
+        "stats": {
+          "total": "Total Quick Runs"
+        },
+        "quickLaunch": "Quick Launch",
+        "createFirst": "Create your first Quick Run to get started with fast, un-profiled operations.",
+        "noRunsForRemote": "{{remote}} için yapılandırılmış hızlı işlem yok.",
+        "createForRemote": "{{remote}} için Hızlı İşlem Oluştur"
       }
+    },
+    "tabs": {
+      "quickRun": "Hızlı Çalıştırma",
+      "workflow": "İş Akışı"
+    },
+    "builder": {
+      "placeholderTitle": "İş Akışı Oluşturucu Geliştirme Aşamasında",
+      "placeholderMessage": "Çok adımlı rclone işlem zincirleri için görsel tuval yakında kullanıma sunulacaktır.",
+      "viewRoadmap": "GitHub Yol Haritasını Görüntüle"
     }
+  },
+  "templates": {
+    "title": "Şablonlar",
+    "presetTitle": "Hazır Ayarlar ve Şablonlar",
+    "applyPresets": "Varsayılan Hazır Ayarları Uygula",
+    "userTemplates": "Kayıtlı Kullanıcı Şablonları",
+    "saveAsTemplate": "Mevcut Ayarları Şablon Olarak Kaydet...",
+    "manageTemplates": "Şablonları Yönet...",
+    "manageTitle": "Şablonları Yönet",
+    "noUserTemplates": "Henüz kaydedilmiş özel şablon yok.",
+    "newTitle": "Yeni Şablon",
+    "templateName": "Şablon Adı",
+    "templateDesc": "Açıklama (isteğe bağlı)",
+    "selectAllKeys": "Tüm Anahtarları Seç",
+    "deselectAllKeys": "Tüm Seçimleri Kaldır",
+    "addKeyToCategory": "Kategoriye Anahtar Ekle",
+    "addKey": "Anahtar Ekle",
+    "removeKey": "Anahtarı Kaldır",
+    "deleteTemplate": "Şablonu Sil",
+    "noCatKeys": "{{category}} kategorisinde henüz ayar yapılandırılmamış.",
+    "visualView": "Görsel Denetleyici",
+    "jsonView": "JSON Düzenleyici",
+    "key": "Anahtar",
+    "value": "Değer",
+    "namePlaceholder": "Örn. Hızlı S3 Yedekleme Ayarlarım",
+    "descPlaceholder": "Bu ayarların kısa bir açıklaması...",
+    "keyPlaceholder": "Örn. dir_cache_time",
+    "valuePlaceholder": "Örn. 10m",
+    "selectedCount": "{{selected}} / {{total}} seçildi",
+    "keyCount": "{{count}} anahtar",
+    "keysCount": "{{count}} anahtar",
+    "zeroKeys": "0 anahtar",
+    "applySuccess": "\"{{name}}\" şablonu başarıyla uygulandı.",
+    "savedSuccess": "\"{{name}}\" şablonu başarıyla kaydedildi.",
+    "deletedSuccess": "Şablon başarıyla silindi."
+  },
+  "navigation": {
+    "dashboard": "Kontrol Paneli"
   }
 }

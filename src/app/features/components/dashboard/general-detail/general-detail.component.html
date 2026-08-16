@@ -13,47 +13,49 @@
     </div>
   </div>
 
-  <div
-    class="remote-status-indicators"
-    role="group"
-    [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
-  >
-    @for (vc of viewActionConfigs(); track vc.key) {
-      <div
-        class="status-chip"
-        [class]="vc.key"
-        [class.active]="vc.isActive"
-        [class.disabled]="vc.isLoading || !vc.canInteract"
-        role="button"
-        tabindex="0"
-        aria-pressed="true"
-        [attr.aria-label]="vc.ariaLabel"
-        [attr.title]="vc.tooltip | translate"
-        (click)="onChipClick(vc)"
-        (keydown.enter)="onChipClick(vc)"
-        (keydown.space)="$event.preventDefault(); onChipClick(vc)"
-      >
-        <div class="status-dot">
-          @if (vc.isLoading) {
-            <mat-icon svgIcon="spinner"></mat-icon>
-          } @else {
-            <mat-icon [svgIcon]="vc.icon"></mat-icon>
-          }
-        </div>
-        <span class="status-label">{{ vc.label | translate }}</span>
-        <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
-      </div>
-    }
-
-    <button
-      matIconButton
-      class="configure-toggle-btn"
-      (click)="onConfigureActions()"
-      [attr.title]="'modals.actionSelection.configureTooltip' | translate"
+  @if (showStatusIndicators()) {
+    <div
+      class="remote-status-indicators"
+      role="group"
+      [attr.aria-label]="'dashboard.generalDetail.remoteActionQuickSelection' | translate"
     >
-      <mat-icon svgIcon="settings"></mat-icon>
-    </button>
-  </div>
+      @for (vc of viewActionConfigs(); track vc.key) {
+        <div
+          class="status-chip"
+          [class]="vc.key"
+          [class.active]="vc.isActive"
+          [class.disabled]="vc.isLoading || !vc.canInteract"
+          role="button"
+          tabindex="0"
+          aria-pressed="true"
+          [attr.aria-label]="vc.ariaLabel"
+          [attr.title]="vc.tooltip | translate"
+          (click)="onChipClick(vc)"
+          (keydown.enter)="onChipClick(vc)"
+          (keydown.space)="$event.preventDefault(); onChipClick(vc)"
+        >
+          <div class="status-dot">
+            @if (vc.isLoading) {
+              <mat-icon svgIcon="spinner"></mat-icon>
+            } @else {
+              <mat-icon [svgIcon]="vc.icon"></mat-icon>
+            }
+          </div>
+          <span class="status-label">{{ vc.label | translate }}</span>
+          <span class="cdk-visually-hidden">{{ vc.ariaLabel }}</span>
+        </div>
+      }
+
+      <button
+        matIconButton
+        class="configure-toggle-btn"
+        (click)="onConfigureActions()"
+        [attr.title]="'modals.actionSelection.configureTooltip' | translate"
+      >
+        <mat-icon svgIcon="settings"></mat-icon>
+      </button>
+    </div>
+  }
 </div>
 
 <div class="detail-content">
@@ -61,6 +63,72 @@
     [config]="diskUsageConfig()"
     (retry)="retryDiskUsage.emit()"
   ></app-disk-usage-panel>
+
+  @if (showQuickRuns()) {
+    <mat-card class="quick-runs-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="quick-run"></mat-icon>
+          <span>{{ 'flow.quickRun.title' | translate }}</span>
+          @if (remoteQuickRuns().length > 0) {
+            <span class="app-pill p-primary">{{ remoteQuickRuns().length }}</span>
+          }
+        </mat-card-title>
+        <button
+          class="action-button"
+          (click)="onCreateQuickRunForRemote()"
+          [attr.title]="
+            'flow.quickRun.overview.createForRemote' | translate: { remote: selectedRemote().name }
+          "
+        >
+          <mat-icon svgIcon="plus"></mat-icon>
+        </button>
+      </mat-card-header>
+      <mat-card-content>
+        @if (remoteQuickRuns().length > 0) {
+          <div class="quick-runs-grid">
+            @for (qr of remoteQuickRuns(); track qr.id) {
+              <app-quick-run-card
+                [quickRun]="qr"
+                [isRunning]="isQuickRunRunning(qr.id)"
+                variant="overview"
+                (selectedChange)="onSelectQuickRunById($event)"
+                (startRun)="onStartQuickRun($event)"
+                (stopRun)="onStopQuickRun($event)"
+                (editRun)="onEditQuickRun($event)"
+                (openInFiles)="onOpenQuickRunInFiles($event, qr)"
+              />
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon svgIcon="quick-run" class="empty-icon"></mat-icon>
+            <p>
+              {{
+                'flow.quickRun.overview.noRunsForRemote'
+                  | translate: { remote: selectedRemote().name }
+              }}
+            </p>
+            <button
+              matButton="filled"
+              class="primary"
+              (click)="onCreateQuickRunForRemote()"
+              [attr.title]="
+                'flow.quickRun.overview.createForRemote'
+                  | translate: { remote: selectedRemote().name }
+              "
+            >
+              <mat-icon svgIcon="plus"></mat-icon>
+              {{
+                'flow.quickRun.overview.createForRemote'
+                  | translate: { remote: selectedRemote().name }
+              }}
+            </button>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
 
   <app-jobs-panel
     [config]="jobsPanelConfig()"

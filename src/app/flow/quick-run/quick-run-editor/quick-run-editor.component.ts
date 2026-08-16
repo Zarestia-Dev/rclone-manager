@@ -63,6 +63,7 @@ import { FlagConfigService } from 'src/app/services/remote/flag-config.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
+import { QuickRunEditorModalOptions } from 'src/app/services/ui/modal.service';
 import { RemotePresetsService } from 'src/app/services/remote/remote-presets';
 import { NotificationService } from 'src/app/services/ui/notification.service';
 import { IconService } from 'src/app/services/ui/icon.service';
@@ -133,7 +134,7 @@ export class QuickRunEditorComponent implements OnInit {
   readonly iconService = inject(IconService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject(MatDialogRef<QuickRunEditorComponent>, { optional: true });
-  private readonly dialogData = inject<{ quickRun?: QuickRun }>(MAT_DIALOG_DATA, {
+  private readonly dialogData = inject<QuickRunEditorModalOptions | null>(MAT_DIALOG_DATA, {
     optional: true,
   });
 
@@ -274,7 +275,9 @@ export class QuickRunEditorComponent implements OnInit {
 
   ngOnInit(): void {
     const target = this.targetQuickRun();
-    const initOp = (this.dialogData as { initialOpType?: PrimaryActionType } | null)?.initialOpType;
+    const cloneData = this.dialogData?.cloneData;
+    const initOp = this.dialogData?.initialOpType;
+    const initRemote = this.dialogData?.initialRemoteName;
     if (target) {
       this.form.patchValue({
         name: target.name,
@@ -286,8 +289,25 @@ export class QuickRunEditorComponent implements OnInit {
       this.activeTab.set(target.operationType as FlagType);
       this.currentRemoteName.set(target.remoteName);
       this.populateFormFromSeed(target.config);
-    } else if (initOp) {
-      this.selectOperation(initOp);
+    } else if (cloneData) {
+      this.form.patchValue({
+        name: cloneData.name,
+        description: cloneData.description ?? '',
+        operationType: cloneData.operationType,
+        remoteName: cloneData.remoteName,
+      });
+      this.currentOpType.set(cloneData.operationType);
+      this.activeTab.set(cloneData.operationType as FlagType);
+      this.currentRemoteName.set(cloneData.remoteName);
+      this.populateFormFromSeed(cloneData.config);
+    } else {
+      if (initOp) {
+        this.selectOperation(initOp);
+      }
+      if (initRemote) {
+        this.form.patchValue({ remoteName: initRemote });
+        this.currentRemoteName.set(initRemote);
+      }
     }
 
     void this.loadAllFlagFields();
@@ -354,13 +374,12 @@ export class QuickRunEditorComponent implements OnInit {
       ? {
           app: {
             autoStart: !!prevRaw['autoStart'],
+            showOnTray: prevRaw['showOnTray'] !== undefined ? !!prevRaw['showOnTray'] : true,
             cronEnabled: !!prevRaw['cronEnabled'],
             cronExpression: (prevRaw['cronExpression'] as string | null) ?? null,
             watchEnabled: !!prevRaw['watchEnabled'],
             watchDelay: (prevRaw['watchDelay'] as number) ?? 5,
-            vfsProfile: (prevRaw['vfsProfile'] as string) ?? 'Default',
-            filterProfile: (prevRaw['filterProfile'] as string) ?? 'Default',
-            backendProfile: (prevRaw['backendProfile'] as string) ?? 'Default',
+            watchChangedOnly: !!prevRaw['watchChangedOnly'],
           },
           rclone: {},
         }
@@ -413,15 +432,13 @@ export class QuickRunEditorComponent implements OnInit {
 
     const group: Record<string, unknown> = {
       autoStart: [app?.autoStart ?? false],
+      showOnTray: [app?.showOnTray ?? true],
       cronEnabled: [app?.cronEnabled ?? false],
       cronExpression: [app?.cronExpression ?? null],
       watchEnabled: [app?.watchEnabled ?? false],
       watchDelay: [app?.watchDelay ?? 5],
       watchChangedOnly: [app?.watchChangedOnly ?? false],
       source,
-      vfsProfile: ['Default'],
-      filterProfile: ['Default'],
-      backendProfile: ['Default'],
       options: optionsGroup,
     };
     if (dest) group['dest'] = dest;
@@ -637,7 +654,7 @@ export class QuickRunEditorComponent implements OnInit {
   }
 
   private checkAndSetDefaultDestPath(): void {
-    if (this.targetQuickRun()) return;
+    if (this.targetQuickRun() || this.dialogData?.cloneData) return;
     const opType = this.currentOpType();
     const remoteName = this.currentRemoteName();
     if (!remoteName || (opType !== 'mount' && opType !== 'bisync')) return;
@@ -865,13 +882,12 @@ export class QuickRunEditorComponent implements OnInit {
 
     const app: AppConfig = {
       autoStart: !!rawValue['autoStart'],
+      showOnTray: rawValue['showOnTray'] !== undefined ? !!rawValue['showOnTray'] : true,
       cronEnabled: !!rawValue['cronEnabled'],
       cronExpression: (rawValue['cronExpression'] as string | null) ?? null,
       watchEnabled: !!rawValue['watchEnabled'],
       watchDelay: (rawValue['watchDelay'] as number) ?? 5,
-      vfsProfile: (rawValue['vfsProfile'] as string) ?? 'Default',
-      filterProfile: (rawValue['filterProfile'] as string) ?? 'Default',
-      backendProfile: (rawValue['backendProfile'] as string) ?? 'Default',
+      watchChangedOnly: !!rawValue['watchChangedOnly'],
     };
 
     const opConfig: Record<string, unknown> = {};

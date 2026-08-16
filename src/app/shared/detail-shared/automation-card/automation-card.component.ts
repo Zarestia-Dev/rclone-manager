@@ -53,6 +53,25 @@ export class AutomationCardComponent {
   toggled = output<string>();
   openInFiles = output<string>();
 
+  protected readonly isQuickRun = computed(() => {
+    const auto = this.automation();
+    return auto.args?.source === 'quickrun' || auto.args?.source === 'flow';
+  });
+
+  protected readonly originLabel = computed(() => {
+    return this.isQuickRun()
+      ? this.translate.instant('flow.tabs.quickRun') || 'Quick Run'
+      : this.translate.instant('navigation.dashboard') || 'Dashboard';
+  });
+
+  protected readonly originIcon = computed(() => {
+    return this.isQuickRun() ? 'quick-run' : 'cloud';
+  });
+
+  protected readonly originBadgeClass = computed(() => {
+    return this.isQuickRun() ? 'p-primary' : 'p-dim';
+  });
+
   protected readonly automationMeta = computed(
     () => AUTOMATION_TYPE_META[this.automation().automationType] ?? DEFAULT_META
   );

@@ -141,6 +141,44 @@
     min-width: 0;
   }
 
+  .automation-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .origin-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dim-color);
+    opacity: 0.75;
+    vertical-align: middle;
+    transition: opacity var(--transition-fast);
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &.quickrun {
+      color: var(--primary-color);
+      opacity: 0.9;
+    }
+
+    .origin-mini-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+    }
+  }
+
+  .origin-pill {
+    font-size: 10px;
+    padding: 1px 6px;
+    font-weight: 500;
+  }
+
   .automation-name {
     font-weight: 600;
     font-size: var(--font-size-md);
@@ -256,14 +294,27 @@
       flex: 1;
       min-width: 0;
 
-      h4 {
-        margin: 0;
-        font-size: var(--font-size-lg);
-        font-weight: 600;
-        color: var(--window-fg-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .title-heading-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        min-width: 0;
+
+        h4 {
+          margin: 0;
+          font-size: var(--font-size-lg);
+          font-weight: 600;
+          color: var(--window-fg-color);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .origin-pill {
+          font-size: 10px;
+          padding: 1px 6px;
+          font-weight: 500;
+        }
       }
     }
 

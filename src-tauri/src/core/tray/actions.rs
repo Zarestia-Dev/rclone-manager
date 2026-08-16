@@ -48,6 +48,34 @@ fn profile_params(remote_name: &str, profile_name: &str) -> ProfileParams {
     }
 }
 
+// Quick Runs
+
+pub fn handle_start_quick_run(app: AppHandle, quick_run_id: String) {
+    tauri::async_runtime::spawn(async move {
+        match crate::core::flow::quick_run::commands::start_quick_run(app, quick_run_id.clone())
+            .await
+        {
+            Ok(res) => info!("Started quick run {quick_run_id} (job id: {})", res.job_id),
+            Err(e) => error!("Failed to start quick run {quick_run_id}: {e}"),
+        }
+    });
+}
+
+pub fn handle_stop_quick_run(app: AppHandle, quick_run_id: String) {
+    tauri::async_runtime::spawn(async move {
+        match crate::core::flow::quick_run::commands::stop_quick_run(
+            app,
+            quick_run_id.clone(),
+            None,
+        )
+        .await
+        {
+            Ok(()) => info!("Stopped quick run {quick_run_id}"),
+            Err(e) => error!("Failed to stop quick run {quick_run_id}: {e}"),
+        }
+    });
+}
+
 // Transfer jobs
 
 pub fn handle_start_job_profile(

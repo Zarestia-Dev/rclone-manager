@@ -21,7 +21,7 @@ use crate::{
         types::{
             jobs::{JobStatus, JobType},
             origin::Origin,
-            remotes::{OperationType, RemoteSettings},
+            remotes::OperationType,
         },
     },
 };
@@ -100,10 +100,28 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
 
 async fn sync_quick_run_automations_bg(app: &AppHandle) {
     use crate::core::automation::{engine::AutomationScheduler, watcher::WatcherManager};
+    use crate::core::settings::AppSettingsManager;
+    use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
+
+    let manager = app.state::<AppSettingsManager>();
+    let cache = app.state::<AutomationsCache>();
     let scheduler = app.state::<AutomationScheduler>();
     let watcher = app.state::<WatcherManager>();
-    let _ = scheduler.sync_quick_runs(app.clone()).await;
-    let _ = watcher.sync_quick_run_watchers(app.clone()).await;
+    let backend_manager = app.state::<BackendManager>();
+    let backend_name = backend_manager.get_active_name().await;
+
+    if let Ok(quick_runs) = get_all_quick_runs_sync(&manager) {
+        if let Ok(result) = cache
+            .load_from_quick_runs(&quick_runs, &backend_name, Some(app))
+            .await
+        {
+            let _ = scheduler.apply_cache_result(&result, cache).await;
+        }
+        let _ = watcher.sync_watchers(app.clone()).await;
+    }
+
+    #[cfg(all(desktop, feature = "tray"))]
+    let _ = crate::core::tray::core::update_tray_menu(app.clone()).await;
 }
 
 /// Start execution of a quick run.
@@ -118,16 +136,14 @@ pub async fn start_quick_run(
     let qr = get_quick_run(&manager, &quick_run_id)?
         .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
 
-    let settings = RemoteSettings::load(manager.inner(), &qr.remote_name)
-        .ok()
-        .and_then(|s| serde_json::to_value(s).ok())
-        .unwrap_or_else(|| json!({}));
+    let empty_settings = json!({});
 
     if qr.operation_type == OperationType::Mount {
         let mut mount_params =
-            MountParams::from_config(qr.remote_name.clone(), &qr.config, &settings).ok_or_else(
-                || format!("Quick run '{}' mount configuration is incomplete", qr.name),
-            )?;
+            MountParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)
+                .ok_or_else(|| {
+                    format!("Quick run '{}' mount configuration is incomplete", qr.name)
+                })?;
         mount_params.profile = Some(qr.name.clone());
         mount_params.origin = Some(Origin::QuickRun);
 
@@ -138,9 +154,10 @@ pub async fn start_quick_run(
 
     if qr.operation_type == OperationType::Serve {
         let mut serve_params =
-            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &settings).ok_or_else(
-                || format!("Quick run '{}' serve configuration is incomplete", qr.name),
-            )?;
+            ServeParams::from_config(qr.remote_name.clone(), &qr.config, &empty_settings)
+                .ok_or_else(|| {
+                    format!("Quick run '{}' serve configuration is incomplete", qr.name)
+                })?;
         serve_params.profile = Some(qr.name.clone());
 
         start_serve(app.clone(), serve_params).await?;
@@ -148,15 +165,36 @@ pub async fn start_quick_run(
         return Ok(StartQuickRunResponse { job_id: 0 });
     }
 
-    let common = parse_common_config(&qr.config, &settings)
+    let common = parse_common_config(&qr.config, &empty_settings)
         .ok_or_else(|| format!("Quick run '{}' configuration is incomplete", qr.name))?;
 
-    let dry_run = common
-        .backend_options
-        .as_ref()
-        .and_then(|opts| opts.get("DryRun"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+    let dry_run = if qr.operation_type == OperationType::Bisync {
+        common
+            .rclone_config
+            .get("dryRun")
+            .or_else(|| common.rclone_config.get("dry_run"))
+            .or_else(|| common.rclone_config.get("DryRun"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    } else {
+        common
+            .backend_options
+            .as_ref()
+            .and_then(|opts| {
+                opts.get("DryRun")
+                    .or_else(|| opts.get("dry_run"))
+                    .or_else(|| opts.get("dryRun"))
+            })
+            .or_else(|| {
+                common
+                    .rclone_config
+                    .get("DryRun")
+                    .or_else(|| common.rclone_config.get("dry_run"))
+                    .or_else(|| common.rclone_config.get("dryRun"))
+            })
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
 
     let mut inputs = Vec::new();
     for source in &common.source {
@@ -218,13 +256,10 @@ pub async fn stop_quick_run(
     let qr = get_quick_run(&manager, &quick_run_id)?
         .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
 
-    let settings = RemoteSettings::load(manager.inner(), &qr.remote_name)
-        .ok()
-        .and_then(|s| serde_json::to_value(s).ok())
-        .unwrap_or_else(|| json!({}));
+    let empty_settings = json!({});
 
     if qr.operation_type == OperationType::Mount {
-        if let Some(common) = parse_common_config(&qr.config, &settings) {
+        if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
             let mount_point = common.dest;
             if !mount_point.is_empty() {
                 let _ = crate::rclone::commands::mount::unmount_remote(
@@ -405,5 +440,30 @@ mod tests {
         delete_quick_run_by_id(&manager, "qr-test-1").unwrap();
         let after_delete = get_quick_run(&manager, "qr-test-1").unwrap();
         assert!(after_delete.is_none());
+    }
+
+    #[test]
+    fn test_quick_run_config_isolation() {
+        let empty_settings = json!({});
+        let qr_config = json!({
+            "app": {
+                "autoStart": false,
+                "cronEnabled": false,
+                "watchEnabled": false
+            },
+            "rclone": {
+                "srcFs": "remote:bucket/source",
+                "dstFs": "/local/target",
+                "dryRun": true
+            }
+        });
+
+        let common =
+            parse_common_config(&qr_config, &empty_settings).expect("Failed to parse config");
+        assert_eq!(common.source, vec!["remote:bucket/source"]);
+        assert_eq!(common.dest, "/local/target");
+        assert!(common.vfs_options.is_none());
+        assert!(common.filter_options.is_none());
+        assert!(common.backend_options.is_none());
     }
 }

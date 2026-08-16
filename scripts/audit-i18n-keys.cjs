@@ -42,7 +42,8 @@ for (const localeFile of localeFiles) {
   const localeName = path.basename(path.dirname(localeFile));
   const localeTree = readJson(localeFile);
   const localeKeys = flattenKeys(localeTree);
-  const localeMissing = localeName === 'en-US' ? englishMissingFromCode : diff(englishKeys, localeKeys);
+  const localeMissing =
+    localeName === 'en-US' ? englishMissingFromCode : diff(englishKeys, localeKeys);
   const localeUnused = localeName === 'en-US' ? [] : diff(localeKeys, englishKeys);
   const localeCodeUnused = findCodeUnused(localeKeys, usage);
 
@@ -98,7 +99,7 @@ function collectFiles(rootDir, extensions) {
 }
 
 function collectLocaleFiles(rootDir) {
-  return collectFiles(rootDir, ['.json']).filter((file) => path.basename(file) === 'main.json');
+  return collectFiles(rootDir, ['.json']).filter(file => path.basename(file) === 'main.json');
 }
 
 function shouldSkipDir(name) {
@@ -175,8 +176,10 @@ function collectUsage(files, knownKeys, knownPrefixes) {
 
   // Template literal with interpolation: `prefix.${var}.suffix`
   // Extracts the prefix (before ${) as a dynamic prefix
-  const tsTemplateDynamicRegex =
-    /`([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\.\$\{/g;
+  const tsTemplateDynamicRegex = /`([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\.\$\{/g;
+
+  // Direct translate pipe regex: 'key.path' | translate
+  const translatePipeRegex = /['"`]([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)['"`]\s*\|\s*translate/g;
 
   // Dotted string literals in TS files — validated against known keys/prefixes
   const tsStringLiteralRegex = /(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/g;
@@ -224,6 +227,11 @@ function collectUsage(files, knownKeys, knownPrefixes) {
     }
 
     if (isHtml) {
+      // Direct pipe invocations: 'key.path' | translate
+      for (const key of extractMatches(source, translatePipeRegex, 1)) {
+        frontend.add(key);
+      }
+
       // Dynamic prefix patterns → 'alerts.action.' + kind | translate
       for (const prefix of extractMatchesNoFilter(source, htmlDynamicPrefixRegex, 1)) {
         if (prefix.includes('.') && knownPrefixes.has(prefix)) {
@@ -250,6 +258,11 @@ function collectUsage(files, knownKeys, knownPrefixes) {
       for (const key of extractMatches(source, regex, 2)) {
         frontend.add(key);
       }
+    }
+
+    // Direct pipe invocations in inline templates
+    for (const key of extractMatches(source, translatePipeRegex, 1)) {
+      frontend.add(key);
     }
 
     // Template literal dynamic keys → extract prefix
@@ -297,7 +310,7 @@ function findCodeUnused(localeKeys, usageData) {
   const prefixArray = [...dynamicPrefixes];
 
   return [...localeKeys]
-    .filter((key) => {
+    .filter(key => {
       // If directly referenced, it's used
       if (combined.has(key)) return false;
 
@@ -345,7 +358,7 @@ function stripRustComments(content) {
 
 function diff(left, right) {
   const rightSet = right instanceof Set ? right : new Set(right);
-  return [...left].filter((item) => !rightSet.has(item)).sort();
+  return [...left].filter(item => !rightSet.has(item)).sort();
 }
 
 function printReport(reportData) {
@@ -372,10 +385,12 @@ function printReport(reportData) {
     `\nTotals: missing=${missingCount}, unusedVsEnglish=${unusedCount}, unusedVsCode=${codeUnusedCount}`
   );
 
-  const hasLong =
-    Object.values(reportData.locales).some(
-      (l) => l.missing.length > MAX_INLINE || l.unused.length > MAX_INLINE || (l.codeUnused || []).length > MAX_INLINE
-    );
+  const hasLong = Object.values(reportData.locales).some(
+    l =>
+      l.missing.length > MAX_INLINE ||
+      l.unused.length > MAX_INLINE ||
+      (l.codeUnused || []).length > MAX_INLINE
+  );
   if (hasLong) {
     console.log(`\nTip: Use --json for the full machine-readable report.`);
   }

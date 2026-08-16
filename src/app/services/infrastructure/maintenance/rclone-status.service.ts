@@ -6,6 +6,7 @@ import { filter, switchMap, tap } from 'rxjs/operators';
 import { SystemInfoService } from '../system/system-info.service';
 import { BackendService } from '../system/backend.service';
 import { EventListenersService } from '../system/event-listeners.service';
+import { AppSettingsService } from '../../settings/app-settings.service';
 import {
   BandwidthLimitResponse,
   DEFAULT_JOB_STATS,
@@ -22,12 +23,17 @@ export class RcloneStatusService {
   private systemInfoService = inject(SystemInfoService);
   private backendService = inject(BackendService);
   private eventListenersService = inject(EventListenersService);
+  private appSettingsService = inject(AppSettingsService);
   private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
 
   readonly rcloneInfo = signal<RcloneInfo | null>(null, { equal: deepEqual });
   readonly bandwidthLimit = signal<BandwidthLimitResponse | null>(null, {
     equal: deepEqual,
+  });
+  readonly savedBandwidthLimit = computed(() => {
+    const opts = this.appSettingsService.options();
+    return ((opts?.['core.bandwidth_limit']?.value as string) ?? '').trim();
   });
   readonly rcloneStatus = signal<RcloneStatus>('inactive');
   readonly rclonePID = signal<number | null>(null);
@@ -170,6 +176,13 @@ export class RcloneStatusService {
         error: `Failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
+  }
+
+  async setBandwidthLimit(rate: string): Promise<void> {
+    const persistedValue = rate === 'off' ? '' : rate;
+    await this.systemInfoService.bandwidthLimit(rate);
+    await this.loadBandwidthLimit();
+    await this.appSettingsService.saveSetting('core', 'bandwidth_limit', persistedValue);
   }
 
   pausePolling(): void {

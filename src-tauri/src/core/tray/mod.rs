@@ -8,8 +8,9 @@ pub mod tray_action;
 
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
-use crate::utils::types::jobs::JobType;
-use crate::utils::types::remotes::{MountedRemote, ServeInstance};
+use crate::utils::types::jobs::{JobStatus, JobType};
+use crate::utils::types::origin::Origin;
+use crate::utils::types::remotes::{MountedRemote, OperationType, ServeInstance};
 use menu::MenuPlan;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
@@ -57,11 +58,20 @@ pub struct TrayRemoteSummary {
     pub serve_profiles: Vec<TrayProfileSummary>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct TrayQuickRunSummary {
+    pub id: String,
+    pub name: String,
+    pub is_active: bool,
+    pub show_on_tray: bool,
+}
+
 pub struct TraySnapshot {
     pub active_jobs: Vec<TrayJobSummary>,
     pub mounted_remotes: Vec<MountedRemote>,
     pub active_serves: Vec<ServeInstance>,
     pub remotes: Vec<TrayRemoteSummary>,
+    pub quick_runs: Vec<TrayQuickRunSummary>,
 }
 
 impl TraySnapshot {
@@ -199,11 +209,62 @@ impl TraySnapshot {
             })
             .collect();
 
+        let raw_quick_runs = crate::core::flow::quick_run::commands::get_all_quick_runs_sync(
+            settings_manager.inner(),
+        )
+        .unwrap_or_default();
+
+        let quick_runs = raw_quick_runs
+            .into_iter()
+            .map(|qr| {
+                let show_on_tray = qr.is_show_on_tray();
+                let is_active = match qr.operation_type {
+                    OperationType::Mount => {
+                        let dest = qr
+                            .config
+                            .get("rclone")
+                            .and_then(|r| {
+                                r.get("mountPoint")
+                                    .or_else(|| r.get("dstFs"))
+                                    .or_else(|| r.get("dest"))
+                            })
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        mounted_remotes.iter().any(|mt| {
+                            (mt.profile.as_ref() == Some(&qr.name))
+                                || (!dest.is_empty() && mt.mount_point == dest)
+                        })
+                    }
+                    OperationType::Serve => {
+                        let target_remote =
+                            crate::utils::json_helpers::normalize_remote_name(&qr.remote_name);
+                        active_serves_list.iter().any(|(remote, profile)| {
+                            profile.as_ref() == Some(&qr.name) || remote == &target_remote
+                        })
+                    }
+                    _ => active_jobs_raw.iter().any(|j| {
+                        j.status == JobStatus::Running
+                            && j.remote_name == qr.remote_name
+                            && (j.profile.as_deref() == Some(&qr.name)
+                                || j.origin == Some(Origin::QuickRun))
+                    }),
+                };
+
+                TrayQuickRunSummary {
+                    id: qr.id,
+                    name: qr.name,
+                    is_active,
+                    show_on_tray,
+                }
+            })
+            .collect();
+
         Ok(Self {
             active_jobs,
             mounted_remotes,
             active_serves,
             remotes,
+            quick_runs,
         })
     }
 }

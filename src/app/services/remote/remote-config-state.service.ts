@@ -315,8 +315,13 @@ export class RemoteConfigStateService {
     { label: 'modals.remoteConfig.steps.runtimeRemote', icon: 'gear', type: 'runtimeRemote' },
   ]);
 
+  readonly isEditingExisting = computed(() => {
+    const data = this.dialogData();
+    return !!(data.name || data.cloneFrom);
+  });
+
   readonly editTargetStepKey = computed(() =>
-    this.editTarget()
+    this.editTarget() && (this.isEditingExisting() || this.editTarget() !== 'remote')
       ? `modals.remoteConfig.steps.${this.editTarget() === 'remote' ? 'remoteConfig' : this.editTarget()}`
       : null
   );
@@ -383,7 +388,7 @@ export class RemoteConfigStateService {
   );
   readonly applicableSteps = computed(() => {
     const t = this.editTarget();
-    if (!t || t === 'remote') return this.stepConfigs().map((_, i) => i + 1);
+    if (!t) return this.stepConfigs().map((_, i) => i + 1);
     const idx = this.stepConfigs().findIndex(s => s.type === t);
     return idx !== -1 ? [idx + 1] : [1];
   });
@@ -447,7 +452,9 @@ export class RemoteConfigStateService {
   readonly isInteractiveContinueDisabled = this.orchestrator.isInteractiveContinueDisabled;
 
   readonly saveButtonLabel = computed(() =>
-    this.editTarget() ? 'modals.remoteConfig.buttons.save' : 'modals.remoteConfig.buttons.create'
+    this.isEditingExisting()
+      ? 'modals.remoteConfig.buttons.save'
+      : 'modals.remoteConfig.buttons.create'
   );
 
   isStepInvalid(stepType: string): boolean {
