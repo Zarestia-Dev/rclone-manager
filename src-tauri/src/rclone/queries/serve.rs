@@ -11,16 +11,11 @@ pub fn parse_serves_response(response: &Value) -> Vec<ServeInstance> {
         .map(|arr| {
             arr.iter()
                 .filter_map(|item| {
-                    let id = item.get("id")?.as_str()?.to_string();
-                    let addr = item.get("addr")?.as_str()?.to_string();
+                    let id = item.get("id")?.as_str()?;
+                    let addr = item.get("addr")?.as_str()?;
                     let params = item.get("params")?.clone();
 
-                    Some(ServeInstance {
-                        id,
-                        addr,
-                        params,
-                        profile: None,
-                    })
+                    Some(ServeInstance::new(id, addr, params))
                 })
                 .collect()
         })

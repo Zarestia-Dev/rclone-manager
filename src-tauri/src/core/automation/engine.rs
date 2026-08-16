@@ -421,11 +421,15 @@ pub async fn execute_automation(
         match result {
             Ok(res) => {
                 let next_run = get_run_expr_or_none(automation.cron_expression.as_deref());
+                let job_handle = res
+                    .job_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| res.execute_id.clone());
                 cache
                     .update_automation(
                         automation_id,
                         |t| {
-                            t.mark_running(res.job_id.to_string());
+                            t.mark_running(job_handle);
                             t.next_run = next_run;
                         },
                         Some(app_handle),

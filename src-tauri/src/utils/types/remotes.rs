@@ -1,4 +1,6 @@
-use crate::utils::types::jobs::JobType;
+use crate::utils::types::jobs::{JobStatus, JobType};
+use crate::utils::types::origin::Origin;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::RwLock;
@@ -12,6 +14,26 @@ pub struct MountedRemote {
     pub mount_point: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execute_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<Origin>,
+}
+
+impl MountedRemote {
+    #[must_use]
+    pub fn new(fs: impl Into<String>, mount_point: impl Into<String>) -> Self {
+        Self {
+            fs: fs.into(),
+            mount_point: mount_point.into(),
+            profile: None,
+            quick_run_id: None,
+            execute_id: None,
+            origin: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -21,6 +43,54 @@ pub struct ServeInstance {
     pub params: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execute_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<Origin>,
+}
+
+impl ServeInstance {
+    #[must_use]
+    pub fn new(id: impl Into<String>, addr: impl Into<String>, params: Value) -> Self {
+        Self {
+            id: id.into(),
+            addr: addr.into(),
+            params,
+            profile: None,
+            quick_run_id: None,
+            execute_id: None,
+            origin: None,
+        }
+    }
+}
+
+/// Unified response returned when starting any operation (mount, serve, sync, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OperationExecutionResult {
+    pub execute_id: String,
+    pub origin: Origin,
+    pub operation_type: OperationType,
+    pub remote_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
+    pub success: bool,
+    pub status: JobStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    pub start_time: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub job_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub serve_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub serve_addr: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mount_point: Option<String>,
 }
 
 #[derive(Debug)]

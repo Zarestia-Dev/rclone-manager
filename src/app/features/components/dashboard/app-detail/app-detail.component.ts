@@ -217,7 +217,7 @@ export class AppDetailComponent {
   readonly isQuickRunRunning = computed(() => {
     const qr = this.quickRun();
     if (!qr) return false;
-    return qr.status === 'running';
+    return this.quickRunService.runningIds().has(qr.id);
   });
 
   readonly currentOpType = computed<PrimaryActionType>(() => {
@@ -385,14 +385,7 @@ export class AppDetailComponent {
       const qr = this.quickRun();
       if (!qr) return null;
       const jobs = this.jobService.jobs();
-      if (!jobs || jobs.length === 0) return null;
-      const cleanRemote = qr.remoteName.replace(/:$/, '');
-      const matchingJobs = jobs.filter(j => {
-        const remoteMatch =
-          j.remote_name === qr.remoteName || j.remote_name.replace(/:$/, '') === cleanRemote;
-        const flowMatch = j.origin === 'flow' && (j.profile === qr.name || remoteMatch);
-        return remoteMatch && flowMatch;
-      });
+      const matchingJobs = jobs.filter(j => j.quick_run_id === qr.id);
 
       if (matchingJobs.length === 0) return null;
 

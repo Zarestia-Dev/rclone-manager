@@ -231,12 +231,24 @@ describe('QuickRunService', () => {
       invokeSpy.mockResolvedValue([mockQuickRun]);
       await service.refresh();
 
-      invokeSpy.mockResolvedValue({ jobId: 42 });
+      const mockResult = {
+        executeId: 'exec-1',
+        origin: 'quickrun' as const,
+        operationType: 'sync' as const,
+        remoteName: 'drive:',
+        quickRunId: 'qr-1',
+        success: true,
+        status: 'running' as const,
+        startTime: '2026-08-16T18:00:00Z',
+        jobId: 42,
+      };
+      invokeSpy.mockResolvedValue(mockResult);
 
-      const jobId = await service.start('qr-1');
+      const res = await service.start('qr-1');
 
       expect(invokeSpy).toHaveBeenCalledWith('start_quick_run', { quickRunId: 'qr-1' });
-      expect(jobId).toBe(42);
+      expect(res?.jobId).toBe(42);
+      expect(res?.executeId).toBe('exec-1');
       expect(service.runningIds().has('qr-1')).toBe(true);
     });
 
@@ -251,6 +263,134 @@ describe('QuickRunService', () => {
         quickRunId: 'qr-1',
       });
       expect(service.runningIds().has('qr-1')).toBe(false);
+    });
+
+    it('should isolate mount status by quick_run_id and not falsely mark other quick runs as mounted', async () => {
+      const mountQr1: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-mount-1',
+        name: 'Mount 1',
+        operationType: 'mount',
+        config: { app: { autoStart: false }, rclone: { mountPoint: '/mnt/test' } },
+      };
+      const mountQr2: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-mount-2',
+        name: 'Mount 2',
+        operationType: 'mount',
+        config: { app: { autoStart: false }, rclone: { mountPoint: '/mnt/test' } },
+      };
+
+      invokeSpy.mockResolvedValue([mountQr1, mountQr2]);
+      await service.refresh();
+
+      const mountService = TestBed.inject(MountManagementService);
+      // Simulate only qr-mount-1 is active in mountedRemotes
+      (mountService.mountedRemotes as ReturnType<typeof signal>).set([
+        {
+          fs: 'drive:',
+          mount_point: '/mnt/test',
+          quick_run_id: 'qr-mount-1',
+          origin: 'quickrun',
+        },
+      ]);
+
+      TestBed.tick();
+
+      expect(service.runningIds().has('qr-mount-1')).toBe(true);
+      expect(service.runningIds().has('qr-mount-2')).toBe(false);
+    });
+
+    it('should isolate serve status by quick_run_id and not activate on remote profile serves', async () => {
+      const serveQr1: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-serve-1',
+        name: 'Serve 1',
+        operationType: 'serve',
+      };
+      const serveQr2: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-serve-2',
+        name: 'Serve 2',
+        operationType: 'serve',
+      };
+
+      invokeSpy.mockResolvedValue([serveQr1, serveQr2]);
+      await service.refresh();
+
+      const serveService = TestBed.inject(ServeManagementService);
+      // Simulate qr-serve-1 is active, and also a dashboard profile serve is active
+      (serveService.runningServes as ReturnType<typeof signal>).set([
+        {
+          id: 'srv-1',
+          addr: '127.0.0.1:8080',
+          params: { fs: 'drive:' },
+          quick_run_id: 'qr-serve-1',
+          origin: 'quickrun',
+        },
+        {
+          id: 'srv-dashboard',
+          addr: '127.0.0.1:8081',
+          params: { fs: 'drive:' },
+          profile: 'Serve 2', // Same name as qr-serve-2, but it's a dashboard profile!
+          origin: 'dashboard',
+        },
+      ]);
+
+      TestBed.tick();
+
+      expect(service.runningIds().has('qr-serve-1')).toBe(true);
+      expect(service.runningIds().has('qr-serve-2')).toBe(false);
+    });
+
+    it('should isolate sync job status by quick_run_id and ignore remote profile jobs', async () => {
+      const syncQr1: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-sync-1',
+        name: 'Sync 1',
+        operationType: 'sync',
+      };
+      const syncQr2: QuickRun = {
+        ...mockQuickRun,
+        id: 'qr-sync-2',
+        name: 'Sync 2',
+        operationType: 'sync',
+      };
+
+      invokeSpy.mockResolvedValue([syncQr1, syncQr2]);
+      await service.refresh();
+
+      const jobService = TestBed.inject(JobManagementService);
+      // Simulate qr-sync-1 is running, and a dashboard job with same remote and name 'Sync 2' is running
+      (jobService.jobs as ReturnType<typeof signal>).set([
+        {
+          jobid: 101,
+          job_type: 'sync',
+          remote_name: 'drive:',
+          source: 'drive:path1',
+          destination: '/local/dest1',
+          status: 'Running',
+          execute_id: 'exec-qr-1',
+          quick_run_id: 'qr-sync-1',
+          origin: 'quickrun',
+        },
+        {
+          jobid: 102,
+          job_type: 'sync',
+          remote_name: 'drive:',
+          source: 'drive:path2',
+          destination: '/local/dest2',
+          profile: 'Sync 2',
+          status: 'Running',
+          execute_id: 'exec-dash-2',
+          origin: 'dashboard',
+        },
+      ]);
+
+      TestBed.tick();
+
+      expect(service.runningIds().has('qr-sync-1')).toBe(true);
+      expect(service.runningIds().has('qr-sync-2')).toBe(false);
     });
   });
 });

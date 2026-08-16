@@ -29,11 +29,10 @@ pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, S
             .unwrap_or(&vec![])
             .iter()
             .filter_map(|mp| {
-                Some(MountedRemote {
-                    fs: mp["Fs"].as_str()?.to_string(),
-                    mount_point: mp["MountPoint"].as_str()?.to_string(),
-                    profile: None,
-                })
+                Some(MountedRemote::new(
+                    mp["Fs"].as_str()?,
+                    mp["MountPoint"].as_str()?,
+                ))
             })
             .collect();
 

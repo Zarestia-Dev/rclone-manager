@@ -450,7 +450,7 @@
       },
       "notifications": {
         "label": "Habilitar notificaciones",
-        "description": "Mostrar notificaciones para los eventos de montaje."
+        "description": "Mostrar notificaciones de escritorio para eventos de la aplicación (montajes, sincronizaciones, actualizaciones, etc.)."
       },
       "restrict": {
         "label": "Restringir valores",

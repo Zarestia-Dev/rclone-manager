@@ -32,6 +32,8 @@ pub struct MountParams {
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub origin: Option<crate::utils::types::origin::Origin>,
+    pub quick_run_id: Option<String>,
+    pub execute_id: Option<String>,
     pub no_cache: Option<bool>,
 }
 
@@ -71,6 +73,8 @@ impl FromConfig for MountParams {
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
             origin: None,
+            quick_run_id: None,
+            execute_id: None,
             no_cache: None,
         })
     }
@@ -189,6 +193,9 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             fs: params.source.clone(),
             mount_point: mount_point.clone(),
             profile: params.profile.clone(),
+            quick_run_id: params.quick_run_id.clone(),
+            execute_id: params.execute_id.clone(),
+            origin: params.origin.clone(),
         };
 
         let mut current_mounts = cache.get_mounted_remotes().await;
@@ -196,7 +203,14 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         current_mounts.push(mounted_remote);
         cache.update_mounts_if_changed(current_mounts, &app).await;
         cache
-            .store_mount_profile(&mount_point, params.profile.clone())
+            .store_mount_profile(
+                &mount_point,
+                params.profile.clone(),
+                params.quick_run_id.clone(),
+                params.origin.clone(),
+                params.execute_id.clone(),
+                Some(&app),
+            )
             .await;
 
         crate::rclone::backend::saf_bridge::notify_roots_changed();
@@ -247,18 +261,17 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     );
 
     // Create job metadata
-    let metadata = super::job::JobMetadata {
-        remote_name: params.remote_name.clone(),
-        job_type: crate::utils::types::jobs::JobType::Mount,
-        source: vec![params.source.clone()],
-        destination: params.mount_point.clone(),
-        profile: params.profile.clone(),
-        origin: params.origin.clone(),
-        group: None,
-        no_cache: params.no_cache.unwrap_or(false),
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = super::job::JobMetadata::new(
+        params.remote_name.clone(),
+        crate::utils::types::jobs::JobType::Mount,
+        vec![params.source.clone()],
+        params.mount_point.clone(),
+    )
+    .with_profile(params.profile.clone())
+    .with_origin(params.origin.clone())
+    .with_no_cache(params.no_cache.unwrap_or(false))
+    .with_quick_run_id(params.quick_run_id.clone())
+    .with_execute_id(params.execute_id.clone());
 
     // Submit as a job and wait for completion for mount operations.
     let _ = super::job::submit_job_with_options(
@@ -272,11 +285,18 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     )
     .await?;
 
-    // Refresh first so the entry exists in cache, then attach the profile to it.
-    refresh_mounts_quietly(&app).await;
+    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     cache
-        .store_mount_profile(&params.mount_point, params.profile.clone())
+        .preseed_mount_metadata(
+            &params.source,
+            &params.mount_point,
+            params.profile.clone(),
+            params.quick_run_id.clone(),
+            params.origin.clone(),
+            params.execute_id.clone(),
+        )
         .await;
+    refresh_mounts_quietly(&app).await;
 
     let backend_name = backend_manager.get_active_name().await;
     notify(
@@ -546,7 +566,11 @@ pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Resu
 
     // Ensure profile is set from the function parameter, not the config object
     mount_params.profile = Some(params.profile_name.clone());
-    mount_params.origin = params.source;
+    mount_params.origin = params
+        .source
+        .or(Some(crate::utils::types::origin::Origin::Dashboard));
+    mount_params.quick_run_id = None;
+    mount_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
     mount_params.no_cache = params.no_cache;
 
     mount_remote(app, mount_params).await
@@ -626,6 +650,8 @@ mod tests {
             backend_options: Some(HashMap::from([("chunk-size".to_string(), json!("10M"))])),
             runtime_remote_options: None,
             profile: Some("my_profile".to_string()),
+            quick_run_id: None,
+            execute_id: None,
             origin: None,
             no_cache: None,
         };

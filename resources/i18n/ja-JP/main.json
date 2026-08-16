@@ -452,7 +452,7 @@
       },
       "notifications": {
         "label": "通知を有効化",
-        "description": "マウントイベントの通知を表示します。"
+        "description": "アプリのイベント（マウント、同期、更新など）に関するデスクトップ通知を表示します。"
       },
       "restrict": {
         "label": "値を制限",

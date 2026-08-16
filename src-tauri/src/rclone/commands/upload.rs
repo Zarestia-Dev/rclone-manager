@@ -275,31 +275,22 @@ pub async fn execute_upload_batch(
 
     let destination = build_full_path(&remote, &path);
     let jobid = existing_jobid.unwrap_or_else(|| chrono::Utc::now().timestamp_millis() as u64);
-    let metadata = JobMetadata {
-        remote_name: remote.clone(),
-        job_type: JobType::Upload,
-        source: local_paths.clone(),
+    let metadata = JobMetadata::new(
+        remote.clone(),
+        JobType::Upload,
+        local_paths.clone(),
         destination,
-        profile: None,
-        origin: origin.clone(),
-        group,
-        no_cache,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    )
+    .with_origin(origin.clone())
+    .with_group(group)
+    .with_no_cache(no_cache)
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let group_name = metadata.group_name();
 
     if existing_jobid.is_none() {
-        let execute_id = Some(uuid::Uuid::new_v4().to_string());
         job_cache
-            .create_job(
-                jobid,
-                execute_id,
-                metadata.clone(),
-                backend.name.clone(),
-                Some(&app),
-            )
+            .create_job(jobid, metadata.clone(), backend.name.clone(), Some(&app))
             .await;
     }
 

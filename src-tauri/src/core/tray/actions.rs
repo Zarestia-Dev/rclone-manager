@@ -55,7 +55,10 @@ pub fn handle_start_quick_run(app: AppHandle, quick_run_id: String) {
         match crate::core::flow::quick_run::commands::start_quick_run(app, quick_run_id.clone())
             .await
         {
-            Ok(res) => info!("Started quick run {quick_run_id} (job id: {})", res.job_id),
+            Ok(res) => info!(
+                "Started quick run {quick_run_id} (job id: {:?}, exec id: {})",
+                res.job_id, res.execute_id
+            ),
             Err(e) => error!("Failed to start quick run {quick_run_id}: {e}"),
         }
     });

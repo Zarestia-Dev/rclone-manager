@@ -450,7 +450,7 @@
       },
       "notifications": {
         "label": "Activer les notifications",
-        "description": "Afficher les notifications pour les événements de montage."
+        "description": "Afficher les notifications de bureau pour les événements de l'application (montages, synchronisations, mises à jour, etc.)."
       },
       "restrict": {
         "label": "Restreindre valeurs",

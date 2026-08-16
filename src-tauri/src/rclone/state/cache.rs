@@ -70,10 +70,16 @@ impl RemoteCache {
         incoming
             .into_iter()
             .map(|mut m| {
-                m.profile = existing
+                let norm = normalize_mount_path(&m.mount_point);
+                if let Some(e) = existing
                     .iter()
-                    .find(|e| e.mount_point == m.mount_point)
-                    .and_then(|e| e.profile.clone());
+                    .find(|e| normalize_mount_path(&e.mount_point) == norm)
+                {
+                    m.profile = e.profile.clone();
+                    m.quick_run_id = e.quick_run_id.clone();
+                    m.execute_id = e.execute_id.clone();
+                    m.origin = e.origin.clone();
+                }
                 m
             })
             .collect()
@@ -86,10 +92,12 @@ impl RemoteCache {
         incoming
             .into_iter()
             .map(|mut s| {
-                s.profile = existing
-                    .iter()
-                    .find(|e| e.id == s.id)
-                    .and_then(|e| e.profile.clone());
+                if let Some(e) = existing.iter().find(|e| e.id == s.id) {
+                    s.profile = e.profile.clone();
+                    s.quick_run_id = e.quick_run_id.clone();
+                    s.execute_id = e.execute_id.clone();
+                    s.origin = e.origin.clone();
+                }
                 s
             })
             .collect()
@@ -236,25 +244,130 @@ impl RemoteCache {
         Ok(())
     }
 
-    // POINT MUTATIONS — called immediately after a mount/serve operation succeeds
-
-    /// Write a profile directly onto the matching mount cache entry.
-    /// Must be called AFTER `force_check_mounted_remotes` so the entry exists.
-    pub async fn store_mount_profile(&self, mount_point: &str, profile: Option<String>) {
+    /// Pre-seed or update mount metadata before/during refresh so the upcoming
+    /// reconciliation carries the metadata without any race condition.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn preseed_mount_metadata(
+        &self,
+        fs: &str,
+        mount_point: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+    ) {
+        let norm = normalize_mount_path(mount_point);
         let mut mounts = self.mounted.write().await;
-        if let Some(m) = mounts.iter_mut().find(|m| m.mount_point == mount_point) {
-            debug!("📌 Stored mount profile: {mount_point} -> {profile:?}");
+        if let Some(m) = mounts
+            .iter_mut()
+            .find(|m| normalize_mount_path(&m.mount_point) == norm)
+        {
+            m.fs = fs.to_string();
             m.profile = profile;
+            m.quick_run_id = quick_run_id;
+            m.origin = origin;
+            m.execute_id = execute_id;
+        } else {
+            mounts.push(MountedRemote {
+                fs: fs.to_string(),
+                mount_point: mount_point.to_string(),
+                profile,
+                quick_run_id,
+                origin,
+                execute_id,
+            });
         }
     }
 
-    /// Write a profile directly onto the matching serve cache entry.
-    /// Must be called AFTER `force_check_serves` so the entry exists.
-    pub async fn store_serve_profile(&self, serve_id: &str, profile: Option<String>) {
+    /// Pre-seed or update serve metadata before/during refresh so the upcoming
+    /// reconciliation carries the metadata without any race condition.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn preseed_serve_metadata(
+        &self,
+        serve_id: &str,
+        addr: &str,
+        params: serde_json::Value,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+    ) {
         let mut serves = self.serves.write().await;
         if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
-            debug!("📌 Stored serve profile: {serve_id} -> {profile:?}");
             s.profile = profile;
+            s.quick_run_id = quick_run_id;
+            s.origin = origin;
+            s.execute_id = execute_id;
+        } else {
+            serves.push(ServeInstance {
+                id: serve_id.to_string(),
+                addr: addr.to_string(),
+                params,
+                profile,
+                quick_run_id,
+                origin,
+                execute_id,
+            });
+        }
+    }
+
+    /// Write profile and execution metadata directly onto the matching mount cache entry.
+    /// Must be called AFTER `force_check_mounted_remotes` so the entry exists.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn store_mount_profile(
+        &self,
+        mount_point: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+        app_handle: Option<&AppHandle>,
+    ) {
+        let norm = normalize_mount_path(mount_point);
+        let mut mounts = self.mounted.write().await;
+        if let Some(m) = mounts
+            .iter_mut()
+            .find(|m| normalize_mount_path(&m.mount_point) == norm)
+        {
+            debug!(
+                "📌 Stored mount metadata: {mount_point} -> profile:{profile:?}, qr:{quick_run_id:?}"
+            );
+            m.profile = profile;
+            m.quick_run_id = quick_run_id;
+            m.origin = origin;
+            m.execute_id = execute_id;
+            drop(mounts);
+            if let Some(app) = app_handle {
+                let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+            }
+        }
+    }
+
+    /// Write profile and execution metadata directly onto the matching serve cache entry.
+    /// Must be called AFTER `force_check_serves` so the entry exists.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn store_serve_profile(
+        &self,
+        serve_id: &str,
+        profile: Option<String>,
+        quick_run_id: Option<String>,
+        origin: Option<crate::utils::types::origin::Origin>,
+        execute_id: Option<String>,
+        app_handle: Option<&AppHandle>,
+    ) {
+        let mut serves = self.serves.write().await;
+        if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
+            debug!(
+                "📌 Stored serve metadata: {serve_id} -> profile:{profile:?}, qr:{quick_run_id:?}"
+            );
+            s.profile = profile;
+            s.quick_run_id = quick_run_id;
+            s.origin = origin;
+            s.execute_id = execute_id;
+            drop(serves);
+            if let Some(app) = app_handle {
+                let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+            }
         }
     }
 
@@ -477,6 +590,17 @@ pub async fn rename_serve_profile_in_cache<R: Runtime>(
     Ok(updated)
 }
 
+/// Normalize a mount path for robust equality comparison across platforms and slashes.
+pub fn normalize_mount_path(path: &str) -> String {
+    let p = path.replace('\\', "/");
+    let trimmed = p.trim_end_matches('/');
+    if trimmed.is_empty() {
+        p
+    } else {
+        trimmed.to_string()
+    }
+}
+
 impl Default for RemoteCache {
     fn default() -> Self {
         Self::new()
@@ -486,6 +610,40 @@ impl Default for RemoteCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_normalize_mount_path() {
+        assert_eq!(normalize_mount_path("/mnt/drive/"), "/mnt/drive");
+        assert_eq!(normalize_mount_path("/mnt/drive"), "/mnt/drive");
+        assert_eq!(normalize_mount_path(r"C:\mnt\drive\"), "C:/mnt/drive");
+        assert_eq!(normalize_mount_path(r"C:\mnt\drive"), "C:/mnt/drive");
+        assert_eq!(normalize_mount_path("/"), "/");
+    }
+
+    #[test]
+    fn test_merge_mount_profiles_preserves_metadata() {
+        let existing = vec![MountedRemote {
+            fs: "drive:".to_string(),
+            mount_point: "/mnt/drive".to_string(),
+            profile: Some("my-profile".to_string()),
+            quick_run_id: Some("qr-123".to_string()),
+            origin: Some(crate::utils::types::origin::Origin::QuickRun),
+            execute_id: Some("exec-1".to_string()),
+        }];
+
+        // Incoming mount from rclone with trailing slash
+        let incoming = vec![MountedRemote::new("drive:", "/mnt/drive/")];
+
+        let merged = RemoteCache::merge_mount_profiles(incoming, &existing);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].profile.as_deref(), Some("my-profile"));
+        assert_eq!(merged[0].quick_run_id.as_deref(), Some("qr-123"));
+        assert_eq!(merged[0].execute_id.as_deref(), Some("exec-1"));
+        assert_eq!(
+            merged[0].origin,
+            Some(crate::utils::types::origin::Origin::QuickRun)
+        );
+    }
 
     #[test]
     fn test_is_local_path() {

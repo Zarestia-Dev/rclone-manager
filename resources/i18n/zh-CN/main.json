@@ -450,7 +450,7 @@
       },
       "notifications": {
         "label": "启用通知",
-        "description": "挂载相关事件显示通知"
+        "description": "显示应用程序事件（挂载、同步、更新等）的桌面通知。"
       },
       "restrict": {
         "label": "限制敏感值",

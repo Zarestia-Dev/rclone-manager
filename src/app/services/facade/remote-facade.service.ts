@@ -203,14 +203,13 @@ export class RemoteFacadeService {
     const collisions: { remoteName: string; profileName: string; opType: string; path: string }[] =
       [];
     const allSettings = this.remoteSettings();
-
     const opKeys = ['mount', 'bisync'] as const;
 
     for (const [rName, rConfig] of Object.entries(allSettings)) {
       if (!rConfig) continue;
 
       for (const opType of opKeys) {
-        const profilesMap = rConfig[opType] as Record<string, any> | undefined;
+        const profilesMap = rConfig[opType] as Record<string, Record<string, unknown>> | undefined;
         if (!profilesMap || typeof profilesMap !== 'object') continue;
 
         for (const [pName, pConfig] of Object.entries(profilesMap)) {
@@ -219,14 +218,18 @@ export class RemoteFacadeService {
 
           const pathsToCheck: string[] = [];
           if (opType === 'mount') {
-            if (pConfig.mountPoint) pathsToCheck.push(pConfig.mountPoint);
-            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
-            if ((pConfig.rclone as any)?.mountPoint)
-              pathsToCheck.push((pConfig.rclone as any).mountPoint);
+            if (typeof pConfig['mountPoint'] === 'string') pathsToCheck.push(pConfig['mountPoint']);
+            const dest = pConfig['dest'] as { path?: string } | undefined;
+            if (dest?.path) pathsToCheck.push(dest.path);
+            const rclone = pConfig['rclone'] as Record<string, unknown> | undefined;
+            if (typeof rclone?.['mountPoint'] === 'string') {
+              pathsToCheck.push(rclone['mountPoint']);
+            }
           } else if (opType === 'bisync') {
-            if (pConfig.path1) pathsToCheck.push(pConfig.path1);
-            if (pConfig.path2) pathsToCheck.push(pConfig.path2);
-            if (pConfig.dest?.path) pathsToCheck.push(pConfig.dest.path);
+            if (typeof pConfig['path1'] === 'string') pathsToCheck.push(pConfig['path1']);
+            if (typeof pConfig['path2'] === 'string') pathsToCheck.push(pConfig['path2']);
+            const dest = pConfig['dest'] as { path?: string } | undefined;
+            if (dest?.path) pathsToCheck.push(dest.path);
           }
 
           for (const rawPath of pathsToCheck) {
@@ -594,9 +597,13 @@ export class RemoteFacadeService {
   ): Promise<void> {
     if (type === 'serve') {
       const serves = this.runningServes().filter(
-        s => this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName
+        s =>
+          this.pathService.getRemoteNameFromFs(s.params?.fs) === remoteName &&
+          s.origin !== 'quickrun' &&
+          !s.quick_run_id
       );
-      const idToStop = serveId ?? serves.find(s => s.profile === profileName)?.id ?? serves[0]?.id;
+      const idToStop =
+        serveId ?? (profileName ? serves.find(s => s.profile === profileName)?.id : serves[0]?.id);
       if (!idToStop) throw new Error('Serve ID required to stop serve');
       await this.serveService.stopServe(idToStop, remoteName);
       return;
@@ -604,11 +611,15 @@ export class RemoteFacadeService {
 
     if (type === 'mount') {
       const mounts = this.mountedRemotes().filter(
-        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+        m =>
+          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
+          m.origin !== 'quickrun' &&
+          !m.quick_run_id
       );
       const mountPoint =
-        mounts.find(m => (profileName ? m.profile === profileName : true))?.mount_point ??
-        mounts[0]?.mount_point;
+        (profileName
+          ? mounts.find(m => m.profile === profileName)?.mount_point
+          : mounts[0]?.mount_point) ?? mounts[0]?.mount_point;
       if (!mountPoint) throw new Error(`Active mount not found for ${remoteName}`);
       await this.mountService.unmountRemote(mountPoint, remoteName);
       return;
@@ -622,7 +633,10 @@ export class RemoteFacadeService {
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeAction(remoteName, 'unmount', async () => {
       const mount = this.mountedRemotes().find(
-        m => this.pathService.getRemoteNameFromFs(m.fs) === remoteName
+        m =>
+          this.pathService.getRemoteNameFromFs(m.fs) === remoteName &&
+          m.origin !== 'quickrun' &&
+          !m.quick_run_id
       );
       if (!mount) throw new Error(`No mount point found for ${remoteName}`);
       await this.mountService.unmountRemote(mount.mount_point, remoteName);
@@ -811,6 +825,9 @@ export class RemoteFacadeService {
     const mountConfigs = getProfiles('mount');
     const serveConfigs = getProfiles('serve');
 
+    const profileMounts = mounts.filter(m => m.origin !== 'quickrun' && !m.quick_run_id);
+    const profileServes = serves.filter(s => s.origin !== 'quickrun' && !s.quick_run_id);
+
     return {
       ...base,
       config: (settings['config'] as RemoteConfig) || base.config,
@@ -829,56 +846,23 @@ export class RemoteFacadeService {
         cryptcheck: this.buildOperationState('cryptcheck', jobs, settings),
         mount: {
           ...buildStatusEntry(
-            mounts,
+            profileMounts,
             Object.keys(mountConfigs),
             mountConfigs,
-            m => {
-              if (m.profile) return m.profile;
-              for (const [profName, profConfig] of Object.entries(mountConfigs)) {
-                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
-                const configMountPoint = rclone['mountPoint'] as string;
-                if (
-                  configMountPoint === m.mount_point ||
-                  (configMountPoint &&
-                    m.mount_point &&
-                    configMountPoint.replace(/\/$/, '') === m.mount_point.replace(/\/$/, ''))
-                ) {
-                  return profName;
-                }
-              }
-              return undefined;
-            },
+            m => m.profile ?? undefined,
             m => m.mount_point
           ),
         },
         serve: {
           ...buildStatusEntry(
-            serves,
+            profileServes,
             Object.keys(serveConfigs),
             serveConfigs,
-            s => {
-              if (s.profile) return s.profile;
-              for (const [profName, profConfig] of Object.entries(serveConfigs)) {
-                const rclone = (profConfig['rclone'] as Record<string, unknown>) || profConfig;
-                const configFs = rclone['fs'] as string;
-                const configType = rclone['serveType'] as string;
-                if (
-                  configFs === s.params.fs ||
-                  (configFs &&
-                    s.params.fs &&
-                    configFs.replace(/:$/, '') === s.params.fs.replace(/:$/, ''))
-                ) {
-                  if (configType === s.params.type) {
-                    return profName;
-                  }
-                }
-              }
-              return undefined;
-            },
+            s => s.profile ?? undefined,
             s => s.id
           ),
-          count: serves.length,
-          serves,
+          count: profileServes.length,
+          serves: profileServes,
         },
       },
     };
@@ -889,7 +873,9 @@ export class RemoteFacadeService {
     jobs: JobInfo[],
     settings: RemoteSettings
   ): RemoteOperationState {
-    const typeJobs = jobs.filter(j => j.job_type === type);
+    const typeJobs = jobs.filter(
+      j => j.job_type === type && j.origin !== 'quickrun' && !j.quick_run_id
+    );
     const running = typeJobs.filter(j => j.status === 'Running');
     const profiles = (settings[REMOTE_CONFIG_KEYS[type]] ?? {}) as ProfileConfigMap;
     const profileNames = Object.keys(profiles);
@@ -961,11 +947,11 @@ function buildActiveProfiles<T, V>(
   getValue: (i: T) => V
 ): Record<string, V> {
   const result: Record<string, V> = {};
-  const fallback = profileNames.length === 1 ? (profileNames[0] ?? null) : null;
   for (const item of items) {
     const profile = getProfile(item)?.trim();
-    const target = profile && profile.length > 0 ? profile : fallback;
-    if (target && !(target in result)) result[target] = getValue(item);
+    if (profile && profileNames.includes(profile)) {
+      if (!(profile in result)) result[profile] = getValue(item);
+    }
   }
   return result;
 }

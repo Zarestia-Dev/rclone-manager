@@ -452,7 +452,7 @@
       },
       "notifications": {
         "label": "Ativar Notificações",
-        "description": "Mostre notificações para eventos de montagem."
+        "description": "Mostrar notificações na área de trabalho para eventos do aplicativo (montagens, sincronizações, atualizações, etc.)."
       },
       "restrict": {
         "label": "Restrinja Valores",

@@ -275,11 +275,10 @@ async fn update_mount_cache(app: &AppHandle, result: &serde_json::Value) {
         .map_or_else(Vec::new, |arr| {
             arr.iter()
                 .filter_map(|mp| {
-                    Some(crate::utils::types::remotes::MountedRemote {
-                        fs: mp["Fs"].as_str()?.to_string(),
-                        mount_point: mp["MountPoint"].as_str()?.to_string(),
-                        profile: None,
-                    })
+                    Some(crate::utils::types::remotes::MountedRemote::new(
+                        mp["Fs"].as_str()?,
+                        mp["MountPoint"].as_str()?,
+                    ))
                 })
                 .collect()
         });

@@ -44,22 +44,12 @@ pub async fn mkdir(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_mutation(remote, vec![path], "", JobType::Mkdir, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::MKDIR,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Mkdir,
-            source: vec![path.clone()],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -87,22 +77,12 @@ pub async fn cleanup(
     }
     payload.insert("_async".to_string(), json!(true));
 
+    let metadata = JobMetadata::for_query(remote, path_str, JobType::Cleanup, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::CLEANUP,
         json!(payload),
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Cleanup,
-            source: vec![path_str.to_string()],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -132,22 +112,20 @@ pub async fn copy_url(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_mutation(
+        remote,
+        vec![url_to_copy],
+        path,
+        JobType::CopyUrl,
+        origin,
+        group,
+    )
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::COPYURL,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::CopyUrl,
-            source: vec![url_to_copy],
-            destination: path.clone(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -174,22 +152,12 @@ pub async fn remove_empty_dirs(
         "_async": true,
     });
 
+    let metadata = JobMetadata::for_query(remote, path, JobType::Rmdirs, origin, group);
     let _ = crate::rclone::commands::job::submit_job_with_options(
         app.clone(),
         operations::RMDIRS,
         payload,
-        JobMetadata {
-            remote_name: remote.clone(),
-            job_type: JobType::Rmdirs,
-            source: vec![path.clone()],
-            destination: String::new(),
-            profile: None,
-            origin,
-            group,
-            no_cache: true,
-            dry_run: false,
-            parent_job_id: None,
-        },
+        metadata,
         crate::rclone::commands::job::SubmitJobOptions {
             wait_for_completion: true,
         },
@@ -289,23 +257,18 @@ pub async fn transfer(
         .map(|item| build_full_path(&item.remote, &item.path))
         .collect::<Vec<String>>();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type,
-            source,
-            destination: build_full_path(&dst_remote, &dst_path),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id,
-        },
+    let metadata = JobMetadata::new(
+        remote_name,
+        job_type,
+        source,
+        build_full_path(&dst_remote, &dst_path),
     )
-    .await
+    .with_origin(origin)
+    .with_group(group)
+    .with_parent_job_id(parent_job_id)
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
 #[tauri::command]
@@ -341,23 +304,12 @@ pub async fn delete(
         .map(|item| build_full_path(&item.remote, &item.path))
         .collect::<Vec<String>>();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type: JobType::Delete,
-            source,
-            destination: "trash".to_string(),
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-        },
-    )
-    .await
+    let metadata = JobMetadata::new(remote_name, JobType::Delete, source, "trash")
+        .with_origin(origin)
+        .with_group(group)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
 #[tauri::command]
@@ -408,21 +360,10 @@ pub async fn rename(
         .collect::<Vec<String>>();
     let destination = first_item.dst_path.clone();
 
-    crate::rclone::commands::job::submit_batch_job(
-        app,
-        inputs,
-        JobMetadata {
-            remote_name,
-            job_type: JobType::Rename,
-            source,
-            destination,
-            profile: None,
-            origin,
-            group,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-        },
-    )
-    .await
+    let metadata = JobMetadata::new(remote_name, JobType::Rename, source, destination)
+        .with_origin(origin)
+        .with_group(group)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+    crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }

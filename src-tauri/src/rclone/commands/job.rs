@@ -46,9 +46,84 @@ pub struct JobMetadata {
     pub dry_run: bool,
     #[serde(default)]
     pub parent_job_id: Option<u64>,
+    #[serde(default)]
+    pub quick_run_id: Option<String>,
+    #[serde(default)]
+    pub execute_id: Option<String>,
 }
 
 impl JobMetadata {
+    #[must_use]
+    pub fn new(
+        remote_name: impl Into<String>,
+        job_type: JobType,
+        source: Vec<String>,
+        destination: impl Into<String>,
+    ) -> Self {
+        Self {
+            remote_name: remote_name.into(),
+            job_type,
+            source,
+            destination: destination.into(),
+            profile: None,
+            origin: None,
+            group: None,
+            no_cache: false,
+            dry_run: false,
+            parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_origin(mut self, origin: Option<Origin>) -> Self {
+        self.origin = origin;
+        self
+    }
+
+    #[must_use]
+    pub fn with_group(mut self, group: Option<String>) -> Self {
+        self.group = group;
+        self
+    }
+
+    #[must_use]
+    pub fn with_profile(mut self, profile: Option<String>) -> Self {
+        self.profile = profile;
+        self
+    }
+
+    #[must_use]
+    pub fn with_execute_id(mut self, execute_id: Option<String>) -> Self {
+        self.execute_id = execute_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_quick_run_id(mut self, quick_run_id: Option<String>) -> Self {
+        self.quick_run_id = quick_run_id;
+        self
+    }
+
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
+        self
+    }
+
+    #[must_use]
+    pub fn with_no_cache(mut self, no_cache: bool) -> Self {
+        self.no_cache = no_cache;
+        self
+    }
+
+    #[must_use]
+    pub fn with_parent_job_id(mut self, parent_job_id: Option<u64>) -> Self {
+        self.parent_job_id = parent_job_id;
+        self
+    }
+
     #[must_use]
     pub fn for_query(
         remote_name: impl Into<String>,
@@ -68,6 +143,8 @@ impl JobMetadata {
             no_cache: true,
             dry_run: false,
             parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
         }
     }
 
@@ -96,6 +173,8 @@ impl JobMetadata {
             no_cache: false,
             dry_run: false,
             parent_job_id: None,
+            quick_run_id: None,
+            execute_id: None,
         }
     }
 
@@ -242,8 +321,12 @@ async fn initialize_and_register_job(
         ));
     }
 
-    let (jobid, response_json, execute_id) =
-        send_job_request(app, endpoint, payload, &metadata).await?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
+
+    let (jobid, response_json) = send_job_request(app, endpoint, payload, &metadata).await?;
 
     let backend_manager = app.state::<BackendManager>();
     let backend_name = backend_manager.get_active().await.name;
@@ -252,7 +335,6 @@ async fn initialize_and_register_job(
         add_job_to_cache(
             &backend_manager.job_cache,
             jobid,
-            execute_id.clone(),
             &metadata,
             &backend_name,
             Some(app),
@@ -271,7 +353,7 @@ async fn send_job_request(
     endpoint: &str,
     payload: Value,
     metadata: &JobMetadata,
-) -> Result<(u64, Value, Option<String>), String> {
+) -> Result<(u64, Value), String> {
     let mut payload = payload;
     crate::rclone::commands::common::ensure_group(&mut payload, &metadata.group_name());
 
@@ -281,7 +363,7 @@ async fn send_job_request(
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    let jobid = parse_job_response(&response_json)?;
 
     let redacted_payload = redact_value(&payload, app);
 
@@ -291,20 +373,20 @@ async fn send_job_request(
         Some(metadata.job_type.to_string()),
         format!(
             "{} started with ID {} (ExecuteID: {:?})",
-            metadata.job_type, jobid, execute_id
+            metadata.job_type, jobid, metadata.execute_id
         ),
         Some(json!({
             "jobid": jobid,
-            "executeId": execute_id,
+            "executeId": metadata.execute_id,
             "arguments": redacted_payload,
         })),
     );
 
-    Ok((jobid, response_json, execute_id))
+    Ok((jobid, response_json))
 }
 
-fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), String> {
-    let jobid = response_json
+fn parse_job_response(response_json: &Value) -> Result<u64, String> {
+    response_json
         .get("jobid")
         .and_then(serde_json::Value::as_u64)
         .or_else(|| {
@@ -315,35 +397,21 @@ fn parse_job_response(response_json: &Value) -> Result<(u64, Option<String>), St
         })
         .ok_or_else(|| {
             crate::localized_error!(
-                "backendErrors.serve.parseFailed",
+                "backendErrors.request.failed",
                 "error" => "missing job id in response"
             )
-        })?;
-
-    let execute_id = response_json
-        .get("executeId")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-
-    Ok((jobid, execute_id))
+        })
 }
 
 async fn add_job_to_cache(
     job_cache: &JobCache,
     jobid: u64,
-    execute_id: Option<String>,
     metadata: &JobMetadata,
     backend_name: &str,
     app: Option<&AppHandle>,
 ) {
     job_cache
-        .create_job(
-            jobid,
-            execute_id,
-            metadata.clone(),
-            backend_name.to_string(),
-            app,
-        )
+        .create_job(jobid, metadata.clone(), backend_name.to_string(), app)
         .await;
 }
 
@@ -1067,7 +1135,12 @@ pub async fn submit_batch_job(
         .await
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
 
-    let (jobid, execute_id) = parse_job_response(&response_json)?;
+    if metadata.execute_id.is_none() {
+        metadata.execute_id = Some(uuid::Uuid::new_v4().to_string());
+    }
+    let execute_id = metadata.execute_id.clone();
+
+    let jobid = parse_job_response(&response_json)?;
 
     let backend_name = backend_manager.get_active_name().await;
 
@@ -1075,7 +1148,6 @@ pub async fn submit_batch_job(
         add_job_to_cache(
             &backend_manager.job_cache,
             jobid,
-            execute_id.clone(),
             &metadata,
             &backend_name,
             Some(&app),
@@ -1119,21 +1191,16 @@ pub async fn register_preparing_job(
     let backend_name = backend_manager.get_active().await.name;
     let job_cache = &backend_manager.job_cache;
 
-    let metadata = JobMetadata {
-        remote_name: remote,
-        job_type: JobType::Upload,
-        source: vec!["preparing".to_string()],
+    let metadata = JobMetadata::new(
+        remote,
+        JobType::Upload,
+        vec!["preparing".to_string()],
         destination,
-        profile: None,
-        origin,
-        group: None,
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    )
+    .with_origin(origin);
 
     job_cache
-        .create_job(jobid, None, metadata, backend_name, Some(&app))
+        .create_job(jobid, metadata, backend_name, Some(&app))
         .await;
 
     let stats = json!({
@@ -1270,18 +1337,9 @@ mod tests {
     use super::*;
 
     fn make_meta(origin: Option<Origin>, profile: Option<&str>) -> JobMetadata {
-        JobMetadata {
-            remote_name: "gdrive:".to_string(),
-            job_type: JobType::Sync,
-            source: vec!["src".to_string()],
-            destination: "dst".to_string(),
-            profile: profile.map(str::to_string),
-            origin,
-            group: None,
-            no_cache: false,
-            dry_run: false,
-            parent_job_id: None,
-        }
+        JobMetadata::new("gdrive:", JobType::Sync, vec!["src".to_string()], "dst")
+            .with_origin(origin)
+            .with_profile(profile.map(str::to_string))
     }
 
     #[test]
@@ -1353,24 +1411,22 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_job_response_numeric_and_execute() {
-        let v = json!({"jobid": 123, "executeId": "exec-1"});
+    fn test_parse_job_response_numeric() {
+        let v = json!({"jobid": 123});
         let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 123);
-        assert_eq!(res.1, Some("exec-1".to_string()));
+        assert_eq!(res, 123);
     }
 
     #[test]
     fn test_parse_job_response_string_id() {
         let v = json!({"id": "456"});
         let res = super::parse_job_response(&v).unwrap();
-        assert_eq!(res.0, 456);
-        assert_eq!(res.1, None);
+        assert_eq!(res, 456);
     }
 
     #[test]
     fn test_parse_job_response_missing_id_returns_err() {
-        let v = json!({"executeId": "no-job"});
+        let v = json!({"somethingElse": "no-job"});
         assert!(super::parse_job_response(&v).is_err());
     }
 

@@ -452,7 +452,7 @@
       },
       "notifications": {
         "label": "Enable Notifications",
-        "description": "Show notifications for mount events."
+        "description": "Show desktop notifications for application events (mounts, syncs, updates, etc.)."
       },
       "restrict": {
         "label": "Restrict Values",

@@ -208,60 +208,31 @@ pub struct ActionCommon {
 }
 
 /// A tagged-union of the different action types.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, DeriveSettingsSchema)]
 #[serde(tag = "kind")]
 pub enum AlertAction {
     #[cfg(feature = "tauri-plugin-notification")]
     #[serde(rename = "os_toast")]
+    #[setting(label = "System Notification")]
     OsToast(OsToastAction),
     #[serde(rename = "webhook")]
+    #[setting(label = "Webhook")]
     Webhook(WebhookAction),
     #[serde(rename = "script")]
+    #[setting(label = "Shell Script")]
     Script(ScriptAction),
     #[serde(rename = "telegram")]
+    #[setting(label = "Telegram")]
     Telegram(TelegramAction),
     #[serde(rename = "whatsapp")]
+    #[setting(label = "WhatsApp")]
     Whatsapp(WhatsappAction),
     #[serde(rename = "mqtt")]
+    #[setting(label = "MQTT")]
     Mqtt(MqttAction),
     #[serde(rename = "email")]
+    #[setting(label = "Email")]
     Email(EmailAction),
-}
-
-impl rcman::SettingsSchema for AlertAction {
-    fn get_metadata() -> std::collections::HashMap<String, rcman::SettingMetadata> {
-        let mut meta = std::collections::HashMap::new();
-
-        // Merge schemas from all variants to satisfy rcman's strict schema validation.
-        #[cfg(feature = "tauri-plugin-notification")]
-        meta.extend(<OsToastAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<WebhookAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<ScriptAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<TelegramAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<WhatsappAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<MqttAction as rcman::SettingsSchema>::get_metadata());
-        meta.extend(<EmailAction as rcman::SettingsSchema>::get_metadata());
-
-        meta.insert(
-            "kind".to_string(),
-            rcman::SettingMetadata::select(
-                "webhook",
-                vec![
-                    #[cfg(feature = "tauri-plugin-notification")]
-                    rcman::opt("os_toast", "System Notification"),
-                    rcman::opt("webhook", "Webhook"),
-                    rcman::opt("script", "Shell Script"),
-                    rcman::opt("telegram", "Telegram"),
-                    rcman::opt("whatsapp", "WhatsApp"),
-                    rcman::opt("mqtt", "MQTT"),
-                    rcman::opt("email", "Email"),
-                ],
-            )
-            .meta_str("label", "Action Type"),
-        );
-
-        meta
-    }
 }
 
 impl std::fmt::Display for AlertAction {

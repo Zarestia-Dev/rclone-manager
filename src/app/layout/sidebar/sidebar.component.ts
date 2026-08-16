@@ -14,14 +14,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
-import { MountedRemote, OPERATION_REGISTRY, QuickRun, Remote, ServeListItem } from '@app/types';
+import { OPERATION_REGISTRY, QuickRun, Remote } from '@app/types';
 
 import { IconService } from 'src/app/services/ui/icon.service';
 import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 import { RemoteStatusService } from 'src/app/services/remote/remote-status.service';
 import { RemoteFacadeService } from '../../services/facade/remote-facade.service';
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
-import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 
 export type SidebarMode = 'remotes' | 'flow';
 
@@ -44,7 +43,6 @@ export class SidebarComponent {
   private readonly uiStateService = inject(UiStateService);
   private readonly remoteFacade = inject(RemoteFacadeService);
   private readonly quickRunService = inject(QuickRunService);
-  private readonly pathService = inject(PathService);
 
   readonly title = computed(
     () => this.customTitle() ?? (this.mode() === 'flow' ? 'flow.quickRun.title' : 'sidebar.remotes')
@@ -93,8 +91,6 @@ export class SidebarComponent {
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly selectedQuickRunId = this.quickRunService.selectedId;
   readonly runningIds = this.quickRunService.runningIds;
-  readonly mountedRemotes = this.remoteFacade.mountedRemotes;
-  readonly runningServes = this.remoteFacade.runningServes;
 
   // ── Search & Filter state ─────────────────────────────────────────────────
   readonly searchTerm = signal('');
@@ -128,29 +124,7 @@ export class SidebarComponent {
   }
 
   isQuickRunRunning(id: string): boolean {
-    const qr = this.quickRuns().find(q => q.id === id);
-    if (!qr) return this.runningIds().has(id);
-
-    if (qr.operationType === 'mount') {
-      const mountPoint = (qr.config?.rclone as Record<string, unknown> | undefined)?.[
-        'mountPoint'
-      ] as string | undefined;
-      return this.mountedRemotes().some(
-        (m: MountedRemote) =>
-          m.profile === qr.name ||
-          (this.pathService.getRemoteNameFromFs(m.fs) === qr.remoteName &&
-            !!m.mount_point &&
-            m.mount_point === mountPoint)
-      );
-    }
-    if (qr.operationType === 'serve') {
-      return this.runningServes().some(
-        (s: ServeListItem) =>
-          s.profile === qr.name ||
-          this.pathService.getRemoteNameFromFs(s.params?.fs) === qr.remoteName
-      );
-    }
-    return this.runningIds().has(id) || qr.status === 'running';
+    return this.runningIds().has(id);
   }
 
   getQuickRunIcon(qr: QuickRun): string {

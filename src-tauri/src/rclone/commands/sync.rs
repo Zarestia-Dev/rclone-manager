@@ -471,18 +471,17 @@ pub async fn start_profile_batch(
                 )
             };
 
-            let metadata = JobMetadata {
-                remote_name: params.remote_name.clone(),
-                job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
-                source: vec![source.clone()],
-                destination: final_dest.clone(),
-                profile: Some(params.profile_name.clone()),
-                origin: params.source.clone(),
-                group: None,
-                no_cache: params.no_cache.unwrap_or(false),
-                dry_run,
-                parent_job_id: None,
-            };
+            let metadata = JobMetadata::new(
+                params.remote_name.clone(),
+                transfer_type.as_job_type().unwrap_or(JobType::Sync),
+                vec![source.clone()],
+                final_dest.clone(),
+            )
+            .with_profile(Some(params.profile_name.clone()))
+            .with_origin(params.source.clone())
+            .with_no_cache(params.no_cache.unwrap_or(false))
+            .with_dry_run(dry_run)
+            .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
             let (jobid, _, _) = submit_job_with_options(
                 app.clone(),
@@ -564,23 +563,19 @@ pub async fn start_profile_batch(
             common.dest.clone()
         };
 
-        crate::rclone::commands::job::submit_batch_job(
-            app,
-            inputs,
-            JobMetadata {
-                remote_name: params.remote_name.clone(),
-                job_type: transfer_type.as_job_type().unwrap_or(JobType::Sync),
-                source: metadata_source,
-                destination: metadata_dest,
-                profile: Some(params.profile_name.clone()),
-                origin: params.source,
-                group: None,
-                no_cache: params.no_cache.unwrap_or(false),
-                dry_run,
-                parent_job_id: None,
-            },
+        let metadata = JobMetadata::new(
+            params.remote_name.clone(),
+            transfer_type.as_job_type().unwrap_or(JobType::Sync),
+            metadata_source,
+            metadata_dest,
         )
-        .await
+        .with_profile(Some(params.profile_name.clone()))
+        .with_origin(params.source)
+        .with_no_cache(params.no_cache.unwrap_or(false))
+        .with_dry_run(dry_run)
+        .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
+
+        crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
     } else {
         Ok(first_job_id.unwrap_or(0).to_string())
     }

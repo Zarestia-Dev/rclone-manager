@@ -22,12 +22,15 @@ impl JobCache {
     pub async fn create_job(
         &self,
         jobid: u64,
-        execute_id: Option<String>,
         metadata: crate::rclone::commands::job::JobMetadata,
         backend_name: String,
         app: Option<&AppHandle>,
     ) -> u64 {
         let group = metadata.group_name();
+        let exec_id = metadata
+            .execute_id
+            .clone()
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string()));
         let job = JobInfo {
             jobid,
             job_type: metadata.job_type,
@@ -41,7 +44,8 @@ impl JobCache {
             stats: None,
             group,
             profile: metadata.profile,
-            execute_id,
+            execute_id: exec_id,
+            quick_run_id: metadata.quick_run_id,
             origin: metadata.origin,
             backend_name,
             dry_run: metadata.dry_run,
@@ -607,6 +611,7 @@ mod tests {
             group: format!("job/{jobid}"),
             profile: profile.map(str::to_string),
             execute_id: None,
+            quick_run_id: None,
             origin: None,
             backend_name: default_backend_name(),
             dry_run: false,

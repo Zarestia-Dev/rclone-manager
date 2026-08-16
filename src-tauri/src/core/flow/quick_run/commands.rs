@@ -136,6 +136,8 @@ pub async fn start_quick_run(
     let qr = get_quick_run(&manager, &quick_run_id)?
         .ok_or_else(|| format!("Quick run '{quick_run_id}' not found"))?;
 
+    let execute_id = uuid::Uuid::new_v4().to_string();
+    let start_time = chrono::Utc::now();
     let empty_settings = json!({});
 
     if qr.operation_type == OperationType::Mount {
@@ -144,12 +146,30 @@ pub async fn start_quick_run(
                 .ok_or_else(|| {
                     format!("Quick run '{}' mount configuration is incomplete", qr.name)
                 })?;
-        mount_params.profile = Some(qr.name.clone());
+        let mount_point = mount_params.mount_point.clone();
+        mount_params.profile = None;
+        mount_params.quick_run_id = Some(quick_run_id.clone());
+        mount_params.execute_id = Some(execute_id.clone());
         mount_params.origin = Some(Origin::QuickRun);
 
         mount_remote(app.clone(), mount_params).await?;
 
-        return Ok(StartQuickRunResponse { job_id: 0 });
+        return Ok(StartQuickRunResponse {
+            execute_id,
+            origin: Origin::QuickRun,
+            operation_type: OperationType::Mount,
+            remote_name: qr.remote_name,
+            quick_run_id: Some(quick_run_id),
+            profile: None,
+            success: true,
+            status: JobStatus::Running,
+            error: None,
+            start_time,
+            job_id: None,
+            serve_id: None,
+            serve_addr: None,
+            mount_point: Some(mount_point),
+        });
     }
 
     if qr.operation_type == OperationType::Serve {
@@ -158,11 +178,29 @@ pub async fn start_quick_run(
                 .ok_or_else(|| {
                     format!("Quick run '{}' serve configuration is incomplete", qr.name)
                 })?;
-        serve_params.profile = Some(qr.name.clone());
+        serve_params.profile = None;
+        serve_params.quick_run_id = Some(quick_run_id.clone());
+        serve_params.execute_id = Some(execute_id.clone());
+        serve_params.origin = Some(Origin::QuickRun);
 
-        start_serve(app.clone(), serve_params).await?;
+        let serve_res = start_serve(app.clone(), serve_params).await?;
 
-        return Ok(StartQuickRunResponse { job_id: 0 });
+        return Ok(StartQuickRunResponse {
+            execute_id,
+            origin: Origin::QuickRun,
+            operation_type: OperationType::Serve,
+            remote_name: qr.remote_name,
+            quick_run_id: Some(quick_run_id),
+            profile: None,
+            success: true,
+            status: JobStatus::Running,
+            error: None,
+            start_time,
+            job_id: None,
+            serve_id: Some(serve_res.id),
+            serve_addr: Some(serve_res.addr),
+            mount_point: None,
+        });
     }
 
     let common = parse_common_config(&qr.config, &empty_settings)
@@ -218,29 +256,40 @@ pub async fn start_quick_run(
         inputs.push(body);
     }
 
-    let job_id_str = submit_batch_job(
-        app.clone(),
-        inputs,
-        JobMetadata {
-            remote_name: qr.remote_name.clone(),
-            job_type: qr.operation_type.as_job_type().unwrap_or(JobType::Sync),
-            source: common.source.clone(),
-            destination: common.dest.clone(),
-            profile: Some(qr.name.clone()),
-            origin: Some(Origin::QuickRun),
-            group: None,
-            no_cache: false,
-            dry_run,
-            parent_job_id: None,
-        },
+    let metadata = JobMetadata::new(
+        qr.remote_name.clone(),
+        qr.operation_type.as_job_type().unwrap_or(JobType::Sync),
+        common.source.clone(),
+        common.dest.clone(),
     )
-    .await?;
+    .with_profile(None)
+    .with_origin(Some(Origin::QuickRun))
+    .with_dry_run(dry_run)
+    .with_quick_run_id(Some(quick_run_id.clone()))
+    .with_execute_id(Some(execute_id.clone()));
+
+    let job_id_str = submit_batch_job(app.clone(), inputs, metadata).await?;
 
     let job_id = job_id_str
         .parse::<u64>()
         .map_err(|e| format!("Invalid job ID returned by backend: {e}"))?;
 
-    Ok(StartQuickRunResponse { job_id })
+    Ok(StartQuickRunResponse {
+        execute_id,
+        origin: Origin::QuickRun,
+        operation_type: qr.operation_type,
+        remote_name: qr.remote_name,
+        quick_run_id: Some(quick_run_id),
+        profile: None,
+        success: true,
+        status: JobStatus::Running,
+        error: None,
+        start_time,
+        job_id: Some(job_id),
+        serve_id: None,
+        serve_addr: None,
+        mount_point: None,
+    })
 }
 
 /// Stop execution of a running quick run.
@@ -259,7 +308,19 @@ pub async fn stop_quick_run(
     let empty_settings = json!({});
 
     if qr.operation_type == OperationType::Mount {
-        if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
+        let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
+        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+        if let Some(m) = mounted
+            .iter()
+            .find(|m| m.quick_run_id.as_deref() == Some(&quick_run_id))
+        {
+            let _ = crate::rclone::commands::mount::unmount_remote(
+                app.clone(),
+                m.mount_point.clone(),
+                qr.remote_name.clone(),
+            )
+            .await;
+        } else if let Some(common) = parse_common_config(&qr.config, &empty_settings) {
             let mount_point = common.dest;
             if !mount_point.is_empty() {
                 let _ = crate::rclone::commands::mount::unmount_remote(
@@ -274,12 +335,7 @@ pub async fn stop_quick_run(
         let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
         let running_serves = backend_manager.remote_cache.get_serves().await;
         for s in running_serves {
-            let matches_remote = s
-                .params
-                .get("fs")
-                .and_then(|v| v.as_str())
-                .is_some_and(|fs| fs.trim_end_matches(':') == qr.remote_name.trim_end_matches(':'));
-            if matches_remote {
+            if s.quick_run_id.as_deref() == Some(&quick_run_id) {
                 let _ = crate::rclone::commands::serve::stop_serve(
                     app.clone(),
                     s.id,
@@ -299,14 +355,8 @@ pub async fn stop_quick_run(
         let running_jobs = backend_manager.job_cache.get_jobs().await;
 
         for j in running_jobs {
-            let matches_profile = j.profile.as_deref() == Some(&qr.name);
-            let matches_origin =
-                j.origin == Some(Origin::QuickRun) || j.origin == Some(Origin::Flow);
-            let matches_remote = j.remote_name == qr.remote_name;
-
-            if j.status == JobStatus::Running
-                && matches_remote
-                && (matches_profile || matches_origin)
+            if j.quick_run_id.as_deref() == Some(&quick_run_id)
+                && j.status == JobStatus::Running
                 && !job_ids_to_stop.contains(&j.jobid)
             {
                 job_ids_to_stop.push(j.jobid);

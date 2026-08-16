@@ -123,12 +123,10 @@ pub struct QuickRunInput {
     pub config: Value,
 }
 
+pub use crate::utils::types::remotes::OperationExecutionResult;
+
 /// Response returned by `start_quick_run`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct StartQuickRunResponse {
-    pub job_id: u64,
-}
+pub type StartQuickRunResponse = OperationExecutionResult;
 
 #[cfg(test)]
 mod tests {

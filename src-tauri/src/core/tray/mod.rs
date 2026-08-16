@@ -94,15 +94,6 @@ impl TraySnapshot {
             })
             .collect();
 
-        let active_serves_list: Vec<(String, Option<String>)> = active_serves
-            .iter()
-            .map(|srv| {
-                let fs = srv.params["fs"].as_str().unwrap_or("");
-                let remote = crate::utils::json_helpers::extract_remote_name_from_fs(fs);
-                (remote, srv.profile.clone())
-            })
-            .collect();
-
         let all_remote_settings = crate::utils::types::remotes::RemoteSettings::load_all(
             settings_manager.inner(),
             &remote_names,
@@ -133,7 +124,9 @@ impl TraySnapshot {
                             m.keys()
                                 .map(|pname| TrayProfileSummary {
                                     is_active: active_jobs_raw.iter().any(|j| {
-                                        j.remote_name == name
+                                        j.origin != Some(Origin::QuickRun)
+                                            && j.quick_run_id.is_none()
+                                            && j.remote_name == name
                                             && j.profile.as_ref() == Some(pname)
                                             && j.job_type == *jtype
                                     }),
@@ -148,19 +141,18 @@ impl TraySnapshot {
                     .mount_configs
                     .as_ref()
                     .map(|m| {
-                        m.iter()
-                            .map(|(pname, cfg)| {
-                                let dest = cfg
-                                    .rclone
-                                    .get("mountPoint")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
-                                TrayProfileSummary {
-                                    is_active: mounted_remotes.iter().any(|mt| {
-                                        mt.mount_point == dest && mt.profile.as_ref() == Some(pname)
-                                    }),
-                                    name: pname.clone(),
-                                }
+                        m.keys()
+                            .map(|pname| TrayProfileSummary {
+                                is_active: mounted_remotes.iter().any(|mt| {
+                                    let remote_clean = target_remote.trim_end_matches(':');
+                                    let fs_clean =
+                                        mt.fs.split(':').next().unwrap_or("").trim_end_matches(':');
+                                    mt.origin != Some(Origin::QuickRun)
+                                        && mt.quick_run_id.is_none()
+                                        && remote_clean == fs_clean
+                                        && mt.profile.as_ref() == Some(pname)
+                                }),
+                                name: pname.clone(),
                             })
                             .collect()
                     })
@@ -172,8 +164,15 @@ impl TraySnapshot {
                     .map(|m| {
                         m.keys()
                             .map(|pname| TrayProfileSummary {
-                                is_active: active_serves_list.iter().any(|(remote, profile)| {
-                                    remote == &target_remote && profile.as_ref() == Some(pname)
+                                is_active: active_serves.iter().any(|srv| {
+                                    let fs =
+                                        srv.params.get("fs").and_then(|v| v.as_str()).unwrap_or("");
+                                    let remote_clean = target_remote.trim_end_matches(':');
+                                    let fs_clean = fs.trim_end_matches(':');
+                                    srv.origin != Some(Origin::QuickRun)
+                                        && srv.quick_run_id.is_none()
+                                        && remote_clean == fs_clean
+                                        && srv.profile.as_ref() == Some(pname)
                                 }),
                                 name: pname.clone(),
                             })
@@ -219,34 +218,14 @@ impl TraySnapshot {
             .map(|qr| {
                 let show_on_tray = qr.is_show_on_tray();
                 let is_active = match qr.operation_type {
-                    OperationType::Mount => {
-                        let dest = qr
-                            .config
-                            .get("rclone")
-                            .and_then(|r| {
-                                r.get("mountPoint")
-                                    .or_else(|| r.get("dstFs"))
-                                    .or_else(|| r.get("dest"))
-                            })
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
-                        mounted_remotes.iter().any(|mt| {
-                            (mt.profile.as_ref() == Some(&qr.name))
-                                || (!dest.is_empty() && mt.mount_point == dest)
-                        })
-                    }
-                    OperationType::Serve => {
-                        let target_remote =
-                            crate::utils::json_helpers::normalize_remote_name(&qr.remote_name);
-                        active_serves_list.iter().any(|(remote, profile)| {
-                            profile.as_ref() == Some(&qr.name) || remote == &target_remote
-                        })
-                    }
+                    OperationType::Mount => mounted_remotes
+                        .iter()
+                        .any(|mt| mt.quick_run_id.as_deref() == Some(&qr.id)),
+                    OperationType::Serve => active_serves
+                        .iter()
+                        .any(|srv| srv.quick_run_id.as_deref() == Some(&qr.id)),
                     _ => active_jobs_raw.iter().any(|j| {
-                        j.status == JobStatus::Running
-                            && j.remote_name == qr.remote_name
-                            && (j.profile.as_deref() == Some(&qr.name)
-                                || j.origin == Some(Origin::QuickRun))
+                        j.status == JobStatus::Running && j.quick_run_id.as_deref() == Some(&qr.id)
                     }),
                 };
 

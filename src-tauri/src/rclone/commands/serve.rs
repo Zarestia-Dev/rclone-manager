@@ -33,6 +33,9 @@ pub struct ServeParams {
     pub runtime_remote_options: Option<HashMap<String, Value>>,
     pub profile: Option<String>,
     pub serve_type: String,
+    pub origin: Option<crate::utils::types::origin::Origin>,
+    pub quick_run_id: Option<String>,
+    pub execute_id: Option<String>,
 }
 
 impl ServeParams {
@@ -57,6 +60,9 @@ impl ServeParams {
             runtime_remote_options: common.runtime_remote_options,
             profile: common.profile,
             serve_type,
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
         })
     }
 
@@ -273,12 +279,20 @@ pub async fn start_serve(
         Some(response_json),
     );
 
-    // Refresh first so the entry exists in cache, then attach the profile to it.
-    refresh_serves_quietly(&app).await;
+    // Pre-seed metadata so the reconciliation attaches profile / quick_run_id atomically
     backend_manager
         .remote_cache
-        .store_serve_profile(&serve_id, params.profile.clone())
+        .preseed_serve_metadata(
+            &serve_id,
+            &addr,
+            payload.clone(),
+            params.profile.clone(),
+            params.quick_run_id.clone(),
+            params.origin.clone(),
+            params.execute_id.clone(),
+        )
         .await;
+    refresh_serves_quietly(&app).await;
     info!(
         "✅ Serve {} started: ID={}, Address={}",
         params.remote_name, serve_response.id, serve_response.addr
@@ -427,6 +441,11 @@ pub async fn start_serve_profile(
 
     // Ensure profile is set from the function parameter, not the config object
     serve_params.profile = Some(params.profile_name.clone());
+    serve_params.origin = params
+        .source
+        .or(Some(crate::utils::types::origin::Origin::Dashboard));
+    serve_params.quick_run_id = None;
+    serve_params.execute_id = Some(uuid::Uuid::new_v4().to_string());
 
     start_serve(app, serve_params).await
 }
@@ -491,6 +510,9 @@ mod tests {
             )])),
             runtime_remote_options: None,
             profile: Some("serve_profile".to_string()),
+            origin: None,
+            quick_run_id: None,
+            execute_id: None,
             serve_type: "webdav".to_string(),
         };
 

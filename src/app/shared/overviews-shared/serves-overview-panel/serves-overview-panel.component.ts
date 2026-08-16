@@ -15,7 +15,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { Origin, ServeListItem } from '@app/types';
 import { ServeCardComponent } from '../../components/serve-card/serve-card.component';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
-import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 
 @Component({
   selector: 'app-serves-overview-panel',
@@ -37,7 +36,6 @@ export class ServesOverviewPanelComponent {
   readonly stopServe = output<ServeListItem>();
 
   private readonly remoteFacade = inject(RemoteFacadeService);
-  private readonly quickRunService = inject(QuickRunService);
 
   readonly selectedOriginFilter = linkedSignal<string>(() => {
     const def = this.defaultOriginFilter();
@@ -57,20 +55,13 @@ export class ServesOverviewPanelComponent {
     const filter = this.selectedOriginFilter();
     if (filter === 'all') return all;
 
-    const quickRunNames = new Set(
-      this.quickRunService
-        .quickRuns()
-        .filter(qr => qr.operationType === 'serve')
-        .map(qr => qr.name)
-    );
-
     if (filter === 'quickrun' || filter === 'flow') {
-      return all.filter(s => !!s.profile && quickRunNames.has(s.profile));
+      return all.filter(s => s.origin === 'quickrun' || s.origin === 'flow' || !!s.quick_run_id);
     }
     if (filter === 'dashboard') {
-      return all.filter(s => !s.profile || !quickRunNames.has(s.profile));
+      return all.filter(s => (s.origin === 'dashboard' || !s.origin) && !s.quick_run_id);
     }
-    return all;
+    return all.filter(s => s.origin === filter);
   });
 
   onServeClick(serve: ServeListItem): void {

@@ -450,7 +450,7 @@
       },
       "notifications": {
         "label": "Bildirimleri Etkinleştir",
-        "description": "Bağlama olayları için bildirimleri gösterir."
+        "description": "Uygulama olayları için masaüstü bildirimlerini gösterir (bağlama, senkronizasyon, güncellemeler vb.)."
       },
       "restrict": {
         "label": "Değerleri Kısıtla",

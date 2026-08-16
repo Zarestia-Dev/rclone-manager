@@ -74,18 +74,15 @@ pub async fn archive_create(
 
     crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
-    let metadata = JobMetadata {
-        remote_name: destination.clone(),
-        job_type: JobType::ArchiveCreate,
-        source: vec![source.clone()],
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = JobMetadata::new(
+        destination.clone(),
+        JobType::ArchiveCreate,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),
@@ -135,18 +132,15 @@ pub async fn archive_extract(
 
     crate::rclone::commands::common::ensure_group(&mut payload, &group_id);
 
-    let metadata = JobMetadata {
-        remote_name: source.clone(),
-        job_type: JobType::ArchiveExtract,
-        source: vec![source.clone()],
-        destination: destination.clone(),
-        profile: None,
-        origin: Some(Origin::FileManager),
-        group: Some(group_id),
-        no_cache: false,
-        dry_run: false,
-        parent_job_id: None,
-    };
+    let metadata = JobMetadata::new(
+        source.clone(),
+        JobType::ArchiveExtract,
+        vec![source.clone()],
+        destination.clone(),
+    )
+    .with_origin(Some(Origin::FileManager))
+    .with_group(Some(group_id))
+    .with_execute_id(Some(uuid::Uuid::new_v4().to_string()));
 
     let (jobid, _response, _execute_id) = submit_job_with_options(
         app.clone(),

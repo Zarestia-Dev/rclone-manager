@@ -161,6 +161,8 @@ pub struct JobInfo {
     pub jobid: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quick_run_id: Option<String>,
     pub job_type: JobType,
     pub remote_name: String,
     pub source: Vec<String>,
