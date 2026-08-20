@@ -15,7 +15,7 @@ use crate::{
             AUTOMATIONS_BULK_UPDATE, AUTOMATIONS_REMOTE_REMOVED,
         },
         types::{
-            automation::{Automation, AutomationArgs, AutomationStats, AutomationStatus},
+            automation::{Automation, AutomationArgs, AutomationStatus},
             events::AUTOMATIONS_CACHE_CHANGED,
             remotes::{OperationType, ProfileParams},
         },
@@ -697,33 +697,6 @@ impl AutomationsCache {
         .await
     }
 
-    pub async fn get_stats(&self) -> AutomationStats {
-        let automations = self.automations.read().await;
-        let mut stats = AutomationStats {
-            total_automations: automations.len(),
-            enabled_automations: 0,
-            running_automations: 0,
-            failed_automations: 0,
-            total_runs: 0,
-            successful_runs: 0,
-            failed_runs: 0,
-            stopped_runs: 0,
-        };
-        for t in automations.values() {
-            match t.status {
-                AutomationStatus::Enabled => stats.enabled_automations += 1,
-                AutomationStatus::Running => stats.running_automations += 1,
-                AutomationStatus::Failed => stats.failed_automations += 1,
-                _ => {}
-            }
-            stats.total_runs += t.run_count;
-            stats.successful_runs += t.success_count;
-            stats.failed_runs += t.failure_count;
-            stats.stopped_runs += t.stopped_count;
-        }
-        stats
-    }
-
     /// Remove all automations for a backend. Returns the evicted automations so the
     /// caller can unschedule their jobs.
     pub async fn clear_backend_automations(&self, backend_name: &str) -> Vec<Automation> {
@@ -773,12 +746,6 @@ pub async fn get_automation(
 ) -> Result<Option<Automation>, String> {
     let cache = app.state::<AutomationsCache>();
     Ok(cache.get_automation(&automation_id).await)
-}
-
-#[tauri::command]
-pub async fn get_automation_stats(app: AppHandle) -> Result<AutomationStats, String> {
-    let cache = app.state::<AutomationsCache>();
-    Ok(cache.get_stats().await)
 }
 
 #[cfg(test)]
@@ -1431,43 +1398,6 @@ mod tests {
             AutomationStatus::Stopping,
             "toggling a Running automation must transition to Stopping"
         );
-    }
-
-    // Stats
-
-    #[tokio::test]
-    async fn test_get_stats_empty() {
-        let cache = make_cache();
-        let stats = cache.get_stats().await;
-        assert_eq!(stats.total_automations, 0);
-        assert_eq!(stats.enabled_automations, 0);
-        assert_eq!(stats.total_runs, 0);
-    }
-
-    #[tokio::test]
-    async fn test_get_stats_counts() {
-        let cache = make_cache();
-
-        let mut enabled = base_automation();
-        enabled.id = "e1".to_string();
-        enabled.status = AutomationStatus::Enabled;
-        enabled.run_count = 3;
-        enabled.success_count = 2;
-        enabled.failure_count = 1;
-
-        let mut disabled = base_automation();
-        disabled.id = "d1".to_string();
-        disabled.status = AutomationStatus::Disabled;
-
-        cache.add_automation(enabled, None).await.unwrap();
-        cache.add_automation(disabled, None).await.unwrap();
-
-        let stats = cache.get_stats().await;
-        assert_eq!(stats.total_automations, 2);
-        assert_eq!(stats.enabled_automations, 1);
-        assert_eq!(stats.total_runs, 3);
-        assert_eq!(stats.successful_runs, 2);
-        assert_eq!(stats.failed_runs, 1);
     }
 
     // CacheUpdateResult

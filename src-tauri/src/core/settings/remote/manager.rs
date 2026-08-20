@@ -135,22 +135,6 @@ pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Resu
     Ok(())
 }
 
-/// **Retrieve settings for a specific remote**
-#[tauri::command]
-pub async fn get_remote_settings(
-    app: AppHandle,
-    remote_name: String,
-) -> Result<serde_json::Value, String> {
-    let manager = app.state::<AppSettingsManager>();
-    let settings =
-        crate::utils::types::remotes::RemoteSettings::load(manager.inner(), &remote_name).map_err(
-            |_| crate::localized_error!("backendErrors.settings.notFound", "name" => remote_name),
-        )?;
-
-    info!("Loaded settings for remote '{remote_name}'.");
-    serde_json::to_value(settings).map_err(|e| e.to_string())
-}
-
 /// **Get all remote settings as a map (for internal use)**
 pub fn get_all_remote_settings_sync(
     manager: &AppSettingsManager,

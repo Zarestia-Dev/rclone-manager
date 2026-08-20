@@ -109,8 +109,6 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.configPassword,
         configPath: config.configPath,
-        oauthPort: config.oauthPort,
-        oauthHost: config.oauthHost,
         copyBackendFrom: copyBackendFrom ?? null,
         copyRemotesFrom: copyRemotesFrom ?? null,
       },
@@ -128,8 +126,6 @@ export class BackendService extends TauriBaseService {
         password: config.password,
         configPassword: config.configPassword,
         configPath: config.configPath,
-        oauthPort: config.oauthPort,
-        oauthHost: config.oauthHost,
       },
     });
     this.backendData.reload();
@@ -152,13 +148,11 @@ export class BackendService extends TauriBaseService {
     await this.updateBackend({
       name: 'Local',
       host: localBackend.host,
-      oauthHost: localBackend.oauthHost,
       port: localBackend.port,
       isLocal: true,
       username: localBackend.username,
       password: localBackend.password,
       configPath: configPath || undefined,
-      oauthPort: localBackend.oauthPort,
     });
   }
 
@@ -271,8 +265,6 @@ export class BackendService extends TauriBaseService {
       password: formValue.has_auth ? (formValue.password ?? '') : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 
@@ -286,8 +278,6 @@ export class BackendService extends TauriBaseService {
       password: formValue.has_auth ? formValue.password || undefined : '',
       configPassword: formValue.config_password || undefined,
       configPath: formValue.config_path || undefined,
-      oauthPort: formValue.oauth_port ? Number(formValue.oauth_port) : undefined,
-      oauthHost: formValue.oauth_host || undefined,
     };
   }
 }

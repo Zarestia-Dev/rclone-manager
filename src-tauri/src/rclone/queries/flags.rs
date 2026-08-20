@@ -284,28 +284,6 @@ fn get_flags_by_category_internal(
         .collect()
 }
 
-#[tauri::command]
-pub async fn get_flags_by_category(
-    app: AppHandle,
-    category: String,
-    filter_groups: Option<Vec<String>>,
-    exclude_flags: Option<Vec<String>>,
-) -> Result<Vec<Value>, String> {
-    let merged_json = get_all_options_with_values(app).await?;
-    let fg: Option<Vec<&str>> = filter_groups
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    let ef: Option<Vec<&str>> = exclude_flags
-        .as_ref()
-        .map(|v| v.iter().map(std::string::String::as_str).collect());
-    Ok(get_flags_by_category_internal(
-        &merged_json,
-        &category,
-        fg.as_deref(),
-        ef.as_deref(),
-    ))
-}
-
 /// Unified flag fetcher for all operation types.
 /// Maps each operation to the correct rclone flag groups it supports.
 #[tauri::command]
@@ -451,7 +429,6 @@ pub async fn set_rclone_option(
 
 /// Set multiple rclone options in one call.
 /// Expected payload shape: `{ "main": { "LogLevel": "DEBUG" }, "vfs": { "CacheMode": "full" } }`
-#[tauri::command]
 pub async fn set_rclone_options_bulk(app: AppHandle, payload: Value) -> Result<Value, String> {
     crate::rclone::commands::common::transport(&app)
         .rpc(options::SET, Some(&payload))

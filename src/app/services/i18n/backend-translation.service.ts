@@ -22,23 +22,30 @@ export class BackendTranslationService {
    * 3. Legacy English message: "Mount point cannot be empty"
    */
   translateBackendMessage(message: unknown): string {
-    if (typeof message !== 'string') {
+    let msgStr: string;
+    if (typeof message === 'string') {
+      msgStr = message;
+    } else if (message instanceof Error) {
+      msgStr = message.message;
+    } else if (message && typeof message === 'object' && 'message' in message) {
+      msgStr = String((message as { message: unknown }).message);
+    } else {
       return String(message);
     }
 
     // Try to parse as JSON (dynamic error with params)
-    const parsed = this.tryParseLocalizedError(message);
+    const parsed = this.tryParseLocalizedError(msgStr);
     if (parsed) {
-      return this.translateWithFallback(parsed.key, parsed.params, message);
+      return this.translateWithFallback(parsed.key, parsed.params, msgStr);
     }
 
     // Check if it looks like a translation key (e.g., "errors.mount.pointEmpty")
-    if (this.looksLikeTranslationKey(message)) {
-      return this.translateWithFallback(message, undefined, message);
+    if (this.looksLikeTranslationKey(msgStr)) {
+      return this.translateWithFallback(msgStr, undefined, msgStr);
     }
 
     // Return as-is (legacy English message or unknown format)
-    return message;
+    return msgStr;
   }
 
   private tryParseLocalizedError(message: string): LocalizedError | null {

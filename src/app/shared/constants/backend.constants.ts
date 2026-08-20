@@ -12,7 +12,6 @@ export const BACKEND_CONSTANTS = {
   GROUPS: {
     CONNECTION: 'connection',
     AUTHENTICATION: 'authentication',
-    OAUTH: 'oauth',
     SECURITY: 'security',
     ADVANCED: 'advanced',
   },
@@ -22,7 +21,6 @@ export const BACKEND_CONSTANTS = {
     HOST: 'localhost',
     IP: '127.0.0.1',
     PORT: 51900,
-    OAUTH_PORT: 51901,
   },
 
   // Status Strings

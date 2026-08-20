@@ -2042,14 +2042,6 @@
           "label": "Contraseña",
           "placeholder": "Dejar vacío para no usar autenticación"
         },
-        "oauthHost": {
-          "label": "Host OAuth",
-          "placeholder": "127.0.0.1",
-          "description": "Host al que conectarse para las devoluciones de llamada de OAuth. Debe ser una dirección enrutable, nunca un comodín como 0.0.0.0. En Docker, establézcalo en el nombre de host accesible del contenedor."
-        },
-        "oauthPort": {
-          "label": "Puerto OAuth"
-        },
         "configPassword": {
           "label": "Contraseña de configuración",
           "description": "Contraseña para el archivo de configuración cifrado"
@@ -2067,7 +2059,6 @@
       "local": "Local",
       "name": "Nombre",
       "enableAuth": "Personalizar autenticación",
-      "oauthSettings": "Configuración de OAuth (Se eliminará en el futuro)",
       "selectConfigFile": "Seleccionar archivo de configuración",
       "activeConfigPath": "Ruta de configuración activa",
       "connectionTab": "Conexión",

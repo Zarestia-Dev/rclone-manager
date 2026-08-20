@@ -2042,14 +2042,6 @@
           "label": "パスワード",
           "placeholder": "認証なしの場合は空欄"
         },
-        "oauthHost": {
-          "label": "OAuth ホスト",
-          "placeholder": "127.0.0.1",
-          "description": "OAuth認証コールバック受信用ホスト。ルーティング可能なアドレスを指定してください（0.0.0.0 などのワイルドカードは不可）。Docker環境では外部からアクセス可能なホスト名やIPアドレスを設定してください"
-        },
-        "oauthPort": {
-          "label": "OAuth ポート"
-        },
         "configPassword": {
           "label": "設定パスワード",
           "description": "暗号化された設定ファイルのパスワード"
@@ -2067,7 +2059,6 @@
       "local": "ローカル",
       "name": "名前",
       "enableAuth": "認証のカスタマイズ",
-      "oauthSettings": "OAuth設定 (将来のバージョンで削除予定)",
       "selectConfigFile": "設定ファイルを選択",
       "activeConfigPath": "アクティブな設定パス",
       "connectionTab": "接続",

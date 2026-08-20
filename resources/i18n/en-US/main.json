@@ -2042,14 +2042,6 @@
           "label": "Password",
           "placeholder": "Leave empty for no auth"
         },
-        "oauthHost": {
-          "label": "OAuth Host",
-          "placeholder": "127.0.0.1",
-          "description": "Host to connect to for OAuth callbacks. Must be a routable address — never a wildcard like 0.0.0.0. In Docker, set this to the container's accessible hostname."
-        },
-        "oauthPort": {
-          "label": "OAuth Port"
-        },
         "configPassword": {
           "label": "Config Password",
           "description": "Password for encrypted configuration file"
@@ -2067,7 +2059,6 @@
       "local": "Local",
       "name": "Name",
       "enableAuth": "Customize Authentication",
-      "oauthSettings": "OAuth Settings (Will be removed in the future)",
       "selectConfigFile": "Select Config File",
       "activeConfigPath": "Active Config Path",
       "connectionTab": "Connection",

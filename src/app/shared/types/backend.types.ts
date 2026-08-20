@@ -12,12 +12,10 @@ export interface BackendInfo {
   isLocal: boolean;
   isAuthGenerated: boolean;
   host: string;
-  oauthHost?: string;
   port: number;
   isActive: boolean;
   hasAuth: boolean;
   hasConfigPassword: boolean;
-  oauthPort?: number;
   username?: string;
   password?: string;
   version?: string;
@@ -45,8 +43,6 @@ export interface AddBackendArgs {
   password?: string;
   configPassword?: string;
   configPath?: string;
-  oauthPort?: number;
-  oauthHost?: string;
   copyBackendFrom?: string | null;
   copyRemotesFrom?: string | null;
 }

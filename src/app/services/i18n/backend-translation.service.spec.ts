@@ -1,13 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
+import { vi } from 'vitest';
 import { BackendTranslationService } from './backend-translation.service';
 
 describe('BackendTranslationService', () => {
   let service: BackendTranslationService;
-  let translateServiceMock: jasmine.SpyObj<TranslateService>;
+  let translateServiceMock: { instant: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    translateServiceMock = jasmine.createSpyObj('TranslateService', ['instant']);
+    translateServiceMock = {
+      instant: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -26,7 +29,7 @@ describe('BackendTranslationService', () => {
   describe('translateBackendMessage', () => {
     it('should translate valid JSON error with params', () => {
       const message = JSON.stringify({ key: 'errors.test', params: { param: 'value' } });
-      translateServiceMock.instant.and.returnValue('Translated Error value');
+      translateServiceMock.instant.mockReturnValue('Translated Error value');
 
       const result = service.translateBackendMessage(message);
 
@@ -36,7 +39,7 @@ describe('BackendTranslationService', () => {
 
     it('should fallback to raw JSON if translation key is missing', () => {
       const message = JSON.stringify({ key: 'errors.missing', params: {} });
-      translateServiceMock.instant.and.returnValue('errors.missing'); // Returns key if not found
+      translateServiceMock.instant.mockReturnValue('errors.missing'); // Returns key if not found
 
       const result = service.translateBackendMessage(message);
 
@@ -46,7 +49,7 @@ describe('BackendTranslationService', () => {
 
     it('should translate simple translation key', () => {
       const message = 'errors.simple.key';
-      translateServiceMock.instant.and.returnValue('Simple Translation');
+      translateServiceMock.instant.mockReturnValue('Simple Translation');
 
       const result = service.translateBackendMessage(message);
 
@@ -56,7 +59,7 @@ describe('BackendTranslationService', () => {
 
     it('should fallback to original string if simple key not found', () => {
       const message = 'errors.missing.key';
-      translateServiceMock.instant.and.returnValue('errors.missing.key');
+      translateServiceMock.instant.mockReturnValue('errors.missing.key');
 
       const result = service.translateBackendMessage(message);
 

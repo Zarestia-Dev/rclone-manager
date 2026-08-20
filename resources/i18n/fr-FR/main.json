@@ -2042,14 +2042,6 @@
           "label": "Mot de passe",
           "placeholder": "Laisser vide pour aucune authentification"
         },
-        "oauthHost": {
-          "label": "Hôte OAuth",
-          "placeholder": "127.0.0.1",
-          "description": "Hôte auquel se connecter pour les rappels OAuth. Doit être une adresse routable — jamais un caractère générique comme 0.0.0.0. Dans Docker, définissez-le sur le nom d'hôte accessible du conteneur."
-        },
-        "oauthPort": {
-          "label": "Port OAuth"
-        },
         "configPassword": {
           "label": "Mot de passe de configuration",
           "description": "Mot de passe pour le fichier de configuration chiffré"
@@ -2067,7 +2059,6 @@
       "local": "Local",
       "name": "Nom",
       "enableAuth": "Personnaliser l'authentification",
-      "oauthSettings": "Paramètres OAuth (Sera supprimé à l'avenir)",
       "selectConfigFile": "Sélectionnez le fichier de configuration",
       "activeConfigPath": "Chemin de configuration actif",
       "connectionTab": "Connexion",

@@ -417,20 +417,6 @@ pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
         .await
 }
 
-#[tauri::command]
-pub async fn get_job_status(app: AppHandle, jobid: u64) -> Result<Option<JobInfo>, String> {
-    Ok(app.state::<BackendManager>().job_cache.get_job(jobid).await)
-}
-
-#[tauri::command]
-pub async fn get_active_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
-    Ok(app
-        .state::<BackendManager>()
-        .job_cache
-        .get_active_jobs()
-        .await)
-}
-
 pub async fn monitor_job(
     backend_name: String,
     metadata: JobMetadata,

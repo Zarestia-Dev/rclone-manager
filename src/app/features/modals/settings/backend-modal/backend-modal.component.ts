@@ -178,11 +178,6 @@ export class BackendModalComponent implements OnInit {
         config_password: [''],
         config_path: [''],
         has_auth: [false],
-        oauth_host: [BACKEND_CONSTANTS.DEFAULTS.IP],
-        oauth_port: [
-          BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
-          [Validators.min(1024), Validators.max(65535)],
-        ],
       },
       { validators: [this.duplicateHostValidator] }
     );
@@ -219,8 +214,6 @@ export class BackendModalComponent implements OnInit {
       password: backend.password ?? '',
       config_password: '',
       config_path: backend.configPath ?? '',
-      oauth_host: backend.oauthHost ?? BACKEND_CONSTANTS.DEFAULTS.IP,
-      oauth_port: backend.oauthPort ?? BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
     });
 
     this.updateAuthValidators(hasCustomAuth);
@@ -239,8 +232,6 @@ export class BackendModalComponent implements OnInit {
       host: BACKEND_CONSTANTS.DEFAULTS.HOST,
       port: BACKEND_CONSTANTS.DEFAULTS.PORT,
       has_auth: false,
-      oauth_host: BACKEND_CONSTANTS.DEFAULTS.IP,
-      oauth_port: BACKEND_CONSTANTS.DEFAULTS.OAUTH_PORT,
     });
     this.updateAuthValidators(false);
     this.showPassword.set(false);
@@ -435,8 +426,6 @@ export class BackendModalComponent implements OnInit {
         username: backend.username,
         password: backend.password,
         configPath: backend.configPath,
-        oauthPort: backend.oauthPort,
-        oauthHost: backend.oauthHost,
         configPassword: '', // explicitly empty → Rust clears it
       });
       this.notificationService.showSuccess(

@@ -226,12 +226,6 @@ pub async fn get_alert_stats(app: AppHandle) -> Result<AlertStats, String> {
 }
 
 #[tauri::command]
-pub async fn get_unacknowledged_alert_count(app: AppHandle) -> Result<usize, String> {
-    let cache = app.state::<AlertHistoryCache>();
-    Ok(cache.unacknowledged_count().await)
-}
-
-#[tauri::command]
 pub fn get_alert_template_keys() -> Vec<String> {
     crate::core::alerts::template::TemplateContext::get_available_keys()
 }

@@ -384,7 +384,6 @@ pub async fn get_disk_usage(
     })
 }
 
-#[tauri::command]
 pub async fn get_about_remote(
     app: AppHandle,
     remote: String,

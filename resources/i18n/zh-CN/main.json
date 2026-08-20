@@ -2042,14 +2042,6 @@
           "label": "密码",
           "placeholder": "留空表示不进行身份验证"
         },
-        "oauthHost": {
-          "label": "OAuth 主机",
-          "placeholder": "127.0.0.1",
-          "description": "用于 OAuth 回调的连接主机。必须是可路由的地址 — 绝对不能是像 0.0.0.0 这样的通配符。在 Docker 中，将其设置为容器可访问的主机名。"
-        },
-        "oauthPort": {
-          "label": "OAuth 端口"
-        },
         "configPassword": {
           "label": "配置密码",
           "description": "加密配置文件的密码"
@@ -2067,7 +2059,6 @@
       "local": "本地",
       "name": "名称",
       "enableAuth": "自定义身份验证",
-      "oauthSettings": "OAuth 设置 (未来将被移除)",
       "selectConfigFile": "选择配置文件",
       "activeConfigPath": "当前使用的配置路径",
       "connectionTab": "连接",

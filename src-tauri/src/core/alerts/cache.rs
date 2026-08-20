@@ -310,15 +310,6 @@ impl AlertHistoryCache {
         self.records.write().await.clear();
     }
 
-    pub async fn unacknowledged_count(&self) -> usize {
-        self.records
-            .read()
-            .await
-            .iter()
-            .filter(|r| !r.acknowledged)
-            .count()
-    }
-
     pub async fn get_stats(&self) -> AlertStats {
         let records = self.records.read().await;
         let mut by_severity = std::collections::HashMap::new();

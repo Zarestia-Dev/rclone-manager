@@ -350,51 +350,6 @@
               />
             }
 
-            <!-- OAuth Group -->
-            @if (editingName() === 'Local') {
-              <div class="oauth-group">
-                <h4>{{ 'modals.backend.oauthSettings' | translate }}</h4>
-                <div class="form-row">
-                  <div class="field-wrapper host-field">
-                    <mat-form-field>
-                      <mat-label>{{
-                        'modals.backend.fields.oauthHost.label' | translate
-                      }}</mat-label>
-                      <mat-icon matPrefix svgIcon="globe"></mat-icon>
-                      <input
-                        matInput
-                        type="text"
-                        formControlName="oauth_host"
-                        [placeholder]="'modals.backend.fields.oauthHost.placeholder' | translate"
-                      />
-                      @if (backendForm.get('oauth_host')?.hasError('required')) {
-                        <mat-error>{{ 'common.required' | translate }}</mat-error>
-                      }
-                      <mat-icon
-                        matSuffix
-                        svgIcon="info"
-                        [attr.title]="'modals.backend.fields.oauthHost.description' | translate"
-                      ></mat-icon>
-                    </mat-form-field>
-                  </div>
-                  <div class="field-wrapper port-field">
-                    <mat-form-field>
-                      <mat-label>{{
-                        'modals.backend.fields.oauthPort.label' | translate
-                      }}</mat-label>
-                      <input matInput type="number" formControlName="oauth_port" />
-                      @if (
-                        backendForm.get('oauth_port')?.hasError('min') ||
-                        backendForm.get('oauth_port')?.hasError('max')
-                      ) {
-                        <mat-error>1024 - 65535</mat-error>
-                      }
-                    </mat-form-field>
-                  </div>
-                </div>
-              </div>
-            }
-
             <!-- Advanced Group (Config Path) -->
             <div class="form-row">
               <div class="field-wrapper">

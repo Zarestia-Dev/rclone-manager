@@ -30,7 +30,6 @@ pub struct ActiveOperationsSummary {
     pub active_serves_count: usize,
 }
 
-#[tauri::command]
 pub async fn get_active_operations_summary(
     app: tauri::AppHandle,
 ) -> Result<ActiveOperationsSummary, String> {

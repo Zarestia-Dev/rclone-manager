@@ -210,30 +210,6 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }
 
-/// Get all active stats groups.
-/// Returns a list of group names like ["sync/gdrive", "mount/onedrive"].
-#[tauri::command]
-pub async fn get_stats_groups(app: AppHandle) -> Result<Vec<String>, String> {
-    let transport = app.state::<RcloneState>().transport.clone();
-
-    let json = transport
-        .rpc(core::GROUP_LIST, None)
-        .await
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))?;
-
-    let groups = json
-        .get("groups")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    Ok(groups)
-}
-
 /// Reset stats for a specific group, or all groups if `group` is None.
 #[tauri::command]
 pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<(), String> {
@@ -249,17 +225,5 @@ pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<
                 group.as_deref().unwrap_or("all")
             );
         })
-        .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
-}
-
-/// Delete a stats group entirely.
-#[tauri::command]
-pub async fn delete_stats_group(app: AppHandle, group: String) -> Result<(), String> {
-    let transport = app.state::<RcloneState>().transport.clone();
-
-    transport
-        .rpc(core::STATS_DELETE, Some(&json!({ "group": group })))
-        .await
-        .map(|_| info!("Stats group '{group}' deleted"))
         .map_err(|e| crate::localized_error!("backendErrors.request.failed", "error" => e))
 }

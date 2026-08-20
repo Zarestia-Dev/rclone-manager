@@ -2042,14 +2042,6 @@
           "label": "Senha",
           "placeholder": "Deixe em branco para sem autenticação"
         },
-        "oauthHost": {
-          "label": "Host OAuth",
-          "placeholder": "127.0.0.1",
-          "description": "Endereço de host para conectar para callbacks de OAuth. Deve ser um endereço acessível - nunca um wildcard como 0.0.0.0. No Docker, defina isso para o nome do host do contêiner acessível."
-        },
-        "oauthPort": {
-          "label": "Porta OAuth"
-        },
         "configPassword": {
           "label": "Definir senha de Configuração",
           "description": "Senha para o arquivo de configuração criptografado"
@@ -2067,7 +2059,6 @@
       "local": "Local",
       "name": "Nome",
       "enableAuth": "Personalizar Autenticação",
-      "oauthSettings": "Configurações de OAuth (Serão removidas no futuro)",
       "selectConfigFile": "Selecione o Arquivo de Configuração",
       "activeConfigPath": "Caminho da Configuração Ativa",
       "connectionTab": "Conexão",

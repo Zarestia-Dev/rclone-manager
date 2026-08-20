@@ -216,20 +216,6 @@ pub struct CronValidationResponse {
     pub next_run: Option<DateTime<Utc>>,
 }
 
-/// Statistics for automations
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AutomationStats {
-    pub total_automations: usize,
-    pub enabled_automations: usize,
-    pub running_automations: usize,
-    pub failed_automations: usize,
-    pub total_runs: u64,
-    pub successful_runs: u64,
-    pub failed_runs: u64,
-    pub stopped_runs: u64,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -81,7 +81,6 @@ pub async fn initialization(app_handle: tauri::AppHandle) {
 }
 
 /// Fully refreshes all system components after settings change or restore.
-#[tauri::command]
 pub async fn refresh_system(app_handle: AppHandle) -> Result<(), String> {
     info!("Initiating full system refresh...");
 
