@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::settings::remote::manager::delete_remote_settings,
+    core::{bridge, settings::remote::manager::delete_remote_settings},
     rclone::{
         backend::BackendManager,
         commands::{
@@ -117,7 +117,7 @@ fn build_opt(user_opt: Option<Value>, protocol_keys: Value) -> Value {
     Value::Object(map)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn create_remote_interactive(
     app: AppHandle,
     name: String,
@@ -171,7 +171,7 @@ pub async fn create_remote_interactive(
     Ok(value)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn continue_create_remote_interactive(
     app: AppHandle,
     name: String,
@@ -237,7 +237,7 @@ pub async fn continue_create_remote_interactive(
     Ok(value)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn create_remote(
     app: AppHandle,
     name: String,
@@ -325,7 +325,7 @@ pub async fn create_remote(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_remote(
     app: AppHandle,
     name: String,
@@ -403,7 +403,7 @@ pub async fn update_remote(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), String> {
     let cache = app.state::<AutomationsCache>();
     info!("🗑️ Deleting remote: {name}");

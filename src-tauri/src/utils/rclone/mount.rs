@@ -1,5 +1,6 @@
 //! Mount plugin detection and installation (WinFsp, FUSE-T, MacFUSE)
 
+use crate::core::bridge;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::utils::{
     github_client, types::events::MOUNT_PLUGIN_INSTALLED, types::state::RcloneState,
@@ -56,7 +57,7 @@ fn check_winfsp_installed() -> bool {
     via_service
 }
 
-#[tauri::command]
+#[bridge]
 pub fn check_mount_plugin_installed() -> bool {
     #[cfg(target_os = "macos")]
     {
@@ -150,19 +151,19 @@ async fn run_install(
 }
 
 #[cfg(target_os = "macos")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
     run_install(&app_handle, get_latest_fuse_t_url().await?).await
 }
 
 #[cfg(target_os = "windows")]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(app_handle: tauri::AppHandle) -> Result<String, String> {
     run_install(&app_handle, get_latest_winfsp_url().await?).await
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-#[tauri::command]
+#[bridge]
 pub async fn install_mount_plugin(_app_handle: tauri::AppHandle) -> Result<String, String> {
     Err(crate::localized_error!(
         "backendErrors.rclone.unsupportedPlatform"

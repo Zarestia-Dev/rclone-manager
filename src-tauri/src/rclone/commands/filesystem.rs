@@ -4,10 +4,15 @@ use serde::Deserialize;
 use serde_json::json;
 use tauri::AppHandle;
 
-use crate::rclone::commands::job::JobMetadata;
-use crate::utils::json_helpers::build_full_path;
-use crate::utils::rclone::endpoints::{operations, sync};
-use crate::utils::types::{jobs::JobType, origin::Origin};
+use crate::{
+    core::bridge,
+    rclone::commands::job::JobMetadata,
+    utils::{
+        json_helpers::build_full_path,
+        rclone::endpoints::{operations, sync},
+        types::{jobs::JobType, origin::Origin},
+    },
+};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +33,7 @@ pub struct RenameItem {
     pub is_dir: bool,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn mkdir(
     app: AppHandle,
     remote: String,
@@ -59,7 +64,7 @@ pub async fn mkdir(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn cleanup(
     app: AppHandle,
     remote: String,
@@ -92,7 +97,7 @@ pub async fn cleanup(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn copy_url(
     app: AppHandle,
     remote: String,
@@ -135,7 +140,7 @@ pub async fn copy_url(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn remove_empty_dirs(
     app: AppHandle,
     remote: String,
@@ -167,7 +172,7 @@ pub async fn remove_empty_dirs(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 #[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     app: AppHandle,
@@ -271,7 +276,7 @@ pub async fn transfer(
     crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete(
     app: AppHandle,
     items: Vec<FsItem>,
@@ -312,7 +317,7 @@ pub async fn delete(
     crate::rclone::commands::job::submit_batch_job(app, inputs, metadata).await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn rename(
     app: AppHandle,
     items: Vec<RenameItem>,

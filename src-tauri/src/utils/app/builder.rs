@@ -114,7 +114,10 @@ pub struct WindowOptions {
 }
 
 #[cfg(not(feature = "web-server"))]
-#[tauri::command]
+use crate::core::bridge;
+
+#[cfg(not(feature = "web-server"))]
+#[bridge]
 pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
         let _ = existing.show();

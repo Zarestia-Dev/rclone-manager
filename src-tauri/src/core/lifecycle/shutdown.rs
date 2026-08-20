@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::automation::engine::AutomationScheduler,
+    core::{automation::engine::AutomationScheduler, bridge},
     rclone::{
         backend::BackendManager,
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
@@ -134,7 +134,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     apply_pending_updates(&app_handle).await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
     handle_shutdown(app.clone()).await;
     info!("Shutdown completed.");

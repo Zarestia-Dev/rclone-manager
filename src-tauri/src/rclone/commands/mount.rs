@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    core::bridge,
     rclone::{backend::BackendManager, state::watcher::refresh_mounts_quietly},
     utils::{
         app::notification::{MountStage, NotificationEvent, notify},
@@ -260,7 +261,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
 }
 
 /// Unmount a remote filesystem
-#[tauri::command]
+#[bridge]
 pub async fn unmount_remote(
     app: AppHandle,
     mount_point: String,
@@ -420,7 +421,7 @@ pub async fn unmount_remote(
 }
 
 /// Unmount all remotes
-#[tauri::command]
+#[bridge]
 pub async fn unmount_all_remotes(
     app: AppHandle,
     context: OperationContext,
@@ -489,7 +490,7 @@ pub async fn unmount_all_remotes(
 
 /// Mount a remote using a named profile
 /// Resolves all options (mount, vfs, filter, backend) from cached settings
-#[tauri::command]
+#[bridge]
 pub async fn mount_remote_profile(app: AppHandle, params: ProfileParams) -> Result<(), String> {
     let (config, settings) = match crate::rclone::commands::common::resolve_profile_settings(
         &app,

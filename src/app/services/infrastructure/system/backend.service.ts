@@ -182,7 +182,7 @@ export class BackendService extends TauriBaseService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: this.backendTranslation.translateBackendMessage(error),
       };
     }
   }
@@ -203,7 +203,7 @@ export class BackendService extends TauriBaseService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: this.backendTranslation.translateBackendMessage(error),
       };
     }
   }

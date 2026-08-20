@@ -2,16 +2,21 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
 use crate::utils::logging::log::log_operation;
 use crate::utils::rclone::endpoints::{core, operations};
 use crate::utils::types::jobs::JobType;
 use crate::utils::types::logs::LogLevel;
 use crate::utils::types::origin::Origin;
 use crate::utils::types::state::RcloneState;
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    },
+};
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_create(
     app: AppHandle,
     source: String,
@@ -98,7 +103,7 @@ pub async fn archive_create(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_extract(
     app: AppHandle,
     source: String,
@@ -156,7 +161,7 @@ pub async fn archive_extract(
     Ok(json!({ "success": true, "jobid": jobid }))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn archive_list(
     app: AppHandle,
     source: String,

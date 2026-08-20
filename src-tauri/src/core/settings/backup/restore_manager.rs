@@ -1,6 +1,6 @@
 //! Restore management using rcman library
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::rclone::commands::remote::{create_remote, update_remote};
 use log::{debug, info, warn};
 use serde_json::{Value, json};
@@ -12,7 +12,7 @@ use tauri::{AppHandle, Manager};
 // MAIN RESTORE COMMAND
 // -----------------------------------------------------------------------------
 
-#[tauri::command]
+#[bridge]
 pub async fn restore_settings(
     app: AppHandle,
     backup_path: std::path::PathBuf,

@@ -1,6 +1,7 @@
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::core::bridge;
 #[cfg(not(feature = "librclone"))]
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::SafeEnvironmentManager;
@@ -27,7 +28,7 @@ fn update_local_config_password(
         .map_err(|e| format!("Failed to update Local config password: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn store_config_password(app: AppHandle, password: String) -> Result<(), String> {
     info!("Storing rclone config password");
 
@@ -56,7 +57,7 @@ pub async fn store_config_password(app: AppHandle, password: String) -> Result<(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_config_password(app: AppHandle) -> Result<String, String> {
     let manager = app.state::<AppSettingsManager>();
     let connections = manager
@@ -76,7 +77,7 @@ pub async fn get_config_password(app: AppHandle) -> Result<String, String> {
     ))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn has_stored_password(app: AppHandle) -> Result<bool, String> {
     let manager = app.state::<AppSettingsManager>();
     let connections = manager
@@ -95,7 +96,7 @@ pub async fn has_stored_password(app: AppHandle) -> Result<bool, String> {
     Ok(false)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     info!("Removing stored config password");
 
@@ -118,7 +119,7 @@ pub async fn remove_config_password(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn validate_rclone_password(app: AppHandle, password: String) -> Result<(), String> {
     if password.trim().is_empty() {
         return Err(crate::localized_error!(
@@ -207,7 +208,7 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn set_config_password_env(app: AppHandle, password: String) -> Result<(), String> {
     let env_manager = app.state::<SafeEnvironmentManager>();
     env_manager.set_config_password(password);
@@ -219,7 +220,7 @@ pub async fn set_config_password_env(app: AppHandle, password: String) -> Result
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     #[cfg(feature = "librclone")]
     {
@@ -345,7 +346,7 @@ async fn run_encryption_command(
     Err(crate::localized_error!(l10n_key, "error" => err_detail))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), String> {
     #[cfg(feature = "librclone")]
     {
@@ -412,7 +413,7 @@ pub async fn encrypt_config(app: AppHandle, password: String) -> Result<(), Stri
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), String> {
     #[cfg(feature = "librclone")]
     {
@@ -475,7 +476,7 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn change_config_password(
     app: AppHandle,
     current_password: String,

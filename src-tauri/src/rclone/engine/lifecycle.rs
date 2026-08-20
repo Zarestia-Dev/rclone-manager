@@ -2,6 +2,8 @@ use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::core::bridge;
+
 #[cfg(feature = "librclone")]
 use crate::utils::rclone::endpoints::core;
 use crate::utils::{
@@ -112,7 +114,7 @@ pub async fn clear_engine_errors(app: &AppHandle) {
 /// Called from the repair sheet's "Clear & Retry" button when the user has
 /// fixed the backend credentials and wants the engine to retry without
 /// restarting the whole app.
-#[tauri::command]
+#[bridge]
 pub async fn clear_engine_auth_error(app: AppHandle) -> Result<(), String> {
     log::info!("Clearing engine auth error and retrying start");
     clear_engine_errors(&app).await;

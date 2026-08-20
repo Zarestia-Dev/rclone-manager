@@ -298,10 +298,7 @@ export class RepairSheetComponent {
     } catch (error) {
       console.error('Repair failed:', error);
       if (this.isMountPluginRepair()) {
-        const errorMsg =
-          error instanceof Error
-            ? error.message
-            : this.backendTranslation.translateBackendMessage(error);
+        const errorMsg = this.backendTranslation.translateBackendMessage(error);
         this.messageOverride.set(
           this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {
             error: errorMsg,

@@ -3,6 +3,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
+    core::bridge,
     rclone::backend::BackendManager,
     utils::{
         rclone::endpoints::{config, core, fscache},
@@ -91,7 +92,7 @@ pub async fn try_auto_unlock_config(app: &AppHandle) -> Result<(), String> {
 /// there's no daemon to quit — the engine shuts down via `RcloneFinalize` in
 /// the shutdown handler.
 #[cfg(not(feature = "librclone"))]
-#[tauri::command]
+#[bridge]
 pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
     info!("Quitting rclone engine");
 
@@ -113,7 +114,7 @@ pub async fn quit_rclone_engine(app: AppHandle) -> Result<(), String> {
 /// Sends `config/oauthstop` over the active transport. Works for both
 /// desktop (rcd) and mobile (librclone) — rclone v1.75+ runs the OAuth
 /// server in-process and exposes this endpoint to stop it.
-#[tauri::command]
+#[bridge]
 pub async fn cancel_oauth(app: AppHandle) -> Result<(), String> {
     info!("Cancelling in-progress OAuth flow");
     let transport = app.state::<RcloneState>().transport.clone();
@@ -124,7 +125,7 @@ pub async fn cancel_oauth(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to stop OAuth server: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn bandwidth_limit(
     app: AppHandle,
     rate: Option<String>,
@@ -167,7 +168,7 @@ pub async fn unlock_rclone_config(app: AppHandle, password: String) -> Result<()
 }
 
 /// Run the garbage collector.
-#[tauri::command]
+#[bridge]
 pub async fn run_garbage_collector(app: AppHandle) -> Result<(), String> {
     info!("Running garbage collector");
 
@@ -181,7 +182,7 @@ pub async fn run_garbage_collector(app: AppHandle) -> Result<(), String> {
 }
 
 /// Get the number of entries in the filesystem cache.
-#[tauri::command]
+#[bridge]
 pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
     let transport = app.state::<RcloneState>().transport.clone();
 
@@ -197,7 +198,7 @@ pub async fn get_fscache_entries(app: AppHandle) -> Result<usize, String> {
 }
 
 /// Clear the filesystem cache.
-#[tauri::command]
+#[bridge]
 pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
     info!("Clearing filesystem cache");
 
@@ -211,7 +212,7 @@ pub async fn clear_fscache(app: AppHandle) -> Result<(), String> {
 }
 
 /// Reset stats for a specific group, or all groups if `group` is None.
-#[tauri::command]
+#[bridge]
 pub async fn reset_group_stats(app: AppHandle, group: Option<String>) -> Result<(), String> {
     let payload = group.as_ref().map(|g| json!({ "group": g }));
     let transport = app.state::<RcloneState>().transport.clone();

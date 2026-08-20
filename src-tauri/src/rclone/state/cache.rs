@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::settings::AppSettingsManager,
+    core::{bridge, settings::AppSettingsManager},
     rclone::{
         backend::BackendManager,
         queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
@@ -514,7 +514,7 @@ pub fn is_local_path(path: &str) -> bool {
     false
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, String> {
     Ok(app
         .state::<BackendManager>()
@@ -523,7 +523,7 @@ pub async fn get_cached_remotes<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Str
         .await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     Ok(app
         .state::<BackendManager>()
@@ -533,7 +533,7 @@ pub async fn get_configs<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Va
 }
 
 /// Get all remote settings from rcman sub-settings
-#[tauri::command]
+#[bridge]
 pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     let manager = app.state::<AppSettingsManager>();
     let backend_manager = app.state::<BackendManager>();
@@ -545,7 +545,7 @@ pub async fn get_settings<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::V
     serde_json::to_value(all_settings).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_cached_mounted_remotes<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<MountedRemote>, String> {
@@ -556,7 +556,7 @@ pub async fn get_cached_mounted_remotes<R: Runtime>(
         .await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_cached_serves<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<ServeInstance>, String> {
@@ -568,7 +568,7 @@ pub async fn get_cached_serves<R: Runtime>(
 }
 
 /// Rename a profile in all cached mounts
-#[tauri::command]
+#[bridge]
 pub async fn rename_mount_profile_in_cache<R: Runtime>(
     app: AppHandle<R>,
     remote_name: String,
@@ -589,7 +589,7 @@ pub async fn rename_mount_profile_in_cache<R: Runtime>(
 }
 
 /// Rename a profile in all cached serves
-#[tauri::command]
+#[bridge]
 pub async fn rename_serve_profile_in_cache<R: Runtime>(
     app: AppHandle<R>,
     remote_name: String,

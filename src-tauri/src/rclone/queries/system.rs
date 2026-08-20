@@ -4,11 +4,12 @@ use serde_json::json;
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    core::bridge,
     rclone::backend::BackendManager,
     utils::rclone::endpoints::{config, core},
 };
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let paths = crate::rclone::commands::common::transport(&app)
         .rpc(config::PATHS, Some(&json!({})))
@@ -29,7 +30,7 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_rclone_rc_url(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     let backend = backend_manager.get_active().await;
@@ -72,7 +73,7 @@ pub struct LocalDiskUsageResponse {
 /// Get local disk usage for a directory using rclone's core/du endpoint
 /// This returns disk space info (Available, Free, Total) for a LOCAL directory,
 /// useful for checking space on mount points.
-#[tauri::command]
+#[bridge]
 pub async fn get_local_disk_usage(
     app: AppHandle,
     dir: Option<String>,
@@ -126,7 +127,7 @@ pub async fn get_local_disk_usage(
     })
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn obscure_value(app: AppHandle, clear: String) -> Result<String, String> {
     let payload = json!({
         "clear": clear,

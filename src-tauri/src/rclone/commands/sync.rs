@@ -4,11 +4,14 @@ use futures::future::join_all;
 use serde_json::{Map, Value, json};
 use tauri::{AppHandle, Manager};
 
-use crate::utils::{
-    rclone::endpoints::operations,
-    types::{
-        jobs::JobType,
-        remotes::{OperationType, ProfileParams},
+use crate::{
+    core::bridge,
+    utils::{
+        rclone::endpoints::operations,
+        types::{
+            jobs::JobType,
+            remotes::{OperationType, ProfileParams},
+        },
     },
 };
 
@@ -166,7 +169,7 @@ fn has_archive_extension(path: &str) -> bool {
         || lower.ends_with(".tar.lz4")
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn start_profile_batch(
     app: AppHandle,
     transfer_type: OperationType,

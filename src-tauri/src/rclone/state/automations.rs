@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::{
-    core::{automation::engine::get_next_run, flow::quick_run::types::QuickRun},
+    core::{automation::engine::get_next_run, bridge, flow::quick_run::types::QuickRun},
     utils::{
         constants::{
             AUTOMATION_ADDED, AUTOMATION_REMOVED, AUTOMATION_UPDATED, AUTOMATIONS_ALL_CLEARED,
@@ -733,13 +733,13 @@ impl Default for AutomationsCache {
 /// Read-only query commands that only touch the cache live here.
 /// Commands that coordinate both cache and scheduler live in `commands.rs`.
 
-#[tauri::command]
+#[bridge]
 pub async fn get_automations(app: AppHandle) -> Result<Vec<Automation>, String> {
     let cache = app.state::<AutomationsCache>();
     Ok(cache.get_all_automations().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_automation(
     app: AppHandle,
     automation_id: String,

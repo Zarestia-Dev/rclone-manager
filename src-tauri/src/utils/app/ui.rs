@@ -1,10 +1,12 @@
 #![cfg(not(feature = "web-server"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::core::bridge;
+
 static SYSTEM_THEME_IS_DARK: AtomicBool = AtomicBool::new(true);
 
 /// Set the application theme
-#[tauri::command]
+#[bridge]
 pub async fn set_theme(
     system_is_dark: Option<bool>,
     #[allow(unused_variables)] window: tauri::Window,

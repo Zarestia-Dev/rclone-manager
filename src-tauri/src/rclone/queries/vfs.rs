@@ -2,10 +2,11 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::AppHandle;
 
+use crate::core::bridge;
 use crate::utils::json_helpers::normalize_windows_path;
 use crate::utils::rclone::endpoints::vfs;
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(vfs::LIST, None)
@@ -15,7 +16,7 @@ pub async fn vfs_list(app: AppHandle) -> Result<Value, String> {
     Ok(json)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_forget(
     app: AppHandle,
     fs: Option<String>,
@@ -34,7 +35,7 @@ pub async fn vfs_forget(
         .map_err(|e| format!("Failed to forget paths: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_refresh(
     app: AppHandle,
     fs: Option<String>,
@@ -54,7 +55,7 @@ pub async fn vfs_refresh(
         .map_err(|e| format!("Failed to refresh cache: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
     let mut payload = json!({});
     if let Some(f) = fs {
@@ -78,7 +79,7 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
     Ok(json)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_poll_interval(
     app: AppHandle,
     fs: Option<String>,
@@ -101,7 +102,7 @@ pub async fn vfs_poll_interval(
         .map_err(|e| format!("Failed to set/get poll interval: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_queue(app: AppHandle, fs: Option<String>) -> Result<Value, String> {
     let mut payload = json!({});
     if let Some(f) = fs {
@@ -115,7 +116,7 @@ pub async fn vfs_queue(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
     Ok(json)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn vfs_queue_set_expiry(
     app: AppHandle,
     fs: Option<String>,

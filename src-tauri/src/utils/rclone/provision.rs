@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 
 use crate::{
-    core::{paths::AppPaths, settings::operations::core::save_setting},
+    core::{bridge, paths::AppPaths, settings::operations::core::save_setting},
     utils::github_client,
 };
 
@@ -13,7 +13,7 @@ use super::{
     util::{RCLONE_EXECUTABLE, get_arch, safe_copy_rclone, verify_rclone_sha256},
 };
 
-#[tauri::command]
+#[bridge]
 pub async fn provision_rclone(
     app_handle: tauri::AppHandle,
     path: Option<String>,

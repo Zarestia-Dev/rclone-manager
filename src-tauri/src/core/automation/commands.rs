@@ -2,13 +2,16 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::automation::engine::{AutomationScheduler, get_next_run, validate_cron_expression},
+    core::{
+        automation::engine::{AutomationScheduler, get_next_run, validate_cron_expression},
+        bridge,
+    },
     rclone::state::automations::AutomationsCache,
     utils::types::automation::{Automation, AutomationStatus, CronValidationResponse},
 };
 
 /// Toggle automation scheduling state.
-#[tauri::command]
+#[bridge]
 pub async fn toggle_automation(
     app: AppHandle,
     automation_id: String,
@@ -50,7 +53,7 @@ pub async fn toggle_automation(
 }
 
 /// Validate a cron expression
-#[tauri::command]
+#[bridge]
 pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResponse, String> {
     match validate_cron_expression(&cron_expression) {
         Ok(()) => {
@@ -71,7 +74,7 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
 }
 
 /// Reload all automations
-#[tauri::command]
+#[bridge]
 pub async fn reload_automations(app: AppHandle) -> Result<(), String> {
     info!("Reloading all automations");
     let scheduler = app.state::<AutomationScheduler>();
@@ -83,7 +86,7 @@ pub async fn reload_automations(app: AppHandle) -> Result<(), String> {
 }
 
 /// Clear all automations
-#[tauri::command]
+#[bridge]
 pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
     info!("Clearing all automations");
 
@@ -108,7 +111,7 @@ pub async fn clear_all_automations(app: AppHandle) -> Result<(), String> {
 }
 
 /// Reload automations from remote configs
-#[tauri::command]
+#[bridge]
 pub async fn reload_automations_from_configs(
     app: AppHandle,
     all_settings: serde_json::Value,

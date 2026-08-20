@@ -4,7 +4,7 @@ use log::debug;
 use serde_json::Value;
 use tauri::AppHandle;
 
-use crate::utils::rclone::endpoints::config;
+use crate::{core::bridge, utils::rclone::endpoints::config};
 
 pub async fn get_all_remote_configs(app: AppHandle) -> Result<serde_json::Value, String> {
     let json = crate::rclone::commands::common::transport(&app)
@@ -37,7 +37,7 @@ pub async fn get_remotes(app: AppHandle) -> Result<Vec<String>, String> {
 }
 
 /// Fetch all remote types
-#[tauri::command]
+#[bridge]
 pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Value>>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(config::PROVIDERS, None)
@@ -51,7 +51,7 @@ pub async fn get_remote_types(app: AppHandle) -> Result<HashMap<String, Vec<Valu
 }
 
 /// Fetch only OAuth-supported remotes
-#[tauri::command]
+#[bridge]
 pub async fn get_oauth_supported_remotes(
     app: AppHandle,
 ) -> Result<HashMap<String, Vec<Value>>, String> {

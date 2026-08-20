@@ -9,6 +9,7 @@ import type {
   InputModalComponent,
 } from '../../shared/modals/input-modal/input-modal.component';
 import { ConfirmDialogData } from '@app/types';
+import { BackendTranslationService } from '../i18n/backend-translation.service';
 
 type NotificationSeverity = 'success' | 'error' | 'info' | 'warning';
 
@@ -17,6 +18,7 @@ export class NotificationService {
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
   private dialog = inject(MatDialog);
+  private backendTranslation = inject(BackendTranslationService);
 
   /** Default action label per severity. */
   private static readonly DEFAULT_ACTION_KEY = {
@@ -34,32 +36,33 @@ export class NotificationService {
     error: undefined,
   };
 
-  showSuccess(message: string, action?: string, duration?: number): void {
+  showSuccess(message: unknown, action?: string, duration?: number): void {
     this.show('success', message, action, duration);
   }
 
-  showError(message: string, action?: string, duration?: number): void {
+  showError(message: unknown, action?: string, duration?: number): void {
     this.show('error', message, action, duration);
   }
 
-  showInfo(message: string, action?: string, duration?: number): void {
+  showInfo(message: unknown, action?: string, duration?: number): void {
     this.show('info', message, action, duration);
   }
 
-  showWarning(message: string, action?: string, duration?: number): void {
+  showWarning(message: unknown, action?: string, duration?: number): void {
     this.show('warning', message, action, duration);
   }
 
   private show(
     severity: NotificationSeverity,
-    message: string,
+    message: unknown,
     action: string | undefined,
     duration: number | undefined
   ): void {
+    const resolvedMessage = this.backendTranslation.translateBackendMessage(message);
     const resolvedAction =
       action ?? this.translate.instant(NotificationService.DEFAULT_ACTION_KEY[severity]);
     const resolvedDuration = duration ?? NotificationService.DEFAULT_DURATION_MS[severity];
-    this.snackBar.open(message, resolvedAction, {
+    this.snackBar.open(resolvedMessage, resolvedAction, {
       duration: resolvedDuration,
     });
   }

@@ -6,13 +6,18 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time;
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::engine::lifecycle::{get_engine_status, start_engine_if_not_running};
 use crate::rclone::queries::parse_serves_response;
 use crate::utils::rclone::endpoints::{core, job, serve};
 use crate::utils::types::events::SYSTEM_STATUS;
 use crate::utils::types::monitoring::{SystemStatus, SystemStatusPayload};
 use crate::utils::types::state::{EngineState, RcloneState};
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        engine::lifecycle::{get_engine_status, start_engine_if_not_running},
+    },
+};
 
 /// Initial ticks at 1s after the engine becomes healthy, so the UI gets
 /// fresh data quickly when the user opens the window or after a job starts.
@@ -24,7 +29,7 @@ const POLL_HIDDEN: Duration = Duration::from_secs(10);
 /// Poller tick when jobs are running or we're in burst mode.
 const POLL_ACTIVE: Duration = Duration::from_secs(1);
 
-#[tauri::command]
+#[bridge]
 pub async fn get_system_status_snapshot(
     app_handle: AppHandle,
 ) -> Result<SystemStatusPayload, String> {
@@ -42,7 +47,7 @@ pub async fn get_system_status_snapshot(
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub fn set_poller_visibility(app_handle: AppHandle, visible: bool) -> Result<(), String> {
     app_handle
         .state::<RcloneState>()

@@ -2,13 +2,13 @@
 
 use std::collections::HashMap;
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::utils::constants::SUB_TEMPLATES;
 use log::info;
 use tauri::{AppHandle, Manager};
 
 /// List all saved user preset templates as a dictionary map (id -> payload)
-#[tauri::command]
+#[bridge]
 pub async fn list_user_templates(
     app: AppHandle,
 ) -> Result<HashMap<String, serde_json::Value>, String> {
@@ -21,7 +21,7 @@ pub async fn list_user_templates(
 }
 
 /// Save a new user preset template by id and payload
-#[tauri::command]
+#[bridge]
 pub async fn save_user_template(
     app: AppHandle,
     id: String,
@@ -40,7 +40,7 @@ pub async fn save_user_template(
 }
 
 /// Update an existing user preset template by id and payload
-#[tauri::command]
+#[bridge]
 pub async fn update_user_template(
     app: AppHandle,
     id: String,
@@ -59,7 +59,7 @@ pub async fn update_user_template(
 }
 
 /// Delete a user preset template by id
-#[tauri::command]
+#[bridge]
 pub async fn delete_user_template(app: AppHandle, id: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     let sub = manager

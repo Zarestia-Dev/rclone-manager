@@ -5,7 +5,7 @@
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::core::paths::AppPaths;
+use crate::core::{bridge, paths::AppPaths};
 
 /// Debug information response
 #[derive(Debug, Serialize)]
@@ -21,7 +21,7 @@ pub struct DebugInfo {
 }
 
 /// Get debug information (paths, versions, build info)
-#[tauri::command]
+#[bridge]
 pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
     // Get paths from centralized AppPaths
     let paths = AppPaths::from_app_handle(&app)?;
@@ -47,7 +47,7 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
 }
 
 /// Open `WebView` developer tools
-#[tauri::command]
+#[bridge]
 #[cfg(all(
     not(feature = "web-server"),
     not(target_os = "android"),

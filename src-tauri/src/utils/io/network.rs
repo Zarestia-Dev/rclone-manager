@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use tauri::command;
+
+use crate::core::bridge;
 
 use crate::utils::types::rclone::CheckResult;
 
@@ -8,7 +9,7 @@ use crate::utils::types::events::NETWORK_STATUS_CHANGED;
 #[cfg(not(target_os = "ios"))]
 use crate::utils::types::monitoring::NetworkStatusPayload;
 
-#[command]
+#[bridge]
 pub async fn check_links(
     links: Vec<String>,
     max_retries: usize,
@@ -332,7 +333,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     }
 }
 
-#[command]
+#[bridge]
 pub async fn is_network_metered() -> Result<bool, String> {
     #[cfg(target_os = "linux")]
     return Ok(is_metered());

@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    core::automation::engine::get_next_run,
+    core::{automation::engine::get_next_run, bridge},
     rclone::{
         backend::{BackendError, BackendManager},
         state::automations::AutomationsCache,
@@ -403,12 +403,12 @@ async fn add_job_to_cache(
         .await;
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_jobs(app: AppHandle) -> Result<Vec<JobInfo>, String> {
     Ok(app.state::<BackendManager>().job_cache.get_jobs().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn delete_job(app: AppHandle, jobid: u64) -> Result<(), String> {
     info!("Deleting job with ID: {jobid}");
     app.state::<BackendManager>()
@@ -820,7 +820,7 @@ fn spawn_stats_cleanup(app: &AppHandle, metadata: &JobMetadata) {
     crate::rclone::state::job::spawn_stats_cleanup_by_group(app, &metadata.group_name());
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
@@ -874,7 +874,7 @@ pub async fn stop_job(app: AppHandle, jobid: u64, remote_name: String) -> Result
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), String> {
     let backend_manager = app.state::<BackendManager>();
     let transport = app.state::<RcloneState>().transport.clone();
@@ -918,7 +918,7 @@ pub async fn stop_jobs_by_group(app: AppHandle, group: String) -> Result<(), Str
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn submit_batch_job(
     app: AppHandle,
     inputs: Vec<Value>,
@@ -1005,7 +1005,7 @@ pub async fn submit_batch_job(
     Ok(jobid.to_string())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn register_preparing_job(
     app: tauri::AppHandle,
     jobid: u64,
@@ -1045,7 +1045,7 @@ pub async fn register_preparing_job(
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_job_stats(
     app: tauri::AppHandle,
     jobid: u64,

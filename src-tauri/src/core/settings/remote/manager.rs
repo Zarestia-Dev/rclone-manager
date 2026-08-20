@@ -4,7 +4,7 @@
 //! rcman's sub-settings system, which stores each remote's config in
 //! `config/remotes/{remoteName}.json`.
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use log::{info, warn};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
@@ -14,7 +14,7 @@ use crate::utils::types::events::{AUTOMATIONS_CACHE_CHANGED, REMOTE_SETTINGS_CHA
 use crate::utils::types::remotes::OperationType;
 
 /// **Save remote settings (per remote)**
-#[tauri::command]
+#[bridge]
 pub async fn save_remote_settings(
     app: AppHandle,
     remote_name: String,
@@ -113,7 +113,7 @@ pub async fn save_remote_settings(
 }
 
 /// **Delete remote settings**
-#[tauri::command]
+#[bridge]
 pub async fn delete_remote_settings(app: AppHandle, remote_name: String) -> Result<(), String> {
     let manager = app.state::<AppSettingsManager>();
     let remotes = manager.inner().sub_settings("remotes").map_err(

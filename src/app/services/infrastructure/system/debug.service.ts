@@ -65,6 +65,7 @@ export class DebugService extends TauriBaseService {
   }
 
   async openDevTools(): Promise<void> {
+    if (isHeadlessMode()) return;
     try {
       await this.invokeCommand<string>('open_devtools');
     } catch (err) {
@@ -170,7 +171,7 @@ export class DebugService extends TauriBaseService {
       );
     }
 
-    if (isDevMode() && !selectedText) {
+    if (isDevMode() && !isHeadlessMode() && !selectedText) {
       items.push({
         label: this.t('developerTools.openDevTools'),
         action: () => void this.openDevTools(),

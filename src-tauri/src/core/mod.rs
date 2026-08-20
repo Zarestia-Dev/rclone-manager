@@ -1,5 +1,7 @@
 pub mod alerts;
 pub mod automation;
+pub mod bridge;
+pub use bridge::bridge;
 pub mod cli;
 pub mod commands;
 pub mod debug;

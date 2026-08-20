@@ -8,9 +8,6 @@ use serde_json::json;
 use sysinfo::Disks;
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::BackendManager;
-use crate::rclone::commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options};
-use crate::utils::json_helpers::build_full_path;
 use crate::utils::{
     json_helpers::normalize_windows_path,
     rclone::endpoints::{core, job as job_endpoints, operations},
@@ -19,6 +16,14 @@ use crate::utils::{
         rclone::{DiskUsage, DiskUsageSeverity},
         remotes::ListOptions,
     },
+};
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::BackendManager,
+        commands::job::{JobMetadata, SubmitJobOptions, submit_job_with_options},
+    },
+    utils::json_helpers::build_full_path,
 };
 
 async fn run_fs_command_as_job(
@@ -88,7 +93,7 @@ pub struct PublicLinkParams {
     pub expire: Option<String>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_fs_info(
     app: AppHandle,
     remote: String,
@@ -122,7 +127,7 @@ pub async fn get_fs_info(
     Ok(data)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_remote_paths(
     app: AppHandle,
     remote: String,
@@ -155,7 +160,7 @@ pub async fn get_remote_paths(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
     let response = crate::rclone::commands::common::transport(&app)
         .rpc(core::DISKS, None)
@@ -315,7 +320,7 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
     Ok(drives)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_disk_usage(
     app: AppHandle,
     remote: String,
@@ -405,7 +410,7 @@ pub async fn get_about_remote(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_size(
     app: AppHandle,
     remote: String,
@@ -428,7 +433,7 @@ pub async fn get_size(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_stat(
     app: AppHandle,
     remote: String,
@@ -455,7 +460,7 @@ pub async fn get_stat(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_hashsum(
     app: AppHandle,
     remote: String,
@@ -480,7 +485,7 @@ pub async fn get_hashsum(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_hashsum_file(
     app: AppHandle,
     remote: String,
@@ -509,7 +514,7 @@ pub async fn get_hashsum_file(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_public_link(
     app: AppHandle,
     remote: String,

@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::paths::AppPaths,
+    core::{bridge, paths::AppPaths},
     rclone::{backend::BackendManager, state::watcher::refresh_serves_quietly},
     utils::{
         app::notification::{NotificationEvent, ServeStage, notify},
@@ -242,7 +242,7 @@ pub async fn start_serve(
 }
 
 /// Stop a specific serve instance by ID
-#[tauri::command]
+#[bridge]
 pub async fn stop_serve(
     app: AppHandle,
     server_id: String,
@@ -325,7 +325,7 @@ pub async fn stop_serve(
 }
 
 /// Stop all running serve instances
-#[tauri::command]
+#[bridge]
 pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
@@ -347,7 +347,7 @@ pub async fn stop_all_serves(app: AppHandle, context: OperationContext) -> Resul
 
 /// Start a serve using a named profile
 /// Resolves all options (serve, vfs, filter, backend) from cached settings
-#[tauri::command]
+#[bridge]
 pub async fn start_serve_profile(
     app: AppHandle,
     params: ProfileParams,

@@ -174,7 +174,7 @@ export class HomeComponent {
     try {
       await this.remoteFacadeService.startJob(remoteName, operationType, profileName, 'dashboard');
     } catch (error) {
-      this.handleError('Start job failed', error);
+      console.error('Start job failed:', error);
     }
   }
 
@@ -219,7 +219,8 @@ export class HomeComponent {
         this.uiStateService.resetSelectedRemote();
       }
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.deleteRemoteFailed'), error);
+      console.error('Delete remote failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
@@ -282,7 +283,8 @@ export class HomeComponent {
         this.translate.instant('home.notifications.settingsReset', { name: remoteName })
       );
     } catch (error) {
-      this.handleError(this.translate.instant('home.errors.resetSettingsFailed'), error);
+      console.error('Reset settings failed:', error);
+      this.notificationService.showError(error);
     }
   }
 
@@ -346,13 +348,5 @@ export class HomeComponent {
 
   openBackendModal(): void {
     this.modalService.openBackend();
-  }
-
-  // --- Error Handling ---
-
-  private handleError(message: string, error: unknown): void {
-    console.error(`${message}:`, error);
-    const detail = error instanceof Error ? error.message : String(error);
-    this.notificationService.showError(`${message}: ${detail}`);
   }
 }

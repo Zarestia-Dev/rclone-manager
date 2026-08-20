@@ -4,7 +4,7 @@ use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{automation::engine::AutomationScheduler, settings::AppSettingsManager},
+    core::{automation::engine::AutomationScheduler, bridge, settings::AppSettingsManager},
     rclone::{
         backend::{
             BackendManager,
@@ -22,19 +22,19 @@ use crate::{
     },
 };
 
-#[tauri::command]
+#[bridge]
 pub async fn list_backends(app: AppHandle) -> Result<Vec<BackendInfo>, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.list_all().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_active_backend(app: AppHandle) -> Result<String, String> {
     let backend_manager = app.state::<BackendManager>();
     Ok(backend_manager.get_active_name().await)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String> {
     let manager = app.state::<AppSettingsManager>();
     let remotes = manager
@@ -48,7 +48,7 @@ pub async fn get_backend_profiles(app: AppHandle) -> Result<Vec<String>, String>
         .map_err(|e| format!("Failed to list profiles: {e}"))
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn switch_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("Switching to backend: {name}");
 
@@ -99,7 +99,7 @@ pub struct AddBackendParams {
     pub copy_remotes_from: Option<String>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn add_backend(app: AppHandle, params: AddBackendParams) -> Result<(), String> {
     info!(
         "Adding backend: {} ({}:{})",
@@ -169,7 +169,7 @@ pub struct UpdateBackendParams {
     pub config_path: Option<PathBuf>,
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Result<(), String> {
     info!("Updating backend: {}", params.name);
 
@@ -256,7 +256,7 @@ pub async fn update_backend(app: AppHandle, params: UpdateBackendParams) -> Resu
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> {
     info!("Removing backend: {name}");
 
@@ -291,7 +291,7 @@ pub async fn remove_backend(app: AppHandle, name: String) -> Result<(), String> 
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn test_backend_connection(
     app: AppHandle,
     name: String,
@@ -334,7 +334,7 @@ pub async fn test_backend_connection(
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn test_backend_connection_details(
     app: AppHandle,
     host: String,

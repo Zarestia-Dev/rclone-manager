@@ -672,6 +672,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-macro"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "brotli"
 version = "8.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4743,6 +4751,7 @@ dependencies = [
  "axum",
  "axum-server",
  "base64 0.22.1",
+ "bridge-macro",
  "chrono",
  "clap",
  "croner",

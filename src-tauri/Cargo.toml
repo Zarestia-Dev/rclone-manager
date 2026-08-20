@@ -19,6 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+bridge-macro = { path = "crates/bridge-macro" }
 tauri = { version = "2", features = [] }
 
 serde = { version = "1", features = ["derive"] }

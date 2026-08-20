@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{
+        bridge,
         flow::quick_run::types::{QuickRun, QuickRunInput, StartQuickRunResponse},
         settings::AppSettingsManager,
     },
@@ -27,14 +28,14 @@ use crate::{
 };
 
 /// Get all quick runs.
-#[tauri::command]
+#[bridge]
 pub async fn list_quick_runs(app: AppHandle) -> Result<Vec<QuickRun>, String> {
     let manager = app.state::<AppSettingsManager>();
     get_all_quick_runs(&manager)
 }
 
 /// Create a new quick run record.
-#[tauri::command]
+#[bridge]
 pub async fn create_quick_run(
     app: AppHandle,
     quick_run: QuickRunInput,
@@ -61,7 +62,7 @@ pub async fn create_quick_run(
 }
 
 /// Update an existing quick run record.
-#[tauri::command]
+#[bridge]
 pub async fn update_quick_run(
     app: AppHandle,
     quick_run: QuickRunInput,
@@ -89,7 +90,7 @@ pub async fn update_quick_run(
 }
 
 /// Delete a quick run record by ID.
-#[tauri::command]
+#[bridge]
 pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<(), String> {
     info!("Deleting quick run: {quick_run_id}");
     let manager = app.state::<AppSettingsManager>();
@@ -125,7 +126,7 @@ async fn sync_quick_run_automations_bg(app: &AppHandle) {
 }
 
 /// Start execution of a quick run.
-#[tauri::command]
+#[bridge]
 pub async fn start_quick_run(
     app: AppHandle,
     quick_run_id: String,
@@ -293,7 +294,7 @@ pub async fn start_quick_run(
 }
 
 /// Stop execution of a running quick run.
-#[tauri::command]
+#[bridge]
 pub async fn stop_quick_run(
     app: AppHandle,
     quick_run_id: String,

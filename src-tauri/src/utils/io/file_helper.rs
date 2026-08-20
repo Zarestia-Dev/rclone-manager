@@ -1,10 +1,12 @@
 use log::debug;
-use tauri::{AppHandle, Emitter, Window, command};
+use tauri::{AppHandle, Emitter, Window};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[command]
+use crate::core::bridge;
+
+#[bridge]
 #[cfg(desktop)]
 pub async fn get_folder_location(
     app: AppHandle,
@@ -83,7 +85,7 @@ pub async fn get_folder_location(
     Ok(Some(folder))
 }
 
-#[command]
+#[bridge]
 pub async fn open_in_files(
     app: tauri::AppHandle,
     path: std::path::PathBuf,
@@ -112,7 +114,7 @@ pub async fn open_in_files(
     }
 }
 
-#[command]
+#[bridge]
 #[cfg(target_os = "android")]
 pub async fn open_saf_remote(_app: tauri::AppHandle, remote: String) -> Result<String, String> {
     if crate::rclone::backend::saf_bridge::open_saf_remote(&remote) {
@@ -125,7 +127,7 @@ pub async fn open_saf_remote(_app: tauri::AppHandle, remote: String) -> Result<S
     }
 }
 
-#[command]
+#[bridge]
 pub async fn open_file_natively(
     app: AppHandle,
     remote: String,
@@ -236,7 +238,7 @@ pub fn cleanup_temp_views(app: &AppHandle) {
     }
 }
 
-#[command]
+#[bridge]
 pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
     debug!("Opening file picker dialog...");
 
@@ -251,7 +253,7 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
     Ok(file_location)
 }
 
-#[command]
+#[bridge]
 pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, String> {
     debug!("Opening multi-file picker dialog...");
 
@@ -267,7 +269,7 @@ pub async fn get_files_location(window: Window) -> Result<Option<Vec<String>>, S
     Ok(file_locations)
 }
 
-#[command]
+#[bridge]
 pub async fn get_save_file_location(
     app: AppHandle,
     default_name: Option<String>,
@@ -280,7 +282,7 @@ pub async fn get_save_file_location(
     Ok(file_location)
 }
 
-#[command]
+#[bridge]
 pub async fn download_file(
     app: AppHandle,
     remote: String,

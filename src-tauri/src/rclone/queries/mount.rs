@@ -3,6 +3,7 @@ use tauri::AppHandle;
 #[cfg(target_os = "android")]
 use tauri::Manager;
 
+use crate::core::bridge;
 #[cfg(target_os = "android")]
 use crate::rclone::backend::BackendManager;
 use crate::utils::rclone::endpoints::mount;
@@ -41,7 +42,7 @@ pub async fn get_mounted_remotes(app: AppHandle) -> Result<Vec<MountedRemote>, S
     }
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn get_mount_types(app: AppHandle) -> Result<Vec<String>, String> {
     let json = crate::rclone::commands::common::transport(&app)
         .rpc(mount::TYPES, None)

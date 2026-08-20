@@ -1,5 +1,7 @@
 use log::{info, warn};
 
+use crate::core::bridge;
+
 #[cfg(unix)]
 use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
 #[cfg(windows)]
@@ -11,7 +13,7 @@ use windows_sys::Win32::{
 };
 
 /// Kill a process by PID using platform-specific methods
-#[tauri::command]
+#[bridge]
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     info!("Killing process {pid}");
 

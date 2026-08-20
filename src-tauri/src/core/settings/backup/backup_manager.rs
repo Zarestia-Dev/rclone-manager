@@ -2,7 +2,7 @@
 //!
 //! This module provides backup and analysis commands using the rcman library.
 
-use crate::core::settings::AppSettingsManager;
+use crate::core::{bridge, settings::AppSettingsManager};
 use crate::rclone::queries::get_rclone_config_file;
 use crate::utils::types::backup_types::{BackupAnalysis, BackupContentsInfo, ExportType};
 use log::{error, info};
@@ -11,7 +11,7 @@ use tauri::{AppHandle, Manager};
 
 // BACKUP COMMAND
 
-#[tauri::command]
+#[bridge]
 #[allow(clippy::too_many_arguments)]
 pub async fn backup_settings(
     app_handle: AppHandle,
@@ -147,7 +147,7 @@ pub(super) async fn register_rclone_config_provider(
 
 // BACKUP ANALYSIS
 
-#[tauri::command]
+#[bridge]
 pub async fn analyze_backup_file(
     app_handle: AppHandle,
     path: PathBuf,

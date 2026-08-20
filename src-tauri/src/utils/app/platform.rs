@@ -1,7 +1,9 @@
+use crate::core::bridge;
+
 pub const APP_ID: &str = "io.github.zarestia_dev.rclone-manager";
 pub const APP_ID_DEV: &str = "io.github.zarestia_dev.rclone-manager-dev";
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn get_build_type() -> Option<&'static str> {
     if cfg!(feature = "flatpak") {
@@ -15,7 +17,7 @@ pub fn get_build_type() -> Option<&'static str> {
     }
 }
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn is_librclone() -> bool {
     cfg!(feature = "librclone")
@@ -55,7 +57,7 @@ pub async fn get_active_operations_summary(
     })
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     use tauri::{Emitter, Manager};
@@ -79,7 +81,7 @@ pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;
     handle_shutdown(app.clone()).await;
@@ -208,7 +210,7 @@ pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
     let _ = app_handle.set_activation_policy(policy);
 }
 
-#[tauri::command]
+#[bridge]
 #[must_use]
 pub fn is_updater_enabled() -> bool {
     cfg!(feature = "updater")

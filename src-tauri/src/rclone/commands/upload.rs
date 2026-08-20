@@ -7,12 +7,19 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 
-use crate::rclone::backend::{BackendManager, TransportKind};
-use crate::rclone::commands::job::JobMetadata;
-use crate::utils::app::notification::notify;
-use crate::utils::json_helpers::build_full_path;
-use crate::utils::rclone::endpoints::operations;
-use crate::utils::types::{jobs::JobType, origin::Origin, state::RcloneState};
+use crate::{
+    core::bridge,
+    rclone::{
+        backend::{BackendManager, TransportKind},
+        commands::job::JobMetadata,
+    },
+    utils::{
+        app::notification::notify,
+        json_helpers::build_full_path,
+        rclone::endpoints::operations,
+        types::{jobs::JobType, origin::Origin, state::RcloneState},
+    },
+};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct UploadBatchParams {
@@ -542,7 +549,7 @@ pub async fn execute_upload_batch(
     error_msg.map_or(Ok(jobid.to_string()), Err)
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn upload_local_drop_paths(
     app: AppHandle,
     remote: String,
@@ -567,7 +574,7 @@ pub async fn upload_local_drop_paths(
     .await
 }
 
-#[tauri::command]
+#[bridge]
 pub async fn upload_file(
     app: AppHandle,
     remote: String,

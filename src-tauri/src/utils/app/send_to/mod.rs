@@ -1,4 +1,4 @@
-use tauri::command;
+use crate::core::bridge;
 
 pub mod common;
 
@@ -13,7 +13,7 @@ pub mod macos;
 
 use common::get_sanitized_name;
 
-#[command]
+#[bridge]
 pub async fn register_send_to(remote: String, path: Option<String>) -> Result<(), String> {
     let current_exe = std::env::current_exe()
         .map_err(|e| format!("Failed to get current executable path: {e}"))?;
@@ -38,7 +38,7 @@ pub async fn register_send_to(remote: String, path: Option<String>) -> Result<()
     Ok(())
 }
 
-#[command]
+#[bridge]
 pub async fn unregister_send_to(remote: String, path: Option<String>) -> Result<(), String> {
     let name = get_sanitized_name(&remote, path.as_deref());
 
@@ -60,7 +60,7 @@ pub async fn unregister_send_to(remote: String, path: Option<String>) -> Result<
     Ok(())
 }
 
-#[command]
+#[bridge]
 pub async fn is_send_to_registered(remote: String, path: Option<String>) -> Result<bool, String> {
     let name = get_sanitized_name(&remote, path.as_deref());
 
