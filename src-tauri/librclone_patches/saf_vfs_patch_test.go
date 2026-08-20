@@ -165,25 +165,34 @@ func TestVfsStreamListAndStat(t *testing.T) {
 	}
 }
 
-func TestVfsDirCacheTimeAndIdleCleanup(t *testing.T) {
+func TestVfsMountUnmountAndIdleCleanup(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := "idle_test.txt"
 	_ = os.WriteFile(tmpDir+"/"+filePath, []byte("idle data"), 0644)
 
-	// Test custom dir_cache_time parameter wiring via vfsOpt
-	v, err := getOrCreateVFS(tmpDir, parseConfigOptions(rc.Params{
+	// 1. Mount VFS with vfsOpt
+	mountRes, err := rcVfsMount(context.Background(), rc.Params{
+		"fs": tmpDir,
 		"vfsOpt": map[string]interface{}{
-			"dir_cache_time": "10m",
+			"DirCacheTime": "10m",
 		},
-	}))
+	})
 	if err != nil {
-		t.Fatalf("getOrCreateVFS with dir_cache_time failed: %v", err)
+		t.Fatalf("rcVfsMount failed: %v", err)
+	}
+	if mountRes["fs"] != tmpDir {
+		t.Errorf("expected fs %q, got %v", tmpDir, mountRes["fs"])
+	}
+
+	v, err := getOrCreateVFS(tmpDir)
+	if err != nil {
+		t.Fatalf("getOrCreateVFS failed: %v", err)
 	}
 	if v.Opt.DirCacheTime.String() != "10m0s" {
 		t.Errorf("expected DirCacheTime '10m0s', got %v", v.Opt.DirCacheTime.String())
 	}
 
-	// Test idle handle cleanup
+	// 2. Open handle and test idle handle cleanup
 	openRes, err := rcVfsOpen(context.Background(), rc.Params{
 		"fs":     tmpDir,
 		"remote": filePath,
@@ -213,18 +222,95 @@ func TestVfsDirCacheTimeAndIdleCleanup(t *testing.T) {
 		t.Errorf("expected idle handle %d to be cleaned up", handleID)
 	}
 
-	// Test nested vfsOpt parsing
-	tmpDir2 := t.TempDir()
-	v2, err := getOrCreateVFS(tmpDir2, parseConfigOptions(rc.Params{
-		"vfsOpt": map[string]interface{}{
-			"vfs-dir-cache-time": "15m",
-		},
-	}))
+	// 3. Test unmount drops VFS
+	unmountRes, err := rcVfsUnmount(context.Background(), rc.Params{
+		"fs": tmpDir,
+	})
+	if err != nil || unmountRes["success"] != true {
+		t.Fatalf("rcVfsUnmount failed: %v", err)
+	}
+
+	vfsMutex.Lock()
+	inst, _ := findMatchingVFS(tmpDir)
+	vfsMutex.Unlock()
+	if inst != nil {
+		t.Errorf("expected VFS instance to be dropped after unmount, but still found")
+	}
+}
+
+func TestSetCacheDirAndWildcardUnmount(t *testing.T) {
+	tmpDir := t.TempDir()
+	cacheDir := t.TempDir()
+
+	// 1. Set cache directory via rc
+	setRes, err := rcSetCacheDir(context.Background(), rc.Params{
+		"path": cacheDir,
+	})
+	if err != nil || setRes["success"] != true {
+		t.Fatalf("rcSetCacheDir failed: %v", err)
+	}
+
+	// 2. Mount two directories
+	dir1 := tmpDir + "/dir1"
+	dir2 := tmpDir + "/dir2"
+	_ = os.MkdirAll(dir1, 0755)
+	_ = os.MkdirAll(dir2, 0755)
+
+	_, err = rcVfsMount(context.Background(), rc.Params{"fs": dir1})
 	if err != nil {
-		t.Fatalf("getOrCreateVFS with vfsOpt failed: %v", err)
+		t.Fatalf("mount dir1 failed: %v", err)
 	}
-	if v2.Opt.DirCacheTime.String() != "15m0s" {
-		t.Errorf("expected DirCacheTime '15m0s' from vfsOpt, got %v", v2.Opt.DirCacheTime.String())
+	_, err = rcVfsMount(context.Background(), rc.Params{"fs": dir2})
+	if err != nil {
+		t.Fatalf("mount dir2 failed: %v", err)
 	}
+
+	// 3. Wildcard unmount drops all
+	unmountAllRes, err := rcVfsUnmount(context.Background(), rc.Params{"fs": "*"})
+	if err != nil || unmountAllRes["success"] != true {
+		t.Fatalf("rcVfsUnmount wildcard failed: %v", err)
+	}
+
+	vfsMutex.Lock()
+	remaining := len(vfsInstances)
+	vfsMutex.Unlock()
+	if remaining != 0 {
+		t.Errorf("expected 0 active VFS instances after wildcard unmount, got %d", remaining)
+	}
+}
+
+func TestVfsFindMatchingHierarchy(t *testing.T) {
+	tmpDir := t.TempDir()
+	subDir := tmpDir + "/subfolder"
+	_ = os.MkdirAll(subDir, 0755)
+
+	_, err := rcVfsMount(context.Background(), rc.Params{"fs": tmpDir})
+	if err != nil {
+		t.Fatalf("mount root failed: %v", err)
+	}
+
+	_, err = rcVfsMount(context.Background(), rc.Params{"fs": subDir})
+	if err != nil {
+		t.Fatalf("mount sub failed: %v", err)
+	}
+
+	// Lookup subDir should match subDir exactly, not root tmpDir
+	vfsMutex.Lock()
+	subVFS, subKey := findMatchingVFS(subDir)
+	rootVFS, rootKey := findMatchingVFS(tmpDir)
+	vfsMutex.Unlock()
+
+	if subVFS == nil || subKey != subDir {
+		t.Errorf("expected exact match for subDir %q, got key %q", subDir, subKey)
+	}
+	if rootVFS == nil || rootKey != tmpDir {
+		t.Errorf("expected exact match for root tmpDir %q, got key %q", tmpDir, rootKey)
+	}
+	if subVFS == rootVFS {
+		t.Errorf("expected different VFS instances for root and subDir")
+	}
+
+	// Clean up
+	_, _ = rcVfsUnmount(context.Background(), rc.Params{"fs": "*"})
 }
 

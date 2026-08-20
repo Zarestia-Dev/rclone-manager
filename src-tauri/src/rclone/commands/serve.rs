@@ -67,99 +67,27 @@ impl ServeParams {
     }
 
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = serde_json::Map::new();
+        let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        );
 
-        if let Value::Object(map) = &self.rclone_config {
-            let mut legacy_config = serde_json::Map::new();
-            let mut legacy_filter = serde_json::Map::new();
-
-            for (k, v) in map {
-                if crate::utils::json_helpers::is_path_key(k) {
-                    continue;
-                }
-                if crate::utils::json_helpers::is_flat_option_key(k) {
-                    body.insert(k.clone(), v.clone());
-                } else if k == "_config" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_config.extend(opts.clone());
-                    }
-                } else if k == "_filter" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_filter.extend(opts.clone());
-                    }
-                } else {
-                    legacy_config.insert(k.clone(), v.clone());
-                }
-            }
-
-            if !legacy_filter.is_empty() {
-                body.insert("_filter".to_string(), Value::Object(legacy_filter));
-            }
-            if !legacy_config.is_empty() {
-                body.insert("_config".to_string(), Value::Object(legacy_config));
-            }
+        // Pre-process serve options to handle "addr" array issue
+        if let Some(Value::Array(arr)) = builder.get("addr")
+            && arr.len() == 1
+            && arr[0].is_string()
+        {
+            let single = arr[0].clone();
+            builder.insert("addr", single);
         }
 
-        // 1. Pre-process serve options to handle "addr" array issue
-        if let Some(addr_val) = body.get("addr") {
-            let final_val = match addr_val {
-                Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
-                _ => addr_val.clone(),
-            };
-            body.insert("addr".to_string(), final_val);
-        }
-
-        // 2. Inject runtime remote overrides
-        body.insert("fs".to_string(), json!(self.source));
-        if let Some(opts) = self.runtime_remote_options.as_ref() {
-            for (k, v) in opts {
-                if !body.contains_key(k) {
-                    body.insert(k.clone(), v.clone());
-                }
-            }
-        }
-
-        // 3. Inject serve type
-        body.insert("type".to_string(), json!(self.serve_type));
-
-        // 4. Merge resolved profile blocks if non-empty
-        if let Some(vfs_opts) = &self.vfs_options {
-            let val = serde_json::to_value(vfs_opts).unwrap_or_default();
-            if val.as_object().is_some_and(|o| !o.is_empty()) {
-                body.insert("vfsOpt".to_string(), val);
-            }
-        }
-        if let Some(filter_opts) = &self.filter_options {
-            let mut filter_map = body
-                .get("_filter")
-                .and_then(|v| v.as_object())
-                .cloned()
-                .unwrap_or_default();
-            for (k, v) in filter_opts {
-                filter_map.entry(k.clone()).or_insert_with(|| v.clone());
-            }
-            if !filter_map.is_empty() {
-                body.insert("_filter".to_string(), Value::Object(filter_map));
-            }
-        }
-        if let Some(backend_opts) = &self.backend_options {
-            let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
-            if !final_backend.is_empty() {
-                let mut config_map = body
-                    .get("_config")
-                    .and_then(|v| v.as_object())
-                    .cloned()
-                    .unwrap_or_default();
-                for (k, v) in final_backend {
-                    config_map.entry(k).or_insert(v);
-                }
-                if !config_map.is_empty() {
-                    body.insert("_config".to_string(), Value::Object(config_map));
-                }
-            }
-        }
-
-        Value::Object(body)
+        builder
+            .insert("fs", self.source.as_str())
+            .insert("type", self.serve_type.as_str())
+            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+            .with_vfs_options(self.vfs_options.as_ref())
+            .with_filter_options(self.filter_options.as_ref())
+            .with_backend_options(self.backend_options.as_ref())
+            .build()
     }
 }
 
@@ -503,12 +431,18 @@ mod tests {
                 "addr": ["127.0.0.1:8080"],
                 "user": "admin"
             }),
-            backend_options: Some(HashMap::from([("buffer-size".to_string(), json!("16M"))])),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!("secret/*"))])),
-            vfs_options: Some(HashMap::from([(
-                "vfs-cache-mode".to_string(),
-                json!("full"),
-            )])),
+            backend_options: Some(HashMap::from([
+                ("buffer-size".to_string(), json!("16M")),
+                ("BufferSize".to_string(), json!("32M")),
+            ])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!("secret/*")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            vfs_options: Some(HashMap::from([
+                ("vfs-cache-mode".to_string(), json!("full")),
+                ("CacheMode".to_string(), json!("off")),
+            ])),
             runtime_remote_options: None,
             profile: Some("serve_profile".to_string()),
             origin: None,
@@ -527,13 +461,19 @@ mod tests {
         // Verify "addr" array unwrapping
         assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
 
+        // Flat lowercase keys placed directly at root level
+        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "full");
+        assert_eq!(obj.get("exclude").unwrap(), "secret/*");
+        assert_eq!(obj.get("buffer-size").unwrap(), "16M");
+
+        // PascalCase nested options placed into their respective blocks
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
-        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "full");
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "off");
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("exclude").unwrap(), "secret/*");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("buffer-size").unwrap(), "16M");
+        assert_eq!(config.get("BufferSize").unwrap(), "32M");
     }
 }

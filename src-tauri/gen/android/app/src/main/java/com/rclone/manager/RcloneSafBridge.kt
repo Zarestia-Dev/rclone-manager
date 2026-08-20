@@ -87,6 +87,7 @@ object RcloneSafBridge {
   private const val KEY_MOUNTED_REMOTES = "mounted_remotes"
 
   private val safRootsList = mutableListOf<SafRootItem>()
+  @Volatile
   private var isMountedRemotesLoaded = false
 
   fun getSafSource(remoteName: String): String {
@@ -103,12 +104,15 @@ object RcloneSafBridge {
   private fun loadMountedRemotesIfNeeded() {
     if (isMountedRemotesLoaded) return
     val ctx = appContext ?: return
-    try {
-      val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-      val jsonStr = prefs.getString(KEY_MOUNTED_REMOTES, "[]") ?: "[]"
-      updateMountedRemotesInternal(jsonStr, saveToPrefs = false)
-    } catch (e: Exception) {
-      Logger.error("loadMountedRemotesIfNeeded error: ${e.message}")
+    synchronized(safRootsList) {
+      if (isMountedRemotesLoaded) return
+      try {
+        val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString(KEY_MOUNTED_REMOTES, "[]") ?: "[]"
+        updateMountedRemotesInternal(jsonStr, saveToPrefs = false)
+      } catch (e: Exception) {
+        Logger.error("loadMountedRemotesIfNeeded error: ${e.message}")
+      }
     }
   }
 
@@ -178,26 +182,14 @@ object RcloneSafBridge {
     val fs = getSafSource(remote)
     val params = JSONObject().put("fs", fs).put("remote", path)
     val res = rpc("vfs/stream/list", params)
-
-    if (res.has("list")) {
-      return res.optJSONArray("list") ?: JSONArray()
-    }
-
-    val fallback = rpc("operations/list", params)
-    return fallback.optJSONArray("list") ?: JSONArray()
+    return res.optJSONArray("list") ?: JSONArray()
   }
 
   fun getFileInfo(remote: String, path: String): JSONObject? {
     val fs = getSafSource(remote)
     val params = JSONObject().put("fs", fs).put("remote", path)
     val res = rpc("vfs/stream/stat", params)
-
-    if (res.has("item")) {
-      return res.optJSONObject("item")
-    }
-
-    val fallback = rpc("operations/stat", params)
-    return if (fallback.has("item")) fallback.optJSONObject("item") else if (fallback.has("Path")) fallback else null
+    return res.optJSONObject("item")
   }
 
   fun openVfsFile(remote: String, path: String, mode: String): JSONObject? {
@@ -356,7 +348,17 @@ object RcloneSafBridge {
     return filtered
   }
 
+  private val shortcutDebounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
+  private val shortcutDebounceRunnable = Runnable {
+    appContext?.let { updateAppShortcutsInternal(it) }
+  }
+
   fun updateAppShortcuts(context: Context) {
+    shortcutDebounceHandler.removeCallbacks(shortcutDebounceRunnable)
+    shortcutDebounceHandler.postDelayed(shortcutDebounceRunnable, 400L)
+  }
+
+  private fun updateAppShortcutsInternal(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
       try {
         val shortcutManager = context.getSystemService(ShortcutManager::class.java) ?: return

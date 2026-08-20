@@ -23,8 +23,10 @@ use crate::{
     },
 };
 
-#[cfg(all(target_os = "linux", feature = "flatpak"))]
-use crate::utils::app::platform::manage_flatpak_background_portal;
+#[cfg(any(
+    feature = "tray",
+    all(desktop, not(any(target_os = "android", target_os = "ios")))
+))]
 use crate::utils::types::events::{MOUNT_STATE_CHANGED, SERVE_STATE_CHANGED};
 
 #[cfg(feature = "tray")]
@@ -242,7 +244,9 @@ fn handle_autostart_change(_app: &AppHandle, enabled: bool) {
     #[cfg(all(target_os = "linux", feature = "flatpak"))]
     {
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = manage_flatpak_background_portal(enabled).await {
+            if let Err(e) =
+                crate::utils::app::platform::manage_flatpak_background_portal(enabled).await
+            {
                 error!("Failed to update flatpak autostart: {e}");
             }
         });

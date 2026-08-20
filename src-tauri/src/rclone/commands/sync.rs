@@ -30,38 +30,9 @@ pub struct GenericTransferParams {
 
 impl GenericTransferParams {
     pub fn to_rclone_body(&self) -> Result<Value, String> {
-        let mut body = Map::new();
-
-        if let Value::Object(map) = &self.rclone_config {
-            let mut legacy_config = Map::new();
-            let mut legacy_filter = Map::new();
-
-            for (k, v) in map {
-                if crate::utils::json_helpers::is_path_key(k) {
-                    continue;
-                }
-                if crate::utils::json_helpers::is_flat_option_key(k) {
-                    body.insert(k.clone(), v.clone());
-                } else if k == "_config" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_config.extend(opts.clone());
-                    }
-                } else if k == "_filter" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_filter.extend(opts.clone());
-                    }
-                } else {
-                    legacy_config.insert(k.clone(), v.clone());
-                }
-            }
-
-            if !legacy_filter.is_empty() {
-                body.insert("_filter".to_string(), Value::Object(legacy_filter));
-            }
-            if !legacy_config.is_empty() {
-                body.insert("_config".to_string(), Value::Object(legacy_config));
-            }
-        }
+        let mut builder = crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        );
 
         if self.transfer_type == OperationType::Delete {
             let endpoint = if self.is_dir {
@@ -74,9 +45,9 @@ impl GenericTransferParams {
                 if fs.ends_with(':') {
                     remote = remote.trim_start_matches('/').to_string();
                 }
-                body.insert("fs".to_string(), Value::String(fs));
-                body.insert("remote".to_string(), Value::String(remote));
-                body.insert("_path".to_string(), Value::String(endpoint.to_string()));
+                builder.insert("fs", fs);
+                builder.insert("remote", remote);
+                builder.insert("_path", endpoint);
             } else {
                 return Err(format!("Could not parse source path: {}", self.source));
             }
@@ -93,14 +64,11 @@ impl GenericTransferParams {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(true);
 
-                body.insert("url".to_string(), Value::String(self.source.clone()));
-                body.insert("fs".to_string(), Value::String(fs));
-                body.insert("remote".to_string(), Value::String(remote));
-                body.insert("autoFilename".to_string(), Value::Bool(auto_filename));
-                body.insert(
-                    "_path".to_string(),
-                    Value::String(operations::COPYURL.to_string()),
-                );
+                builder.insert("url", self.source.clone());
+                builder.insert("fs", fs);
+                builder.insert("remote", remote);
+                builder.insert("autoFilename", auto_filename);
+                builder.insert("_path", operations::COPYURL);
             } else {
                 return Err(format!("Could not parse destination path: {}", self.dest));
             }
@@ -110,53 +78,16 @@ impl GenericTransferParams {
                 OperationType::Copy | OperationType::Move
             )
         {
-            self.build_file_transfer_body(&mut body)?;
+            self.build_file_transfer_body(builder.as_map_mut())?;
         } else {
-            self.build_directory_transfer_body(&mut body);
+            self.build_directory_transfer_body(builder.as_map_mut());
         }
 
-        if let Some(opts) = self.runtime_remote_options.as_ref() {
-            for (k, v) in opts {
-                if !body.contains_key(k) {
-                    body.insert(k.clone(), v.clone());
-                }
-            }
-        }
-
-        // Merge resolved filter_options into _filter
-        if let Some(filters) = &self.filter_options {
-            let mut filter_map = body
-                .get("_filter")
-                .and_then(|v| v.as_object())
-                .cloned()
-                .unwrap_or_default();
-            for (k, v) in filters {
-                filter_map.entry(k.clone()).or_insert_with(|| v.clone());
-            }
-            if !filter_map.is_empty() {
-                body.insert("_filter".to_string(), Value::Object(filter_map));
-            }
-        }
-
-        // Merge resolved backend_options into _config
-        let mut final_backend = match &self.backend_options {
-            Some(opts) => crate::rclone::commands::common::filter_empty_options(opts),
-            None => std::collections::HashMap::new(),
-        };
-
-        if let Some(existing_config) = body.get("_config").and_then(|v| v.as_object()) {
-            for (k, v) in existing_config {
-                final_backend.entry(k.clone()).or_insert_with(|| v.clone());
-            }
-        }
-        if !final_backend.is_empty() {
-            body.insert(
-                "_config".to_string(),
-                serde_json::to_value(final_backend).unwrap(),
-            );
-        }
-
-        Ok(Value::Object(body))
+        Ok(builder
+            .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+            .with_filter_options(self.filter_options.as_ref())
+            .with_backend_options(self.backend_options.as_ref())
+            .build())
     }
 
     fn build_file_transfer_body(&self, body: &mut Map<String, Value>) -> Result<(), String> {
@@ -739,14 +670,20 @@ mod tests {
             dest: "dst:".to_string(),
             rclone_config: json!({
                 "_filter": {
-                    "include": "*.jpg"
+                    "IncludeRule": "*.jpg"
                 },
                 "_config": {
-                    "transfers": 8
+                    "Transfers": 8
                 }
             }),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!("*.png"))])),
-            backend_options: Some(HashMap::from([("checkers".to_string(), json!(16))])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!("*.png")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            backend_options: Some(HashMap::from([
+                ("checkers".to_string(), json!(16)),
+                ("Checkers".to_string(), json!(32)),
+            ])),
             runtime_remote_options: None,
             transfer_type: OperationType::Sync,
             is_dir: true,
@@ -755,13 +692,18 @@ mod tests {
         let body = params.to_rclone_body().unwrap();
         let obj = body.as_object().unwrap();
 
+        // Flat lowercase keys placed directly at root level
+        assert_eq!(obj.get("exclude").unwrap(), "*.png");
+        assert_eq!(obj.get("checkers").unwrap(), 16);
+
+        // PascalCase nested options placed into their respective blocks
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("include").unwrap(), "*.jpg");
-        assert_eq!(filter.get("exclude").unwrap(), "*.png");
+        assert_eq!(filter.get("IncludeRule").unwrap(), "*.jpg");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("transfers").unwrap(), 8);
-        assert_eq!(config.get("checkers").unwrap(), 16);
+        assert_eq!(config.get("Transfers").unwrap(), 8);
+        assert_eq!(config.get("Checkers").unwrap(), 32);
     }
 
     #[test]

@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-class ResumeUploadsBootReceiver : BroadcastReceiver() {
+class SafBootReceiver : BroadcastReceiver() {
 
   override fun onReceive(context: Context?, intent: Intent?) {
     if (context == null || intent == null) return
@@ -12,10 +12,10 @@ class ResumeUploadsBootReceiver : BroadcastReceiver() {
 
     if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
       try {
-        Logger.info("ResumeUploadsBootReceiver: System boot/update event received ($action)")
+        Logger.info("SafBootReceiver: System boot/update event received ($action)")
         RcloneSafBridge.ensureInitialized(context.applicationContext)
       } catch (e: Exception) {
-        Logger.error("ResumeUploadsBootReceiver error: ${e.message}")
+        Logger.error("SafBootReceiver error: ${e.message}")
       }
     }
   }

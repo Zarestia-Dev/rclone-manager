@@ -29,14 +29,6 @@ pub fn ensure_group(payload: &mut Value, group: &str) {
     }
 }
 
-#[must_use]
-pub fn filter_empty_options(opts: &HashMap<String, Value>) -> HashMap<String, Value> {
-    opts.iter()
-        .filter(|(_, v)| !v.is_null() && !matches!(v, Value::String(s) if s.is_empty()))
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect()
-}
-
 /// Resolves profile settings for a given remote and profile name.
 ///
 /// Returns a tuple containing:
@@ -134,6 +126,173 @@ pub struct CommonConfigParams {
 impl CommonConfigParams {
     pub fn first_source(&self) -> String {
         self.source.first().cloned().unwrap_or_default()
+    }
+}
+
+/// Builder for constructing rclone RC command payloads with uniform config layering.
+///
+/// Handles:
+/// - Unpacking unpartitioned / legacy `rclone_config` maps.
+/// - Separating flat options (starting with lowercase, e.g. `exclude`, `vfs_cache_mode`, `allow_other`)
+///   into the top-level payload map for Rclone flat option support.
+/// - Routing PascalCase / structured options into nested blocks (`_config`, `_filter`, `vfsOpt`, `mountOpt`).
+/// - Merging `runtime_remote_options` overrides.
+/// - Merging profile blocks (`vfs_options`, `filter_options`, `backend_options`).
+#[derive(Default, Debug, Clone)]
+pub struct RclonePayloadBuilder {
+    body: serde_json::Map<String, Value>,
+}
+
+impl RclonePayloadBuilder {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            body: serde_json::Map::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn from_rclone_config(config: &Value) -> Self {
+        let mut builder = Self::new();
+        builder.merge_rclone_config(config);
+        builder
+    }
+
+    pub fn insert(&mut self, key: impl Into<String>, val: impl Into<Value>) -> &mut Self {
+        self.body.insert(key.into(), val.into());
+        self
+    }
+
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&Value> {
+        self.body.get(key)
+    }
+
+    pub fn merge_rclone_config(&mut self, config: &Value) -> &mut Self {
+        if let Value::Object(map) = config {
+            let mut legacy_mount = serde_json::Map::new();
+            let mut legacy_config = serde_json::Map::new();
+            let mut legacy_filter = serde_json::Map::new();
+            let mut legacy_vfs = serde_json::Map::new();
+
+            for (k, v) in map {
+                if crate::utils::json_helpers::is_path_key(k) {
+                    continue;
+                }
+                if crate::utils::json_helpers::is_flat_option_key(k) {
+                    self.body.insert(k.clone(), v.clone());
+                } else if k == "mountOpt" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_mount.extend(opts.clone());
+                    }
+                } else if k == "vfsOpt" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_vfs.extend(opts.clone());
+                    }
+                } else if k == "_filter" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_filter.extend(opts.clone());
+                    }
+                } else if k == "_config" && v.is_object() {
+                    if let Some(opts) = v.as_object() {
+                        legacy_config.extend(opts.clone());
+                    }
+                } else {
+                    legacy_config.insert(k.clone(), v.clone());
+                }
+            }
+
+            if !legacy_mount.is_empty() {
+                self.body
+                    .insert("mountOpt".to_string(), Value::Object(legacy_mount));
+            }
+            if !legacy_vfs.is_empty() {
+                self.body
+                    .insert("vfsOpt".to_string(), Value::Object(legacy_vfs));
+            }
+            if !legacy_filter.is_empty() {
+                self.body
+                    .insert("_filter".to_string(), Value::Object(legacy_filter));
+            }
+            if !legacy_config.is_empty() {
+                self.body
+                    .insert("_config".to_string(), Value::Object(legacy_config));
+            }
+        }
+        self
+    }
+
+    pub fn with_runtime_remote_options(
+        &mut self,
+        opts: Option<&HashMap<String, Value>>,
+    ) -> &mut Self {
+        if let Some(opts) = opts {
+            for (k, v) in opts {
+                if !self.body.contains_key(k) {
+                    self.body.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        self
+    }
+
+    pub fn with_vfs_options(&mut self, opts: Option<&HashMap<String, Value>>) -> &mut Self {
+        self.merge_options_block("vfsOpt", opts, false);
+        self
+    }
+
+    pub fn with_filter_options(&mut self, opts: Option<&HashMap<String, Value>>) -> &mut Self {
+        self.merge_options_block("_filter", opts, false);
+        self
+    }
+
+    pub fn with_backend_options(&mut self, opts: Option<&HashMap<String, Value>>) -> &mut Self {
+        self.merge_options_block("_config", opts, true);
+        self
+    }
+
+    fn merge_options_block(
+        &mut self,
+        block_name: &str,
+        opts: Option<&HashMap<String, Value>>,
+        filter_empty: bool,
+    ) {
+        let Some(opts) = opts else {
+            return;
+        };
+        let mut nested_map = self
+            .body
+            .get(block_name)
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default();
+
+        for (k, v) in opts {
+            if filter_empty && (v.is_null() || matches!(v, Value::String(s) if s.is_empty())) {
+                continue;
+            }
+            if crate::utils::json_helpers::is_flat_option_key(k) {
+                self.body.insert(k.clone(), v.clone());
+            } else {
+                nested_map.insert(k.clone(), v.clone());
+            }
+        }
+
+        if !nested_map.is_empty() {
+            self.body
+                .insert(block_name.to_string(), Value::Object(nested_map));
+        } else {
+            self.body.remove(block_name);
+        }
+    }
+
+    #[must_use]
+    pub fn build(&self) -> Value {
+        Value::Object(self.body.clone())
+    }
+
+    pub fn as_map_mut(&mut self) -> &mut serde_json::Map<String, Value> {
+        &mut self.body
     }
 }
 
@@ -446,5 +605,81 @@ mod tests {
         assert!(obj.get("vfs").is_none());
         assert!(obj.get("filter").is_none());
         assert!(obj.get("backend").is_none());
+    }
+
+    #[test]
+    fn test_rclone_payload_builder() {
+        let rclone_config = json!({
+            "mountType": "cmount",
+            "mountOpt": { "read-only": true },
+            "_config": { "AutoConfirm": true },
+            "_filter": { "IncludeRule": "*.jpg" },
+            "vfsOpt": { "CacheMode": "full" },
+            "Transfers": 4,
+            "allow_other": true,
+            "srcFs": "ignore_me:"
+        });
+
+        let vfs_options = Some(HashMap::from([
+            ("vfs-cache-mode".to_string(), json!("writes")),
+            ("ChunkSize".to_string(), json!("16M")),
+        ]));
+        let filter_options = Some(HashMap::from([
+            ("exclude".to_string(), json!("*.doc")),
+            ("ExcludeRule".to_string(), json!(["*.bak"])),
+        ]));
+        let backend_options = Some(HashMap::from([
+            ("chunk-size".to_string(), json!("10M")),
+            ("empty_flag".to_string(), json!("")),
+            ("null_flag".to_string(), json!(null)),
+            ("Checkers".to_string(), json!(32)),
+        ]));
+        let runtime_remote_options = Some(HashMap::from([(
+            "my_runtime_flag".to_string(),
+            json!("val"),
+        )]));
+
+        let payload = RclonePayloadBuilder::from_rclone_config(&rclone_config)
+            .insert("fs", "my_remote:")
+            .insert("mountPoint", "/mnt/drive")
+            .with_runtime_remote_options(runtime_remote_options.as_ref())
+            .with_vfs_options(vfs_options.as_ref())
+            .with_filter_options(filter_options.as_ref())
+            .with_backend_options(backend_options.as_ref())
+            .build();
+
+        let obj = payload.as_object().unwrap();
+
+        // Base & path keys
+        assert_eq!(obj.get("fs").unwrap(), "my_remote:");
+        assert_eq!(obj.get("mountPoint").unwrap(), "/mnt/drive");
+        assert!(obj.get("srcFs").is_none());
+
+        // Flat lowercase options at root
+        assert_eq!(obj.get("mountType").unwrap(), "cmount");
+        assert_eq!(obj.get("allow_other").unwrap(), true);
+        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(obj.get("exclude").unwrap(), "*.doc");
+        assert_eq!(obj.get("chunk-size").unwrap(), "10M");
+        assert_eq!(obj.get("my_runtime_flag").unwrap(), "val");
+        assert!(obj.get("empty_flag").is_none());
+        assert!(obj.get("null_flag").is_none());
+
+        // Nested blocks
+        let mount_opt = obj.get("mountOpt").unwrap().as_object().unwrap();
+        assert_eq!(mount_opt.get("read-only").unwrap(), true);
+
+        let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "full");
+        assert_eq!(vfs_opt.get("ChunkSize").unwrap(), "16M");
+
+        let filter_opt = obj.get("_filter").unwrap().as_object().unwrap();
+        assert_eq!(filter_opt.get("IncludeRule").unwrap(), "*.jpg");
+        assert_eq!(filter_opt.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
+
+        let config_opt = obj.get("_config").unwrap().as_object().unwrap();
+        assert_eq!(config_opt.get("AutoConfirm").unwrap(), true);
+        assert_eq!(config_opt.get("Transfers").unwrap(), 4);
+        assert_eq!(config_opt.get("Checkers").unwrap(), 32);
     }
 }

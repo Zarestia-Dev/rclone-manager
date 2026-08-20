@@ -8,6 +8,8 @@ module.exports = defineConfig([
     ignores: [
       'src-tauri/resources/serve-template.html',
       'src-tauri/resources/oauth-template.html',
+      'src-tauri/gen/**',
+      '**/*-template.html',
       '**/target/**',
       'dist/**',
     ],

@@ -82,84 +82,17 @@ impl FromConfig for MountParams {
 
 impl MountParams {
     pub fn to_rclone_body(&self) -> Value {
-        let mut body = serde_json::Map::new();
-
-        if let Value::Object(map) = &self.rclone_config {
-            let mut legacy_mount = serde_json::Map::new();
-            let mut legacy_config = serde_json::Map::new();
-
-            for (k, v) in map {
-                if crate::utils::json_helpers::is_path_key(k) {
-                    continue;
-                }
-                if crate::utils::json_helpers::is_flat_option_key(k) {
-                    body.insert(k.clone(), v.clone());
-                } else if k == "mountOpt" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_mount.extend(opts.clone());
-                    }
-                } else if k == "_config" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_config.extend(opts.clone());
-                    }
-                } else {
-                    legacy_config.insert(k.clone(), v.clone());
-                }
-            }
-
-            if !legacy_mount.is_empty() {
-                body.insert("mountOpt".to_string(), Value::Object(legacy_mount));
-            }
-            if !legacy_config.is_empty() {
-                body.insert("_config".to_string(), Value::Object(legacy_config));
-            }
-        }
-
-        // 1. Inject runtime remote overrides directly into body as flat flags and set mountPoint
-        body.insert("fs".to_string(), json!(self.source));
-        body.insert("mountPoint".to_string(), json!(self.mount_point));
-        if let Some(opts) = self.runtime_remote_options.as_ref() {
-            for (k, v) in opts {
-                if !body.contains_key(k) {
-                    body.insert(k.clone(), v.clone());
-                }
-            }
-        }
-
-        // 2. Merge resolved profile blocks if they exist and are non-empty
-        if let Some(vfs_opts) = &self.vfs_options {
-            let val = serde_json::to_value(vfs_opts).unwrap_or_default();
-            if val.as_object().is_some_and(|o| !o.is_empty()) {
-                body.insert("vfsOpt".to_string(), val);
-            }
-        }
-        if let Some(filter_opts) = &self.filter_options {
-            let val = serde_json::to_value(filter_opts).unwrap_or_default();
-            if val.as_object().is_some_and(|o| !o.is_empty()) {
-                body.insert("_filter".to_string(), val);
-            }
-        }
-        if let Some(backend_opts) = &self.backend_options {
-            let final_backend = crate::rclone::commands::common::filter_empty_options(backend_opts);
-            if !final_backend.is_empty() {
-                let mut config_map = body
-                    .get("_config")
-                    .and_then(|v| v.as_object())
-                    .cloned()
-                    .unwrap_or_default();
-                for (k, v) in final_backend {
-                    config_map.entry(k).or_insert(v);
-                }
-                if !config_map.is_empty() {
-                    body.insert("_config".to_string(), Value::Object(config_map));
-                }
-            }
-        }
-
-        // 3. Mark it async
-        body.insert("_async".to_string(), json!(true));
-
-        Value::Object(body)
+        crate::rclone::commands::common::RclonePayloadBuilder::from_rclone_config(
+            &self.rclone_config,
+        )
+        .insert("fs", self.source.as_str())
+        .insert("mountPoint", self.mount_point.as_str())
+        .insert("_async", true)
+        .with_runtime_remote_options(self.runtime_remote_options.as_ref())
+        .with_vfs_options(self.vfs_options.as_ref())
+        .with_filter_options(self.filter_options.as_ref())
+        .with_backend_options(self.backend_options.as_ref())
+        .build()
     }
 }
 
@@ -171,7 +104,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     #[cfg(target_os = "android")]
     if params.mount_type == "saf" {
         let payload = params.to_rclone_body();
-        let mount_point = params.mount_point;
+        let mount_point = params.mount_point.clone();
 
         log_operation(
             LogLevel::Info,
@@ -182,12 +115,25 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                 params.mount_type
             ),
             Some(json!({
-                "mount_point": mount_point,
-                "remote_name": params.remote_name,
-                "mount_type": params.mount_type,
-                "payload": payload,
+                "mount_point": &mount_point,
+                "remote_name": &params.remote_name,
+                "mount_type": &params.mount_type,
+                "payload": &payload,
             })),
         );
+
+        let transport = crate::rclone::commands::common::transport(&app);
+        if let Err(e) = transport.rpc("vfs/stream/mount", Some(&payload)).await {
+            let error_msg = format!("Failed to initialize SAF VFS stream: {e}");
+            log_operation(
+                LogLevel::Error,
+                Some(params.remote_name.clone()),
+                Some("Mount SAF remote failed".to_string()),
+                error_msg.clone(),
+                None,
+            );
+            return Err(error_msg);
+        }
 
         let mounted_remote = crate::utils::types::remotes::MountedRemote {
             fs: params.source.clone(),
@@ -345,20 +291,36 @@ pub async fn unmount_remote(
 
     #[cfg(target_os = "android")]
     if mount_point.starts_with("saf://") {
-        let profile = backend_manager
+        let mounted_entry = backend_manager
             .remote_cache
             .get_mount_by_point(&mount_point)
-            .await
-            .and_then(|m| m.profile)
+            .await;
+        let profile = mounted_entry
+            .as_ref()
+            .and_then(|m| m.profile.clone())
             .unwrap_or_default();
+        let fs_name = mounted_entry
+            .as_ref()
+            .map(|m| m.fs.clone())
+            .unwrap_or_else(|| {
+                if remote_name.ends_with(':') {
+                    remote_name.clone()
+                } else {
+                    format!("{remote_name}:")
+                }
+            });
 
         let mut current_mounts = backend_manager.remote_cache.get_mounted_remotes().await;
-        current_mounts.retain(|m| {
-            m.mount_point != mount_point && m.fs != remote_name && m.fs != format!("{remote_name}:")
-        });
+        current_mounts
+            .retain(|m| m.mount_point != mount_point && m.fs != remote_name && m.fs != fs_name);
         backend_manager
             .remote_cache
             .update_mounts_if_changed(current_mounts, &app)
+            .await;
+
+        let transport = crate::rclone::commands::common::transport(&app);
+        let _ = transport
+            .rpc("vfs/stream/unmount", Some(&json!({ "fs": fs_name })))
             .await;
 
         crate::rclone::backend::saf_bridge::notify_roots_changed();
@@ -467,6 +429,13 @@ pub async fn unmount_all_remotes(
     {
         info!("🗑️ Unmounting all SAF remotes");
         let backend_manager = app.state::<BackendManager>();
+        let mounted = backend_manager.remote_cache.get_mounted_remotes().await;
+        let transport = crate::rclone::commands::common::transport(&app);
+        for m in &mounted {
+            let _ = transport
+                .rpc("vfs/stream/unmount", Some(&json!({ "fs": &m.fs })))
+                .await;
+        }
         backend_manager
             .remote_cache
             .update_mounts_if_changed(vec![], &app)
@@ -643,12 +612,18 @@ mod tests {
                     "read-only": true
                 }
             }),
-            vfs_options: Some(HashMap::from([(
-                "vfs-cache-mode".to_string(),
-                json!("writes"),
-            )])),
-            filter_options: Some(HashMap::from([("exclude".to_string(), json!(".*"))])),
-            backend_options: Some(HashMap::from([("chunk-size".to_string(), json!("10M"))])),
+            vfs_options: Some(HashMap::from([
+                ("vfs-cache-mode".to_string(), json!("writes")),
+                ("CacheMode".to_string(), json!("full")),
+            ])),
+            filter_options: Some(HashMap::from([
+                ("exclude".to_string(), json!(".*")),
+                ("ExcludeRule".to_string(), json!(["*.bak"])),
+            ])),
+            backend_options: Some(HashMap::from([
+                ("chunk-size".to_string(), json!("10M")),
+                ("AutoConfirm".to_string(), json!(true)),
+            ])),
             runtime_remote_options: None,
             profile: Some("my_profile".to_string()),
             quick_run_id: None,
@@ -663,13 +638,19 @@ mod tests {
         assert_eq!(obj.get("fs").unwrap(), "pCloud:backups");
         assert_eq!(obj.get("_async").unwrap(), &json!(true));
 
+        // Flat lowercase keys placed directly at top-level body
+        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(obj.get("exclude").unwrap(), ".*");
+        assert_eq!(obj.get("chunk-size").unwrap(), "10M");
+
+        // PascalCase nested options placed into their respective blocks
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
-        assert_eq!(vfs_opt.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(vfs_opt.get("CacheMode").unwrap(), "full");
 
         let filter = obj.get("_filter").unwrap().as_object().unwrap();
-        assert_eq!(filter.get("exclude").unwrap(), ".*");
+        assert_eq!(filter.get("ExcludeRule").unwrap(), &json!(["*.bak"]));
 
         let config = obj.get("_config").unwrap().as_object().unwrap();
-        assert_eq!(config.get("chunk-size").unwrap(), "10M");
+        assert_eq!(config.get("AutoConfirm").unwrap(), &json!(true));
     }
 }

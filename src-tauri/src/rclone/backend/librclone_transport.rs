@@ -29,6 +29,11 @@ impl RcloneLibBackend {
                 "_path": config::SETPATH,
                 "path": path_str
             }));
+            let cache_str = paths.cache_dir.to_string_lossy().to_string();
+            let _ = crate::rclone::backend::rclone_ffi::rpc(&serde_json::json!({
+                "_path": "config/setcachedir",
+                "path": cache_str
+            }));
             log::info!("Set librclone config path to {}", conf_path.display());
         }
     }

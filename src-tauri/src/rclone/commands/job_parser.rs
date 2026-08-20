@@ -395,8 +395,8 @@ mod tests {
             "stopped": true
         });
         let outcome = resolve_job_outcome(&status, &JobType::Sync, &["src".to_string()]);
-        assert_eq!(outcome.success, false);
-        assert_eq!(outcome.stopped, true);
+        assert!(!outcome.success);
+        assert!(outcome.stopped);
         assert!(outcome.error_msg.is_none());
     }
 
@@ -414,8 +414,8 @@ mod tests {
             }
         });
         let outcome = resolve_job_outcome(&status, &JobType::Check, &["src".to_string()]);
-        assert_eq!(outcome.success, false);
-        assert_eq!(outcome.stopped, false);
+        assert!(!outcome.success);
+        assert!(!outcome.stopped);
         assert_eq!(
             outcome.error_msg.as_deref(),
             Some("src: 3 differences found")

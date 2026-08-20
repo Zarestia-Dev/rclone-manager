@@ -58,19 +58,20 @@ pub async fn get_active_operations_summary(
 
 #[tauri::command]
 pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
-    use crate::utils::types::events::APP_EXIT_REQUESTED;
+    #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     use tauri::{Emitter, Manager};
 
     let summary = get_active_operations_summary(app.clone()).await?;
 
     if summary.has_active_operations {
-        #[cfg(desktop)]
+        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.show();
             let _ = window.unminimize();
             let _ = window.set_focus();
         }
-        let _ = app.emit(APP_EXIT_REQUESTED, summary);
+        #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
+        let _ = app.emit(crate::utils::types::events::APP_EXIT_REQUESTED, summary);
     } else {
         crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
         app.exit(0);

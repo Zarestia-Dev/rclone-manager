@@ -329,6 +329,9 @@ fn setup_app(
         unsafe {
             std::env::set_var("HOME", &app_paths.config_dir);
             std::env::set_var("XDG_CONFIG_HOME", &app_paths.config_dir);
+            std::env::set_var("XDG_CACHE_HOME", &app_paths.cache_dir);
+            std::env::set_var("TMPDIR", &app_paths.cache_dir);
+            std::env::set_var("TMP", &app_paths.cache_dir);
         }
     }
 
