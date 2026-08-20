@@ -290,6 +290,7 @@ pub async fn start_serve(
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
+            Some(&app),
         )
         .await;
     refresh_serves_quietly(&app).await;

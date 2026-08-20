@@ -3,6 +3,7 @@ pub mod backend;
 pub mod common;
 pub mod filesystem;
 pub mod job;
+pub mod job_parser;
 pub mod mount;
 pub mod remote;
 pub mod serve;

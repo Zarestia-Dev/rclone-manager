@@ -41,6 +41,10 @@ Rclone Manager welcomes AI-assisted contributions, but the expectation is that y
    - **ALWAYS** use standard HTML `<a>` tags with `href` attributes for opening URLs (e.g., `<a href="https://..." target="_blank" rel="noopener noreferrer">...</a>` or `<a matButton="filled" [href]="url" target="_blank">...</a>`).
    - **DO NOT** use `<button>` elements or click handlers to open external web links. `OpenerService` runs a global link interceptor that captures all `<a>` tags with external protocols (http/https/mailto) and opens them safely in the default system browser or new tab.
 
+5. **Menu Component Usage Rule (CRITICAL)**
+   - **DO NOT** use Angular Material Menus (`mat-menu`, `MatMenuModule`, `matMenuTriggerFor`).
+   - **ALWAYS** use CDK Menu (`@angular/cdk/menu`, `CdkMenuModule`, `[cdkMenuTriggerFor]`, `cdkMenu`, `cdkMenuItem`) styled with `.material-context-menu` and `.menu-item` classes.
+
 ---
 
 ## CI & Automated Workflows ([.github/workflows/](.github/workflows/))

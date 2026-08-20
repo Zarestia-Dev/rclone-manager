@@ -181,7 +181,6 @@ export class RcloneStatusService {
   async setBandwidthLimit(rate: string): Promise<void> {
     const persistedValue = rate === 'off' ? '' : rate;
     await this.systemInfoService.bandwidthLimit(rate);
-    await this.loadBandwidthLimit();
     await this.appSettingsService.saveSetting('core', 'bandwidth_limit', persistedValue);
   }
 

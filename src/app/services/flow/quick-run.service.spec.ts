@@ -250,18 +250,52 @@ describe('QuickRunService', () => {
       expect(res?.jobId).toBe(42);
       expect(res?.executeId).toBe('exec-1');
       expect(service.runningIds().has('qr-1')).toBe(true);
+      expect(service.actionInProgress()['qr-1']).toBeUndefined();
     });
 
-    it('stop should invoke backend command stop_quick_run', async () => {
+    it('start should track actionInProgress during execution', async () => {
       invokeSpy.mockResolvedValue([mockQuickRun]);
       await service.refresh();
 
-      invokeSpy.mockResolvedValue(undefined);
+      let inFlightStateDuringExecution: 'start' | 'stop' | undefined;
+      invokeSpy.mockImplementation(async () => {
+        inFlightStateDuringExecution = service.actionInProgress()['qr-1'];
+        return {
+          executeId: 'exec-1',
+          origin: 'quickrun',
+          operationType: 'sync',
+          remoteName: 'drive:',
+          quickRunId: 'qr-1',
+          success: true,
+          status: 'running',
+          startTime: '2026-08-16T18:00:00Z',
+          jobId: 42,
+        };
+      });
+
+      await service.start('qr-1');
+
+      expect(inFlightStateDuringExecution).toBe('start');
+      expect(service.actionInProgress()['qr-1']).toBeUndefined();
+    });
+
+    it('stop should invoke backend command stop_quick_run and track actionInProgress', async () => {
+      invokeSpy.mockResolvedValue([mockQuickRun]);
+      await service.refresh();
+
+      let inFlightStateDuringExecution: 'start' | 'stop' | undefined;
+      invokeSpy.mockImplementation(async () => {
+        inFlightStateDuringExecution = service.actionInProgress()['qr-1'];
+        return undefined;
+      });
+
       await service.stop('qr-1');
 
       expect(invokeSpy).toHaveBeenCalledWith('stop_quick_run', {
         quickRunId: 'qr-1',
       });
+      expect(inFlightStateDuringExecution).toBe('stop');
+      expect(service.actionInProgress()['qr-1']).toBeUndefined();
       expect(service.runningIds().has('qr-1')).toBe(false);
     });
 

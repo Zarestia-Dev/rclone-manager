@@ -39,6 +39,63 @@ export interface ActionState {
 
 export type RemoteActionProgress = Record<string, ActionState[]>;
 
+/**
+ * Checks if a given action state array has an in-flight operation matching `opType` and optional `profileName`.
+ * Supports matching start (`opType`), stop (`type: 'stop'`, `operationType: opType`), and unmount operations.
+ */
+export function isOperationActionInProgress(
+  actions: readonly ActionState[] | undefined | null,
+  opType?: PrimaryActionType,
+  profileName?: string
+): boolean {
+  return (
+    actions?.some(a => {
+      if (profileName && a.profileName && a.profileName !== profileName) return false;
+      if (!opType) return a.type !== 'open';
+      return (
+        a.type === opType ||
+        (opType === 'mount' && a.type === 'unmount') ||
+        (a.type === 'stop' && a.operationType === opType)
+      );
+    }) ?? false
+  );
+}
+
+/**
+ * Checks if a folder opening operation is currently in-flight for a remote (and optional profile/op).
+ */
+export function isFolderOpeningAction(
+  actions: readonly ActionState[] | undefined | null,
+  opType?: PrimaryActionType,
+  profileName?: string
+): boolean {
+  return (
+    actions?.some(
+      a =>
+        a.type === 'open' &&
+        (!opType || !a.operationType || a.operationType === opType) &&
+        (!profileName || !a.profileName || a.profileName === profileName)
+    ) ?? false
+  );
+}
+
+/**
+ * Finds the in-flight action matching `opType` and optional `profileName`.
+ */
+export function findInFlightAction(
+  actions: readonly ActionState[] | undefined | null,
+  opType: PrimaryActionType,
+  profileName?: string
+): ActionState | undefined {
+  return actions?.find(
+    a =>
+      (a.type === opType ||
+        (opType === 'mount' && a.type === 'unmount') ||
+        (a.type === 'stop' && a.operationType === opType)) &&
+      (a.profileName === profileName || (!a.profileName && !profileName))
+  );
+}
+
 export interface StartJobEvent {
   type: PrimaryActionType;
   remoteName: string;

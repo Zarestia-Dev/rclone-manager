@@ -15,6 +15,13 @@ use crate::{
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("Beginning shutdown sequence...");
 
+    app_handle.state::<RcloneState>().set_shutting_down();
+
+    let _ = app_handle.emit(
+        APP_EVENT,
+        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
+    );
+
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     if let Some(power_state) = app_handle.try_state::<crate::core::power::PowerInhibitorState>() {
         power_state.release().await;
@@ -129,13 +136,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
 #[tauri::command]
 pub async fn shutdown_app(app: AppHandle) -> Result<(), String> {
-    app.state::<RcloneState>().set_shutting_down();
-
-    let _ = app.emit(
-        APP_EVENT,
-        json!({ "status": "shutting_down", "message": "Shutting down RClone Manager" }),
-    );
-
     handle_shutdown(app.clone()).await;
     info!("Shutdown completed.");
     app.exit(0);

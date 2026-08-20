@@ -58,6 +58,7 @@ import {
   BACKEND_PROFILE_SUPPORTED_OPS,
   QuickRun,
   Remote,
+  findInFlightAction,
 } from '@app/types';
 import { MatDialog } from '@angular/material/dialog';
 import { JobInfoPanelComponent } from '../../../../shared/detail-shared/job-info-panel/job-info-panel.component';
@@ -1000,14 +1001,10 @@ export class AppDetailComponent {
       this.mode() === 'quickRun'
         ? this.isQuickRunRunning()
         : this.isOperationActive(type, profileName);
-    const actionMatch = this.actionInProgress()?.find(
-      a =>
-        (a.type === type ||
-          (type === 'mount' && a.type === 'unmount') ||
-          (a.type === 'stop' && a.operationType === type)) &&
-        (a.profileName === profileName || (!a.profileName && !profileName))
-    );
-    const actionType = actionMatch?.type;
+    const actionMatch = findInFlightAction(this.actionInProgress(), type, profileName);
+    const qr = this.mode() === 'quickRun' ? this.quickRun() : null;
+    const quickRunAction = qr ? this.quickRunService.actionInProgress()[qr.id] : undefined;
+    const actionType = quickRunAction || actionMatch?.type;
     const isLoading = !!actionType;
     const t = (key: string, params?: object): string => this.translate.instant(key, params);
     const opLabel = t(metadata.typeLabel || metadata.label);

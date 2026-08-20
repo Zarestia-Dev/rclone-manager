@@ -55,7 +55,7 @@ impl QuickRun {
             .unwrap_or(false)
     }
 
-    #[cfg(all(desktop, feature = "tray"))]
+    #[allow(dead_code)]
     #[must_use]
     pub fn is_show_on_tray(&self) -> bool {
         self.config

@@ -23,6 +23,7 @@ import {
   JobInfo,
   ServeListItem,
   Automation,
+  OpenInFilesEvent,
 } from '@app/types';
 
 import { QuickRunService } from 'src/app/services/flow/quick-run.service';
@@ -284,9 +285,18 @@ export class QuickRunOverviewComponent {
     }
   }
 
-  openInFiles(path: string): void {
-    const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(path);
-    void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
+  openInFiles(event: OpenInFilesEvent | string): void {
+    if (typeof event === 'string') {
+      const { remote: remoteName, path: relativePath } = this.pathService.splitFsPath(event);
+      void this.remoteFacade.openRemoteInFiles(remoteName, relativePath);
+    } else {
+      void this.remoteFacade.openRemoteInFiles(
+        event.remoteName,
+        event.path,
+        event.profileName,
+        event.operationType
+      );
+    }
   }
 
   private async loadLayoutSettings(): Promise<void> {

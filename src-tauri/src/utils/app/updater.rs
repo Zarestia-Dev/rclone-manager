@@ -2,7 +2,6 @@ use crate::core::{lifecycle::shutdown::handle_shutdown, settings::AppSettingsMan
 use crate::utils::github_client::{OWNER, REPO};
 use crate::utils::types::{
     events::APP_EVENT,
-    state::RcloneState,
     updater::{
         AppUpdaterState, DownloadState, DownloadStatus, Result, UpdateInfo, UpdateMetadata,
         UpdateState, UpdaterError as Error,
@@ -105,7 +104,6 @@ pub async fn fetch_update(app: AppHandle, channel: String) -> Result<Option<Upda
             let app = app_exit.clone();
             warn!("Shutting down for update installation...");
             tauri::async_runtime::block_on(async move {
-                app.state::<RcloneState>().set_shutting_down();
                 handle_shutdown(app).await;
             });
         })

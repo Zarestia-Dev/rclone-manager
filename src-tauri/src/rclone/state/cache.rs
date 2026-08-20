@@ -255,6 +255,7 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
+        app_handle: Option<&AppHandle>,
     ) {
         let norm = normalize_mount_path(mount_point);
         let mut mounts = self.mounted.write().await;
@@ -277,6 +278,17 @@ impl RemoteCache {
                 execute_id,
             });
         }
+        drop(mounts);
+
+        if let Some(app) = app_handle {
+            info!("📡 Mount cache preseeded, emitting change");
+            let _ = app.emit(MOUNT_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
+            #[cfg(target_os = "android")]
+            {
+                let cache_read = self.mounted.read().await;
+                crate::rclone::backend::saf_bridge::update_mounted_remotes(&cache_read);
+            }
+        }
     }
 
     /// Pre-seed or update serve metadata before/during refresh so the upcoming
@@ -291,6 +303,7 @@ impl RemoteCache {
         quick_run_id: Option<String>,
         origin: Option<crate::utils::types::origin::Origin>,
         execute_id: Option<String>,
+        app_handle: Option<&AppHandle>,
     ) {
         let mut serves = self.serves.write().await;
         if let Some(s) = serves.iter_mut().find(|s| s.id == serve_id) {
@@ -308,6 +321,12 @@ impl RemoteCache {
                 origin,
                 execute_id,
             });
+        }
+        drop(serves);
+
+        if let Some(app) = app_handle {
+            info!("📡 Serve cache preseeded, emitting change");
+            let _ = app.emit(SERVE_STATE_CHANGED, crate::utils::constants::CACHE_UPDATED);
         }
     }
 

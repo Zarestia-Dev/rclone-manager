@@ -37,6 +37,7 @@ export class QuickRunService extends TauriBaseService {
   private readonly _isLoading = signal(false);
   private readonly _isSaving = signal(false);
   private readonly _runningIds = signal<Set<string>>(new Set());
+  private readonly _actionInProgress = signal<Record<string, 'start' | 'stop'>>({});
 
   readonly quickRuns = this._quickRuns.asReadonly();
 
@@ -56,6 +57,8 @@ export class QuickRunService extends TauriBaseService {
   readonly isSaving = this._isSaving.asReadonly();
   /** Set of quick-run ids currently executing (drives card badges + buttons). */
   readonly runningIds = this._runningIds.asReadonly();
+  /** In-flight action states per quick-run ID (e.g. 'start' or 'stop'). */
+  readonly actionInProgress = this._actionInProgress.asReadonly();
 
   /** The currently-selected quick run, or `null`. */
   readonly selected = computed<QuickRun | null>(
@@ -329,41 +332,65 @@ export class QuickRunService extends TauriBaseService {
   // ── Execution ────────────────────────────────────────────────────────────
 
   /**
+   * Execute an async quick run action with in-flight state tracking.
+   */
+  async executeAction<T>(
+    id: string,
+    action: 'start' | 'stop',
+    operation: () => Promise<T>
+  ): Promise<T> {
+    this._actionInProgress.update(state => ({ ...state, [id]: action }));
+    try {
+      return await operation();
+    } finally {
+      this._actionInProgress.update(state => {
+        const next = { ...state };
+        delete next[id];
+        return next;
+      });
+    }
+  }
+
+  /**
    * Start a quick run. Returns the execution result descriptor on success.
    */
   async start(id: string): Promise<OperationExecutionResult | null> {
     const qr = this._quickRuns().find(q => q.id === id);
     if (!qr) return null;
 
-    this.markRunning(id);
-    try {
-      const result = await this.invokeCommand<OperationExecutionResult>('start_quick_run', {
-        quickRunId: id,
-      });
-      this.patchInStore(id, { status: result?.status ?? 'running' });
-      void this.jobService.refreshJobs();
-      void this.mountService.getMountedRemotes();
-      void this.serveService.refreshServes();
-      return result;
-    } catch (err) {
-      console.error('[QuickRunService] start_quick_run failed:', err);
-      this.notificationService.showError(`Failed to start "${qr.name}".`);
-      this.markStopped(id, { status: 'failed' });
-      return null;
-    }
+    return await this.executeAction(id, 'start', async () => {
+      this.markRunning(id);
+      try {
+        const result = await this.invokeCommand<OperationExecutionResult>('start_quick_run', {
+          quickRunId: id,
+        });
+        this.patchInStore(id, { status: result?.status ?? 'running' });
+        void this.jobService.refreshJobs();
+        void this.mountService.getMountedRemotes();
+        void this.serveService.refreshServes();
+        return result;
+      } catch (err) {
+        console.error('[QuickRunService] start_quick_run failed:', err);
+        this.notificationService.showError(`Failed to start "${qr.name}".`);
+        this.markStopped(id, { status: 'failed' });
+        return null;
+      }
+    });
   }
 
   /** Stop a running quick run. */
   async stop(id: string): Promise<void> {
-    try {
-      await this.invokeCommand('stop_quick_run', { quickRunId: id });
-    } catch (err) {
-      console.warn('[QuickRunService] stop_quick_run not available:', err);
-    }
-    this.markStopped(id, { status: 'stopped' });
-    void this.jobService.refreshJobs();
-    void this.mountService.getMountedRemotes();
-    void this.serveService.refreshServes();
+    await this.executeAction(id, 'stop', async () => {
+      try {
+        await this.invokeCommand('stop_quick_run', { quickRunId: id });
+      } catch (err) {
+        console.warn('[QuickRunService] stop_quick_run not available:', err);
+      }
+      this.markStopped(id, { status: 'stopped' });
+      void this.jobService.refreshJobs();
+      void this.mountService.getMountedRemotes();
+      void this.serveService.refreshServes();
+    });
   }
 
   // ── Runtime state helpers ────────────────────────────────────────────────

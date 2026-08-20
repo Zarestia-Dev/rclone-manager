@@ -24,6 +24,9 @@ import {
   OpenInFilesEvent,
   OpenableFolder,
   ACTION_ANIMATION_CLASS,
+  OPERATION_COLOR_VAR,
+  isOperationActionInProgress,
+  isFolderOpeningAction,
 } from '@app/types';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -191,14 +194,10 @@ export class RemoteCardComponent {
     return candidates.filter(op => this.getConfiguredProfiles(op).length > 0);
   });
 
-  readonly isFolderOpening = computed<boolean>(() =>
-    this.actionStates().some(a => a.type === 'open')
-  );
+  readonly isFolderOpening = computed<boolean>(() => isFolderOpeningAction(this.actionStates()));
 
   isFolderOpeningFor(op: PrimaryActionType, profile: string): boolean {
-    return this.actionStates().some(
-      a => a.type === 'open' && a.operationType === op && a.profileName === profile
-    );
+    return isFolderOpeningAction(this.actionStates(), op, profile);
   }
 
   readonly openableFolders = computed<OpenableFolder[]>(() => {
@@ -245,15 +244,9 @@ export class RemoteCardComponent {
     const uniqueClasses = [...new Set(folders.map(f => f.cssClass))];
     if (uniqueClasses.length <= 1) return null;
 
-    const classToVar: Record<string, string> = {
-      accent: 'var(--accent-color)',
-      primary: 'var(--primary-color)',
-      yellow: 'var(--yellow)',
-      orange: 'var(--orange)',
-      purple: 'var(--purple)',
-    };
-
-    const colors = uniqueClasses.map(c => classToVar[c] ?? 'var(--primary-color)');
+    const colors = uniqueClasses.map(
+      c => OPERATION_COLOR_VAR[c as keyof typeof OPERATION_COLOR_VAR] ?? 'var(--primary-color)'
+    );
     return {
       color: 'white',
       background: `linear-gradient(135deg, ${colors.join(', ')})`,
@@ -291,12 +284,7 @@ export class RemoteCardComponent {
       const meta = OPERATION_META[op];
       const isActive = this.isOpActive(op);
       // isBusy for the group trigger: true if ANY profile of this op is in progress.
-      const isBusy = this.actionStates().some(
-        a =>
-          a.type === op ||
-          (op === 'mount' && a.type === 'unmount') ||
-          (a.type === 'stop' && a.operationType === op)
-      );
+      const isBusy = isOperationActionInProgress(this.actionStates(), op);
       const entries: ProfilePickerEntry[] = configured.map(profile => ({
         operation: op,
         profile,
@@ -357,12 +345,7 @@ export class RemoteCardComponent {
     if (!meta) return null;
 
     // Compute inProgress for this specific operation type only (not global first-action).
-    const inProgress = this.actionStates().some(
-      a =>
-        a.type === type ||
-        (type === 'mount' && a.type === 'unmount') ||
-        (a.type === 'stop' && a.operationType === type)
-    );
+    const inProgress = isOperationActionInProgress(this.actionStates(), type);
     const isActive = !startOnly && this.isOpActive(type);
     const isLoading = startOnly
       ? this.actionStates().some(a => a.type === type)
@@ -517,13 +500,12 @@ export class RemoteCardComponent {
   // ── Profile chip helpers ───────────────────────────────────────────────────
 
   isProfileActionInProgress(op: PrimaryActionType, profile: string): boolean {
-    return this.actionStates().some(a => {
-      // If a profileName is stored, it must match exactly.
-      if (a.profileName && a.profileName !== profile) return false;
-      // If no profileName is stored, only match if there is only one configured profile.
-      if (!a.profileName && this.getConfiguredProfiles(op).length > 1) return false;
-      return a.type === 'stop' ? a.operationType === op : a.type === op;
-    });
+    const configured = this.getConfiguredProfiles(op);
+    return isOperationActionInProgress(
+      this.actionStates(),
+      op,
+      configured.length > 1 ? profile : undefined
+    );
   }
 
   getProfileChipTooltip(op: PrimaryActionType, profile: string): string {

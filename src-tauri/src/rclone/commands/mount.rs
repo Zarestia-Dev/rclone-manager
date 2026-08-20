@@ -294,6 +294,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             params.quick_run_id.clone(),
             params.origin.clone(),
             params.execute_id.clone(),
+            Some(&app),
         )
         .await;
     refresh_mounts_quietly(&app).await;

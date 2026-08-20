@@ -30,6 +30,8 @@ import {
   STANDARD_MODAL_SIZE,
   MODE_DEFAULTS,
   OPERATION_META,
+  OpenInFilesEvent,
+  isOperationActionInProgress,
 } from '@app/types';
 import { DiskUsagePanelComponent } from '../../../../shared/detail-shared/disk-usage-panel/disk-usage-panel.component';
 import { JobsPanelComponent } from '../../../../shared/detail-shared/jobs-panel/jobs-panel.component';
@@ -134,8 +136,17 @@ export class GeneralDetailComponent {
     this.quickRunService.openEditor(undefined, undefined, this.selectedRemote().name);
   }
 
-  onOpenQuickRunInFiles(path: string, qr: QuickRun): void {
-    void this.remoteFacade.openRemoteInFiles(qr.remoteName, path, undefined, qr.operationType);
+  onOpenQuickRunInFiles(event: OpenInFilesEvent | string, qr?: QuickRun): void {
+    if (typeof event === 'string' && qr) {
+      void this.remoteFacade.openRemoteInFiles(qr.remoteName, event, undefined, qr.operationType);
+    } else if (typeof event !== 'string') {
+      void this.remoteFacade.openRemoteInFiles(
+        event.remoteName,
+        event.path,
+        event.profileName,
+        event.operationType
+      );
+    }
   }
 
   // Derivations
@@ -176,13 +187,7 @@ export class GeneralDetailComponent {
       const icon = isActive ? meta.stopIcon : meta.startIcon;
       const ariaLabel = this.translate.instant(tooltip);
 
-      const isLoading = actions.some(
-        a =>
-          a.operationType === key ||
-          a.type === key ||
-          (key === 'mount' && a.type === 'unmount') ||
-          (a.type === 'stop' && a.operationType === key)
-      );
+      const isLoading = isOperationActionInProgress(actions, key);
 
       models.push({
         key: config.key,

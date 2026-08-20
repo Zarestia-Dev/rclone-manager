@@ -95,9 +95,6 @@ export class RemoteFacadeService {
   private readonly _actionInProgress = signal<Record<string, ActionState[]>>({});
   readonly actionInProgress = this._actionInProgress.asReadonly();
 
-  // Memoized per-remote action signals — avoids creating a new computed on every call
-  private readonly _actionSignals = new Map<string, Signal<ActionState[]>>();
-
   readonly loading = this.isLoading.asReadonly();
 
   readonly activeRemotes = computed(() =>
@@ -357,7 +354,6 @@ export class RemoteFacadeService {
         if (!configs[name]) {
           this.remoteStates.delete(name);
           this.remoteService.clearCache(name);
-          this._actionSignals.delete(name);
         }
       }
 
@@ -456,15 +452,6 @@ export class RemoteFacadeService {
 
   featuresSignal(remoteName: string): Signal<RemoteFeatures> {
     return this.remoteService.getFeaturesSignal(remoteName, undefined);
-  }
-
-  getActionSignal(remoteName: string): Signal<ActionState[]> {
-    let sig = this._actionSignals.get(remoteName);
-    if (!sig) {
-      sig = computed(() => this._actionInProgress()[remoteName] ?? []);
-      this._actionSignals.set(remoteName, sig);
-    }
-    return sig;
   }
 
   async executeAction<T>(

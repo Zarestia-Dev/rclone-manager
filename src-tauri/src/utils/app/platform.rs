@@ -58,7 +58,7 @@ pub async fn get_active_operations_summary(
 
 #[tauri::command]
 pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
-    use crate::utils::types::{events::APP_EXIT_REQUESTED, state::RcloneState};
+    use crate::utils::types::events::APP_EXIT_REQUESTED;
     use tauri::{Emitter, Manager};
 
     let summary = get_active_operations_summary(app.clone()).await?;
@@ -72,7 +72,6 @@ pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
         }
         let _ = app.emit(APP_EXIT_REQUESTED, summary);
     } else {
-        app.state::<RcloneState>().set_shutting_down();
         crate::core::lifecycle::shutdown::handle_shutdown(app.clone()).await;
         app.exit(0);
     }

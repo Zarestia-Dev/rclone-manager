@@ -105,7 +105,7 @@
         [disabled]="isFolderOpening()"
         (click)="onOpenFolderClick(openableFolders()[0].path, $event)"
       >
-        @if (isFolderOpeningFor(openableFolders()[0].path)) {
+        @if (isFolderOpening()) {
           <mat-icon svgIcon="spinner" class="spin-icon"></mat-icon>
         } @else {
           <mat-icon [svgIcon]="openableFolders()[0].icon"></mat-icon>
@@ -122,7 +122,7 @@
               cdkMenuItem
               class="menu-item"
               [class]="folder.cssClass"
-              [disabled]="isFolderOpeningFor(folder.path)"
+              [disabled]="isFolderOpening()"
               (click)="onOpenFolderClick(folder.path, $event)"
             >
               <mat-icon [svgIcon]="folder.icon" style="color: white"></mat-icon>

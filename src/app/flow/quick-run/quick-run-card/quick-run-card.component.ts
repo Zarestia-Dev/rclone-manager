@@ -1,22 +1,22 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
-import { getQuickRunPaths, OPERATION_REGISTRY, QuickRun, QuickRunStatus } from '@app/types';
+import {
+  getQuickRunPaths,
+  OpenInFilesEvent,
+  OPERATION_REGISTRY,
+  QuickRun,
+  QuickRunStatus,
+  isFolderOpeningAction,
+} from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { IconService } from 'src/app/services/ui/icon.service';
 import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.service';
+import { QuickRunService } from 'src/app/services/flow/quick-run.service';
 
 export interface QuickRunOpenableFolder {
   type: 'source' | 'destination';
@@ -51,6 +51,7 @@ export class QuickRunCardComponent {
   readonly pathService = inject(PathService);
   readonly iconService = inject(IconService);
   private readonly remoteFacade = inject(RemoteFacadeService);
+  private readonly quickRunService = inject(QuickRunService);
   private readonly translate = inject(TranslateService);
 
   /** The quick run this card represents. */
@@ -71,14 +72,18 @@ export class QuickRunCardComponent {
   /** Emitted when the Edit action button is clicked (overview variant). */
   readonly editRun = output<QuickRun>();
   /** Emitted when a Folder browse action button is clicked. */
-  readonly openInFiles = output<string>();
+  readonly openInFiles = output<OpenInFilesEvent>();
   /** Emitted when the Remote name link is clicked to open full remote details. */
   readonly openRemoteDetail = output<string>();
 
-  // ── Local In-flight States ────────────────────────────────────────────────
-  readonly isActionInProgress = signal<boolean>(false);
-  readonly isFolderOpening = signal<boolean>(false);
-  readonly openingFolderPath = signal<string | null>(null);
+  // ── Reactive In-flight States ─────────────────────────────────────────────
+  readonly isActionInProgress = computed<boolean>(
+    () => !!this.quickRunService.actionInProgress()[this.quickRun().id]
+  );
+  readonly actionStates = computed(
+    () => this.remoteFacade.actionInProgress()[this.quickRun().remoteName] ?? []
+  );
+  readonly isFolderOpening = computed<boolean>(() => isFolderOpeningAction(this.actionStates()));
 
   // ── Derived view model ────────────────────────────────────────────────────
 
@@ -198,10 +203,6 @@ export class QuickRunCardComponent {
     return folders;
   });
 
-  isFolderOpeningFor(path: string): boolean {
-    return this.isFolderOpening() && this.openingFolderPath() === path;
-  }
-
   // ── Actions ───────────────────────────────────────────────────────────────
 
   onRowClick(): void {
@@ -211,17 +212,13 @@ export class QuickRunCardComponent {
   onStart(event: MouseEvent): void {
     event.stopPropagation();
     if (this.isActionInProgress()) return;
-    this.isActionInProgress.set(true);
     this.startRun.emit(this.quickRun());
-    setTimeout(() => this.isActionInProgress.set(false), 1500);
   }
 
   onStop(event: MouseEvent): void {
     event.stopPropagation();
     if (this.isActionInProgress()) return;
-    this.isActionInProgress.set(true);
     this.stopRun.emit(this.quickRun());
-    setTimeout(() => this.isActionInProgress.set(false), 1500);
   }
 
   onEdit(event: MouseEvent): void {
@@ -237,12 +234,11 @@ export class QuickRunCardComponent {
   onOpenFolderClick(path: string, event: Event): void {
     event.stopPropagation();
     if (this.isFolderOpening()) return;
-    this.isFolderOpening.set(true);
-    this.openingFolderPath.set(path);
-    this.openInFiles.emit(path);
-    setTimeout(() => {
-      this.isFolderOpening.set(false);
-      this.openingFolderPath.set(null);
-    }, 1500);
+    this.openInFiles.emit({
+      remoteName: this.quickRun().remoteName,
+      path,
+      operationType: this.quickRun().operationType,
+    });
+    (event.currentTarget as HTMLElement)?.blur();
   }
 }
