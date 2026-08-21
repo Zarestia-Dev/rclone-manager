@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "Nenhum campo para exibir no modo JSON",
       "parseError": "Sintaxe de JSON inválida. Verifique sua formatação.",
-      "cliArgumentWithSuggestion": "Argumentos de estilo CLI (como '{{key}}') não são suportados no Rclone RC. Você quis dizer '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "O parâmetro no estilo CLI '{{key}}' será mapeado automaticamente para '{{suggestion}}' na execução.",
       "camelCaseSuggestionWarning": "A opção '{{key}}' não é válida neste formato. Você quis dizer '{{suggestion}}'?",
       "fixSuggestion": "Alterar para '{{suggestion}}'",
       "wrongBlockWarning": "A(s) opção(s) {{keys}} pertence(m) ao bloco de configuração '{{block}}' e pode não funcionar aqui.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Aplicar Correção",
       "importSourcePath": "Caminho de Origem do Arquivo",
       "importDestPath": "Caminho de Destino de Importação",
-      "importMountPoint": "Importar Ponto de Montagem"
+      "importMountPoint": "Importar Ponto de Montagem",
+      "applyToTask": "Aplicar à Tarefa",
+      "appliedToast": "{{count}} opção(ões) importada(s) com sucesso"
     },
     "obscure": {
       "title": "Senha Obscura",

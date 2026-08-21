@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "No hay campos para mostrar en modo JSON",
       "parseError": "Sintaxis JSON no válida. Compruebe el formato.",
-      "cliArgumentWithSuggestion": "Los argumentos de tipo CLI (como '{{key}}') no son compatibles con rclone RC. ¿Quiso decir '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "El parámetro estilo CLI '{{key}}' se asignará automáticamente a '{{suggestion}}' al ejecutarse.",
       "camelCaseSuggestionWarning": "La opción '{{key}}' no es válida en este formato. ¿Quiso decir '{{suggestion}}'?",
       "fixSuggestion": "Cambiar a '{{suggestion}}'",
       "wrongBlockWarning": "La(s) opción(es) {{keys}} pertenece(n) al bloque de configuración '{{block}}' y es posible que no funcione(n) aquí.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Aplicar parche",
       "importSourcePath": "Importar ruta de origen",
       "importDestPath": "Importar ruta de destino",
-      "importMountPoint": "Importar punto de montaje"
+      "importMountPoint": "Importar punto de montaje",
+      "applyToTask": "Aplicar a la tarea",
+      "appliedToast": "Se importaron correctamente {{count}} opciones"
     },
     "obscure": {
       "title": "Ocultar contraseña",

@@ -379,5 +379,200 @@ describe('CliFlagMapperService', () => {
         hasMacro: false,
       });
     });
+
+    it('should parse check, delete, copyurl and other rclone verbs correctly', () => {
+      const parsedCheck = service.parse('rclone check remote:path /local/path', new Set());
+      expect(parsedCheck.verb).toBe('check');
+      expect(parsedCheck.sourcePath).toBe('remote:path');
+      expect(parsedCheck.destPath).toBe('/local/path');
+
+      const parsedDelete = service.parse('rclone delete remote:path/folder', new Set());
+      expect(parsedDelete.verb).toBe('delete');
+      expect(parsedDelete.sourcePath).toBe('remote:path/folder');
+
+      const parsedCopyurl = service.parse(
+        'rclone copyurl https://example.com/file.zip remote:path',
+        new Set()
+      );
+      expect(parsedCopyurl.verb).toBe('copyurl');
+      expect(parsedCopyurl.sourcePath).toBe('https://example.com/file.zip');
+      expect(parsedCopyurl.destPath).toBe('remote:path');
+
+      const parsedPurge = service.parse('rclone purge remote:path/trash', new Set());
+      expect(parsedPurge.verb).toBe('delete');
+      expect(parsedPurge.sourcePath).toBe('remote:path/trash');
+    });
+
+    it('should strip wrapper commands and binary paths like sudo, /usr/bin/rclone, wsl', () => {
+      const parsedSudo = service.parse('sudo /usr/bin/rclone sync src: dst:', new Set());
+      expect(parsedSudo.verb).toBe('sync');
+      expect(parsedSudo.sourcePath).toBe('src:');
+      expect(parsedSudo.destPath).toBe('dst:');
+
+      const parsedWsl = service.parse('wsl rclone copy src: dst:', new Set());
+      expect(parsedWsl.verb).toBe('copy');
+      expect(parsedWsl.sourcePath).toBe('src:');
+      expect(parsedWsl.destPath).toBe('dst:');
+    });
+
+    it('should map short flag aliases such as -P, -v, -n, -u, -L, -c, -I', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'progress', FieldName: 'Progress', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'verbose', FieldName: 'Verbose', Type: 'int', Help: '', DefaultStr: '' },
+            { Name: 'dry_run', FieldName: 'DryRun', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'update', FieldName: 'Update', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'copy_links', FieldName: 'CopyLinks', Type: 'bool', Help: '', DefaultStr: '' },
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'ignore_times',
+              FieldName: 'IgnoreTimes',
+              Type: 'bool',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse('rclone sync src: dst: -P -v -n -u -L -c -I', new Set());
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified.length).toBe(7);
+      expect(result.classified.every(f => f.status === 'mapped')).toBe(true);
+      expect(result.classified[0].fieldName).toBe('progress');
+      expect(result.classified[1].fieldName).toBe('verbose');
+      expect(result.classified[2].fieldName).toBe('dry_run');
+      expect(result.classified[3].fieldName).toBe('update');
+      expect(result.classified[4].fieldName).toBe('copy_links');
+      expect(result.classified[5].fieldName).toBe('checksum');
+      expect(result.classified[6].fieldName).toBe('ignore_times');
+    });
+
+    it('should support negated flags (--no-traverse -> traverse = false)', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'traverse', FieldName: 'Traverse', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'check_certificate',
+              FieldName: 'CheckCertificate',
+              Type: 'bool',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --no-traverse --no-check-certificate',
+        new Set()
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified.length).toBe(2);
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].fieldName).toBe('traverse');
+      expect(result.classified[0].coercedValue).toBe(false);
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].fieldName).toBe('check_certificate');
+      expect(result.classified[1].coercedValue).toBe(false);
+    });
+
+    it('should parse explicit boolean values like --fast-list=false and --dry-run=true', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          backend: [
+            { Name: 'fast_list', FieldName: 'FastList', Type: 'bool', Help: '', DefaultStr: '' },
+          ],
+          sync: [{ Name: 'dry_run', FieldName: 'DryRun', Type: 'bool', Help: '', DefaultStr: '' }],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --fast-list=false --dry-run=true',
+        new Set()
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].coercedValue).toBe(false);
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].coercedValue).toBe(true);
+    });
+
+    it('should parse non-bool flag followed by hyphenated value such as --suffix -bak', () => {
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [{ Name: 'suffix', FieldName: 'Suffix', Type: 'string', Help: '', DefaultStr: '' }],
+        })
+      );
+
+      const parsed = service.parse('rclone sync src: dst: --suffix -bak', new Set());
+      expect(parsed.flags.length).toBe(1);
+      expect(parsed.flags[0].key).toBe('suffix');
+      expect(parsed.flags[0].value).toBe('-bak');
+
+      const result = service.classify(parsed, lookupTable);
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].fieldName).toBe('suffix');
+      expect(result.classified[0].coercedValue).toBe('-bak');
+    });
+
+    it('should resolve shared Copy group flags to the active or detected verb (e.g. sync)', () => {
+      // Both copy and sync define checksum and backup_dir
+      const lookupTable = service.buildLookupTable(
+        fields({
+          sync: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+          copy: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+          move: [
+            { Name: 'checksum', FieldName: 'Checksum', Type: 'bool', Help: '', DefaultStr: '' },
+            {
+              Name: 'backup_dir',
+              FieldName: 'BackupDir',
+              Type: 'string',
+              Help: '',
+              DefaultStr: '',
+            },
+          ],
+        })
+      );
+
+      const parsed = service.parse(
+        'rclone sync src: dst: --checksum --backup-dir dst:_backup',
+        new Set(['checksum'])
+      );
+      const result = service.classify(parsed, lookupTable);
+
+      expect(result.classified[0].status).toBe('mapped');
+      expect(result.classified[0].flagType).toBe('sync');
+      expect(result.classified[0].fieldName).toBe('checksum');
+
+      expect(result.classified[1].status).toBe('mapped');
+      expect(result.classified[1].flagType).toBe('sync');
+      expect(result.classified[1].fieldName).toBe('backup_dir');
+    });
   });
 });

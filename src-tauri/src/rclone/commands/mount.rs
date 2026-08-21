@@ -639,10 +639,10 @@ mod tests {
         assert_eq!(obj.get("fs").unwrap(), "pCloud:backups");
         assert_eq!(obj.get("_async").unwrap(), &json!(true));
 
-        // Flat lowercase keys placed directly at top-level body
-        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "writes");
+        // Flat lowercase keys placed directly at top-level body (normalized)
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "writes");
         assert_eq!(obj.get("exclude").unwrap(), ".*");
-        assert_eq!(obj.get("chunk-size").unwrap(), "10M");
+        assert_eq!(obj.get("chunk_size").unwrap(), "10M");
 
         // PascalCase nested options placed into their respective blocks
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();

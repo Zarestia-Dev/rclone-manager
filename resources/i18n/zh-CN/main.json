@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "JSON 模式下没有可显示的字段",
       "parseError": "JSON 语法错误，请检查格式。",
-      "cliArgumentWithSuggestion": "rclone RC 不支持命令行（CLI）参数（如 '{{key}}'）。您是指 '{{suggestion}}' 吗？",
+      "cliArgumentWithSuggestion": "命令行（CLI）参数 '{{key}}' 将在执行时自动映射为 '{{suggestion}}'。",
       "camelCaseSuggestionWarning": "选项 '{{key}}' 在此格式下无效。您是指 '{{suggestion}}' 吗？",
       "fixSuggestion": "更改为 '{{suggestion}}'",
       "wrongBlockWarning": "选项 {{keys}} 属于 '{{block}}' 配置块，在此处可能无法正常工作。",
@@ -1093,7 +1093,9 @@
       "applyPatch": "应用补丁",
       "importSourcePath": "导入源路径",
       "importDestPath": "导入目标路径",
-      "importMountPoint": "导入挂载点"
+      "importMountPoint": "导入挂载点",
+      "applyToTask": "应用到任务",
+      "appliedToast": "已成功导入 {{count}} 个配置项"
     },
     "obscure": {
       "title": "混淆密码",

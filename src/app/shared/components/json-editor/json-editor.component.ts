@@ -360,7 +360,7 @@ export class JsonEditorComponent {
         return {
           from,
           to,
-          severity: 'error',
+          severity: 'warning',
           message: this.translateService.instant('shared.jsonEditor.cliArgumentWithSuggestion', {
             key: kText,
             suggestion,
@@ -508,21 +508,6 @@ export class JsonEditorComponent {
     });
   }
 
-  private checkCliArguments(
-    obj: Record<string, unknown>
-  ): { key: string; suggestion: string } | null {
-    for (const key of Object.keys(obj)) {
-      if (key.startsWith('-')) {
-        const matched = this.lookupOption(key);
-        const suggestion = matched
-          ? matched.option.Name || matched.option.FieldName
-          : toSnakeCase(key);
-        return { key, suggestion };
-      }
-    }
-    return null;
-  }
-
   private validateOptions(
     options: Record<string, unknown>,
     validFieldNames: Set<string>,
@@ -536,14 +521,26 @@ export class JsonEditorComponent {
     const unknown: string[] = [];
     const wrongBlocks: { key: string; block: string }[] = [];
     const suggestions: { key: string; suggestion: string }[] = [];
+    let cliArg: { key: string; suggestion: string } | undefined;
+
+    const type = this.flagType();
+    const isProfile = isProfileType(type);
+    const structuralKeys = new Set(isProfile && type ? getTopLevelKeysForProfile(type) : []);
 
     for (const key of Object.keys(options)) {
+      if (structuralKeys.has(key)) {
+        continue;
+      }
+
       if (key.startsWith('-')) {
-        const matched = this.lookupOption(key);
-        const suggestion = matched
-          ? matched.option.Name || matched.option.FieldName
-          : toSnakeCase(key);
-        return { cliArg: { key, suggestion } };
+        if (!cliArg) {
+          const matched = this.lookupOption(key);
+          const suggestion = matched
+            ? matched.option.Name || matched.option.FieldName
+            : toSnakeCase(key);
+          cliArg = { key, suggestion };
+        }
+        continue;
       }
 
       if (!validFieldNames.has(key)) {
@@ -562,6 +559,7 @@ export class JsonEditorComponent {
     }
 
     return {
+      cliArg,
       suggestion: suggestions[0],
       wrongBlock: wrongBlocks[0],
       unknown,
@@ -570,15 +568,11 @@ export class JsonEditorComponent {
 
   private applyValidationResult(valRes: ReturnType<typeof this.validateOptions>): boolean {
     if (valRes.cliArg) {
-      this.parseError.set({
+      this.parseWarning.set({
         key: 'shared.jsonEditor.cliArgumentWithSuggestion',
         params: valRes.cliArg,
       });
-      this.formGroup().setErrors({ cliArgument: true });
-      return false;
-    }
-
-    if (valRes.suggestion) {
+    } else if (valRes.suggestion) {
       this.parseWarning.set({
         key: 'shared.jsonEditor.camelCaseSuggestionWarning',
         params: valRes.suggestion,
@@ -656,17 +650,6 @@ export class JsonEditorComponent {
         topLevelKeys.add(this.fieldKey(field));
       }
 
-      // Check CLI arguments at top level
-      const cliCheck = this.checkCliArguments(parsed);
-      if (cliCheck) {
-        this.parseError.set({
-          key: 'shared.jsonEditor.cliArgumentWithSuggestion',
-          params: cliCheck,
-        });
-        this.formGroup().setErrors({ cliArgument: true });
-        return;
-      }
-
       // Check for array values where they are not supported
       const mapping = type ? OPERATION_PATH_MAPPINGS[type] : null;
       if (mapping) {
@@ -685,29 +668,29 @@ export class JsonEditorComponent {
         }
       }
 
-      // Check unknown top level keys
-      for (const key of Object.keys(parsed)) {
-        if (!topLevelKeys.has(key)) {
-          this.parseWarning.set({
-            key: 'wizards.remoteConfig.unknownTopLevelProperty',
-            params: { key },
-          });
-          this.parseError.set(null);
-          this.formGroup().setErrors(null);
-          this.reconcileFormFromEditor(parsed);
-          return;
+      // Validate options at top level (including CLI args)
+      const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
+      this.applyValidationResult(valRes);
+
+      // Check unknown top level keys (excluding CLI arguments and valid options)
+      if (!valRes.cliArg && !valRes.suggestion && !valRes.wrongBlock) {
+        for (const key of Object.keys(parsed)) {
+          if (!topLevelKeys.has(key) && !key.startsWith('-')) {
+            this.parseWarning.set({
+              key: 'wizards.remoteConfig.unknownTopLevelProperty',
+              params: { key },
+            });
+            this.parseError.set(null);
+            this.formGroup().setErrors(null);
+            this.reconcileFormFromEditor(parsed);
+            return;
+          }
         }
       }
-
-      // Validate options at top level
-      const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
-      if (!this.applyValidationResult(valRes)) return;
-
-      this.parseWarning.set(null);
     } else {
       // Fallback/standard check for flat profiles
       const valRes = this.validateOptions(parsed, validFieldNames, currentBlock);
-      if (!this.applyValidationResult(valRes)) return;
+      this.applyValidationResult(valRes);
     }
 
     this.parseError.set(null);

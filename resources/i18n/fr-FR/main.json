@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "Aucun champ à afficher en mode JSON",
       "parseError": "Syntaxe JSON invalide. Veuillez vérifier votre formatage.",
-      "cliArgumentWithSuggestion": "Les arguments de style CLI, comme '{{key}}') ne sont pas pris en charge dans rclone RC. Vouliez-vous dire '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "L'option de style CLI '{{key}}' sera automatiquement mappée à '{{suggestion}}' lors de l'exécution.",
       "camelCaseSuggestionWarning": "L'option '{{key}}' n'est pas valide dans ce format. Vouliez-vous dire '{{suggestion}} ' ?",
       "fixSuggestion": "Changer pour '{{suggestion}}'",
       "wrongBlockWarning": "Les options {{keys}} appartiennent au bloc de configuration '{{block}}' et peuvent ne pas fonctionner ici.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Appliquer le correctif",
       "importSourcePath": "Importer le chemin source",
       "importDestPath": "Importer le chemin de destination",
-      "importMountPoint": "Importer le point de montage"
+      "importMountPoint": "Importer le point de montage",
+      "applyToTask": "Appliquer à la tâche",
+      "appliedToast": "{{count}} option(s) importée(s) avec succès"
     },
     "obscure": {
       "title": "Masquer le mot de passe",

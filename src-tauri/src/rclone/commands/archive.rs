@@ -216,9 +216,8 @@ pub async fn archive_list(
         )
     };
 
-    let remote_name = Some(crate::utils::json_helpers::extract_remote_name_from_fs(
-        &source,
-    ));
+    let remote_name =
+        Some(crate::utils::json_helpers::extract_remote_name_from_fs(&source).into_owned());
 
     log_operation(
         LogLevel::Info,

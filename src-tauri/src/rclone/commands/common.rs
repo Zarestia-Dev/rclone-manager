@@ -81,8 +81,9 @@ pub async fn is_directory(
     payload_map.insert("remote".to_string(), json!(remote));
     if let Some(opts) = runtime_remote_options {
         for (k, v) in opts {
-            if !payload_map.contains_key(k) {
-                payload_map.insert(k.clone(), v.clone());
+            let norm_k = crate::utils::json_helpers::normalize_option_key(k);
+            if !payload_map.contains_key(norm_k.as_ref()) {
+                payload_map.insert(norm_k.into_owned(), v.clone());
             }
         }
     }
@@ -169,36 +170,47 @@ impl RclonePayloadBuilder {
     }
 
     pub fn merge_rclone_config(&mut self, config: &Value) -> &mut Self {
-        if let Value::Object(map) = config {
+        if let Some(extra) = config.as_object() {
             let mut legacy_mount = serde_json::Map::new();
-            let mut legacy_config = serde_json::Map::new();
-            let mut legacy_filter = serde_json::Map::new();
             let mut legacy_vfs = serde_json::Map::new();
+            let mut legacy_filter = serde_json::Map::new();
+            let mut legacy_config = serde_json::Map::new();
 
-            for (k, v) in map {
+            let insert_normalized_block =
+                |opts: &serde_json::Map<String, Value>,
+                 target: &mut serde_json::Map<String, Value>| {
+                    for (sub_k, sub_v) in opts {
+                        let norm_sub = crate::utils::json_helpers::normalize_option_key(sub_k);
+                        target.insert(norm_sub.into_owned(), sub_v.clone());
+                    }
+                };
+
+            for (k, v) in extra {
                 if crate::utils::json_helpers::is_path_key(k) {
                     continue;
                 }
-                if crate::utils::json_helpers::is_flat_option_key(k) {
-                    self.body.insert(k.clone(), v.clone());
-                } else if k == "mountOpt" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_mount.extend(opts.clone());
-                    }
-                } else if k == "vfsOpt" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_vfs.extend(opts.clone());
-                    }
-                } else if k == "_filter" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_filter.extend(opts.clone());
-                    }
-                } else if k == "_config" && v.is_object() {
-                    if let Some(opts) = v.as_object() {
-                        legacy_config.extend(opts.clone());
-                    }
+                if k == "mountOpt"
+                    && let Some(opts) = v.as_object()
+                {
+                    insert_normalized_block(opts, &mut legacy_mount);
+                } else if k == "vfsOpt"
+                    && let Some(opts) = v.as_object()
+                {
+                    insert_normalized_block(opts, &mut legacy_vfs);
+                } else if k == "_filter"
+                    && let Some(opts) = v.as_object()
+                {
+                    insert_normalized_block(opts, &mut legacy_filter);
+                } else if k == "_config"
+                    && let Some(opts) = v.as_object()
+                {
+                    insert_normalized_block(opts, &mut legacy_config);
+                } else if crate::utils::json_helpers::is_flat_option_key(k) {
+                    let norm_k = crate::utils::json_helpers::normalize_option_key(k);
+                    self.body.insert(norm_k.into_owned(), v.clone());
                 } else {
-                    legacy_config.insert(k.clone(), v.clone());
+                    let norm_k = crate::utils::json_helpers::normalize_option_key(k);
+                    legacy_config.insert(norm_k.into_owned(), v.clone());
                 }
             }
 
@@ -228,8 +240,9 @@ impl RclonePayloadBuilder {
     ) -> &mut Self {
         if let Some(opts) = opts {
             for (k, v) in opts {
-                if !self.body.contains_key(k) {
-                    self.body.insert(k.clone(), v.clone());
+                let norm_k = crate::utils::json_helpers::normalize_option_key(k);
+                if !self.body.contains_key(norm_k.as_ref()) {
+                    self.body.insert(norm_k.into_owned(), v.clone());
                 }
             }
         }
@@ -271,8 +284,9 @@ impl RclonePayloadBuilder {
             if filter_empty && (v.is_null() || matches!(v, Value::String(s) if s.is_empty())) {
                 continue;
             }
+            let norm_k = crate::utils::json_helpers::normalize_option_key(k);
             if crate::utils::json_helpers::is_flat_option_key(k) {
-                self.body.insert(k.clone(), v.clone());
+                self.body.insert(norm_k.into_owned(), v.clone());
             } else {
                 nested_map.insert(k.clone(), v.clone());
             }
@@ -361,22 +375,23 @@ pub fn parse_fs(fs: &str) -> Option<(String, String)> {
 }
 
 /// Flatten a structured `rclone` object containing section maps (`vfs`, `filter`, `backend`, `runtimeRemote`)
-/// into a single flat key-value map for path extractions and command parameters.
+/// into a single flat key-value map for path extractions and command parameters, normalizing option keys.
 pub fn flatten_rclone_config(val: &Value) -> Value {
     if let Value::Object(map) = val {
         let is_structured = map.values().any(|v| v.is_object());
-        if is_structured {
-            let mut flat = map.clone();
-            for (k, v) in map {
-                if let Value::Object(sub_map) = v {
-                    flat.remove(k);
-                    for (sub_k, sub_v) in sub_map {
-                        flat.insert(sub_k.clone(), sub_v.clone());
-                    }
+        let mut flat = serde_json::Map::new();
+        for (k, v) in map {
+            if is_structured && let Value::Object(sub_map) = v {
+                for (sub_k, sub_v) in sub_map {
+                    let norm_sub = crate::utils::json_helpers::normalize_option_key(sub_k);
+                    flat.insert(norm_sub.into_owned(), sub_v.clone());
                 }
+            } else {
+                let norm_k = crate::utils::json_helpers::normalize_option_key(k);
+                flat.insert(norm_k.into_owned(), v.clone());
             }
-            return Value::Object(flat);
         }
+        return Value::Object(flat);
     }
     val.clone()
 }
@@ -615,6 +630,8 @@ mod tests {
             "_config": { "AutoConfirm": true },
             "_filter": { "IncludeRule": "*.jpg" },
             "vfsOpt": { "CacheMode": "full" },
+            "--value-of-rclone": "custom_val",
+            "--bwlimit": "10M",
             "Transfers": 4,
             "allow_other": true,
             "srcFs": "ignore_me:"
@@ -655,19 +672,21 @@ mod tests {
         assert_eq!(obj.get("mountPoint").unwrap(), "/mnt/drive");
         assert!(obj.get("srcFs").is_none());
 
-        // Flat lowercase options at root
+        // Flat lowercase options at root (including mapped CLI flags and kebab-case)
         assert_eq!(obj.get("mountType").unwrap(), "cmount");
         assert_eq!(obj.get("allow_other").unwrap(), true);
-        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "writes");
+        assert_eq!(obj.get("value_of_rclone").unwrap(), "custom_val");
+        assert_eq!(obj.get("bwlimit").unwrap(), "10M");
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "writes");
         assert_eq!(obj.get("exclude").unwrap(), "*.doc");
-        assert_eq!(obj.get("chunk-size").unwrap(), "10M");
+        assert_eq!(obj.get("chunk_size").unwrap(), "10M");
         assert_eq!(obj.get("my_runtime_flag").unwrap(), "val");
         assert!(obj.get("empty_flag").is_none());
         assert!(obj.get("null_flag").is_none());
 
         // Nested blocks
         let mount_opt = obj.get("mountOpt").unwrap().as_object().unwrap();
-        assert_eq!(mount_opt.get("read-only").unwrap(), true);
+        assert_eq!(mount_opt.get("read_only").unwrap(), true);
 
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();
         assert_eq!(vfs_opt.get("CacheMode").unwrap(), "full");

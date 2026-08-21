@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "JSON modunda gösterilecek alan yok",
       "parseError": "Geçersiz JSON sözdizimi. Lütfen biçimlendirmenizi kontrol edin.",
-      "cliArgumentWithSuggestion": "CLI tarzı argümanlar ('{{key}}' gibi) rclone RC'de desteklenmez. Şunu mu demek istediniz: '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "CLI tarzı '{{key}}' parametresi çalıştırılırken otomatik olarak '{{suggestion}}' olarak eşlenecektir.",
       "camelCaseSuggestionWarning": "'{{key}}' seçeneği bu biçimde geçerli değil. Şunu mu demek istediniz: '{{suggestion}}'?",
       "fixSuggestion": "Şuna değiştir: '{{suggestion}}'",
       "wrongBlockWarning": "{{keys}} seçeneği/seçenekleri '{{block}}' yapılandırma bloğuna ait ve burada çalışmayabilir.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Yamayı Uygula",
       "importSourcePath": "Kaynak Yolunu İçe Aktar",
       "importDestPath": "Hedef Yolunu İçe Aktar",
-      "importMountPoint": "Bağlama Noktasını İçe Aktar"
+      "importMountPoint": "Bağlama Noktasını İçe Aktar",
+      "applyToTask": "Göreve Uygula",
+      "appliedToast": "{{count}} ayar başarıyla içe aktarıldı"
     },
     "obscure": {
       "title": "Şifreyi Gizle (Obscure)",

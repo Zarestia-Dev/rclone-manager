@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "Нет полей для отображения в режиме JSON",
       "parseError": "Некорректный синтаксис JSON. Проверьте форматирование.",
-      "cliArgumentWithSuggestion": "Аргументы в стиле CLI, например «{{key}}», не поддерживаются в rclone RC. Возможно, имелось в виду «{{suggestion}}»?",
+      "cliArgumentWithSuggestion": "Флаг в стиле CLI «{{key}}» будет автоматически преобразован в «{{suggestion}}» при выполнении.",
       "camelCaseSuggestionWarning": "Параметр «{{key}}» недопустим в этом формате. Возможно, имелось в виду «{{suggestion}}»?",
       "fixSuggestion": "Заменить на «{{suggestion}}»",
       "wrongBlockWarning": "Параметры {{keys}} относятся к блоку конфигурации «{{block}}» и могут не работать здесь.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Применить изменения",
       "importSourcePath": "Импортировать путь источника",
       "importDestPath": "Импортировать путь назначения",
-      "importMountPoint": "Импортировать точку подключения"
+      "importMountPoint": "Импортировать точку подключения",
+      "applyToTask": "Применить к задаче",
+      "appliedToast": "Успешно импортировано настроек: {{count}}"
     },
     "obscure": {
       "title": "Обфускация пароля",

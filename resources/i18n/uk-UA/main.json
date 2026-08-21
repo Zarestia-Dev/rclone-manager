@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "Немає полів для показу в режимі JSON",
       "parseError": "Невірний синтаксис JSON. Перевірте форматування.",
-      "cliArgumentWithSuggestion": "Аргументи у стилі CLI (як-от «{{key}}») не підтримуються в rclone RC. Можливо, ви мали на увазі «{{suggestion}}»?",
+      "cliArgumentWithSuggestion": "Прапорець у стилі CLI «{{key}}» буде автоматично перетворено на «{{suggestion}}» під час виконання.",
       "camelCaseSuggestionWarning": "Параметр «{{key}}» недійсний у цьому форматі. Можливо, ви мали на увазі «{{suggestion}}»?",
       "fixSuggestion": "Змінити на «{{suggestion}}»",
       "wrongBlockWarning": "Параметр(и) {{keys}} належать до блоку конфігурації «{{block}}» і можуть не працювати тут.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Застосувати патч",
       "importSourcePath": "Імпортувати шлях джерела",
       "importDestPath": "Імпортувати шлях призначення",
-      "importMountPoint": "Імпортувати точку монтування"
+      "importMountPoint": "Імпортувати точку монтування",
+      "applyToTask": "Застосувати до завдання",
+      "appliedToast": "Успішно імпортовано параметрів: {{count}}"
     },
     "obscure": {
       "title": "Замаскувати пароль",

@@ -77,18 +77,13 @@ const SYNC_GROUPS: &[&str] = &["Copy", "Sync"];
 /// <https://rclone.org/commands/rclone_check/#check-options>
 const CHECK_GROUPS: &[&str] = &["Check"];
 
-/// Returns the flag's groups as a `Vec<&str>`, trimmed.
-fn flag_groups(flag: &Value) -> Vec<&str> {
-    flag["Groups"]
-        .as_str()
-        .map(|s| s.split(',').map(str::trim).collect())
-        .unwrap_or_default()
-}
-
 /// True if any of the flag's groups appear in `set`.
+/// Zero-allocation short-circuit iterator.
 fn flag_has_any_group(flag: &Value, set: &[&str]) -> bool {
-    let groups = flag_groups(flag);
-    groups.iter().any(|g| set.contains(g))
+    let Some(groups) = flag["Groups"].as_str() else {
+        return false;
+    };
+    groups.split(',').map(str::trim).any(|g| set.contains(&g))
 }
 
 // ---------------------------------------------------------------------------

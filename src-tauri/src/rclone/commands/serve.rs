@@ -461,10 +461,10 @@ mod tests {
         // Verify "addr" array unwrapping
         assert_eq!(obj.get("addr").unwrap(), "127.0.0.1:8080");
 
-        // Flat lowercase keys placed directly at root level
-        assert_eq!(obj.get("vfs-cache-mode").unwrap(), "full");
+        // Flat lowercase keys placed directly at root level (normalized)
+        assert_eq!(obj.get("vfs_cache_mode").unwrap(), "full");
         assert_eq!(obj.get("exclude").unwrap(), "secret/*");
-        assert_eq!(obj.get("buffer-size").unwrap(), "16M");
+        assert_eq!(obj.get("buffer_size").unwrap(), "16M");
 
         // PascalCase nested options placed into their respective blocks
         let vfs_opt = obj.get("vfsOpt").unwrap().as_object().unwrap();

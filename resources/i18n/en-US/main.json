@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "No fields to display in JSON mode",
       "parseError": "Invalid JSON syntax. Please check your formatting.",
-      "cliArgumentWithSuggestion": "CLI-style arguments (like '{{key}}') are not supported in rclone RC. Did you mean '{{suggestion}}'?",
+      "cliArgumentWithSuggestion": "CLI-style flag '{{key}}' will be automatically mapped to '{{suggestion}}' on execution.",
       "camelCaseSuggestionWarning": "Option '{{key}}' is not valid in this format. Did you mean '{{suggestion}}'?",
       "fixSuggestion": "Change to '{{suggestion}}'",
       "wrongBlockWarning": "Option(s) {{keys}} belong to the '{{block}}' configuration block and may not work here.",
@@ -1093,7 +1093,9 @@
       "applyPatch": "Apply Patch",
       "importSourcePath": "Import Source Path",
       "importDestPath": "Import Destination Path",
-      "importMountPoint": "Import Mount Point"
+      "importMountPoint": "Import Mount Point",
+      "applyToTask": "Apply to Task",
+      "appliedToast": "Successfully imported {{count}} option(s)"
     },
     "obscure": {
       "title": "Obscure Password",

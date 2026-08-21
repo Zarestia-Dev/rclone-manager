@@ -54,6 +54,7 @@ import { RemoteConfigStepComponent } from 'src/app/shared/remote-config/remote-c
 import { AlertBannerComponent } from 'src/app/shared/components/alert-banner/alert-banner.component';
 import { SearchContainerComponent } from 'src/app/shared/components/search-container/search-container.component';
 import { CliImportComponent } from 'src/app/shared/remote-config/cli-import/cli-import.component';
+import { ImportResult } from 'src/app/services/remote/cli-flag-mapper.service';
 import { ObscureToolComponent } from 'src/app/shared/remote-config/obscure-tool/obscure-tool.component';
 import {
   PresetTemplateBarComponent,
@@ -201,6 +202,7 @@ export class QuickRunEditorComponent implements OnInit {
   readonly dynamicFlagFields = signal<Record<string, RcConfigOption[]>>({});
 
   readonly existingProfiles = signal<Record<string, string[]>>({});
+  readonly highlightedFields = signal<Set<string>>(new Set());
 
   /**
    * Tab definitions. The operation tab is always shown; VFS/Filter/Backend
@@ -820,13 +822,26 @@ export class QuickRunEditorComponent implements OnInit {
     );
   }
 
+  private parseAndSetPath(targetGroup: FormGroup, rawPath: string, currentRemote: string): void {
+    const existingRemotes = this.existingRemoteNames() || [];
+    const defaultType = currentRemote ? 'currentRemote' : 'local';
+    const parsed = this.pathService.parseFsString(
+      rawPath.trim(),
+      defaultType,
+      currentRemote,
+      existingRemotes
+    );
+
+    targetGroup.patchValue({
+      type: parsed.type,
+      path: parsed.path,
+      ...(targetGroup.contains('remote') ? { remote: parsed.remote } : {}),
+    });
+    targetGroup.markAsDirty();
+  }
+
   onCliImportApply(event: {
-    result: {
-      verb?: string;
-      sourcePath?: string;
-      destPath?: string;
-      classified: { status: string; flag: { key: string; value: unknown } }[];
-    };
+    result: ImportResult;
     importSourcePath: boolean;
     importDestPath: boolean;
   }): void {
@@ -834,38 +849,69 @@ export class QuickRunEditorComponent implements OnInit {
 
     if (result.verb && result.verb !== this.currentOpType()) {
       if (ALL_PRIMARY_ACTIONS.includes(result.verb as PrimaryActionType)) {
-        this.form.get('operationType')?.setValue(result.verb as PrimaryActionType);
+        this.selectOperation(result.verb as PrimaryActionType);
       }
     }
 
-    const innerGroup = this.getOpFormGroup(this.currentOpType());
-    if (!innerGroup) return;
+    const currentOp = this.currentOpType();
+    const opGroup = this.getOpFormGroup(currentOp);
+    const remoteName = this.currentRemoteName();
 
-    if (importSourcePath && result.sourcePath) {
-      const sourceCtrl = innerGroup.get('source');
-      if (sourceCtrl instanceof FormArray) {
-        const first = sourceCtrl.at(0) as FormGroup;
-        first.get('path')?.setValue(result.sourcePath);
+    if (importSourcePath && result.sourcePath && opGroup) {
+      const sourceCtrl = opGroup.get('source');
+      if (sourceCtrl instanceof FormArray && sourceCtrl.length > 0) {
+        this.parseAndSetPath(sourceCtrl.at(0) as FormGroup, result.sourcePath, remoteName);
       } else if (sourceCtrl instanceof FormGroup) {
-        sourceCtrl.get('path')?.setValue(result.sourcePath);
+        this.parseAndSetPath(sourceCtrl, result.sourcePath, remoteName);
       }
     }
 
-    if (importDestPath && result.destPath) {
-      const destCtrl = innerGroup.get('dest') as FormGroup | null;
-      destCtrl?.get('path')?.setValue(result.destPath);
-    }
-
-    const optionsGroup = innerGroup.get('options') as FormGroup | null;
-    if (optionsGroup) {
-      for (const cls of result.classified) {
-        if (cls.status !== 'mapped') continue;
-        const ctrl = optionsGroup.get(cls.flag.key) as FormControl | null;
-        if (ctrl) ctrl.setValue(cls.flag.value);
+    if (importDestPath && result.destPath && opGroup) {
+      const destCtrl = opGroup.get('dest') as FormGroup | null;
+      if (destCtrl) {
+        this.parseAndSetPath(destCtrl, result.destPath, remoteName);
       }
     }
 
+    const newHighlighted = new Set<string>();
+    let appliedCount = 0;
+
+    for (const cls of result.classified) {
+      if (cls.status !== 'mapped' || !cls.fieldName) continue;
+
+      const flagType = cls.flagType || currentOp;
+      const targetGroup =
+        flagType === 'runtimeRemote'
+          ? this.runtimeRemoteForm()
+          : (this.form.get(`${flagType}Config.options`) as FormGroup | null);
+
+      if (targetGroup) {
+        const key = cls.fieldName;
+        if (!targetGroup.contains(key)) {
+          targetGroup.addControl(key, new FormControl(cls.coercedValue));
+        } else {
+          targetGroup.get(key)?.setValue(cls.coercedValue);
+        }
+        targetGroup.get(key)?.markAsDirty();
+        newHighlighted.add(key);
+        appliedCount++;
+      }
+    }
+
+    if (result.mountSubtype && currentOp === 'mount') {
+      const mountOpts = this.form.get('mountConfig.options') as FormGroup | null;
+      mountOpts?.get('mountType')?.setValue(result.mountSubtype);
+    }
+
+    this.highlightedFields.set(newHighlighted);
     this.showCliImport.set(false);
+
+    const msg = this.translate.instant('wizards.cliImport.appliedToast', { count: appliedCount });
+    this.notificationService.showSuccess(
+      msg !== 'wizards.cliImport.appliedToast'
+        ? msg
+        : `Successfully imported ${appliedCount} option(s)`
+    );
   }
 
   /**

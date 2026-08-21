@@ -1587,7 +1587,7 @@ export class RemoteConfigStateService {
     for (const cls of result.classified) {
       if (cls.status !== 'mapped' || !cls.fieldName) continue;
       const flagType = (cls.flagType || type) as SharedProfileType;
-      if (flagType !== type) continue; // linked flags handled by mergeLinkedImportFlags
+      if (flagType !== type && LINKED_TYPES.has(flagType)) continue; // linked flags handled by mergeLinkedImportFlags
       rclone[cls.fieldName] = cls.coercedValue;
     }
 
@@ -1635,7 +1635,7 @@ export class RemoteConfigStateService {
       }));
 
       // Wire up the linked-profile selector so the imported values become visible.
-      if (mode === 'new' || mode === 'patch') {
+      if (mode === 'new' || mode === 'patch' || mode === 'override') {
         const group = this.remoteConfigForm.get(`${targetType}Config`) as FormGroup;
         group?.get(`${flagType}Profile`)?.setValue(profileName);
       }

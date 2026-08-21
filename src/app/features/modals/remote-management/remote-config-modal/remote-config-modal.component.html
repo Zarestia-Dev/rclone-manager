@@ -90,7 +90,7 @@
           [visible]="state.showCliImport()"
           [remoteType]="state.remoteTypeSignal()"
           [existingProfiles]="state.profileNamesMap()"
-          [activeStep]="state.editTarget()"
+          [activeStep]="state.activeStepType()"
           (apply)="state.applyImportResult($event)"
         ></app-cli-import>
 

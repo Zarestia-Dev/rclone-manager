@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Monochrome & Theme-Aware System Tray Icon Management**: Added configurable tray icon theme options (Color, System Auto Monochrome, Monochrome Light, Monochrome Dark) in Preferences -> General. Automatically adapts tray icons to desktop dark/light themes with real-time reactive updates. Closes #286.
 
 ### Changed
+- **CLI Import & Flag Mapping Optimization**: Optimized the CLI command parser and import workflow across Quick Run Editor and Remote Config modals. Enhanced tokenizer with intelligent hyphenated argument recognition (e.g. `--suffix -bak`, `--min-age -1d`), multi-operation flag resolution (preserving shared copy/sync flags such as `--backup-dir`, `--track-renames`, `--checksum`), inline bash comment stripping, unified path parsing, and zero-allocation key normalizations in the backend.
+- **Non-Blocking CLI Flags & Automatic Flat Option Mapping**: Updated JSON editor to treat CLI-style arguments (e.g. `--value-of-rclone`, `--bwlimit`) as non-blocking warnings instead of hard validation errors. The backend payload builder now automatically normalizes CLI flags into snake_case flat options (`value_of_rclone`, `bwlimit`) across all Quick Runs, Profiles, and operations.
 - **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
 - **Minimum Supported Rclone Version**: Updated minimum supported Rclone version to `1.75.0`.
 

@@ -71,7 +71,7 @@ pub async fn vfs_stats(app: AppHandle, fs: Option<String>) -> Result<Value, Stri
         for key in ["path", "pathMeta"] {
             if let Some(raw) = disk_cache.get(key).and_then(|v| v.as_str()) {
                 let normalized = normalize_windows_path(raw);
-                disk_cache.insert(key.to_string(), Value::String(normalized));
+                disk_cache.insert(key.to_string(), Value::String(normalized.to_string()));
             }
         }
     }

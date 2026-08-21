@@ -108,7 +108,8 @@
       <app-cli-import
         [visible]="showCliImport()"
         [remoteType]="selectedRemoteType()"
-        [activeStep]="$any(activeTab())"
+        [activeStep]="activeTab()"
+        [isQuickRun]="true"
         [existingProfiles]="existingProfiles()"
         (apply)="onCliImportApply($event)"
       />
@@ -138,7 +139,7 @@
             <input matInput formControlName="description" />
           </mat-form-field>
 
-          <!-- Remote Picker Field -->
+          <!-- Remote Selector -->
           <mat-form-field class="remote-field">
             <mat-label>{{ 'flow.quickRun.editor.remote' | translate }}</mat-label>
             <mat-select formControlName="remoteName">
@@ -146,7 +147,7 @@
                 <mat-option [value]="remote.name">
                   <mat-icon
                     [svgIcon]="iconService.getIconName(remote.type)"
-                    class="op-option-icon"
+                    class="remote-opt-icon"
                   ></mat-icon>
                   <span>{{ remote.name }}</span>
                 </mat-option>
@@ -227,6 +228,7 @@
                 [currentRemoteName]="currentRemoteName()"
                 [existingRemotes]="existingRemoteNames()"
                 [searchQuery]="searchQuery()"
+                [highlightedFields]="highlightedFields()"
                 [isLoadingServeFields]="false"
               />
             }

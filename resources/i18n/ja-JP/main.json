@@ -1041,7 +1041,7 @@
     "jsonEditor": {
       "noFields": "JSONモードで表示するフィールドはありません",
       "parseError": "無効なJSON構文です。フォーマットを確認してください。",
-      "cliArgumentWithSuggestion": "CLI形式の引数 (「{{key}}」 など) はrclone RCでサポートされていません。もしかして: 「{{suggestion}}」",
+      "cliArgumentWithSuggestion": "CLI形式のフラグ '{{key}}' は実行時に自動的に '{{suggestion}}' にマッピングされます。",
       "camelCaseSuggestionWarning": "オプション 「{{key}}」 はこの形式では無効です。もしかして: 「{{suggestion}}」",
       "fixSuggestion": "「{{suggestion}}」 に変更",
       "wrongBlockWarning": "オプション {{keys}} は 「{{block}}」 設定ブロックに属しているため、ここでは動作しない可能性があります。",
@@ -1093,7 +1093,9 @@
       "applyPatch": "追加設定を適用",
       "importSourcePath": "転送元パスをインポート",
       "importDestPath": "転送先パスをインポート",
-      "importMountPoint": "マウントポイントをインポート"
+      "importMountPoint": "マウントポイントをインポート",
+      "applyToTask": "タスクに適用",
+      "appliedToast": "{{count}} 件の設定を正常にインポートしました"
     },
     "obscure": {
       "title": "パスワードの難読化",

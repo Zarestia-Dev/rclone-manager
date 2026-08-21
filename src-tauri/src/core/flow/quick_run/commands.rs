@@ -517,4 +517,48 @@ mod tests {
         assert!(common.filter_options.is_none());
         assert!(common.backend_options.is_none());
     }
+
+    #[test]
+    fn test_quick_run_with_cli_flags() {
+        let empty_settings = json!({});
+        let qr_config = json!({
+            "app": {},
+            "rclone": {
+                "srcFs": "remote:bucket/source",
+                "dstFs": "/local/target",
+                "--value-of-rclone": "mapped_val",
+                "--bwlimit": "10M",
+                "--dry-run": true
+            }
+        });
+
+        let common =
+            parse_common_config(&qr_config, &empty_settings).expect("Failed to parse config");
+        assert_eq!(common.source, vec!["remote:bucket/source"]);
+        assert_eq!(common.dest, "/local/target");
+        assert_eq!(
+            common.rclone_config.get("value_of_rclone").unwrap(),
+            "mapped_val"
+        );
+        assert_eq!(common.rclone_config.get("bwlimit").unwrap(), "10M");
+        assert_eq!(common.rclone_config.get("dry_run").unwrap(), true);
+
+        let body = crate::rclone::commands::sync::GenericTransferParams {
+            source: common.first_source(),
+            dest: common.dest.clone(),
+            rclone_config: common.rclone_config.clone(),
+            filter_options: common.filter_options.clone(),
+            backend_options: common.backend_options.clone(),
+            runtime_remote_options: common.runtime_remote_options.clone(),
+            transfer_type: OperationType::Sync,
+            is_dir: true,
+        }
+        .to_rclone_body()
+        .unwrap();
+
+        let obj = body.as_object().unwrap();
+        assert_eq!(obj.get("value_of_rclone").unwrap(), "mapped_val");
+        assert_eq!(obj.get("bwlimit").unwrap(), "10M");
+        assert_eq!(obj.get("dry_run").unwrap(), true);
+    }
 }
