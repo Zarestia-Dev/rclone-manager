@@ -401,50 +401,48 @@
         overflow-y: auto;
       }
     }
-  }
-}
+    .content-viewport .slide-page {
+      .ui-option-card {
+        padding: 12px 14px;
+        gap: 12px;
+        position: relative;
+        flex-direction: column;
 
-@media (max-width: 480px) {
-  .content-viewport .slide-page {
-    .ui-option-card {
-      padding: 12px 14px;
-      gap: 12px;
-      flex-direction: column;
+        .option-header {
+          min-width: 64px;
 
-      .option-header {
-        min-width: 64px;
+          .option-icon-wrapper {
+            width: 38px;
+            height: 38px;
 
-        .option-icon-wrapper {
-          width: 38px;
-          height: 38px;
+            mat-icon {
+              width: 20px;
+              height: 20px;
+              font-size: 20px;
+            }
+          }
 
-          mat-icon {
-            width: 20px;
-            height: 20px;
-            font-size: 20px;
+          .option-badge {
+            font-size: 0.65rem;
+            padding: 1px 6px;
           }
         }
 
-        .option-badge {
-          font-size: 0.65rem;
-          padding: 1px 6px;
+        .option-body {
+          text-align: center;
+          .option-title {
+            font-size: 0.95rem;
+          }
+          .option-desc {
+            font-size: 0.8rem;
+          }
         }
-      }
 
-      .option-body {
-        text-align: center;
-        .option-title {
-          font-size: 0.95rem;
+        .option-check {
+          position: absolute;
+          top: 12px;
+          right: 12px;
         }
-        .option-desc {
-          font-size: 0.8rem;
-        }
-      }
-
-      .option-check {
-        position: absolute;
-        top: 12px;
-        right: 12px;
       }
     }
   }

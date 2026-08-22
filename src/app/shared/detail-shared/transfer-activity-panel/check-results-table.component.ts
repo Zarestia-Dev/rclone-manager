@@ -406,7 +406,7 @@ export class CheckResultsTableComponent extends BaseTransfersTableComponent<Enri
         resolveBytes = resolveState.bytes;
         resolveSize = resolveState.size;
         resolveSpeed = resolveState.speed;
-        resolveSpeedClass = resolveState.speedClass;
+        resolveSpeedClass = this.getSpeedClass(resolveState.speed);
         resolveEta = resolveState.eta;
       }
 

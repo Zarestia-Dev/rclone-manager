@@ -196,15 +196,11 @@ export enum RepairSheetType {
   RCLONE_AUTH = 'rclone_auth',
 }
 
-export type LocalDiskUsageColor = 'primary' | 'accent' | 'warn';
-
 export interface LocalDiskUsage {
   free: number;
   total: number;
   used: number;
   dir?: string;
-  usagePercentage: number;
-  usageColor: LocalDiskUsageColor;
 }
 
 export interface PendingChange {

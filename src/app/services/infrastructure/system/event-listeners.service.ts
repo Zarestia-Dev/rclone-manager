@@ -29,6 +29,8 @@ import {
   DownloadStatus,
   EngineErrorType,
   ActiveOperationsSummary,
+  PROVISION_PROGRESS,
+  ProvisionProgressPayload,
 } from '@app/types';
 import { TauriBaseService } from '../platform/tauri-base.service';
 
@@ -220,5 +222,9 @@ export class EventListenersService extends TauriBaseService {
 
   listenToAppExitRequested(): Observable<ActiveOperationsSummary> {
     return this.listenToEvent<ActiveOperationsSummary>(APP_EXIT_REQUESTED);
+  }
+
+  listenToProvisionProgress(): Observable<ProvisionProgressPayload> {
+    return this.listenToEvent<ProvisionProgressPayload>(PROVISION_PROGRESS);
   }
 }

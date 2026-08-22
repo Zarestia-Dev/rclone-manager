@@ -452,9 +452,7 @@ export class RemoteConfigStateService {
   readonly isInteractiveContinueDisabled = this.orchestrator.isInteractiveContinueDisabled;
 
   readonly saveButtonLabel = computed(() =>
-    this.isEditingExisting()
-      ? 'modals.remoteConfig.buttons.save'
-      : 'modals.remoteConfig.buttons.create'
+    this.isEditingExisting() ? 'common.save' : 'common.create'
   );
 
   isStepInvalid(stepType: string): boolean {

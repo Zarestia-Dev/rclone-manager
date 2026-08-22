@@ -66,9 +66,6 @@ export interface DiskUsage {
   error?: boolean;
   errorMessage?: string;
   notSupported?: boolean;
-  usagePercentage?: number;
-  usagePercentageLabel?: string;
-  usageSeverity?: DiskUsageSeverity;
 }
 
 export interface RemoteOperationState {

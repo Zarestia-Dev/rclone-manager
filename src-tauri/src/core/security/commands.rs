@@ -245,18 +245,25 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     #[cfg(not(feature = "librclone"))]
     {
         let backend_manager = app.state::<BackendManager>();
-        let config_path = backend_manager.get_local_config_path().await.map_err(
-            |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-        )?;
+        let config_path: Option<std::path::PathBuf> = backend_manager
+            .get_local_config_path()
+            .await
+            .unwrap_or_default();
 
-        let output = build_rclone_command(&app, None, config_path.as_deref(), None)
+        let output = match build_rclone_command(&app, None, config_path.as_deref(), None)
             .args(["listremotes", "--ask-password=false"])
             .env_remove("RCLONE_CONFIG_PASS")
             .output()
             .await
-            .map_err(
-                |e| crate::localized_error!("backendErrors.rclone.executionFailed", "error" => e),
-            )?;
+        {
+            Ok(out) => out,
+            Err(e) => {
+                debug!(
+                    "Rclone binary not available or failed to execute in is_config_encrypted: {e}"
+                );
+                return Ok(false);
+            }
+        };
 
         let stderr = String::from_utf8_lossy(&output.stderr);
 

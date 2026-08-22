@@ -11,7 +11,6 @@ export interface ResolveState {
   bytes: number;
   size: number;
   speed: number;
-  speedClass: string;
   eta: number;
   error?: string;
 }

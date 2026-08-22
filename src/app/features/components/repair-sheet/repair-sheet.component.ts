@@ -20,6 +20,7 @@ import {
 } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
+import { ProvisionProgressComponent } from '../../../shared/components/provision-progress/provision-progress.component';
 import { RclonePasswordService } from 'src/app/services/security/rclone-password.service';
 import { RepairService } from 'src/app/services/operations/repair.service';
 import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
@@ -35,6 +36,7 @@ import { BackendTranslationService } from 'src/app/services/i18n/backend-transla
     MatIconModule,
     InstallationOptionsComponent,
     PasswordManagerComponent,
+    ProvisionProgressComponent,
     TranslatePipe,
   ],
   templateUrl: './repair-sheet.component.html',
@@ -58,6 +60,19 @@ export class RepairSheetComponent {
   readonly data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
   private readonly sheetRef = inject(MatBottomSheetRef<RepairSheetComponent>);
   private readonly repairService = inject(RepairService);
+
+  readonly rcloneProgress = this.repairService.rcloneProgress;
+  readonly mountPluginProgress = this.repairService.mountPluginProgress;
+
+  readonly activeProgress = computed(() => {
+    if (this.isMountPluginRepair()) {
+      return this.mountPluginProgress();
+    }
+    if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+      return this.rcloneProgress();
+    }
+    return null;
+  });
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly passwordService = inject(RclonePasswordService);
   private readonly translate = inject(TranslateService);
@@ -267,7 +282,7 @@ export class RepairSheetComponent {
     this.sheetRef.dismiss();
   }
 
-  private dismissAfter(result: any, delay: number): void {
+  private dismissAfter(result: unknown, delay: number): void {
     const id = setTimeout(() => this.sheetRef.dismiss(result), delay);
     this.destroyRef.onDestroy(() => clearTimeout(id));
   }
@@ -286,6 +301,15 @@ export class RepairSheetComponent {
     }
   }
 
+  async cancelRepair(): Promise<void> {
+    if (this.isMountPluginRepair()) {
+      await this.repairService.cancelMountPluginRepair();
+    } else if (this.isRcloneBinaryRepair() || this.data.type === 'rclone_version') {
+      await this.repairService.cancelRcloneRepair();
+    }
+    this.installing.set(false);
+  }
+
   private async executeRepair(): Promise<void> {
     this.installing.set(true);
     try {
@@ -297,7 +321,7 @@ export class RepairSheetComponent {
       this.dismissAfter('success', this.isMountPluginRepair() ? 2000 : 1000);
     } catch (error) {
       console.error('Repair failed:', error);
-      if (this.isMountPluginRepair()) {
+      if (this.isMountPluginRepair() && !this.repairService.isCancellationError(error)) {
         const errorMsg = this.backendTranslation.translateBackendMessage(error);
         this.messageOverride.set(
           this.translate.instant('repairSheet.errors.mountPluginInstallFailed', {

@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Cancelar",
     "save": "Guardar",
+    "create": "Crear",
+    "show": "Mostrar",
+    "hide": "Ocultar",
     "ok": "Aceptar",
     "close": "Cerrar",
-    "nextStep": "Siguiente paso",
+    "next": "Siguiente",
     "back": "Atrás",
     "continue": "Continuar",
     "yes": "Sí",
@@ -738,8 +741,6 @@
       "default": "Predeterminado"
     },
     "actions": {
-      "back": "Atrás",
-      "next": "Siguiente",
       "installPlugin": "Instalar plugin",
       "installingPlugin": "Instalando...",
       "unlock": "Desbloquear",
@@ -2234,14 +2235,8 @@
         "duplicate": "Duplicar perfil"
       },
       "buttons": {
-        "back": "Atrás",
-        "cancel": "Cancelar",
-        "create": "Crear",
-        "save": "Guardar",
-        "next": "Siguiente",
         "cleanup": "Limpiando",
-        "processing": "Procesando...",
-        "continue": "Continuar"
+        "processing": "Procesando..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Eliminar remoto",
       "message": "¿Está seguro de que desea eliminar '{{name}}'? Esta acción no se puede deshacer.",
-      "permanentWarning": "Eliminar este remoto es permanente y no se puede deshacer.",
       "activeOperationsTitle": "Operaciones activas en ejecución",
       "activeOperationsDesc": "Las siguientes operaciones activas se están ejecutando en este remoto y se finalizarán forzosamente:",
       "willUnmount": "Se desmontará",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma no soportada",
-      "downloadError": "Error desconocido al descargar Rclone",
       "mountPluginInstallFailed": "Error al instalar el complemento de montaje: {{error}}",
       "mountPluginVerificationFailed": "La instalación se realizó correctamente pero falló la verificación. Es posible que sea necesario reiniciar.",
       "configEncrypted": "La configuración está encriptada y no se proporcionó contraseña",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "Se detectaron banderas de rclone no válidas: {{error}}",
       "updateRemoteUnsupported": "La actualización remota no es compatible con esta versión de rclone",
       "backupFailed": "Error al realizar la copia de seguridad del ejecutable rclone actual: {{error}}",
-      "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}"
+      "rcAuthFailed": "La autenticación del control remoto de rclone falló: {{error}}",
+      "downloadCancelled": "Descarga cancelada por el usuario"
     },
     "security": {
       "passwordEmpty": "La contraseña no puede estar vacía",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Panel de control"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Descargando...",
+      "verifying": "Verificando suma de comprobación...",
+      "extracting": "Extrayendo archivo...",
+      "installing": "Instalando...",
+      "completed": "Completado",
+      "cancelled": "Operación cancelada",
+      "error": "Error"
+    }
   }
 }

@@ -1,0 +1,25 @@
+@if (progress(); as prog) {
+  <div class="provision-progress-card">
+    <div class="progress-info">
+      <span class="stage-label">
+        <mat-icon svgIcon="spinner" class="colorful-spinner"></mat-icon>
+        {{ 'provision.stages.' + prog.stage | translate }}
+      </span>
+      <span class="progress-stats">
+        @if (prog.stage === 'downloading') {
+          {{ prog.downloadedBytes | formatFileSize }} /
+          {{ prog.totalBytes ?? 0 | formatFileSize }}
+          @if (percentage() !== null) {
+            ({{ percentage() | number: '1.0-0' }}%)
+          }
+        }
+      </span>
+    </div>
+    <mat-progress-bar
+      [mode]="
+        prog.stage === 'downloading' && percentage() !== null ? 'determinate' : 'indeterminate'
+      "
+      [value]="percentage() ?? 0"
+    ></mat-progress-bar>
+  </div>
+}

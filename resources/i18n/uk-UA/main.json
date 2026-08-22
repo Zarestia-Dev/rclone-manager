@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Скасувати",
     "save": "Зберегти",
+    "create": "Створити",
+    "show": "Показати",
+    "hide": "Сховати",
     "ok": "OK",
     "close": "Закрити",
-    "nextStep": "Далі",
+    "next": "Далі",
     "back": "Назад",
     "continue": "Продовжити",
     "yes": "Так",
@@ -738,8 +741,6 @@
       "default": "Типовий"
     },
     "actions": {
-      "back": "Назад",
-      "next": "Далі",
       "installPlugin": "Встановити плагін",
       "installingPlugin": "Встановлення...",
       "unlock": "Розблокувати",
@@ -2234,14 +2235,8 @@
         "duplicate": "Дублювати профіль"
       },
       "buttons": {
-        "back": "Назад",
-        "cancel": "Скасувати",
-        "create": "Створити",
-        "save": "Зберегти",
-        "next": "Далі",
         "cleanup": "Очищення",
-        "processing": "Обробка...",
-        "continue": "Продовжити"
+        "processing": "Обробка..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Видалити сховище",
       "message": "Ви впевнені, що хочете видалити '{{name}}'? Цю дію не можна скасувати.",
-      "permanentWarning": "Видалення цього сховища є остаточним і не може бути скасоване.",
       "activeOperationsTitle": "Активні виконувані операції",
       "activeOperationsDesc": "Наступні активні операції виконуються на цьому сховищі та будуть примусово завершені:",
       "willUnmount": "Буде розмонтовано",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "Непідтримувана платформа",
-      "downloadError": "Невідома помилка під час завантаження Rclone",
       "mountPluginInstallFailed": "Не вдалося встановити плагін монтування: {{error}}",
       "mountPluginVerificationFailed": "Встановлення вдалося, але перевірку не пройдено. Може знадобитися перезапуск.",
       "configEncrypted": "Конфігурацію зашифровано, але пароль не надано",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "Виявлено невірні flags rclone: {{error}}",
       "updateRemoteUnsupported": "Оновлення сховища не підтримується для цієї версії rclone",
       "backupFailed": "Не вдалося створити резервну копію поточного виконуваного файлу rclone: {{error}}",
-      "rcAuthFailed": "Помилка автентифікації віддаленого керування rclone: {{error}}"
+      "rcAuthFailed": "Помилка автентифікації віддаленого керування rclone: {{error}}",
+      "downloadCancelled": "Завантаження скасовано користувачем"
     },
     "security": {
       "passwordEmpty": "Пароль не може бути порожнім",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Панель керування"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Завантаження...",
+      "verifying": "Перевірка контрольної суми...",
+      "extracting": "Видобування архіву...",
+      "installing": "Встановлення...",
+      "completed": "Завершено",
+      "cancelled": "Операцію скасовано",
+      "error": "Помилка"
+    }
   }
 }

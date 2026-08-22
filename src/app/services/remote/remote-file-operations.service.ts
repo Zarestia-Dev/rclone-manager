@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { DiskUsageSeverity, Entry, FsInfo, JobActionType, Origin } from '@app/types';
+import { Entry, FsInfo, JobActionType, Origin } from '@app/types';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
 
 @Injectable({ providedIn: 'root' })
@@ -21,9 +21,6 @@ export class RemoteFileOperationsService extends TauriBaseService {
     total: number;
     used: number;
     free: number;
-    usagePercentage: number;
-    usagePercentageLabel: string;
-    usageSeverity: DiskUsageSeverity;
   }> {
     return this.invokeCommand('get_disk_usage', { remote, path, origin: source, group });
   }

@@ -124,7 +124,6 @@ pub fn link_resolving_jobs(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64)
                     let mut bytes = 0;
                     let mut size = 0;
                     let mut speed = 0.0;
-                    let mut speed_class = "speed-slow".to_string();
                     let mut eta = 0;
 
                     if let Some(stats) = &child_job.stats {
@@ -173,12 +172,6 @@ pub fn link_resolving_jobs(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64)
                         }
                     }
 
-                    if speed > 1024.0 * 1024.0 * 5.0 {
-                        speed_class = "speed-fast".to_string();
-                    } else if speed > 1024.0 * 1024.0 {
-                        speed_class = "speed-medium".to_string();
-                    }
-
                     let status_str = serde_json::to_value(&child_job.status)
                         .ok()
                         .and_then(|v| v.as_str().map(String::from))
@@ -207,7 +200,6 @@ pub fn link_resolving_jobs(jobs: &mut HashMap<u64, JobInfo>, parent_job_id: u64)
                         bytes,
                         size,
                         speed,
-                        speed_class,
                         eta,
                         error: child_job.error.clone(),
                     };

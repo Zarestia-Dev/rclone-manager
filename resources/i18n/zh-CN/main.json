@@ -2,9 +2,12 @@
   "common": {
     "cancel": "取消",
     "save": "保存",
+    "create": "创建",
+    "show": "显示",
+    "hide": "隐藏",
     "ok": "确定",
     "close": "关闭",
-    "nextStep": "下一步",
+    "next": "下一步",
     "back": "返回",
     "continue": "继续",
     "yes": "是",
@@ -738,8 +741,6 @@
       "default": "默认"
     },
     "actions": {
-      "back": "返回",
-      "next": "下一步",
       "installPlugin": "安装插件",
       "installingPlugin": "正在安装...",
       "unlock": "解锁",
@@ -2234,14 +2235,8 @@
         "duplicate": "复制配置文件"
       },
       "buttons": {
-        "back": "上一步",
-        "cancel": "取消",
-        "create": "创建",
-        "save": "保存",
-        "next": "下一步",
         "cleanup": "清理中",
-        "processing": "处理中...",
-        "continue": "继续"
+        "processing": "处理中..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "删除远程存储",
       "message": "您确定要删除“{{name}}”吗？此操作无法撤消。",
-      "permanentWarning": "删除此远程存储是永久性的，无法撤消。",
       "activeOperationsTitle": "正在运行的活动操作",
       "activeOperationsDesc": "以下活动操作当前正在此远程存储上运行，将被强制终止：",
       "willUnmount": "将卸载",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "不支持的平台",
-      "downloadError": "下载 Rclone 时发生未知错误",
       "mountPluginInstallFailed": "安装挂载插件失败: {{error}}",
       "mountPluginVerificationFailed": "安装成功但验证失败。可能需要重新启动。",
       "configEncrypted": "配置已加密，未提供密码",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "检测到无效的 rclone 标志: {{error}}",
       "updateRemoteUnsupported": "此 rclone 版本不支持远程更新",
       "backupFailed": "备份当前 rclone 二进制文件失败：{{error}}",
-      "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}"
+      "rcAuthFailed": "Rclone 远程控制身份验证失败：{{error}}",
+      "downloadCancelled": "用户已取消下载"
     },
     "security": {
       "passwordEmpty": "密码不能为空",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "仪表盘"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "正在下载...",
+      "verifying": "正在校验哈希值...",
+      "extracting": "正在解压文件...",
+      "installing": "正在安装...",
+      "completed": "已完成",
+      "cancelled": "操作已取消",
+      "error": "错误"
+    }
   }
 }

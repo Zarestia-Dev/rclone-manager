@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Cancelar",
     "save": "Salvar",
+    "create": "Criar",
+    "show": "Mostrar",
+    "hide": "Ocultar",
     "ok": "OK",
     "close": "Fechar",
-    "nextStep": "Próximo Passo",
+    "next": "Próximo",
     "back": "Voltar",
     "continue": "Continuar",
     "yes": "Sim",
@@ -738,8 +741,6 @@
       "default": "Padrão"
     },
     "actions": {
-      "back": "Voltar",
-      "next": "Próximo",
       "installPlugin": "Instale o plugin",
       "installingPlugin": "Instalando...",
       "unlock": "Desbloquear",
@@ -2234,14 +2235,8 @@
         "duplicate": "Duplicar perfil"
       },
       "buttons": {
-        "back": "Voltar",
-        "cancel": "Cancelar",
-        "create": "Criar",
-        "save": "Salvar",
-        "next": "Próximo",
         "cleanup": "Limpeza",
-        "processing": "Processando...",
-        "continue": "Continuar"
+        "processing": "Processando..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Excluir Remoto",
       "message": "Tem certeza de que deseja excluir '{{name}}'? Esta ação não pode ser desfeita.",
-      "permanentWarning": "A exclusão deste remoto é permanente e não pode ser desfeita.",
       "activeOperationsTitle": "Operações Ativas em Execução",
       "activeOperationsDesc": "As seguintes operações ativas estão em execução neste remoto e serão encerradas à força:",
       "willUnmount": "Será desmontado",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma não suportada",
-      "downloadError": "Erro desconhecido ao baixar o Rclone",
       "mountPluginInstallFailed": "Falha ao instalar o plug-in de montagem: {{error}}",
       "mountPluginVerificationFailed": "A instalação foi bem-sucedida, mas a verificação falhou. Pode ser necessário reiniciar.",
       "configEncrypted": "A configuração está criptografada e não foi fornecido senha",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "Flags inválidas do rclone detectadas: {{error}}",
       "updateRemoteUnsupported": "Atualização remota não é suportada para essa versão do Rclone",
       "backupFailed": "Falha ao fazer o backup da binário atual do Rclone: {{error}}",
-      "rcAuthFailed": "A autenticação do controle remoto Rclone falhou: {{error}}"
+      "rcAuthFailed": "A autenticação do controle remoto Rclone falhou: {{error}}",
+      "downloadCancelled": "Download cancelado pelo usuário"
     },
     "security": {
       "passwordEmpty": "A senha não pode estar vazia",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Painel"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Baixando...",
+      "verifying": "Verificando soma de verificação...",
+      "extracting": "Extraindo arquivo...",
+      "installing": "Instalando...",
+      "completed": "Concluído",
+      "cancelled": "Operação cancelada",
+      "error": "Erro"
+    }
   }
 }

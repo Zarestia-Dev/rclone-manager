@@ -124,7 +124,6 @@ pub struct ResolveState {
     pub bytes: i64,
     pub size: i64,
     pub speed: f64,
-    pub speed_class: String,
     pub eta: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,

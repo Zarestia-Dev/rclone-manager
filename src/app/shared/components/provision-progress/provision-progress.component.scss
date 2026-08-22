@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+.provision-progress-card {
+  margin-top: var(--space-md);
+  padding: 14px 16px;
+  border-radius: var(--card-border-radius);
+  background: var(--view-bg-color);
+  box-shadow: var(--box-shadow);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: var(--font-size-sm);
+
+    .stage-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      color: var(--window-fg-color);
+    }
+
+    .progress-stats {
+      color: var(--dim-color);
+      font-weight: 500;
+    }
+  }
+}

@@ -123,9 +123,9 @@ import { TranslatePipe } from '@ngx-translate/core';
               </div>
               <mat-progress-bar
                 mode="determinate"
-                [value]="usage.usagePercentage"
+                [value]="diskUsagePercentage()"
                 class="usage-bar"
-                [color]="usage.usageColor"
+                [color]="diskUsageColor()"
               ></mat-progress-bar>
             }
           </div>
@@ -278,6 +278,19 @@ export class OperationControlComponent {
   readonly isExpanded = signal(false);
   readonly diskUsage = signal<LocalDiskUsage | null>(null);
   readonly isDiskUsageLoading = signal(false);
+
+  readonly diskUsagePercentage = computed(() => {
+    const usage = this.diskUsage();
+    if (!usage || !usage.total || usage.total <= 0) return 0;
+    return Math.min(100, Math.max(0, (usage.used / usage.total) * 100));
+  });
+
+  readonly diskUsageColor = computed<'primary' | 'accent' | 'warn'>(() => {
+    const pct = this.diskUsagePercentage();
+    if (pct > 90) return 'warn';
+    if (pct > 70) return 'accent';
+    return 'primary';
+  });
 
   readonly isOperationsType = computed(() =>
     (SYNC_TYPES as string[]).includes(this.config().operationType)

@@ -23,6 +23,7 @@ import { TitlebarComponent } from 'src/app/layout/titlebar/titlebar.component';
 import { SidebarComponent } from 'src/app/layout/sidebar/sidebar.component';
 import { TabsButtonsComponent } from 'src/app/layout/tabs-buttons/tabs-buttons.component';
 import { QuickRunWorkspaceComponent } from './quick-run/quick-run-workspace/quick-run-workspace.component';
+import { BannerComponent } from '../layout/banners/banner.component';
 
 export type FlowSubMode = 'builder' | 'quick_run';
 
@@ -38,6 +39,7 @@ export type FlowSubMode = 'builder' | 'quick_run';
     SidebarComponent,
     TabsButtonsComponent,
     QuickRunWorkspaceComponent,
+    BannerComponent,
   ],
   templateUrl: './flow-container.component.html',
   styleUrl: './flow-container.component.scss',

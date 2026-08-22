@@ -19,6 +19,24 @@ export interface RepairData {
 
 export type RepairMode = 'standard' | 'install' | 'config';
 
+export type ProvisionComponent = 'rclone' | 'mountPlugin';
+
+export type ProvisionStage =
+  'downloading' | 'verifying' | 'extracting' | 'installing' | 'completed' | 'cancelled' | 'error';
+
+export interface ProvisionProgressPayload {
+  component: ProvisionComponent;
+  stage: ProvisionStage;
+  downloadedBytes: number;
+  totalBytes?: number | null;
+  error?: string | null;
+}
+
+export interface ProvisionStatus {
+  rclone?: ProvisionProgressPayload | null;
+  mountPlugin?: ProvisionProgressPayload | null;
+}
+
 export const CONFIG_TAB_OPTIONS: readonly InstallationTabOption[] = Object.freeze([
   { key: 'default', label: 'repairSheet.configTabs.default', icon: 'bolt' },
   { key: 'custom', label: 'repairSheet.configTabs.custom', icon: 'file' },

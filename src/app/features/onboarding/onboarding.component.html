@@ -82,6 +82,17 @@
                     (dataChange)="installationData.set($event)"
                     (validChange)="installationValid.set($event)"
                   ></app-installation-options>
+
+                  @if (installing()) {
+                    <app-provision-progress [progress]="rcloneProgress()"></app-provision-progress>
+                  }
+                }
+                @case ('installPlugin') {
+                  @if (downloadingPlugin()) {
+                    <app-provision-progress
+                      [progress]="mountPluginProgress()"
+                    ></app-provision-progress>
+                  }
                 }
                 @case ('selectMainUi') {
                   <div
@@ -136,12 +147,24 @@
       @if (currentCardIndex() > 0) {
         <button matButton (click)="previousCard()" class="secondary">
           <mat-icon svgIcon="left-arrow"></mat-icon>
-          {{ 'onboarding.actions.back' | translate }}
+          {{ 'common.back' | translate }}
         </button>
       } @else {
         <button matButton="outlined" (click)="importSettings()">
           <mat-icon svgIcon="file-arrow-up"></mat-icon>
           {{ 'titlebar.menu.import' | translate }}
+        </button>
+      }
+
+      @if (installing() && currentAction() === 'install-rclone') {
+        <button matButton="outlined" (click)="cancelInstallRclone()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+          {{ 'common.cancel' | translate }}
+        </button>
+      } @else if (downloadingPlugin() && currentAction() === 'install-plugin') {
+        <button matButton="outlined" (click)="cancelInstallMountPlugin()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+          {{ 'common.cancel' | translate }}
         </button>
       }
 

@@ -26,6 +26,7 @@ pub const SYSTEM_STATUS: &str = "system_status";
 // Plugin and installation events
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const MOUNT_PLUGIN_INSTALLED: &str = "mount_plugin_installed";
+pub const PROVISION_PROGRESS: &str = "provision_progress";
 
 // Network events
 pub const NETWORK_STATUS_CHANGED: &str = "network_status_changed";
@@ -61,6 +62,7 @@ pub const SSE_FORWARD_EVENTS: &[&str] = &[
     SERVE_STATE_CHANGED,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     MOUNT_PLUGIN_INSTALLED,
+    PROVISION_PROGRESS,
     NETWORK_STATUS_CHANGED,
     AUTOMATIONS_CACHE_CHANGED,
     APP_EVENT,

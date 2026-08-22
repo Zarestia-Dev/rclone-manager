@@ -98,6 +98,13 @@ export abstract class BaseTransfersTableComponent<TEnriched extends BaseEnriched
     });
   }
 
+  /** Compute standard transfer speed category class from bytes/second */
+  protected getSpeedClass(speed: number): string {
+    if (speed > 5 * 1024 * 1024) return 'speed-fast';
+    if (speed > 1024 * 1024) return 'speed-medium';
+    return 'speed-slow';
+  }
+
   /** Whether the given enriched item is currently being resolved. */
   isResolving(item: TEnriched): boolean {
     return this.resolvingIds().has(item.uniqueId) || item.resolveState?.status === 'Running';

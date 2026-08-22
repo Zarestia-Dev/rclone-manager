@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Annuler",
     "save": "Enregistrer",
+    "create": "Créer",
+    "show": "Afficher",
+    "hide": "Masquer",
     "ok": "Ok",
     "close": "Fermer",
-    "nextStep": "Étape suivante",
+    "next": "Suivant",
     "back": "Retour",
     "continue": "Continuer",
     "yes": "Oui",
@@ -738,8 +741,6 @@
       "default": "Par défaut"
     },
     "actions": {
-      "back": "Précédent",
-      "next": "Suivant",
       "installPlugin": "Installer un plugin",
       "installingPlugin": "Installation...",
       "unlock": "Déverrouiller",
@@ -2234,14 +2235,8 @@
         "duplicate": "Dupliquer le profil"
       },
       "buttons": {
-        "back": "Précédent",
-        "cancel": "Annuler",
-        "create": "Créer",
-        "save": "Sauvegarder",
-        "next": "Suivant",
         "cleanup": "Nettoyage en cours",
-        "processing": "Traitement en cours...",
-        "continue": "Continuer"
+        "processing": "Traitement en cours..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Supprimer le dépôt distant",
       "message": "Êtes-vous sûr de vouloir supprimer '{{name}}' ? Cette action est irréversible.",
-      "permanentWarning": "La suppression de ce dépôt distant est définitive et irréversible.",
       "activeOperationsTitle": "Opérations actives en cours",
       "activeOperationsDesc": "Les opérations actives suivantes sont en cours d'exécution sur ce dépôt distant et seront interrompues :",
       "willUnmount": "Sera démonté",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
-      "downloadError": "Erreur inconnue lors du téléchargement de rclone",
       "mountPluginInstallFailed": "Échec de l'installation du plug-in de montage : {{error}}",
       "mountPluginVerificationFailed": "L'installation a réussi mais la vérification a échoué. Un redémarrage peut être nécessaire.",
       "configEncrypted": "La configuration est chiffrée et aucun mot de passe n'est fourni",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "Flags rclone non valides détectés : {{error}}",
       "updateRemoteUnsupported": "La mise à jour du dépôt distant n'est pas prise en charge pour cette version de rclone",
       "backupFailed": "Impossible de sauvegarder le binaire actuel de rclone : {{error}}",
-      "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}"
+      "rcAuthFailed": "L'authentification du contrôle distant rclone a échoué: {{error}}",
+      "downloadCancelled": "Téléchargement annulé par l'utilisateur"
     },
     "security": {
       "passwordEmpty": "Mot de passe ne peut pas être vide",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Tableau de bord"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Téléchargement...",
+      "verifying": "Vérification de la somme de contrôle...",
+      "extracting": "Extraction de l'archive...",
+      "installing": "Installation...",
+      "completed": "Terminé",
+      "cancelled": "Opération annulée",
+      "error": "Erreur"
+    }
   }
 }

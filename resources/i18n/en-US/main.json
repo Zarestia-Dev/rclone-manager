@@ -2,9 +2,12 @@
   "common": {
     "cancel": "Cancel",
     "save": "Save",
+    "create": "Create",
+    "show": "Show",
+    "hide": "Hide",
     "ok": "OK",
     "close": "Close",
-    "nextStep": "Next Step",
+    "next": "Next",
     "back": "Back",
     "continue": "Continue",
     "yes": "Yes",
@@ -738,8 +741,6 @@
       "default": "Default"
     },
     "actions": {
-      "back": "Back",
-      "next": "Next",
       "installPlugin": "Install Plugin",
       "installingPlugin": "Installing...",
       "unlock": "Unlock",
@@ -2234,14 +2235,8 @@
         "duplicate": "Duplicate Profile"
       },
       "buttons": {
-        "back": "Back",
-        "cancel": "Cancel",
-        "create": "Create",
-        "save": "Save",
-        "next": "Next",
         "cleanup": "Cleaning up",
-        "processing": "Processing...",
-        "continue": "Continue"
+        "processing": "Processing..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Delete Remote",
       "message": "Are you sure you want to delete '{{name}}'? This action cannot be undone.",
-      "permanentWarning": "Deleting this remote is permanent and cannot be undone.",
       "activeOperationsTitle": "Active Operations Running",
       "activeOperationsDesc": "The following active operations are currently running on this remote and will be forcefully terminated:",
       "willUnmount": "Will Unmount",
@@ -2728,7 +2722,7 @@
     },
     "rclone": {
       "unsupportedPlatform": "Unsupported platform",
-      "downloadError": "Unknown error downloading Rclone",
+      "downloadCancelled": "Download cancelled by user",
       "mountPluginInstallFailed": "Failed to install mount plugin: {{error}}",
       "mountPluginVerificationFailed": "Installation succeeded but verification failed. Restart may be required.",
       "configEncrypted": "Configuration is encrypted and no password provided",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Dashboard"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "Downloading...",
+      "verifying": "Verifying checksum...",
+      "extracting": "Extracting archive...",
+      "installing": "Installing...",
+      "completed": "Completed",
+      "cancelled": "Operation cancelled",
+      "error": "Error"
+    }
   }
 }

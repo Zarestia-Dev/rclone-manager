@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
+import { ProvisionProgressComponent } from '../../shared/components/provision-progress/provision-progress.component';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { InstallationService } from 'src/app/services/settings/installation.service';
@@ -77,6 +78,7 @@ interface PrimaryButton {
     LoadingOverlayComponent,
     InstallationOptionsComponent,
     PasswordManagerComponent,
+    ProvisionProgressComponent,
     TranslatePipe,
   ],
   templateUrl: './onboarding.component.html',
@@ -95,6 +97,9 @@ export class OnboardingComponent {
   private readonly backupRestoreUiService = inject(BackupRestoreUiService);
   private readonly uiStateService = inject(UiStateService);
   readonly systemHealth = inject(SystemHealthService);
+
+  readonly rcloneProgress = this.installationService.rcloneProgress;
+  readonly mountPluginProgress = this.installationService.mountPluginProgress;
 
   // ─── State ──────────────────────────────────────────────────────────────────
   readonly currentCardIndex = signal(0);
@@ -262,7 +267,7 @@ export class OnboardingComponent {
       case 'config-next': {
         const valid = this.configValid();
         return {
-          labelKey: 'onboarding.actions.next',
+          labelKey: 'common.next',
           icon: 'right-arrow',
           disabled: !valid,
           titleKey: !valid ? 'onboarding.validation.selectConfig' : null,
@@ -297,7 +302,7 @@ export class OnboardingComponent {
       case 'next':
       default:
         return {
-          labelKey: 'onboarding.actions.next',
+          labelKey: 'common.next',
           icon: 'right-arrow',
           disabled: false,
           titleKey: null,
@@ -475,6 +480,11 @@ export class OnboardingComponent {
     }
   }
 
+  async cancelInstallRclone(): Promise<void> {
+    await this.installationService.cancelRcloneInstall();
+    this.installing.set(false);
+  }
+
   async installMountPlugin(): Promise<void> {
     this.downloadingPlugin.set(true);
     try {
@@ -485,6 +495,11 @@ export class OnboardingComponent {
     } finally {
       this.downloadingPlugin.set(false);
     }
+  }
+
+  async cancelInstallMountPlugin(): Promise<void> {
+    await this.installationService.cancelMountPluginInstall();
+    this.downloadingPlugin.set(false);
   }
 
   async onConfigNext(): Promise<void> {

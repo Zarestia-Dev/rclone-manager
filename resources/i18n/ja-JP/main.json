@@ -2,9 +2,12 @@
   "common": {
     "cancel": "キャンセル",
     "save": "保存",
+    "create": "作成",
+    "show": "表示",
+    "hide": "非表示",
     "ok": "OK",
     "close": "閉じる",
-    "nextStep": "次のステップ",
+    "next": "次へ",
     "back": "戻る",
     "continue": "続行",
     "yes": "はい",
@@ -738,8 +741,6 @@
       "default": "デフォルト"
     },
     "actions": {
-      "back": "戻る",
-      "next": "次へ",
       "installPlugin": "プラグインをインストール",
       "installingPlugin": "インストール中...",
       "unlock": "ロック解除",
@@ -2234,14 +2235,8 @@
         "duplicate": "プロファイルの複製"
       },
       "buttons": {
-        "back": "戻る",
-        "cancel": "キャンセル",
-        "create": "作成",
-        "save": "保存",
-        "next": "次へ",
         "cleanup": "クリーンアップ中",
-        "processing": "処理中...",
-        "continue": "続行"
+        "processing": "処理中..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "リモートを削除",
       "message": "'{{name}}' を削除してもよろしいですか？この操作は取り消せません。",
-      "permanentWarning": "このリモートの削除は永続的であり、元に戻すことはできません。",
       "activeOperationsTitle": "実行中のアクティブな操作",
       "activeOperationsDesc": "このリモートで実行中の次のアクティブな操作は強制終了されます：",
       "willUnmount": "マウント解除",
@@ -2728,7 +2722,6 @@
     },
     "rclone": {
       "unsupportedPlatform": "サポートされていないプラットフォームです",
-      "downloadError": "Rcloneのダウンロード中に不明なエラーが発生しました",
       "mountPluginInstallFailed": "マウントプラグインのインストールに失敗しました: {{error}}",
       "mountPluginVerificationFailed": "インストールは成功しましたが検証に失敗しました。再起動が必要な場合があります。",
       "configEncrypted": "設定が暗号化されていますが、パスワードが入力されていません",
@@ -2751,7 +2744,8 @@
       "invalidFlags": "無効なrcloneフラグが検出されました: {{error}}",
       "updateRemoteUnsupported": "このrcloneバージョンではリモート更新はサポートされていません",
       "backupFailed": "現在のrclone実行ファイルのバックアップに失敗しました: {{error}}",
-      "rcAuthFailed": "Rcloneリモートコントロール(RC)認証に失敗しました: {{error}}"
+      "rcAuthFailed": "Rcloneリモートコントロール(RC)認証に失敗しました: {{error}}",
+      "downloadCancelled": "ユーザーによってダウンロードがキャンセルされました"
     },
     "security": {
       "passwordEmpty": "パスワードを空欄にすることはできません",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "ダッシュボード"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "ダウンロード中...",
+      "verifying": "チェックサムを確認中...",
+      "extracting": "アーカイブを展開中...",
+      "installing": "インストール中...",
+      "completed": "完了",
+      "cancelled": "操作がキャンセルされました",
+      "error": "エラー"
+    }
   }
 }

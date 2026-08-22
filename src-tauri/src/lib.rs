@@ -418,6 +418,7 @@ fn setup_app(
     app.manage(utils::types::updater::AppUpdaterState::default());
     #[cfg(feature = "updater")]
     app.manage(utils::types::updater::RcloneUpdaterState::default());
+    app.manage(utils::types::provision::ProvisionState::default());
 
     #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
     app.manage(crate::core::power::PowerInhibitorState::new());

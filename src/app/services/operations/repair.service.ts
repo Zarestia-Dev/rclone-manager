@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../infrastructure/platform/tauri-base.service';
+import { InstallationService } from '../settings/installation.service';
 import { RepairData } from '@app/types';
 
 /** Detail item structure for repair UI */
@@ -18,6 +19,10 @@ interface RepairDetailItem {
   providedIn: 'root',
 })
 export class RepairService extends TauriBaseService {
+  private readonly installationService = inject(InstallationService);
+
+  readonly rcloneProgress = this.installationService.rcloneProgress;
+  readonly mountPluginProgress = this.installationService.mountPluginProgress;
   private readonly repairUi = {
     rclone_binary: {
       titleKey: 'repairSheet.titles.missingRclone',
@@ -168,14 +173,35 @@ export class RepairService extends TauriBaseService {
    * @param path Optional custom installation path. If null, uses default location
    */
   async repairRclonePath(path?: string | null): Promise<string> {
-    return this.invokeCommand<string>('provision_rclone', { path });
+    return this.installationService.installRclone(path);
+  }
+
+  /**
+   * Cancel in-progress rclone provisioning
+   */
+  async cancelRcloneRepair(): Promise<void> {
+    return this.installationService.cancelRcloneInstall();
   }
 
   /**
    * Install the mount plugin
    */
   async repairMountPlugin(): Promise<string> {
-    return this.invokeCommand<string>('install_mount_plugin');
+    return this.installationService.installMountPlugin();
+  }
+
+  /**
+   * Check if an error represents a user-initiated download cancellation
+   */
+  isCancellationError(error: unknown): boolean {
+    return this.installationService.isCancellationError(error);
+  }
+
+  /**
+   * Cancel in-progress mount plugin installation
+   */
+  async cancelMountPluginRepair(): Promise<void> {
+    return this.installationService.cancelMountPluginInstall();
   }
 
   /**

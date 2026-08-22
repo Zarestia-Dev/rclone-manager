@@ -2,9 +2,12 @@
   "common": {
     "cancel": "İptal",
     "save": "Kaydet",
+    "create": "Oluştur",
+    "show": "Göster",
+    "hide": "Gizle",
     "ok": "Tamam",
     "close": "Kapat",
-    "nextStep": "Sonraki Adım",
+    "next": "İleri",
     "back": "Geri",
     "continue": "Devam Et",
     "yes": "Evet",
@@ -738,8 +741,6 @@
       "default": "Varsayılan"
     },
     "actions": {
-      "back": "Geri",
-      "next": "İleri",
       "installPlugin": "Eklentiyi Kur",
       "installingPlugin": "Kuruluyor...",
       "unlock": "Kilidi Aç",
@@ -2234,14 +2235,8 @@
         "duplicate": "Profili Çoğalt"
       },
       "buttons": {
-        "back": "Geri",
-        "cancel": "İptal",
-        "create": "Oluştur",
-        "save": "Kaydet",
-        "next": "İleri",
         "cleanup": "Temizleniyor",
-        "processing": "İşleniyor...",
-        "continue": "Devam Et"
+        "processing": "İşleniyor..."
       },
       "editMode": {
         "sections": {
@@ -2557,7 +2552,6 @@
     "deleteRemote": {
       "title": "Uzak Sunucuyu Sil",
       "message": "'{{name}}' adlı uzak sunucuyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
-      "permanentWarning": "Bu uzak sunucuyu silmek kalıcıdır ve geri alınamaz.",
       "activeOperationsTitle": "Çalışan Aktif İşlemler",
       "activeOperationsDesc": "Bu uzak sunucu üzerinde çalışan aşağıdaki aktif işlemler zorla sonlandırılacaktır:",
       "willUnmount": "Bağlantı Kesilecek",
@@ -2728,7 +2722,7 @@
     },
     "rclone": {
       "unsupportedPlatform": "Desteklenmeyen platform",
-      "downloadError": "Rclone indirilirken bilinmeyen hata",
+      "downloadCancelled": "İndirme kullanıcı tarafından iptal edildi",
       "mountPluginInstallFailed": "Eklenti kurulumu başarısız: {{error}}",
       "mountPluginVerificationFailed": "Kurulum başarılı oldu ancak doğrulama başarısız oldu. Yeniden başlatma gerekebilir.",
       "configEncrypted": "Yapılandırma şifrelenmiş ve şifre sağlanmadı",
@@ -3260,5 +3254,16 @@
   },
   "navigation": {
     "dashboard": "Kontrol Paneli"
+  },
+  "provision": {
+    "stages": {
+      "downloading": "İndiriliyor...",
+      "verifying": "Sağlama toplamı doğrulanıyor...",
+      "extracting": "Arşivden çıkarılıyor...",
+      "installing": "Kuruluyor...",
+      "completed": "Tamamlandı",
+      "cancelled": "İşlem iptal edildi",
+      "error": "Hata"
+    }
   }
 }

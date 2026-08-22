@@ -58,6 +58,10 @@ macro_rules! MASTER_COMMAND_LIST {
             #[cfg(not(feature = "librclone"))]
             (provision_rclone, $crate::utils::rclone::provision::provision_rclone, [path: Option<String>]);
             #[cfg(not(feature = "librclone"))]
+            (cancel_provision_rclone, $crate::utils::rclone::provision::cancel_provision_rclone, []);
+            #[cfg(not(feature = "librclone"))]
+            (get_provision_status, $crate::utils::rclone::provision::get_provision_status, [], [sync]);
+            #[cfg(not(feature = "librclone"))]
             (check_rclone_update, $crate::utils::rclone::updater::check_rclone_update, [channel: Option<String>]);
             #[cfg(not(feature = "librclone"))]
             (get_rclone_update_info, $crate::utils::rclone::updater::get_rclone_update_info, []);
@@ -185,6 +189,7 @@ macro_rules! MASTER_COMMAND_LIST {
             // MOUNT PLUGIN
             (check_mount_plugin_installed, $crate::utils::rclone::mount::check_mount_plugin_installed, [], [sync, no_app, infallible]);
             (install_mount_plugin, $crate::utils::rclone::mount::install_mount_plugin, []);
+            (cancel_mount_plugin_install, $crate::utils::rclone::mount::cancel_mount_plugin_install, []);
 
             // CACHE
             (get_cached_remotes, $crate::rclone::state::cache::get_cached_remotes, []);

@@ -232,6 +232,15 @@ function collectUsage(files, knownKeys, knownPrefixes) {
         frontend.add(key);
       }
 
+      // Ternary pipe invocations: (cond ? 'key.one' : 'key.two') | translate
+      const ternaryTranslateRegex =
+        /\?\s*['"`]([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)['"`]\s*:\s*['"`]([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)['"`]\s*\)\s*\|\s*translate/g;
+      let ternaryMatch;
+      while ((ternaryMatch = ternaryTranslateRegex.exec(source)) !== null) {
+        if (ternaryMatch[1]) frontend.add(ternaryMatch[1]);
+        if (ternaryMatch[2]) frontend.add(ternaryMatch[2]);
+      }
+
       // Dynamic prefix patterns → 'alerts.action.' + kind | translate
       for (const prefix of extractMatchesNoFilter(source, htmlDynamicPrefixRegex, 1)) {
         if (prefix.includes('.') && knownPrefixes.has(prefix)) {

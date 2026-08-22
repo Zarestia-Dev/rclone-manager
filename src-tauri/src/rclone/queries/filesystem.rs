@@ -13,7 +13,7 @@ use crate::utils::{
     rclone::endpoints::{core, job as job_endpoints, operations},
     types::{
         jobs::{JobStatus, JobType},
-        rclone::{DiskUsage, DiskUsageSeverity},
+        rclone::DiskUsage,
         remotes::ListOptions,
     },
 };
@@ -404,32 +404,7 @@ pub async fn get_disk_usage(
         "💾 Disk Usage for {fs_path} (resolved to {target_remote}): total={total} used={used} free={free}"
     );
 
-    let usage_percentage = if total > 0 {
-        (used as f64 / total as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let usage_percentage_label = format!("{}%", usage_percentage.round() as i64);
-
-    let usage_severity = if usage_percentage >= 90.0 {
-        DiskUsageSeverity::Critical
-    } else if usage_percentage >= 80.0 {
-        DiskUsageSeverity::High
-    } else if usage_percentage >= 60.0 {
-        DiskUsageSeverity::Warning
-    } else {
-        DiskUsageSeverity::Healthy
-    };
-
-    Ok(DiskUsage {
-        free,
-        used,
-        total,
-        usage_percentage,
-        usage_percentage_label,
-        usage_severity,
-    })
+    Ok(DiskUsage { free, used, total })
 }
 
 pub async fn get_about_remote(
