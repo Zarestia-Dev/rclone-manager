@@ -741,18 +741,22 @@ fn dispatch_job_completion_effects(
     }
 
     if !outcome.success {
-        let err = outcome.error_msg.as_deref().unwrap_or("Job failed");
+        let raw_err = outcome.error_msg.as_deref().unwrap_or("Job failed");
+        let mapped_err = crate::rclone::engine::error_mapper::map_or_wrap_job_error(raw_err);
         if !metadata.no_cache {
             log_operation(
                 LogLevel::Error,
                 Some(metadata.remote_name.clone()),
                 Some(metadata.job_type.to_string()),
-                format!("{} Job {jobid} failed: {err}", metadata.job_type),
+                format!("{} Job {jobid} failed: {raw_err}", metadata.job_type),
                 Some(json!({"jobid": jobid, "status": job_status})),
             );
-            notify(app, metadata.failed_event(backend_name.to_string(), err));
+            notify(
+                app,
+                metadata.failed_event(backend_name.to_string(), &mapped_err),
+            );
         }
-        return Err(RcloneError::JobError(err.to_string()));
+        return Err(RcloneError::JobError(raw_err.to_string()));
     }
 
     if !metadata.no_cache {

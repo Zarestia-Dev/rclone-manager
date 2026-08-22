@@ -17,11 +17,15 @@
   flex-direction: column;
   box-shadow: var(--box-shadow);
   background: var(--window-bg-color);
+  min-width: 0;
 
   .label {
     font-size: clamp(10px, 2vw, 12px);
     color: var(--window-fg-color);
     opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .value {
@@ -38,6 +42,13 @@
       font-size: 16px;
       opacity: 0.6;
       flex-shrink: 0;
+    }
+
+    .value-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
     }
 
     &.active {

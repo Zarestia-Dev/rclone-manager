@@ -172,6 +172,7 @@
     "stop": "Durdur"
   },
   "sidebar": {
+    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat",
     "toggleSearch": "Arama çubuğunu aç/kapat",
     "remotes": "Uzak Bağlantılar",
     "searchPlaceholder": "Uzak bağlantıları ara...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Birden fazla kaynak yol algılandı. Rclone'un her bir kaynağı hedefle doğrulamasını sağlamak için tek yönlü kontrol otomatik olarak etkinleştirildi.",
       "enableAutoStart": "Başlangıçta Otomatik {{type}} Etkinleştir",
-      "showOnTray": "Sistem Tepsisinde Göster",
       "enableScheduled": "Zamanlanmış {{type}} Etkinleştir",
       "enableWatch": "Gerçek Zamanlı Dosya İzlemeyi Etkinleştir",
       "watchDescription": "Dosya değişikliklerini izlemek ve bunları otomatik olarak senkronize etmek için yerel kaynak dizinlerini izleyin.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Beklenmeyen bir hata oluştu. Lütfen detaylar için günlükleri kontrol edin.",
-      "openFailed": "{{name}} açılamadı",
-      "resetSettingsFailed": "Uzak sunucu ayarları sıfırlanamadı",
-      "deleteRemoteFailed": "Uzak sunucu silinemedi"
+      "openFailed": "{{name}} açılamadı"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Düzen varsayılana sıfırlandı",
       "toggleAutomationFailed": "Otomasyon değiştirilemedi",
       "showDetailed": "Ayrıntılı Kartları Göster",
-      "showCompact": "Kompakt Kartları Göster",
-      "settings": "Düzen Ayarları"
+      "showCompact": "Kompakt Kartları Göster"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Bağlama noktası boş olamaz",
       "alreadyInUse": "{{mountPoint}} bağlama noktası {{remote}} tarafından zaten kullanılıyor",
-      "configIncomplete": "'{{profile}}' profili için bağlama yapılandırması eksik"
+      "configIncomplete": "'{{profile}}' profili için bağlama yapılandırması eksik",
+      "directoryAlreadyMounted": "Bağlama dizini zaten kullanımda. Lütfen boş bir klasör seçin veya profil ayarlarından '--allow-non-empty' seçeneğini etkinleştirin.",
+      "directoryNotEmpty": "Seçilen klasör boş değil. Lütfen boş bir klasör seçin veya '--allow-non-empty' seçeneğini açın.",
+      "winfspMissing": "WinFsp kurulu değil. Windows üzerinde sanal sürücü bağlamak için lütfen WinFsp kurun.",
+      "fuseMissing": "Sisteminizde FUSE (fuse3) kurulu değil. Bağlama yapabilmek için lütfen fuse3 paketini kurun.",
+      "macfuseMissing": "Sisteminizde macFUSE / FUSE-T kurulu değil. macOS üzerinde bağlama yapabilmek için lütfen macFUSE kurun.",
+      "driveLetterInUse": "Seçilen sürücü harfi sistem tarafından zaten kullanılıyor.",
+      "permissionDenied": "Bağlama sırasında erişim engellendi / yetki yetersiz."
     },
     "operations": {
       "configIncomplete": "'{{profile}}' profili için yapılandırma eksik"
     },
     "serve": {
       "parseFailed": "Yanıt ayrıştırılamadı: {{error}}",
-      "remoteEmpty": "Uzak bağlantı adı boş olamaz"
+      "remoteEmpty": "Uzak bağlantı adı boş olamaz",
+      "addressAlreadyInUse": "Seçilen port veya adres başka bir uygulama tarafından kullanılıyor. Lütfen farklı bir port seçin.",
+      "privilegedPort": "1024'ten küçük portlar yönetici ayrıcalığı gerektirir. Lütfen 1024 veya üzeri bir port seçin.",
+      "tlsError": "SSL/TLS sertifikası yüklenemedi veya geçersiz.",
+      "startFailed": "Sunucu başlatılamadı: {{error}}",
+      "stopFailed": "Sunucu durdurulamadı: {{error}}"
     },
     "request": {
       "failed": "İstek başarısız: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "Seçilen klasör boş değil",
       "invalidPath": "Geçersiz yol: Yol boş olamaz.",
       "notFound": "Yol mevcut değil: {{path}}",
-      "failedToOpen": "Dosya yöneticisi açılamadı: {{error}}"
+      "failedToOpen": "Dosya yöneticisi açılamadı: {{error}}",
+      "diskFull": "Hedef disk veya sürücü dolu. Yeterli boş disk alanı yok.",
+      "fileLocked": "Dosya kilitli veya başka bir işlem tarafından kullanılıyor.",
+      "readOnly": "Hedef dosya sistemi salt okunur veya yazma korumalı."
     },
     "rclone": {
       "unsupportedPlatform": "Desteklenmeyen platform",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "İş bilgisi bulunamadı",
       "monitoringFailed": "İş izlenirken çok fazla hata oluştu: {{error}}",
-      "executionFailed": "İş yürütme başarısız: {{error}}"
+      "executionFailed": "İş yürütme başarısız: {{error}}",
+      "corruptedTransfer": "Aktarım sırasında dosya bozuldu veya doğrulama toplamı uyuşmadı."
     },
     "cache": {
       "fetchRemotesFailed": "Uzak bağlantılar alınamadı",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Kilit açma başarısız: {{error}}"
     },
     "remote": {
-      "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}"
+      "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}",
+      "authExpired": "Uzak bağlantı kimlik doğrulaması geçersiz veya süresi dolmuş. Lütfen bağlantıyı yeniden yetkilendirin.",
+      "quotaExceeded": "Uzak depolama API hız sınırı veya depolama kotası aşıldı. Lütfen daha sonra tekrar deneyin.",
+      "networkError": "Uzak sunucuya ulaşılamadı. Lütfen ağ bağlantınızı ve uzak bağlantı adresini kontrol edin.",
+      "notFound": "Hedef dizin veya dosya uzak sunucuda bulunamadı."
     },
     "updater": {
       "noPending": "Bekleyen güncelleme yok",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Tüm ayarlar sıfırlanamadı: {{error}}",
       "eventEmitFailed": "Ayarlar olayı gönderilemedi: {{error}}",
       "subSettingsFailed": "Alt ayarlar alınamadı: {{error}}",
-      "notFound": "'{{name}}' için ayarlar bulunamadı",
       "deleteFailed": "Uzak bağlantı ayarları silinemedi: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Veriler Temizlendi"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Akışlarda ara...",
+    "toggleSearch": "Aramayı Aç/Kapat",
+    "loading": "Akışlar yükleniyor...",
+    "noResults": "Eşleşen akış bulunamadı",
+    "toggleSidebar": "Flow Kenar Çubuğunu Aç/Kapat",
+    "empty": {
+      "description": "Hızlı operasyonlar ve iş akışları ile başlamak için yeni bir quick run veya workflow oluşturun."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Hızlı Çalıştırma Kenar Çubuğunu Aç/Kapat",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

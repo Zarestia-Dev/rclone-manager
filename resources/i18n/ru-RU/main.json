@@ -172,6 +172,7 @@
     "stop": "Остановить"
   },
   "sidebar": {
+    "toggleSidebar": "Переключить боковую панель",
     "toggleSearch": "Показать или скрыть строку поиска",
     "remotes": "Подключения",
     "searchPlaceholder": "Поиск подключений...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Обнаружено несколько путей источника. Односторонняя проверка включена автоматически, чтобы rclone проверял каждый источник относительно назначения.",
       "enableAutoStart": "Автоматически запускать {{type}} вместе с приложением",
-      "showOnTray": "Показывать в системном трее",
       "enableScheduled": "Включить запуск {{type}} по расписанию",
       "enableWatch": "Включить мониторинг файлов в реальном времени",
       "watchDescription": "Отслеживать изменения в локальных папках-источниках и автоматически синхронизировать их.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Произошла непредвиденная ошибка. Подробности доступны в журналах.",
-      "openFailed": "Не удалось открыть {{name}}",
-      "resetSettingsFailed": "Не удалось сбросить настройки подключения",
-      "deleteRemoteFailed": "Не удалось удалить подключение"
+      "openFailed": "Не удалось открыть {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Восстановлена компоновка по умолчанию",
       "toggleAutomationFailed": "Не удалось переключить автоматизацию",
       "showDetailed": "Показывать подробные карточки",
-      "showCompact": "Показывать компактные карточки",
-      "settings": "Настройки компоновки"
+      "showCompact": "Показывать компактные карточки"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Точка подключения не может быть пустой",
       "alreadyInUse": "Точка подключения {{mountPoint}} уже используется подключением {{remote}}",
-      "configIncomplete": "Конфигурация подключения как диска для профиля «{{profile}}» заполнена не полностью"
+      "configIncomplete": "Конфигурация подключения как диска для профиля «{{profile}}» заполнена не полностью",
+      "directoryAlreadyMounted": "Каталог монтирования уже используется. Выберите пустую папку или включите '--allow-non-empty' в настройках профиля.",
+      "directoryNotEmpty": "Выбранная папка не пуста. Выберите пустую папку или включите '--allow-non-empty'.",
+      "winfspMissing": "Драйвер WinFsp не установлен. Установите WinFsp для монтирования виртуальных дисков в Windows.",
+      "fuseMissing": "Пакет FUSE (fuse3) не установлен в системе. Установите fuse3 для монтирования.",
+      "macfuseMissing": "macFUSE / FUSE-T не установлен. Установите macFUSE для монтирования в macOS.",
+      "driveLetterInUse": "Выбранная буква диска уже используется системой.",
+      "permissionDenied": "Отказано в доступе при попытке монтирования."
     },
     "operations": {
       "configIncomplete": "Конфигурация профиля «{{profile}}» заполнена не полностью"
     },
     "serve": {
       "parseFailed": "Не удалось разобрать ответ: {{error}}",
-      "remoteEmpty": "Название подключения не может быть пустым"
+      "remoteEmpty": "Название подключения не может быть пустым",
+      "addressAlreadyInUse": "Выбранный порт или адрес уже используется другим приложением. Выберите другой порт.",
+      "privilegedPort": "Порты ниже 1024 требуют прав администратора. Выберите порт 1024 или выше.",
+      "tlsError": "Не удалось загрузить или разобрать SSL/TLS сертификат.",
+      "startFailed": "Не удалось запустить сервер: {{error}}",
+      "stopFailed": "Не удалось остановить сервер: {{error}}"
     },
     "request": {
       "failed": "Ошибка запроса: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "Выбранная папка не пуста",
       "invalidPath": "Некорректный путь: путь не может быть пустым.",
       "notFound": "Путь не существует: {{path}}",
-      "failedToOpen": "Не удалось открыть файловый менеджер: {{error}}"
+      "failedToOpen": "Не удалось открыть файловый менеджер: {{error}}",
+      "diskFull": "Целевой диск переполнен. Недостаточно свободного места на диске.",
+      "fileLocked": "Файл заблокирован или используется другим процессом.",
+      "readOnly": "Целевая файловая система доступна только для чтения или защищена от записи."
     },
     "rclone": {
       "unsupportedPlatform": "Платформа не поддерживается",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "Информация о задании не найдена",
       "monitoringFailed": "Слишком много ошибок при отслеживании задания: {{error}}",
-      "executionFailed": "Ошибка выполнения задания: {{error}}"
+      "executionFailed": "Ошибка выполнения задания: {{error}}",
+      "corruptedTransfer": "Файл поврежден при передаче или не совпала контрольная сумма."
     },
     "cache": {
       "fetchRemotesFailed": "Не удалось получить список подключений",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Не удалось разблокировать: {{error}}"
     },
     "remote": {
-      "configFailed": "Не удалось настроить подключение: {{error}}"
+      "configFailed": "Не удалось настроить подключение: {{error}}",
+      "authExpired": "Срок действия авторизации истек или она недействительна. Повторите авторизацию хранилища.",
+      "quotaExceeded": "Превышен лимит запросов к API или квота дискового пространства хранилища. Попробуйте позже.",
+      "networkError": "Не удалось связаться с удаленным сервером. Проверьте сетевое подключение и адрес.",
+      "notFound": "Целевой каталог или файл не найден на удаленном хранилище."
     },
     "updater": {
       "noPending": "Нет ожидающего обновления",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Не удалось сбросить все настройки: {{error}}",
       "eventEmitFailed": "Не удалось отправить событие настроек: {{error}}",
       "subSettingsFailed": "Не удалось получить вложенные настройки: {{error}}",
-      "notFound": "Настройки «{{name}}» не найдены",
       "deleteFailed": "Не удалось удалить настройки подключения: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Данные очищены"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Поиск по потокам...",
+    "toggleSearch": "Переключить поиск",
+    "loading": "Загрузка потоков...",
+    "noResults": "Нет совпадающих потоков",
+    "toggleSidebar": "Переключить боковую панель Flow",
+    "empty": {
+      "description": "Создайте быстрый запуск или рабочий процесс для быстрых операций и конвейеров."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Переключить боковую панель быстрого запуска",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

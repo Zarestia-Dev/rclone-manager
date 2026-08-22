@@ -172,6 +172,7 @@
     "stop": "停止"
   },
   "sidebar": {
+    "toggleSidebar": "切换侧边栏",
     "toggleSearch": "显示/隐藏搜索栏",
     "remotes": "远程存储",
     "searchPlaceholder": "搜索远程存储...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "检测到多个源路径。已自动启用单向检查，以确保 rclone 对比每个源与目标。",
       "enableAutoStart": "开机自动{{type}}",
-      "showOnTray": "在系统托盘中显示",
       "enableScheduled": "启用{{type}}计划任务",
       "enableWatch": "启用实时文件监控",
       "watchDescription": "监控本地源目录的文件修改并自动同步更改。",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "发生意外错误。请检查日志获取更多详细信息。",
-      "openFailed": "打开 {{name}} 失败",
-      "resetSettingsFailed": "重置远程存储设置失败",
-      "deleteRemoteFailed": "删除远程存储失败"
+      "openFailed": "打开 {{name}} 失败"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "布局已恢复默认",
       "toggleAutomationFailed": "切换自动化状态失败",
       "showDetailed": "显示详细卡片",
-      "showCompact": "显示紧凑卡片",
-      "settings": "布局设置"
+      "showCompact": "显示紧凑卡片"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "挂载点不能为空",
       "alreadyInUse": "挂载点 {{mountPoint}} 已被远程存储 {{remote}} 使用",
-      "configIncomplete": "配置文件 '{{profile}}' 的挂载配置不完整"
+      "configIncomplete": "配置文件 '{{profile}}' 的挂载配置不完整",
+      "directoryAlreadyMounted": "挂载目录已被占用。请选择空文件夹或在配置文件中启用 '--allow-non-empty'。",
+      "directoryNotEmpty": "所选文件夹非空。请选择空文件夹或启用 '--allow-non-empty'。",
+      "winfspMissing": "未安装 WinFsp。在 Windows 上挂载虚拟驱动器需要安装 WinFsp。",
+      "fuseMissing": "系统未安装 FUSE (fuse3)。请安装 fuse3 以启用挂载功能。",
+      "macfuseMissing": "系统未安装 macFUSE / FUSE-T。在 macOS 上挂载需要安装 macFUSE。",
+      "driveLetterInUse": "所选盘符已被系统占用。",
+      "permissionDenied": "尝试挂载时权限不足。"
     },
     "operations": {
       "configIncomplete": "配置文件 '{{profile}}' 配置不完整"
     },
     "serve": {
       "parseFailed": "解析响应失败：{{error}}",
-      "remoteEmpty": "远程存储名称不能为空"
+      "remoteEmpty": "远程存储名称不能为空",
+      "addressAlreadyInUse": "所选端口或地址已被其他程序占用。请更换端口。",
+      "privilegedPort": "1024 以下的端口需要管理员权限。请选择 1024 或更高的端口。",
+      "tlsError": "加载或解析 SSL/TLS 证书失败。",
+      "startFailed": "启动服务失败：{{error}}",
+      "stopFailed": "停止服务失败：{{error}}"
     },
     "request": {
       "failed": "请求失败：{{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "所选文件夹非空",
       "invalidPath": "路径无效：路径不能为空。",
       "notFound": "路径不存在：{{path}}",
-      "failedToOpen": "打开文件管理器失败：{{error}}"
+      "failedToOpen": "打开文件管理器失败：{{error}}",
+      "diskFull": "目标磁盘空间不足。",
+      "fileLocked": "文件当前已被锁定或被其他进程占用。",
+      "readOnly": "目标文件系统为只读或受写保护。"
     },
     "rclone": {
       "unsupportedPlatform": "不支持的平台",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "未找到任务信息",
       "monitoringFailed": "任务监控错误过多：{{error}}",
-      "executionFailed": "任务执行失败：{{error}}"
+      "executionFailed": "任务执行失败：{{error}}",
+      "corruptedTransfer": "传输过程中文件损坏或校验和验证失败。"
     },
     "cache": {
       "fetchRemotesFailed": "获取远程存储失败",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "解锁失败：{{error}}"
     },
     "remote": {
-      "configFailed": "配置远程存储失败：{{error}}"
+      "configFailed": "配置远程存储失败：{{error}}",
+      "authExpired": "远程认证已过期或无效。请在设置中重新授权。",
+      "quotaExceeded": "远程存储 API 速率限制或配额已超限。请稍后重试。",
+      "networkError": "无法连接到远程服务器。请检查网络连接及远程地址。",
+      "notFound": "在远程上未找到目标目录或文件。"
     },
     "updater": {
       "noPending": "暂无待处理更新",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "重置所有设置失败：{{error}}",
       "eventEmitFailed": "发送设置事件失败：{{error}}",
       "subSettingsFailed": "获取子设置失败：{{error}}",
-      "notFound": "未找到 '{{name}}' 的设置",
       "deleteFailed": "删除远程存储设置失败：{{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "数据已清空"
   },
   "flow": {
+    "title": "Flow",
+    "search": "搜索流程...",
+    "toggleSearch": "切换搜索",
+    "loading": "正在加载流程...",
+    "noResults": "未找到匹配的流程",
+    "toggleSidebar": "切换 Flow 侧边栏",
+    "empty": {
+      "description": "创建快捷运行或工作流以开始快速操作和管道。"
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "切换快速运行侧边栏",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

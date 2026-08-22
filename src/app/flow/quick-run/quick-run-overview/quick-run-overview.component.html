@@ -1,7 +1,11 @@
 <div class="overview-container" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <!-- Top Header Banner -->
   <div class="overview-header-wrapper" role="banner">
-    <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
+    <app-overview-header
+      [mode]="'general'"
+      (openBackendModal)="openBackendModal.emit()"
+      (toggleEditLayout)="toggleEditLayout()"
+    >
     </app-overview-header>
   </div>
 
@@ -226,35 +230,5 @@
         }
       </mat-accordion>
     </div>
-  </div>
-
-  <!-- Floating Layout Controls -->
-  <div class="layout-actions">
-    <button
-      matIconButton
-      (click)="toggleEditLayout()"
-      [attr.title]="
-        isEditingLayout()
-          ? ('generalOverview.layout.save' | translate)
-          : ('generalOverview.layout.edit' | translate)
-      "
-    >
-      <mat-icon
-        [class.primary]="isEditingLayout()"
-        [svgIcon]="isEditingLayout() ? 'check-circle' : 'pen'"
-      ></mat-icon>
-    </button>
-
-    @if (isEditingLayout()) {
-      <button
-        matIconButton
-        (click)="resetLayout()"
-        [attr.title]="'generalOverview.layout.reset' | translate"
-        animate.enter="fade-in-out-enter"
-        animate.leave="fade-in-out-leave"
-      >
-        <mat-icon class="warn" svgIcon="rotate-right"></mat-icon>
-      </button>
-    }
   </div>
 </div>

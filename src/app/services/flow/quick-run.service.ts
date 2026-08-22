@@ -371,7 +371,7 @@ export class QuickRunService extends TauriBaseService {
         return result;
       } catch (err) {
         console.error('[QuickRunService] start_quick_run failed:', err);
-        this.notificationService.showError(`Failed to start "${qr.name}".`);
+        this.notificationService.showError(err);
         this.markStopped(id, { status: 'failed' });
         return null;
       }
@@ -384,7 +384,8 @@ export class QuickRunService extends TauriBaseService {
       try {
         await this.invokeCommand('stop_quick_run', { quickRunId: id });
       } catch (err) {
-        console.warn('[QuickRunService] stop_quick_run not available:', err);
+        console.warn('[QuickRunService] stop_quick_run failed:', err);
+        this.notificationService.showError(err);
       }
       this.markStopped(id, { status: 'stopped' });
       void this.jobService.refreshJobs();

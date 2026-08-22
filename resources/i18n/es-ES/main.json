@@ -172,6 +172,7 @@
     "stop": "Detener"
   },
   "sidebar": {
+    "toggleSidebar": "Alternar barra lateral",
     "toggleSearch": "Alternar barra de búsqueda",
     "remotes": "Remotos",
     "searchPlaceholder": "Buscar remotos...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Se detectaron múltiples rutas de origen. La verificación unidireccional se ha habilitado automáticamente para garantizar que rclone verifique cada origen contra el destino.",
       "enableAutoStart": "Habilitar Auto-{{type}} al inicio",
-      "showOnTray": "Mostrar en la bandeja del sistema",
       "enableScheduled": "Habilitar {{type}} programado",
       "enableWatch": "Habilitar monitoreo de archivos en tiempo real",
       "watchDescription": "Monitoree directorios de origen locales para detectar modificaciones de archivos y sincronizar cambios automáticamente.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Ocurrió un error inesperado. Por favor, consulte los registros para más detalles.",
-      "openFailed": "Error al abrir {{name}}",
-      "resetSettingsFailed": "Error al restablecer configuraciones del remoto",
-      "deleteRemoteFailed": "Error al eliminar el remoto"
+      "openFailed": "Error al abrir {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Diseño restablecido a los valores predeterminados",
       "toggleAutomationFailed": "Error al alternar automatización",
       "showDetailed": "Mostrar tarjetas detalladas",
-      "showCompact": "Mostrar tarjetas compactas",
-      "settings": "Ajustes de diseño"
+      "showCompact": "Mostrar tarjetas compactas"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "El punto de montaje no puede estar vacío",
       "alreadyInUse": "El punto de montaje {{mountPoint}} ya está en uso por el remoto {{remote}}",
-      "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'"
+      "configIncomplete": "Configuración de montaje incompleta para el perfil '{{profile}}'",
+      "directoryAlreadyMounted": "El directorio de montaje ya está en uso. Seleccione una carpeta vacía o active '--allow-non-empty' en la configuración del perfil.",
+      "directoryNotEmpty": "La carpeta seleccionada no está vacía. Elija una carpeta vacía o active '--allow-non-empty'.",
+      "winfspMissing": "WinFsp no está instalado. Instale WinFsp para montar unidades virtuales en Windows.",
+      "fuseMissing": "FUSE (fuse3) no está instalado en el sistema. Instale fuse3 para habilitar el montaje.",
+      "macfuseMissing": "macFUSE / FUSE-T no está instalado. Instale macFUSE para habilitar el montaje en macOS.",
+      "driveLetterInUse": "La letra de unidad seleccionada ya está en uso por el sistema.",
+      "permissionDenied": "Permiso denegado al intentar montar."
     },
     "operations": {
       "configIncomplete": "Configuración incompleta para el perfil '{{profile}}'"
     },
     "serve": {
       "parseFailed": "Error al analizar la respuesta: {{error}}",
-      "remoteEmpty": "El nombre del remoto no puede estar vacío"
+      "remoteEmpty": "El nombre del remoto no puede estar vacío",
+      "addressAlreadyInUse": "El puerto o dirección seleccionada ya está en uso por otra aplicación. Elija un puerto diferente.",
+      "privilegedPort": "Los puertos inferiores a 1024 requieren permisos de administrador. Elija un puerto igual o superior a 1024.",
+      "tlsError": "Error al cargar o analizar el certificado SSL/TLS.",
+      "startFailed": "Error al iniciar el servidor: {{error}}",
+      "stopFailed": "Error al detener el servidor: {{error}}"
     },
     "request": {
       "failed": "Solicitud fallida: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "La carpeta seleccionada no está vacía",
       "invalidPath": "Ruta inválida: la ruta no puede estar vacía.",
       "notFound": "La ruta no existe: {{path}}",
-      "failedToOpen": "Error al abrir el administrador de archivos: {{error}}"
+      "failedToOpen": "Error al abrir el administrador de archivos: {{error}}",
+      "diskFull": "El disco o unidad de destino está lleno. No hay suficiente espacio libre.",
+      "fileLocked": "El archivo está bloqueado o en uso por otro proceso.",
+      "readOnly": "El sistema de archivos de destino es de solo lectura o está protegido contra escritura."
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma no soportada",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "JobInfo no encontrado",
       "monitoringFailed": "Demasiados errores al monitorizar el trabajo: {{error}}",
-      "executionFailed": "Ejecución del trabajo fallida: {{error}}"
+      "executionFailed": "Ejecución del trabajo fallida: {{error}}",
+      "corruptedTransfer": "Archivo dañado durante la transferencia o error en la suma de comprobación."
     },
     "cache": {
       "fetchRemotesFailed": "Error al obtener los remotos",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Desbloqueo fallido: {{error}}"
     },
     "remote": {
-      "configFailed": "Error al configurar el remoto: {{error}}"
+      "configFailed": "Error al configurar el remoto: {{error}}",
+      "authExpired": "La autenticación remota ha expirado o no es válida. Vuelva a autenticar el almacenamiento remoto.",
+      "quotaExceeded": "Límite de tasa de API o cuota de almacenamiento excedida. Inténtelo más tarde.",
+      "networkError": "No se puede conectar con el servidor remoto. Verifique su red y dirección remota.",
+      "notFound": "El directorio o archivo de destino no se encontró en el servidor remoto."
     },
     "updater": {
       "noPending": "No hay actualizaciones pendientes",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Error al restablecer todas las configuraciones: {{error}}",
       "eventEmitFailed": "Error al emitir evento de configuraciones: {{error}}",
       "subSettingsFailed": "Error al obtener subconfiguraciones: {{error}}",
-      "notFound": "Configuraciones para '{{name}}' no encontradas",
       "deleteFailed": "Error al eliminar configuraciones del remoto: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Datos Limpiados"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Buscar flujos...",
+    "toggleSearch": "Alternar búsqueda",
+    "loading": "Cargando flujos...",
+    "noResults": "No se encontraron flujos coincidentes",
+    "toggleSidebar": "Alternar barra lateral de Flow",
+    "empty": {
+      "description": "Cree una ejecución rápida o un flujo de trabajo para comenzar con operaciones y canalizaciones rápidas."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Alternar barra lateral de ejecución rápida",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

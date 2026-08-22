@@ -26,6 +26,7 @@ import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
 import { NotificationService } from '../ui/notification.service';
+import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { findUniqueName } from '../remote/utils/unique-name.util';
 import {
@@ -78,6 +79,7 @@ export class RemoteFacadeService {
   private readonly statusService = inject(RcloneStatusService);
   private readonly flagConfigService = inject(FlagConfigService);
   private readonly notificationService = inject(NotificationService);
+  private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
 
   readonly jobs = this.jobService.jobs;
@@ -330,7 +332,7 @@ export class RemoteFacadeService {
         ...cur,
         loading: false,
         error: true,
-        errorMessage: String(error),
+        errorMessage: this.backendTranslation.translateBackendMessage(error),
       }));
       return null;
     }

@@ -172,6 +172,7 @@
     "stop": "Stop"
   },
   "sidebar": {
+    "toggleSidebar": "Toggle Sidebar",
     "toggleSearch": "Toggle search bar",
     "remotes": "Remotes",
     "searchPlaceholder": "Search remotes...",
@@ -1214,7 +1215,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Multiple source paths detected. One-way checking has been automatically enabled to ensure rclone verifies each source against the destination.",
       "enableAutoStart": "Enable Auto-{{type}} on Startup",
-      "showOnTray": "Show in System Tray",
       "enableScheduled": "Enable Scheduled {{type}}",
       "enableWatch": "Enable Real-time File Monitoring",
       "watchDescription": "Watch local source directories for file modifications and sync changes automatically.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "An unexpected error occurred. Please check the logs for more details.",
-      "openFailed": "Failed to open {{name}}",
-      "resetSettingsFailed": "Failed to reset remote settings",
-      "deleteRemoteFailed": "Failed to delete remote"
+      "openFailed": "Failed to open {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Layout reset to default",
       "toggleAutomationFailed": "Failed to toggle automation",
       "showDetailed": "Show Detailed Cards",
-      "showCompact": "Show Compact Cards",
-      "settings": "Layout Settings"
+      "showCompact": "Show Compact Cards"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Mount point cannot be empty",
       "alreadyInUse": "Mount point {{mountPoint}} is already in use by remote {{remote}}",
-      "configIncomplete": "Mount configuration incomplete for profile '{{profile}}'"
+      "configIncomplete": "Mount configuration incomplete for profile '{{profile}}'",
+      "directoryAlreadyMounted": "Mount directory is already in use. Please select an empty folder or enable '--allow-non-empty' in profile settings.",
+      "directoryNotEmpty": "Selected folder is not empty. Please choose an empty folder or enable '--allow-non-empty'.",
+      "winfspMissing": "WinFsp is not installed. Please install WinFsp to mount virtual drives on Windows.",
+      "fuseMissing": "FUSE (fuse3) is not installed on your system. Please install fuse3 to enable mounting.",
+      "macfuseMissing": "macFUSE / FUSE-T is not installed on your system. Please install macFUSE to enable mounting on macOS.",
+      "driveLetterInUse": "Selected drive letter is already in use by the system.",
+      "permissionDenied": "Permission denied while attempting to mount."
     },
     "operations": {
       "configIncomplete": "Configuration incomplete for profile '{{profile}}'"
     },
     "serve": {
       "parseFailed": "Failed to parse response: {{error}}",
-      "remoteEmpty": "Remote name cannot be empty"
+      "remoteEmpty": "Remote name cannot be empty",
+      "addressAlreadyInUse": "The selected port or address is already in use by another application. Please choose a different port.",
+      "privilegedPort": "Ports below 1024 require administrator privileges. Please choose a port numbered 1024 or higher.",
+      "tlsError": "Failed to load or parse SSL/TLS certificate.",
+      "startFailed": "Failed to start serve: {{error}}",
+      "stopFailed": "Failed to stop serve: {{error}}"
     },
     "request": {
       "failed": "Request failed: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "Selected folder is not empty",
       "invalidPath": "Invalid path: Path cannot be empty.",
       "notFound": "Path does not exist: {{path}}",
-      "failedToOpen": "Failed to open file manager: {{error}}"
+      "failedToOpen": "Failed to open file manager: {{error}}",
+      "diskFull": "Target disk or drive is full. Not enough free disk space available.",
+      "fileLocked": "The file is currently locked or in use by another process.",
+      "readOnly": "The target file system is read-only or write-protected."
     },
     "rclone": {
       "unsupportedPlatform": "Unsupported platform",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "JobInfo not found",
       "monitoringFailed": "Too many errors monitoring job: {{error}}",
-      "executionFailed": "Job execution failed: {{error}}"
+      "executionFailed": "Job execution failed: {{error}}",
+      "corruptedTransfer": "File corrupted during transfer or checksum verification failed."
     },
     "cache": {
       "fetchRemotesFailed": "Failed to fetch remotes",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Unlock failed: {{error}}"
     },
     "remote": {
-      "configFailed": "Failed to configure remote: {{error}}"
+      "configFailed": "Failed to configure remote: {{error}}",
+      "authExpired": "Remote authentication expired or invalid. Please re-authenticate the remote.",
+      "quotaExceeded": "Remote storage API rate limit or storage quota exceeded. Please try again later.",
+      "networkError": "Unable to reach the remote server. Please check your network connection and remote address.",
+      "notFound": "Target directory or file was not found on the remote."
     },
     "updater": {
       "noPending": "There is no pending update",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Failed to reset all settings: {{error}}",
       "eventEmitFailed": "Failed to emit settings event: {{error}}",
       "subSettingsFailed": "Failed to get sub-settings: {{error}}",
-      "notFound": "Settings for '{{name}}' not found",
       "deleteFailed": "Failed to delete remote settings: {{error}}"
     }
   },
@@ -3130,13 +3146,18 @@
     "cleared": "Data Cleared"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Search flows...",
+    "toggleSearch": "Toggle Search",
+    "loading": "Loading flows...",
+    "noResults": "No matching flow items",
+    "toggleSidebar": "Toggle Flow Sidebar",
+    "empty": {
+      "description": "Create a quick run or workflow to get started with fast operations and pipelines."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
       "actions": {
         "start": "Start",
         "stop": "Stop"
@@ -3148,14 +3169,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "overview": {
         "stats": {
@@ -3183,8 +3197,7 @@
         "tabFilter": "Filter",
         "tabBackend": "Backend",
         "tabRuntimeRemote": "Runtime Remote"
-      },
-      "toggleSidebar": "Toggle Quick Run Sidebar"
+      }
     },
     "tabs": {
       "quickRun": "Quick Run",

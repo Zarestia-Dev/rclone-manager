@@ -172,6 +172,7 @@
     "stop": "Arrêter"
   },
   "sidebar": {
+    "toggleSidebar": "Basculer la barre latérale",
     "toggleSearch": "Activer/désactiver La barre de recherche",
     "remotes": "Dépôts distants",
     "searchPlaceholder": "Chercher des dépôts distants...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Plusieurs chemins source détectés. La vérification unidirectionnelle a été automatiquement activée pour s'assurer que rclone vérifie chaque source par rapport à la destination.",
       "enableAutoStart": "Activer Auto-{{type}} au démarrage",
-      "showOnTray": "Afficher dans la barre d'état système",
       "enableScheduled": "Activer {{type}} planifié",
       "enableWatch": "Activer la surveillance des fichiers en temps réel",
       "watchDescription": "Surveiller les répertoires sources locaux pour les modifications de fichiers et synchroniser automatiquement les modifications.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Une erreur inattendue s'est produite. Veuillez vérifier les logs pour plus de détails.",
-      "openFailed": "Impossible d'ouvrir {{name}}",
-      "resetSettingsFailed": "Échec de la réinitialisation des paramètres du dépôt distant",
-      "deleteRemoteFailed": "Impossible de supprimer le remote"
+      "openFailed": "Impossible d'ouvrir {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Remise en page par défaut",
       "toggleAutomationFailed": "Échec de l'activation de l'automatisation",
       "showDetailed": "Afficher les cartes détaillées",
-      "showCompact": "Afficher les cartes Compact",
-      "settings": "Paramètres de mise en page"
+      "showCompact": "Afficher les cartes Compact"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Le point de montage ne peut être vide",
       "alreadyInUse": "Le point de montage {{mountPoint}} est déjà utilisé par le dépôt distant {{remote}}",
-      "configIncomplete": "Configuration du montage incomplète pour le profil '{{profile}}'"
+      "configIncomplete": "Configuration du montage incomplète pour le profil '{{profile}}'",
+      "directoryAlreadyMounted": "Le répertoire de montage est déjà utilisé. Veuillez sélectionner un dossier vide ou activer '--allow-non-empty' dans le profil.",
+      "directoryNotEmpty": "Le dossier sélectionné n'est pas vide. Veuillez choisir un dossier vide ou activer '--allow-non-empty'.",
+      "winfspMissing": "WinFsp n'est pas installé. Veuillez installer WinFsp pour monter des disques virtuels sous Windows.",
+      "fuseMissing": "FUSE (fuse3) n'est pas installé. Veuillez installer fuse3 pour activer le montage.",
+      "macfuseMissing": "macFUSE / FUSE-T n'est pas installé. Veuillez installer macFUSE pour activer le montage sur macOS.",
+      "driveLetterInUse": "La lettre de lecteur sélectionnée est déjà utilisée par le système.",
+      "permissionDenied": "Permission refusée lors de la tentative de montage."
     },
     "operations": {
       "configIncomplete": "Configuration incomplète pour le profil '{{profile}}'"
     },
     "serve": {
       "parseFailed": "Échec de l'analyse de la réponse : {{error}}",
-      "remoteEmpty": "Nom du dépôt distant ne peut pas être vide"
+      "remoteEmpty": "Nom du dépôt distant ne peut pas être vide",
+      "addressAlreadyInUse": "Le port ou l'adresse sélectionné est déjà utilisé par une autre application. Veuillez choisir un autre port.",
+      "privilegedPort": "Les ports inférieurs à 1024 nécessitent des privilèges d'administrateur. Veuillez choisir un port 1024 ou supérieur.",
+      "tlsError": "Échec du chargement ou de l'analyse du certificat SSL/TLS.",
+      "startFailed": "Échec du démarrage du serveur: {{error}}",
+      "stopFailed": "Échec de l'arrêt du serveur: {{error}}"
     },
     "request": {
       "failed": "Échec de la requête : {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "Le dossier sélectionné n'est pas vide",
       "invalidPath": "Chemin invalide : le chemin ne peut pas être vide.",
       "notFound": "Le chemin n'existe pas : {{path}}",
-      "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}"
+      "failedToOpen": "Échec de l'ouverture du gestionnaire de fichiers : {{error}}",
+      "diskFull": "Le disque ou lecteur cible est plein. Espace disque insuffisant.",
+      "fileLocked": "Le fichier est actuellement verrouillé ou utilisé par un autre processus.",
+      "readOnly": "Le système de fichiers cible est en lecture seule ou protégé en écriture."
     },
     "rclone": {
       "unsupportedPlatform": "Plateforme non supportée",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "JobInfo non trouvé",
       "monitoringFailed": "Trop d'erreurs de surveillance du job : {{error}}",
-      "executionFailed": "Échec de l'exécution du job : {{error}}"
+      "executionFailed": "Échec de l'exécution du job : {{error}}",
+      "corruptedTransfer": "Fichier corrompu pendant le transfert ou somme de contrôle invalide."
     },
     "cache": {
       "fetchRemotesFailed": "Échec de récupération des dépôts distants",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Échec du déblocage : {{error}}"
     },
     "remote": {
-      "configFailed": "Échec de la configuration du dépôt distant : {{error}}"
+      "configFailed": "Échec de la configuration du dépôt distant : {{error}}",
+      "authExpired": "L'authentification du distant a expiré ou est invalide. Veuillez ré-authentifier le distant.",
+      "quotaExceeded": "Limite de débit d'API ou quota de stockage distant dépassé. Veuillez réessayer ultérieurement.",
+      "networkError": "Impossible de joindre le serveur distant. Veuillez vérifier votre connexion et l'adresse distante.",
+      "notFound": "Le répertoire ou fichier cible est introuvable sur le distant."
     },
     "updater": {
       "noPending": "Aucune mise à jour en attente",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Échec de la réinitialisation de tous les paramètres : {{error}}",
       "eventEmitFailed": "Échec de l'émission des paramètres d'événement : {{error}}",
       "subSettingsFailed": "Échec de l'obtention des sous-paramètres : {{error}}",
-      "notFound": "Paramètres pour '{{name}}' introuvables",
       "deleteFailed": "Échec de la suppression des paramètres dépôt distants  : {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Données effacées"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Rechercher des flux...",
+    "toggleSearch": "Basculer la recherche",
+    "loading": "Chargement des flux...",
+    "noResults": "Aucun flux correspondant",
+    "toggleSidebar": "Basculer la barre latérale Flow",
+    "empty": {
+      "description": "Créez une exécution rapide ou un flux de travail pour démarrer avec des opérations rapides."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Basculer la barre latérale d'exécution rapide",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

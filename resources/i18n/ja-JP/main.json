@@ -172,6 +172,7 @@
     "stop": "停止"
   },
   "sidebar": {
+    "toggleSidebar": "サイドバーの切り替え",
     "toggleSearch": "検索バーの切り替え",
     "remotes": "リモート一覧",
     "searchPlaceholder": "リモートを検索...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "複数の転送元パスが検出されました。rcloneが各転送元を転送先に対して確実に検証できるように、片方向の検証（ワンウェイチェック）が自動的に有効になりました。",
       "enableAutoStart": "起動時に自動{{type}}を有効化",
-      "showOnTray": "システムトレイに表示",
       "enableScheduled": "スケジュールされた {{type}} を有効化",
       "enableWatch": "リアルタイムファイル監視を有効化",
       "watchDescription": "ローカルの転送元ディレクトリでファイルの変更を監視し、変更を自動的に同期します。",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "予期しないエラーが発生しました。詳細についてはログを確認してください。",
-      "openFailed": "{{name}} を開けませんでした",
-      "resetSettingsFailed": "リモート設定のリセットに失敗しました",
-      "deleteRemoteFailed": "リモートの削除に失敗しました"
+      "openFailed": "{{name}} を開けませんでした"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "レイアウトをデフォルトにリセットしました",
       "toggleAutomationFailed": "自動化の切り替えに失敗しました",
       "showDetailed": "詳細カードを表示",
-      "showCompact": "コンパクトカードを表示",
-      "settings": "レイアウト設定"
+      "showCompact": "コンパクトカードを表示"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "マウントポイントを空欄にすることはできません",
       "alreadyInUse": "マウントポイント {{mountPoint}} はリモート {{remote}} で既に使用されています",
-      "configIncomplete": "プロファイル 「{{profile}}」 のマウント設定が不完全です"
+      "configIncomplete": "プロファイル 「{{profile}}」 のマウント設定が不完全です",
+      "directoryAlreadyMounted": "マウント先ディレクトリは既に使用されています。空のフォルダを選択するか、プロファイル設定で '--allow-non-empty' を有効にしてください。",
+      "directoryNotEmpty": "選択したフォルダは空ではありません。空のフォルダを選択するか '--allow-non-empty' を有効にしてください。",
+      "winfspMissing": "WinFsp がインストールされていません。Windows で仮想ドライブをマウントするには WinFsp をインストールしてください。",
+      "fuseMissing": "システムに FUSE (fuse3) がインストールされていません。マウントを有効にするには fuse3 をインストールしてください。",
+      "macfuseMissing": "macFUSE / FUSE-T がインストールされていません。macOS でマウントするには macFUSE をインストールしてください。",
+      "driveLetterInUse": "選択したドライブ文字は既にシステムで使用されています。",
+      "permissionDenied": "マウント処理の権限が拒否されました。"
     },
     "operations": {
       "configIncomplete": "プロファイル 「{{profile}}」 の設定が不完全です"
     },
     "serve": {
       "parseFailed": "レスポンスの解析に失敗しました: {{error}}",
-      "remoteEmpty": "リモート名を空欄にすることはできません"
+      "remoteEmpty": "リモート名を空欄にすることはできません",
+      "addressAlreadyInUse": "選択したポートまたはアドレスは他のアプリケーションによって使用されています。別のポートを選択してください。",
+      "privilegedPort": "1024 未満のポートには管理者権限が必要です。1024 以上のポートを選択してください。",
+      "tlsError": "SSL/TLS 証明書の読み込みまたは解析に失敗しました。",
+      "startFailed": "サーバーの起動に失敗しました: {{error}}",
+      "stopFailed": "サーバーの停止に失敗しました: {{error}}"
     },
     "request": {
       "failed": "リクエストに失敗しました: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "選択されたフォルダは空ではありません",
       "invalidPath": "無効なパス: パスを空欄にすることはできません。",
       "notFound": "パスが存在しません: {{path}}",
-      "failedToOpen": "ファイルマネージャーを開けませんでした: {{error}}"
+      "failedToOpen": "ファイルマネージャーを開けませんでした: {{error}}",
+      "diskFull": "ターゲットディスクの空き容量が不足しています。",
+      "fileLocked": "ファイルがロックされているか、別のプロセスで使用されています。",
+      "readOnly": "ターゲットファイルシステムは読み取り専用または書き込み禁止です。"
     },
     "rclone": {
       "unsupportedPlatform": "サポートされていないプラットフォームです",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "JobInfoが見つかりません",
       "monitoringFailed": "ジョブの監視エラーが多すぎます: {{error}}",
-      "executionFailed": "ジョブの実行に失敗しました: {{error}}"
+      "executionFailed": "ジョブの実行に失敗しました: {{error}}",
+      "corruptedTransfer": "転送中にファイルが破損したか、チェックサム検証に失敗しました。"
     },
     "cache": {
       "fetchRemotesFailed": "リモート一覧の取得に失敗しました",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "ロック解除に失敗しました: {{error}}"
     },
     "remote": {
-      "configFailed": "リモートの設定に失敗しました: {{error}}"
+      "configFailed": "リモートの設定に失敗しました: {{error}}",
+      "authExpired": "リモート認証の有効期限が切れたか無効です。設定で再認証してください。",
+      "quotaExceeded": "リモートストレージの API レート制限またはストレージ容量上限を超過しました。しばらく待ってから再試行してください。",
+      "networkError": "リモートサーバーに接続できません。ネットワーク接続とリモートアドレスを確認してください。",
+      "notFound": "ターゲットディレクトリまたはファイルがリモートで見つかりませんでした。"
     },
     "updater": {
       "noPending": "保留中のアップデートはありません",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "全ての設定のリセットに失敗しました: {{error}}",
       "eventEmitFailed": "設定イベントの発行に失敗しました: {{error}}",
       "subSettingsFailed": "サブ設定の取得に失敗しました: {{error}}",
-      "notFound": "「{{name}}」 の設定が見つかりません",
       "deleteFailed": "リモート設定の削除に失敗しました: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "データを消去しました"
   },
   "flow": {
+    "title": "Flow",
+    "search": "フローを検索...",
+    "toggleSearch": "検索の切り替え",
+    "loading": "フローを読み込み中...",
+    "noResults": "一致するフローが見つかりません",
+    "toggleSidebar": "Flowサイドバーの切り替え",
+    "empty": {
+      "description": "クイック実行またはワークフローを作成して、高速な操作とパイプラインを開始します。"
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "クイック実行サイドバーの切り替え",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

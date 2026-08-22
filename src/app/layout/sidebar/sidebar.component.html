@@ -142,6 +142,11 @@
           <mat-card-content class="card-content">
             <div class="card-header">
               <div class="name-wrapper">
+                <mat-icon
+                  svgIcon="quick-run"
+                  class="item-kind-icon"
+                  [attr.title]="'flow.tabs.quickRun' | translate"
+                ></mat-icon>
                 <h4 [attr.title]="qr.name">{{ qr.name }}</h4>
               </div>
               <div class="status-indicators">
@@ -171,12 +176,6 @@
                     class="status-dot-mini running"
                     [attr.title]="'flow.quickRun.status.running' | translate"
                   ></span>
-                } @else {
-                  <span
-                    class="status-dot-mini"
-                    [class]="getQuickRunStatusClass(qr)"
-                    [attr.title]="'flow.quickRun.status.' + getQuickRunStatusClass(qr) | translate"
-                  ></span>
                 }
               </div>
             </div>
@@ -193,7 +192,7 @@
     } @else {
       <div class="no-remotes">
         <mat-icon svgIcon="search"></mat-icon>
-        <span>{{ 'flow.quickRun.noResults' | translate }}</span>
+        <span>{{ 'flow.noResults' | translate }}</span>
       </div>
     }
   }

@@ -40,7 +40,9 @@ impl std::fmt::Display for RcloneError {
             RcloneError::RequestFailed(e) => write!(
                 f,
                 "{}",
-                crate::localized_error!("backendErrors.request.failed", "error" => e)
+                crate::rclone::engine::error_mapper::map_rclone_error(e).unwrap_or_else(|| {
+                    crate::localized_error!("backendErrors.request.failed", "error" => e)
+                })
             ),
             RcloneError::ParseError(e) => write!(
                 f,
@@ -50,7 +52,7 @@ impl std::fmt::Display for RcloneError {
             RcloneError::JobError(e) => write!(
                 f,
                 "{}",
-                crate::localized_error!("backendErrors.job.executionFailed", "error" => e)
+                crate::rclone::engine::error_mapper::map_or_wrap_job_error(e)
             ),
         }
     }

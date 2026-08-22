@@ -185,11 +185,6 @@ export class OperationConfigComponent {
   }
 
   readonly showAutoStart = computed(() => this.matchesSearch(['auto', 'start', 'enable']));
-  readonly showTrayToggle = computed(
-    () =>
-      !!this.opFormGroup().get('showOnTray') &&
-      this.matchesSearch(['tray', 'show', 'system', 'menu', 'enable'])
-  );
   readonly showCronSection = computed(() =>
     this.matchesSearch([
       'cron',

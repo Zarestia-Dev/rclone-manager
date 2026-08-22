@@ -13,6 +13,7 @@ import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.mobile-hidden]': 'isMobileHidden()',
+    '[class.is-editing]': 'isEditingLayout()',
   },
 })
 export class TabsButtonsComponent<T extends string = string> {
@@ -22,6 +23,9 @@ export class TabsButtonsComponent<T extends string = string> {
   readonly activeTab = input<T | string>();
   readonly activeTabChange = output<T>();
   readonly mobileHidden = input<boolean>();
+
+  readonly isEditingLayout = this.uiStateService.isEditingLayout;
+  readonly editContext = this.uiStateService.activeEditContext;
 
   private readonly defaultTabs: TabItem<AppTab>[] = [
     { id: 'general', icon: 'home', label: 'tabs.general' },

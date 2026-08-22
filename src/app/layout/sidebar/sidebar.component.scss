@@ -124,6 +124,14 @@
           color: var(--dim-color);
           opacity: 0.8;
         }
+
+        .item-kind-icon {
+          width: var(--icon-size-sm);
+          height: var(--icon-size-sm);
+          font-size: var(--icon-size-sm);
+          color: var(--primary-color);
+          opacity: 0.9;
+        }
       }
 
       .status-indicators {

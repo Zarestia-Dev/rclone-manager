@@ -25,17 +25,6 @@
         </mat-expansion-panel-header>
       </mat-expansion-panel>
     }
-    @if (showTrayToggle()) {
-      <mat-expansion-panel [expanded]="false" disabled class="cron-panel">
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-slide-toggle formControlName="showOnTray">
-              {{ 'wizards.appOperation.showOnTray' | translate }}
-            </mat-slide-toggle>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-      </mat-expansion-panel>
-    }
     @if (!isMount() && !isServe() && showCronSection()) {
       <mat-expansion-panel
         [expanded]="cronPanelExpanded()"

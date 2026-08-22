@@ -21,4 +21,17 @@
       <span class="backend-label">{{ activeBackend() }}</span>
     </div>
   </button>
+
+  @if (showEditButton()) {
+    <div class="contextual-action-wrapper header-edit-wrapper" [class.visible]="!isEditingLayout()">
+      <button
+        matIconButton
+        class="header-edit-btn"
+        (click)="onToggleEdit()"
+        [attr.title]="'generalOverview.layout.edit' | translate"
+      >
+        <mat-icon svgIcon="pen"></mat-icon>
+      </button>
+    </div>
+  }
 </header>

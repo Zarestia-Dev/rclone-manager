@@ -209,24 +209,6 @@
   transition: transform var(--transition-cubic);
 }
 
-.layout-actions {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  gap: 12px;
-  flex-direction: column;
-}
-
-@keyframes spin-pulse {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 768px) {
   :host {
     padding: var(--panel-padding-mobile);

@@ -35,6 +35,7 @@ import { LocalStorageService } from 'src/app/services/ui/state/local-storage.ser
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { IconService } from 'src/app/services/ui/icon.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 import { OverviewHeaderComponent } from 'src/app/shared/overviews-shared/overview-header/overview-header.component';
 import { BandwidthOverviewPanelComponent } from 'src/app/shared/overviews-shared/bandwidth-overview-panel/bandwidth-overview-panel.component';
@@ -80,6 +81,7 @@ export class QuickRunOverviewComponent {
   private readonly automationService = inject(AutomationService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
   private readonly pathService = inject(PathService);
+  private readonly uiStateService = inject(UiStateService);
   readonly iconService = inject(IconService);
 
   readonly remoteFacade = inject(RemoteFacadeService);
@@ -89,7 +91,7 @@ export class QuickRunOverviewComponent {
 
   readonly quickRuns = this.quickRunService.quickRuns;
   readonly runningIds = this.quickRunService.runningIds;
-  readonly isEditingLayout = signal(false);
+  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview('quick_run'));
 
   readonly selectedRemoteFilter = signal<string | null>(null);
 
@@ -195,7 +197,11 @@ export class QuickRunOverviewComponent {
 
   // --- Layout management ---
   toggleEditLayout(): void {
-    this.isEditingLayout.update(v => !v);
+    this.uiStateService.toggleLayoutEdit({
+      overviewId: 'quick_run',
+      hasViewToggle: false,
+      onReset: () => this.resetLayout(),
+    });
   }
 
   resetLayout(): void {

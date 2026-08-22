@@ -388,7 +388,7 @@ pub async fn unmount_remote(
                     backend: backend_name_for_err.clone(),
                     remote: remote_name.clone(),
                     profile: Some(profile.clone()),
-                    error: e.to_string(),
+                    error: error_msg.clone(),
                 }),
             );
             error_msg

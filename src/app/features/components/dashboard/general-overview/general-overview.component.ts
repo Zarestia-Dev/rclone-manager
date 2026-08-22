@@ -18,7 +18,6 @@ import {
   Remote,
   Automation,
   ServeListItem,
-  CardDisplayMode,
   StartJobEvent,
   StopJobEvent,
   PanelConfig,
@@ -42,6 +41,7 @@ import { RemoteFacadeService } from 'src/app/services/facade/remote-facade.servi
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
 import { LocalStorageService } from 'src/app/services/ui/state/local-storage.service';
 import { NavigationDispatcherService } from 'src/app/services/ui/navigation-dispatcher.service';
+import { UiStateService } from 'src/app/services/ui/state/ui-state.service';
 
 @Component({
   selector: 'app-general-overview',
@@ -72,6 +72,7 @@ export class GeneralOverviewComponent {
   private readonly translate = inject(TranslateService);
   private readonly localStorage = inject(LocalStorageService);
   private readonly navigationDispatcher = inject(NavigationDispatcherService);
+  private readonly uiStateService = inject(UiStateService);
 
   readonly backendService = inject(BackendService);
   readonly remoteFacade = inject(RemoteFacadeService);
@@ -85,8 +86,8 @@ export class GeneralOverviewComponent {
   readonly openBackendModal = output<void>();
 
   // --- State ---
-  readonly isEditingLayout = signal(false);
-  readonly cardDisplayMode = signal<CardDisplayMode>('compact');
+  readonly isEditingLayout = computed(() => this.uiStateService.isEditingOverview('general'));
+  readonly cardDisplayMode = this.uiStateService.cardDisplayMode;
   readonly panelOpenStates = signal<Record<string, boolean>>(
     this.localStorage.get<Record<string, boolean>>('dashboard.panelOpenStates', {
       remotes: true,
@@ -117,12 +118,11 @@ export class GeneralOverviewComponent {
 
   // --- Layout management ---
   toggleEditLayout(): void {
-    this.isEditingLayout.update(v => !v);
-  }
-
-  toggleCardDisplayMode(): void {
-    this.cardDisplayMode.update(m => (m === 'compact' ? 'detailed' : 'compact'));
-    this.persistLayout();
+    this.uiStateService.toggleLayoutEdit({
+      overviewId: 'general',
+      hasViewToggle: true,
+      onReset: () => this.resetLayout(),
+    });
   }
 
   resetLayout(): void {
@@ -132,7 +132,6 @@ export class GeneralOverviewComponent {
     });
     void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', 'compact');
     this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
-    this.cardDisplayMode.set('compact');
     void this.remoteFacade.saveCurrentLayout(this.backendService.activeBackend(), []);
     this.showSnackbar(this.translate.instant('generalOverview.layout.resetSuccess'));
   }
@@ -170,11 +169,6 @@ export class GeneralOverviewComponent {
       .filter(p => !p.visible)
       .map(p => p.id);
     void this.appSettingsService.saveSetting('runtime', 'dashboard_layout', { order, hidden });
-    void this.appSettingsService.saveSetting(
-      'runtime',
-      'dashboard_card_variant',
-      this.cardDisplayMode()
-    );
   }
 
   // --- Actions ---
@@ -219,12 +213,9 @@ export class GeneralOverviewComponent {
   // --- Private helpers ---
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const [savedLayout, savedVariant] = await Promise.all([
-        this.appSettingsService.getSettingValue<{ order: string[]; hidden: string[] } | string[]>(
-          'runtime.dashboard_layout'
-        ),
-        this.appSettingsService.getSettingValue<CardDisplayMode>('runtime.dashboard_card_variant'),
-      ]);
+      const savedLayout = await this.appSettingsService.getSettingValue<
+        { order: string[]; hidden: string[] } | string[]
+      >('runtime.dashboard_layout');
 
       if (savedLayout) {
         const order: string[] = Array.isArray(savedLayout)
@@ -249,7 +240,6 @@ export class GeneralOverviewComponent {
           this.dashboardPanels.set([...ordered, ...appended]);
         }
       }
-      if (savedVariant) this.cardDisplayMode.set(savedVariant);
     } catch {
       console.debug('Failed to load layout settings, using defaults');
     }

@@ -1,9 +1,10 @@
 import { inject, Injectable, signal, computed, effect, type Signal } from '@angular/core';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, Remote, APP_TABS, MainView } from '@app/types';
+import { AppTab, Remote, APP_TABS, MainView, CardDisplayMode } from '@app/types';
 import { isHeadlessMode } from 'src/app/services/infrastructure/platform/api-client.service';
 import { WindowService } from 'src/app/services/ui/window.service';
 import { LocalStorageService } from './local-storage.service';
+import { AppSettingsService } from 'src/app/services/settings/app-settings.service';
 
 /** Shape each sidebar-owning component passes to registerMobileSidebar. */
 export interface MobileSidebarRegistration {
@@ -15,6 +16,16 @@ export interface MobileSidebarRegistration {
   isOpen: Signal<boolean>;
 }
 
+/** Configuration and callbacks for active layout editing mode */
+export interface LayoutEditContext {
+  /** Identifier of the active overview (e.g. 'general', 'mount', 'quick_run') */
+  overviewId: string;
+  /** Optional callback to reset layout to default */
+  onReset?: () => void;
+  /** Whether this overview supports toggling compact/detailed card mode */
+  hasViewToggle?: boolean;
+}
+
 /**
  * Service for managing UI state with focus on viewport settings
  */
@@ -24,6 +35,7 @@ export interface MobileSidebarRegistration {
 export class UiStateService {
   private windowService = inject(WindowService);
   private localStorage = inject(LocalStorageService);
+  private appSettingsService = inject(AppSettingsService);
 
   public isMaximized = this.windowService.isMaximized;
   public readonly platform: string;
@@ -36,6 +48,18 @@ export class UiStateService {
     this.localStorage.get<boolean>('ui.showJsonMode', false)
   );
   public readonly showJsonMode = this._showJsonMode.asReadonly();
+
+  // Layout editing state
+  private readonly _activeEditContext = signal<LayoutEditContext | null>(null);
+  public readonly activeEditContext = this._activeEditContext.asReadonly();
+  public readonly isEditingLayout = computed(() => this._activeEditContext() !== null);
+
+  // Card display mode centrally synchronized with settings
+  public readonly cardDisplayMode = computed<CardDisplayMode>(() => {
+    const val = this.appSettingsService.options()?.['runtime.dashboard_card_variant']
+      ?.value as CardDisplayMode;
+    return val || 'compact';
+  });
 
   // Selected remote state
   private readonly _selectedRemote = signal<Remote | null>(null);
@@ -146,6 +170,14 @@ export class UiStateService {
     effect(() => {
       this.applyViewportSettings(this.windowService.isMaximized());
     });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key === 'Escape' && this.isEditingLayout()) {
+          this.endLayoutEdit();
+        }
+      });
+    }
   }
 
   private initializePlatform(): string {
@@ -160,18 +192,51 @@ export class UiStateService {
     }
   }
 
+  // === Layout Editing Management ===
+  isEditingOverview(overviewId: string): boolean {
+    return this._activeEditContext()?.overviewId === overviewId;
+  }
+
+  toggleLayoutEdit(context: LayoutEditContext): void {
+    if (this._activeEditContext()?.overviewId === context.overviewId) {
+      this.endLayoutEdit();
+    } else {
+      this._activeEditContext.set(context);
+    }
+  }
+
+  startLayoutEdit(context: LayoutEditContext): void {
+    this._activeEditContext.set(context);
+  }
+
+  endLayoutEdit(): void {
+    this._activeEditContext.set(null);
+  }
+
+  resetLayout(): void {
+    this._activeEditContext()?.onReset?.();
+  }
+
+  toggleCardDisplayMode(): void {
+    const next: CardDisplayMode = this.cardDisplayMode() === 'compact' ? 'detailed' : 'compact';
+    void this.appSettingsService.saveSetting('runtime', 'dashboard_card_variant', next);
+  }
+
   // === Main View Management ===
   setDefaultView(view: MainView): void {
+    this.endLayoutEdit();
     this._defaultView.set(view);
     this._selectedMainView.set(view);
   }
 
   setMainView(view: MainView): void {
+    this.endLayoutEdit();
     this._selectedMainView.set(view);
   }
 
   // === Tab Management ===
   setTab(tab: AppTab): void {
+    this.endLayoutEdit();
     this._currentTab.set(tab);
     this.localStorage.set('ui.currentTab', tab);
   }

@@ -157,12 +157,13 @@ pub async fn start_serve(
         .rpc(serve::START, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to start serve: {e}");
+            let mapped_error =
+                crate::rclone::engine::error_mapper::map_or_wrap_serve_error(&e.to_string());
             log_operation(
                 LogLevel::Error,
                 Some(params.remote_name.clone()),
                 Some("Start serve".to_string()),
-                error.clone(),
+                mapped_error.clone(),
                 None,
             );
             notify(
@@ -172,10 +173,10 @@ pub async fn start_serve(
                     remote: params.remote_name.clone(),
                     profile: params.profile.clone(),
                     protocol: serve_type.clone(),
-                    error: e.to_string(),
+                    error: mapped_error.clone(),
                 }),
             );
-            error
+            mapped_error
         })?;
 
     // Extract serve details
@@ -278,7 +279,9 @@ pub async fn stop_serve(
         .rpc(serve::STOP, Some(&payload))
         .await
         .map_err(|e| {
-            let error = format!("Failed to stop serve: {e}");
+            let err_str = e.to_string();
+            let error =
+                crate::localized_error!("backendErrors.serve.stopFailed", "error" => &err_str);
             log_operation(
                 LogLevel::Error,
                 Some(remote_name.clone()),
@@ -293,7 +296,7 @@ pub async fn stop_serve(
                     remote: remote_name.clone(),
                     profile: profile.clone(),
                     protocol: protocol.clone(),
-                    error: e.to_string(),
+                    error: error.clone(),
                 }),
             );
             error

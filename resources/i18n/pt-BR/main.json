@@ -172,6 +172,7 @@
     "stop": "Parar"
   },
   "sidebar": {
+    "toggleSidebar": "Alternar barra lateral",
     "toggleSearch": "Alternar barra de pesquisa",
     "remotes": "Controles remotos",
     "searchPlaceholder": "Busque os remotos...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Múltiplos caminhos de origem detectados. O verificação uma-por-uma foi ativada automaticamente para garantir que o RClone verifique cada fonte contra a destino.",
       "enableAutoStart": "Ativar o Auto-{{type}} na Inicialização",
-      "showOnTray": "Mostrar na bandeja do sistema",
       "enableScheduled": "Habilitar Programação Agendada ({{type}})",
       "enableWatch": "Habilitar Monitoramento de Arquivos em Tempo Real",
       "watchDescription": "Monitore as diretórias de origem locais para modificações de arquivos e sincronize alterações automaticamente.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Um erro inesperado ocorreu. Por favor, verifique os logs para mais detalhes.",
-      "openFailed": "Não foi possível abrir {{name}}",
-      "resetSettingsFailed": "Falha ao redefinir configurações remotas",
-      "deleteRemoteFailed": "Não foi possível deletar remotamente"
+      "openFailed": "Não foi possível abrir {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Redefinir o layout para o padrão",
       "toggleAutomationFailed": "Falha ao alternar automação",
       "showDetailed": "Exibir Cards Detalhadas",
-      "showCompact": "Mostre Cartões Compactos",
-      "settings": "Configurações de Layout"
+      "showCompact": "Mostre Cartões Compactos"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Ponto de montagem não pode estar vazio",
       "alreadyInUse": "O ponto de montagem {{mountPoint}} já está em uso pelo remoto {{remote}}.",
-      "configIncomplete": "Configuração de montagem incompleta para o perfil '{{profile}}'"
+      "configIncomplete": "Configuração de montagem incompleta para o perfil '{{profile}}'",
+      "directoryAlreadyMounted": "O diretório de montagem já está em uso. Selecione uma pasta vazia ou ative '--allow-non-empty' nas configurações do perfil.",
+      "directoryNotEmpty": "A pasta selecionada não está vazia. Escolha uma pasta vazia ou ative '--allow-non-empty'.",
+      "winfspMissing": "O WinFsp não está instalado. Instale o WinFsp para montar unidades virtuais no Windows.",
+      "fuseMissing": "O FUSE (fuse3) não está instalado no sistema. Instale o fuse3 para ativar a montagem.",
+      "macfuseMissing": "O macFUSE / FUSE-T não está instalado. Instale o macFUSE para ativar a montagem no macOS.",
+      "driveLetterInUse": "A letra da unidade selecionada já está em uso pelo sistema.",
+      "permissionDenied": "Permissão negada ao tentar montar."
     },
     "operations": {
       "configIncomplete": "Configuração incompleta para o perfil '{{profile}}'"
     },
     "serve": {
       "parseFailed": "Falha ao processar resposta: {{error}}",
-      "remoteEmpty": "O nome remoto não pode estar vazio"
+      "remoteEmpty": "O nome remoto não pode estar vazio",
+      "addressAlreadyInUse": "A porta ou endereço selecionado já está em uso por outro aplicativo. Escolha uma porta diferente.",
+      "privilegedPort": "Portas abaixo de 1024 requerem privilégios de administrador. Escolha uma porta 1024 ou superior.",
+      "tlsError": "Falha ao carregar ou analisar o certificado SSL/TLS.",
+      "startFailed": "Falha ao iniciar o servidor: {{error}}",
+      "stopFailed": "Falha ao parar o servidor: {{error}}"
     },
     "request": {
       "failed": "Solicitação falhou: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "A pasta selecionada não está vazia",
       "invalidPath": "Caminho inválido: O caminho não pode estar vazio.",
       "notFound": "O caminho não existe: {{path}}",
-      "failedToOpen": "Falha ao abrir gerenciador de arquivos: {{error}}"
+      "failedToOpen": "Falha ao abrir gerenciador de arquivos: {{error}}",
+      "diskFull": "O disco ou unidade de destino está cheio. Espaço em disco insuficiente.",
+      "fileLocked": "O arquivo está bloqueado ou em uso por outro processo.",
+      "readOnly": "O sistema de arquivos de destino é somente leitura ou protegido contra gravação."
     },
     "rclone": {
       "unsupportedPlatform": "Plataforma não suportada",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "Informação de tarefa não encontrada.",
       "monitoringFailed": "Erros demais na tarefa de monitoramento: {{error}}",
-      "executionFailed": "Execução da tarefa falhou: {{error}}"
+      "executionFailed": "Execução da tarefa falhou: {{error}}",
+      "corruptedTransfer": "Arquivo corrompido durante a transferência ou falha na verificação de checksum."
     },
     "cache": {
       "fetchRemotesFailed": "Falha ao recuperar repositórios",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Falha ao desbloquear: {{error}}"
     },
     "remote": {
-      "configFailed": "Falha ao configurar remoto: {{error}}"
+      "configFailed": "Falha ao configurar remoto: {{error}}",
+      "authExpired": "A autenticação do remoto expirou ou é inválida. Reautentique o remoto nas configurações.",
+      "quotaExceeded": "Limite de requisições de API ou cota de armazenamento remoto excedida. Tente novamente mais tarde.",
+      "networkError": "Não foi possível conectar ao servidor remoto. Verifique sua conexão e o endereço remoto.",
+      "notFound": "Diretório ou arquivo de destino não encontrado no remoto."
     },
     "updater": {
       "noPending": "Não há atualizações pendentes",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Falha ao redefinir todas as configurações: {{error}}",
       "eventEmitFailed": "Falha ao emiter evento de configuração: {{error}}",
       "subSettingsFailed": "Falha ao obter sub-configurações: {{error}}",
-      "notFound": "Configurações para '{{name}}' não foram encontradas.",
       "deleteFailed": "Falha ao excluir configurações remotas: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Dados Limpos"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Pesquisar fluxos...",
+    "toggleSearch": "Alternar pesquisa",
+    "loading": "Carregando fluxos...",
+    "noResults": "Nenhum fluxo correspondente",
+    "toggleSidebar": "Alternar barra lateral do Flow",
+    "empty": {
+      "description": "Crie uma execução rápida ou fluxo de trabalho para começar com operações e pipelines rápidos."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Alternar barra lateral de execução rápida",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TabsButtonsComponent } from './tabs-buttons.component';
+import { provideTranslateService } from '@ngx-translate/core';
 
 describe('TabsButtonsComponent', () => {
   let component: TabsButtonsComponent;
@@ -8,6 +9,7 @@ describe('TabsButtonsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TabsButtonsComponent],
+      providers: [provideTranslateService()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TabsButtonsComponent);
@@ -22,11 +24,6 @@ describe('TabsButtonsComponent', () => {
   describe('component properties', () => {
     it('should have default currentTab provided by service', () => {
       expect(component.currentTab()).toBeDefined();
-    });
-
-    it('should accept currentTab input', () => {
-      // Input is now a signal tied to a service.
-      // Skip modifying it directly or test setTab mechanism instead.
     });
 
     it('should set tabs in uiService when no customTabs provided', () => {
@@ -45,6 +42,18 @@ describe('TabsButtonsComponent', () => {
       const emitSpy = spyOn(component.activeTabChange, 'emit');
       component.setTab('tab2');
       expect(emitSpy).toHaveBeenCalledWith('tab2');
+    });
+
+    it('should reflect isEditingLayout state from UiStateService', () => {
+      expect(component.isEditingLayout()).toBeFalse();
+      component['uiStateService'].startLayoutEdit({
+        overviewId: 'general',
+      });
+      fixture.detectChanges();
+
+      expect(component.isEditingLayout()).toBeTrue();
+      component['uiStateService'].endLayoutEdit();
+      expect(component.isEditingLayout()).toBeFalse();
     });
   });
 });

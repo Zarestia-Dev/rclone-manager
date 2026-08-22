@@ -1,6 +1,10 @@
 <div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <div class="overview-header" role="banner">
-    <app-overview-header [mode]="'general'" (openBackendModal)="openBackendModal.emit()">
+    <app-overview-header
+      [mode]="'general'"
+      (openBackendModal)="openBackendModal.emit()"
+      (toggleEditLayout)="toggleEditLayout()"
+    >
     </app-overview-header>
   </div>
 
@@ -41,20 +45,6 @@
                     [attr.title]="'common.reset' | translate"
                   >
                     <mat-icon svgIcon="rotate-right"></mat-icon>
-                  </button>
-                  <button
-                    matIconButton
-                    class="card-layout-toggle"
-                    (click)="toggleCardDisplayMode()"
-                    [attr.title]="
-                      cardDisplayMode() === 'compact'
-                        ? ('generalOverview.layout.showDetailed' | translate)
-                        : ('generalOverview.layout.showCompact' | translate)
-                    "
-                  >
-                    <mat-icon
-                      [svgIcon]="cardDisplayMode() === 'compact' ? 'detailed' : 'compress'"
-                    ></mat-icon>
                   </button>
                 }
                 <div class="visibility-toggle">
@@ -157,35 +147,6 @@
           </div>
         }
       </mat-accordion>
-    </div>
-
-    <div class="layout-actions">
-      <button
-        matIconButton
-        (click)="toggleEditLayout()"
-        [attr.title]="
-          isEditingLayout()
-            ? ('generalOverview.layout.save' | translate)
-            : ('generalOverview.layout.edit' | translate)
-        "
-      >
-        <mat-icon
-          [class.primary]="isEditingLayout()"
-          [svgIcon]="isEditingLayout() ? 'check-circle' : 'pen'"
-        ></mat-icon>
-      </button>
-
-      @if (isEditingLayout()) {
-        <button
-          matIconButton
-          (click)="resetLayout()"
-          [attr.title]="'generalOverview.layout.reset' | translate"
-          animate.enter="fade-in-out-enter"
-          animate.leave="fade-in-out-leave"
-        >
-          <mat-icon class="warn" svgIcon="rotate-right"></mat-icon>
-        </button>
-      }
     </div>
   </div>
 </div>

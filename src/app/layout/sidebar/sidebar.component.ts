@@ -45,19 +45,17 @@ export class SidebarComponent {
   private readonly quickRunService = inject(QuickRunService);
 
   readonly title = computed(
-    () => this.customTitle() ?? (this.mode() === 'flow' ? 'flow.quickRun.title' : 'sidebar.remotes')
+    () => this.customTitle() ?? (this.mode() === 'flow' ? 'flow.title' : 'sidebar.remotes')
   );
-  readonly icon = computed(
-    () => this.customIcon() ?? (this.mode() === 'flow' ? 'operations' : 'server')
-  );
+  readonly icon = computed(() => this.customIcon() ?? (this.mode() === 'flow' ? 'flow' : 'server'));
   readonly searchPlaceholder = computed(() =>
-    this.mode() === 'flow' ? 'flow.quickRun.search' : 'sidebar.searchPlaceholder'
+    this.mode() === 'flow' ? 'flow.search' : 'sidebar.searchPlaceholder'
   );
   readonly searchAriaLabel = computed(() =>
-    this.mode() === 'flow' ? 'flow.quickRun.search' : 'sidebar.searchAriaLabel'
+    this.mode() === 'flow' ? 'flow.search' : 'sidebar.searchAriaLabel'
   );
   readonly toggleSearchTitle = computed(() =>
-    this.mode() === 'flow' ? 'flow.quickRun.toggleSearch' : 'sidebar.toggleSearch'
+    this.mode() === 'flow' ? 'flow.toggleSearch' : 'sidebar.toggleSearch'
   );
 
   // ── Unified loading & empty states ────────────────────────────────────────
@@ -75,12 +73,12 @@ export class SidebarComponent {
     return this.quickRuns().length > 0;
   });
 
-  readonly emptyIcon = computed(() => (this.mode() === 'flow' ? 'operations' : 'server'));
+  readonly emptyIcon = computed(() => (this.mode() === 'flow' ? 'flow' : 'server'));
   readonly emptyText = computed(() =>
-    this.mode() === 'flow' ? 'flow.quickRun.empty.description' : 'sidebar.noRemotesConfigured'
+    this.mode() === 'flow' ? 'flow.empty.description' : 'sidebar.noRemotesConfigured'
   );
   readonly loadingText = computed(() =>
-    this.mode() === 'flow' ? 'flow.quickRun.loading' : 'common.loading'
+    this.mode() === 'flow' ? 'flow.loading' : 'common.loading'
   );
 
   // ── Remotes state ─────────────────────────────────────────────────────────
@@ -135,10 +133,6 @@ export class SidebarComponent {
   getQuickRunActionLabel(qr: QuickRun): string {
     const def = OPERATION_REGISTRY.find(d => d.key === qr.operationType);
     return def?.actionLabel ?? 'flow.tabs.quickRun';
-  }
-
-  getQuickRunStatusClass(qr: QuickRun): string {
-    return this.isQuickRunRunning(qr.id) ? 'running' : qr.status;
   }
 
   hasCron(qr: QuickRun): boolean {

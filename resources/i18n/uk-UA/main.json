@@ -172,6 +172,7 @@
     "stop": "Зупинити"
   },
   "sidebar": {
+    "toggleSidebar": "Перемкнути бічну панель",
     "toggleSearch": "Перемкнути рядок пошуку",
     "remotes": "Віддалені сховища",
     "searchPlaceholder": "Пошук сховищ...",
@@ -1210,7 +1211,6 @@
     "appOperation": {
       "multiSourceOneWayInfo": "Виявлено кілька джерельних шляхів. Односторонню перевірку було ввімкнено автоматично, щоб переконатися, що rclone перевіряє кожне джерело відносно призначення.",
       "enableAutoStart": "Увімкнути авто-{{type}} під час запуску",
-      "showOnTray": "Показувати в системному треї",
       "enableScheduled": "Увімкнути заплановане {{type}}",
       "enableWatch": "Увімкнути моніторинг файлів у реальному часі",
       "watchDescription": "Стежити за змінами файлів у локальних теках-джерелах і синхронізувати зміни автоматично.",
@@ -2566,9 +2566,7 @@
     },
     "errors": {
       "generic": "Сталася неочікувана помилка. Перегляньте журнали для деталей.",
-      "openFailed": "Не вдалося відкрити {{name}}",
-      "resetSettingsFailed": "Не вдалося скинути налаштування сховища",
-      "deleteRemoteFailed": "Не вдалося видалити сховище"
+      "openFailed": "Не вдалося відкрити {{name}}"
     }
   },
   "transfer": {
@@ -2592,8 +2590,7 @@
       "resetSuccess": "Розкладку скинуто до типової",
       "toggleAutomationFailed": "Не вдалося перемкнути автоматизацію",
       "showDetailed": "Показати детальні картки",
-      "showCompact": "Показати компактні картки",
-      "settings": "Налаштування розкладки"
+      "showCompact": "Показати компактні картки"
     },
     "bandwidth": {
       "aria": {
@@ -2681,14 +2678,26 @@
     "mount": {
       "pointEmpty": "Точка монтування не може бути порожньою",
       "alreadyInUse": "Точка монтування {{mountPoint}} вже використовується сховищем {{remote}}",
-      "configIncomplete": "Конфігурація монтування неповна для профілю «{{profile}}»"
+      "configIncomplete": "Конфігурація монтування неповна для профілю «{{profile}}»",
+      "directoryAlreadyMounted": "Каталог монтування вже використовується. Виберіть порожню папку або ввімкніть '--allow-non-empty' у налаштуваннях профілю.",
+      "directoryNotEmpty": "Вибрана папка не порожня. Виберіть порожню папку або ввімкніть '--allow-non-empty'.",
+      "winfspMissing": "Драйвер WinFsp не встановлено. Встановіть WinFsp для монтування віртуальних дисків у Windows.",
+      "fuseMissing": "Пакет FUSE (fuse3) не встановлено в системі. Встановіть fuse3 для монтування.",
+      "macfuseMissing": "macFUSE / FUSE-T не встановлено. Встановіть macFUSE для монтування в macOS.",
+      "driveLetterInUse": "Вибрана літера диска вже використовується системою.",
+      "permissionDenied": "Відмовлено в доступі під час спроби монтування."
     },
     "operations": {
       "configIncomplete": "Конфігурація неповна для профілю «{{profile}}»"
     },
     "serve": {
       "parseFailed": "Не вдалося розібрати відповідь: {{error}}",
-      "remoteEmpty": "Назва сховища не може бути порожньою"
+      "remoteEmpty": "Назва сховища не може бути порожньою",
+      "addressAlreadyInUse": "Вибраний порт або адреса вже використовується іншою програмою. Виберіть інший порт.",
+      "privilegedPort": "Порти нижче 1024 вимагають прав адміністратора. Виберіть порт 1024 або вище.",
+      "tlsError": "Не вдалося завантажити або розібрати SSL/TLS сертифікат.",
+      "startFailed": "Не вдалося запустити сервер: {{error}}",
+      "stopFailed": "Не вдалося зупинити сервер: {{error}}"
     },
     "request": {
       "failed": "Запит не вдався: {{error}}"
@@ -2698,7 +2707,10 @@
       "folderNotEmpty": "Вибрана тека не порожня",
       "invalidPath": "Невірний шлях: шлях не може бути порожнім.",
       "notFound": "Шлях не існує: {{path}}",
-      "failedToOpen": "Не вдалося відкрити файловий менеджер: {{error}}"
+      "failedToOpen": "Не вдалося відкрити файловий менеджер: {{error}}",
+      "diskFull": "Цільовий диск заповнений. Недостатньо вільного місця на диску.",
+      "fileLocked": "Файл заблоковано або він використовується іншим процесом.",
+      "readOnly": "Цільова файлова система доступна лише для читання або захищена від запису."
     },
     "rclone": {
       "unsupportedPlatform": "Непідтримувана платформа",
@@ -2755,7 +2767,8 @@
     "job": {
       "notFound": "JobInfo не знайдено",
       "monitoringFailed": "Забагато помилок під час моніторингу завдання: {{error}}",
-      "executionFailed": "Не вдалося виконати завдання: {{error}}"
+      "executionFailed": "Не вдалося виконати завдання: {{error}}",
+      "corruptedTransfer": "Файл пошкоджено під час передачі або не збіглася контрольна сума."
     },
     "cache": {
       "fetchRemotesFailed": "Не вдалося отримати сховища",
@@ -2777,7 +2790,11 @@
       "unlockFailed": "Не вдалося розблокувати: {{error}}"
     },
     "remote": {
-      "configFailed": "Не вдалося налаштувати сховище: {{error}}"
+      "configFailed": "Не вдалося налаштувати сховище: {{error}}",
+      "authExpired": "Термін дії авторизації закінчився або вона недійсна. Повторіть авторизацію сховища.",
+      "quotaExceeded": "Перевищено ліміт запитів до API або квоту дискового простору сховища. Спробуйте пізніше.",
+      "networkError": "Не вдалося зв'язатися з віддаленим сервером. Перевірте мережеве з'єднання та адресу.",
+      "notFound": "Цільовий каталог або файл не знайдено на віддаленому сховищі."
     },
     "updater": {
       "noPending": "Немає оновлень в очікуванні",
@@ -2797,7 +2814,6 @@
       "resetAllFailed": "Не вдалося скинути всі налаштування: {{error}}",
       "eventEmitFailed": "Не вдалося надіслати подію налаштувань: {{error}}",
       "subSettingsFailed": "Не вдалося отримати під-налаштування: {{error}}",
-      "notFound": "Налаштування для «{{name}}» не знайдено",
       "deleteFailed": "Не вдалося видалити налаштування сховища: {{error}}"
     }
   },
@@ -3130,14 +3146,18 @@
     "cleared": "Дані очищено"
   },
   "flow": {
+    "title": "Flow",
+    "search": "Пошук потоків...",
+    "toggleSearch": "Перемкнути пошук",
+    "loading": "Завантаження потоків...",
+    "noResults": "Немає відповідних потоків",
+    "toggleSidebar": "Перемкнути бічну панель Flow",
+    "empty": {
+      "description": "Створіть швидкий запуск або робочий процес для швидких операцій та конвеєрів."
+    },
     "quickRun": {
       "title": "Quick Runs",
       "new": "New Quick Run",
-      "toggleSearch": "Toggle Search",
-      "search": "Search quick runs...",
-      "loading": "Loading quick runs...",
-      "noResults": "No matching quick runs",
-      "toggleSidebar": "Перемкнути бічну панель швидкого запуску",
       "badges": {
         "scheduled": "Scheduled Task",
         "watcher": "Folder Watcher Active",
@@ -3145,14 +3165,7 @@
         "autostart": "Auto-Start Enabled"
       },
       "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed",
-        "stopped": "Stopped"
-      },
-      "empty": {
-        "description": "Create a quick run to save reusable single operations without attaching them to a remote profile."
+        "running": "Running"
       },
       "detail": {
         "configuration": "Configuration"

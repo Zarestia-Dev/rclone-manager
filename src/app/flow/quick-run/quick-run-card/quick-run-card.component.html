@@ -31,12 +31,6 @@
     </div>
 
     <div class="card-status-indicators" aria-hidden="true">
-      @if (statusBadge().cssClass === 'failed') {
-        <div class="app-pill p-warn" [attr.title]="'flow.quickRun.status.failed' | translate">
-          <mat-icon svgIcon="circle-exclamation"></mat-icon>
-        </div>
-      }
-
       @if (hasCron()) {
         <div
           class="app-pill p-primary"
@@ -216,12 +210,6 @@
             <span
               class="status-dot running"
               [attr.title]="'flow.quickRun.status.running' | translate"
-            ></span>
-          } @else {
-            <span
-              class="status-dot"
-              [class]="statusBadge().cssClass"
-              [attr.title]="'flow.quickRun.status.' + statusBadge().cssClass | translate"
             ></span>
           }
         </div>

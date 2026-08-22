@@ -106,6 +106,7 @@ export class FlowContainerComponent {
   }
 
   setSubMode(mode: FlowSubMode | string): void {
+    this.uiStateService.endLayoutEdit();
     this.activeSubMode.set(mode as FlowSubMode);
   }
 

@@ -150,16 +150,8 @@
 }
 
 // =============================================
-// ACTIONS
+// RESPONSIVE
 // =============================================
-.layout-actions {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  gap: 12px;
-  flex-direction: column;
-}
 
 @media (max-width: 768px) {
   .general-overview {

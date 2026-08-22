@@ -10,7 +10,6 @@ import {
   OpenInFilesEvent,
   OPERATION_REGISTRY,
   QuickRun,
-  QuickRunStatus,
   isFolderOpeningAction,
 } from '@app/types';
 import { PathService } from 'src/app/services/infrastructure/platform/path.service';
@@ -125,12 +124,6 @@ export class QuickRunCardComponent {
     return key
       ? this.translate.instant(key)
       : this.translate.instant('flow.quickRun.actions.start');
-  });
-
-  /** Status badge metadata (label + color class). */
-  readonly statusBadge = computed<{ cssClass: QuickRunStatus }>(() => {
-    const status: QuickRunStatus = this.isRunning() ? 'running' : this.quickRun().status;
-    return { cssClass: status };
   });
 
   /** Feature indicators (Cron schedule, File Watcher, AutoStart). */
