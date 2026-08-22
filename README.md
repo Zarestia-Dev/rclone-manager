@@ -29,6 +29,9 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
     <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat-square&color=2ec27e" alt="Latest Release">
   </a>
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/downloads/Zarestia-Dev/rclone-manager/total?style=flat-square&color=e66100" alt="Downloads">
+  </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?style=flat-square&color=9141ac" alt="License">
   </a>
@@ -37,9 +40,6 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
-  </a>
-  <a href="https://hakanismail.info/zarestia/support">
-    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -88,10 +88,10 @@ Install RClone Manager using your preferred package manager, or download standal
 
 ### macOS
 
-| Source              | Version                                                                                                                                                                                                        | Install Command / Download                                                      |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
-| **Homebrew**        | [![Homebrew Version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust zarestia-dev/zarestia && brew install --cask rclone-manager`          |
-| **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                        | [DMG Installer](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source              | Version                                                                                                                                                                                                        | Install Command / Download                                                                                 |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **Homebrew**        | [![Homebrew Version](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/homebrew-zarestia/blob/main/Casks/rclone-manager.rb) | `brew tap Zarestia-Dev/zarestia && brew trust zarestia-dev/zarestia && brew install --cask rclone-manager` |
+| **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                        | [DMG Installer](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                            |
 
 > 📚 **Guide:** [Wiki: Installation - macOS](https://hakanismail.info/zarestia/rclone-manager/docs/installation-macos) (macFUSE & Gatekeeper fixes)
 
@@ -108,9 +108,9 @@ Install RClone Manager using your preferred package manager, or download standal
 
 ### Android (Beta)
 
-| Source              | Version                                                                                                                                                                                                           | Install Command / Download                                                                 |
-| :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-| **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)                           | [APK Downloads (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
+| Source              | Version                                                                                                                                                                                 | Install Command / Download                                                                                            |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| **Direct Download** | [![GitHub Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | [APK Downloads (arm64-v8a, armeabi-v7a, x86_64, x86)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) |
 
 > 📚 **Guide:** [Wiki: Android Support (Beta)](https://hakanismail.info/zarestia/rclone-manager/docs/configuration-android) (Go engine / librclone details & setup)
 
@@ -141,7 +141,6 @@ We welcome contributions of all forms!
 
 - **License:** Licensed under the [GNU GPLv3](LICENSE) – free to use, modify, and distribute.
 - **Support:** If you like this project, please consider leaving a ⭐ on GitHub!
-- **Donate:** If RClone Manager saves you time, consider [supporting development](https://hakanismail.info/zarestia/support) ❤️
 
 <p align="center">
   Made with ❤️ by the Zarestia Dev Team<br>

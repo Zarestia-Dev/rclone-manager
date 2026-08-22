@@ -167,6 +167,7 @@
     "delete": "Sil",
     "copyurl": "URL Kopyala",
     "archivecreate": "Arşivle",
+    "cryptcheck": "Şifreli Denetim",
     "serve": "Sun",
     "start": "Başlat",
     "stop": "Durdur"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "Uzak Sunucuyu Sil"
     },
     "deleteRemote": {
-      "title": "Silme Onayı",
-      "message": "'{{name}}' adlı uzak sunucuyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+      "title": "Uzak Sunucuyu Sil",
+      "message": "'{{name}}' adlı uzak sunucuyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "permanentWarning": "Bu uzak sunucuyu silmek kalıcıdır ve geri alınamaz.",
+      "activeOperationsTitle": "Çalışan Aktif İşlemler",
+      "activeOperationsDesc": "Bu uzak sunucu üzerinde çalışan aşağıdaki aktif işlemler zorla sonlandırılacaktır:",
+      "willUnmount": "Bağlantı Kesilecek",
+      "willStop": "Durdurulacak",
+      "willCancel": "İptal Edilecek",
+      "savedProfilesTitle": "Kayıtlı Profiller ({{count}})",
+      "quickRunsTitle": "İlişkili Quick Run'lar ({{count}})",
+      "automationsTitle": "Zamanlanmış Otomasyonlar ({{count}})",
+      "types": {
+        "mount": "Bağlama Noktası",
+        "serve": "Yayın"
+      }
     },
     "resetRemote": {
       "title": "Uzak Sunucu Ayarlarını Sıfırla",

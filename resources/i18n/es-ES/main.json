@@ -167,6 +167,7 @@
     "delete": "Eliminar",
     "copyurl": "Copiar URL",
     "archivecreate": "Archivar",
+    "cryptcheck": "Verificación cifrada",
     "serve": "Servir",
     "start": "Iniciar",
     "stop": "Detener"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "Eliminar remoto"
     },
     "deleteRemote": {
-      "title": "Confirmación de eliminación",
-      "message": "¿Está seguro de que desea eliminar '{{name}}'? Esta acción no se puede deshacer."
+      "title": "Eliminar remoto",
+      "message": "¿Está seguro de que desea eliminar '{{name}}'? Esta acción no se puede deshacer.",
+      "permanentWarning": "Eliminar este remoto es permanente y no se puede deshacer.",
+      "activeOperationsTitle": "Operaciones activas en ejecución",
+      "activeOperationsDesc": "Las siguientes operaciones activas se están ejecutando en este remoto y se finalizarán forzosamente:",
+      "willUnmount": "Se desmontará",
+      "willStop": "Se detendrá",
+      "willCancel": "Se cancelará",
+      "savedProfilesTitle": "Perfiles guardados ({{count}})",
+      "quickRunsTitle": "Quick Runs asociados ({{count}})",
+      "automationsTitle": "Automatizaciones programadas ({{count}})",
+      "types": {
+        "mount": "Punto de montaje",
+        "serve": "Servidor"
+      }
     },
     "resetRemote": {
       "title": "Restablecer configuraciones del remoto",

@@ -167,6 +167,7 @@
     "delete": "删除",
     "copyurl": "复制 URL",
     "archivecreate": "归档",
+    "cryptcheck": "加密检查",
     "serve": "服务",
     "start": "启动",
     "stop": "停止"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "删除远程存储"
     },
     "deleteRemote": {
-      "title": "删除确认",
-      "message": "确定要删除 '{{name}}' 吗？此操作无法撤销。"
+      "title": "删除远程存储",
+      "message": "您确定要删除“{{name}}”吗？此操作无法撤消。",
+      "permanentWarning": "删除此远程存储是永久性的，无法撤消。",
+      "activeOperationsTitle": "正在运行的活动操作",
+      "activeOperationsDesc": "以下活动操作当前正在此远程存储上运行，将被强制终止：",
+      "willUnmount": "将卸载",
+      "willStop": "将停止",
+      "willCancel": "将取消",
+      "savedProfilesTitle": "已保存的配置 ({{count}})",
+      "quickRunsTitle": "关联的快捷运行 ({{count}})",
+      "automationsTitle": "计划的自动化 ({{count}})",
+      "types": {
+        "mount": "挂载点",
+        "serve": "服务"
+      }
     },
     "resetRemote": {
       "title": "重置远程存储设置",

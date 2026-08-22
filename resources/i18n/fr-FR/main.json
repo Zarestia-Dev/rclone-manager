@@ -167,6 +167,7 @@
     "delete": "Supprimer",
     "copyurl": "Copier l'URL",
     "archivecreate": "Archiver",
+    "cryptcheck": "Vérification chiffrée",
     "serve": "Service de partage",
     "start": "Démarrer",
     "stop": "Arrêter"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "Supprimer le dépôt distant"
     },
     "deleteRemote": {
-      "title": "Confirmer la suppression",
-      "message": "Êtes-vous sûr de vouloir supprimer '{{name}}' ? Cette action ne peut pas être annulée."
+      "title": "Supprimer le dépôt distant",
+      "message": "Êtes-vous sûr de vouloir supprimer '{{name}}' ? Cette action est irréversible.",
+      "permanentWarning": "La suppression de ce dépôt distant est définitive et irréversible.",
+      "activeOperationsTitle": "Opérations actives en cours",
+      "activeOperationsDesc": "Les opérations actives suivantes sont en cours d'exécution sur ce dépôt distant et seront interrompues :",
+      "willUnmount": "Sera démonté",
+      "willStop": "Sera arrêté",
+      "willCancel": "Sera annulé",
+      "savedProfilesTitle": "Profils enregistrés ({{count}})",
+      "quickRunsTitle": "Quick Runs associés ({{count}})",
+      "automationsTitle": "Automatisations planifiées ({{count}})",
+      "types": {
+        "mount": "Point de montage",
+        "serve": "Serveur"
+      }
     },
     "resetRemote": {
       "title": "Réinitialiser les paramètres du dépôt distant",

@@ -162,25 +162,69 @@ pub async fn get_remote_paths(
 
 #[bridge]
 pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String> {
-    let response = crate::rclone::commands::common::transport(&app)
-        .rpc(core::DISKS, None)
-        .await
-        .map_err(|e| format!("❌ Failed to call {}: {e}", core::DISKS))?;
+    // 1. Fetch rclone core/disks with a 3-second timeout
+    let rclone_disks_future = async {
+        crate::rclone::commands::common::transport(&app)
+            .rpc(core::DISKS, None)
+            .await
+            .ok()
+            .and_then(|resp| {
+                resp.get("disks").and_then(|v| v.as_array()).map(|arr| {
+                    arr.iter()
+                        .filter_map(|val| val.as_str().map(std::string::ToString::to_string))
+                        .collect::<Vec<String>>()
+                })
+            })
+    };
 
-    let disks_paths = response
-        .get("disks")
-        .and_then(|value| value.as_array())
-        .ok_or_else(|| "Invalid core/disks response: missing 'disks' array".to_string())?;
+    // 2. Refresh sysinfo disks in a blocking task with a 3-second timeout
+    let sys_disks_future = async {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(3),
+            tokio::task::spawn_blocking(Disks::new_with_refreshed_list),
+        )
+        .await
+        .ok()
+        .and_then(Result::ok)
+        .unwrap_or_default()
+    };
+
+    let (rclone_disks_opt, sys_disks) = tokio::join!(
+        tokio::time::timeout(std::time::Duration::from_secs(3), rclone_disks_future),
+        sys_disks_future,
+    );
+
+    let disks_paths: Vec<String> = match rclone_disks_opt {
+        Ok(Some(paths)) if !paths.is_empty() => paths,
+        _ => {
+            let sys_paths: Vec<String> = sys_disks
+                .iter()
+                .map(|d| d.mount_point().to_string_lossy().into_owned())
+                .filter(|p| !p.is_empty())
+                .collect();
+            if !sys_paths.is_empty() {
+                sys_paths
+            } else {
+                #[cfg(windows)]
+                {
+                    vec!["C:\\".to_string()]
+                }
+                #[cfg(target_os = "android")]
+                {
+                    vec!["/storage/emulated/0".to_string()]
+                }
+                #[cfg(not(any(windows, target_os = "android")))]
+                {
+                    vec!["/".to_string()]
+                }
+            }
+        }
+    };
 
     let home = std::env::var("HOME").ok();
 
-    // Refresh disk information
-    let sys_disks = Disks::new_with_refreshed_list();
-
     // Pre-build a lookup table keyed by normalized mount point so we don't
     // do an O(N×M) linear scan with `format!` allocations per disk path.
-    // The original code called `sys_disks.iter().find(...)` with three
-    // `format!` allocations per comparison, which is O(N×M) string allocs.
     let sys_disk_by_mount: HashMap<String, usize> = {
         let mut map = HashMap::with_capacity(sys_disks.len());
         for (idx, d) in sys_disks.iter().enumerate() {
@@ -213,11 +257,10 @@ pub async fn get_local_drives(app: AppHandle) -> Result<Vec<LocalDrive>, String>
     };
 
     let drives = disks_paths
-        .iter()
-        .filter_map(|value| value.as_str())
+        .into_iter()
         .map(|path| {
             let normalized_path = {
-                let mut p = path.to_string();
+                let mut p = path;
                 // Normalize Windows drive letters (e.g., "C:") to root paths (e.g., "C:\")
                 // This ensures rclone lists the root directory instead of the current working directory of the drive.
                 if p.len() == 2

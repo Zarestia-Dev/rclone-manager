@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -204,13 +205,8 @@ export class HomeComponent {
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
-    const confirmed = await this.notificationService.confirmModal(
-      this.translate.instant('home.deleteRemote.title'),
-      this.translate.instant('home.deleteRemote.message', { name: remoteName }),
-      this.translate.instant('common.delete'),
-      this.translate.instant('common.cancel'),
-      { icon: 'trash', color: 'warn' }
-    );
+    const dialogRef = this.modalService.openDeleteRemote<boolean>(remoteName);
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
     if (!confirmed) return;
 
     try {

@@ -30,6 +30,9 @@
   <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
     <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat-square&color=2ec27e" alt="Latest Release">
   </a>
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/downloads/Zarestia-Dev/rclone-manager/total?style=flat-square&color=e66100" alt="Téléchargements">
+  </a>
   <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?style=flat-square&color=9141ac" alt="License">
   </a>
@@ -38,9 +41,6 @@
   </a>
   <a href="https://crowdin.com/project/rclone-manger">
     <img src="https://badges.crowdin.net/rclone-manger/localized.svg?style=flat-square" alt="Crowdin Status">
-  </a>
-  <a href="https://hakanismail.info/zarestia/support">
-    <img src="https://img.shields.io/badge/Donate-ea4aaa?style=flat-square" alt="Donate">
   </a>
 </p>
 
@@ -141,7 +141,6 @@ Les contributions sous toutes leurs formes sont les bienvenues !
 
 - **Licence:** Publié sous licence [GNU GPLv3](LICENSE) – libre d'utilisation, de modification et de distribution.
 - **Soutien:** Si vous appréciez ce projet, merci de laisser une ⭐ sur GitHub !
-- **Don:** Si RClone Manager vous fait gagner du temps, pensez à [soutenir le développement](https://hakanismail.info/zarestia/support) ❤️
 
 <p align="center">
   Fait avec ❤️ par l'équipe de développement Zarestia<br>

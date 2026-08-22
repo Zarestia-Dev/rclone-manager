@@ -267,6 +267,10 @@ export class ModalService {
       import('../../shared/remote-config/template-manager-modal/template-manager-modal.component').then(
         m => m.TemplateManagerModalComponent
       ),
+    'delete-remote': () =>
+      import('../../features/modals/remote/delete-remote-modal/delete-remote-modal.component').then(
+        m => m.DeleteRemoteModalComponent
+      ),
   };
 
   async resolveDialogWindow(): Promise<void> {
@@ -623,5 +627,19 @@ export class ModalService {
         currentValues: options.currentValues,
       },
     });
+  }
+
+  openDeleteRemote<TResult = boolean>(remoteName: string): DialogRefLike<TResult> {
+    const data = { remoteName };
+    return this.openModal(
+      'delete-remote',
+      { ...STANDARD_MODAL_SIZE, disableClose: true, data },
+      {
+        title: this.translate.instant('home.deleteRemote.title') || 'Delete Remote',
+        width: 580,
+        height: 520,
+        suffix: remoteName,
+      }
+    );
   }
 }

@@ -25,6 +25,8 @@ import { BackendService } from '../infrastructure/system/backend.service';
 import { UiStateService } from '../ui/state/ui-state.service';
 import { PathService } from '../infrastructure/platform/path.service';
 import { RcloneStatusService } from '../infrastructure/maintenance/rclone-status.service';
+import { QuickRunService } from '../flow/quick-run.service';
+import { AutomationService } from '../operations/automation.service';
 import { NotificationService } from '../ui/notification.service';
 import { BackendTranslationService } from '../i18n/backend-translation.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -81,6 +83,8 @@ export class RemoteFacadeService {
   private readonly notificationService = inject(NotificationService);
   private readonly backendTranslation = inject(BackendTranslationService);
   private readonly translate = inject(TranslateService);
+  private readonly quickRunService = inject(QuickRunService);
+  private readonly automationService = inject(AutomationService);
 
   readonly jobs = this.jobService.jobs;
   readonly mountedRemotes = this.mountService.mountedRemotes;
@@ -434,6 +438,8 @@ export class RemoteFacadeService {
           this.mountService.getMountedRemotes(),
           this.serveService.refreshServes(),
           this.jobService.refreshJobs(),
+          this.quickRunService.refresh(),
+          this.automationService.refreshAutomations(),
         ]);
         this.loadDiskUsageInBackground();
       } finally {

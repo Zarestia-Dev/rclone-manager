@@ -167,6 +167,7 @@
     "delete": "削除",
     "copyurl": "URLコピー",
     "archivecreate": "圧縮",
+    "cryptcheck": "暗号チェック",
     "serve": "公開サーバー",
     "start": "開始",
     "stop": "停止"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "リモートを削除"
     },
     "deleteRemote": {
-      "title": "削除の確認",
-      "message": "「{{name}}」 を削除してもよろしいですか? この操作は取り消せません。"
+      "title": "リモートを削除",
+      "message": "'{{name}}' を削除してもよろしいですか？この操作は取り消せません。",
+      "permanentWarning": "このリモートの削除は永続的であり、元に戻すことはできません。",
+      "activeOperationsTitle": "実行中のアクティブな操作",
+      "activeOperationsDesc": "このリモートで実行中の次のアクティブな操作は強制終了されます：",
+      "willUnmount": "マウント解除",
+      "willStop": "停止",
+      "willCancel": "キャンセル",
+      "savedProfilesTitle": "保存されたプロファイル ({{count}})",
+      "quickRunsTitle": "関連する Quick Run ({{count}})",
+      "automationsTitle": "スケジュールされた自動化 ({{count}})",
+      "types": {
+        "mount": "マウントポイント",
+        "serve": "配信"
+      }
     },
     "resetRemote": {
       "title": "リモート設定のリセット",

@@ -167,6 +167,7 @@
     "delete": "Delete",
     "copyurl": "Copy URL",
     "archivecreate": "Archive",
+    "cryptcheck": "Cryptcheck",
     "serve": "Serve",
     "start": "Start",
     "stop": "Stop"
@@ -2554,8 +2555,21 @@
       "deleteRemote": "Delete Remote"
     },
     "deleteRemote": {
-      "title": "Delete Confirmation",
-      "message": "Are you sure you want to delete '{{name}}'? This action cannot be undone."
+      "title": "Delete Remote",
+      "message": "Are you sure you want to delete '{{name}}'? This action cannot be undone.",
+      "permanentWarning": "Deleting this remote is permanent and cannot be undone.",
+      "activeOperationsTitle": "Active Operations Running",
+      "activeOperationsDesc": "The following active operations are currently running on this remote and will be forcefully terminated:",
+      "willUnmount": "Will Unmount",
+      "willStop": "Will Stop",
+      "willCancel": "Will Cancel",
+      "savedProfilesTitle": "Saved Profiles ({{count}})",
+      "quickRunsTitle": "Associated Quick Runs ({{count}})",
+      "automationsTitle": "Scheduled Automations ({{count}})",
+      "types": {
+        "mount": "Mount Point",
+        "serve": "Serve"
+      }
     },
     "resetRemote": {
       "title": "Reset Remote Settings",

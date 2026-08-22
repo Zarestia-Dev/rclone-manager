@@ -132,14 +132,25 @@ export class NautilusService extends TauriBaseService {
 
   async loadRemoteData(): Promise<void> {
     try {
-      const [remoteNames, drives, configs] = await Promise.all([
+      const [remotesRes, drivesRes, configsRes] = await Promise.allSettled([
         this.remoteManagement.getRemotes(),
         this.remoteManagement.getLocalDrives(),
-        this.remoteManagement.getAllRemoteConfigs().catch(e => {
-          console.error('[NautilusService] Failed to load remote configs:', e);
-          return {} as Record<string, { type?: string; Type?: string }>;
-        }),
+        this.remoteManagement.getAllRemoteConfigs(),
       ]);
+
+      const remoteNames = remotesRes.status === 'fulfilled' ? remotesRes.value : [];
+      const drives = drivesRes.status === 'fulfilled' ? drivesRes.value : [];
+      const configs =
+        configsRes.status === 'fulfilled'
+          ? (configsRes.value as Record<string, { type?: string; Type?: string }>)
+          : {};
+
+      if (drivesRes.status === 'rejected') {
+        console.warn('[NautilusService] Failed to load local drives:', drivesRes.reason);
+      }
+      if (remotesRes.status === 'rejected') {
+        console.warn('[NautilusService] Failed to load remote names:', remotesRes.reason);
+      }
 
       this._localDrives.set(
         drives.map(drive => ({
@@ -157,9 +168,7 @@ export class NautilusService extends TauriBaseService {
 
       this._cloudRemotes.set(
         remoteNames.map(name => {
-          const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
-            name
-          ];
+          const config = configs[name];
           return {
             name,
             label: name,

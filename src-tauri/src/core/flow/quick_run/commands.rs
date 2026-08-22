@@ -99,7 +99,7 @@ pub async fn delete_quick_run(app: AppHandle, quick_run_id: String) -> Result<()
     Ok(())
 }
 
-async fn sync_quick_run_automations_bg(app: &AppHandle) {
+pub async fn sync_quick_run_automations_bg(app: &AppHandle) {
     use crate::core::automation::{engine::AutomationScheduler, watcher::WatcherManager};
     use crate::core::settings::AppSettingsManager;
     use crate::rclone::{backend::BackendManager, state::automations::AutomationsCache};
@@ -433,6 +433,31 @@ fn delete_quick_run_by_id(manager: &AppSettingsManager, id: &str) -> Result<(), 
 
     sub.delete(id)
         .map_err(|e| format!("Failed to delete quick run: {e}"))
+}
+
+/// Delete all quick runs associated with a remote.
+pub fn delete_quick_runs_for_remote(
+    manager: &AppSettingsManager,
+    remote_name: &str,
+) -> Result<Vec<String>, String> {
+    let sub = manager
+        .sub_settings(SUB_QUICK_RUNS)
+        .map_err(|e| e.to_string())?;
+
+    let values = sub.get_all_values().unwrap_or_default();
+    let mut deleted_ids = Vec::new();
+    let clean_remote_name = remote_name.trim_end_matches(':');
+
+    for (id, val) in values {
+        if let Ok(qr) = serde_json::from_value::<QuickRun>(val)
+            && qr.remote_name.trim_end_matches(':') == clean_remote_name
+            && sub.delete(&id).is_ok()
+        {
+            deleted_ids.push(id);
+        }
+    }
+
+    Ok(deleted_ids)
 }
 
 #[cfg(test)]

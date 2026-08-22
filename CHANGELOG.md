@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Flow Overlay & Automation Hub**: Added a dedicated Flow overlay system accessible from the sidebar navigation for streamlined automation, Quick Run execution, and template management.
+- **Quick Run Execution & Management System**:
+  - **One-Click Operation Execution**: Launch predefined or custom Rclone operations (Sync, Copy, Move, Mount, Serve, Bisync, Check, etc.) with a single click.
+  - **Real-Time Job Tracking & State Reflection**: Live progress indicators, execution status, and dynamic state updates on Quick Run cards with instant stop/cancellation controls.
+  - **Comprehensive Quick Run Editor**: Easily configure source/destination paths, operation parameters, advanced Rclone flags, and execution preferences.
+  - **CLI Command Import**: Import full CLI command strings (e.g. `rclone copy /src /dst --dry-run --bwlimit 10M`) directly into Quick Run configs and Remote configurations with automatic flag parsing and mapping.
+  - **Card Organization & Tagging**: Organize, tag, search, reorder, duplicate, and manage Quick Runs across custom categories.
+- **Modular Dashboard Overview Panels & Layout Management**: Refactored the dashboard overview into customizable modular panels (System Overview, Disk Usage, Remotes, Mounts, Serves, Operations) with sticky headers and centralized layout customization controls (drag-and-drop ordering and visibility toggles) directly in the header toolbar.
+- **Dedicated Remote Deletion Confirmation Modal**: Added a safety-first confirmation dialog for deleting remotes with clear warnings and dependency awareness.
 - **System Sleep/Shutdown Intercept**: Added OS-level power inhibitor integration on Linux (systemd logind), Windows (ShutdownBlockReasonCreate), and macOS (IOPMAssertionCreateWithName). The application now prevents the system from sleeping or shutting down while active file transfer operations are in progress.
 - **Android Storage Access Framework (SAF) Integration**: Added comprehensive Storage Access Framework (SAF) support for Android devices. #273
   - **SAF Remote & Tree Picker**: Allows selecting and authorizing local directories, SD cards, and USB OTG drives via native Android SAF tree picker intents (`ACTION_OPEN_DOCUMENT_TREE`).
@@ -20,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **CLI Import & Flag Mapping Optimization**: Optimized the CLI command parser and import workflow across Quick Run Editor and Remote Config modals. Enhanced tokenizer with intelligent hyphenated argument recognition (e.g. `--suffix -bak`, `--min-age -1d`), multi-operation flag resolution (preserving shared copy/sync flags such as `--backup-dir`, `--track-renames`, `--checksum`), inline bash comment stripping, unified path parsing, and zero-allocation key normalizations in the backend.
+- **Backend Command Bridge & Error Handling**: Migrated backend Tauri command invocations to a standardized bridge macro system with centralized error mapping and structured localization payloads.
 - **Non-Blocking CLI Flags & Automatic Flat Option Mapping**: Updated JSON editor to treat CLI-style arguments (e.g. `--value-of-rclone`, `--bwlimit`) as non-blocking warnings instead of hard validation errors. The backend payload builder now automatically normalizes CLI flags into snake_case flat options (`value_of_rclone`, `bwlimit`) across all Quick Runs, Profiles, and operations.
 - **Native Rclone OAuth Endpoint Integration**: Dropped external Rclone OAuth authorization management in favor of native Rclone OAuth endpoint support (`rclone v1.75+`). Also supports remote Rclone instances.
 - **Minimum Supported Rclone Version**: Updated minimum supported Rclone version to `1.75.0`.
@@ -28,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Legacy Migrations & Legacy Config Support**: Removed legacy keyring credentials migration, legacy 7z/zip 1.0.0 backup format restore, legacy config conversion maps, legacy settings flattening migrators, legacy UI warning banners, and the `sevenz-rust2` crate dependency. Standard `.rcman` backup restore and preview remain fully supported.
 
 ### Fixed
+- **File Browser Freeze & Missing Drives on Wakeup / Stale Mounts**: Fixed an issue where encountering hung or unresponsive drives (e.g. stale WinFsp mounts, disconnected network shares, sleeping HDDs on Windows) or waking up from sleep/systray caused the File Browser sidebar and sync settings drive selectors to freeze and drop both local and cloud remote lists. Disk enumeration in the Rust backend is now non-blocking with timeout protection and graceful root fallback, while frontend remote loading operates independently via `Promise.allSettled`. Fixes #263
 - **Job Stats Group Retention on Finish / Stop**: Fixed an issue where stopping or completing an operation immediately deleted the accounting stats group in rclone memory, causing UI check results, transfer metrics, and error summaries to disappear prematurely. Stats groups are now preserved in rclone memory while the job remains in the job list and are only deleted when the job is actually deleted from the cache, with new operations pre-clearing their group stats before execution. Fixes #211
 - **Docker Entrypoint Privilege Dropping & Supplementary Groups (`PGIDS`)**: Fixed permission denied errors (`EACCES`) when accessing ZFS datasets or directories formatted with NFSv4 ACLs in Docker by replacing `gosu` with `setpriv` in `entrypoint.sh`. Added support for the `PGIDS` environment variable to propagate supplementary group IDs to the daemon process. Fixes #282
 - Fix dynamic reloading of remotes list on rclone configuration and backend settings changes.

@@ -5,7 +5,11 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{bridge, settings::remote::manager::delete_remote_settings},
+    core::{
+        bridge,
+        flow::quick_run::commands::{delete_quick_runs_for_remote, sync_quick_run_automations_bg},
+        settings::{AppSettingsManager, remote::manager::delete_remote_settings},
+    },
     rclone::{
         backend::BackendManager,
         commands::{
@@ -487,6 +491,20 @@ pub async fn delete_remote(app: tauri::AppHandle, name: String) -> Result<(), St
         Err(e) => {
             warn!("⚠️  Failed to delete settings for remote '{name}': {e}");
         }
+    }
+
+    // Clean up all associated quick runs for this remote
+    let manager = app.state::<AppSettingsManager>();
+    match delete_quick_runs_for_remote(&manager, &name) {
+        Ok(deleted_ids) if !deleted_ids.is_empty() => {
+            info!(
+                "Removed {} quick run(s) for deleted remote '{name}'",
+                deleted_ids.len()
+            );
+            sync_quick_run_automations_bg(&app).await;
+        }
+        Err(e) => warn!("Failed to clean up quick runs for remote '{name}': {e}"),
+        _ => {}
     }
 
     transport
